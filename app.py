@@ -53,6 +53,12 @@ logger = logging.getLogger(__name__)
 db.init_app(app)
 audit_logger.init_app(app)
 
+# Запускаем worker thread для audit logger при первом запросе
+@app.before_request
+def ensure_audit_logger_worker():
+    if not audit_logger.is_running:
+        audit_logger.start_worker()
+
 def ensure_schema_columns():
     try:
         with app.app_context():

@@ -27,7 +27,6 @@ class AuditLogger:
     def init_app(self, app):
 
         self.app = app
-        self.start_worker()
 
         import atexit
         atexit.register(self.stop_worker)
@@ -56,6 +55,9 @@ class AuditLogger:
 
     def _worker_loop(self):
 
+        # Небольшая задержка, чтобы приложение успело полностью инициализироваться
+        time.sleep(0.5)
+        
         while self.is_running:
             try:
                 log_data = self.log_queue.get(timeout=1)
@@ -64,8 +66,11 @@ class AuditLogger:
 
                 # Создаем контекст приложения для каждой операции записи
                 if self.app:
-                    with self.app.app_context():
-                        self._write_log(log_data)
+                    try:
+                        with self.app.app_context():
+                            self._write_log(log_data)
+                    except Exception as e:
+                        logger.error(f"Error writing audit log (with context): {e}", exc_info=True)
                 else:
                     logger.warning("Cannot write audit log: app not initialized")
                 
@@ -164,6 +169,10 @@ class AuditLogger:
     def log(self, action: str, entity: Optional[str] = None, entity_id: Optional[int] = None,
             status: str = 'success', metadata: Optional[Dict[str, Any]] = None,
             duration_ms: Optional[int] = None):
+
+        # Ленивая инициализация worker thread при первом вызове
+        if not self.is_running:
+            self.start_worker()
 
         try:
             tester_info = self._get_tester_info()
