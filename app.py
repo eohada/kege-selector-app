@@ -165,18 +165,81 @@ def identify_tester():
             return
 
         tester_name = request.headers.get('X-Tester-Name')
+        tester_uuid = request.headers.get('X-Tester-UUID')
 
+        # Если нет tester_id в сессии, ищем или создаем тестировщика
         if 'tester_id' not in session:
-            tester_id = str(uuid.uuid4())
-            session['tester_id'] = tester_id
-
-            if tester_name:
-                session['tester_name'] = tester_name
+            from core.db_models import Tester
+            
+            tester = None
+            
+            # Ищем по имени (если имя не Anonymous)
+            if tester_name and tester_name != 'Anonymous':
+                tester = Tester.query.filter_by(name=tester_name).first()
+            
+            # Если не нашли по имени, ищем по UUID
+            if not tester and tester_uuid:
+                tester = Tester.query.filter_by(tester_id=tester_uuid).first()
+            
+            # Если нашли существующего - используем его
+            if tester:
+                tester_id = tester.tester_id
+                # Обновляем last_seen
+                tester.last_seen = moscow_now()
+                # Обновляем имя если изменилось
+                if tester_name and tester_name != 'Anonymous' and tester.name != tester_name:
+                    tester.name = tester_name
+                db.session.commit()
             else:
-                session['tester_name'] = 'Anonymous'
+                # Создаем нового тестировщика только если есть имя (не Anonymous)
+                if tester_name and tester_name != 'Anonymous':
+                    # Используем UUID из заголовка или генерируем новый
+                    if tester_uuid:
+                        tester_id = tester_uuid
+                    else:
+                        tester_id = str(uuid.uuid4())
+                    
+                    tester = Tester(
+                        tester_id=tester_id,
+                        name=tester_name,
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get('User-Agent'),
+                        session_id=session.get('_id')
+                    )
+                    db.session.add(tester)
+                    db.session.commit()
+                else:
+                    # Для анонимных не создаем тестировщика, но сохраняем временный ID в сессию
+                    tester_id = tester_uuid or str(uuid.uuid4())
+            
+            session['tester_id'] = tester_id
+            session['tester_name'] = tester_name if tester_name else 'Anonymous'
+        else:
+            # Если tester_id уже есть в сессии, обновляем last_seen если тестировщик существует
+            tester_id = session.get('tester_id')
+            if tester_id:
+                from core.db_models import Tester
+                tester = Tester.query.get(tester_id)
+                if tester:
+                    tester.last_seen = moscow_now()
+                    # Обновляем имя если изменилось
+                    if tester_name and tester_name != 'Anonymous' and tester.name != tester_name:
+                        tester.name = tester_name
+                    db.session.commit()
 
+        # Обновляем имя в сессии если изменилось
         if tester_name and tester_name != session.get('tester_name'):
             session['tester_name'] = tester_name
+            # Обновляем имя в БД если тестировщик существует
+            tester_id = session.get('tester_id')
+            if tester_id:
+                from core.db_models import Tester
+                tester = Tester.query.get(tester_id)
+                if tester and tester_name != 'Anonymous':
+                    tester.name = tester_name
+                    tester.last_seen = moscow_now()
+                    db.session.commit()
+                    
     except Exception as e:
         logger.error(f"Error identifying tester: {e}", exc_info=True)
 

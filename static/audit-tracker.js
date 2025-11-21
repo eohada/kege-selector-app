@@ -3,6 +3,20 @@
 (function() {
     'use strict';  
 
+    function getTesterUUID() {
+        let testerUUID = localStorage.getItem('tester_uuid');
+        if (!testerUUID) {
+            // Генерируем UUID один раз и сохраняем навсегда
+            testerUUID = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+            localStorage.setItem('tester_uuid', testerUUID);
+        }
+        return testerUUID;
+    }
+
     function getTesterName() {
         let testerName = localStorage.getItem('tester_name');  
         if (!testerName) {  
@@ -18,13 +32,15 @@
     }
 
     function sendAuditEvent(action, entity, entityId, status, metadata, durationMs) {
-        const testerName = getTesterName();  
+        const testerName = getTesterName();
+        const testerUUID = getTesterUUID();
 
         fetch('/api/audit-log', {  
             method: 'POST',  
             headers: {
                 'Content-Type': 'application/json',  
-                'X-Tester-Name': testerName,  
+                'X-Tester-Name': testerName,
+                'X-Tester-UUID': testerUUID,
                 'X-CSRFToken': getCSRFToken()  
             },
             body: JSON.stringify({  
@@ -127,9 +143,23 @@
             return originalFetch.apply(this, args);  
         }
         
-        return originalFetch.apply(this, args).then(response => {  
-            const durationMs = Date.now() - startTime;  
-            const status = response.ok ? 'success' : 'error';  
+        // Добавляем заголовки тестировщика во все fetch запросы
+        if (!options.headers) {
+            options.headers = {};
+        }
+        const testerName = getTesterName();
+        const testerUUID = getTesterUUID();
+        if (testerName && testerName !== 'Anonymous') {
+            options.headers['X-Tester-Name'] = testerName;
+        }
+        if (testerUUID) {
+            options.headers['X-Tester-UUID'] = testerUUID;
+        }
+        args[1] = options;
+        
+        return originalFetch.apply(this, args).then(response => {
+            const durationMs = Date.now() - startTime;
+            const status = response.ok ? 'success' : 'error';
 
             sendAuditEvent(  
                 'ajax_request',  
