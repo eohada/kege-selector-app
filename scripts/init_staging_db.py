@@ -75,12 +75,38 @@ def copy_table_data(sqlite_conn, pg_conn, table_name):
         columns_str = ', '.join([f'"{col}"' for col in columns])
         placeholders = ', '.join(['%s'] * len(columns))
 
+        # Очищаем таблицу перед копированием
         pg_cursor.execute(f'TRUNCATE TABLE "{table_name}" CASCADE')
-
-        insert_query = f'INSERT INTO "{table_name}" ({columns_str}) VALUES ({placeholders})'
-        pg_cursor.executemany(insert_query, rows)
-
         pg_conn.commit()
+
+        # Копируем данные порциями для больших таблиц
+        insert_query = f'INSERT INTO "{table_name}" ({columns_str}) VALUES ({placeholders})'
+        batch_size = 1000
+        
+        for i in range(0, len(rows), batch_size):
+            batch = rows[i:i + batch_size]
+            # Конвертируем данные для PostgreSQL
+            converted_batch = []
+            for row in batch:
+                converted_row = []
+                for val in row:
+                    # SQLite возвращает datetime как строку, PostgreSQL ожидает datetime объект
+                    if isinstance(val, str) and 'T' in val or (val and isinstance(val, str) and len(val) > 10 and val[4] == '-' and val[7] == '-'):
+                        try:
+                            from datetime import datetime
+                            # Пробуем распарсить как datetime
+                            if 'T' in val:
+                                val = datetime.fromisoformat(val.replace('Z', '+00:00'))
+                            else:
+                                val = datetime.strptime(val, '%Y-%m-%d %H:%M:%S')
+                        except:
+                            pass  # Оставляем как строку, если не получилось
+                    converted_row.append(val)
+                converted_batch.append(tuple(converted_row))
+            
+            pg_cursor.executemany(insert_query, converted_batch)
+            pg_conn.commit()
+
         print(f"  ✅ Скопировано {len(rows)} записей из {table_name}")
         return len(rows)
     except Exception as e:
@@ -119,7 +145,18 @@ def init_staging_db():
             print("✅ Миграции применены")
 
         print("\n📦 Копирование данных...")
-        tables = ['Tasks', 'Students', 'Lessons', 'LessonTasks', 'UsageHistory', 'SkippedTasks', 'BlacklistTasks']
+        # Порядок важен: сначала основные таблицы, потом связанные
+        tables = [
+            'Tasks',           # Основные данные
+            'Students',         # Ученики
+            'Lessons',          # Уроки
+            'LessonTasks',      # Связь уроков и заданий
+            'UsageHistory',     # История использования
+            'SkippedTasks',     # Пропущенные задания
+            'BlacklistTasks',   # Черный список
+            'Testers',          # Тестировщики (если есть)
+            'AuditLog'          # Логи аудита (если есть)
+        ]
         total_copied = 0
 
         for table in tables:
