@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактировать тестировщика · Админ-панель</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+</head>
+<body>
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <div class="brand-mark">LOGO</div>
+                <div class="brand-caption">Админ-панель</div>
+            </div>
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
+                <a href="{{ url_for('admin_audit') }}" class="nav-link">📊 Логи</a>
+                <a href="{{ url_for('admin_testers') }}" class="nav-link active">👥 Тестировщики</a>
+            </nav>
+        </header>
+
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 800px;">
+            <h1 style="margin-bottom: 1rem;">Редактировать тестировщика</h1>
+
+            <form method="POST" class="hero-section" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <div class="neo-field">
+                    <label class="neo-label">ID тестировщика</label>
+                    <input type="text" value="{{ tester.tester_id }}" disabled class="neo-input" style="background: var(--surface-3);">
+                </div>
+
+                <div class="neo-field">
+                    <label class="neo-label" for="name">Имя *</label>
+                    <input type="text" id="name" name="name" value="{{ tester.name }}" required class="neo-input">
+                </div>
+
+                <div class="neo-field">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" name="is_active" {% if tester.is_active %}checked{% endif %}>
+                        <span class="neo-label" style="margin: 0;">Активен</span>
+                    </label>
+                </div>
+
+                <div class="neo-field">
+                    <label class="neo-label">Первое появление</label>
+                    <input type="text" value="{{ tester.first_seen.strftime('%d.%m.%Y %H:%M:%S') if tester.first_seen else '-' }}" disabled class="neo-input" style="background: var(--surface-3);">
+                </div>
+
+                <div class="neo-field">
+                    <label class="neo-label">Последнее появление</label>
+                    <input type="text" value="{{ tester.last_seen.strftime('%d.%m.%Y %H:%M:%S') if tester.last_seen else '-' }}" disabled class="neo-input" style="background: var(--surface-3);">
+                </div>
+
+                <div class="neo-field">
+                    <label class="neo-label">IP адрес</label>
+                    <input type="text" value="{{ tester.ip_address or '-' }}" disabled class="neo-input" style="background: var(--surface-3);">
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <button type="submit" class="neo-button">💾 Сохранить</button>
+                    <a href="{{ url_for('admin_testers') }}" class="neo-button" style="background: var(--surface-3);">❌ Отмена</a>
+                </div>
+            </form>
+        </section>
+    </div>
+</body>
+</html>
+

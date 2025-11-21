@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление тестировщиками · Админ-панель</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <style>
+        .testers-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface-2);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        .testers-table th {
+            background: var(--surface-3);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--stroke-2);
+        }
+        .testers-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--stroke-1);
+        }
+        .testers-table tr:hover {
+            background: var(--surface-3);
+        }
+        .tester-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .tester-id {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-family: monospace;
+        }
+        .tester-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.9rem;
+        }
+        .stat-badge {
+            background: var(--surface-3);
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+        }
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .btn-edit {
+            background: var(--accent-1);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 0.9rem;
+        }
+        .btn-edit:hover {
+            background: var(--accent-2);
+        }
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .btn-delete:hover {
+            background: #c82333;
+        }
+        .btn-clear-all {
+            background: #dc3545;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        .btn-clear-all:hover {
+            background: #c82333;
+        }
+        .status-active {
+            color: #28a745;
+        }
+        .status-inactive {
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <div class="brand-mark">LOGO</div>
+                <div class="brand-caption">Админ-панель</div>
+            </div>
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
+                <a href="{{ url_for('admin_audit') }}" class="nav-link">📊 Логи</a>
+                <a href="{{ url_for('admin_testers') }}" class="nav-link active">👥 Тестировщики</a>
+            </nav>
+        </header>
+
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
+            <h1 style="margin-bottom: 1rem;">Управление тестировщиками</h1>
+
+            <form method="POST" action="{{ url_for('admin_testers_clear_all') }}" 
+                  onsubmit="return confirm('⚠️ Вы уверены? Это удалит ВСЕХ тестировщиков и ВСЕ их логи!')" 
+                  style="margin-bottom: 2rem;">
+                <button type="submit" class="btn-clear-all">🗑️ Очистить всех тестировщиков</button>
+            </form>
+
+            <table class="testers-table">
+                <thead>
+                    <tr>
+                        <th>Имя</th>
+                        <th>ID</th>
+                        <th>Статус</th>
+                        <th>Первое появление</th>
+                        <th>Последнее появление</th>
+                        <th>Статистика</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tester_data in testers %}
+                    {% set tester = tester_data[0] %}
+                    {% set logs_count = tester_data[1] or 0 %}
+                    {% set last_action = tester_data[2] %}
+                    <tr>
+                        <td>
+                            <div class="tester-name">{{ tester.name }}</div>
+                        </td>
+                        <td>
+                            <div class="tester-id">{{ tester.tester_id[:8] }}...</div>
+                        </td>
+                        <td>
+                            {% if tester.is_active %}
+                            <span class="status-active">● Активен</span>
+                            {% else %}
+                            <span class="status-inactive">○ Неактивен</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ tester.first_seen.strftime('%d.%m.%Y %H:%M') if tester.first_seen else '-' }}</td>
+                        <td>{{ tester.last_seen.strftime('%d.%m.%Y %H:%M') if tester.last_seen else '-' }}</td>
+                        <td>
+                            <div class="tester-stats">
+                                <span class="stat-badge">{{ logs_count }} логов</span>
+                                {% if last_action %}
+                                <span class="stat-badge">Последнее: {{ last_action.strftime('%d.%m %H:%M') }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{{ url_for('admin_testers_edit', tester_id=tester.tester_id) }}" class="btn-edit">✏️ Редактировать</a>
+                                <form method="POST" action="{{ url_for('admin_testers_delete', tester_id=tester.tester_id) }}" 
+                                      onsubmit="return confirm('Удалить тестировщика {{ tester.name }} и все его логи?')" 
+                                      style="display: inline;">
+                                    <button type="submit" class="btn-delete">🗑️ Удалить</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                            Нет тестировщиков
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div style="margin-top: 2rem;">
+                <a href="{{ url_for('admin_audit') }}" class="neo-button">← Назад к логам</a>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
+

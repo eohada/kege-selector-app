@@ -2556,12 +2556,21 @@ def clear_testers_data():
             return
         
         # Удаляем все логи (сначала, чтобы не было проблем с foreign key)
-        deleted_logs = AuditLog.query.delete()
+        # Используем правильный синтаксис для bulk delete
+        from sqlalchemy import delete
+        deleted_logs = db.session.execute(delete(AuditLog)).rowcount
         
         # Удаляем всех тестировщиков
-        deleted_testers = Tester.query.delete()
+        deleted_testers = db.session.execute(delete(Tester)).rowcount
         
         db.session.commit()
+        
+        # Проверяем, что действительно удалилось
+        remaining_testers = Tester.query.count()
+        remaining_logs = AuditLog.query.count()
+        
+        if remaining_testers > 0 or remaining_logs > 0:
+            print(f"⚠️  Внимание: осталось {remaining_testers} тестировщиков и {remaining_logs} логов")
         
         print(f"✅ Очистка завершена:")
         print(f"   - Удалено тестировщиков: {deleted_testers}")
