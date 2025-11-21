@@ -1,0 +1,3 @@
+# This file was deleted and is no longer used
+# File created for Git worktree compatibility
+
