@@ -37,6 +37,10 @@ class AuditLogger:
         if self.is_running:
             return
 
+        if not self.app:
+            logger.warning("Cannot start audit logger worker: app not initialized")
+            return
+
         self.is_running = True
         self.worker_thread = threading.Thread(target=self._worker_loop, daemon=True)
         self.worker_thread.start()
@@ -52,19 +56,24 @@ class AuditLogger:
 
     def _worker_loop(self):
 
-        with self.app.app_context():
-            while self.is_running:
-                try:
-                    log_data = self.log_queue.get(timeout=1)
-                    if log_data is None:
-                        break
+        while self.is_running:
+            try:
+                log_data = self.log_queue.get(timeout=1)
+                if log_data is None:
+                    break
 
-                    self._write_log(log_data)
-                    self.log_queue.task_done()
-                except queue.Empty:
-                    continue
-                except Exception as e:
-                    logger.error(f"Error in audit logger worker: {e}", exc_info=True)
+                # Создаем контекст приложения для каждой операции записи
+                if self.app:
+                    with self.app.app_context():
+                        self._write_log(log_data)
+                else:
+                    logger.warning("Cannot write audit log: app not initialized")
+                
+                self.log_queue.task_done()
+            except queue.Empty:
+                continue
+            except Exception as e:
+                logger.error(f"Error in audit logger worker: {e}", exc_info=True)
 
     def _write_log(self, log_data: Dict[str, Any]):
 
