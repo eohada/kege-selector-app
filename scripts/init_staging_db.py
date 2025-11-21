@@ -22,10 +22,25 @@ def get_postgres_connection():
     database_url = os.environ.get('DATABASE_URL')
     if not database_url:
         print("❌ DATABASE_URL не установлен в переменных окружения")
+        print("💡 Получи внешний DATABASE_URL из Railway:")
+        print("   1. Открой PostgreSQL базу в Railway")
+        print("   2. Перейди на вкладку 'Connect' или 'Variables'")
+        print("   3. Используй 'Public Network' URL (не 'Private Network')")
         return None
 
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+    # Проверяем, не внутренний ли это URL Railway
+    parsed = urlparse(database_url)
+    if 'railway.internal' in parsed.hostname or parsed.hostname == 'postgres.railway.internal':
+        print("⚠️  Обнаружен внутренний Railway URL (postgres.railway.internal)")
+        print("💡 Для подключения с локальной машины нужен внешний URL:")
+        print("   1. В Railway открой PostgreSQL базу")
+        print("   2. Перейди на вкладку 'Connect'")
+        print("   3. Выбери 'Public Network' (не 'Private Network')")
+        print("   4. Скопируй Connection URL и используй его")
+        return None
 
     try:
         parsed = urlparse(database_url)
@@ -40,6 +55,7 @@ def get_postgres_connection():
         return conn
     except Exception as e:
         print(f"❌ Ошибка подключения к PostgreSQL: {e}")
+        print(f"💡 Проверь, что используешь внешний URL (Public Network), а не внутренний")
         return None
 
 def table_exists(pg_cursor, table_name):
