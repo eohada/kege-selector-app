@@ -588,11 +588,34 @@ def student_edit(student_id):
             student.notes = form.notes.data
             student.category = form.category.data if form.category.data else None
             db.session.commit()
+            
+            # Логируем обновление ученика
+            audit_logger.log(
+                action='update_student',
+                entity='Student',
+                entity_id=student_id,
+                status='success',
+                metadata={
+                    'name': student.name,
+                    'platform_id': student.platform_id,
+                    'category': student.category
+                }
+            )
+            
             flash(f'Данные ученика {student.name} обновлены!', 'success')
             return redirect(url_for('student_profile', student_id=student.student_id))
         except Exception as e:
             db.session.rollback()
             logger.error(f'Ошибка при обновлении ученика {student_id}: {e}')
+            
+            # Логируем ошибку
+            audit_logger.log_error(
+                action='update_student',
+                entity='Student',
+                entity_id=student_id,
+                error=str(e)
+            )
+            
             flash(f'Ошибка при обновлении данных: {str(e)}', 'error')
 
     return render_template('student_form.html', form=form, title='Редактировать ученика',
