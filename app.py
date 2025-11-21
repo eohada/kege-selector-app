@@ -33,12 +33,23 @@ db_path = os.path.join(base_dir, 'data', 'keg_tasks.db')
 
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
-
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    
+    # В Railway внутренний URL должен работать, но если нет - используем внешний
+    # Проверяем, есть ли переменная для внешнего подключения
+    external_db_url = os.environ.get('DATABASE_EXTERNAL_URL') or os.environ.get('POSTGRES_URL')
+    if external_db_url:
+        if external_db_url.startswith('postgres://'):
+            external_db_url = external_db_url.replace('postgres://', 'postgresql://', 1)
+        database_url = external_db_url
+        logger.info("Using external database URL")
+    else:
+        logger.info(f"Using DATABASE_URL: {database_url[:20]}...")
+    
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-
+    logger.warning("DATABASE_URL not set, using SQLite")
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'local-dev-key-12345')
