@@ -98,10 +98,28 @@ def ensure_schema_columns():
 
             db.session.commit()
     except Exception as e:
-        db.session.rollback()
-        logger.error(f"Ошибка при миграции схемы БД: {e}")
+            db.session.rollback()
+            logger.error(f"Ошибка при миграции схемы БД: {e}")
 
-ensure_schema_columns()
+# Флаг для отслеживания, была ли выполнена инициализация схемы
+_schema_initialized = False
+
+@app.before_request
+def initialize_on_first_request():
+    global _schema_initialized
+    
+    # Инициализируем схему БД при первом запросе
+    if not _schema_initialized:
+        try:
+            ensure_schema_columns()
+            _schema_initialized = True
+            logger.info("Database schema initialized")
+        except Exception as e:
+            logger.error(f"Error initializing schema: {e}", exc_info=True)
+    
+    # Запускаем worker thread для audit logger при первом запросе
+    if not audit_logger.is_running:
+        audit_logger.start_worker()
 
 @app.before_request
 def identify_tester():
