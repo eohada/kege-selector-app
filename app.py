@@ -2464,6 +2464,154 @@ def admin_audit():
                          entities=entities,
                          testers=testers)
 
+@app.route('/admin-testers')
+def admin_testers():
+    """Управление тестировщиками"""
+    check_admin_access()
+    
+    from core.db_models import Tester, AuditLog
+    from sqlalchemy import func
+    
+    # Получаем всех тестировщиков с статистикой
+    testers = db.session.query(
+        Tester,
+        func.count(AuditLog.id).label('logs_count'),
+        func.max(AuditLog.timestamp).label('last_action')
+    ).outerjoin(
+        AuditLog, Tester.tester_id == AuditLog.tester_id
+    ).group_by(
+        Tester.tester_id
+    ).order_by(
+        Tester.first_seen.desc()
+    ).all()
+    
+    return render_template('admin_testers.html', testers=testers)
+
+@app.route('/admin-testers/<tester_id>/edit', methods=['GET', 'POST'])
+def admin_testers_edit(tester_id):
+    """Редактирование тестировщика"""
+    check_admin_access()
+    
+    from core.db_models import Tester
+    
+    tester = Tester.query.get_or_404(tester_id)
+    
+    if request.method == 'POST':
+        new_name = request.form.get('name', '').strip()
+        is_active = request.form.get('is_active') == 'on'
+        
+        if not new_name:
+            flash('Имя не может быть пустым', 'error')
+            return redirect(url_for('admin_testers_edit', tester_id=tester_id))
+        
+        old_name = tester.name
+        tester.name = new_name
+        tester.is_active = is_active
+        db.session.commit()
+        
+        # Логируем изменение
+        audit_logger.log(
+            action='edit_tester',
+            entity='Tester',
+            entity_id=tester_id,
+            status='success',
+            metadata={
+                'old_name': old_name,
+                'new_name': new_name,
+                'is_active': is_active
+            }
+        )
+        
+        flash(f'Тестировщик "{new_name}" обновлен', 'success')
+        return redirect(url_for('admin_testers'))
+    
+    return render_template('admin_testers_edit.html', tester=tester)
+
+@app.route('/admin-testers/<tester_id>/delete', methods=['POST'])
+def admin_testers_delete(tester_id):
+    """Удаление тестировщика"""
+    check_admin_access()
+    
+    from core.db_models import Tester, AuditLog
+    from sqlalchemy import delete
+    
+    tester = Tester.query.get_or_404(tester_id)
+    tester_name = tester.name
+    
+    try:
+        # Удаляем все логи тестировщика
+        deleted_logs = db.session.execute(
+            delete(AuditLog).where(AuditLog.tester_id == tester_id)
+        ).rowcount
+        
+        # Удаляем тестировщика
+        db.session.delete(tester)
+        db.session.commit()
+        
+        # Логируем удаление
+        audit_logger.log(
+            action='delete_tester',
+            entity='Tester',
+            entity_id=tester_id,
+            status='success',
+            metadata={
+                'tester_name': tester_name,
+                'deleted_logs': deleted_logs
+            }
+        )
+        
+        flash(f'Тестировщик "{tester_name}" и {deleted_logs} его логов удалены', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при удалении тестировщика: {e}')
+        flash(f'Ошибка при удалении: {str(e)}', 'error')
+    
+    return redirect(url_for('admin_testers'))
+
+@app.route('/admin-testers/clear-all', methods=['POST'])
+def admin_testers_clear_all():
+    """Очистить всех тестировщиков через админ-панель"""
+    check_admin_access()
+    
+    from core.db_models import Tester, AuditLog
+    from sqlalchemy import delete
+    
+    try:
+        testers_count = Tester.query.count()
+        logs_count = AuditLog.query.count()
+        
+        if testers_count == 0 and logs_count == 0:
+            flash('Нет данных для очистки', 'info')
+            return redirect(url_for('admin_testers'))
+        
+        # Удаляем все логи
+        deleted_logs = db.session.execute(delete(AuditLog)).rowcount
+        
+        # Удаляем всех тестировщиков
+        deleted_testers = db.session.execute(delete(Tester)).rowcount
+        
+        db.session.commit()
+        
+        # Логируем очистку
+        audit_logger.log(
+            action='clear_all_testers',
+            entity='Tester',
+            entity_id=None,
+            status='success',
+            metadata={
+                'deleted_testers': deleted_testers,
+                'deleted_logs': deleted_logs
+            }
+        )
+        
+        flash(f'Удалено {deleted_testers} тестировщиков и {deleted_logs} логов', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при очистке тестировщиков: {e}')
+        flash(f'Ошибка при очистке: {str(e)}', 'error')
+    
+    return redirect(url_for('admin_testers'))
+
 @app.route('/admin-audit/export')
 def admin_audit_export():
 
