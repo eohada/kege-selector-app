@@ -116,7 +116,8 @@ class AuditLogger:
             tester_name = session.get('tester_name')
             session_id = session.get('_id', request.cookies.get('session'))
 
-            if tester_id:
+            # Убеждаемся, что тестировщик существует в БД (только для не-анонимных)
+            if tester_id and tester_name and tester_name != 'Anonymous':
                 self._ensure_tester_exists(tester_id, tester_name)
 
         return {

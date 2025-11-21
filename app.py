@@ -2003,7 +2003,7 @@ def generate_results():
             'tasks_generated': len(tasks) if tasks else 0,
             'assignment_type': assignment_type,
             'student_id': student_id,
-            'student_name': student.name if student else None
+            'student_name': student.name if student and hasattr(student, 'name') else None
         }
     )
 
