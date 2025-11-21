@@ -62,44 +62,57 @@ def ensure_audit_logger_worker():
 def ensure_schema_columns():
     try:
         with app.app_context():
-
             from core.db_models import Tester, AuditLog
             db.create_all()
+            db.session.commit()
 
             inspector = inspect(db.engine)
+            
+            # Получаем реальное имя таблицы (может быть в нижнем регистре)
+            table_names = inspector.get_table_names()
+            lessons_table = 'Lessons' if 'Lessons' in table_names else ('lessons' if 'lessons' in table_names else None)
+            students_table = 'Students' if 'Students' in table_names else ('students' if 'students' in table_names else None)
+            lesson_tasks_table = 'LessonTasks' if 'LessonTasks' in table_names else ('lessontasks' if 'lessontasks' in table_names else None)
+            
+            if not lessons_table:
+                logger.warning("Lessons table not found, skipping schema migration")
+                return
 
-            lesson_columns = {col['name'] for col in inspector.get_columns('Lessons')}
+            lesson_columns = {col['name'] for col in inspector.get_columns(lessons_table)}
             if 'homework_result_percent' not in lesson_columns:
                 db.session.execute(text('ALTER TABLE Lessons ADD COLUMN homework_result_percent INTEGER'))
             if 'homework_result_notes' not in lesson_columns:
                 db.session.execute(text('ALTER TABLE Lessons ADD COLUMN homework_result_notes TEXT'))
 
-            lesson_task_columns = {col['name'] for col in inspector.get_columns('LessonTasks')}
-            if 'assignment_type' not in lesson_task_columns:
-                db.session.execute(text("ALTER TABLE LessonTasks ADD COLUMN assignment_type TEXT DEFAULT 'homework'"))
-            if 'student_submission' not in lesson_task_columns:
-                db.session.execute(text("ALTER TABLE LessonTasks ADD COLUMN student_submission TEXT"))
-            if 'submission_correct' not in lesson_task_columns:
-                db.session.execute(text("ALTER TABLE LessonTasks ADD COLUMN submission_correct INTEGER"))
+            if lesson_tasks_table:
+                lesson_task_columns = {col['name'] for col in inspector.get_columns(lesson_tasks_table)}
+                if 'assignment_type' not in lesson_task_columns:
+                    db.session.execute(text(f'ALTER TABLE "{lesson_tasks_table}" ADD COLUMN assignment_type TEXT DEFAULT \'homework\''))
+                if 'student_submission' not in lesson_task_columns:
+                    db.session.execute(text(f'ALTER TABLE "{lesson_tasks_table}" ADD COLUMN student_submission TEXT'))
+                if 'submission_correct' not in lesson_task_columns:
+                    db.session.execute(text(f'ALTER TABLE "{lesson_tasks_table}" ADD COLUMN submission_correct INTEGER'))
 
-            student_columns = {col['name'] for col in inspector.get_columns('Students')}
-            if 'category' not in student_columns:
-                db.session.execute(text("ALTER TABLE Students ADD COLUMN category TEXT"))
+            if students_table:
+                student_columns = {col['name'] for col in inspector.get_columns(students_table)}
+                if 'category' not in student_columns:
+                    db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN category TEXT'))
 
-            indexes = {idx['name'] for idx in inspector.get_indexes('Students')}
-            if 'idx_students_category' not in indexes:
-                db.session.execute(text('CREATE INDEX idx_students_category ON Students(category)'))
+                indexes = {idx['name'] for idx in inspector.get_indexes(students_table)}
+                if 'idx_students_category' not in indexes:
+                    db.session.execute(text(f'CREATE INDEX idx_students_category ON "{students_table}"(category)'))
 
-            lesson_indexes = {idx['name'] for idx in inspector.get_indexes('Lessons')}
+            lesson_indexes = {idx['name'] for idx in inspector.get_indexes(lessons_table)}
             if 'idx_lessons_status' not in lesson_indexes:
-                db.session.execute(text('CREATE INDEX idx_lessons_status ON Lessons(status)'))
+                db.session.execute(text(f'CREATE INDEX idx_lessons_status ON "{lessons_table}"(status)'))
             if 'idx_lessons_lesson_date' not in lesson_indexes:
-                db.session.execute(text('CREATE INDEX idx_lessons_lesson_date ON Lessons(lesson_date)'))
+                db.session.execute(text(f'CREATE INDEX idx_lessons_lesson_date ON "{lessons_table}"(lesson_date)'))
 
             db.session.commit()
     except Exception as e:
-            db.session.rollback()
-            logger.error(f"Ошибка при миграции схемы БД: {e}")
+        db.session.rollback()
+        logger.error(f"Ошибка при миграции схемы БД: {e}", exc_info=True)
+        raise  # Пробрасываем ошибку дальше
 
 # Флаг для отслеживания, была ли выполнена инициализация схемы
 _schema_initialized = False
@@ -113,6 +126,11 @@ def initialize_on_first_request():
         try:
             ensure_schema_columns()
             _schema_initialized = True
+            logger.info("Database schema initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize database schema: {e}", exc_info=True)
+            # Не блокируем запрос, если миграция не удалась
+            _schema_initialized = True  # Помечаем как инициализированную, чтобы не повторять
             logger.info("Database schema initialized")
         except Exception as e:
             logger.error(f"Error initializing schema: {e}", exc_info=True)
