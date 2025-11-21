@@ -693,6 +693,22 @@ def lesson_new(student_id):
         )
         db.session.add(lesson)
         db.session.commit()
+        
+        # Логируем создание урока
+        audit_logger.log(
+            action='create_lesson',
+            entity='Lesson',
+            entity_id=lesson.lesson_id,
+            status='success',
+            metadata={
+                'student_id': student_id,
+                'student_name': student.name,
+                'lesson_type': lesson.lesson_type,
+                'lesson_date': str(lesson.lesson_date),
+                'status': lesson.status
+            }
+        )
+        
         flash(f'Урок добавлен для ученика {student.name}!', 'success')
         return redirect(url_for('student_profile', student_id=student_id))
 
@@ -714,6 +730,21 @@ def lesson_edit(lesson_id):
         lesson.homework = form.homework.data
         lesson.homework_status = form.homework_status.data
         db.session.commit()
+        
+        # Логируем обновление урока
+        audit_logger.log(
+            action='update_lesson',
+            entity='Lesson',
+            entity_id=lesson_id,
+            status='success',
+            metadata={
+                'student_id': lesson.student_id,
+                'student_name': lesson.student.name,
+                'lesson_type': lesson.lesson_type,
+                'status': lesson.status
+            }
+        )
+        
         flash(f'Урок обновлен!', 'success')
         return redirect(url_for('student_profile', student_id=student.student_id))
 
@@ -732,8 +763,25 @@ def lesson_view(lesson_id):
 def lesson_delete(lesson_id):
     lesson = Lesson.query.get_or_404(lesson_id)
     student_id = lesson.student_id
+    student_name = lesson.student.name
+    
     db.session.delete(lesson)
     db.session.commit()
+    
+    # Логируем удаление урока
+    audit_logger.log(
+        action='delete_lesson',
+        entity='Lesson',
+        entity_id=lesson_id,
+        status='success',
+        metadata={
+            'student_id': student_id,
+            'student_name': student_name,
+            'lesson_type': lesson.lesson_type,
+            'lesson_date': str(lesson.lesson_date)
+        }
+    )
+    
     flash('Урок удален.', 'success')
     return redirect(url_for('schedule'))
 
@@ -872,6 +920,22 @@ def lesson_homework_save(lesson_id):
             lesson.homework_status = 'pending'
 
     db.session.commit()
+    
+    # Логируем сохранение домашнего задания
+    audit_logger.log(
+        action='save_homework',
+        entity='Lesson',
+        entity_id=lesson_id,
+        status='success',
+        metadata={
+            'student_id': lesson.student_id,
+            'student_name': lesson.student.name,
+            'homework_status': lesson.homework_status,
+            'homework_result_percent': lesson.homework_result_percent,
+            'tasks_count': len(homework_tasks)
+        }
+    )
+    
     flash('Данные по ДЗ сохранены!', 'success')
     return redirect(url_for('lesson_homework_view', lesson_id=lesson_id))
 
@@ -971,6 +1035,23 @@ def lesson_homework_auto_check(lesson_id):
         lesson.homework_status = 'completed' if correct_count == total_tasks else 'not_done'
 
     db.session.commit()
+    
+    # Логируем автопроверку ДЗ
+    audit_logger.log(
+        action='auto_check_homework',
+        entity='Lesson',
+        entity_id=lesson_id,
+        status='success',
+        metadata={
+            'student_id': lesson.student_id,
+            'student_name': lesson.student.name,
+            'total_tasks': total_tasks,
+            'correct_count': correct_count,
+            'incorrect_count': incorrect_count,
+            'percent': percent
+        }
+    )
+    
     flash(f'Автопроверка завершена. Правильных: {correct_count}, неправильных: {incorrect_count}.', 'success')
     return redirect(url_for('lesson_homework_view', lesson_id=lesson_id))
 
@@ -984,8 +1065,26 @@ def lesson_homework_delete_task(lesson_id, lesson_task_id):
         flash('Ошибка: задание не принадлежит этому уроку', 'danger')
         return redirect(url_for('lesson_homework_view', lesson_id=lesson_id))
 
+    task_id = lesson_task.task_id
+    
     db.session.delete(lesson_task)
     db.session.commit()
+    
+    # Логируем удаление задачи из ДЗ
+    audit_logger.log(
+        action='delete_homework_task',
+        entity='LessonTask',
+        entity_id=lesson_task_id,
+        status='success',
+        metadata={
+            'lesson_id': lesson_id,
+            'task_id': task_id,
+            'assignment_type': assignment_type,
+            'student_id': lesson.student_id,
+            'student_name': lesson.student.name
+        }
+    )
+    
     flash('Задание удалено', 'success')
 
     if assignment_type == 'classwork':
@@ -1599,6 +1698,24 @@ def schedule_create_lesson():
             created_lessons.append(new_lesson)
 
         db.session.commit()
+        
+        # Логируем создание урока(ов) из расписания
+        for created_lesson in created_lessons:
+            audit_logger.log(
+                action='create_lesson_from_schedule',
+                entity='Lesson',
+                entity_id=created_lesson.lesson_id,
+                status='success',
+                metadata={
+                    'student_id': student_id,
+                    'student_name': student.name,
+                    'lesson_mode': lesson_mode,
+                    'repeat_count': lessons_to_create,
+                    'lesson_date': str(created_lesson.lesson_date),
+                    'duration': duration,
+                    'lesson_type': lesson_type
+                }
+            )
 
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
@@ -1688,6 +1805,22 @@ def kege_generator(lesson_id=None):
         task_type = selection_form.task_type.data
         limit_count = selection_form.limit_count.data
         use_skipped = selection_form.use_skipped.data
+        
+        # Логируем запрос на генерацию заданий
+        audit_logger.log(
+            action='request_task_generation',
+            entity='Generator',
+            entity_id=lesson_id,
+            status='success',
+            metadata={
+                'task_type': task_type,
+                'limit_count': limit_count,
+                'use_skipped': use_skipped,
+                'assignment_type': assignment_type,
+                'student_id': lesson.student_id if lesson_id and lesson else None,
+                'student_name': lesson.student.name if lesson_id and lesson else None
+            }
+        )
 
         if lesson_id:
             return redirect(url_for('generate_results', task_type=task_type, limit_count=limit_count, use_skipped=use_skipped, lesson_id=lesson_id, assignment_type=assignment_type))
@@ -1702,17 +1835,45 @@ def kege_generator(lesson_id=None):
 
         if reset_type == 'accepted':
             reset_history(task_type=task_type_int)
+            audit_logger.log(
+                action='reset_history',
+                entity='Task',
+                entity_id=None,
+                status='success',
+                metadata={'task_type': task_type_int}
+            )
             flash('История принятых заданий сброшена.', 'success')
         elif reset_type == 'skipped':
             reset_skipped(task_type=task_type_int)
+            audit_logger.log(
+                action='reset_skipped',
+                entity='Task',
+                entity_id=None,
+                status='success',
+                metadata={'task_type': task_type_int}
+            )
             flash('История пропущенных заданий сброшена.', 'success')
         elif reset_type == 'blacklist':
             reset_blacklist(task_type=task_type_int)
+            audit_logger.log(
+                action='reset_blacklist',
+                entity='Task',
+                entity_id=None,
+                status='success',
+                metadata={'task_type': task_type_int}
+            )
             flash('Черный список очищен.', 'success')
         elif reset_type == 'all':
             reset_history(task_type=task_type_int)
             reset_skipped(task_type=task_type_int)
             reset_blacklist(task_type=task_type_int)
+            audit_logger.log(
+                action='reset_all_history',
+                entity='Task',
+                entity_id=None,
+                status='success',
+                metadata={'task_type': task_type_int}
+            )
             flash('Вся история сброшена.', 'success')
 
         return redirect(url_for('kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator', assignment_type=assignment_type))
@@ -1747,6 +1908,23 @@ def generate_results():
         student_id = student.student_id
 
     tasks = get_unique_tasks(task_type, limit_count, use_skipped=use_skipped, student_id=student_id)
+    
+    # Логируем генерацию заданий
+    audit_logger.log(
+        action='generate_tasks',
+        entity='Generator',
+        entity_id=lesson_id,
+        status='success' if tasks else 'warning',
+        metadata={
+            'task_type': task_type,
+            'limit_count': limit_count,
+            'use_skipped': use_skipped,
+            'tasks_generated': len(tasks) if tasks else 0,
+            'assignment_type': assignment_type,
+            'student_id': student_id,
+            'student_name': student.name if student else None
+        }
+    )
 
     if not tasks:
         if use_skipped:
@@ -1794,8 +1972,29 @@ def task_action():
                     lesson.homework_result_notes = None
                 try:
                     db.session.commit()
+                    
+                    # Логируем принятие заданий для урока
+                    audit_logger.log(
+                        action='accept_tasks',
+                        entity='Lesson',
+                        entity_id=lesson_id,
+                        status='success',
+                        metadata={
+                            'task_ids': task_ids,
+                            'task_count': len(task_ids),
+                            'assignment_type': assignment_type,
+                            'student_id': lesson.student_id,
+                            'student_name': lesson.student.name
+                        }
+                    )
                 except Exception as e:
                     db.session.rollback()
+                    audit_logger.log_error(
+                        action='accept_tasks',
+                        entity='Lesson',
+                        entity_id=lesson_id,
+                        error=str(e)
+                    )
                     return jsonify({'success': False, 'error': f'Ошибка при сохранении: {str(e)}'}), 500
                 if assignment_type == 'classwork':
                     message = f'{len(task_ids)} заданий добавлено в классную работу.'
@@ -1804,21 +2003,72 @@ def task_action():
             else:
                 try:
                     record_usage(task_ids)
+                    
+                    # Логируем принятие заданий (без урока)
+                    audit_logger.log(
+                        action='accept_tasks',
+                        entity='Task',
+                        entity_id=None,
+                        status='success',
+                        metadata={
+                            'task_ids': task_ids,
+                            'task_count': len(task_ids)
+                        }
+                    )
                 except Exception as e:
+                    audit_logger.log_error(
+                        action='accept_tasks',
+                        entity='Task',
+                        error=str(e)
+                    )
                     return jsonify({'success': False, 'error': f'Ошибка при записи: {str(e)}'}), 500
                 message = f'{len(task_ids)} заданий принято.'
         elif action == 'skip':
             if lesson_id:
+                lesson = Lesson.query.get(lesson_id)
+                audit_logger.log(
+                    action='skip_tasks',
+                    entity='Lesson',
+                    entity_id=lesson_id,
+                    status='success',
+                    metadata={
+                        'task_ids': task_ids,
+                        'task_count': len(task_ids),
+                        'assignment_type': assignment_type,
+                        'student_id': lesson.student_id if lesson else None
+                    }
+                )
                 if assignment_type == 'classwork':
                     message = f'{len(task_ids)} заданий пропущено в режиме классной работы.'
                 else:
                     message = f'{len(task_ids)} заданий пропущено (только для этого урока).'
             else:
                 record_skipped(task_ids)
+                audit_logger.log(
+                    action='skip_tasks',
+                    entity='Task',
+                    entity_id=None,
+                    status='success',
+                    metadata={
+                        'task_ids': task_ids,
+                        'task_count': len(task_ids)
+                    }
+                )
                 message = f'{len(task_ids)} заданий пропущено.'
         elif action == 'blacklist':
             reason = data.get('reason', 'Добавлено пользователем')
             record_blacklist(task_ids, reason=reason)
+            audit_logger.log(
+                action='blacklist_tasks',
+                entity='Task',
+                entity_id=None,
+                status='success',
+                metadata={
+                    'task_ids': task_ids,
+                    'task_count': len(task_ids),
+                    'reason': reason
+                }
+            )
             message = f'{len(task_ids)} заданий добавлено в черный список.'
         else:
             return jsonify({'success': False, 'error': 'Неизвестное действие'}), 400
@@ -1922,9 +2172,27 @@ def export_data():
         response.headers['Content-Type'] = 'application/json; charset=utf-8'
         response.headers['Content-Disposition'] = f'attachment; filename=export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
         logger.info(f'Экспорт завершен: {len(export_data["students"])} учеников, {len(export_data["lessons"])} уроков')
+        
+        # Логируем экспорт данных
+        audit_logger.log(
+            action='export_data',
+            entity='Data',
+            entity_id=None,
+            status='success',
+            metadata={
+                'students_count': len(export_data["students"]),
+                'lessons_count': len(export_data["lessons"])
+            }
+        )
+        
         return response
     except Exception as e:
         logger.error(f'Ошибка при экспорте данных: {e}')
+        audit_logger.log_error(
+            action='export_data',
+            entity='Data',
+            error=str(e)
+        )
         flash(f'Ошибка при экспорте данных: {str(e)}', 'error')
         return redirect(url_for('dashboard'))
 
@@ -1961,11 +2229,30 @@ def import_data():
                     imported_lessons += 1
         db.session.commit()
         logger.info(f'Импорт завершен: {imported_students} учеников, {imported_lessons} уроков')
+        
+        # Логируем импорт данных
+        audit_logger.log(
+            action='import_data',
+            entity='Data',
+            entity_id=None,
+            status='success',
+            metadata={
+                'students_count': imported_students,
+                'lessons_count': imported_lessons,
+                'filename': file.filename
+            }
+        )
+        
         flash(f'Импорт завершен: добавлено {imported_students} учеников и {imported_lessons} уроков', 'success')
         return redirect(url_for('dashboard'))
     except Exception as e:
         db.session.rollback()
         logger.error(f'Ошибка при импорте данных: {e}')
+        audit_logger.log_error(
+            action='import_data',
+            entity='Data',
+            error=str(e)
+        )
         flash(f'Ошибка при импорте данных: {str(e)}', 'error')
         return redirect(url_for('import_data'))
 
@@ -1978,6 +2265,18 @@ def backup_db():
         backup_path = os.path.join(backup_dir, backup_filename)
         shutil.copy2(db_path, backup_path)
         logger.info(f'Резервная копия создана: {backup_path}')
+        
+        # Логируем создание бэкапа
+        audit_logger.log(
+            action='backup_database',
+            entity='Database',
+            entity_id=None,
+            status='success',
+            metadata={
+                'backup_filename': backup_filename,
+                'backup_path': backup_path
+            }
+        )
         flash(f'Резервная копия создана: {backup_filename}', 'success')
         return redirect(url_for('dashboard'))
     except Exception as e:
