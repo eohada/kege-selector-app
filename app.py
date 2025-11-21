@@ -125,6 +125,25 @@ def ensure_schema_columns():
             if 'idx_lessons_lesson_date' not in lesson_indexes:
                 db.session.execute(text(f'CREATE INDEX idx_lessons_lesson_date ON "{lessons_table}"(lesson_date)'))
 
+            # Проверяем и обновляем AuditLog таблицу
+            audit_log_table = 'AuditLog' if 'AuditLog' in table_names else ('auditlog' if 'auditlog' in table_names else None)
+            if audit_log_table:
+                audit_log_columns = {col['name'] for col in inspector.get_columns(audit_log_table)}
+                # Изменяем session_id на TEXT если он VARCHAR(100)
+                try:
+                    pg_cursor = db.session.connection().connection.cursor()
+                    pg_cursor.execute("""
+                        SELECT data_type, character_maximum_length 
+                        FROM information_schema.columns 
+                        WHERE table_name = %s AND column_name = 'session_id'
+                    """, (audit_log_table,))
+                    col_info = pg_cursor.fetchone()
+                    if col_info and col_info[0] == 'character varying' and col_info[1] == 100:
+                        db.session.execute(text(f'ALTER TABLE "{audit_log_table}" ALTER COLUMN session_id TYPE TEXT'))
+                        logger.info(f"Updated session_id column in {audit_log_table} to TEXT")
+                except Exception as e:
+                    logger.warning(f"Could not update session_id column: {e}")
+
             db.session.commit()
     except Exception as e:
         db.session.rollback()

@@ -5,7 +5,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
     if student_id:
         if use_skipped:
             sql_query = text("""
-                SELECT DISTINCT T.task_id
+                SELECT T.task_id
                 FROM "Tasks" AS T
                 WHERE T.task_number = :task_type
                     AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
@@ -21,7 +21,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
             """)
         else:
             sql_query = text("""
-                SELECT DISTINCT T.task_id
+                SELECT T.task_id
                 FROM "Tasks" AS T
                 WHERE T.task_number = :task_type
                     AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
@@ -40,7 +40,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
     else:
         if use_skipped:
             sql_query = text("""
-                SELECT DISTINCT T.task_id
+                SELECT T.task_id
                 FROM "Tasks" AS T
                 WHERE T.task_number = :task_type
                     AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
@@ -50,7 +50,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
             """)
         else:
             sql_query = text("""
-                SELECT DISTINCT T.task_id
+                SELECT T.task_id
                 FROM "Tasks" AS T
                 WHERE T.task_number = :task_type
                     AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")

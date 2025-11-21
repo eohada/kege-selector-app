@@ -156,7 +156,7 @@ class AuditLog(db.Model):
     meta_data = db.Column(db.Text, nullable=True)
     ip_address = db.Column(db.String(45), nullable=True)
     user_agent = db.Column(db.Text, nullable=True)
-    session_id = db.Column(db.String(100), nullable=True)
+    session_id = db.Column(db.Text, nullable=True)
     duration_ms = db.Column(db.Integer, nullable=True)
     url = db.Column(db.Text, nullable=True)
     method = db.Column(db.String(10), nullable=True)

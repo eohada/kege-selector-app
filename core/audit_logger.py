@@ -95,7 +95,11 @@ class AuditLogger:
             audit_log.set_metadata(log_data.get('metadata', {}))
             audit_log.ip_address = log_data.get('ip_address')
             audit_log.user_agent = log_data.get('user_agent')
-            audit_log.session_id = log_data.get('session_id')
+            # Обрезаем session_id если слишком длинный
+            session_id = log_data.get('session_id')
+            if session_id and len(session_id) > 500:
+                session_id = session_id[:500]
+            audit_log.session_id = session_id
             audit_log.duration_ms = log_data.get('duration_ms')
             audit_log.url = log_data.get('url')
             audit_log.method = log_data.get('method')
