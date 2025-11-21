@@ -520,11 +520,34 @@ def student_new():
             )
             db.session.add(student)
             db.session.commit()
+            
+            # Логируем создание ученика
+            audit_logger.log(
+                action='create_student',
+                entity='Student',
+                entity_id=student.student_id,
+                status='success',
+                metadata={
+                    'name': student.name,
+                    'platform_id': student.platform_id,
+                    'category': student.category
+                }
+            )
+            
             flash(f'Ученик {student.name} успешно добавлен!', 'success')
             return redirect(url_for('dashboard'))
         except Exception as e:
             db.session.rollback()
             logger.error(f'Ошибка при добавлении ученика: {e}')
+            
+            # Логируем ошибку
+            audit_logger.log_error(
+                action='create_student',
+                entity='Student',
+                error=str(e),
+                metadata={'form_data': {k: str(v) for k, v in form.data.items() if k != 'csrf_token'}}
+            )
+            
             flash(f'Ошибка при добавлении ученика: {str(e)}', 'error')
 
     return render_template('student_form.html', form=form, title='Добавить ученика', is_new=True)
@@ -580,12 +603,38 @@ def student_delete(student_id):
     try:
         student = Student.query.get_or_404(student_id)
         name = student.name
+        platform_id = student.platform_id
+        category = student.category
+        
         db.session.delete(student)
         db.session.commit()
+        
+        # Логируем удаление ученика
+        audit_logger.log(
+            action='delete_student',
+            entity='Student',
+            entity_id=student_id,
+            status='success',
+            metadata={
+                'name': name,
+                'platform_id': platform_id,
+                'category': category
+            }
+        )
+        
         flash(f'Ученик {name} удален из системы.', 'success')
     except Exception as e:
         db.session.rollback()
         logger.error(f'Ошибка при удалении ученика {student_id}: {e}')
+        
+        # Логируем ошибку
+        audit_logger.log_error(
+            action='delete_student',
+            entity='Student',
+            entity_id=student_id,
+            error=str(e)
+        )
+        
         flash(f'Ошибка при удалении ученика: {str(e)}', 'error')
     return redirect(url_for('dashboard'))
 
