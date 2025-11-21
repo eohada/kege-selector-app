@@ -2372,7 +2372,11 @@ def bulk_create_lessons():
         return redirect(url_for('bulk_create_lessons'))
 
 def check_admin_access():
-
+    # Если уже авторизован через сессию, пропускаем
+    if session.get('is_admin'):
+        return
+    
+    # Иначе проверяем секрет из URL
     admin_secret = os.environ.get('ADMIN_SECRET', 'default-admin-secret-change-me')
     request_secret = request.args.get('secret')
 

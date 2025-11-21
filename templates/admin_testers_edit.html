@@ -17,8 +17,8 @@
                 <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
                 <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
                 <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
-                <a href="{{ url_for('admin_audit') }}" class="nav-link">📊 Логи</a>
-                <a href="{{ url_for('admin_testers') }}" class="nav-link active">👥 Тестировщики</a>
+                <a href="{{ url_for('admin_audit', secret=request.args.get('secret', '')) }}" class="nav-link">📊 Логи</a>
+                <a href="{{ url_for('admin_testers', secret=request.args.get('secret', '')) }}" class="nav-link active">👥 Тестировщики</a>
             </nav>
         </header>
 
@@ -60,7 +60,7 @@
 
                 <div style="display: flex; gap: 1rem; margin-top: 1rem;">
                     <button type="submit" class="neo-button">💾 Сохранить</button>
-                    <a href="{{ url_for('admin_testers') }}" class="neo-button" style="background: var(--surface-3);">❌ Отмена</a>
+                    <a href="{{ url_for('admin_testers', secret=request.args.get('secret', '')) }}" class="neo-button" style="background: var(--surface-3);">❌ Отмена</a>
                 </div>
             </form>
         </section>
