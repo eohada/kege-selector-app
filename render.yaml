@@ -25,9 +25,9 @@ services:
     healthCheckPath: /
     
   # PostgreSQL Database - для персистентного хранения данных
-  - type: pspg
+  - type: pg
     name: kege-db-staging
-    plan: free  # бесплатный план (90 дней, 256 MB)
+    plan: free
     databaseName: kege_staging
     user: kege_user
 
