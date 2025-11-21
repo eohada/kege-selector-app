@@ -265,14 +265,7 @@ def log_page_view(response):
         if any(pattern in user_agent for pattern in bot_patterns):
             return response
 
-        # Логируем только если есть имя тестировщика (не Anonymous)
-        # или если это реальный пользователь (есть имя в сессии или заголовке)
-        tester_name = session.get('tester_name') or request.headers.get('X-Tester-Name')
-        
-        # Не создаем тестировщиков для анонимных запросов
-        if not tester_name or tester_name == 'Anonymous':
-            return response
-
+        # Логируем все GET запросы (даже для анонимных)
         if request.method == 'GET' and response.status_code == 200:
             page_name = request.endpoint or request.path
             audit_logger.log_page_view(
