@@ -102,16 +102,47 @@ def copy_table_data(sqlite_conn, pg_conn, table_name):
             return 0
 
         sqlite_cursor.execute(f"PRAGMA table_info({table_name})")
-        columns = [col[1] for col in sqlite_cursor.fetchall()]
-        columns_str = ', '.join([f'"{col}"' for col in columns])
-        placeholders = ', '.join(['%s'] * len(columns))
+        sqlite_columns = {col[1]: col[2] for col in sqlite_cursor.fetchall()}  # name -> type
+        sqlite_column_names = list(sqlite_columns.keys())
+        
+        # Получаем список колонок из PostgreSQL
+        pg_cursor.execute("""
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+            AND table_name = %s
+            ORDER BY ordinal_position
+        """, (table_name.lower(),))
+        pg_columns_info = {row[0]: row[1] for row in pg_cursor.fetchall()}
+        pg_column_names = list(pg_columns_info.keys())
+        
+        # Сопоставляем колонки: берем только те, что есть в обеих БД
+        matching_columns = []
+        column_indices = []
+        for idx, col_name in enumerate(sqlite_column_names):
+            # Проверяем в нижнем регистре (PostgreSQL обычно хранит в нижнем)
+            if col_name.lower() in pg_column_names or col_name in pg_column_names:
+                matching_columns.append(col_name)
+                column_indices.append(idx)
+        
+        if not matching_columns:
+            print(f"  ⚠️  Нет совпадающих колонок между SQLite и PostgreSQL, пропускаем")
+            return 0
+        
+        # Показываем пропущенные колонки
+        skipped_cols = set(sqlite_column_names) - set(matching_columns)
+        if skipped_cols:
+            print(f"  ⚠️  Пропущены колонки (нет в PostgreSQL): {', '.join(skipped_cols)}")
+        
+        columns_str = ', '.join([f'"{col}"' for col in matching_columns])
+        placeholders = ', '.join(['%s'] * len(matching_columns))
 
         # Очищаем таблицу перед копированием
         pg_cursor.execute(f'TRUNCATE TABLE "{table_name}" CASCADE')
         pg_conn.commit()
 
         # Используем COPY для быстрой массовой вставки
-        print(f"  📊 Всего записей: {len(rows)}")
+        print(f"  📊 Всего записей: {len(rows)}, колонок: {len(matching_columns)}")
         print(f"  ⚡ Используем COPY для быстрой вставки...")
         
         import time
@@ -121,9 +152,28 @@ def copy_table_data(sqlite_conn, pg_conn, table_name):
         converted_rows = []
         for row in rows:
             converted_row = []
-            for val in row:
+            for idx in column_indices:
+                val = row[idx]
+                
+                # Конвертация boolean: SQLite хранит как 0/1, PostgreSQL ожидает True/False
+                col_name = sqlite_column_names[idx]
+                pg_col_name = col_name.lower() if col_name.lower() in pg_column_names else col_name
+                if pg_col_name in pg_columns_info:
+                    pg_type = pg_columns_info[pg_col_name]
+                    if pg_type == 'boolean':
+                        if val is None:
+                            val = None
+                        elif isinstance(val, bool):
+                            val = val
+                        elif isinstance(val, int):
+                            val = bool(val)
+                        elif isinstance(val, str):
+                            val = val.lower() in ('1', 'true', 'yes', 'on')
+                        else:
+                            val = bool(val)
+                
                 # SQLite возвращает datetime как строку, PostgreSQL ожидает datetime объект
-                if isinstance(val, str) and ('T' in val or (len(val) > 10 and val[4] == '-' and val[7] == '-')):
+                elif isinstance(val, str) and ('T' in val or (len(val) > 10 and val[4] == '-' and val[7] == '-')):
                     try:
                         from datetime import datetime
                         # Пробуем распарсить как datetime
@@ -133,6 +183,19 @@ def copy_table_data(sqlite_conn, pg_conn, table_name):
                             val = datetime.strptime(val, '%Y-%m-%d %H:%M:%S')
                     except:
                         pass  # Оставляем как строку, если не получилось
+                
+                # Обрезаем длинные строки для VARCHAR полей
+                if isinstance(val, str) and pg_col_name in pg_columns_info:
+                    if 'varying' in pg_columns_info[pg_col_name] or 'character' in pg_columns_info[pg_col_name]:
+                        # Извлекаем длину из типа, например: character varying(100)
+                        import re
+                        match = re.search(r'\((\d+)\)', pg_columns_info[pg_col_name])
+                        if match:
+                            max_len = int(match.group(1))
+                            if len(val) > max_len:
+                                val = val[:max_len]
+                                print(f"  ⚠️  Обрезано значение в колонке {col_name} до {max_len} символов")
+                
                 converted_row.append(val)
             converted_rows.append(tuple(converted_row))
         
