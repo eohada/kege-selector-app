@@ -389,6 +389,64 @@ def dashboard():
                          oge_students=oge_students,
                          levelup_students=levelup_students)
 
+@app.route('/debug-db')
+def debug_db():
+    """Временный маршрут для диагностики БД"""
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        
+        # Проверяем подключение
+        db.session.execute(text('SELECT 1'))
+        
+        # Получаем список таблиц
+        tables = inspector.get_table_names()
+        
+        # Проверяем данные
+        students_count = db.session.execute(text('SELECT COUNT(*) FROM "Students"')).scalar()
+        students_active = db.session.execute(text('SELECT COUNT(*) FROM "Students" WHERE is_active = TRUE')).scalar()
+        lessons_count = db.session.execute(text('SELECT COUNT(*) FROM "Lessons"')).scalar()
+        
+        # Пробуем через SQLAlchemy
+        try:
+            sa_students = Student.query.count()
+            sa_students_active = Student.query.filter_by(is_active=True).count()
+            sa_lessons = Lesson.query.count()
+        except Exception as e:
+            sa_students = f"Error: {e}"
+            sa_students_active = f"Error: {e}"
+            sa_lessons = f"Error: {e}"
+        
+        # Проверяем DATABASE_URL
+        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set')
+        db_url_masked = db_url.split('@')[1] if '@' in db_url else db_url
+        
+        return f"""
+        <h1>Database Debug Info</h1>
+        <h2>Connection</h2>
+        <p>DATABASE_URL: {db_url_masked}</p>
+        <p>Tables found: {', '.join(tables)}</p>
+        
+        <h2>Direct SQL Queries</h2>
+        <p>Students (total): {students_count}</p>
+        <p>Students (active): {students_active}</p>
+        <p>Lessons: {lessons_count}</p>
+        
+        <h2>SQLAlchemy Queries</h2>
+        <p>Student.query.count(): {sa_students}</p>
+        <p>Student.query.filter_by(is_active=True).count(): {sa_students_active}</p>
+        <p>Lesson.query.count(): {sa_lessons}</p>
+        
+        <h2>Sample Students (SQL)</h2>
+        <pre>{db.session.execute(text('SELECT student_id, name, platform_id, category, is_active FROM "Students" LIMIT 5')).fetchall()}</pre>
+        
+        <h2>Sample Students (SQLAlchemy)</h2>
+        <pre>{[s.name for s in Student.query.limit(5).all()]}</pre>
+        """
+    except Exception as e:
+        import traceback
+        return f"<h1>Error</h1><pre>{traceback.format_exc()}</pre>"
+
 @app.route('/students')
 def students_list():
     active_students = Student.query.filter_by(is_active=True).order_by(Student.name).all()
