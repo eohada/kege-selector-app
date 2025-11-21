@@ -43,13 +43,9 @@ if database_url:
         if external_db_url.startswith('postgres://'):
             external_db_url = external_db_url.replace('postgres://', 'postgresql://', 1)
         database_url = external_db_url
-        logger.info("Using external database URL")
-    else:
-        logger.info(f"Using DATABASE_URL: {database_url[:20]}...")
     
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    logger.warning("DATABASE_URL not set, using SQLite")
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'local-dev-key-12345')
@@ -60,6 +56,16 @@ csrf = CSRFProtect(app)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Логируем информацию о БД после инициализации logger
+if database_url:
+    external_db_url = os.environ.get('DATABASE_EXTERNAL_URL') or os.environ.get('POSTGRES_URL')
+    if external_db_url:
+        logger.info("Using external database URL")
+    else:
+        logger.info(f"Using DATABASE_URL: {database_url[:20]}...")
+else:
+    logger.warning("DATABASE_URL not set, using SQLite")
 
 db.init_app(app)
 audit_logger.init_app(app)
