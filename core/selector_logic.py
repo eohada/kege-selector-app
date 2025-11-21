@@ -6,14 +6,14 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
         if use_skipped:
             sql_query = text("""
                 SELECT DISTINCT T.task_id
-                FROM Tasks AS T
+                FROM "Tasks" AS T
                 WHERE T.task_number = :task_type
-                    AND T.task_id NOT IN (SELECT task_fk FROM UsageHistory)
-                    AND T.task_id NOT IN (SELECT task_fk FROM BlacklistTasks)
+                    AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
+                    AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
                     AND T.task_id NOT IN (
                         SELECT LT.task_id 
-                        FROM LessonTasks AS LT
-                        JOIN Lessons AS L ON LT.lesson_id = L.lesson_id
+                        FROM "LessonTasks" AS LT
+                        JOIN "Lessons" AS L ON LT.lesson_id = L.lesson_id
                         WHERE L.student_id = :student_id
                     )
                 ORDER BY RANDOM()
@@ -22,15 +22,15 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
         else:
             sql_query = text("""
                 SELECT DISTINCT T.task_id
-                FROM Tasks AS T
+                FROM "Tasks" AS T
                 WHERE T.task_number = :task_type
-                    AND T.task_id NOT IN (SELECT task_fk FROM UsageHistory)
-                    AND T.task_id NOT IN (SELECT task_fk FROM SkippedTasks)
-                    AND T.task_id NOT IN (SELECT task_fk FROM BlacklistTasks)
+                    AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
+                    AND T.task_id NOT IN (SELECT task_fk FROM "SkippedTasks")
+                    AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
                     AND T.task_id NOT IN (
                         SELECT LT.task_id 
-                        FROM LessonTasks AS LT
-                        JOIN Lessons AS L ON LT.lesson_id = L.lesson_id
+                        FROM "LessonTasks" AS LT
+                        JOIN "Lessons" AS L ON LT.lesson_id = L.lesson_id
                         WHERE L.student_id = :student_id
                     )
                 ORDER BY RANDOM()
@@ -41,21 +41,21 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
         if use_skipped:
             sql_query = text("""
                 SELECT DISTINCT T.task_id
-                FROM Tasks AS T
+                FROM "Tasks" AS T
                 WHERE T.task_number = :task_type
-                    AND T.task_id NOT IN (SELECT task_fk FROM UsageHistory)
-                    AND T.task_id NOT IN (SELECT task_fk FROM BlacklistTasks)
+                    AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
+                    AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
                 ORDER BY RANDOM()
                 LIMIT :limit_count
             """)
         else:
             sql_query = text("""
                 SELECT DISTINCT T.task_id
-                FROM Tasks AS T
+                FROM "Tasks" AS T
                 WHERE T.task_number = :task_type
-                    AND T.task_id NOT IN (SELECT task_fk FROM UsageHistory)
-                    AND T.task_id NOT IN (SELECT task_fk FROM SkippedTasks)
-                    AND T.task_id NOT IN (SELECT task_fk FROM BlacklistTasks)
+                    AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
+                    AND T.task_id NOT IN (SELECT task_fk FROM "SkippedTasks")
+                    AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
                 ORDER BY RANDOM()
                 LIMIT :limit_count
             """)

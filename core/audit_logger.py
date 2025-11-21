@@ -83,6 +83,7 @@ class AuditLogger:
     def _write_log(self, log_data: Dict[str, Any]):
 
         try:
+            from core.db_models import AuditLog
             audit_log = AuditLog()
             audit_log.timestamp = log_data.get('timestamp', moscow_now())
             audit_log.tester_id = log_data.get('tester_id')
@@ -101,9 +102,13 @@ class AuditLogger:
 
             db.session.add(audit_log)
             db.session.commit()
+            logger.debug(f"Audit log written: {audit_log.action} by {audit_log.tester_name}")
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error writing audit log: {e}", exc_info=True)
+            # Пробуем вывести детали ошибки
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
 
     def _get_tester_info(self) -> Dict[str, Any]:
 
@@ -188,6 +193,9 @@ class AuditLogger:
 
         # Ленивая инициализация worker thread при первом вызове
         if not self.is_running:
+            if not self.app:
+                logger.warning("Cannot log: audit logger app not initialized")
+                return
             self.start_worker()
 
         try:
@@ -216,6 +224,7 @@ class AuditLogger:
             }
 
             self.log_queue.put(log_data)
+            logger.debug(f"Audit log queued: {action} by {tester_info.get('tester_name', 'Unknown')}")
         except Exception as e:
             logger.error(f"Error queuing audit log: {e}", exc_info=True)
 
