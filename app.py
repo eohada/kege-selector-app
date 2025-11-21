@@ -184,12 +184,30 @@ def identify_tester():
 def log_page_view(response):
 
     try:
-
+        # Пропускаем статику, админку, AJAX, JSON
         if (request.endpoint in ('static', 'favicon') or
             request.path.startswith('/static/') or
             request.path.startswith('/admin-audit') or
             request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
             request.is_json):
+            return response
+
+        # Фильтруем ботов и health checks
+        user_agent = request.headers.get('User-Agent', '').lower()
+        bot_patterns = [
+            'bot', 'crawler', 'spider', 'scraper', 'monitor', 'health',
+            'uptime', 'pingdom', 'newrelic', 'datadog', 'statuscake',
+            'railway', 'render', 'vercel', 'netlify', 'uptimerobot'
+        ]
+        if any(pattern in user_agent for pattern in bot_patterns):
+            return response
+
+        # Логируем только если есть имя тестировщика (не Anonymous)
+        # или если это реальный пользователь (есть имя в сессии или заголовке)
+        tester_name = session.get('tester_name') or request.headers.get('X-Tester-Name')
+        
+        # Не создаем тестировщиков для анонимных запросов
+        if not tester_name or tester_name == 'Anonymous':
             return response
 
         if request.method == 'GET' and response.status_code == 200:

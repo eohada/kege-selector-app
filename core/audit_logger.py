@@ -127,12 +127,27 @@ class AuditLogger:
 
     def _ensure_tester_exists(self, tester_id: str, tester_name: Optional[str]):
 
+        # Не создаем тестировщиков для анонимных запросов
+        if not tester_name or tester_name == 'Anonymous':
+            return
+
         try:
             tester = Tester.query.get(tester_id)
             if not tester:
+                # Проверяем, не бот ли это
+                if has_request_context():
+                    user_agent = request.headers.get('User-Agent', '').lower()
+                    bot_patterns = [
+                        'bot', 'crawler', 'spider', 'scraper', 'monitor', 'health',
+                        'uptime', 'pingdom', 'newrelic', 'datadog', 'statuscake',
+                        'railway', 'render', 'vercel', 'netlify', 'uptimerobot'
+                    ]
+                    if any(pattern in user_agent for pattern in bot_patterns):
+                        return
+
                 tester = Tester(
                     tester_id=tester_id,
-                    name=tester_name or 'Anonymous',
+                    name=tester_name,
                     ip_address=request.remote_addr if has_request_context() else None,
                     user_agent=request.headers.get('User-Agent') if has_request_context() else None,
                     session_id=session.get('_id') if has_request_context() else None
