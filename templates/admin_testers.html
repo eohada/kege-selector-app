@@ -122,6 +122,7 @@
             <form method="POST" action="{{ url_for('admin_testers_clear_all') }}" 
                   onsubmit="return confirm('⚠️ Вы уверены? Это удалит ВСЕХ тестировщиков и ВСЕ их логи!')" 
                   style="margin-bottom: 2rem;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <button type="submit" class="btn-clear-all">🗑️ Очистить всех тестировщиков</button>
             </form>
 
@@ -172,6 +173,7 @@
                                 <form method="POST" action="{{ url_for('admin_testers_delete', tester_id=tester.tester_id) }}" 
                                       onsubmit="return confirm('Удалить тестировщика {{ tester.name }} и все его логи?')" 
                                       style="display: inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="btn-delete">🗑️ Удалить</button>
                                 </form>
                             </div>

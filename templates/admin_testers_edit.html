@@ -26,6 +26,7 @@
             <h1 style="margin-bottom: 1rem;">Редактировать тестировщика</h1>
 
             <form method="POST" class="hero-section" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="neo-field">
                     <label class="neo-label">ID тестировщика</label>
                     <input type="text" value="{{ tester.tester_id }}" disabled class="neo-input" style="background: var(--surface-3);">
