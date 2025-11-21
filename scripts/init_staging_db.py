@@ -110,16 +110,22 @@ def copy_table_data(sqlite_conn, pg_conn, table_name):
 
         # Копируем данные порциями для больших таблиц
         insert_query = f'INSERT INTO "{table_name}" ({columns_str}) VALUES ({placeholders})'
-        batch_size = 500  # Уменьшил размер батча для более частого вывода прогресса
+        # Для таблицы Tasks с большим HTML контентом используем меньший батч
+        batch_size = 50 if table_name == 'Tasks' else 200
         
         total_batches = (len(rows) + batch_size - 1) // batch_size
-        print(f"  📊 Всего записей: {len(rows)}, батчей: {total_batches}")
+        print(f"  📊 Всего записей: {len(rows)}, батчей: {total_batches}, размер батча: {batch_size}")
+        
+        import time
+        start_time = time.time()
         
         for batch_num, i in enumerate(range(0, len(rows), batch_size), 1):
+            batch_start = time.time()
             batch = rows[i:i + batch_size]
+            
             # Конвертируем данные для PostgreSQL
             converted_batch = []
-            for row in batch:
+            for row_idx, row in enumerate(batch):
                 converted_row = []
                 for val in row:
                     # SQLite возвращает datetime как строку, PostgreSQL ожидает datetime объект
@@ -137,9 +143,17 @@ def copy_table_data(sqlite_conn, pg_conn, table_name):
                 converted_batch.append(tuple(converted_row))
             
             try:
+                insert_start = time.time()
                 pg_cursor.executemany(insert_query, converted_batch)
                 pg_conn.commit()
-                print(f"  ⏳ Батч {batch_num}/{total_batches} ({len(batch)} записей) - OK")
+                batch_time = time.time() - batch_start
+                insert_time = time.time() - insert_start
+                elapsed = time.time() - start_time
+                avg_time = elapsed / batch_num
+                remaining = avg_time * (total_batches - batch_num)
+                print(f"  ✅ Батч {batch_num}/{total_batches} ({len(batch)} записей) - OK | "
+                      f"Время: {batch_time:.1f}с (вставка: {insert_time:.1f}с) | "
+                      f"Осталось: ~{remaining/60:.1f} мин")
             except Exception as batch_error:
                 pg_conn.rollback()
                 print(f"  ❌ Ошибка в батче {batch_num}: {batch_error}")
