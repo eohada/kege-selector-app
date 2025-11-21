@@ -59,14 +59,27 @@ def get_postgres_connection():
         return None
 
 def table_exists(pg_cursor, table_name):
+    # PostgreSQL хранит имена таблиц в нижнем регистре, но может быть и в кавычках
+    # Проверяем оба варианта
     pg_cursor.execute("""
         SELECT EXISTS (
             SELECT FROM information_schema.tables 
             WHERE table_schema = 'public' 
-            AND table_name = %s
+            AND (table_name = %s OR table_name = LOWER(%s))
         );
-    """, (table_name,))
-    return pg_cursor.fetchone()[0]
+    """, (table_name, table_name))
+    exists = pg_cursor.fetchone()[0]
+    if not exists:
+        # Проверяем с кавычками (чувствительный к регистру)
+        pg_cursor.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = %s
+            );
+        """, (table_name,))
+        exists = pg_cursor.fetchone()[0]
+    return exists
 
 def copy_table_data(sqlite_conn, pg_conn, table_name):
 
@@ -97,9 +110,12 @@ def copy_table_data(sqlite_conn, pg_conn, table_name):
 
         # Копируем данные порциями для больших таблиц
         insert_query = f'INSERT INTO "{table_name}" ({columns_str}) VALUES ({placeholders})'
-        batch_size = 1000
+        batch_size = 500  # Уменьшил размер батча для более частого вывода прогресса
         
-        for i in range(0, len(rows), batch_size):
+        total_batches = (len(rows) + batch_size - 1) // batch_size
+        print(f"  📊 Всего записей: {len(rows)}, батчей: {total_batches}")
+        
+        for batch_num, i in enumerate(range(0, len(rows), batch_size), 1):
             batch = rows[i:i + batch_size]
             # Конвертируем данные для PostgreSQL
             converted_batch = []
@@ -107,7 +123,7 @@ def copy_table_data(sqlite_conn, pg_conn, table_name):
                 converted_row = []
                 for val in row:
                     # SQLite возвращает datetime как строку, PostgreSQL ожидает datetime объект
-                    if isinstance(val, str) and 'T' in val or (val and isinstance(val, str) and len(val) > 10 and val[4] == '-' and val[7] == '-'):
+                    if isinstance(val, str) and ('T' in val or (len(val) > 10 and val[4] == '-' and val[7] == '-')):
                         try:
                             from datetime import datetime
                             # Пробуем распарсить как datetime
@@ -120,8 +136,24 @@ def copy_table_data(sqlite_conn, pg_conn, table_name):
                     converted_row.append(val)
                 converted_batch.append(tuple(converted_row))
             
-            pg_cursor.executemany(insert_query, converted_batch)
-            pg_conn.commit()
+            try:
+                pg_cursor.executemany(insert_query, converted_batch)
+                pg_conn.commit()
+                print(f"  ⏳ Батч {batch_num}/{total_batches} ({len(batch)} записей) - OK")
+            except Exception as batch_error:
+                pg_conn.rollback()
+                print(f"  ❌ Ошибка в батче {batch_num}: {batch_error}")
+                # Пробуем вставить по одной записи для диагностики
+                if batch_num == 1:
+                    print(f"  🔍 Пробую вставить первую запись отдельно для диагностики...")
+                    try:
+                        pg_cursor.execute(insert_query, converted_batch[0])
+                        pg_conn.commit()
+                        print(f"  ✅ Первая запись вставлена успешно")
+                    except Exception as single_error:
+                        print(f"  ❌ Ошибка при вставке первой записи: {single_error}")
+                        print(f"  📋 Первая запись: {converted_batch[0][:3]}... (первые 3 поля)")
+                raise
 
         print(f"  ✅ Скопировано {len(rows)} записей из {table_name}")
         return len(rows)
@@ -175,9 +207,17 @@ def init_staging_db():
         ]
         total_copied = 0
 
-        for table in tables:
-            count = copy_table_data(sqlite_conn, pg_conn, table)
-            total_copied += count
+        for idx, table in enumerate(tables, 1):
+            print(f"\n[{idx}/{len(tables)}] Обработка таблицы: {table}")
+            try:
+                count = copy_table_data(sqlite_conn, pg_conn, table)
+                total_copied += count
+            except Exception as e:
+                print(f"  ❌ Критическая ошибка при копировании {table}: {e}")
+                import traceback
+                traceback.print_exc()
+                print(f"  ⚠️  Продолжаю со следующей таблицей...")
+                continue
 
         print(f"\n✅ Инициализация завершена! Всего скопировано записей: {total_copied}")
         return True
