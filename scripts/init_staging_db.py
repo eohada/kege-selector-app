@@ -83,6 +83,70 @@ def table_exists(pg_cursor, table_name):
         exists = pg_cursor.fetchone()[0]
     return exists
 
+def update_sequences(pg_conn):
+    """Обновляет sequences в PostgreSQL после копирования данных"""
+    pg_cursor = pg_conn.cursor()
+    
+    # Маппинг таблиц и их primary key колонок
+    sequences_map = {
+        'Students': 'student_id',
+        'Lessons': 'lesson_id',
+        'LessonTasks': 'lesson_task_id',
+        'Tasks': 'task_id',
+        'UsageHistory': 'usage_id',
+        'SkippedTasks': 'skipped_id',
+        'BlacklistTasks': 'blacklist_id',
+        'Testers': 'tester_id',
+        'AuditLog': 'id'
+    }
+    
+    try:
+        for table_name, pk_column in sequences_map.items():
+            # Проверяем существование таблицы
+            pg_cursor.execute("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND (table_name = %s OR table_name = LOWER(%s))
+                );
+            """, (table_name, table_name))
+            
+            if not pg_cursor.fetchone()[0]:
+                continue
+            
+            # Получаем реальное имя таблицы
+            pg_cursor.execute("""
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND (table_name = %s OR table_name = LOWER(%s))
+                LIMIT 1
+            """, (table_name, table_name))
+            real_table_name = pg_cursor.fetchone()
+            if not real_table_name:
+                continue
+            real_table_name = real_table_name[0]
+            
+            # Получаем максимальный ID
+            pg_cursor.execute(f'SELECT MAX("{pk_column}") FROM "{real_table_name}"')
+            max_id = pg_cursor.fetchone()[0]
+            
+            if max_id is None:
+                max_id = 0
+            
+            # Обновляем sequence
+            # Имя sequence обычно: tablename_columnname_seq
+            sequence_name = f'"{real_table_name}_{pk_column}_seq"'
+            pg_cursor.execute(f'SELECT setval({sequence_name}, %s, true)', (max_id,))
+            pg_conn.commit()
+            print(f"  ✅ Обновлена sequence для {table_name}: установлено значение {max_id}")
+            
+    except Exception as e:
+        pg_conn.rollback()
+        print(f"  ⚠️  Ошибка при обновлении sequences: {e}")
+        import traceback
+        traceback.print_exc()
+
 def copy_table_data(sqlite_conn, pg_conn, table_name):
 
     sqlite_cursor = sqlite_conn.cursor()
@@ -305,6 +369,10 @@ def init_staging_db():
                 print(f"  ⚠️  Продолжаю со следующей таблицей...")
                 continue
 
+        # Обновляем sequences для автоинкремента
+        print(f"\n🔄 Обновление sequences для автоинкремента...")
+        update_sequences(pg_conn)
+        
         print(f"\n✅ Инициализация завершена! Всего скопировано записей: {total_copied}")
         return True
 
