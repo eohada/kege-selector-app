@@ -4,15 +4,61 @@ from sqlalchemy import text
 def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None):
     if student_id:
         if use_skipped:
-            sql_query = text()
+            sql_query = text("""
+                SELECT DISTINCT T.task_id
+                FROM Tasks AS T
+                WHERE T.task_number = :task_type
+                    AND T.task_id NOT IN (SELECT task_fk FROM UsageHistory)
+                    AND T.task_id NOT IN (SELECT task_fk FROM BlacklistTasks)
+                    AND T.task_id NOT IN (
+                        SELECT LT.task_id 
+                        FROM LessonTasks AS LT
+                        JOIN Lessons AS L ON LT.lesson_id = L.lesson_id
+                        WHERE L.student_id = :student_id
+                    )
+                ORDER BY RANDOM()
+                LIMIT :limit_count
+            """)
         else:
-            sql_query = text()
+            sql_query = text("""
+                SELECT DISTINCT T.task_id
+                FROM Tasks AS T
+                WHERE T.task_number = :task_type
+                    AND T.task_id NOT IN (SELECT task_fk FROM UsageHistory)
+                    AND T.task_id NOT IN (SELECT task_fk FROM SkippedTasks)
+                    AND T.task_id NOT IN (SELECT task_fk FROM BlacklistTasks)
+                    AND T.task_id NOT IN (
+                        SELECT LT.task_id 
+                        FROM LessonTasks AS LT
+                        JOIN Lessons AS L ON LT.lesson_id = L.lesson_id
+                        WHERE L.student_id = :student_id
+                    )
+                ORDER BY RANDOM()
+                LIMIT :limit_count
+            """)
         result = db.session.execute(sql_query, {'task_type': task_type, 'limit_count': limit_count, 'student_id': student_id})
     else:
         if use_skipped:
-            sql_query = text()
+            sql_query = text("""
+                SELECT DISTINCT T.task_id
+                FROM Tasks AS T
+                WHERE T.task_number = :task_type
+                    AND T.task_id NOT IN (SELECT task_fk FROM UsageHistory)
+                    AND T.task_id NOT IN (SELECT task_fk FROM BlacklistTasks)
+                ORDER BY RANDOM()
+                LIMIT :limit_count
+            """)
         else:
-            sql_query = text()
+            sql_query = text("""
+                SELECT DISTINCT T.task_id
+                FROM Tasks AS T
+                WHERE T.task_number = :task_type
+                    AND T.task_id NOT IN (SELECT task_fk FROM UsageHistory)
+                    AND T.task_id NOT IN (SELECT task_fk FROM SkippedTasks)
+                    AND T.task_id NOT IN (SELECT task_fk FROM BlacklistTasks)
+                ORDER BY RANDOM()
+                LIMIT :limit_count
+            """)
         result = db.session.execute(sql_query, {'task_type': task_type, 'limit_count': limit_count})
 
     result_rows = list(result)

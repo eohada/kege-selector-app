@@ -153,7 +153,7 @@ class AuditLog(db.Model):
     entity = db.Column(db.String(50), nullable=True, index=True)
     entity_id = db.Column(db.Integer, nullable=True, index=True)
     status = db.Column(db.String(20), nullable=False, index=True)
-    metadata = db.Column(db.Text, nullable=True)
+    meta_data = db.Column(db.Text, nullable=True)
     ip_address = db.Column(db.String(45), nullable=True)
     user_agent = db.Column(db.Text, nullable=True)
     session_id = db.Column(db.String(100), nullable=True)
@@ -171,16 +171,16 @@ class AuditLog(db.Model):
 
     def get_metadata(self):
 
-        if self.metadata:
+        if self.meta_data:
             try:
-                return json.loads(self.metadata)
+                return json.loads(self.meta_data)
             except:
                 return {}
         return {}
 
     def set_metadata(self, data):
 
-        self.metadata = json.dumps(data, ensure_ascii=False) if data else None
+        self.meta_data = json.dumps(data, ensure_ascii=False) if data else None
 
     def __repr__(self):
         return f'<AuditLog {self.action} {self.entity} by {self.tester_name} at {self.timestamp}>'

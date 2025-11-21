@@ -249,7 +249,7 @@
                                     <strong>Метод:</strong> {{ log.method or '-' }}<br>
                                     <strong>IP:</strong> {{ log.ip_address or '-' }}<br>
                                     {% if log.entity_id %}<strong>ID сущности:</strong> {{ log.entity_id }}<br>{% endif %}
-                                    {% if log.metadata %}
+                                    {% if log.meta_data %}
                                     <strong>Метаданные:</strong><br>
                                     {{ log.get_metadata() | tojson(indent=2) }}
                                     {% endif %}

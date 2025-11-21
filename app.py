@@ -2018,7 +2018,7 @@ def admin_audit_export():
             log.method or '',
             log.ip_address or '',
             log.duration_ms or '',
-            log.metadata or ''
+            log.meta_data or ''
         ])
 
     response = make_response(output.getvalue())
