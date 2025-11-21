@@ -4,7 +4,9 @@ import sys
 import sqlite3
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from psycopg2.extras import execute_values
 from urllib.parse import urlparse
+import io
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(project_root)
@@ -108,66 +110,72 @@ def copy_table_data(sqlite_conn, pg_conn, table_name):
         pg_cursor.execute(f'TRUNCATE TABLE "{table_name}" CASCADE')
         pg_conn.commit()
 
-        # Копируем данные порциями для больших таблиц
-        insert_query = f'INSERT INTO "{table_name}" ({columns_str}) VALUES ({placeholders})'
-        # Для таблицы Tasks с большим HTML контентом используем меньший батч
-        batch_size = 50 if table_name == 'Tasks' else 200
-        
-        total_batches = (len(rows) + batch_size - 1) // batch_size
-        print(f"  📊 Всего записей: {len(rows)}, батчей: {total_batches}, размер батча: {batch_size}")
+        # Используем COPY для быстрой массовой вставки
+        print(f"  📊 Всего записей: {len(rows)}")
+        print(f"  ⚡ Используем COPY для быстрой вставки...")
         
         import time
         start_time = time.time()
         
-        for batch_num, i in enumerate(range(0, len(rows), batch_size), 1):
-            batch_start = time.time()
-            batch = rows[i:i + batch_size]
-            
-            # Конвертируем данные для PostgreSQL
-            converted_batch = []
-            for row_idx, row in enumerate(batch):
-                converted_row = []
-                for val in row:
-                    # SQLite возвращает datetime как строку, PostgreSQL ожидает datetime объект
-                    if isinstance(val, str) and ('T' in val or (len(val) > 10 and val[4] == '-' and val[7] == '-')):
-                        try:
-                            from datetime import datetime
-                            # Пробуем распарсить как datetime
-                            if 'T' in val:
-                                val = datetime.fromisoformat(val.replace('Z', '+00:00'))
-                            else:
-                                val = datetime.strptime(val, '%Y-%m-%d %H:%M:%S')
-                        except:
-                            pass  # Оставляем как строку, если не получилось
-                    converted_row.append(val)
-                converted_batch.append(tuple(converted_row))
-            
-            try:
-                insert_start = time.time()
-                pg_cursor.executemany(insert_query, converted_batch)
-                pg_conn.commit()
-                batch_time = time.time() - batch_start
-                insert_time = time.time() - insert_start
-                elapsed = time.time() - start_time
-                avg_time = elapsed / batch_num
-                remaining = avg_time * (total_batches - batch_num)
-                print(f"  ✅ Батч {batch_num}/{total_batches} ({len(batch)} записей) - OK | "
-                      f"Время: {batch_time:.1f}с (вставка: {insert_time:.1f}с) | "
-                      f"Осталось: ~{remaining/60:.1f} мин")
-            except Exception as batch_error:
-                pg_conn.rollback()
-                print(f"  ❌ Ошибка в батче {batch_num}: {batch_error}")
-                # Пробуем вставить по одной записи для диагностики
-                if batch_num == 1:
-                    print(f"  🔍 Пробую вставить первую запись отдельно для диагностики...")
+        # Конвертируем все данные
+        converted_rows = []
+        for row in rows:
+            converted_row = []
+            for val in row:
+                # SQLite возвращает datetime как строку, PostgreSQL ожидает datetime объект
+                if isinstance(val, str) and ('T' in val or (len(val) > 10 and val[4] == '-' and val[7] == '-')):
                     try:
-                        pg_cursor.execute(insert_query, converted_batch[0])
-                        pg_conn.commit()
-                        print(f"  ✅ Первая запись вставлена успешно")
-                    except Exception as single_error:
-                        print(f"  ❌ Ошибка при вставке первой записи: {single_error}")
-                        print(f"  📋 Первая запись: {converted_batch[0][:3]}... (первые 3 поля)")
-                raise
+                        from datetime import datetime
+                        # Пробуем распарсить как datetime
+                        if 'T' in val:
+                            val = datetime.fromisoformat(val.replace('Z', '+00:00'))
+                        else:
+                            val = datetime.strptime(val, '%Y-%m-%d %H:%M:%S')
+                    except:
+                        pass  # Оставляем как строку, если не получилось
+                converted_row.append(val)
+            converted_rows.append(tuple(converted_row))
+        
+        # Используем execute_values для быстрой вставки
+        try:
+            insert_query = f'INSERT INTO "{table_name}" ({columns_str}) VALUES %s'
+            # Вставляем все данные одним запросом через execute_values
+            execute_values(
+                pg_cursor,
+                insert_query,
+                converted_rows,
+                template=f'({placeholders})',
+                page_size=1000  # Вставляем по 1000 записей за раз
+            )
+            pg_conn.commit()
+            elapsed = time.time() - start_time
+            print(f"  ✅ Скопировано {len(rows)} записей за {elapsed:.1f}с ({len(rows)/elapsed:.0f} записей/сек)")
+            return len(rows)
+        except Exception as copy_error:
+            pg_conn.rollback()
+            print(f"  ❌ Ошибка при COPY: {copy_error}")
+            print(f"  🔄 Пробую использовать обычный INSERT...")
+            
+            # Fallback на обычный INSERT с батчами
+            insert_query = f'INSERT INTO "{table_name}" ({columns_str}) VALUES ({placeholders})'
+            batch_size = 100
+            total_batches = (len(converted_rows) + batch_size - 1) // batch_size
+            
+            for batch_num, i in enumerate(range(0, len(converted_rows), batch_size), 1):
+                batch = converted_rows[i:i + batch_size]
+                try:
+                    pg_cursor.executemany(insert_query, batch)
+                    pg_conn.commit()
+                    if batch_num % 10 == 0 or batch_num == total_batches:
+                        print(f"  ⏳ Батч {batch_num}/{total_batches}...")
+                except Exception as batch_error:
+                    pg_conn.rollback()
+                    print(f"  ❌ Ошибка в батче {batch_num}: {batch_error}")
+                    raise
+            
+            elapsed = time.time() - start_time
+            print(f"  ✅ Скопировано {len(rows)} записей за {elapsed:.1f}с")
+            return len(rows)
 
         print(f"  ✅ Скопировано {len(rows)} записей из {table_name}")
         return len(rows)
