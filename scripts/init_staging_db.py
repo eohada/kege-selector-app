@@ -106,13 +106,14 @@ def copy_table_data(sqlite_conn, pg_conn, table_name):
         sqlite_column_names = list(sqlite_columns.keys())
         
         # Получаем список колонок из PostgreSQL
+        # Проверяем оба варианта: с кавычками и без
         pg_cursor.execute("""
             SELECT column_name, data_type 
             FROM information_schema.columns 
             WHERE table_schema = 'public' 
-            AND table_name = %s
+            AND (table_name = %s OR table_name = LOWER(%s) OR table_name = %s)
             ORDER BY ordinal_position
-        """, (table_name.lower(),))
+        """, (table_name, table_name, table_name.lower()))
         pg_columns_info = {row[0]: row[1] for row in pg_cursor.fetchall()}
         pg_column_names = list(pg_columns_info.keys())
         
