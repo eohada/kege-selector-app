@@ -137,9 +137,29 @@ def update_sequences(pg_conn):
             # Обновляем sequence
             # Имя sequence обычно: tablename_columnname_seq
             sequence_name = f'"{real_table_name}_{pk_column}_seq"'
-            pg_cursor.execute(f'SELECT setval({sequence_name}, %s, true)', (max_id,))
-            pg_conn.commit()
-            print(f"  ✅ Обновлена sequence для {table_name}: установлено значение {max_id}")
+            try:
+                pg_cursor.execute(f'SELECT setval(\'{sequence_name}\', %s, true)', (max_id,))
+                pg_conn.commit()
+                print(f"  ✅ Обновлена sequence для {table_name}: установлено значение {max_id}")
+            except Exception as seq_error:
+                # Пробуем альтернативные варианты имени sequence
+                alt_sequences = [
+                    f'"{real_table_name.lower()}_{pk_column}_seq"',
+                    f'"{real_table_name}_{pk_column}_seq"'.lower(),
+                    f'{real_table_name}_{pk_column}_seq',
+                ]
+                updated = False
+                for alt_seq in alt_sequences:
+                    try:
+                        pg_cursor.execute(f'SELECT setval(\'{alt_seq}\', %s, true)', (max_id,))
+                        pg_conn.commit()
+                        print(f"  ✅ Обновлена sequence {alt_seq} для {table_name}: установлено значение {max_id}")
+                        updated = True
+                        break
+                    except:
+                        continue
+                if not updated:
+                    print(f"  ⚠️  Не удалось обновить sequence для {table_name}: {seq_error}")
             
     except Exception as e:
         pg_conn.rollback()
