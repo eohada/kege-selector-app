@@ -2541,6 +2541,38 @@ def rotate_audit_logs():
         logger.error(f"Ошибка при ротации логов: {e}", exc_info=True)
         print(f"Ошибка: {e}")
 
+@app.cli.command('clear-testers-data')
+def clear_testers_data():
+    """Очистить все данные тестировщиков (Testers и AuditLog)"""
+    from core.db_models import Tester, AuditLog
+    
+    try:
+        # Подсчитываем количество записей перед удалением
+        testers_count = Tester.query.count()
+        logs_count = AuditLog.query.count()
+        
+        if testers_count == 0 and logs_count == 0:
+            print("Нет данных тестировщиков для очистки")
+            return
+        
+        # Удаляем все логи (сначала, чтобы не было проблем с foreign key)
+        deleted_logs = AuditLog.query.delete()
+        
+        # Удаляем всех тестировщиков
+        deleted_testers = Tester.query.delete()
+        
+        db.session.commit()
+        
+        print(f"✅ Очистка завершена:")
+        print(f"   - Удалено тестировщиков: {deleted_testers}")
+        print(f"   - Удалено логов: {deleted_logs}")
+        print(f"   Теперь можно начинать с чистого листа!")
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Ошибка при очистке данных тестировщиков: {e}", exc_info=True)
+        print(f"❌ Ошибка: {e}")
+
 if __name__ == '__main__':
     logger.info('Запуск приложения')
     app.run(debug=True, host='127.0.0.1', port=5000)
