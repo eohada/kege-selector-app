@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ student.name }} · Профиль</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        
+        .profile-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1em;
+            margin-top: 1em;
+        }
+        
+        .profile-detail {
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+            color: var(--text-muted);
+        }
+        
+        .profile-detail span {
+            color: var(--accent-1);
+            font-weight: 600;
+        }
+        
+        .profile-actions {
+            display: flex;
+            gap: 1em;
+            flex-wrap: wrap;
+            margin-top: 1.5em;
+        }
+        
+        .section-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 2em 0 1em 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+        }
+        
+        .lessons-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5em;
+        }
+        
+        .lesson-card {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .lesson-card:hover {
+            border-color: var(--accent-1);
+            transform: translateX(4px);
+            box-shadow: var(--shadow-soft);
+        }
+        
+        .lesson-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1em;
+        }
+        
+        .lesson-date {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .lesson-status {
+            padding: 0.5em 1em;
+            border-radius: var(--radius-sm);
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        
+        .lesson-status.planned {
+            background: rgba(23, 96, 216, 0.2);
+            color: var(--accent-2);
+        }
+        
+        .lesson-status.in_progress {
+            background: rgba(0, 254, 202, 0.25);
+            color: var(--success);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .lesson-status.completed {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+        }
+        
+        .lesson-status.cancelled {
+            background: rgba(255, 108, 145, 0.2);
+            color: var(--danger);
+        }
+        
+        .lesson-topic {
+            font-size: 1.1em;
+            color: var(--accent-1);
+            margin-bottom: 0.5em;
+            font-weight: 600;
+        }
+        
+        .lesson-info {
+            display: flex;
+            gap: 2em;
+            color: var(--text-muted);
+            font-size: 0.9em;
+            margin-bottom: 1em;
+        }
+        
+        .lesson-homework {
+            margin-top: 1em;
+            padding: 1em;
+            background: rgba(23, 96, 216, 0.12);
+            border-left: 3px solid var(--accent-2);
+            border-radius: var(--radius-sm);
+        }
+        
+        .homework-label {
+            font-weight: 600;
+            color: var(--accent-2);
+            margin-bottom: 0.5em;
+        }
+        
+        .homework-text {
+            color: var(--text-primary);
+            white-space: pre-wrap;
+        }
+        
+        .info-block {
+            margin-top: 1em;
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+        }
+        
+        .info-block.success {
+            background: rgba(0, 254, 202, 0.12);
+            border-left: 3px solid var(--success);
+        }
+        
+        .info-block.danger {
+            background: rgba(255, 108, 145, 0.12);
+            border-left: 3px solid var(--danger);
+        }
+        
+        .info-block.info {
+            background: rgba(23, 96, 216, 0.12);
+            border-left: 3px solid var(--accent-2);
+        }
+        
+        .info-block.neutral {
+            background: rgba(0, 198, 164, 0.12);
+            border-left: 3px solid var(--accent-1);
+        }
+        
+        .info-block-title {
+            font-weight: 600;
+            margin-bottom: 0.5em;
+        }
+        
+        .info-block.success .info-block-title {
+            color: var(--success);
+        }
+        
+        .info-block.danger .info-block-title {
+            color: var(--danger);
+        }
+        
+        .info-block.info .info-block-title {
+            color: var(--accent-2);
+        }
+        
+        .info-block.neutral .info-block-title {
+            color: var(--accent-1);
+        }
+        
+        .info-block-content {
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        .lesson-type-badge {
+            display: inline-block;
+            padding: 0.3em 0.8em;
+            border-radius: 6px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-left: 0.5em;
+        }
+        
+        .lesson-type-badge.exam {
+            background: linear-gradient(120deg, var(--warning), #ffb347);
+            color: #1c0f02;
+        }
+        
+        .lesson-type-badge.introductory {
+            background: linear-gradient(120deg, var(--success), #00c6ad);
+            color: #001b18;
+        }
+        
+        .lesson-type-badge.regular {
+            background: rgba(0, 198, 164, 0.25);
+            color: var(--accent-1);
+        }
+        
+        .lesson-actions {
+            margin-top: 1em;
+            display: flex;
+            gap: 0.5em;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}" data-csrf-token="{{ csrf_token() if csrf_token else '' }}">
+    {% if active_lesson %}
+    <div class="now-playing-pill" onclick="toggleLessonMenu()">
+        🎧 Урок идет: {{ active_student.name }}
+    </div>
+    <div class="now-playing-panel" id="lessonMenu">
+        <div class="hero-eyebrow">текущий урок</div>
+        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
+        {% if active_lesson.topic %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
+        {% endif %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
+        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
+        <div class="hero-actions" style="margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+                <button type="submit" class="neo-button accent">✅ Завершить</button>
+            </form>
+            <a href="{{ url_for('student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+        </div>
+    </div>
+    <script>
+        function toggleLessonMenu() {
+            const menu = document.getElementById('lessonMenu');
+            if (menu) {
+                menu.classList.toggle('active');
+            }
+        }
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('lessonMenu');
+            const badge = document.querySelector('.now-playing-pill');
+            if (!menu || !badge) return;
+            if (!menu.contains(event.target) && !badge.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+    </script>
+    {% endif %}
+
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <div class="brand-mark">LOGO</div>
+                <div class="brand-caption">Слот под фирменный знак</div>
+            </div>
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link">📋 Планы</a>
+            </nav>
+            <div class="nav-actions">
+                <div class="brand-caption">icon slot</div>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% if active_lesson and active_student and active_student.student_id == student.student_id %}
+        <section class="glass-panel" style="text-align: center; padding: 4rem 2rem;">
+            <div style="font-size: 5rem; margin-bottom: 0.5rem;">🎓</div>
+            <h1 class="hero-title" style="margin-bottom: 0.5em;">{{ student.name }}</h1>
+            <p class="hero-subtitle">Урок в процессе</p>
+            <p style="color: var(--text-muted); margin-top: 2em; font-size: 1.1em;">
+                Используй панель сверху для управления уроком и заполнения данных
+            </p>
+        </section>
+        
+        {% else %}
+        {% set total_lessons = lessons|length %}
+        {% set completed_lessons = lessons|selectattr('status', 'equalto', 'completed')|list|length %}
+        {% set planned_lessons = lessons|selectattr('status', 'equalto', 'planned')|list|length %}
+        {% set in_progress_lessons = lessons|selectattr('status', 'equalto', 'in_progress')|list|length %}
+        
+        <section class="dashboard-hero glass-panel">
+            <div>
+                <p class="hero-eyebrow">профиль ученика</p>
+                <h1 class="hero-title">{{ student.name }}</h1>
+                <p class="hero-subtitle">
+                    {% if student.description %}
+                    {{ student.description }}
+                    {% else %}
+                    Профиль ученика с историей занятий и прогрессом обучения.
+                    {% endif %}
+                </p>
+                
+                <div style="display: flex; gap: 1em; align-items: center; flex-wrap: wrap; margin-top: 1.5em;">
+                    {% if student.category %}
+                    <span class="student-tag student-category">{{ student.category }}</span>
+                    {% endif %}
+                    {% if student.platform_id %}
+                    <span style="color: var(--text-muted); font-size: 0.9em;">
+                        ID: <span style="color: var(--accent-1); font-weight: 600;">{{ student.platform_id }}</span>
+                    </span>
+                    {% endif %}
+                </div>
+                
+                <div class="hero-actions" style="margin-top: 1.5em;">
+                    <form method="POST" action="{{ url_for('student_start_lesson', student_id=student.student_id) }}" style="display: inline; margin: 0;">
+                        <button type="submit" class="neo-button accent">🎓 Начать урок</button>
+                    </form>
+                    <a href="{{ url_for('student_edit', student_id=student.student_id) }}" class="neo-button ghost">✏️ Редактировать</a>
+                    <form method="POST" action="{{ url_for('student_archive', student_id=student.student_id) }}" style="display: inline; margin: 0;">
+                        <button type="submit" class="neo-button outline">📦 В архив</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('student_delete', student_id=student.student_id) }}" 
+                          onsubmit="return confirm('Удалить ученика? Это действие нельзя отменить!')" style="display: inline; margin: 0;">
+                        <button type="submit" class="neo-button danger">🗑️ Удалить</button>
+                    </form>
+                </div>
+            </div>
+            <div class="hero-pane">
+                <div class="hero-metric">
+                    <div class="hero-metric-label">всего уроков</div>
+                    <div class="hero-metric-value">{{ total_lessons }}</div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hero-metric-label">проведено</div>
+                    <div class="hero-metric-value">{{ completed_lessons }}</div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hero-metric-label">запланировано</div>
+                    <div class="hero-metric-value">{{ planned_lessons }}</div>
+                </div>
+                {% if student.target_score %}
+                <div class="hero-metric">
+                    <div class="hero-metric-label">целевой балл</div>
+                    <div class="hero-metric-value">{{ student.target_score }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+        
+        {% if student.target_score or student.deadline or student.diagnostic_level or student.overall_rating %}
+        <section class="glass-panel">
+            <p class="hero-eyebrow">основные данные</p>
+            <div class="profile-details" style="margin-top: 1rem;">
+                {% if student.target_score %}
+                <div class="profile-detail">
+                    🎯 Целевой балл: <span>{{ student.target_score }}</span>
+                </div>
+                {% endif %}
+                
+                {% if student.deadline %}
+                <div class="profile-detail">
+                    ⏰ Сроки: <span>{{ student.deadline }}</span>
+                </div>
+                {% endif %}
+                
+                {% if student.diagnostic_level %}
+                <div class="profile-detail">
+                    📊 Диагностика: <span>{{ student.diagnostic_level }}</span>
+                </div>
+                {% endif %}
+                
+                {% if student.overall_rating %}
+                <div class="profile-detail">
+                    ⭐ Общая оценка: <span>{{ student.overall_rating }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
+        
+        {% if student.strengths or student.weaknesses or student.preferences or student.notes %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+            {% if student.strengths %}
+            <section class="glass-panel">
+                <p class="hero-eyebrow">сильные стороны</p>
+                <div class="info-block-content" style="margin-top: 0.8rem; color: var(--success);">{{ student.strengths }}</div>
+            </section>
+            {% endif %}
+            
+            {% if student.weaknesses %}
+            <section class="glass-panel">
+                <p class="hero-eyebrow">зоны роста</p>
+                <div class="info-block-content" style="margin-top: 0.8rem; color: var(--danger);">{{ student.weaknesses }}</div>
+            </section>
+            {% endif %}
+            
+            {% if student.preferences %}
+            <section class="glass-panel">
+                <p class="hero-eyebrow">предпочтения</p>
+                <div class="info-block-content" style="margin-top: 0.8rem;">{{ student.preferences }}</div>
+            </section>
+            {% endif %}
+            
+            {% if student.notes %}
+            <section class="glass-panel">
+                <p class="hero-eyebrow">заметки</p>
+                <div class="info-block-content" style="margin-top: 0.8rem; white-space: pre-wrap;">{{ student.notes }}</div>
+            </section>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <section class="glass-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">уроки</p>
+                    <h2>История занятий</h2>
+                </div>
+                <div class="hero-actions">
+                    <a href="{{ url_for('lesson_new', student_id=student.student_id) }}" class="neo-button accent">+ Добавить урок</a>
+                </div>
+            </div>
+            
+            {% if lessons %}
+            <div class="lessons-list">
+                {% for lesson in lessons %}
+                <div class="lesson-card">
+                    {% set homework_assignments = lesson.homework_assignments %}
+                    {% set classwork_assignments = lesson.classwork_assignments %}
+                    {% set homework_count = homework_assignments|length %}
+                    {% set classwork_count = classwork_assignments|length %}
+                    <div class="lesson-header">
+                        <div class="lesson-date">
+                            {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
+                            {% if lesson.lesson_type == 'exam' %}
+                            <span class="lesson-type-badge exam">✅ Проверочный</span>
+                            {% elif lesson.lesson_type == 'introductory' %}
+                            <span class="lesson-type-badge introductory">👋 Вводный</span>
+                            {% else %}
+                            <span class="lesson-type-badge regular">📚 Обычный</span>
+                            {% endif %}
+                        </div>
+                        <div class="lesson-status {{ lesson.status }}">
+                            {% if lesson.status == 'planned' %}Запланирован
+                            {% elif lesson.status == 'in_progress' %}Идет сейчас
+                            {% elif lesson.status == 'completed' %}Проведен
+                            {% elif lesson.status == 'cancelled' %}Отменен
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if lesson.topic %}
+                    <div class="lesson-topic">{{ lesson.topic }}</div>
+                    {% endif %}
+                    
+                    <div class="lesson-info">
+                        <div>⏱️ {{ lesson.duration }} минут</div>
+                        {% if lesson.homework_status %}
+                        <div>
+                            {% if lesson.homework_status == 'pending' %}📋 ДЗ задано{% endif %}
+                            {% if lesson.homework_status == 'completed' %}✅ ДЗ выполнено{% endif %}
+                            {% if lesson.homework_status == 'not_done' %}📋 ДЗ задано · ❌ Не выполнено{% endif %}
+                            {% if lesson.homework_status == 'not_assigned' %}➖ ДЗ не задано{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    {% if lesson.notes %}
+                    <div style="color: var(--text-muted); margin-top: 0.5em;">
+                        <strong>Заметки:</strong> {{ lesson.notes }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if lesson.homework %}
+                    <div class="lesson-homework">
+                        <div class="homework-label">Домашнее задание:</div>
+                        <div class="homework-text">{{ lesson.homework }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if lesson.homework_result_percent is not none or lesson.homework_result_notes %}
+                    <div class="info-block success">
+                        <div class="info-block-title">📊 Результат выполнения</div>
+                        {% if lesson.homework_result_percent is not none %}
+                        <div class="info-block-content" style="margin-bottom: 0.3em;">Процент: <strong>{{ lesson.homework_result_percent }}%</strong></div>
+                        {% endif %}
+                        {% if lesson.homework_result_notes %}
+                        <div class="info-block-content" style="white-space: pre-wrap;">Заметки: {{ lesson.homework_result_notes }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if homework_count %}
+                    <div class="info-block info" style="margin-top: 1em;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div class="info-block-title" style="font-size: 1.05em;">📝 Задания ДЗ</div>
+                                <div style="color: var(--text-muted); font-size: 0.9em; margin-top: 0.3em;">
+                                    Всего заданий: {{ homework_count }}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 0.5em; flex-wrap: wrap;">
+                                <a href="{{ url_for('lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button accent">👁️ Просмотр</a>
+                                <a href="{{ url_for('lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">📄 Экспорт</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if classwork_count %}
+                    <div class="info-block success" style="margin-top: 1em;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div class="info-block-title" style="font-size: 1.05em;">🏫 Классная работа</div>
+                                <div style="color: var(--text-muted); font-size: 0.9em; margin-top: 0.3em;">
+                                    Всего заданий: {{ classwork_count }}
+                                </div>
+                            </div>
+                            <a href="{{ url_for('lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button accent">👁️ Просмотр</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="lesson-actions">
+                        {% if lesson.status == 'planned' %}
+                        <form method="POST" action="{{ url_for('lesson_start', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
+                            <button type="submit" class="neo-button accent">🎓 Начать урок</button>
+                        </form>
+                        {% endif %}
+                        
+                        <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="neo-button accent">📝 Сформировать ДЗ</a>
+                        <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type='classwork') }}" class="neo-button outline">🏫 Сформировать классную работу</a>
+                        <form method="POST" action="{{ url_for('lesson_homework_not_assigned', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
+                            <button type="submit" class="neo-button ghost">➖ ДЗ не задано</button>
+                        </form>
+                        
+                        <a href="{{ url_for('lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">✏️ Редактировать</a>
+                        <form method="POST" action="{{ url_for('lesson_delete', lesson_id=lesson.lesson_id) }}" 
+                              onsubmit="return confirm('Удалить этот урок?')" style="display: inline; margin: 0;">
+                            <button type="submit" class="neo-button danger">🗑️ Удалить</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div style="font-size: 3rem; margin-bottom: 0.6rem;">📅</div>
+                <h3>Пока нет уроков</h3>
+                <p style="color: var(--text-muted);">Добавьте первый урок для этого ученика</p>
+                <a href="{{ url_for('lesson_new', student_id=student.student_id) }}" class="neo-button accent" style="margin-top: 1rem;">Добавить урок</a>
+            </div>
+            {% endif %}
+        </section>
+        
+        {% endif %}
+    </div>
+    
+    <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель: Логи действий · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <style>
+        .audit-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .audit-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-1);
+        }
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+        .audit-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface-2);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+        .audit-table th {
+            background: var(--surface-3);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--stroke-2);
+        }
+        .audit-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--stroke-1);
+            color: var(--text-primary);
+        }
+        .audit-table tr:hover {
+            background: var(--surface-3);
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .status-success {
+            background: rgba(0, 254, 202, 0.2);
+            color: var(--success);
+        }
+        .status-error {
+            background: rgba(255, 108, 145, 0.2);
+            color: var(--danger);
+        }
+        .status-warning {
+            background: rgba(255, 212, 92, 0.2);
+            color: var(--warning);
+        }
+        .status-info {
+            background: rgba(31, 123, 255, 0.2);
+            color: var(--accent-2);
+        }
+        .metadata-toggle {
+            cursor: pointer;
+            color: var(--accent-1);
+            text-decoration: underline;
+        }
+        .metadata-content {
+            display: none;
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background: var(--surface-1);
+            border-radius: var(--radius-sm);
+            font-family: monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .metadata-content.show {
+            display: block;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+        }
+        .pagination a, .pagination span {
+            padding: 0.5rem 1rem;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+        .pagination a:hover {
+            background: var(--surface-3);
+        }
+        .pagination .current {
+            background: var(--accent-1);
+            color: #001b18;
+            border-color: var(--accent-1);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <div class="brand-mark">LOGO</div>
+                <div class="brand-caption">Админ-панель</div>
+            </div>
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
+                <a href="{{ url_for('admin_audit') }}" class="nav-link active">📊 Логи</a>
+            </nav>
+        </header>
+
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
+            <h1 style="margin-bottom: 1rem;">Логи действий тестировщиков</h1>
+
+            <div class="audit-stats">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.total_events }}</div>
+                    <div class="stat-label">Всего событий</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.total_testers }}</div>
+                    <div class="stat-label">Активных тестеров</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.error_count }}</div>
+                    <div class="stat-label">Ошибок</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.today_events }}</div>
+                    <div class="stat-label">Событий сегодня</div>
+                </div>
+            </div>
+
+            <form method="GET" class="audit-filters">
+                <div class="neo-field">
+                    <label class="neo-label">Тестировщик</label>
+                    <select name="tester_id" class="neo-select">
+                        <option value="">Все</option>
+                        {% for tester in testers %}
+                        <option value="{{ tester.tester_id }}" {% if filters.tester_id == tester.tester_id %}selected{% endif %}>
+                            {{ tester.name }} ({{ tester.tester_id[:8] }}...)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Действие</label>
+                    <select name="action" class="neo-select">
+                        <option value="">Все</option>
+                        {% for action in actions %}
+                        <option value="{{ action }}" {% if filters.action == action %}selected{% endif %}>{{ action }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Сущность</label>
+                    <select name="entity" class="neo-select">
+                        <option value="">Все</option>
+                        {% for entity in entities %}
+                        <option value="{{ entity }}" {% if filters.entity == entity %}selected{% endif %}>{{ entity }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Статус</label>
+                    <select name="status" class="neo-select">
+                        <option value="">Все</option>
+                        <option value="success" {% if filters.status == 'success' %}selected{% endif %}>Успех</option>
+                        <option value="error" {% if filters.status == 'error' %}selected{% endif %}>Ошибка</option>
+                        <option value="warning" {% if filters.status == 'warning' %}selected{% endif %}>Предупреждение</option>
+                        <option value="info" {% if filters.status == 'info' %}selected{% endif %}>Инфо</option>
+                    </select>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Дата от</label>
+                    <input type="datetime-local" name="date_from" value="{{ filters.date_from }}" class="neo-input">
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Дата до</label>
+                    <input type="datetime-local" name="date_to" value="{{ filters.date_to }}" class="neo-input">
+                </div>
+                <div class="neo-field" style="display: flex; align-items: flex-end;">
+                    <button type="submit" class="neo-button accent">Применить</button>
+                    <a href="{{ url_for('admin_audit') }}" class="neo-button ghost" style="margin-left: 0.5rem;">Сбросить</a>
+                </div>
+            </form>
+
+            <div style="overflow-x: auto;">
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>Время</th>
+                            <th>Тестировщик</th>
+                            <th>Действие</th>
+                            <th>Сущность</th>
+                            <th>Статус</th>
+                            <th>Длительность</th>
+                            <th>Детали</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.timestamp.strftime('%d.%m.%Y %H:%M:%S') }}</td>
+                            <td>{{ log.tester_name or 'Anonymous' }}</td>
+                            <td>{{ log.action }}</td>
+                            <td>{{ log.entity or '-' }}</td>
+                            <td>
+                                <span class="status-badge status-{{ log.status }}">
+                                    {{ log.status }}
+                                </span>
+                            </td>
+                            <td>{% if log.duration_ms %}{{ log.duration_ms }}ms{% else %}-{% endif %}</td>
+                            <td>
+                                <span class="metadata-toggle" onclick="toggleMetadata({{ log.id }})">
+                                    Показать
+                                </span>
+                                <div class="metadata-content" id="metadata-{{ log.id }}">
+                                    <strong>URL:</strong> {{ log.url or '-' }}<br>
+                                    <strong>Метод:</strong> {{ log.method or '-' }}<br>
+                                    <strong>IP:</strong> {{ log.ip_address or '-' }}<br>
+                                    {% if log.entity_id %}<strong>ID сущности:</strong> {{ log.entity_id }}<br>{% endif %}
+                                    {% if log.metadata %}
+                                    <strong>Метаданные:</strong><br>
+                                    {{ log.get_metadata() | tojson(indent=2) }}
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 2rem;">
+                                Логи не найдены
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if pagination %}
+            <div class="pagination">
+                {% if pagination.has_prev %}
+                <a href="{{ url_for('admin_audit', page=pagination.prev_num, **filters) }}">← Назад</a>
+                {% endif %}
+                <span class="current">Страница {{ pagination.page }} из {{ pagination.pages }}</span>
+                {% if pagination.has_next %}
+                <a href="{{ url_for('admin_audit', page=pagination.next_num, **filters) }}">Вперёд →</a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div style="margin-top: 2rem; text-align: center;">
+                <a href="{{ url_for('admin_audit_export', **filters) }}" class="neo-button accent">
+                    📥 Экспорт в CSV
+                </a>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        function toggleMetadata(logId) {
+            const content = document.getElementById('metadata-' + logId);
+            const toggle = content.previousElementSibling;
+            if (content.classList.contains('show')) {
+                content.classList.remove('show');
+                toggle.textContent = 'Показать';
+            } else {
+                content.classList.add('show');
+                toggle.textContent = 'Скрыть';
+            }
+        }
+    </script>
+</body>
+</html>
+

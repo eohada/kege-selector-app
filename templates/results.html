@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Результаты: Задание {{ task_type }}</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    
+    <style>
+        .results-hero {
+            margin-bottom: 2rem;
+        }
+        
+        .mode-banner {
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid var(--stroke-1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: var(--surface-1);
+        }
+
+        .mode-banner.mode-homework {
+            border-left: 3px solid var(--accent-2);
+        }
+
+        .mode-banner.mode-classwork {
+            border-left: 3px solid var(--success);
+        }
+
+        .mode-banner .mode-icon {
+            font-size: 2.5em;
+            flex-shrink: 0;
+        }
+
+        .mode-banner .mode-title {
+            font-weight: 700;
+            font-size: 1.2em;
+            color: var(--text-primary);
+            margin-bottom: 0.5em;
+        }
+
+        .mode-banner .mode-details {
+            color: var(--text-muted);
+            font-size: 0.95em;
+            margin-bottom: 0.5em;
+        }
+
+        .mode-banner .mode-details strong {
+            color: var(--accent-1);
+        }
+
+        .mode-banner .mode-hint {
+            color: var(--text-muted);
+            font-size: 0.9em;
+        }
+
+        .select-all {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .select-all label {
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .select-all input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .select-all-actions {
+            display: flex;
+            gap: 0.5em;
+            flex-wrap: wrap;
+        }
+
+        .task-card {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .task-card:hover {
+            border-color: var(--accent-1);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .task-header {
+            display: flex;
+            align-items: center;
+            gap: 1em;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--stroke-1);
+        }
+
+        .task-header input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .task-header label {
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .task-header a {
+            color: var(--accent-2);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .task-header a:hover {
+            color: var(--accent-2-strong);
+            text-decoration: underline;
+        }
+
+        .task-content {
+            line-height: 1.8;
+            font-size: 1.05em;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .task-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: var(--radius-sm);
+            margin: 1em 0;
+        }
+
+        .task-content table {
+            border-collapse: collapse;
+            margin: 1em 0;
+            width: 100%;
+        }
+
+        .task-content td, .task-content th {
+            border: 1px solid var(--stroke-1);
+            padding: 0.5em;
+        }
+
+        .attached-files {
+            background: rgba(23, 96, 216, 0.12);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .attached-files h4 {
+            color: var(--accent-2);
+            margin-bottom: 0.5em;
+            font-weight: 700;
+        }
+
+        .file-list {
+            list-style: none;
+        }
+
+        .file-link {
+            color: var(--accent-2);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .file-link:hover {
+            color: var(--accent-2-strong);
+            text-decoration: underline;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 0.5em;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}" data-lesson-id="{% if lesson_id %}{{ lesson_id }}{% endif %}" data-assignment-type="{{ assignment_type }}">
+    {% set is_homework = assignment_type == 'homework' %}
+    {% set mode_label = 'домашнего задания' if is_homework else 'классной работы' %}
+    {% set add_action_text = 'Добавить в ДЗ' if is_homework else 'Добавить в работу' %}
+    {% set mode_class = 'mode-homework' if is_homework else 'mode-classwork' %}
+    
+    {% if active_lesson %}
+    <div class="now-playing-pill" onclick="toggleLessonMenu()">
+        🎧 Урок идет: {{ active_student.name }}
+    </div>
+    <div class="now-playing-panel" id="lessonMenu">
+        <div class="hero-eyebrow">текущий урок</div>
+        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
+        {% if active_lesson.topic %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
+        {% endif %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
+        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
+        <div class="hero-actions" style="margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+                <button type="submit" class="neo-button accent">✅ Завершить</button>
+            </form>
+            <a href="{{ url_for('student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+        </div>
+    </div>
+    <script>
+        function toggleLessonMenu() {
+            const menu = document.getElementById('lessonMenu');
+            if (menu) {
+                menu.classList.toggle('active');
+            }
+        }
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('lessonMenu');
+            const badge = document.querySelector('.now-playing-pill');
+            if (!menu || !badge) return;
+            if (!menu.contains(event.target) && !badge.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+    </script>
+    {% endif %}
+
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <div class="brand-mark">LOGO</div>
+                <div class="brand-caption">Слот под фирменный знак</div>
+            </div>
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link active">💻 Генератор</a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link">📋 Планы</a>
+            </nav>
+            <div class="nav-actions">
+                <div class="brand-caption">icon slot</div>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <section class="glass-panel results-hero">
+            <div>
+                <p class="hero-eyebrow">результаты генератора</p>
+                <h1 class="hero-title">Задание {{ task_type }}</h1>
+                <p class="hero-subtitle">Найдено заданий: {{ tasks|length }} шт.</p>
+            </div>
+        </section>
+
+        {% if lesson and student %}
+        <section class="mode-banner {{ mode_class }}">
+            <div class="mode-icon">{{ '📝' if is_homework else '🏫' }}</div>
+            <div style="flex: 1;">
+                <div class="mode-title">Режим формирования {{ mode_label }}</div>
+                <div class="mode-details">
+                    <strong>Ученик:</strong> {{ student.name }}
+                    {% if lesson.lesson_date %}
+                    | <strong>Урок:</strong> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
+                    {% endif %}
+                    {% if lesson.topic %}
+                    | <strong>Тема:</strong> {{ lesson.topic }}
+                    {% endif %}
+                </div>
+                <div class="mode-hint">
+                    {{ '💡 Нажми «Добавить в ДЗ», чтобы закрепить задания за учеником.' if is_homework else '💡 Выбирай «Добавить в работу», чтобы использовать задания прямо на уроке.' }}
+                </div>
+            </div>
+            <a href="{{ url_for('student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Профиль</a>
+        </section>
+        {% endif %}
+
+        <section class="select-all">
+            <label>
+                <input type="checkbox" id="select-all-checkbox">
+                Выбрать все задания
+            </label>
+            <div class="select-all-actions">
+                <button class="neo-button accent" data-bulk-action="accept">{% if lesson %}{{ add_action_text }}{% else %}Принять выбранные{% endif %}</button>
+                <button class="neo-button outline" data-bulk-action="skip">Пропустить выбранные</button>
+                <button class="neo-button danger" data-bulk-action="blacklist">В черный список</button>
+            </div>
+        </section>
+
+        {% for task in tasks %}
+        <section class="task-card" data-task-id="{{ task.task_id }}">
+            <div class="task-header">
+                <input type="checkbox" class="task-checkbox" value="{{ task.task_id }}" id="task-{{ task.task_id }}">
+                <label for="task-{{ task.task_id }}">
+                    <b>№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b> | 
+                    <a href="{{ task.source_url }}" target="_blank" title="Открыть в новой вкладке">Источник (URL)</a>
+                </label>
+            </div>
+            
+            <div class="task-content">
+                {{ task.content_html | safe }}
+            </div>
+            
+            {% if task.attached_files %}
+            <div class="attached-files">
+                <h4>📎 Прикрепленные файлы:</h4>
+                <ul class="file-list">
+                    {% set files = task.attached_files | from_json %}
+                    {% for file in files %}
+                    <li>
+                        <a href="{{ file.url }}" target="_blank" class="file-link" download>
+                            {{ file.name }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            <div class="task-actions">
+                <button class="neo-button accent" data-task-id="{{ task.task_id }}" data-action="accept">{% if lesson %}✓ {{ add_action_text }}{% else %}✓ Принять{% endif %}</button>
+                <button class="neo-button outline" data-task-id="{{ task.task_id }}" data-action="skip">⊘ Пропустить</button>
+                <button class="neo-button danger" data-task-id="{{ task.task_id }}" data-action="blacklist">✗ В черный список</button>
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+
+    <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script>
+        const LESSON_ID = document.body.dataset.lessonId ? parseInt(document.body.dataset.lessonId) : null;
+        const ASSIGNMENT_TYPE = document.body.dataset.assignmentType || 'homework';
+        const REDIRECT_URL = "{{ url_for('kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator', assignment_type=assignment_type) }}";
+        const CSRF_TOKEN = (document.querySelector('meta[name="csrf-token"]') || {getAttribute: () => null}).getAttribute('content');
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false,
+                    trust: true
+                });
+            }
+        });
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const selectAllCheckbox = document.getElementById('select-all-checkbox');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function() {
+                    toggleAllTasks();
+                });
+            }
+            document.querySelectorAll('.task-actions .neo-button[data-action]').forEach(button => {
+                button.addEventListener('click', function() {
+                    const taskId = parseInt(this.getAttribute('data-task-id'));
+                    const action = this.getAttribute('data-action');
+                    taskAction(taskId, action);
+                });
+            });
+            document.querySelectorAll('[data-bulk-action]').forEach(button => {
+                button.addEventListener('click', function() {
+                    const action = this.getAttribute('data-bulk-action');
+                    bulkAction(action);
+                });
+            });
+        });
+        
+        function taskAction(taskId, action) {
+            const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+            const buttons = taskElement.querySelectorAll('.neo-button');
+            buttons.forEach(btn => btn.disabled = true);
+            
+            const requestBody = {
+                action: action,
+                task_ids: [taskId],
+                assignment_type: ASSIGNMENT_TYPE
+            };
+            
+            if (LESSON_ID) {
+                requestBody.lesson_id = LESSON_ID;
+            }
+            
+            fetch('{{ url_for("task_action") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN || '',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(requestBody)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    taskElement.style.opacity = '0.5';
+                    taskElement.style.transition = 'opacity 0.3s';
+                    setTimeout(() => {
+                        taskElement.remove();
+                        if (document.querySelectorAll('.task-card').length === 0) {
+                            window.location.href = REDIRECT_URL;
+                        }
+                    }, 500);
+                    if (window.toast) {
+                        toast.success(data.message);
+                    } else {
+                        alert(data.message);
+                    }
+                } else {
+                    if (window.toast) {
+                        toast.error(data.error || 'Неизвестная ошибка');
+                    } else {
+                        alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                    }
+                    buttons.forEach(btn => btn.disabled = false);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (window.toast) {
+                    toast.error('Ошибка при выполнении действия');
+                } else {
+                    alert('Ошибка при выполнении действия');
+                }
+                buttons.forEach(btn => btn.disabled = false);
+            });
+        }
+        
+        function toggleAllTasks() {
+            const selectAll = document.getElementById('select-all-checkbox');
+            const checkboxes = document.querySelectorAll('.task-checkbox');
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        }
+        
+        function bulkAction(action) {
+            const checked = Array.from(document.querySelectorAll('.task-checkbox:checked'));
+            if (checked.length === 0) {
+                if (window.toast) {
+                    toast.error('Выберите хотя бы одно задание');
+                } else {
+                    alert('Выберите хотя бы одно задание');
+                }
+                return;
+            }
+            
+            const taskIds = checked.map(cb => parseInt(cb.value));
+            const actionNames = {
+                'accept': LESSON_ID ? (ASSIGNMENT_TYPE === 'homework' ? 'добавить в ДЗ' : 'добавить в работу') : 'принять',
+                'skip': 'пропустить',
+                'blacklist': 'добавить в черный список'
+            };
+            
+            if (!confirm(`Вы уверены, что хотите ${actionNames[action]} ${taskIds.length} заданий?`)) {
+                return;
+            }
+            
+            const requestBody = {
+                action: action,
+                task_ids: taskIds,
+                assignment_type: ASSIGNMENT_TYPE
+            };
+            
+            if (LESSON_ID) {
+                requestBody.lesson_id = LESSON_ID;
+            }
+            
+            fetch('{{ url_for("task_action") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN || '',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(requestBody)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    checked.forEach(cb => {
+                        const taskElement = cb.closest('.task-card');
+                        taskElement.style.opacity = '0.5';
+                        setTimeout(() => taskElement.remove(), 300);
+                    });
+                    if (window.toast) {
+                        toast.success(data.message);
+                    } else {
+                        alert(data.message);
+                    }
+                    
+                    setTimeout(() => {
+                        if (document.querySelectorAll('.task-card').length === 0) {
+                            window.location.href = REDIRECT_URL;
+                        }
+                    }, 500);
+                } else {
+                    if (window.toast) {
+                        toast.error(data.error || 'Неизвестная ошибка');
+                    } else {
+                        alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (window.toast) {
+                    toast.error('Ошибка при выполнении действия');
+                } else {
+                    alert('Ошибка при выполнении действия');
+                }
+            });
+        }
+    </script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+</body>
+</html>

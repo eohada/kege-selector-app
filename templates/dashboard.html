@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
+    {% if active_lesson %}
+    <div class="now-playing-pill" onclick="toggleLessonMenu()">
+        🎧 Урок идет: {{ active_student.name }}
+    </div>
+    <div class="now-playing-panel" id="lessonMenu">
+        <div class="hero-eyebrow">текущий урок</div>
+        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
+        {% if active_lesson.topic %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
+        {% endif %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
+        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
+        <div class="hero-actions" style="margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+                <button type="submit" class="neo-button accent">✅ Завершить</button>
+            </form>
+            <a href="{{ url_for('student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+        </div>
+    </div>
+    <script>
+        function toggleLessonMenu() {
+            const menu = document.getElementById('lessonMenu');
+            if (menu) {
+                menu.classList.toggle('active');
+            }
+        }
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('lessonMenu');
+            const badge = document.querySelector('.now-playing-pill');
+            if (!menu || !badge) return;
+            if (!menu.contains(event.target) && !badge.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+    </script>
+    {% endif %}
+
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <div class="brand-mark">LOGO</div>
+                <div class="brand-caption">Слот под фирменный знак</div>
+            </div>
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link active">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link">📋 Планы</a>
+            </nav>
+            <div class="nav-actions">
+                <div class="brand-caption">icon slot</div>
+            </div>
+        </header>
+
+        <section class="dashboard-hero glass-panel">
+            <div>
+                <p class="hero-eyebrow">панель управления</p>
+                <h1 class="hero-title">Чёрный неон. Новый взгляд на учёбу.</h1>
+                <p class="hero-subtitle">
+                    Управляй учениками, уроками и прогрессом в едином неоновом пространстве. Лаконично, быстро
+                    и с визуальными акцентами на то, что важно прямо сейчас.
+                </p>
+                <div class="hero-actions">
+                    <a href="{{ url_for('export_data') }}" class="neo-button accent">📤 Экспорт</a>
+                    <a href="{{ url_for('import_data') }}" class="neo-button outline">📥 Импорт</a>
+                    <a href="{{ url_for('backup_db') }}" class="neo-button ghost">💾 Бэкап БД</a>
+                </div>
+            </div>
+            <div class="hero-pane">
+                <div class="hero-metric">
+                    <div class="hero-metric-label">активные ученики</div>
+                    <div class="hero-metric-value">{{ total_students }}</div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hero-metric-label">запланировано уроков</div>
+                    <div class="hero-metric-value">{{ planned_lessons }}</div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hero-metric-label">проведено уроков</div>
+                    <div class="hero-metric-value">{{ completed_lessons }}</div>
+                </div>
+            </div>
+        </section>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <section class="glass-panel filters-panel">
+            <form method="GET" action="{{ url_for('dashboard') }}" class="filters-grid">
+                <div class="neo-field">
+                    <label class="neo-label">Поиск</label>
+                    <input type="text" name="search" value="{{ search_query }}" class="neo-input" placeholder="Имя или ID ученика">
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Категория</label>
+                    <select name="category" class="neo-select">
+                        <option value="">Все категории</option>
+                        <option value="ЕГЭ" {% if category_filter == 'ЕГЭ' %}selected{% endif %}>ЕГЭ</option>
+                        <option value="ОГЭ" {% if category_filter == 'ОГЭ' %}selected{% endif %}>ОГЭ</option>
+                        <option value="ЛЕВЕЛАП" {% if category_filter == 'ЛЕВЕЛАП' %}selected{% endif %}>ЛЕВЕЛАП</option>
+                    </select>
+                </div>
+                <div class="filters-actions">
+                    <button type="submit" class="neo-button accent">🔍 Найти</button>
+                    {% if search_query or category_filter %}
+                    <a href="{{ url_for('dashboard') }}" class="neo-button ghost">⟲ Сбросить</a>
+                    {% endif %}
+                </div>
+            </form>
+        </section>
+
+        <section class="stats-grid">
+            <article class="stat-card">
+                <strong>{{ students|length }}</strong>
+                <span>НА ЕКРАНЕ</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ total_students }}</strong>
+                <span>АКТИВНЫХ</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ total_lessons }}</strong>
+                <span>ВСЕГО УРОКОВ</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ planned_lessons }}</strong>
+                <span>ЗАПЛАНИРОВАНО</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ completed_lessons }}</strong>
+                <span>ПРОВЕДЕНО</span>
+            </article>
+            {% if not category_filter %}
+            <article class="stat-card">
+                <strong>{{ ege_students }}</strong>
+                <span>ЕГЭ</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ oge_students }}</strong>
+                <span>ОГЭ</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ levelup_students }}</strong>
+                <span>ЛЕВЕЛАП</span>
+            </article>
+            {% endif %}
+        </section>
+
+        <section class="glass-panel students-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">активные ученики</p>
+                    <h2>{{ students|length }} в подборке</h2>
+                </div>
+                <div class="hero-actions">
+                    <a href="{{ url_for('student_new') }}" class="neo-button accent">+ Добавить</a>
+                </div>
+            </div>
+
+            {% if students %}
+            <div class="students-grid">
+                <a href="{{ url_for('student_new') }}" class="student-card student-card--cta">
+                    <div class="hero-eyebrow">quick action</div>
+                    <h3 style="margin: 0;">Создать нового ученика</h3>
+                    <p class="hero-subtitle">Стартовая точка для целей, уроков и заметок.</p>
+                </a>
+                {% for student in students %}
+                <a href="{{ url_for('student_profile', student_id=student.student_id) }}"
+                   class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %}"
+                   data-student-id="{{ student.student_id }}">
+                    <div class="student-card__head">
+                        <div class="student-avatar">{{ student.name[0].upper() }}</div>
+                        <div>
+                            <p class="student-name">{{ student.name }}</p>
+                            {% if student.platform_id %}
+                            <p class="student-meta student-platform-id">ID: {{ student.platform_id }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if student.category %}
+                    <span class="student-tag student-category">{{ student.category }}</span>
+                    {% endif %}
+                    {% if student.description %}
+                    <p class="hero-subtitle" style="font-size: 0.9rem;">
+                        "{{ student.description[:130] }}{% if student.description|length > 130 %}…{% endif %}"
+                    </p>
+                    {% endif %}
+                    <div class="student-insights">
+                        {% if student.target_score %}
+                        <div>🎯 Цель: {{ student.target_score }} баллов</div>
+                        {% endif %}
+                        {% if student.deadline %}
+                        <div>⏰ Срок: {{ student.deadline }}</div>
+                        {% endif %}
+                        {% if student.diagnostic_level %}
+                        <div>📊 Диагностика: <span>{{ student.diagnostic_level }}</span></div>
+                        {% endif %}
+                        {% if student.overall_rating %}
+                        <div>⭐ Оценка: <span>{{ student.overall_rating }}</span></div>
+                        {% endif %}
+                        {% if student.strengths %}
+                        <div>💪 Сильные стороны: <span>{{ student.strengths[:60] }}{% if student.strengths|length > 60 %}…{% endif %}</span></div>
+                        {% endif %}
+                        {% if student.weaknesses %}
+                        <div>🧩 Зоны роста: <span>{{ student.weaknesses[:60] }}{% if student.weaknesses|length > 60 %}…{% endif %}</span></div>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+
+            {% if pagination.pages > 1 %}
+            <div class="pagination">
+                {% if pagination.has_prev %}
+                <a href="{{ url_for('dashboard', page=pagination.prev_num, search=search_query, category=category_filter) }}" class="pagination-btn">‹ Назад</a>
+                {% else %}
+                <span class="pagination-btn disabled">‹ Назад</span>
+                {% endif %}
+                <span>Страница {{ pagination.page }} из {{ pagination.pages }}</span>
+                {% if pagination.has_next %}
+                <a href="{{ url_for('dashboard', page=pagination.next_num, search=search_query, category=category_filter) }}" class="pagination-btn">Вперёд ›</a>
+                {% else %}
+                <span class="pagination-btn disabled">Вперёд ›</span>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="empty-state">
+                <div style="font-size: 3rem; margin-bottom: 0.6rem;">👥</div>
+                <h3>Пока нет учеников</h3>
+                <p style="color: var(--text-muted);">Добавьте первого ученика, чтобы начать работу</p>
+                <a href="{{ url_for('student_new') }}" class="neo-button accent" style="margin-top: 1rem;">Добавить</a>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='dashboard-ajax.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+</body>
+</html>

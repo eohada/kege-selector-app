@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расписание · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        :root {
+            --slot-height: 32px;
+            --time-column-width: 80px;
+        }
+        
+        .schedule-hero {
+            margin-bottom: 2rem;
+        }
+        
+        .schedule-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+        
+        .week-range {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .round-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 1px solid var(--stroke-1);
+            background: var(--surface-2);
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.3em;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .round-btn:hover {
+            background: var(--surface-3);
+            border-color: var(--accent-1);
+            color: var(--accent-1);
+            transform: scale(1.05);
+        }
+        
+        .schedule-filters {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .timezone-toggle {
+            display: flex;
+            gap: 0.4rem;
+            padding: 0.5rem;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+        }
+        
+        .timezone-toggle button {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+        
+        .timezone-toggle button.active {
+            background: linear-gradient(120deg, var(--accent-1-strong), var(--accent-2-strong));
+            color: #001b18;
+        }
+        
+        .timezone-toggle button:hover:not(.active) {
+            background: var(--surface-3);
+            color: var(--text-primary);
+        }
+        
+        .calendar-wrapper {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            overflow-x: hidden;
+            overflow-y: auto;
+            max-height: 78vh;
+            box-shadow: var(--shadow-soft);
+        }
+        
+        .schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        
+        .schedule-table thead {
+            background: var(--surface-2);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .schedule-table th {
+            padding: 1em 0.5em;
+            font-weight: 600;
+            text-align: center;
+            border-left: 1px solid var(--stroke-1);
+            font-size: 0.9em;
+            color: var(--text-primary);
+        }
+        
+        .schedule-table th:first-child {
+            width: var(--time-column-width);
+            border-left: none;
+        }
+        
+        .schedule-table th.day-header {
+            padding: 0.8em 0.5em;
+        }
+        
+        .schedule-table th.day-header.active {
+            background: linear-gradient(120deg, rgba(0, 198, 164, 0.15), rgba(23, 96, 216, 0.1));
+        }
+        
+        .schedule-table th.day-header .day-name {
+            font-size: 0.85em;
+            color: var(--text-muted);
+        }
+        
+        .schedule-table th.day-header .day-date {
+            font-size: 1em;
+            font-weight: 700;
+            margin-top: 0.2em;
+            color: var(--text-primary);
+        }
+        
+        .schedule-table td {
+            position: relative;
+            padding: 0;
+            border-left: 1px solid var(--stroke-1);
+            border-bottom: 1px solid var(--stroke-1);
+            vertical-align: top;
+        }
+        
+        .time-column-cell {
+            width: var(--time-column-width);
+            padding: 0;
+            border-left: none;
+            border-bottom: none;
+            background: var(--surface-2);
+            vertical-align: top;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            overflow: visible;
+        }
+        
+        .time-column-inner {
+            display: flex;
+            flex-direction: column;
+            overflow: visible;
+        }
+        
+        .time-cell {
+            height: calc(var(--slot-height) * 2);
+            min-height: calc(var(--slot-height) * 2);
+            padding-right: 0.4em;
+            text-align: right;
+            font-size: 0.85em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--stroke-1);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+        
+        .time-cell:last-child {
+            height: calc(var(--slot-height) * 2);
+            min-height: calc(var(--slot-height) * 2);
+            border-bottom: none;
+        }
+        
+        .day-cell {
+            position: relative;
+            background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--slot-height) * 2 - 1px), var(--stroke-1) calc(var(--slot-height) * 2 - 1px), var(--stroke-1) calc(var(--slot-height) * 2));
+            overflow: hidden;
+        }
+        
+        .day-cell .slot-clickable {
+            position: absolute;
+            width: 100%;
+            height: calc(var(--slot-height) * 2);
+            cursor: pointer;
+            z-index: 1;
+            transition: background 0.15s ease;
+        }
+        
+        .day-cell .slot-clickable:hover {
+            background: rgba(0, 198, 164, 0.1);
+        }
+        
+        .create-slot-btn {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            right: 4px;
+            padding: 0.3em 0.5em;
+            background: rgba(0, 198, 164, 0.08);
+            border: 1px dashed rgba(0, 198, 164, 0.4);
+            border-radius: 6px;
+            color: var(--accent-1);
+            font-size: 0.75em;
+            cursor: pointer;
+            z-index: 2;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            text-align: center;
+        }
+        
+        .day-cell:hover .create-slot-btn {
+            opacity: 1;
+        }
+        
+        .create-slot-btn:hover {
+            background: rgba(0, 198, 164, 0.15);
+            border-color: var(--accent-1);
+        }
+        
+        .lesson-button {
+            position: absolute;
+            padding: 0.4em 0.5em;
+            border-radius: var(--radius-sm);
+            border: none;
+            cursor: pointer;
+            z-index: 10;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            font-family: inherit;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            gap: 0.08em;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            box-sizing: border-box;
+            min-height: auto;
+        }
+        
+        .lesson-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        .lesson-button .lesson-time {
+            font-weight: 700;
+            font-size: 0.95em;
+            color: #fff;
+            line-height: 1.1;
+            margin: 0;
+            padding: 0;
+            flex-shrink: 0;
+        }
+        
+        .lesson-button .lesson-student {
+            font-weight: 600;
+            font-size: 0.88em;
+            color: #fff;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            line-height: 1.1;
+            margin: 0;
+            padding: 0;
+            flex-shrink: 0;
+            display: block;
+        }
+        
+        .lesson-button .lesson-subject {
+            font-size: 0.7em;
+            opacity: 0.95;
+            color: #fff;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            line-height: 1.1;
+            margin: 0;
+            padding: 0;
+            flex-shrink: 0;
+            display: block;
+        }
+        
+        .lesson-button .lesson-status {
+            font-size: 0.55em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.9;
+            color: #fff;
+            font-weight: 600;
+            margin: 0;
+            padding: 0;
+            flex-shrink: 0;
+            display: block;
+        }
+        
+        .lesson-button.status-planned {
+            background: linear-gradient(120deg, var(--accent-2-strong), var(--accent-1-strong));
+        }
+        
+        .lesson-button.status-in_progress {
+            background: linear-gradient(120deg, var(--success), #00c6ad);
+        }
+        
+        .lesson-button.status-completed {
+            background: linear-gradient(120deg, var(--accent-2), var(--accent-2-strong));
+        }
+        
+        .lesson-button.status-cancelled {
+            background: linear-gradient(120deg, var(--danger), #ff4d6d);
+            opacity: 0.7;
+        }
+        
+        .legend {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            font-size: 0.85em;
+            color: var(--text-muted);
+        }
+        
+        .legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5em;
+        }
+        
+        .legend i {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(8px);
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: var(--shadow-soft);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5em;
+            cursor: pointer;
+            padding: 0;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+        }
+        
+        .modal-close:hover {
+            background: rgba(255, 108, 145, 0.2);
+            color: var(--danger);
+        }
+        
+        .form-group {
+            margin-bottom: 1.2em;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5em;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.8em;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--stroke-1);
+            background: var(--surface-2);
+            color: var(--text-primary);
+            font-size: 1em;
+            transition: all 0.2s ease;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--accent-1);
+            box-shadow: 0 0 0 3px rgba(0, 198, 164, 0.15);
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 1em;
+            justify-content: flex-end;
+            margin-top: 1.5em;
+        }
+    </style>
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}" data-schedule-url="{{ url_for('schedule') }}" data-week-offset="{{ week_offset }}" data-lesson-delete-url="{{ url_for('lesson_delete', lesson_id=0) }}" data-lesson-view-url="{{ url_for('lesson_view', lesson_id=0) }}" data-csrf-token="{{ csrf_token() if csrf_token else '' }}">
+    {% if active_lesson %}
+    <div class="now-playing-pill" onclick="toggleLessonMenu()">
+        🎧 Урок идет: {{ active_student.name }}
+    </div>
+    <div class="now-playing-panel" id="lessonMenu">
+        <div class="hero-eyebrow">текущий урок</div>
+        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
+        {% if active_lesson.topic %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
+        {% endif %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
+        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
+        <div class="hero-actions" style="margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+                <button type="submit" class="neo-button accent">✅ Завершить</button>
+            </form>
+            <a href="{{ url_for('student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+        </div>
+    </div>
+    <script>
+        function toggleLessonMenu() {
+            const menu = document.getElementById('lessonMenu');
+            if (menu) {
+                menu.classList.toggle('active');
+            }
+        }
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('lessonMenu');
+            const badge = document.querySelector('.now-playing-pill');
+            if (!menu || !badge) return;
+            if (!menu.contains(event.target) && !badge.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+    </script>
+    {% endif %}
+
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <div class="brand-mark">LOGO</div>
+                <div class="brand-caption">Слот под фирменный знак</div>
+            </div>
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link active">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link">📋 Планы</a>
+            </nav>
+            <div class="nav-actions">
+                <div class="brand-caption">icon slot</div>
+            </div>
+        </header>
+
+        <section class="glass-panel schedule-hero">
+            <div>
+                <p class="hero-eyebrow">календарь занятий</p>
+                <h1 class="hero-title">Расписание уроков</h1>
+                <p class="hero-subtitle">
+                    Планируй занятия, отслеживай прогресс и управляй временем в едином календаре.
+                </p>
+            </div>
+        </section>
+
+        <section class="glass-panel">
+            <div class="schedule-controls">
+                <div class="week-range">{{ week_label }}</div>
+                <div class="nav-buttons">
+                    <button class="round-btn" data-week-offset="{{ week_offset - 1 }}" onclick="navigateWeek(this.dataset.weekOffset)" title="Предыдущая неделя">‹</button>
+                    <button class="round-btn" data-week-offset="{{ week_offset + 1 }}" onclick="navigateWeek(this.dataset.weekOffset)" title="Следующая неделя">›</button>
+                </div>
+                <div class="schedule-filters">
+                    <div class="timezone-toggle">
+                        <button class="{% if timezone == 'moscow' %}active{% endif %}" onclick="switchTimezone('moscow')">МСК (UTC+3)</button>
+                        <button class="{% if timezone == 'tomsk' %}active{% endif %}" onclick="switchTimezone('tomsk')">ТОМСК (UTC+7)</button>
+                    </div>
+                    <select id="statusFilter" class="neo-select" onchange="applyFilters()" style="min-width: 160px;">
+                        <option value="">Все статусы</option>
+                        {% for status in statuses %}
+                        <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>
+                            {% if status == 'planned' %}Запланирован{% elif status == 'in_progress' %}Идет сейчас{% elif status == 'completed' %}Проведен{% elif status == 'cancelled' %}Отменен{% else %}{{ status }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <select id="categoryFilter" class="neo-select" onchange="applyFilters()" style="min-width: 160px;">
+                        <option value="">Все категории</option>
+                        {% for category in categories %}
+                        <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>{{ category }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="calendar-wrapper">
+                <table class="schedule-table">
+                    <thead>
+                        <tr>
+                            <th>Время</th>
+                            {% for day in week_days %}
+                            <th class="day-header {% if day == week_days[1] %}active{% endif %}">
+                                <div class="day-name">{{ day.strftime('%a') }}</div>
+                                <div class="day-date">{{ day.strftime('%d') }}</div>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody data-total-slots="{{ total_slots }}">
+                        <tr>
+                            <td class="time-column-cell">
+                                <div class="time-column-inner">
+                                    {% for hour in range(start_hour, end_hour + 1) %}
+                                    <div class="time-cell">{{ "%02d:00"|format(hour) }}</div>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            {% for day_index in range(7) %}
+                            {% set day = week_days[day_index] %}
+                            <td class="day-cell" data-day="{{ day.isoformat() }}" data-day-index="{{ day_index }}" data-events='{{ day_events[day_index]|tojson }}' data-total-slots="{{ total_slots }}">
+                                {% for hour in range(start_hour, end_hour + 1) %}
+                                {% set slot_time = "%02d:00"|format(hour) %}
+                                <div class="slot-clickable" data-day="{{ day.isoformat() }}" data-time="{{ slot_time }}" onclick="openCreateModal('{{ day.isoformat() }}', '{{ slot_time }}')"></div>
+                                {% endfor %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="legend">
+                <span><i style="background: linear-gradient(120deg, var(--accent-2-strong), var(--accent-1-strong));"></i>Запланирован</span>
+                <span><i style="background: linear-gradient(120deg, var(--success), #00c6ad);"></i>Идет сейчас</span>
+                <span><i style="background: linear-gradient(120deg, var(--accent-2), var(--accent-2-strong));"></i>Проведен</span>
+                <span><i style="background: linear-gradient(120deg, var(--danger), #ff4d6d);"></i>Отменен</span>
+            </div>
+        </section>
+    </div>
+    
+    <div class="modal" id="createLessonModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Создать урок</div>
+                <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+            </div>
+            <form id="createLessonForm" method="POST" action="{{ url_for('schedule_create_lesson') }}">
+                <input type="hidden" name="week_offset" value="{{ week_offset }}">
+                <input type="hidden" name="status_filter" value="{{ status_filter }}">
+                <input type="hidden" name="category_filter" value="{{ category_filter }}">
+                <input type="hidden" name="timezone" value="{{ timezone }}">
+                <input type="hidden" name="lesson_date" id="modalLessonDate">
+                <input type="hidden" name="lesson_time" id="modalLessonTime">
+                <div class="form-group">
+                    <label for="modalStudent">Ученик *</label>
+                    <select name="student_id" id="modalStudent" required>
+                        <option value="">Выберите ученика</option>
+                        {% for student in students %}
+                        <option value="{{ student.student_id }}">{{ student.name }}{% if student.platform_id %} (ID: {{ student.platform_id }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="modalDuration">Длительность (минуты)</label>
+                    <input type="number" name="duration" id="modalDuration" value="60" min="60" step="60" required>
+                </div>
+                <div class="form-group">
+                    <label for="modalLessonType">Тип урока</label>
+                    <select name="lesson_type" id="modalLessonType">
+                        <option value="regular">Обычный урок</option>
+                        <option value="exam">Проверочный урок</option>
+                        <option value="introductory">Вводный урок</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="modalLessonMode">Режим создания</label>
+                    <select name="lesson_mode" id="modalLessonMode" onchange="toggleRepeatCount()">
+                        <option value="single">Одноразовый урок</option>
+                        <option value="recurring">Набор уроков</option>
+                    </select>
+                </div>
+                <div class="form-group" id="repeatCountGroup" style="display: none;">
+                    <label for="modalRepeatCount">Количество уроков</label>
+                    <input type="number" name="repeat_count" id="modalRepeatCount" value="3" min="2" max="52" placeholder="Например, 3">
+                    <small style="display: block; color: var(--text-muted); margin-top: 0.5em;">
+                        Уроки будут созданы на выбранный слот, через неделю, через две недели и т.д.
+                    </small>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="neo-button ghost" onclick="closeCreateModal()">Отмена</button>
+                    <button type="submit" class="neo-button accent">Создать</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="modal" id="lessonActionModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Действия с уроком</div>
+                <button class="modal-close" onclick="closeLessonActionModal()">&times;</button>
+            </div>
+            <div id="lessonActionInfo" style="margin-bottom: 1.5em; color: var(--text-primary);">
+                
+            </div>
+            <div class="form-actions">
+                <form id="deleteLessonForm" method="POST" action="" style="display: inline;">
+                    <button type="submit" class="neo-button danger">🗑️ Отменить урок</button>
+                </form>
+                <a id="viewLessonLink" href="" style="text-decoration: none;">
+                    <button type="button" class="neo-button accent">ℹ️ Об уроке</button>
+                </a>
+                <button type="button" class="neo-button ghost" onclick="closeLessonActionModal()">Закрыть</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const scheduleUrl = document.body.dataset.scheduleUrl;
+        const currentWeekOffset = parseInt(document.body.dataset.weekOffset || '0');
+        const currentTimezone = '{{ timezone }}';
+        
+        function navigateWeek(offset) {
+            const params = new URLSearchParams(window.location.search);
+            params.set('week', offset);
+            if (document.getElementById('statusFilter').value) {
+                params.set('status', document.getElementById('statusFilter').value);
+            }
+            if (document.getElementById('categoryFilter').value) {
+                params.set('category', document.getElementById('categoryFilter').value);
+            }
+            params.set('timezone', currentTimezone);
+            window.location.href = scheduleUrl + '?' + params.toString();
+        }
+        
+        function applyFilters() {
+            const params = new URLSearchParams();
+            params.set('week', currentWeekOffset);
+            params.set('timezone', currentTimezone);
+            const status = document.getElementById('statusFilter').value;
+            const category = document.getElementById('categoryFilter').value;
+            if (status) params.set('status', status);
+            if (category) params.set('category', category);
+            window.location.href = scheduleUrl + '?' + params.toString();
+        }
+        
+        function switchTimezone(tz) {
+            const params = new URLSearchParams(window.location.search);
+            params.set('timezone', tz);
+            params.set('week', currentWeekOffset);
+            if (document.getElementById('statusFilter').value) {
+                params.set('status', document.getElementById('statusFilter').value);
+            }
+            if (document.getElementById('categoryFilter').value) {
+                params.set('category', document.getElementById('categoryFilter').value);
+            }
+            window.location.href = scheduleUrl + '?' + params.toString();
+        }
+        
+        function openCreateModal(day, time) {
+            document.getElementById('modalLessonDate').value = day;
+            document.getElementById('modalLessonTime').value = time;
+            document.getElementById('createLessonModal').classList.add('active');
+        }
+        
+        function closeCreateModal() {
+            document.getElementById('createLessonModal').classList.remove('active');
+        }
+        
+        function toggleRepeatCount() {
+            const mode = document.getElementById('modalLessonMode').value;
+            const repeatGroup = document.getElementById('repeatCountGroup');
+            if (mode === 'recurring') {
+                repeatGroup.style.display = 'block';
+            } else {
+                repeatGroup.style.display = 'none';
+            }
+        }
+        
+        function openLessonActionModal(lessonId, studentName, startTime, status) {
+            const modal = document.getElementById('lessonActionModal');
+            const infoDiv = document.getElementById('lessonActionInfo');
+            const deleteForm = document.getElementById('deleteLessonForm');
+            const viewLink = document.getElementById('viewLessonLink');
+            
+            infoDiv.innerHTML = `
+                <div style="margin-bottom: 0.5em;"><strong>Ученик:</strong> ${studentName}</div>
+                <div style="margin-bottom: 0.5em;"><strong>Время:</strong> ${startTime}</div>
+                <div><strong>Статус:</strong> ${status}</div>
+            `;
+            
+            const deleteUrlTemplate = document.body.dataset.lessonDeleteUrl;
+            deleteForm.action = deleteUrlTemplate.replace('0', lessonId);
+            
+            const viewUrlTemplate = document.body.dataset.lessonViewUrl;
+            viewLink.href = viewUrlTemplate.replace('0', lessonId);
+            
+            modal.classList.add('active');
+        }
+        
+        function closeLessonActionModal() {
+            document.getElementById('lessonActionModal').classList.remove('active');
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const totalSlots = parseInt(document.querySelector('tbody')?.dataset.totalSlots || '24');
+            const slotHeight = 32;
+            const totalHeight = totalSlots * slotHeight * 2;
+            
+            const timeColumnInner = document.querySelector('.time-column-inner');
+            if (timeColumnInner) {
+                timeColumnInner.style.height = `${totalHeight}px`;
+            }
+            
+            document.querySelectorAll('.day-cell').forEach(cell => {
+                const cellTotalSlots = parseInt(cell.dataset.totalSlots || totalSlots);
+                const cellHeight = cellTotalSlots * slotHeight * 2;
+                cell.style.height = `${cellHeight}px`;
+                
+                const eventsJson = cell.dataset.events;
+                if (eventsJson) {
+                    try {
+                        const events = JSON.parse(eventsJson);
+                        events.forEach(function(event) {
+                            const lessonBtn = document.createElement('button');
+                            lessonBtn.className = 'lesson-button status-' + event.status_code;
+                            lessonBtn.style.top = (event.top_px + 2) + 'px';
+                            lessonBtn.style.height = (event.height_px - 4) + 'px';
+                            lessonBtn.style.left = 'calc(' + event.left_percent + '% + 2px)';
+                            lessonBtn.style.width = 'calc(' + event.width_percent + '% - 4px)';
+                            lessonBtn.dataset.lessonId = event.lesson_id;
+                            lessonBtn.dataset.studentId = event.student_id;
+                            lessonBtn.dataset.studentName = event.student;
+                            lessonBtn.dataset.startTime = event.start_time;
+                            lessonBtn.dataset.status = event.status;
+                            lessonBtn.onclick = function() { 
+                                openLessonActionModal(
+                                    this.dataset.lessonId,
+                                    this.dataset.studentName,
+                                    this.dataset.startTime,
+                                    this.dataset.status
+                                );
+                            };
+                            lessonBtn.innerHTML = '<div class="lesson-time">' + event.start_time + '</div>' +
+                                '<div class="lesson-student">' + event.student + '</div>' +
+                                '<div class="lesson-subject">' + event.subject + ', ' + event.grade + '</div>' +
+                                '<div class="lesson-status">' + event.status.toUpperCase() + '</div>';
+                            cell.appendChild(lessonBtn);
+                        });
+                    } catch (e) {
+                        console.error('Error parsing events:', e);
+                    }
+                }
+                
+                const createBtn = document.createElement('button');
+                createBtn.className = 'create-slot-btn';
+                createBtn.textContent = 'Создать новый слот';
+                createBtn.onclick = function() {
+                    openCreateModal(cell.dataset.day, '00:00');
+                };
+                cell.appendChild(createBtn);
+            });
+            
+            document.querySelectorAll('.slot-clickable').forEach(slot => {
+                const time = slot.dataset.time;
+                const parts = time.split(':');
+                const h = parseInt(parts[0] || '0');
+                const m = parseInt(parts[1] || '0');
+                if (m === 0) {
+                    slot.style.top = (h * slotHeight * 2) + 'px';
+                } else {
+                    slot.style.display = 'none';
+                }
+            });
+            
+            document.getElementById('createLessonModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeCreateModal();
+                }
+            });
+            
+            document.getElementById('lessonActionModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeLessonActionModal();
+                }
+            });
+            
+            document.getElementById('deleteLessonForm').addEventListener('submit', function(e) {
+                if (!confirm('Вы уверены, что хотите отменить этот урок? Это действие нельзя отменить.')) {
+                    e.preventDefault();
+                }
+            });
+        });
+    </script>
+    
+    <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+    <script src="{{ url_for('static', filename='schedule-ajax.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+</body>
+</html>

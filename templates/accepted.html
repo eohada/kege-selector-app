@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %}</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
+    <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
+    <style>
+        .nav-bar {
+            display: flex;
+            gap: 1em;
+            margin-bottom: 2em;
+            padding: 1em;
+            background: linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(147, 51, 234, 0.2);
+        }
+        
+        .nav-bar a {
+            padding: 0.8em 1.5em;
+            background: rgba(20, 20, 30, 0.6);
+            color: #c084fc;
+            text-decoration: none;
+            border-radius: 12px;
+            border: 2px solid rgba(147, 51, 234, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+        }
+        
+        .nav-bar a:hover {
+            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(168, 85, 247, 0.6);
+        }
+        
+        .nav-bar a.active {
+            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    {% include '_active_lesson_banner.html' %}
+    
+    <div class="container">
+        <div class="nav-bar">
+            <a href="{{ url_for('dashboard') }}">👥 Ученики</a>
+            <a href="{{ url_for('kege_generator') }}" class="active">💻 Генератор КЕГЭ</a>
+        </div>
+
+        <h1>✓ Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %} ({{ tasks|length }} шт.)</h1>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        
+        <div class="filter-section">
+            <label for="task-type-filter"><strong>Фильтр по номеру задания:</strong></label>
+            <select id="task-type-filter" onchange="filterByTaskType(this.value)">
+                <option value="">Все задания</option>
+                {% for i in range(1, 28) %}
+                    <option value="{{ i }}" {% if task_type == i %}selected{% endif %}>Задание {{ i }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {% for task in tasks %}
+        <div class="task" data-task-id="{{ task.task_id }}">
+            <div class="task-header">
+                <b>№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b> | 
+                <a href="{{ task.source_url }}" target="_blank" title="Открыть в новой вкладке">Источник (URL)</a>
+                <span class="accepted-badge">ПРИНЯТО</span>
+            </div>
+            
+            <div class="task-content">
+                {{ task.content_html | safe }}
+            </div>
+            
+            {% if task.attached_files %}
+            <div class="attached-files">
+                <h4>Прикрепленные файлы:</h4>
+                <ul class="file-list">
+                    {% set files = task.attached_files | from_json %}
+                    {% for file in files %}
+                    <li>
+                        <a href="{{ file.url }}" target="_blank" class="file-link" download>
+                            {{ file.name }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError: false,
+                trust: true
+            });
+        });
+        
+        function filterByTaskType(taskType) {
+            if (taskType === '') {
+                window.location.href = '{{ url_for("show_accepted") }}';
+            } else {
+                window.location.href = '{{ url_for("show_accepted") }}?task_type=' + taskType;
+            }
+        }
+    </script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+</body>
+</html>
+

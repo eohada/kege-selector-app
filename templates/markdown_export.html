@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Экспорт в Markdown - {{ student.name }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 2em;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%);
+            border: 2px solid #8b5cf6;
+            border-radius: 16px;
+            padding: 1.5em;
+            margin-bottom: 2em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 1.8em;
+            color: #c4b5fd;
+        }
+        
+        .back-btn {
+            padding: 0.8em 1.5em;
+            background: rgba(139, 92, 246, 0.3);
+            color: #c4b5fd;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(139, 92, 246, 0.5);
+            transition: all 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .markdown-container {
+            background: rgba(30, 30, 45, 0.95);
+            border: 2px solid rgba(139, 92, 246, 0.3);
+            border-radius: 16px;
+            padding: 2em;
+            position: relative;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            top: 1em;
+            right: 1em;
+            padding: 0.8em 1.5em;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+        }
+        
+        .copy-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+        }
+        
+        .copy-btn.copied {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+        
+        .markdown-text {
+            font-family: 'Courier New', 'Consolas', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #d0d0d0;
+            line-height: 1.6;
+            font-size: 0.95em;
+            padding-top: 3em;
+        }
+        
+        .info {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 3px solid #3b82f6;
+            border-radius: 8px;
+            padding: 1em;
+            margin-bottom: 2em;
+            color: #93c5fd;
+        }
+    </style>
+</head>
+<body>
+    {% include '_active_lesson_banner.html' %}
+    
+    <div class="container">
+        <div class="header">
+            <h1>📄 Экспорт в Markdown (Obsidian)</h1>
+            <a href="{{ url_for('lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="back-btn">← Назад к ДЗ</a>
+        </div>
+        
+        <div class="info">
+            💡 Скопируй текст ниже и вставь в Obsidian. Блоки <code>spoiler-block</code> будут работать как скрытые спойлеры.
+        </div>
+        
+        <div class="markdown-container">
+            <button class="copy-btn" onclick="copyToClipboard()">📋 Копировать</button>
+            <div class="markdown-text" id="markdownText">{{ markdown_content }}</div>
+        </div>
+    </div>
+    
+    <script>
+        function copyToClipboard() {
+            const text = document.getElementById('markdownText').textContent;
+            const button = document.querySelector('.copy-btn');
+            
+            navigator.clipboard.writeText(text).then(() => {
+                button.textContent = '✓ Скопировано!';
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.textContent = '📋 Копировать';
+                    button.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                alert('Ошибка при копировании: ' + err);
+            });
+        }
+    </script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+</body>
+</html>
+

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .form-hero {
+            margin-bottom: 2rem;
+        }
+        
+        .form-section {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .form-section-title {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid var(--stroke-1);
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .form-grid-full {
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
+    {% if active_lesson %}
+    <div class="now-playing-pill" onclick="toggleLessonMenu()">
+        🎧 Урок идет: {{ active_student.name }}
+    </div>
+    <div class="now-playing-panel" id="lessonMenu">
+        <div class="hero-eyebrow">текущий урок</div>
+        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
+        {% if active_lesson.topic %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
+        {% endif %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
+        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
+        <div class="hero-actions" style="margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+                <button type="submit" class="neo-button accent">✅ Завершить</button>
+            </form>
+            <a href="{{ url_for('student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+        </div>
+    </div>
+    <script>
+        function toggleLessonMenu() {
+            const menu = document.getElementById('lessonMenu');
+            if (menu) {
+                menu.classList.toggle('active');
+            }
+        }
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('lessonMenu');
+            const badge = document.querySelector('.now-playing-pill');
+            if (!menu || !badge) return;
+            if (!menu.contains(event.target) && !badge.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+    </script>
+    {% endif %}
+
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <div class="brand-mark">LOGO</div>
+                <div class="brand-caption">Слот под фирменный знак</div>
+            </div>
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link">📋 Планы</a>
+            </nav>
+            <div class="nav-actions">
+                <div class="brand-caption">icon slot</div>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <section class="glass-panel form-hero">
+            <div>
+                <p class="hero-eyebrow">форма ученика</p>
+                <h1 class="hero-title">{{ title }}</h1>
+            </div>
+        </section>
+
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            
+            <section class="form-section">
+                <div class="form-section-title">📋 Основная информация</div>
+                <div class="form-grid">
+                    <div class="neo-field">
+                        {{ form.name.label(class='neo-label') }}
+                        {{ form.name(class='neo-input', placeholder='Петя') }}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Полное имя ученика</small>
+                    </div>
+                    
+                    <div class="neo-field">
+                        {{ form.platform_id.label(class='neo-label') }}
+                        {{ form.platform_id(class='neo-input', placeholder='Морковная чайка 53...') }}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Уникальный идентификатор на платформе (опционально)</small>
+                    </div>
+                    
+                    <div class="neo-field">
+                        {{ form.category.label(class='neo-label') }}
+                        {{ form.category(class='neo-select') }}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Категория ученика для удобной организации</small>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="form-section">
+                <div class="form-section-title">🎯 Цели и сроки</div>
+                <div class="form-grid">
+                    <div class="neo-field">
+                        {{ form.target_score.label(class='neo-label') }}
+                        {{ form.target_score(class='neo-input', placeholder='85') }}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Целевой балл ЕГЭ (0-100)</small>
+                    </div>
+                    
+                    <div class="neo-field">
+                        {{ form.deadline.label(class='neo-label') }}
+                        {{ form.deadline(class='neo-input', placeholder='Июнь 2025') }}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">К какому сроку нужно достичь цели</small>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="form-section">
+                <div class="form-section-title">📊 Диагностика и оценка</div>
+                <div class="form-grid">
+                    <div class="neo-field">
+                        {{ form.diagnostic_level.label(class='neo-label') }}
+                        {{ form.diagnostic_level(class='neo-input', placeholder='60-70 баллов') }}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Уровень знаний на основе диагностики</small>
+                    </div>
+                    
+                    <div class="neo-field">
+                        {{ form.overall_rating.label(class='neo-label') }}
+                        {{ form.overall_rating(class='neo-input', placeholder='7/10' or 'Хорошо') }}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Общая оценка ученика (цифра или текст)</small>
+                    </div>
+                    
+                    <div class="neo-field form-grid-full">
+                        {{ form.preferences.label(class='neo-label') }}
+                        {{ form.preferences(class='neo-input', placeholder='Предпочитает теорию с примерами, любит практику...', rows=3) }}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Как ученик предпочитает решать задачи</small>
+                    </div>
+                    
+                    <div class="neo-field form-grid-full">
+                        {{ form.strengths.label(class='neo-label') }}
+                        {{ form.strengths(class='neo-input', placeholder='Отлично разбирается в алгоритмах...', rows=3) }}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Наиболее сильная сторона ученика</small>
+                    </div>
+                    
+                    <div class="neo-field form-grid-full">
+                        {{ form.weaknesses.label(class='neo-label') }}
+                        {{ form.weaknesses(class='neo-input', placeholder='Проблемы с логикой, нужна практика...', rows=3) }}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Наиболее слабая сторона ученика</small>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="form-section">
+                <div class="form-section-title">📝 Описание</div>
+                <div class="form-grid">
+                    <div class="neo-field form-grid-full">
+                        {{ form.description.label(class='neo-label') }}
+                        {{ form.description(class='neo-input', placeholder='Мотивированный ученик, хорошо усваивает материал...', rows=4) }}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Краткое текстовое описание ученика</small>
+                    </div>
+                    
+                    <div class="neo-field form-grid-full">
+                        {{ form.notes.label(class='neo-label') }}
+                        {{ form.notes(class='neo-input', placeholder='Дополнительные заметки...', rows=5) }}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Любые дополнительные заметки</small>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="form-section">
+                <div class="form-actions" style="display: flex; gap: 1em; justify-content: flex-end; margin-top: 0;">
+                    {{ form.submit(class='neo-button accent') }}
+                    <a href="{{ url_for('dashboard') }}" class="neo-button ghost">Отмена</a>
+                </div>
+            </section>
+        </form>
+    </div>
+    
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+</body>
+</html>

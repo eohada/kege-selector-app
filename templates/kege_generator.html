@@ -1,0 +1,202 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор КЕГЭ · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
+    {% set is_homework = (assignment_type == 'homework') %}
+    {% set mode_label = 'домашнего задания' if is_homework else 'классной работы' %}
+    {% set banner_icon = '📝' if is_homework else '🏫' %}
+    {% set mode_class = 'generator-mode--homework' if is_homework else 'generator-mode--classwork' %}
+
+    {% if active_lesson %}
+    <div class="now-playing-pill" onclick="toggleLessonMenu()">
+        🎧 Урок идет: {{ active_student.name }}
+    </div>
+    <div class="now-playing-panel" id="lessonMenu">
+        <div class="hero-eyebrow">текущий урок</div>
+        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
+        {% if active_lesson.topic %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
+        {% endif %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
+        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
+        <div class="hero-actions" style="margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+                <button type="submit" class="neo-button accent">✅ Завершить</button>
+            </form>
+            <a href="{{ url_for('student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <div class="brand-mark">LOGO</div>
+                <div class="brand-caption">Слот под фирменный знак</div>
+            </div>
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link active">💻 Генератор</a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link">📋 Планы</a>
+            </nav>
+            <div class="nav-actions">
+                <div class="brand-caption">icon slot</div>
+            </div>
+        </header>
+
+        <section class="glass-panel generator-hero">
+            <div>
+                <p class="hero-eyebrow">генератор заданий</p>
+                <h1 class="hero-title">Чёрный неон подбирает свежие варианты.</h1>
+                <p class="hero-subtitle">
+                    Система бережно отслеживает историю принятых и пропущенных задач, чтобы выдавать
+                    только релевантные карточки. Выбери тип задания, укажи лимит и мы подготовим набор
+                    для {{ 'домашнего задания' if is_homework else 'классной работы' }}.
+                </p>
+                <div class="hero-actions">
+                    <span class="hero-eyebrow" style="margin-bottom: 0;">режим работы</span>
+                    <span style="font-size: 1.1rem; font-weight: 600; color: var(--accent-1);">
+                        {{ 'Домашка без повторов' if is_homework else 'Классная работа в потоке' }}
+                    </span>
+                </div>
+            </div>
+            <div class="generator-context">
+                <div>
+                    <p class="hero-eyebrow">что уже известно</p>
+                    <div class="hero-metric-value" style="font-size: 1.4rem;">
+                        {{ 'Нет привязки к уроку' if not lesson else 'Урок #' ~ lesson.lesson_id }}
+                    </div>
+                </div>
+                <div>
+                    <p class="hero-eyebrow">следующий шаг</p>
+                    <p style="margin: 0; color: var(--text-muted);">
+                        Заполни форму ниже, чтобы получить новую подборку и зафиксировать историю изученных задач.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        {% if lesson and student %}
+        <section class="glass-panel generator-mode {{ mode_class }}">
+            <div class="generator-mode__icon">{{ banner_icon }}</div>
+            <div style="flex: 1;">
+                <div class="generator-mode__title">Режим {{ mode_label }}</div>
+                <div style="color: var(--text-primary);">
+                    <strong>Ученик:</strong> {{ student.name }}
+                    {% if lesson.lesson_date %}
+                    · <strong>Урок:</strong> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
+                    {% endif %}
+                    {% if lesson.topic %}
+                    · <strong>Тема:</strong> {{ lesson.topic }}
+                    {% endif %}
+                </div>
+                <div class="generator-mode__hint">
+                    {{ '💡 Все выбранные карточки попадут в ДЗ и скроются из будущих выдач.' if is_homework else '💡 Карточки добавляются в классную работу и не повторяются в последующем ДЗ.' }}
+                </div>
+            </div>
+            <a href="{{ url_for('student_profile', student_id=student.student_id) }}" class="neo-button ghost">
+                ← К профилю
+            </a>
+        </section>
+        {% endif %}
+
+        <div class="generator-layout">
+            <section class="glass-panel generator-panel">
+                <h2>Сформировать подборку</h2>
+                <p>Выбери тип задания, лимит карточек и при необходимости включи пропущенные задачи.</p>
+                <form method="POST"
+                      action="{{ url_for('kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator', assignment_type=assignment_type) }}"
+                      class="generator-form-grid">
+                    {{ selection_form.hidden_tag() }}
+                    <div class="neo-field">
+                        {{ selection_form.task_type.label(class_='neo-label') }}
+                        {{ selection_form.task_type(class_='neo-select') }}
+                    </div>
+                    <div class="neo-field">
+                        {{ selection_form.limit_count.label(class_='neo-label') }}
+                        {{ selection_form.limit_count(class_='neo-input', placeholder='Например, 5') }}
+                    </div>
+                    <label class="neo-checkbox">
+                        {{ selection_form.use_skipped(class_='neo-checkbox-input') }}
+                        <span>{{ selection_form.use_skipped.label.text }}</span>
+                    </label>
+                    <p class="generator-note">
+                        Если опция включена, в выборку попадут задачи, которые уже пропускались ранее, но ещё не были решены.
+                    </p>
+                    {{ selection_form.submit(class_='neo-button accent') }}
+                </form>
+            </section>
+
+            <section class="glass-panel generator-panel">
+                <h3>История подборок</h3>
+                <p>Отслеживай, какие задания уже шли ученикам, и возвращай пропущенные при необходимости.</p>
+                <div class="generator-links">
+                    <a href="{{ url_for('show_accepted') }}" class="neo-button accent">✓ Принятые задания</a>
+                    <a href="{{ url_for('show_skipped') }}" class="neo-button ghost">⊘ Пропущенные задания</a>
+                </div>
+                <p class="generator-note">
+                    Принятые карточки исключаются из всех будущих подборок. Пропущенные можно вернуть через просмотр и выбор нового статуса.
+                </p>
+            </section>
+
+            <section class="glass-panel generator-panel">
+                <h3>Сброс истории</h3>
+                <p>Полное или частичное очищение истории использования задач, если текущий пул оказался исчерпан.</p>
+                <form method="POST"
+                      action="{{ url_for('kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator', assignment_type=assignment_type) }}"
+                      class="generator-form-grid generator-reset">
+                    {{ reset_form.hidden_tag() }}
+                    <div class="neo-field">
+                        {{ reset_form.task_type_reset.label(class_='neo-label') }}
+                        {{ reset_form.task_type_reset(class_='neo-select') }}
+                    </div>
+                    <div class="neo-field">
+                        {{ reset_form.reset_type.label(class_='neo-label') }}
+                        {{ reset_form.reset_type(class_='neo-select') }}
+                    </div>
+                    {{ reset_form.reset_submit(class_='neo-button danger') }}
+                </form>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        function toggleLessonMenu() {
+            const menu = document.getElementById('lessonMenu');
+            if (menu) {
+                menu.classList.toggle('active');
+            }
+        }
+
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('lessonMenu');
+            const badge = document.querySelector('.now-playing-pill');
+            if (!menu || !badge) return;
+            if (!menu.contains(event.target) && !badge.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+    </script>
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+</body>
+</html>

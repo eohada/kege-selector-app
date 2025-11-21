@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Пропущенные задания{% if task_type %}: Задание {{ task_type }}{% endif %}</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
+    <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
+    <style>
+        /* Навигация */
+        .nav-bar {
+            display: flex;
+            gap: 1em;
+            margin-bottom: 2em;
+            padding: 1em;
+            background: linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(147, 51, 234, 0.2);
+        }
+        
+        .nav-bar a {
+            padding: 0.8em 1.5em;
+            background: rgba(20, 20, 30, 0.6);
+            color: #c084fc;
+            text-decoration: none;
+            border-radius: 12px;
+            border: 2px solid rgba(147, 51, 234, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+        }
+        
+        .nav-bar a:hover {
+            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(168, 85, 247, 0.6);
+        }
+        
+        .nav-bar a.active {
+            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    {% include '_active_lesson_banner.html' %}
+    
+    <div class="container">
+        <div class="nav-bar">
+            <a href="{{ url_for('dashboard') }}">👥 Ученики</a>
+            <a href="{{ url_for('kege_generator') }}" class="active">💻 Генератор КЕГЭ</a>
+        </div>
+
+        <h1>⊘ Пропущенные задания{% if task_type %}: Задание {{ task_type }}{% endif %} ({{ tasks|length }} шт.)</h1>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        
+        <div class="filter-section">
+            <label for="task-type-filter"><strong>Фильтр по номеру задания:</strong></label>
+            <select id="task-type-filter" onchange="filterByTaskType(this.value)">
+                <option value="">Все задания</option>
+                {% for i in range(1, 28) %}
+                    <option value="{{ i }}" {% if task_type == i %}selected{% endif %}>Задание {{ i }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="select-all">
+            <label>
+                <input type="checkbox" id="select-all-checkbox">
+                Выбрать все задания
+            </label>
+            <div style="margin-top: 0.5em;">
+                <button class="btn btn-accept" data-bulk-action="accept">Принять выбранные</button>
+                <button class="btn btn-blacklist" data-bulk-action="blacklist">В черный список</button>
+            </div>
+        </div>
+
+        {% for task in tasks %}
+        <div class="task" data-task-id="{{ task.task_id }}">
+            <div class="task-header">
+                <input type="checkbox" class="task-checkbox" value="{{ task.task_id }}" id="task-{{ task.task_id }}">
+                <label for="task-{{ task.task_id }}">
+                    <b>№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b> | 
+                    <a href="{{ task.source_url }}" target="_blank" title="Открыть в новой вкладке">Источник (URL)</a>
+                    <span class="skipped-badge">ПРОПУЩЕНО</span>
+                </label>
+            </div>
+            
+            <div class="task-content">
+                {{ task.content_html | safe }}
+            </div>
+            
+            {% if task.attached_files %}
+            <div class="attached-files">
+                <h4>Прикрепленные файлы:</h4>
+                <ul class="file-list">
+                    {% set files = task.attached_files | from_json %}
+                    {% for file in files %}
+                    <li>
+                        <a href="{{ file.url }}" target="_blank" class="file-link" download>
+                            {{ file.name }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            
+            <div class="task-actions">
+                <button class="btn btn-accept" data-task-id="{{ task.task_id }}" data-action="accept">✓ Принять (удалить из пропущенных)</button>
+                <button class="btn btn-blacklist" data-task-id="{{ task.task_id }}" data-action="blacklist">✗ В черный список</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            renderMathInElement(document.body, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\(', right: '\\)', display: false},
+                    {left: '\\[', right: '\\]', display: true}
+                ],
+                throwOnError: false,
+                trust: true
+            });
+            
+            const selectAllCheckbox = document.getElementById('select-all-checkbox');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function() {
+                    toggleAllTasks();
+                });
+            }
+            
+            document.querySelectorAll('.task-actions .btn-accept, .task-actions .btn-blacklist').forEach(button => {
+                button.addEventListener('click', function() {
+                    const taskId = parseInt(this.getAttribute('data-task-id'));
+                    const action = this.getAttribute('data-action');
+                    taskAction(taskId, action);
+                });
+            });
+            
+            document.querySelectorAll('[data-bulk-action]').forEach(button => {
+                button.addEventListener('click', function() {
+                    const action = this.getAttribute('data-bulk-action');
+                    bulkAction(action);
+                });
+            });
+        });
+        
+        function taskAction(taskId, action) {
+            const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+            const buttons = taskElement.querySelectorAll('.btn');
+            buttons.forEach(btn => btn.disabled = true);
+            
+            fetch('{{ url_for("task_action") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: action,
+                    task_ids: [taskId]
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    taskElement.style.opacity = '0.5';
+                    taskElement.style.transition = 'opacity 0.3s';
+                    setTimeout(() => {
+                        taskElement.remove();
+                        if (document.querySelectorAll('.task').length === 0) {
+                            window.location.href = '{{ url_for("kege_generator") }}';
+                        }
+                    }, 500);
+                    alert(data.message);
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                    buttons.forEach(btn => btn.disabled = false);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ошибка при выполнении действия');
+                buttons.forEach(btn => btn.disabled = false);
+            });
+        }
+        
+        function toggleAllTasks() {
+            const selectAll = document.getElementById('select-all-checkbox');
+            const checkboxes = document.querySelectorAll('.task-checkbox');
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        }
+        
+        function bulkAction(action) {
+            const checked = Array.from(document.querySelectorAll('.task-checkbox:checked'));
+            if (checked.length === 0) {
+                alert('Выберите хотя бы одно задание');
+                return;
+            }
+            
+            const taskIds = checked.map(cb => parseInt(cb.value));
+            const actionNames = {
+                'accept': 'принять',
+                'blacklist': 'добавить в черный список'
+            };
+            
+            if (!confirm(`Вы уверены, что хотите ${actionNames[action]} ${taskIds.length} заданий?`)) {
+                return;
+            }
+            
+            fetch('{{ url_for("task_action") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: action,
+                    task_ids: taskIds
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    checked.forEach(cb => {
+                        const taskElement = cb.closest('.task');
+                        taskElement.style.opacity = '0.5';
+                        setTimeout(() => taskElement.remove(), 300);
+                    });
+                    alert(data.message);
+                    
+                    // Проверяем, остались ли задания
+                    setTimeout(() => {
+                        if (document.querySelectorAll('.task').length === 0) {
+                            window.location.href = '{{ url_for("kege_generator") }}';
+                        }
+                    }, 500);
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ошибка при выполнении действия');
+            });
+        }
+        
+        // Функция фильтрации по типу задания
+        function filterByTaskType(taskType) {
+            if (taskType === '') {
+                // Показать все задания
+                window.location.href = '{{ url_for("show_skipped") }}';
+            } else {
+                // Показать задания конкретного типа
+                window.location.href = '{{ url_for("show_skipped") }}?task_type=' + taskType;
+            }
+        }
+    </script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+</body>
+</html>
+

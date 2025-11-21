@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ 'Домашнее задание' if assignment_type == 'homework' else 'Классная работа' }} - {{ student.name }}</title>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    
+    <style>
+        .homework-hero {
+            margin-bottom: 2rem;
+        }
+        
+        .homework-header {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .homework-header h1 {
+            font-size: 2em;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+        
+        .homework-info {
+            color: var(--text-muted);
+            line-height: 1.8;
+        }
+        
+        .homework-info strong {
+            color: var(--accent-1);
+        }
+        
+        .homework-hint {
+            display: block;
+            margin-top: 1em;
+            padding: 0.8em 1em;
+            background: rgba(23, 96, 216, 0.12);
+            border-left: 3px solid var(--accent-2);
+            border-radius: var(--radius-sm);
+            color: var(--accent-2);
+            font-weight: 600;
+        }
+        
+        .task-card {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+        
+        .task-card:hover {
+            border-color: var(--accent-1);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-soft);
+        }
+        
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--stroke-1);
+        }
+        
+        .task-number {
+            font-size: 1.5em;
+            font-weight: 800;
+            color: var(--accent-1);
+            margin-bottom: 0.3em;
+        }
+        
+        .task-site-id {
+            font-size: 0.9em;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        
+        .task-actions {
+            display: flex;
+            gap: 0.8em;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .task-content {
+            line-height: 1.8;
+            font-size: 1.05em;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+        }
+        
+        .task-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: var(--radius-sm);
+            margin: 1em 0;
+        }
+        
+        .task-content table {
+            border-collapse: collapse;
+            margin: 1em 0;
+            width: 100%;
+        }
+        
+        .task-content td, .task-content th {
+            border: 1px solid var(--stroke-1);
+            padding: 0.5em;
+        }
+        
+        .attached-files {
+            background: rgba(23, 96, 216, 0.12);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .attached-files h4 {
+            color: var(--accent-2);
+            margin-bottom: 0.5em;
+            font-weight: 700;
+        }
+        
+        .file-list {
+            list-style: none;
+        }
+        
+        .file-link {
+            color: var(--accent-2);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .file-link:hover {
+            color: var(--accent-2-strong);
+            text-decoration: underline;
+        }
+        
+        .answer-section {
+            background: rgba(0, 254, 202, 0.12);
+            border: 1px solid var(--stroke-1);
+            border-left: 3px solid var(--success);
+            border-radius: var(--radius-sm);
+            padding: 1.2rem;
+            margin-top: 1.5rem;
+        }
+        
+        .answer-label {
+            font-weight: 700;
+            color: var(--success);
+            font-size: 1.1em;
+            margin-bottom: 0.8em;
+            display: block;
+        }
+        
+        .answer-input {
+            width: 100%;
+            padding: 0.8em;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 1em;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s ease;
+        }
+        
+        .answer-input:focus {
+            outline: none;
+            border-color: var(--success);
+            box-shadow: 0 0 0 3px rgba(0, 254, 202, 0.2);
+        }
+        
+        .answer-input::placeholder {
+            color: var(--text-muted);
+        }
+        
+        .result-panel {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .result-panel h3 {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+        }
+        
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+        
+        .result-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5em;
+        }
+        
+        .result-field label {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .result-field input,
+        .result-field textarea {
+            padding: 0.8em;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 1em;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+        
+        .result-field input:focus,
+        .result-field textarea:focus {
+            outline: none;
+            border-color: var(--accent-1);
+            box-shadow: 0 0 0 3px rgba(0, 198, 164, 0.2);
+        }
+        
+        .result-field textarea {
+            min-height: 140px;
+            resize: vertical;
+        }
+        
+        .auto-check-panel {
+            margin-top: 2.5rem;
+            padding: 2rem;
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-left: 3px solid var(--accent-2);
+            border-radius: var(--radius-lg);
+        }
+        
+        .auto-check-panel h3 {
+            color: var(--accent-2);
+            margin-bottom: 0.5em;
+            font-weight: 700;
+        }
+        
+        .auto-check-panel p {
+            color: var(--text-muted);
+            margin-bottom: 1em;
+        }
+        
+        .auto-check-panel code {
+            background: var(--surface-2);
+            padding: 0.2em 0.5em;
+            border-radius: 4px;
+            color: var(--accent-1);
+            font-family: 'Courier New', monospace;
+        }
+        
+        .auto-check-panel textarea {
+            width: 100%;
+            min-height: 120px;
+            margin: 1em 0;
+            padding: 1em;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--stroke-1);
+            background: var(--surface-2);
+            color: var(--text-primary);
+            font-size: 1em;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .auto-check-panel textarea:focus {
+            outline: none;
+            border-color: var(--accent-2);
+            box-shadow: 0 0 0 3px rgba(23, 96, 216, 0.2);
+        }
+        
+        .auto-check-result {
+            margin-top: 1em;
+            padding: 1em 1.2em;
+            border-radius: var(--radius-sm);
+            font-size: 0.95em;
+            display: flex;
+            justify-content: space-between;
+            gap: 1em;
+        }
+        
+        .auto-check-result.correct {
+            background: rgba(0, 254, 202, 0.12);
+            border-left: 3px solid var(--success);
+            color: var(--success);
+        }
+        
+        .auto-check-result.incorrect {
+            background: rgba(255, 108, 145, 0.12);
+            border-left: 3px solid var(--danger);
+            color: var(--danger);
+        }
+        
+        .homework-actions {
+            display: flex;
+            gap: 1em;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 2em;
+        }
+    </style>
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}" data-csrf-token="{{ csrf_token() if csrf_token else '' }}">
+    {% set is_homework = assignment_type == 'homework' %}
+    {% set assignment_title = 'Домашнее задание' if is_homework else 'Классная работа' %}
+    {% set assignment_icon = '📝' if is_homework else '🏫' %}
+    {% set assignment_hint = 'Задания, собранные здесь, попадут в домашнее задание и сохранятся для проверки.' if is_homework else 'Эти задания используются прямо на уроке и также исключаются из будущего ДЗ.' %}
+    
+    {% if active_lesson %}
+    <div class="now-playing-pill" onclick="toggleLessonMenu()">
+        🎧 Урок идет: {{ active_student.name }}
+    </div>
+    <div class="now-playing-panel" id="lessonMenu">
+        <div class="hero-eyebrow">текущий урок</div>
+        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
+        {% if active_lesson.topic %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
+        {% endif %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
+        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
+        <div class="hero-actions" style="margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+                <button type="submit" class="neo-button accent">✅ Завершить</button>
+            </form>
+            <a href="{{ url_for('student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+        </div>
+    </div>
+    <script>
+        function toggleLessonMenu() {
+            const menu = document.getElementById('lessonMenu');
+            if (menu) {
+                menu.classList.toggle('active');
+            }
+        }
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('lessonMenu');
+            const badge = document.querySelector('.now-playing-pill');
+            if (!menu || !badge) return;
+            if (!menu.contains(event.target) && !badge.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+    </script>
+    {% endif %}
+
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <div class="brand-mark">LOGO</div>
+                <div class="brand-caption">Слот под фирменный знак</div>
+            </div>
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link">📋 Планы</a>
+            </nav>
+            <div class="nav-actions">
+                <div class="brand-caption">icon slot</div>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <section class="glass-panel homework-hero">
+            <div>
+                <p class="hero-eyebrow">{{ assignment_title.lower() }}</p>
+                <h1 class="hero-title">{{ assignment_icon }} {{ assignment_title }}</h1>
+                <p class="hero-subtitle">{{ student.name }}</p>
+            </div>
+        </section>
+
+        <section class="glass-panel homework-header">
+            <div class="homework-info">
+                {% if lesson.lesson_date %}
+                <div><strong>Дата урока:</strong> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
+                {% endif %}
+                {% if lesson.topic %}
+                <div><strong>Тема:</strong> {{ lesson.topic }}</div>
+                {% endif %}
+                <div><strong>Всего заданий:</strong> {{ homework_tasks|length }} шт.</div>
+                <span class="homework-hint">{{ assignment_hint }}</span>
+            </div>
+            <div class="hero-actions" style="margin-top: 1.5rem;">
+                <a href="{{ url_for('student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Профиль ученика</a>
+            </div>
+        </section>
+
+        {% if homework_tasks %}
+        <form method="POST" action="{{ url_for('lesson_homework_save', lesson_id=lesson.lesson_id) }}">
+            {% for hw_task in homework_tasks %}
+            <section class="task-card" data-task-id="{{ hw_task.lesson_task_id }}">
+                <div class="task-header">
+                    <div>
+                        <div class="task-number">Задание {{ hw_task.task.task_number }}</div>
+                        <div class="task-site-id">№ {{ hw_task.task.site_task_id }}</div>
+                    </div>
+                    <div class="task-actions">
+                        <a href="{{ hw_task.task.source_url }}" target="_blank" class="neo-button outline">
+                            🔗 Открыть на сайте
+                        </a>
+                        <button type="button"
+                                class="neo-button danger"
+                                data-delete-task="{{ hw_task.lesson_task_id }}"
+                                data-assignment-type="{{ assignment_type }}">🗑️ Удалить</button>
+                    </div>
+                </div>
+                
+                <div class="task-content">
+                    {{ hw_task.task.content_html|safe }}
+                </div>
+                
+                {% if hw_task.task.attached_files %}
+                <div class="attached-files">
+                    <h4>📎 Прикрепленные файлы:</h4>
+                    <ul class="file-list">
+                        {% set files = hw_task.task.attached_files | from_json %}
+                        {% for file in files %}
+                        <li>
+                            <a href="{{ file.url }}" target="_blank" class="file-link" download>
+                                {{ file.name }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                {% if is_homework %}
+                <div class="answer-section">
+                    <label class="answer-label" for="answer_{{ hw_task.lesson_task_id }}">
+                        ✅ Правильный ответ:
+                    </label>
+                    <input type="text" 
+                           class="answer-input" 
+                           id="answer_{{ hw_task.lesson_task_id }}" 
+                           name="answer_{{ hw_task.lesson_task_id }}" 
+                           value="{{ hw_task.student_answer or '' }}"
+                           placeholder="Введи правильный ответ для проверки...">
+                </div>
+                {% endif %}
+
+                {% if is_homework and hw_task.student_submission %}
+                <div class="auto-check-result {{ 'correct' if hw_task.submission_correct else 'incorrect' }}">
+                    <div><strong>Ответ ученика:</strong> {{ hw_task.student_submission }}</div>
+                    <div><strong>Статус:</strong> {{ '✅ Верно' if hw_task.submission_correct else '❌ Неверно' }}</div>
+                </div>
+                {% endif %}
+            </section>
+            {% endfor %}
+            
+            {% if is_homework %}
+            <section class="result-panel">
+                <h3>📊 Результат выполнения ДЗ</h3>
+                <div class="result-grid">
+                    <div class="result-field">
+                        <label for="homework_result_percent">Процент выполнения (%)</label>
+                        <input type="number"
+                               id="homework_result_percent"
+                               name="homework_result_percent"
+                               min="0"
+                               max="100"
+                               step="1"
+                               value="{{ lesson.homework_result_percent if lesson.homework_result_percent is not none else '' }}">
+                    </div>
+                    <div class="result-field" style="grid-column: span 2;">
+                        <label for="homework_result_notes">Заметки по проверке</label>
+                        <textarea id="homework_result_notes"
+                                  name="homework_result_notes"
+                                  placeholder="Отметь сильные стороны, типичные ошибки, договоренности...">{{ lesson.homework_result_notes or '' }}</textarea>
+                    </div>
+                </div>
+            </section>
+            {% endif %}
+            
+            <div class="homework-actions">
+                {% if is_homework %}
+                <button type="submit" class="neo-button accent">💾 Сохранить все ответы</button>
+                {% endif %}
+                <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button accent">
+                    ➕ Добавить ещё задания
+                </a>
+                {% if is_homework %}
+                <a href="{{ url_for('lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline">
+                    📄 Экспорт в Obsidian
+                </a>
+                {% endif %}
+            </div>
+        </form>
+        {% for hw_task in homework_tasks %}
+        <form id="delete-form-{{ hw_task.lesson_task_id }}" method="POST" action="{{ url_for('lesson_homework_delete_task', lesson_id=lesson.lesson_id, lesson_task_id=hw_task.lesson_task_id, assignment_type=assignment_type) }}" style="display: none;">
+            {% if csrf_token %}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% endif %}
+        </form>
+        {% endfor %}
+
+        {% if is_homework %}
+        <section class="auto-check-panel">
+            <h3>⚙️ Автопроверка по ответам</h3>
+            <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p>
+            <form method="POST" action="{{ url_for('lesson_homework_auto_check', lesson_id=lesson.lesson_id) }}">
+                <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea>
+                <div style="margin-top: 1rem;">
+                    <button type="submit" class="neo-button accent">🤖 Проверить автоматически</button>
+                </div>
+            </form>
+        </section>
+        {% endif %}
+        {% else %}
+        <section class="glass-panel">
+            <div class="empty-state">
+                <div style="font-size: 4rem; margin-bottom: 0.6rem;">{{ assignment_icon }}</div>
+                <h3>Заданий пока нет</h3>
+                <p style="color: var(--text-muted);">{{ 'Добавь задания через генератор в режиме ДЗ' if is_homework else 'Добавь задания через генератор в режиме классной работы' }}</p>
+                <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button accent" style="margin-top: 2em;">
+                    ➕ Добавить задания
+                </a>
+            </div>
+        </section>
+        {% endif %}
+    </div>
+    
+    <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+    <script>
+        const CSRF_TOKEN = document.body.dataset.csrfToken || (document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '');
+
+        async function handleDeleteTask(taskId, assignmentType) {
+            if (!confirm('Удалить это задание из ДЗ?')) {
+                return;
+            }
+
+            const form = document.getElementById(`delete-form-${taskId}`);
+            if (!form) {
+                if (window.toast) {
+                    toast.error('Форма удаления не найдена');
+                } else {
+                    alert('Форма удаления не найдена');
+                }
+                return;
+            }
+
+            try {
+                const formData = new FormData(form);
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': CSRF_TOKEN || formData.get('csrf_token') || ''
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+                if (taskElement) {
+                    taskElement.style.opacity = '0.5';
+                    setTimeout(() => taskElement.remove(), 300);
+                }
+
+                if (window.toast) {
+                    toast.success('Задание удалено');
+                } else {
+                    alert('Задание удалено');
+                }
+
+                setTimeout(() => {
+                    if (!document.querySelector('.task-card')) {
+                        window.location.reload();
+                    }
+                }, 400);
+            } catch (error) {
+                console.error('Ошибка удаления задания:', error);
+                if (window.toast) {
+                    toast.error('Ошибка при удалении задания');
+                } else {
+                    alert('Ошибка при удалении задания');
+                }
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('[data-delete-task]').forEach(button => {
+                button.addEventListener('click', function() {
+                    const taskId = parseInt(this.getAttribute('data-delete-task'), 10);
+                    const assignmentTypeValue = this.getAttribute('data-assignment-type') || 'homework';
+                    handleDeleteTask(taskId, assignmentTypeValue);
+                });
+            });
+
+            // Инициализация KaTeX для рендеринга формул
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false,
+                    strict: false
+                });
+            }
+        });
+    </script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+</body>
+</html>
