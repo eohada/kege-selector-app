@@ -1977,28 +1977,45 @@ def generate_results():
     student = None
     student_id = None
     if lesson_id:
-        lesson = Lesson.query.get_or_404(lesson_id)
-        student = lesson.student
-        student_id = student.student_id
+        try:
+            lesson = Lesson.query.get_or_404(lesson_id)
+            if lesson:
+                student = lesson.student
+                if student:
+                    student_id = student.student_id
+        except Exception as e:
+            logger.error(f"Error getting lesson {lesson_id}: {e}")
+            flash('Ошибка при получении урока', 'error')
+            return redirect(url_for('kege_generator', assignment_type=assignment_type))
 
-    tasks = get_unique_tasks(task_type, limit_count, use_skipped=use_skipped, student_id=student_id)
+    try:
+        tasks = get_unique_tasks(task_type, limit_count, use_skipped=use_skipped, student_id=student_id)
+    except Exception as e:
+        logger.error(f"Error getting unique tasks: {e}", exc_info=True)
+        flash(f'Ошибка при генерации заданий: {str(e)}', 'error')
+        if lesson_id:
+            return redirect(url_for('kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
+        return redirect(url_for('kege_generator', assignment_type=assignment_type))
     
     # Логируем генерацию заданий
-    audit_logger.log(
-        action='generate_tasks',
-        entity='Generator',
-        entity_id=lesson_id,
-        status='success' if tasks else 'warning',
-        metadata={
-            'task_type': task_type,
-            'limit_count': limit_count,
-            'use_skipped': use_skipped,
-            'tasks_generated': len(tasks) if tasks else 0,
-            'assignment_type': assignment_type,
-            'student_id': student_id,
-            'student_name': student.name if student and hasattr(student, 'name') else None
-        }
-    )
+    try:
+        audit_logger.log(
+            action='generate_tasks',
+            entity='Generator',
+            entity_id=lesson_id,
+            status='success' if tasks else 'warning',
+            metadata={
+                'task_type': task_type,
+                'limit_count': limit_count,
+                'use_skipped': use_skipped,
+                'tasks_generated': len(tasks) if tasks else 0,
+                'assignment_type': assignment_type,
+                'student_id': student_id,
+                'student_name': student.name if student and hasattr(student, 'name') else None
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error logging task generation: {e}", exc_info=True)
 
     if not tasks:
         if use_skipped:
