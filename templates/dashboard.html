@@ -138,7 +138,8 @@
                         <option value="">Все категории</option>
                         <option value="ЕГЭ" {% if category_filter == 'ЕГЭ' %}selected{% endif %}>ЕГЭ</option>
                         <option value="ОГЭ" {% if category_filter == 'ОГЭ' %}selected{% endif %}>ОГЭ</option>
-                        <option value="ЛЕВЕЛАП" {% if category_filter == 'ЛЕВЕЛАП' %}selected{% endif %}>ЛЕВЕЛАП</option>
+                        <option value="ЛЕВЕЛАП" {% if category_filter == 'ЛЕВЕЛАП' %}selected{% endif %}>ЛЕВЕЛАП</option> <!-- Фильтр по направлению ЛЕВЕЛАП -->
+                        <option value="ПРОГРАММИРОВАНИЕ" {% if category_filter == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option> <!-- Фильтр по направлению программирования -->
                     </select>
                 </div>
                 <div class="filters-actions">
@@ -184,6 +185,10 @@
                 <strong>{{ levelup_students }}</strong>
                 <span>ЛЕВЕЛАП</span>
             </article>
+            <article class="stat-card"> <!-- Карточка по направлению программирования -->
+                <strong>{{ programming_students }}</strong> <!-- Количество учеников по программированию -->
+                <span>ПРОГРАММИРОВАНИЕ</span> <!-- Подпись карточки -->
+            </article>
             {% endif %}
         </section>
 
@@ -221,6 +226,9 @@
                     {% if student.category %}
                     <span class="student-tag student-category">{{ student.category }}</span>
                     {% endif %}
+                    {% if student.school_class %}
+                    <span class="student-tag student-class">{{ student.school_class }} класс</span> {# Отображаем класс ученика прямо на карточке #}
+                    {% endif %}
                     {% if student.description %}
                     <p class="hero-subtitle" style="font-size: 0.9rem;">
                         "{{ student.description[:130] }}{% if student.description|length > 130 %}…{% endif %}"
@@ -232,6 +240,9 @@
                         {% endif %}
                         {% if student.deadline %}
                         <div>⏰ Срок: {{ student.deadline }}</div>
+                        {% endif %}
+                        {% if student.school_class %}
+                        <div>🏫 Класс: {{ student.school_class }}</div> {# Информация о текущем классе #}
                         {% endif %}
                         {% if student.diagnostic_level %}
                         <div>📊 Диагностика: <span>{{ student.diagnostic_level }}</span></div>

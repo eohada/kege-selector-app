@@ -114,6 +114,8 @@ def ensure_schema_columns():
                 student_columns = {col['name'] for col in inspector.get_columns(students_table)}
                 if 'category' not in student_columns:
                     db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN category TEXT'))
+                if 'school_class' not in student_columns:
+                    db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN school_class INTEGER'))  # Добавляем колонку для хранения класса
 
                 indexes = {idx['name'] for idx in inspector.get_indexes(students_table)}
                 if 'idx_students_category' not in indexes:
@@ -419,6 +421,20 @@ def validate_platform_id_unique(form, field):
             if existing_student:
                 raise ValidationError('Ученик с таким ID на платформе уже существует!')
 
+def normalize_school_class(raw_value):  # Приводим входное значение класса к целому или None
+    try:  # Перехватываем любые ошибки преобразования
+        if raw_value in (None, '', '0', 0):  # Пустые или нулевые значения не сохраняем
+            return None  # Возвращаем None если класс не указан
+        class_int = int(raw_value)  # Пробуем привести значение к целому числу
+        if 1 <= class_int <= 11:  # Ограничиваем диапазон значениями от 1 до 11
+            return class_int  # Возвращаем корректный класс
+    except (ValueError, TypeError):  # Ловим ошибки конвертации
+        return None  # В случае ошибки возвращаем None
+    return None  # Для любых неподдерживаемых значений возвращаем None
+
+SCHOOL_CLASS_CHOICES = [(0, 'Не указан')]  # Базовый вариант для отсутствующего класса
+SCHOOL_CLASS_CHOICES += [(i, f'{i} класс') for i in range(1, 12)]  # Добавляем варианты классов с 1 по 11
+
 class StudentForm(FlaskForm):
     name = StringField('Имя ученика', validators=[DataRequired()])
     platform_id = StringField('ID на платформе', validators=[Optional(), validate_platform_id_unique])
@@ -438,8 +454,10 @@ class StudentForm(FlaskForm):
         ('', 'Не выбрано'),
         ('ЕГЭ', 'ЕГЭ'),
         ('ОГЭ', 'ОГЭ'),
-        ('ЛЕВЕЛАП', 'ЛЕВЕЛАП')
+        ('ЛЕВЕЛАП', 'ЛЕВЕЛАП'),
+        ('ПРОГРАММИРОВАНИЕ', 'ПРОГРАММИРОВАНИЕ')  # Новая категория для программирования
     ], default='', validators=[Optional()])
+    school_class = SelectField('Класс', choices=SCHOOL_CLASS_CHOICES, default=0, coerce=int, validators=[Optional()])  # Выпадающий список с классами 1-11
 
     submit = SubmitField('Сохранить')
 
@@ -503,6 +521,7 @@ def dashboard():
     ege_students = Student.query.filter_by(is_active=True, category='ЕГЭ').count() if category_filter != 'ЕГЭ' else len(students)
     oge_students = Student.query.filter_by(is_active=True, category='ОГЭ').count() if category_filter != 'ОГЭ' else 0
     levelup_students = Student.query.filter_by(is_active=True, category='ЛЕВЕЛАП').count() if category_filter != 'ЛЕВЕЛАП' else 0
+    programming_students = Student.query.filter_by(is_active=True, category='ПРОГРАММИРОВАНИЕ').count() if category_filter != 'ПРОГРАММИРОВАНИЕ' else 0  # Считаем учеников направления программирования
 
     return render_template('dashboard.html',
                          students=students,
@@ -515,7 +534,8 @@ def dashboard():
                          planned_lessons=planned_lessons,
                          ege_students=ege_students,
                          oge_students=oge_students,
-                         levelup_students=levelup_students)
+                         levelup_students=levelup_students,
+                         programming_students=programming_students)  # Передаем счетчик программистов в шаблон
 
 @app.route('/debug-db')
 def debug_db():
@@ -597,6 +617,7 @@ def student_new():
                     flash(f'Ученик с ID "{platform_id}" уже существует! (Ученик: {existing_student.name})', 'error')
                     return render_template('student_form.html', form=form, title='Добавить ученика', is_new=True)
 
+            school_class_value = normalize_school_class(form.school_class.data)  # Приводим выбранный класс к допустимому значению
             student = Student(
                 name=form.name.data,
                 platform_id=platform_id,
@@ -609,7 +630,8 @@ def student_new():
                 overall_rating=form.overall_rating.data,
                 description=form.description.data,
                 notes=form.notes.data,
-                category=form.category.data if form.category.data else None
+                category=form.category.data if form.category.data else None,
+                school_class=school_class_value  # Сохраняем номер класса ученика
             )
             db.session.add(student)
             db.session.commit()
@@ -623,7 +645,8 @@ def student_new():
                 metadata={
                     'name': student.name,
                     'platform_id': student.platform_id,
-                    'category': student.category
+                    'category': student.category,
+                    'school_class': student.school_class  # Добавляем класс в метаданные
                 }
             )
             
@@ -656,6 +679,8 @@ def student_edit(student_id):
     student = Student.query.get_or_404(student_id)
     form = StudentForm(obj=student)
     form._student_id = student_id
+    if request.method == 'GET':  # При первичном открытии формы выставляем значение класса
+        form.school_class.data = student.school_class if student.school_class else 0  # Показываем актуальный класс или "Не указан"
 
     if form.validate_on_submit():
         try:
@@ -680,6 +705,7 @@ def student_edit(student_id):
             student.description = form.description.data
             student.notes = form.notes.data
             student.category = form.category.data if form.category.data else None
+            student.school_class = normalize_school_class(form.school_class.data)  # Обновляем сохраненный класс ученика
             db.session.commit()
             
             # Логируем обновление ученика
@@ -691,7 +717,8 @@ def student_edit(student_id):
                 metadata={
                     'name': student.name,
                     'platform_id': student.platform_id,
-                    'category': student.category
+                    'category': student.category,
+                    'school_class': student.school_class  # Добавляем данные о классе в логи
                 }
             )
             
@@ -1446,6 +1473,7 @@ def api_student_create():
             if existing_student:
                 return jsonify({'success': False, 'error': f'Ученик с ID "{platform_id}" уже существует! (Ученик: {existing_student.name})'}), 400
 
+        school_class_value = normalize_school_class(data.get('school_class'))  # Приводим класс из API к допустимому значению
         student = Student(
             name=data.get('name'),
             platform_id=platform_id,
@@ -1458,7 +1486,8 @@ def api_student_create():
             overall_rating=data.get('overall_rating'),
             description=data.get('description'),
             notes=data.get('notes'),
-            category=data.get('category') if data.get('category') else None
+            category=data.get('category') if data.get('category') else None,
+            school_class=school_class_value  # Сохраняем класс, переданный через API
         )
         db.session.add(student)
         db.session.commit()
@@ -1470,7 +1499,8 @@ def api_student_create():
                 'id': student.student_id,
                 'name': student.name,
                 'platform_id': student.platform_id,
-                'category': student.category
+                'category': student.category,
+                'school_class': student.school_class  # Возвращаем текущий класс в ответе API
             }
         }), 201
     except Exception as e:
@@ -1494,6 +1524,7 @@ def api_student_update(student_id):
             if existing_student and existing_student.student_id != student_id:
                 return jsonify({'success': False, 'error': f'Ученик с ID "{platform_id}" уже существует! (Ученик: {existing_student.name})'}), 400
 
+        school_class_value = normalize_school_class(data.get('school_class'))  # Приводим значение класса к корректному виду
         student.name = data.get('name')
         student.platform_id = platform_id
         student.target_score = int(data.get('target_score')) if data.get('target_score') else None
@@ -1506,6 +1537,7 @@ def api_student_update(student_id):
         student.description = data.get('description')
         student.notes = data.get('notes')
         student.category = data.get('category') if data.get('category') else None
+        student.school_class = school_class_value  # Сохраняем обновленный класс
 
         db.session.commit()
 
@@ -1516,7 +1548,8 @@ def api_student_update(student_id):
                 'id': student.student_id,
                 'name': student.name,
                 'platform_id': student.platform_id,
-                'category': student.category
+                'category': student.category,
+                'school_class': student.school_class  # Возвращаем обновленный класс
             }
         }), 200
     except Exception as e:
@@ -1644,7 +1677,7 @@ def schedule():
                 'student': lesson.student.name,
                 'student_id': lesson.student.student_id,
                 'subject': 'Информатика',
-                'grade': lesson.student.category or 'Не указано',
+                'grade': f"{lesson.student.school_class} класс" if lesson.student.school_class else (lesson.student.category or 'Не указано'),  # Отображаем класс, а при его отсутствии категорию
                 'status': status_text,
                 'status_code': lesson.status,
                 'day_index': day_index,
@@ -1720,7 +1753,7 @@ def schedule():
 
     students = Student.query.filter_by(is_active=True).order_by(Student.name).all()
     statuses = ['planned', 'in_progress', 'completed', 'cancelled']
-    categories = ['ЕГЭ', 'ОГЭ', 'ЛЕВЕЛАП']
+    categories = ['ЕГЭ', 'ОГЭ', 'ЛЕВЕЛАП', 'ПРОГРАММИРОВАНИЕ']  # Добавляем новую категорию для расписания
 
     return render_template(
         'schedule.html',
@@ -2275,7 +2308,7 @@ def export_data():
     try:
         logger.info('Начало экспорта данных')
         export_data = {
-            'students': [{'name': s.name, 'platform_id': s.platform_id, 'category': s.category, 'target_score': s.target_score, 'deadline': s.deadline, 'diagnostic_level': s.diagnostic_level, 'description': s.description, 'notes': s.notes, 'strengths': s.strengths, 'weaknesses': s.weaknesses, 'preferences': s.preferences, 'overall_rating': s.overall_rating} for s in Student.query.filter_by(is_active=True).all()],
+            'students': [{'name': s.name, 'platform_id': s.platform_id, 'category': s.category, 'target_score': s.target_score, 'deadline': s.deadline, 'diagnostic_level': s.diagnostic_level, 'description': s.description, 'notes': s.notes, 'strengths': s.strengths, 'weaknesses': s.weaknesses, 'preferences': s.preferences, 'overall_rating': s.overall_rating, 'school_class': s.school_class} for s in Student.query.filter_by(is_active=True).all()],  # Добавляем класс ученика в экспорт
             'lessons': [{'student_id': l.student_id, 'lesson_type': l.lesson_type, 'lesson_date': l.lesson_date.isoformat() if l.lesson_date else None, 'duration': l.duration, 'status': l.status, 'topic': l.topic, 'notes': l.notes, 'homework': l.homework, 'homework_status': l.homework_status, 'homework_result_percent': l.homework_result_percent, 'homework_result_notes': l.homework_result_notes} for l in Lesson.query.all()]
         }
         response = make_response(json.dumps(export_data, ensure_ascii=False, indent=2))
@@ -2328,7 +2361,7 @@ def import_data():
             for student_data in data['students']:
                 existing = Student.query.filter_by(name=student_data.get('name'), platform_id=student_data.get('platform_id')).first()
                 if not existing:
-                    student = Student(name=student_data.get('name'), platform_id=student_data.get('platform_id'), category=student_data.get('category'), target_score=student_data.get('target_score'), deadline=student_data.get('deadline'), diagnostic_level=student_data.get('diagnostic_level'), description=student_data.get('description'), notes=student_data.get('notes'), strengths=student_data.get('strengths'), weaknesses=student_data.get('weaknesses'), preferences=student_data.get('preferences'), overall_rating=student_data.get('overall_rating'), is_active=True)
+                    student = Student(name=student_data.get('name'), platform_id=student_data.get('platform_id'), category=student_data.get('category'), target_score=student_data.get('target_score'), deadline=student_data.get('deadline'), diagnostic_level=student_data.get('diagnostic_level'), description=student_data.get('description'), notes=student_data.get('notes'), strengths=student_data.get('strengths'), weaknesses=student_data.get('weaknesses'), preferences=student_data.get('preferences'), overall_rating=student_data.get('overall_rating'), school_class=normalize_school_class(student_data.get('school_class')), is_active=True)  # Поддерживаем импорт класса
                     db.session.add(student)
                     imported_students += 1
         if 'lessons' in data:

@@ -345,6 +345,9 @@
                     {% if student.category %}
                     <span class="student-tag student-category">{{ student.category }}</span>
                     {% endif %}
+                    {% if student.school_class %}
+                    <span class="student-tag student-class">{{ student.school_class }} класс</span> {# Тег с текущим классом ученика #}
+                    {% endif %}
                     {% if student.platform_id %}
                     <span style="color: var(--text-muted); font-size: 0.9em;">
                         ID: <span style="color: var(--accent-1); font-weight: 600;">{{ student.platform_id }}</span>
@@ -392,6 +395,11 @@
         <section class="glass-panel">
             <p class="hero-eyebrow">основные данные</p>
             <div class="profile-details" style="margin-top: 1rem;">
+                {% if student.school_class %}
+                <div class="profile-detail"> <!-- Контейнер для отображения класса -->
+                    🏫 Класс: <span>{{ student.school_class }} класс</span> {# Показываем школьный класс ученика #}
+                </div>
+                {% endif %}
                 {% if student.target_score %}
                 <div class="profile-detail">
                     🎯 Целевой балл: <span>{{ student.target_score }}</span>

@@ -484,6 +484,12 @@ body::after {
     color: var(--text-muted);
 }
 
+.student-tag.student-class { /* Индивидуальный стиль для бейджа класса */
+    border-color: var(--accent-2); /* Делаем акцент цветом границы */
+    color: var(--accent-2); /* Красим текст в цвет акцента */
+    background: rgba(31, 123, 255, 0.12); /* Добавляем легкий фон для заметности */
+}
+
 .student-insights {
     display: grid;
     gap: 0.4rem;

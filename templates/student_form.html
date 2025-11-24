@@ -158,6 +158,11 @@
                         {{ form.category(class='neo-select') }}
                         <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Категория ученика для удобной организации</small>
                     </div>
+                    <div class="neo-field"> <!-- Поле выбора класса -->
+                        {{ form.school_class.label(class='neo-label') }} {# Подпись селекта класса #}
+                        {{ form.school_class(class='neo-select') }} {# Выпадающий список с классами #}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Укажи текущий школьный класс (1-11)</small> <!-- Подсказка по заполнению -->
+                    </div>
                 </div>
             </section>
             
