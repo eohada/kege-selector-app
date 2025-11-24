@@ -37,6 +37,10 @@
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 1.5rem;
         }
+
+        .form-grid.form-grid-compact {
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
         
         .form-grid-full {
             grid-column: 1 / -1;
@@ -197,7 +201,7 @@
             
             <section class="form-section">
                 <div class="form-section-title">📊 Диагностика и оценка</div>
-                <div class="form-grid">
+                <div class="form-grid form-grid-compact">
                     <div class="neo-field">
                         {{ form.diagnostic_level.label(class='neo-label') }}
                         {{ form.diagnostic_level(class='neo-input', placeholder='60-70 баллов') }}

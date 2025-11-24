@@ -241,7 +241,7 @@
         <form method="POST">
             {{ form.hidden_tag() }}
             
-            <section class="form-section">
+            <section class="form-section" data-section="homework">
                 <div class="form-section-title">📅 Основная информация</div>
                 <div class="form-grid">
                     <div class="neo-field">
@@ -407,6 +407,37 @@
     </div>
     
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => { // Прячем блок ДЗ для вводного урока
+            const typeSelect = document.getElementById('lesson_type');
+            const homeworkSection = document.querySelector('[data-section="homework"]');
+            const homeworkField = document.getElementById('homework');
+            const homeworkStatusField = document.getElementById('homework_status');
+            if (!typeSelect || !homeworkSection || !homeworkStatusField) return;
+
+            let lastAssignedStatus = homeworkStatusField.value !== 'not_assigned'
+                ? homeworkStatusField.value
+                : 'assigned_not_done';
+
+            function syncHomeworkVisibility() {
+                const isIntroductory = typeSelect.value === 'introductory';
+                homeworkSection.style.display = isIntroductory ? 'none' : '';
+
+                if (isIntroductory) {
+                    if (homeworkField) homeworkField.value = '';
+                    if (homeworkStatusField.value !== 'not_assigned') {
+                        lastAssignedStatus = homeworkStatusField.value;
+                    }
+                    homeworkStatusField.value = 'not_assigned';
+                } else if (homeworkStatusField.value === 'not_assigned') {
+                    homeworkStatusField.value = lastAssignedStatus;
+                }
+            }
+
+            syncHomeworkVisibility();
+            typeSelect.addEventListener('change', syncHomeworkVisibility);
+        });
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof renderMathInElement !== 'undefined') {

@@ -96,7 +96,7 @@ class Lesson(db.Model):
     topic = db.Column(db.String(300), nullable=True)
     notes = db.Column(db.Text, nullable=True)
     homework = db.Column(db.Text, nullable=True)
-    homework_status = db.Column(db.String(50), default='pending')
+    homework_status = db.Column(db.String(50), default='not_assigned')
     homework_result_percent = db.Column(db.Integer, nullable=True)
     homework_result_notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=moscow_now)

@@ -518,11 +518,10 @@
                     
                     <div class="lesson-info">
                         <div>⏱️ {{ lesson.duration }} минут</div>
-                        {% if lesson.homework_status %}
+                        {% if lesson.lesson_type != 'introductory' and lesson.homework_status %}
                         <div>
-                            {% if lesson.homework_status == 'pending' %}📋 ДЗ задано{% endif %}
-                            {% if lesson.homework_status == 'completed' %}✅ ДЗ выполнено{% endif %}
-                            {% if lesson.homework_status == 'not_done' %}📋 ДЗ задано · ❌ Не выполнено{% endif %}
+                            {% if lesson.homework_status == 'assigned_done' %}✅ ДЗ выполнено{% endif %}
+                            {% if lesson.homework_status == 'assigned_not_done' %}📋 ДЗ задано · ❌ Не выполнено{% endif %}
                             {% if lesson.homework_status == 'not_assigned' %}➖ ДЗ не задано{% endif %}
                         </div>
                         {% endif %}

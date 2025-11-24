@@ -131,6 +131,10 @@ def ensure_schema_columns():
             if 'idx_lessons_lesson_date' not in lesson_indexes:
                 db.session.execute(text(f'CREATE INDEX idx_lessons_lesson_date ON "{lessons_table}"(lesson_date)'))
 
+            # Обновляем старые статусы ДЗ на новые значения, если таблица уже существовала
+            db.session.execute(text(f'UPDATE "{lessons_table}" SET homework_status = \'assigned_done\' WHERE homework_status = \'completed\''))  # Старый completed -> assigned_done
+            db.session.execute(text(f'UPDATE "{lessons_table}" SET homework_status = \'assigned_not_done\' WHERE homework_status IN (\'pending\', \'not_done\')'))  # pending/not_done -> assigned_not_done
+
             # Проверяем и обновляем AuditLog таблицу
             audit_log_table = 'AuditLog' if 'AuditLog' in table_names else ('auditlog' if 'auditlog' in table_names else None)
             if audit_log_table:
@@ -436,6 +440,29 @@ def normalize_school_class(raw_value):  # Приводим входное зна
         return None  # В случае ошибки возвращаем None
     return None  # Для любых неподдерживаемых значений возвращаем None
 
+def ensure_introductory_without_homework(lesson_form):  # Гарантируем, что вводный урок остается без ДЗ
+    if getattr(lesson_form, 'lesson_type', None) and lesson_form.lesson_type.data == 'introductory':
+        lesson_form.homework.data = ''
+        lesson_form.homework_status.data = 'not_assigned'
+
+HOMEWORK_STATUS_VALUES = {'assigned_done', 'assigned_not_done', 'not_assigned'}
+LEGACY_HOMEWORK_STATUS_MAP = {
+    'completed': 'assigned_done',
+    'pending': 'assigned_not_done',
+    'not_done': 'assigned_not_done',
+    'not_assigned': 'not_assigned'
+}
+
+def normalize_homework_status_value(raw_status):  # Преобразуем устаревшие статусы к актуальным
+    if raw_status is None:
+        return 'not_assigned'
+    if isinstance(raw_status, str):
+        normalized = raw_status.strip()
+    else:
+        normalized = raw_status
+    normalized = LEGACY_HOMEWORK_STATUS_MAP.get(normalized, normalized)
+    return normalized if normalized in HOMEWORK_STATUS_VALUES else 'not_assigned'
+
 SCHOOL_CLASS_CHOICES = [(0, 'Не указан')]  # Базовый вариант для отсутствующего класса
 SCHOOL_CLASS_CHOICES += [(i, f'{i} класс') for i in range(1, 12)]  # Добавляем варианты классов с 1 по 11
 
@@ -485,11 +512,10 @@ class LessonForm(FlaskForm):
     notes = TextAreaField('Заметки о уроке', validators=[Optional()])
     homework = TextAreaField('Домашнее задание', validators=[Optional()])
     homework_status = SelectField('Статус ДЗ', choices=[
-        ('pending', 'Задано'),
-        ('completed', 'Выполнено'),
-        ('not_done', 'Не выполнено'),
+        ('assigned_done', 'Задано, выполнено'),
+        ('assigned_not_done', 'Задано, не выполнено'),
         ('not_assigned', 'Не задано')
-    ], default='pending', validators=[DataRequired()])
+    ], default='assigned_not_done', validators=[DataRequired()])
     submit = SubmitField('Сохранить')
 
 @app.route('/')
@@ -816,6 +842,7 @@ def lesson_new(student_id):
     form = LessonForm()
 
     if form.validate_on_submit():
+        ensure_introductory_without_homework(form)  # Вводный урок не содержит ДЗ
         lesson = Lesson(
             student_id=student_id,
             lesson_type=form.lesson_type.data,
@@ -857,6 +884,7 @@ def lesson_edit(lesson_id):
     form = LessonForm(obj=lesson)
 
     if form.validate_on_submit():
+        ensure_introductory_without_homework(form)  # Чистим ДЗ, если переключились на вводный урок
         lesson.lesson_type = form.lesson_type.data
         lesson.lesson_date = form.lesson_date.data
         lesson.duration = form.duration.data
@@ -919,7 +947,7 @@ def lesson_delete(lesson_id):
     )
     
     flash('Урок удален.', 'success')
-    return redirect(url_for('schedule'))
+    return redirect(url_for('student_profile', student_id=student_id))
 
 @app.route('/student/<int:student_id>/lesson-mode')
 def lesson_mode(student_id):
@@ -1047,13 +1075,14 @@ def lesson_homework_save(lesson_id):
     result_notes = request.form.get('homework_result_notes', '').strip()
     lesson.homework_result_notes = result_notes or None
 
-    if lesson.homework_result_percent is not None or lesson.homework_result_notes:
-        lesson.homework_status = 'completed'
+    if lesson.lesson_type == 'introductory':
+        lesson.homework_status = 'not_assigned'
+    elif lesson.homework_result_percent is not None or lesson.homework_result_notes:
+        lesson.homework_status = 'assigned_done'
     elif homework_tasks:
-        lesson.homework_status = 'not_done'
+        lesson.homework_status = 'assigned_not_done'
     else:
-        if lesson.homework_status != 'not_assigned':
-            lesson.homework_status = 'pending'
+        lesson.homework_status = 'not_assigned'
 
     db.session.commit()
     
@@ -1165,10 +1194,10 @@ def lesson_homework_auto_check(lesson_id):
     else:
         lesson.homework_result_notes = summary
 
-    if total_tasks == 0:
+    if lesson.lesson_type == 'introductory' or total_tasks == 0:
         lesson.homework_status = 'not_assigned'
     else:
-        lesson.homework_status = 'completed' if correct_count == total_tasks else 'not_done'
+        lesson.homework_status = 'assigned_done' if correct_count == total_tasks else 'assigned_not_done'
 
     db.session.commit()
     
@@ -1622,16 +1651,23 @@ def api_lesson_create():
         except Exception as e:
             return jsonify({'success': False, 'error': f'Неверный формат даты: {str(e)}'}), 400
 
+        lesson_type = data.get('lesson_type', 'regular')
+        homework_status_value = normalize_homework_status_value(data.get('homework_status'))
+        homework_value = data.get('homework')
+        if lesson_type == 'introductory':
+            homework_value = ''
+            homework_status_value = 'not_assigned'
+
         lesson = Lesson(
             student_id=int(data.get('student_id')),
-            lesson_type=data.get('lesson_type', 'regular'),
+            lesson_type=lesson_type,
             lesson_date=lesson_date,
             duration=int(data.get('duration', 60)),
             status=data.get('status', 'planned'),
             topic=data.get('topic'),
             notes=data.get('notes'),
-            homework=data.get('homework'),
-            homework_status=data.get('homework_status', 'pending')
+            homework=homework_value,
+            homework_status=homework_status_value
         )
         db.session.add(lesson)
         db.session.commit()
@@ -2138,7 +2174,7 @@ def task_action():
                         lesson_task = LessonTask(lesson_id=lesson_id, task_id=task_id, assignment_type=assignment_type)
                         db.session.add(lesson_task)
                 if assignment_type == 'homework':
-                    lesson.homework_status = 'not_done'
+                    lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
                     lesson.homework_result_percent = None
                     lesson.homework_result_notes = None
                 try:
@@ -2395,7 +2431,13 @@ def import_data():
         if 'lessons' in data:
             for lesson_data in data['lessons']:
                 if Student.query.get(lesson_data.get('student_id')):
-                    lesson = Lesson(student_id=lesson_data.get('student_id'), lesson_type=lesson_data.get('lesson_type'), lesson_date=datetime.fromisoformat(lesson_data['lesson_date']) if lesson_data.get('lesson_date') else moscow_now(), duration=lesson_data.get('duration', 60), status=lesson_data.get('status', 'planned'), topic=lesson_data.get('topic'), notes=lesson_data.get('notes'), homework=lesson_data.get('homework'), homework_status=lesson_data.get('homework_status', 'pending'), homework_result_percent=lesson_data.get('homework_result_percent'), homework_result_notes=lesson_data.get('homework_result_notes'))
+                    imported_type = lesson_data.get('lesson_type')
+                    imported_homework_status = normalize_homework_status_value(lesson_data.get('homework_status'))
+                    imported_homework = lesson_data.get('homework')
+                    if imported_type == 'introductory':
+                        imported_homework = ''
+                        imported_homework_status = 'not_assigned'
+                    lesson = Lesson(student_id=lesson_data.get('student_id'), lesson_type=imported_type, lesson_date=datetime.fromisoformat(lesson_data['lesson_date']) if lesson_data.get('lesson_date') else moscow_now(), duration=lesson_data.get('duration', 60), status=lesson_data.get('status', 'planned'), topic=lesson_data.get('topic'), notes=lesson_data.get('notes'), homework=imported_homework, homework_status=imported_homework_status, homework_result_percent=lesson_data.get('homework_result_percent'), homework_result_notes=lesson_data.get('homework_result_notes'))
                     db.session.add(lesson)
                     imported_lessons += 1
         db.session.commit()
