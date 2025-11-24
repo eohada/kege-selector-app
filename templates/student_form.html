@@ -87,15 +87,35 @@
                 <div class="brand-mark">LOGO</div>
                 <div class="brand-caption">Слот под фирменный знак</div>
             </div>
-            <nav class="nav-links">
-                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
-                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
-                <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
-                <a href="{{ url_for('update_plans') }}" class="nav-link">📋 Планы</a>
+            <nav class="nav-links"> <!-- Навигация по разделам -->
+                <a href="{{ url_for('dashboard') }}" class="nav-link"> <!-- Ссылка на учеников -->
+                    <span class="nav-link-content"> <!-- Контейнер иконки и подписи -->
+                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon"> <!-- Иконка учащихся -->
+                        <span class="nav-link-label">Ученики</span> <!-- Подпись раздела -->
+                    </span>
+                </a>
+                <a href="{{ url_for('schedule') }}" class="nav-link"> <!-- Ссылка на расписание -->
+                    <span class="nav-link-content"> <!-- Контейнер расписания -->
+                        <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon"> <!-- Иконка расписания -->
+                        <span class="nav-link-label">Расписание</span> <!-- Подпись раздела -->
+                    </span>
+                </a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link"> <!-- Ссылка на генератор -->
+                    <span class="nav-link-content"> <!-- Контейнер генератора -->
+                        <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon"> <!-- Иконка генератора -->
+                        <span class="nav-link-label">Генератор</span> <!-- Подпись раздела -->
+                    </span>
+                </a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link"> <!-- Ссылка на планы -->
+                    <span class="nav-link-content"> <!-- Контейнер планов -->
+                        <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Планы" class="nav-link-icon"> <!-- Иконка планов -->
+                        <span class="nav-link-label">Планы</span> <!-- Подпись раздела -->
+                    </span>
+                </a>
             </nav>
             <div class="nav-actions">
                 <div class="brand-caption icon-slot"> <!-- Контейнер иконки раздела Ученики -->
-                    <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="brand-icon"> <!-- Белая иконка учеников -->
+                    <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="brand-icon brand-icon--students"> <!-- Белая иконка учеников увеличенного размера -->
                 </div>
             </div>
         </header>
