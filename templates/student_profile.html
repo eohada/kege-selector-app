@@ -400,15 +400,29 @@
                     🏫 Класс: <span>{{ student.school_class }} класс</span> {# Показываем школьный класс ученика #}
                 </div>
                 {% endif %}
-                {% if student.target_score %}
-                <div class="profile-detail">
-                    🎯 Целевой балл: <span>{{ student.target_score }}</span>
+                {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.goal_text %}
+                <div class="profile-detail"> <!-- Текстовая цель для программирования -->
+                    🎯 Цель: <span>{{ student.goal_text }}</span>
+                </div>
+                {% elif student.category == 'ЛЕВЕЛАП' and student.goal_text %}
+                <div class="profile-detail"> <!-- Текстовая цель для ЛЕВЕЛАП -->
+                    🎯 Цель: <span>{{ student.goal_text }}</span>
+                </div>
+                {% elif student.target_score %}
+                <div class="profile-detail"> <!-- Числовая цель для ЕГЭ/ОГЭ -->
+                    {% if student.category == 'ОГЭ' %}🎯 Целевая оценка{% else %}🎯 Целевой балл{% endif %}: <span>{{ student.target_score }}</span>
                 </div>
                 {% endif %}
                 
-                {% if student.deadline %}
-                <div class="profile-detail">
+                {% if student.category != 'ПРОГРАММИРОВАНИЕ' and student.deadline %}
+                <div class="profile-detail"> <!-- Сроки для категорий с дедлайном -->
                     ⏰ Сроки: <span>{{ student.deadline }}</span>
+                </div>
+                {% endif %}
+                
+                {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.programming_language %}
+                <div class="profile-detail"> <!-- Язык программирования -->
+                    💻 Язык: <span>{{ student.programming_language }}</span>
                 </div>
                 {% endif %}
                 

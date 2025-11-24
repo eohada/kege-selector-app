@@ -116,6 +116,10 @@ def ensure_schema_columns():
                     db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN category TEXT'))
                 if 'school_class' not in student_columns:
                     db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN school_class INTEGER'))  # Добавляем колонку для хранения класса
+                if 'goal_text' not in student_columns:
+                    db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN goal_text TEXT'))  # Храним текстовую формулировку цели
+                if 'programming_language' not in student_columns:
+                    db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN programming_language VARCHAR(100)'))  # Храним выбранный язык программирования
 
                 indexes = {idx['name'] for idx in inspector.get_indexes(students_table)}
                 if 'idx_students_category' not in indexes:
@@ -441,6 +445,8 @@ class StudentForm(FlaskForm):
 
     target_score = IntegerField('Целевой балл', validators=[Optional(), NumberRange(min=0, max=100)])
     deadline = StringField('Сроки', validators=[Optional()])
+    goal_text = TextAreaField('Цель (текст)', validators=[Optional()])  # Храним произвольную цель для категорий без баллов
+    programming_language = StringField('Язык программирования', validators=[Optional()])  # Информация о предпочитаемом языке
 
     diagnostic_level = StringField('Уровень знаний (диагностика)', validators=[Optional()])
     preferences = TextAreaField('Предпочтения в решении', validators=[Optional()])
@@ -618,6 +624,8 @@ def student_new():
                     return render_template('student_form.html', form=form, title='Добавить ученика', is_new=True)
 
             school_class_value = normalize_school_class(form.school_class.data)  # Приводим выбранный класс к допустимому значению
+            goal_text_value = form.goal_text.data.strip() if form.goal_text.data else None  # Забираем текстовую цель
+            programming_language_value = form.programming_language.data.strip() if form.programming_language.data else None  # Забираем язык программирования
             student = Student(
                 name=form.name.data,
                 platform_id=platform_id,
@@ -631,7 +639,9 @@ def student_new():
                 description=form.description.data,
                 notes=form.notes.data,
                 category=form.category.data if form.category.data else None,
-                school_class=school_class_value  # Сохраняем номер класса ученика
+                school_class=school_class_value,  # Сохраняем номер класса ученика
+                goal_text=goal_text_value,  # Сохраняем текстовую цель
+                programming_language=programming_language_value  # Сохраняем язык программирования
             )
             db.session.add(student)
             db.session.commit()
@@ -646,7 +656,9 @@ def student_new():
                     'name': student.name,
                     'platform_id': student.platform_id,
                     'category': student.category,
-                    'school_class': student.school_class  # Добавляем класс в метаданные
+                    'school_class': student.school_class,  # Добавляем класс в метаданные
+                    'goal_text': student.goal_text,  # Фиксируем текстовую цель для истории
+                    'programming_language': student.programming_language  # Фиксируем выбранный язык программирования
                 }
             )
             
@@ -706,6 +718,8 @@ def student_edit(student_id):
             student.notes = form.notes.data
             student.category = form.category.data if form.category.data else None
             student.school_class = normalize_school_class(form.school_class.data)  # Обновляем сохраненный класс ученика
+            student.goal_text = form.goal_text.data.strip() if form.goal_text.data else None  # Сохраняем текстовую цель
+            student.programming_language = form.programming_language.data.strip() if form.programming_language.data else None  # Сохраняем язык программирования
             db.session.commit()
             
             # Логируем обновление ученика
@@ -718,7 +732,9 @@ def student_edit(student_id):
                     'name': student.name,
                     'platform_id': student.platform_id,
                     'category': student.category,
-                    'school_class': student.school_class  # Добавляем данные о классе в логи
+                    'school_class': student.school_class,  # Добавляем данные о классе в логи
+                    'goal_text': student.goal_text,  # Фиксируем текстовую цель
+                    'programming_language': student.programming_language  # Фиксируем язык программирования
                 }
             )
             
@@ -1474,6 +1490,8 @@ def api_student_create():
                 return jsonify({'success': False, 'error': f'Ученик с ID "{platform_id}" уже существует! (Ученик: {existing_student.name})'}), 400
 
         school_class_value = normalize_school_class(data.get('school_class'))  # Приводим класс из API к допустимому значению
+        goal_text_value = data.get('goal_text').strip() if data.get('goal_text') else None  # Забираем текстовую цель из API
+        programming_language_value = data.get('programming_language').strip() if data.get('programming_language') else None  # Забираем язык программирования из API
         student = Student(
             name=data.get('name'),
             platform_id=platform_id,
@@ -1487,7 +1505,9 @@ def api_student_create():
             description=data.get('description'),
             notes=data.get('notes'),
             category=data.get('category') if data.get('category') else None,
-            school_class=school_class_value  # Сохраняем класс, переданный через API
+            school_class=school_class_value,  # Сохраняем класс, переданный через API
+            goal_text=goal_text_value,  # Сохраняем текстовую цель, полученную через API
+            programming_language=programming_language_value  # Сохраняем язык программирования
         )
         db.session.add(student)
         db.session.commit()
@@ -1500,7 +1520,9 @@ def api_student_create():
                 'name': student.name,
                 'platform_id': student.platform_id,
                 'category': student.category,
-                'school_class': student.school_class  # Возвращаем текущий класс в ответе API
+                'school_class': student.school_class,  # Возвращаем текущий класс в ответе API
+                'goal_text': student.goal_text,  # Возвращаем текстовую цель
+                'programming_language': student.programming_language  # Возвращаем язык программирования
             }
         }), 201
     except Exception as e:
@@ -1525,6 +1547,8 @@ def api_student_update(student_id):
                 return jsonify({'success': False, 'error': f'Ученик с ID "{platform_id}" уже существует! (Ученик: {existing_student.name})'}), 400
 
         school_class_value = normalize_school_class(data.get('school_class'))  # Приводим значение класса к корректному виду
+        goal_text_value = data.get('goal_text').strip() if data.get('goal_text') else None  # Забираем текстовую цель из API
+        programming_language_value = data.get('programming_language').strip() if data.get('programming_language') else None  # Забираем язык программирования из API
         student.name = data.get('name')
         student.platform_id = platform_id
         student.target_score = int(data.get('target_score')) if data.get('target_score') else None
@@ -1538,6 +1562,8 @@ def api_student_update(student_id):
         student.notes = data.get('notes')
         student.category = data.get('category') if data.get('category') else None
         student.school_class = school_class_value  # Сохраняем обновленный класс
+        student.goal_text = goal_text_value  # Сохраняем текстовую цель
+        student.programming_language = programming_language_value  # Сохраняем язык программирования
 
         db.session.commit()
 
@@ -1549,7 +1575,9 @@ def api_student_update(student_id):
                 'name': student.name,
                 'platform_id': student.platform_id,
                 'category': student.category,
-                'school_class': student.school_class  # Возвращаем обновленный класс
+                'school_class': student.school_class,  # Возвращаем обновленный класс
+                'goal_text': student.goal_text,  # Возвращаем текстовую цель
+                'programming_language': student.programming_language  # Возвращаем язык программирования
             }
         }), 200
     except Exception as e:
@@ -2308,7 +2336,7 @@ def export_data():
     try:
         logger.info('Начало экспорта данных')
         export_data = {
-            'students': [{'name': s.name, 'platform_id': s.platform_id, 'category': s.category, 'target_score': s.target_score, 'deadline': s.deadline, 'diagnostic_level': s.diagnostic_level, 'description': s.description, 'notes': s.notes, 'strengths': s.strengths, 'weaknesses': s.weaknesses, 'preferences': s.preferences, 'overall_rating': s.overall_rating, 'school_class': s.school_class} for s in Student.query.filter_by(is_active=True).all()],  # Добавляем класс ученика в экспорт
+            'students': [{'name': s.name, 'platform_id': s.platform_id, 'category': s.category, 'target_score': s.target_score, 'deadline': s.deadline, 'diagnostic_level': s.diagnostic_level, 'description': s.description, 'notes': s.notes, 'strengths': s.strengths, 'weaknesses': s.weaknesses, 'preferences': s.preferences, 'overall_rating': s.overall_rating, 'school_class': s.school_class, 'goal_text': s.goal_text, 'programming_language': s.programming_language} for s in Student.query.filter_by(is_active=True).all()],  # Добавляем данные по целям и языкам в экспорт
             'lessons': [{'student_id': l.student_id, 'lesson_type': l.lesson_type, 'lesson_date': l.lesson_date.isoformat() if l.lesson_date else None, 'duration': l.duration, 'status': l.status, 'topic': l.topic, 'notes': l.notes, 'homework': l.homework, 'homework_status': l.homework_status, 'homework_result_percent': l.homework_result_percent, 'homework_result_notes': l.homework_result_notes} for l in Lesson.query.all()]
         }
         response = make_response(json.dumps(export_data, ensure_ascii=False, indent=2))
@@ -2361,7 +2389,7 @@ def import_data():
             for student_data in data['students']:
                 existing = Student.query.filter_by(name=student_data.get('name'), platform_id=student_data.get('platform_id')).first()
                 if not existing:
-                    student = Student(name=student_data.get('name'), platform_id=student_data.get('platform_id'), category=student_data.get('category'), target_score=student_data.get('target_score'), deadline=student_data.get('deadline'), diagnostic_level=student_data.get('diagnostic_level'), description=student_data.get('description'), notes=student_data.get('notes'), strengths=student_data.get('strengths'), weaknesses=student_data.get('weaknesses'), preferences=student_data.get('preferences'), overall_rating=student_data.get('overall_rating'), school_class=normalize_school_class(student_data.get('school_class')), is_active=True)  # Поддерживаем импорт класса
+                    student = Student(name=student_data.get('name'), platform_id=student_data.get('platform_id'), category=student_data.get('category'), target_score=student_data.get('target_score'), deadline=student_data.get('deadline'), diagnostic_level=student_data.get('diagnostic_level'), description=student_data.get('description'), notes=student_data.get('notes'), strengths=student_data.get('strengths'), weaknesses=student_data.get('weaknesses'), preferences=student_data.get('preferences'), overall_rating=student_data.get('overall_rating'), school_class=normalize_school_class(student_data.get('school_class')), goal_text=student_data.get('goal_text'), programming_language=student_data.get('programming_language'), is_active=True)  # Поддерживаем импорт класса, целей и языков
                     db.session.add(student)
                     imported_students += 1
         if 'lessons' in data:

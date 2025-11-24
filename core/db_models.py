@@ -75,6 +75,8 @@ class Student(db.Model):
     description = db.Column(db.Text, nullable=True)
     notes = db.Column(db.Text, nullable=True)
     category = db.Column(db.String(50), nullable=True)
+    goal_text = db.Column(db.Text, nullable=True)  # Текстовая цель для программирования и ЛЕВЕЛАП
+    programming_language = db.Column(db.String(100), nullable=True)  # Основной язык программирования ученика
     school_class = db.Column(db.Integer, nullable=True)  # Храним школьный класс ученика (1-11 или None)
 
     created_at = db.Column(db.DateTime, default=moscow_now)

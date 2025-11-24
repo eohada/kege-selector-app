@@ -235,14 +235,21 @@
                     </p>
                     {% endif %}
                     <div class="student-insights">
-                        {% if student.target_score %}
-                        <div>🎯 Цель: {{ student.target_score }} баллов</div>
+                        {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.goal_text %}
+                        <div>🎯 Цель: {{ student.goal_text }}</div> <!-- Текстовая цель для программирования -->
+                        {% elif student.category == 'ЛЕВЕЛАП' and student.goal_text %}
+                        <div>🎯 Цель: {{ student.goal_text }}</div> <!-- Текстовая цель для ЛЕВЕЛАП -->
+                        {% elif student.target_score %}
+                        <div>🎯 {% if student.category == 'ОГЭ' %}Целевая оценка{% else %}Цель{% endif %}: {{ student.target_score }}{% if student.category != 'ОГЭ' %} баллов{% endif %}</div> <!-- Числовая цель -->
                         {% endif %}
-                        {% if student.deadline %}
-                        <div>⏰ Срок: {{ student.deadline }}</div>
+                        {% if student.category != 'ПРОГРАММИРОВАНИЕ' and student.deadline %}
+                        <div>⏰ Срок: {{ student.deadline }}</div> <!-- Срок достижения цели -->
                         {% endif %}
                         {% if student.school_class %}
                         <div>🏫 Класс: {{ student.school_class }}</div> {# Информация о текущем классе #}
+                        {% endif %}
+                        {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.programming_language %}
+                        <div>💻 Язык: {{ student.programming_language }}</div> <!-- Предпочитаемый язык программирования -->
                         {% endif %}
                         {% if student.diagnostic_level %}
                         <div>📊 Диагностика: <span>{{ student.diagnostic_level }}</span></div>
