@@ -45,16 +45,16 @@ body {
 }
 
 .icon-slot {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex; /* Центрируем иконку по горизонтали */
+    align-items: center; /* Выравниваем иконку по вертикали */
+    justify-content: center; /* Держим иконку по центру контейнера */
 }
 
 .brand-icon {
-    width: 32px;
-    height: 32px;
-    object-fit: contain;
-    display: block;
+    width: 40px; /* Делаем иконку крупнее */
+    height: 40px; /* Сохраняем пропорции по высоте */
+    object-fit: contain; /* Не искажаем оригинальное изображение */
+    display: block; /* Убираем лишние отступы как у inline-элемента */
 }
 
 body::before,
