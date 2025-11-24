@@ -44,6 +44,19 @@ body {
     position: relative;
 }
 
+.icon-slot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brand-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    display: block;
+}
+
 body::before,
 body::after {
     content: '';
