@@ -54,8 +54,18 @@ app.config['WTF_CSRF_TIME_LIMIT'] = None
 
 csrf = CSRFProtect(app)
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Настройка логирования: вывод в консоль и в файл
+log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logging.basicConfig(
+    level=logging.INFO,
+    format=log_format,
+    handlers=[
+        logging.StreamHandler(),  # Вывод в консоль
+        logging.FileHandler('app.log', encoding='utf-8')  # Вывод в файл app.log
+    ]
+)
 logger = logging.getLogger(__name__)
+logger.info("Логирование инициализировано. Логи также сохраняются в файл app.log")
 
 # Логируем информацию о БД после инициализации logger
 if database_url:
@@ -193,7 +203,25 @@ def identify_tester():
         if request.endpoint in ('static', 'favicon') or request.path.startswith('/static/'):
             return
 
-        tester_name = request.headers.get('X-Tester-Name')
+        # Получаем имя тестировщика из заголовка, декодируя если нужно
+        # HTTP заголовки должны содержать только ISO-8859-1 символы
+        # Если имя содержит не-ASCII символы, оно кодируется в base64
+        tester_name_raw = request.headers.get('X-Tester-Name')
+        tester_name_encoded = request.headers.get('X-Tester-Name-Encoded')
+        if tester_name_raw and tester_name_encoded == 'base64':
+            # Декодируем из base64
+            try:
+                import base64
+                import urllib.parse
+                # Декодируем base64
+                decoded_bytes = base64.b64decode(tester_name_raw)
+                # Декодируем URI компонент
+                tester_name = urllib.parse.unquote(decoded_bytes.decode('utf-8'))
+            except Exception as e:
+                logger.warning(f"Ошибка декодирования имени тестировщика: {e}")
+                tester_name = tester_name_raw
+        else:
+            tester_name = tester_name_raw
         tester_uuid = request.headers.get('X-Tester-UUID')
 
         # Если нет tester_id в сессии, ищем или создаем тестировщика
@@ -214,11 +242,11 @@ def identify_tester():
             if tester:
                 tester_id = tester.tester_id
                 # Обновляем last_seen
-                tester.last_seen = moscow_now()
+                # Убрано: обновление last_seen замедляет работу
                 # Обновляем имя если изменилось
                 if tester_name and tester_name != 'Anonymous' and tester.name != tester_name:
                     tester.name = tester_name
-                db.session.commit()
+                    db.session.commit()
             else:
                 # Создаем нового тестировщика только если есть имя (не Anonymous)
                 if tester_name and tester_name != 'Anonymous':
@@ -238,37 +266,39 @@ def identify_tester():
                     db.session.add(tester)
                     db.session.commit()
                 else:
-                    # Для анонимных не создаем тестировщика, но сохраняем временный ID в сессию
-                    tester_id = tester_uuid or str(uuid.uuid4())
+                    # Создаем тестировщика даже для анонимных, чтобы не нарушать внешний ключ в AuditLog
+                    if tester_uuid:
+                        tester_id = tester_uuid
+                    else:
+                        tester_id = str(uuid.uuid4())
+                    
+                    name_to_use = tester_name if tester_name else "Anonymous"
+                    tester = Tester(
+                        tester_id=tester_id,
+                        name=name_to_use,
+                        ip_address=request.remote_addr,
+                        user_agent=request.headers.get("User-Agent"),
+                        session_id=session.get("_id")
+                    )
+                    db.session.add(tester)
+                    db.session.commit()
             
             session['tester_id'] = tester_id
             session['tester_name'] = tester_name if tester_name else 'Anonymous'
         else:
             # Если tester_id уже есть в сессии, обновляем last_seen если тестировщик существует
+            # ОПТИМИЗАЦИЯ: Обновляем данные только если имя изменилось (убрано обновление last_seen при каждом запросе)
             tester_id = session.get('tester_id')
-            if tester_id:
+            # Убрано: обновление last_seen при каждом запросе замедляет работу
+            if tester_id and tester_name and tester_name != session.get('tester_name') and tester_name != 'Anonymous':
                 from core.db_models import Tester
                 tester = Tester.query.get(tester_id)
                 if tester:
-                    tester.last_seen = moscow_now()
-                    # Обновляем имя если изменилось
-                    if tester_name and tester_name != 'Anonymous' and tester.name != tester_name:
-                        tester.name = tester_name
-                    db.session.commit()
-
-        # Обновляем имя в сессии если изменилось
-        if tester_name and tester_name != session.get('tester_name'):
-            session['tester_name'] = tester_name
-            # Обновляем имя в БД если тестировщик существует
-            tester_id = session.get('tester_id')
-            if tester_id:
-                from core.db_models import Tester
-                tester = Tester.query.get(tester_id)
-                if tester and tester_name != 'Anonymous':
                     tester.name = tester_name
-                    tester.last_seen = moscow_now()
+                    # Убрано: обновление last_seen замедляет работу
                     db.session.commit()
-                    
+                session['tester_name'] = tester_name
+
     except Exception as e:
         logger.error(f"Error identifying tester: {e}", exc_info=True)
 
@@ -415,17 +445,18 @@ class ResetForm(FlaskForm):
     ], validators=[DataRequired()])
     reset_submit = SubmitField('Сбросить')
 
+class TaskSearchForm(FlaskForm):
+    task_id = StringField('ID задания', validators=[DataRequired()], render_kw={'placeholder': 'Введите ID задания (например, 23715)'})
+    search_submit = SubmitField('Найти и добавить')
+
 def validate_platform_id_unique(form, field):
-
+    """Валидатор для проверки уникальности platform_id при создании/редактировании ученика"""
     if field.data and field.data.strip():
-
         existing_student = Student.query.filter_by(platform_id=field.data.strip()).first()
-
         if hasattr(form, '_student_id') and form._student_id:
             if existing_student and existing_student.student_id != form._student_id:
                 raise ValidationError('Ученик с таким ID на платформе уже существует!')
         else:
-
             if existing_student:
                 raise ValidationError('Ученик с таким ID на платформе уже существует!')
 
@@ -500,6 +531,10 @@ class LessonForm(FlaskForm):
         ('exam', '✅ Проверочный урок'),
         ('introductory', '👋 Вводный урок')
     ], default='regular', validators=[DataRequired()])
+    timezone = SelectField('Часовой пояс', choices=[
+        ('moscow', '🕐 Московское время (МСК)'),
+        ('tomsk', '🕐 Томское время (ТОМСК)')
+    ], default='moscow', validators=[DataRequired()])
     lesson_date = DateTimeLocalField('Дата и время урока', format='%Y-%m-%dT%H:%M', validators=[DataRequired()])
     duration = IntegerField('Длительность (минуты)', default=60, validators=[DataRequired(), NumberRange(min=15, max=240)])
     status = SelectField('Статус', choices=[
@@ -518,12 +553,23 @@ class LessonForm(FlaskForm):
     ], default='assigned_not_done', validators=[DataRequired()])
     submit = SubmitField('Сохранить')
 
+@app.route('/index')
+@app.route('/home')
+def index():
+    """Главная страница с описанием платформы"""
+    return render_template('index.html')
+
 @app.route('/')
 def dashboard():
     search_query = request.args.get('search', '').strip()
     category_filter = request.args.get('category', '')
+    show_archive = request.args.get('show_archive', 'false').lower() == 'true'  # Параметр для просмотра архива
 
-    query = Student.query.filter_by(is_active=True)
+    # Выбираем активных или архивных учеников в зависимости от параметра
+    if show_archive:
+        query = Student.query.filter_by(is_active=False)
+    else:
+        query = Student.query.filter_by(is_active=True)
 
     if search_query:
         search_pattern = f'%{search_query}%'
@@ -546,20 +592,31 @@ def dashboard():
     pagination = query.order_by(Student.name).paginate(page=page, per_page=per_page, error_out=False)
     students = pagination.items
 
-    total_students = Student.query.filter_by(is_active=True).count()
+    # Статистика зависит от того, показываем ли мы архив
+    if show_archive:
+        total_students = Student.query.filter_by(is_active=False).count()
+        ege_students = Student.query.filter_by(is_active=False, category='ЕГЭ').count() if category_filter != 'ЕГЭ' else len([s for s in students if s.category == 'ЕГЭ'])
+        oge_students = Student.query.filter_by(is_active=False, category='ОГЭ').count() if category_filter != 'ОГЭ' else len([s for s in students if s.category == 'ОГЭ'])
+        levelup_students = Student.query.filter_by(is_active=False, category='ЛЕВЕЛАП').count() if category_filter != 'ЛЕВЕЛАП' else len([s for s in students if s.category == 'ЛЕВЕЛАП'])
+        programming_students = Student.query.filter_by(is_active=False, category='ПРОГРАММИРОВАНИЕ').count() if category_filter != 'ПРОГРАММИРОВАНИЕ' else len([s for s in students if s.category == 'ПРОГРАММИРОВАНИЕ'])
+    else:
+        total_students = Student.query.filter_by(is_active=True).count()
+        ege_students = Student.query.filter_by(is_active=True, category='ЕГЭ').count() if category_filter != 'ЕГЭ' else len([s for s in students if s.category == 'ЕГЭ'])
+        oge_students = Student.query.filter_by(is_active=True, category='ОГЭ').count() if category_filter != 'ОГЭ' else len([s for s in students if s.category == 'ОГЭ'])
+        levelup_students = Student.query.filter_by(is_active=True, category='ЛЕВЕЛАП').count() if category_filter != 'ЛЕВЕЛАП' else len([s for s in students if s.category == 'ЛЕВЕЛАП'])
+        programming_students = Student.query.filter_by(is_active=True, category='ПРОГРАММИРОВАНИЕ').count() if category_filter != 'ПРОГРАММИРОВАНИЕ' else len([s for s in students if s.category == 'ПРОГРАММИРОВАНИЕ'])
+    
     total_lessons = Lesson.query.count()
     completed_lessons = Lesson.query.filter_by(status='completed').count()
     planned_lessons = Lesson.query.filter_by(status='planned').count()
-    ege_students = Student.query.filter_by(is_active=True, category='ЕГЭ').count() if category_filter != 'ЕГЭ' else len(students)
-    oge_students = Student.query.filter_by(is_active=True, category='ОГЭ').count() if category_filter != 'ОГЭ' else 0
-    levelup_students = Student.query.filter_by(is_active=True, category='ЛЕВЕЛАП').count() if category_filter != 'ЛЕВЕЛАП' else 0
-    programming_students = Student.query.filter_by(is_active=True, category='ПРОГРАММИРОВАНИЕ').count() if category_filter != 'ПРОГРАММИРОВАНИЕ' else 0  # Считаем учеников направления программирования
+    archived_students_count = Student.query.filter_by(is_active=False).count()  # Количество архивных учеников
 
     return render_template('dashboard.html',
                          students=students,
                          pagination=pagination,
                          search_query=search_query,
                          category_filter=category_filter,
+                         show_archive=show_archive,
                          total_students=total_students,
                          total_lessons=total_lessons,
                          completed_lessons=completed_lessons,
@@ -567,7 +624,8 @@ def dashboard():
                          ege_students=ege_students,
                          oge_students=oge_students,
                          levelup_students=levelup_students,
-                         programming_students=programming_students)  # Передаем счетчик программистов в шаблон
+                         programming_students=programming_students,
+                         archived_students_count=archived_students_count)  # Передаем количество архивных учеников
 
 @app.route('/debug-db')
 def debug_db():
@@ -843,10 +901,26 @@ def lesson_new(student_id):
 
     if form.validate_on_submit():
         ensure_introductory_without_homework(form)  # Вводный урок не содержит ДЗ
+        
+        # Обрабатываем дату с учетом часового пояса
+        lesson_date_local = form.lesson_date.data
+        timezone = form.timezone.data
+        
+        # Преобразуем локальное время в нужный часовой пояс
+        if timezone == 'tomsk':
+            # Если выбран томский часовой пояс, создаем datetime с TOMSK_TZ
+            lesson_date_local = lesson_date_local.replace(tzinfo=TOMSK_TZ)
+            # Конвертируем в московское время для хранения в БД
+            lesson_date_utc = lesson_date_local.astimezone(MOSCOW_TZ)
+        else:
+            # Если выбран московский часовой пояс
+            lesson_date_local = lesson_date_local.replace(tzinfo=MOSCOW_TZ)
+            lesson_date_utc = lesson_date_local
+        
         lesson = Lesson(
             student_id=student_id,
             lesson_type=form.lesson_type.data,
-            lesson_date=form.lesson_date.data,
+            lesson_date=lesson_date_utc,
             duration=form.duration.data,
             status=form.status.data,
             topic=form.topic.data,
@@ -882,11 +956,32 @@ def lesson_edit(lesson_id):
     lesson = Lesson.query.get_or_404(lesson_id)
     student = lesson.student
     form = LessonForm(obj=lesson)
+    
+    # При редактировании устанавливаем московский часовой пояс по умолчанию
+    # (все уроки в БД хранятся в московском времени)
+    if request.method == 'GET':
+        form.timezone.data = 'moscow'
 
     if form.validate_on_submit():
         ensure_introductory_without_homework(form)  # Чистим ДЗ, если переключились на вводный урок
+        
+        # Обрабатываем дату с учетом часового пояса
+        lesson_date_local = form.lesson_date.data
+        timezone = form.timezone.data
+        
+        # Преобразуем локальное время в нужный часовой пояс
+        if timezone == 'tomsk':
+            # Если выбран томский часовой пояс, создаем datetime с TOMSK_TZ
+            lesson_date_local = lesson_date_local.replace(tzinfo=TOMSK_TZ)
+            # Конвертируем в московское время для хранения в БД
+            lesson_date_utc = lesson_date_local.astimezone(MOSCOW_TZ)
+        else:
+            # Если выбран московский часовой пояс
+            lesson_date_local = lesson_date_local.replace(tzinfo=MOSCOW_TZ)
+            lesson_date_utc = lesson_date_local
+        
         lesson.lesson_type = form.lesson_type.data
-        lesson.lesson_date = form.lesson_date.data
+        lesson.lesson_date = lesson_date_utc
         lesson.duration = form.duration.data
         lesson.status = form.status.data
         lesson.topic = form.topic.data
@@ -1973,6 +2068,7 @@ def kege_generator(lesson_id=None):
 
     selection_form = TaskSelectionForm()
     reset_form = ResetForm()
+    search_form = TaskSearchForm()
 
     try:
         available_types = db.session.query(Tasks.task_number).distinct().order_by(Tasks.task_number).all()
@@ -2067,9 +2163,129 @@ def kege_generator(lesson_id=None):
             flash('Вся история сброшена.', 'success')
 
         return redirect(url_for('kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator', assignment_type=assignment_type))
+    
+    # Обработчик поиска задания по уникальному ID
+    if search_form.search_submit.data and search_form.validate_on_submit():
+        task_id_str = search_form.task_id.data.strip()
+        try:
+            # Пытаемся найти задание по уникальному ID
+            # ВАЖНО: пользователь ищет по site_task_id (ID с сайта, который он видит на странице)
+            # Поэтому сначала ищем по site_task_id, а не по внутреннему task_id
+            task_id_int = int(task_id_str)
+            logger.info(f"Поиск задания с ID: {task_id_str} (пользователь ищет по site_task_id)")
+            
+            # Ищем СНАЧАЛА по site_task_id (ID с сайта, например 2565, 16330)
+            # site_task_id хранится как Text, поэтому ищем по строке
+            # ВАЖНО: пользователь видит на сайте site_task_id, поэтому ищем именно по нему
+            logger.info(f"Поиск по site_task_id='{task_id_str}' (тип: {type(task_id_str).__name__})")
+            task = Tasks.query.filter(Tasks.site_task_id == task_id_str).first()
+            found_by_site_task_id = bool(task)
+            
+            # Для отладки: проверяем, есть ли вообще задания с похожим site_task_id
+            if not task:
+                sample = Tasks.query.filter(Tasks.site_task_id.isnot(None)).limit(5).all()
+                sample_site_ids = [str(t.site_task_id) for t in sample if t.site_task_id]
+                logger.info(f"Задание с site_task_id='{task_id_str}' не найдено. Примеры site_task_id в базе: {sample_site_ids}")
+            
+            # Если не найдено по site_task_id, ищем по task_id (внутренний ID базы данных)
+            if not task:
+                logger.info(f"Не найдено по site_task_id={task_id_str}, ищу по task_id (внутренний ID): {task_id_int}")
+                task = Tasks.query.filter_by(task_id=task_id_int).first()
+                if task:
+                    logger.info(f"Задание найдено по task_id: task_id={task.task_id}, site_task_id={task.site_task_id}, task_number={task.task_number}")
+                else:
+                    logger.warning(f"Задание не найдено ни по site_task_id={task_id_str}, ни по task_id={task_id_int}")
+            else:
+                logger.info(f"Задание найдено по site_task_id: task_id={task.task_id}, site_task_id={task.site_task_id}, task_number={task.task_number}")
+            
+            if task:
+                # Проверяем, что найденное задание соответствует запросу
+                found_by_task_id = (task.task_id == task_id_int)
+                # found_by_site_task_id уже определен выше
+                
+                logger.info(f"Задание найдено: task_id={task.task_id}, site_task_id={task.site_task_id}, task_number={task.task_number}")
+                logger.info(f"Найдено по site_task_id: {found_by_site_task_id}, найдено по task_id: {found_by_task_id}")
+                
+                # ВАЖНО: если пользователь искал по site_task_id, но нашли по task_id - это может быть не то задание!
+                if not found_by_site_task_id and found_by_task_id:
+                    logger.warning(f"ВНИМАНИЕ: Пользователь искал site_task_id={task_id_str}, но найдено задание с site_task_id={task.site_task_id} по внутреннему task_id={task_id_int}")
+                    flash(f'Найдено задание по внутреннему ID {task_id_int}, но его site_task_id={task.site_task_id}, а не {task_id_str}. Возможно, вы искали другое задание.', 'warning')
+                
+                # Если задание найдено, добавляем его в результаты
+                audit_logger.log(
+                    action='search_and_add_task',
+                    entity='Task',
+                    entity_id=task.task_id,
+                    status='success',
+                    metadata={
+                        'search_id': task_id_str,
+                        'found_task_id': task.task_id,
+                        'site_task_id': task.site_task_id,
+                        'task_number': task.task_number,
+                        'found_by_task_id': found_by_task_id,
+                        'found_by_site_task_id': found_by_site_task_id,
+                        'lesson_id': lesson_id,
+                        'assignment_type': assignment_type
+                    }
+                )
+                # Перенаправляем на страницу результатов с найденным заданием
+                # Используем task_number найденного задания для корректного отображения
+                # ВАЖНО: передаем task.task_id (внутренний ID), а не site_task_id
+                redirect_url_params = {
+                    'task_type': task.task_number,
+                    'limit_count': 1,
+                    'use_skipped': False,
+                    'assignment_type': assignment_type,
+                    'search_task_id': task.task_id  # ВАЖНО: передаем внутренний task_id
+                }
+                if lesson_id:
+                    redirect_url_params['lesson_id'] = lesson_id
+                
+                logger.info(f"Перенаправление на результаты с параметрами: {redirect_url_params}")
+                return redirect(url_for('generate_results', **redirect_url_params))
+            else:
+                logger.warning(f"Задание с ID {task_id_int} не найдено ни по task_id, ни по site_task_id")
+                
+                # Показываем примеры существующих ID для помощи пользователю
+                sample_tasks = Tasks.query.order_by(Tasks.task_id).limit(5).all()
+                sample_ids = [str(t.task_id) for t in sample_tasks] if sample_tasks else []
+                
+                # Показываем примеры site_task_id
+                sample_site_ids = Tasks.query.filter(Tasks.site_task_id.isnot(None)).limit(5).all()
+                sample_site_task_ids = [str(t.site_task_id) for t in sample_site_ids if t.site_task_id] if sample_site_ids else []
+                
+                # Также проверяем общее количество заданий в базе
+                total_count = Tasks.query.count()
+                logger.info(f"Всего заданий в базе: {total_count}")
+                
+                error_msg = f'Задание с ID {task_id_str} не найдено в базе данных.'
+                if sample_ids:
+                    error_msg += f' Примеры внутренних ID (task_id): {", ".join(sample_ids)}'
+                if sample_site_task_ids:
+                    error_msg += f' Примеры ID с сайта (site_task_id): {", ".join(sample_site_task_ids)}'
+                if total_count > 0:
+                    error_msg += f' (всего заданий в базе: {total_count})'
+                flash(error_msg, 'warning')
+        except ValueError:
+            flash('Некорректный ID задания. Введите число (например, 23715, 3348).', 'danger')
+        except Exception as e:
+            logger.error(f"Ошибка при поиске задания {task_id_str}: {e}", exc_info=True)
+            flash(f'Ошибка при поиске задания: {str(e)}', 'danger')
+            audit_logger.log(
+                action='search_and_add_task',
+                entity='Task',
+                entity_id=None,
+                status='error',
+                metadata={
+                    'task_id': task_id_str,
+                    'error': str(e)
+                }
+            )
+    
     return render_template('kege_generator.html',
                            selection_form=selection_form,
                            reset_form=reset_form,
+                           search_form=search_form,
                            lesson=lesson,
                            student=student,
                            lesson_id=lesson_id,
@@ -2083,7 +2299,12 @@ def generate_results():
         use_skipped = request.args.get('use_skipped', 'false').lower() == 'true'
         lesson_id = request.args.get('lesson_id', type=int)
         assignment_type = request.args.get('assignment_type', default='homework')
-    except:
+        search_task_id = request.args.get('search_task_id', type=int)  # ID конкретного задания для поиска (внутренний task_id)
+        
+        # Логируем все параметры для отладки
+        logger.info(f"generate_results вызван с параметрами: task_type={task_type}, limit_count={limit_count}, search_task_id={search_task_id}, lesson_id={lesson_id}")
+    except Exception as e:
+        logger.error(f"Ошибка при получении параметров запроса: {e}", exc_info=True)
         flash('Неверные параметры запроса.', 'danger')
         if lesson_id:
             return redirect(url_for('kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
@@ -2105,7 +2326,25 @@ def generate_results():
             return redirect(url_for('kege_generator', assignment_type=assignment_type))
 
     try:
-        tasks = get_unique_tasks(task_type, limit_count, use_skipped=use_skipped, student_id=student_id)
+        # Если передан search_task_id, получаем конкретное задание и ИГНОРИРУЕМ остальные параметры
+        if search_task_id:
+            logger.info(f"Поиск конкретного задания по search_task_id={search_task_id}")
+            # Используем filter_by для надежного поиска по внутреннему task_id
+            task = Tasks.query.filter_by(task_id=search_task_id).first()
+            if task:
+                tasks = [task]  # Возвращаем ТОЛЬКО найденное задание
+                # Обновляем task_type на правильный номер типа найденного задания
+                task_type = task.task_number
+                logger.info(f"✓ Найдено задание по search_task_id={search_task_id}: task_id={task.task_id}, task_number={task.task_number}, site_task_id={task.site_task_id}")
+            else:
+                logger.error(f"✗ Задание с search_task_id={search_task_id} не найдено в базе данных!")
+                flash(f'Задание с ID {search_task_id} не найдено.', 'warning')
+                # Если задание не найдено, не генерируем случайные - просто возвращаем пустой список
+                tasks = []
+        else:
+            # Обычная генерация заданий
+            logger.info(f"Обычная генерация заданий: task_type={task_type}, limit_count={limit_count}")
+            tasks = get_unique_tasks(task_type, limit_count, use_skipped=use_skipped, student_id=student_id)
     except Exception as e:
         logger.error(f"Error getting unique tasks: {e}", exc_info=True)
         flash(f'Ошибка при генерации заданий: {str(e)}', 'error')
@@ -2139,6 +2378,19 @@ def generate_results():
         else:
             flash(f'Задания типа {task_type} закончились! Попробуйте включить пропущенные задания или сбросьте историю.', 'warning')
         return redirect(url_for('kege_generator'))
+
+    # Финальная проверка: если был передан search_task_id, убеждаемся, что вернули правильное задание
+    if search_task_id:
+        task_ids_in_results = [t.task_id for t in tasks]
+        if search_task_id not in task_ids_in_results:
+            logger.error(f"КРИТИЧЕСКАЯ ОШИБКА: Запрошено задание с search_task_id={search_task_id}, но в результатах: {task_ids_in_results}")
+            flash(f'Ошибка: запрошено задание {search_task_id}, но получено другое задание.', 'error')
+        else:
+            logger.info(f"✓ Подтверждение: в результатах присутствует запрошенное задание search_task_id={search_task_id}")
+            # Показываем информацию о найденном задании
+            found_task = next((t for t in tasks if t.task_id == search_task_id), None)
+            if found_task:
+                logger.info(f"✓ Найденное задание: task_id={found_task.task_id}, site_task_id={found_task.site_task_id}, task_number={found_task.task_number}")
 
     return render_template('results.html',
                            tasks=tasks,

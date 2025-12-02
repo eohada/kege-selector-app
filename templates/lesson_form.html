@@ -167,8 +167,10 @@
     <div class="app-shell">
         <header class="nav-primary">
             <div class="nav-brand">
-                <div class="brand-mark">LOGO</div>
-                <div class="brand-caption">Слот под фирменный знак</div>
+                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                    <div class="brand-mark">LOGO</div>
+                    <div class="brand-caption">Слот под фирменный знак</div>
+                </a>
             </div>
             <nav class="nav-links"> <!-- Список ссылок -->
                 <a href="{{ url_for('dashboard') }}" class="nav-link"> <!-- Ученики -->
@@ -241,7 +243,7 @@
         <form method="POST">
             {{ form.hidden_tag() }}
             
-            <section class="form-section" data-section="homework">
+            <section class="form-section">
                 <div class="form-section-title">📅 Основная информация</div>
                 <div class="form-grid">
                     <div class="neo-field">
@@ -254,12 +256,21 @@
                     </div>
                     
                     <div class="neo-field">
+                        {{ form.timezone.label(class='neo-label') }}
+                        {{ form.timezone(class='neo-select') }}
+                        {% if form.timezone.errors %}
+                            <div class="alert alert-danger" style="margin-top: 0.5em;">{{ form.timezone.errors[0] }}</div>
+                        {% endif %}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Выберите часовой пояс для даты и времени урока</small>
+                    </div>
+                    
+                    <div class="neo-field">
                         {{ form.lesson_date.label(class='neo-label') }}
                         {{ form.lesson_date(class='neo-input') }}
                         {% if form.lesson_date.errors %}
                             <div class="alert alert-danger" style="margin-top: 0.5em;">{{ form.lesson_date.errors[0] }}</div>
                         {% endif %}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Дата и время проведения урока</small>
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Дата и время проведения урока (в выбранном часовом поясе)</small>
                     </div>
                     
                     <div class="neo-field">
@@ -299,7 +310,7 @@
                 </div>
             </section>
             
-            <section class="form-section">
+            <section class="form-section" data-section="homework">
                 <div class="form-section-title">📋 Домашнее задание</div>
                 <div class="form-grid">
                     <div class="neo-field form-grid-full">
@@ -410,10 +421,17 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => { // Прячем блок ДЗ для вводного урока
             const typeSelect = document.getElementById('lesson_type');
-            const homeworkSection = document.querySelector('[data-section="homework"]');
+            // Ищем секцию ДЗ по data-section="homework" - это должна быть только секция с домашним заданием
+            const homeworkSection = document.querySelector('section[data-section="homework"]');
             const homeworkField = document.getElementById('homework');
             const homeworkStatusField = document.getElementById('homework_status');
-            if (!typeSelect || !homeworkSection || !homeworkStatusField) return;
+            
+            // Проверяем наличие элементов, но не блокируем выполнение, если секция ДЗ не найдена
+            if (!typeSelect) return;
+            if (!homeworkSection || !homeworkStatusField) {
+                console.warn('Секция ДЗ не найдена, функционал скрытия ДЗ для вводного урока недоступен');
+                return;
+            }
 
             let lastAssignedStatus = homeworkStatusField.value !== 'not_assigned'
                 ? homeworkStatusField.value
@@ -421,20 +439,28 @@
 
             function syncHomeworkVisibility() {
                 const isIntroductory = typeSelect.value === 'introductory';
-                homeworkSection.style.display = isIntroductory ? 'none' : '';
-
+                // Показываем/скрываем ТОЛЬКО секцию ДЗ, не трогая другие секции
                 if (isIntroductory) {
+                    homeworkSection.style.display = 'none';
+                    // Очищаем поля ДЗ при выборе вводного урока
                     if (homeworkField) homeworkField.value = '';
                     if (homeworkStatusField.value !== 'not_assigned') {
                         lastAssignedStatus = homeworkStatusField.value;
                     }
                     homeworkStatusField.value = 'not_assigned';
-                } else if (homeworkStatusField.value === 'not_assigned') {
-                    homeworkStatusField.value = lastAssignedStatus;
+                } else {
+                    // Показываем секцию ДЗ при выборе другого типа урока
+                    homeworkSection.style.display = '';
+                    // Восстанавливаем предыдущий статус, если был 'not_assigned'
+                    if (homeworkStatusField.value === 'not_assigned' && lastAssignedStatus !== 'not_assigned') {
+                        homeworkStatusField.value = lastAssignedStatus;
+                    }
                 }
             }
 
+            // Инициализируем при загрузке страницы
             syncHomeworkVisibility();
+            // Отслеживаем изменения типа урока
             typeSelect.addEventListener('change', syncHomeworkVisibility);
         });
     </script>

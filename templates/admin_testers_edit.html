@@ -13,8 +13,10 @@
     <div class="app-shell">
         <header class="nav-primary">
             <div class="nav-brand">
-                <div class="brand-mark">LOGO</div>
-                <div class="brand-caption">Админ-панель</div>
+                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                    <div class="brand-mark">LOGO</div>
+                    <div class="brand-caption">Админ-панель</div>
+                </a>
             </div>
             <nav class="nav-links">
                 <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>

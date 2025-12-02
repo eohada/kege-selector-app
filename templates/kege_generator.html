@@ -41,8 +41,10 @@
     <div class="app-shell">
         <header class="nav-primary">
             <div class="nav-brand">
-                <div class="brand-mark">LOGO</div>
-                <div class="brand-caption">Слот под фирменный знак</div>
+                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                    <div class="brand-mark">LOGO</div>
+                    <div class="brand-caption">Слот под фирменный знак</div>
+                </a>
             </div>
             <nav class="nav-links"> <!-- Ссылки верхнего меню -->
                 <a href="{{ url_for('dashboard') }}" class="nav-link"> <!-- Ученики -->
@@ -197,6 +199,24 @@
                     </div>
                     {{ reset_form.reset_submit(class_='neo-button danger') }}
                 </form>
+            </section>
+
+            <section class="glass-panel generator-panel">
+                <h3>Поиск задания по ID</h3>
+                <p>Найди конкретное задание по его уникальному ID и добавь его в подборку.</p>
+                <form method="POST"
+                      action="{{ url_for('kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator', assignment_type=assignment_type) }}"
+                      class="generator-form-grid">
+                    {{ search_form.hidden_tag() }}
+                    <div class="neo-field">
+                        {{ search_form.task_id.label(class_='neo-label') }}
+                        {{ search_form.task_id(class_='neo-input') }}
+                    </div>
+                    {{ search_form.search_submit(class_='neo-button accent') }}
+                </form>
+                <p class="generator-note">
+                    Введи уникальный ID задания (например, 23715, 3348), и система найдёт его в базе данных и добавит в результаты.
+                </p>
             </section>
         </div>
     </div>

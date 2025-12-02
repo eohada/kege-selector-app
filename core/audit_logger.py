@@ -125,8 +125,8 @@ class AuditLogger:
             tester_name = session.get('tester_name')
             session_id = session.get('_id', request.cookies.get('session'))
 
-            # Убеждаемся, что тестировщик существует в БД (только для не-анонимных)
-            if tester_id and tester_name and tester_name != 'Anonymous':
+            # Убеждаемся, что тестировщик существует в БД (включая анонимных)
+            if tester_id:
                 self._ensure_tester_exists(tester_id, tester_name)
 
         return {
@@ -137,8 +137,8 @@ class AuditLogger:
 
     def _ensure_tester_exists(self, tester_id: str, tester_name: Optional[str]):
 
-        # Не создаем тестировщиков для анонимных запросов
-        if not tester_name or tester_name == 'Anonymous':
+        # Создаем тестировщика даже для анонимных, чтобы не нарушать внешний ключ
+        if not tester_id:
             return
 
         try:
@@ -157,23 +157,21 @@ class AuditLogger:
 
                 tester = Tester(
                     tester_id=tester_id,
-                    name=tester_name,
+                    name=tester_name if tester_name else "Anonymous",
                     ip_address=request.remote_addr if has_request_context() else None,
                     user_agent=request.headers.get('User-Agent') if has_request_context() else None,
                     session_id=session.get('_id') if has_request_context() else None
                 )
                 db.session.add(tester)
             else:
-                tester.last_seen = moscow_now()
-                if tester_name and tester.name != tester_name:
+                if tester_name and tester_name != "Anonymous" and tester.name != tester_name:
                     tester.name = tester_name
-                if has_request_context():
-                    if request.remote_addr:
-                        tester.ip_address = request.remote_addr
-                    if request.headers.get('User-Agent'):
-                        tester.user_agent = request.headers.get('User-Agent')
+                    try:
+                        db.session.commit()
+                    except Exception as e:
+                        db.session.rollback()
+                        logger.error(f"Error updating tester name: {e}")
 
-            db.session.commit()
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error ensuring tester exists: {e}", exc_info=True)

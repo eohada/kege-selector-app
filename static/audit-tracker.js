@@ -35,14 +35,23 @@
         const testerName = getTesterName();
         const testerUUID = getTesterUUID();
 
+        // Кодируем имя тестировщика в base64, если оно содержит не-ASCII символы
+        const hasNonASCII = /[^\x00-\x7F]/.test(testerName);
+        const headers = {
+            'Content-Type': 'application/json',  
+            'X-Tester-UUID': testerUUID,
+            'X-CSRFToken': getCSRFToken()  
+        };
+        if (hasNonASCII && testerName !== 'Anonymous') {
+            headers['X-Tester-Name'] = btoa(encodeURIComponent(testerName));
+            headers['X-Tester-Name-Encoded'] = 'base64';
+        } else if (testerName && testerName !== 'Anonymous') {
+            headers['X-Tester-Name'] = testerName;
+        }
+
         fetch('/api/audit-log', {  
             method: 'POST',  
-            headers: {
-                'Content-Type': 'application/json',  
-                'X-Tester-Name': testerName,
-                'X-Tester-UUID': testerUUID,
-                'X-CSRFToken': getCSRFToken()  
-            },
+            headers: headers,
             body: JSON.stringify({  
                 action: action,  
                 entity: entity,  
@@ -144,17 +153,41 @@
         }
         
         // Добавляем заголовки тестировщика во все fetch запросы
-        if (!options.headers) {
-            options.headers = {};
+        // Преобразуем Headers объект в обычный объект, если нужно
+        let headersObj = {};
+        if (options.headers) {
+            if (options.headers instanceof Headers) {
+                // Если это Headers объект, преобразуем в обычный объект
+                options.headers.forEach((value, key) => {
+                    headersObj[key] = value;
+                });
+            } else if (typeof options.headers === 'object') {
+                // Если это обычный объект, копируем его
+                headersObj = { ...options.headers };
+            }
         }
+        
         const testerName = getTesterName();
         const testerUUID = getTesterUUID();
+        // Кодируем имя тестировщика в base64, если оно содержит не-ASCII символы
+        // HTTP заголовки должны содержать только ISO-8859-1 символы
         if (testerName && testerName !== 'Anonymous') {
-            options.headers['X-Tester-Name'] = testerName;
+            // Проверяем, содержит ли имя не-ASCII символы
+            const hasNonASCII = /[^\x00-\x7F]/.test(testerName);
+            if (hasNonASCII) {
+                // Кодируем в base64 для безопасной передачи в заголовке
+                headersObj['X-Tester-Name'] = btoa(encodeURIComponent(testerName));
+                headersObj['X-Tester-Name-Encoded'] = 'base64';
+            } else {
+                headersObj['X-Tester-Name'] = testerName;
+            }
         }
         if (testerUUID) {
-            options.headers['X-Tester-UUID'] = testerUUID;
+            headersObj['X-Tester-UUID'] = testerUUID;
         }
+        
+        // Устанавливаем обновленные заголовки обратно
+        options.headers = headersObj;
         args[1] = options;
         
         return originalFetch.apply(this, args).then(response => {

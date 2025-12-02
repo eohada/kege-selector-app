@@ -88,8 +88,10 @@
     <div class="app-shell">
         <header class="nav-primary">
             <div class="nav-brand">
-                <div class="brand-mark">LOGO</div>
-                <div class="brand-caption">Слот под фирменный знак</div>
+                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                    <div class="brand-mark">LOGO</div>
+                    <div class="brand-caption">Слот под фирменный знак</div>
+                </a>
             </div>
             <nav class="nav-links"> <!-- Навигация по разделам -->
                 <a href="{{ url_for('dashboard') }}" class="nav-link"> <!-- Ссылка на учеников -->
