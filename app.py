@@ -195,6 +195,56 @@ def initialize_on_first_request():
     if not audit_logger.is_running:
         audit_logger.start_worker()
 
+# Кеш для отслеживания времени последней проверки уроков
+_last_lesson_check = None
+_lesson_check_interval = timedelta(minutes=1)  # Проверяем не чаще раза в минуту
+
+@app.before_request
+def auto_update_lesson_status():
+    """Автоматически обновляет статус запланированных уроков на 'completed' после их окончания"""
+    global _last_lesson_check
+    
+    # Пропускаем статические файлы
+    if request.endpoint in ('static', 'favicon') or request.path.startswith('/static/'):
+        return
+    
+    try:
+        # Проверяем не чаще чем раз в минуту
+        now = moscow_now()
+        if _last_lesson_check and (now - _last_lesson_check) < _lesson_check_interval:
+            return
+        
+        _last_lesson_check = now
+        
+        # Находим все запланированные уроки
+        planned_lessons = Lesson.query.filter_by(status='planned').all()
+        
+        if not planned_lessons:
+            return
+        
+        updated_count = 0
+        for lesson in planned_lessons:
+            # Вычисляем время окончания урока
+            # lesson_date хранится в московском времени
+            lesson_end_time = lesson.lesson_date + timedelta(minutes=lesson.duration)
+            
+            # Если текущее время больше времени окончания, обновляем статус
+            if now >= lesson_end_time:
+                lesson.status = 'completed'
+                lesson.updated_at = now
+                updated_count += 1
+                logger.info(f"Автоматически обновлен статус урока {lesson.lesson_id} (ученик {lesson.student_id}) с 'planned' на 'completed'. Время окончания: {lesson_end_time}")
+        
+        # Сохраняем изменения одним коммитом
+        if updated_count > 0:
+            db.session.commit()
+            logger.info(f"Автоматически обновлено статусов уроков: {updated_count}")
+    
+    except Exception as e:
+        logger.error(f"Ошибка при автоматическом обновлении статуса уроков: {e}", exc_info=True)
+        # Не блокируем запрос при ошибке
+        db.session.rollback()
+
 @app.before_request
 def identify_tester():
 
