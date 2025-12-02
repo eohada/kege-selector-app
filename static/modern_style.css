@@ -877,3 +877,556 @@ body::after {
     from { opacity: 0; transform: translateX(-20px); }
     to { opacity: 1; transform: translateX(0); }
 }
+
+/* ============================================
+   МОБИЛЬНАЯ АДАПТАЦИЯ
+   ============================================ */
+
+/* Мобильное меню (бургер) */
+.mobile-menu-toggle {
+    display: none; /* Скрыто по умолчанию */
+    background: transparent;
+    border: 1px solid var(--stroke-1);
+    border-radius: var(--radius-sm);
+    padding: 0.6rem;
+    cursor: pointer;
+    color: var(--text-primary);
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 5px;
+    transition: all 0.25s ease;
+}
+
+.mobile-menu-toggle span {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: var(--text-primary);
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle.active span:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+}
+
+.mobile-menu-toggle.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.mobile-menu-toggle.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+}
+
+.mobile-menu-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(2, 4, 12, 0.95);
+    backdrop-filter: blur(10px);
+    z-index: 998;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.mobile-menu-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+.mobile-menu {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: min(320px, 85vw);
+    height: 100vh;
+    background: var(--surface-2);
+    border-left: 1px solid var(--stroke-1);
+    z-index: 999;
+    padding: 2rem 1.5rem;
+    overflow-y: auto;
+    transition: right 0.3s ease;
+    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.5);
+}
+
+.mobile-menu.active {
+    right: 0;
+}
+
+.mobile-menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--stroke-1);
+}
+
+.mobile-menu-close {
+    background: transparent;
+    border: 1px solid var(--stroke-1);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem;
+    cursor: pointer;
+    color: var(--text-primary);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    transition: all 0.25s ease;
+}
+
+.mobile-menu-close:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.mobile-nav-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.mobile-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.2rem;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    color: var(--text-muted);
+    border: 1px solid transparent;
+    transition: all 0.25s ease;
+}
+
+.mobile-nav-link:hover,
+.mobile-nav-link.active {
+    color: var(--text-primary);
+    border-color: var(--stroke-2);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.mobile-nav-link.active {
+    border-color: rgba(0, 198, 164, 0.7);
+    background: linear-gradient(120deg, rgba(0, 198, 164, 0.15), rgba(23, 96, 216, 0.1));
+}
+
+.mobile-nav-link-icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+}
+
+/* Медиа-запросы для мобильных устройств */
+@media (max-width: 768px) {
+    /* Базовые отступы и размеры */
+    .app-shell,
+    .container {
+        width: calc(100% - 2rem);
+        padding-top: 1.5rem;
+    }
+
+    body {
+        padding-bottom: 2rem;
+    }
+
+    /* Навигация - мобильное меню */
+    .nav-primary {
+        flex-wrap: wrap;
+        padding: 1rem 1.2rem;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .nav-brand {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .brand-mark {
+        width: 44px;
+        height: 44px;
+        font-size: 0.65rem;
+    }
+
+    .brand-caption {
+        font-size: 0.75rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .nav-links {
+        display: none; /* Скрываем обычное меню на мобильных */
+    }
+
+    .nav-actions {
+        display: none; /* Скрываем иконку справа на мобильных */
+    }
+
+    .mobile-menu-toggle {
+        display: flex; /* Показываем бургер-меню */
+    }
+
+    /* Glass panels */
+    .glass-panel {
+        padding: 1.5rem 1.2rem;
+        border-radius: var(--radius-md);
+    }
+
+    /* Hero секции */
+    .dashboard-hero {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .hero-title {
+        font-size: clamp(1.8rem, 5vw, 2.5rem);
+    }
+
+    .hero-subtitle {
+        font-size: 0.95rem;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+    }
+
+    .hero-actions .neo-button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .hero-pane {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+
+    .hero-metric {
+        padding: 1rem;
+    }
+
+    .hero-metric-value {
+        font-size: 2rem;
+    }
+
+    /* Фильтры и формы */
+    .filters-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .filters-actions {
+        flex-direction: column;
+    }
+
+    .filters-actions .neo-button {
+        width: 100%;
+    }
+
+    /* Статистика */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.8rem;
+    }
+
+    .stat-card {
+        padding: 1rem;
+    }
+
+    .stat-card strong {
+        font-size: 1.6rem;
+    }
+
+    .stat-card span {
+        font-size: 0.75rem;
+    }
+
+    /* Карточки учеников */
+    .students-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .student-card {
+        padding: 1.2rem;
+    }
+
+    .student-avatar {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+    }
+
+    .student-name {
+        font-size: 1.1rem;
+    }
+
+    /* Панели */
+    .panel-head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .panel-head h2 {
+        font-size: 1.4rem;
+    }
+
+    .panel-head .hero-actions {
+        width: 100%;
+    }
+
+    .panel-head .hero-actions .neo-button {
+        width: 100%;
+    }
+
+    /* Кнопки */
+    .neo-button {
+        padding: 0.9rem 1.3rem;
+        font-size: 0.95rem;
+        min-height: 44px; /* Touch-friendly размер */
+    }
+
+    /* Генератор */
+    .generator-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .generator-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .generator-actions .neo-button {
+        flex: 1 1 100%;
+    }
+
+    .generator-links .neo-button {
+        flex: 1 1 100%;
+    }
+
+    /* Задания */
+    .task {
+        padding: 1.5rem 1.2rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .task-actions {
+        flex-direction: column;
+    }
+
+    .task-actions .neo-button,
+    .task-actions .btn {
+        width: 100%;
+        min-height: 44px;
+    }
+
+    /* Формы */
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .form-section {
+        padding: 1.5rem 1.2rem;
+    }
+
+    /* Пагинация */
+    .pagination {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .pagination-btn {
+        padding: 0.8rem 1.2rem;
+        font-size: 0.9rem;
+        min-height: 44px;
+    }
+
+    /* Now playing pill */
+    .now-playing-pill {
+        top: 16px;
+        padding: 0.7rem 1.5rem;
+        font-size: 0.85rem;
+        max-width: calc(100% - 2rem);
+    }
+
+    .now-playing-panel {
+        top: 70px;
+        width: calc(100% - 2rem);
+        padding: 1rem 1.2rem;
+    }
+
+    /* Eyebrow и заголовки */
+    .hero-eyebrow {
+        font-size: 0.7rem;
+    }
+
+    /* Отступы для секций */
+    section {
+        margin-top: 1.5rem;
+    }
+
+    section:first-of-type {
+        margin-top: 0;
+    }
+}
+
+/* Медиа-запросы для очень маленьких экранов */
+@media (max-width: 480px) {
+    .app-shell,
+    .container {
+        width: calc(100% - 1rem);
+        padding-top: 1rem;
+    }
+
+    .nav-primary {
+        padding: 0.8rem 1rem;
+    }
+
+    .glass-panel {
+        padding: 1.2rem 1rem;
+    }
+
+    .hero-title {
+        font-size: 1.6rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-pane {
+        grid-template-columns: 1fr;
+    }
+
+    .brand-caption {
+        display: none; /* Скрываем текст логотипа на очень маленьких экранах */
+    }
+
+    .mobile-menu {
+        width: 100vw;
+    }
+}
+
+/* Адаптация таблиц для мобильных */
+@media (max-width: 768px) {
+    /* Таблицы становятся карточками на мобильных */
+    .testers-table,
+    .audit-table {
+        display: block;
+        border-radius: var(--radius-md);
+        overflow: visible;
+    }
+
+    .testers-table thead,
+    .audit-table thead {
+        display: none;
+    }
+
+    .testers-table tbody,
+    .audit-table tbody {
+        display: block;
+    }
+
+    .testers-table tr,
+    .audit-table tr {
+        display: block;
+        margin-bottom: 1rem;
+        background: var(--surface-2);
+        border: 1px solid var(--stroke-1);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+    }
+
+    .testers-table td,
+    .audit-table td {
+        display: block;
+        padding: 0.5rem 0;
+        border: none;
+        text-align: left;
+    }
+
+    .testers-table td:before,
+    .audit-table td:before {
+        content: attr(data-label) ": ";
+        font-weight: 600;
+        color: var(--text-muted);
+        display: inline-block;
+        min-width: 100px;
+    }
+
+    /* Фильтры аудита */
+    .audit-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .audit-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Touch-friendly элементы */
+@media (hover: none) and (pointer: coarse) {
+    /* Увеличиваем области нажатия для touch-устройств */
+    .nav-link,
+    .neo-button,
+    .btn,
+    .pagination-btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Убираем hover-эффекты на touch-устройствах */
+    .glass-panel:hover::after {
+        opacity: 0;
+    }
+
+    .student-card:hover {
+        transform: none;
+    }
+
+    .nav-link:hover {
+        background: transparent;
+    }
+}
+
+/* Дополнительные адаптации для форм */
+@media (max-width: 768px) {
+    .form-section {
+        margin-bottom: 1.5rem;
+    }
+
+    .form-section-title {
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+
+    .form-grid-full {
+        grid-column: 1 / -1;
+    }
+
+    /* Модальные окна */
+    .modal-content {
+        width: calc(100% - 2rem);
+        margin: 1rem;
+        max-height: calc(100vh - 2rem);
+        overflow-y: auto;
+    }
+
+    /* Генератор контекста */
+    .generator-context {
+        padding: 1.2rem;
+    }
+
+    .generator-mode {
+        flex-direction: column;
+        padding: 1.2rem;
+    }
+
+    /* Заметки и описания */
+    small {
+        font-size: 0.8rem;
+    }
+}

@@ -1,0 +1,75 @@
+<!-- Мобильное меню -->
+<button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Открыть меню">
+    <span></span>
+    <span></span>
+    <span></span>
+</button>
+
+<div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
+
+<nav class="mobile-menu" id="mobileMenu">
+    <div class="mobile-menu-header">
+        <div class="nav-brand">
+            <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                <div class="brand-mark">LOGO</div>
+                <div class="brand-caption">Чёрный неон</div>
+            </a>
+        </div>
+        <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Закрыть меню">&times;</button>
+    </div>
+    <div class="mobile-nav-links">
+        <a href="{{ url_for('dashboard') }}" class="mobile-nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+            <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="mobile-nav-link-icon">
+            <span>Ученики</span>
+        </a>
+        <a href="{{ url_for('schedule') }}" class="mobile-nav-link {% if request.endpoint == 'schedule' %}active{% endif %}">
+            <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="mobile-nav-link-icon">
+            <span>Расписание</span>
+        </a>
+        <a href="{{ url_for('kege_generator') }}" class="mobile-nav-link {% if request.endpoint == 'kege_generator' %}active{% endif %}">
+            <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="mobile-nav-link-icon">
+            <span>Генератор</span>
+        </a>
+        <a href="{{ url_for('update_plans') }}" class="mobile-nav-link {% if request.endpoint == 'update_plans' %}active{% endif %}">
+            <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Планы" class="mobile-nav-link-icon">
+            <span>Планы</span>
+        </a>
+    </div>
+</nav>
+
+<script>
+    // Управление мобильным меню
+    document.addEventListener('DOMContentLoaded', function() {
+        const toggle = document.getElementById('mobileMenuToggle');
+        const menu = document.getElementById('mobileMenu');
+        const overlay = document.getElementById('mobileMenuOverlay');
+        const close = document.getElementById('mobileMenuClose');
+
+        function openMenu() {
+            toggle.classList.add('active');
+            menu.classList.add('active');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMenu() {
+            toggle.classList.remove('active');
+            menu.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        if (toggle) toggle.addEventListener('click', openMenu);
+        if (close) close.addEventListener('click', closeMenu);
+        if (overlay) overlay.addEventListener('click', closeMenu);
+
+        // Закрытие при клике на ссылку
+        const mobileLinks = document.querySelectorAll('.mobile-nav-link');
+        mobileLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                setTimeout(closeMenu, 300); // Небольшая задержка для плавности
+            });
+        });
+    });
+</script>
+
