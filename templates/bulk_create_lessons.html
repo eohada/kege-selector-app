@@ -32,7 +32,7 @@
             border: 2px solid rgba(147, 51, 234, 0.3);
             background: rgba(20, 20, 30, 0.6);
             color: #e0e0e0;
-            font-family: 'Courier New', monospace;
+            font-family: 'MonaspaceNeon', 'Courier New', monospace;
             font-size: 0.9em;
         }
         textarea:focus {
@@ -64,7 +64,7 @@
         }
         .example code {
             color: #c084fc;
-            font-family: 'Courier New', monospace;
+            font-family: 'MonaspaceNeon', 'Courier New', monospace;
         }
         .info-box {
             background: rgba(59, 130, 246, 0.1);
@@ -126,15 +126,46 @@
             <a href="{{ url_for('dashboard') }}" style="margin-left: 1em; color: #c084fc;">← Назад</a>
         </form>
         
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }}" style="margin-top: 1em;">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+        {# Flash messages будут показаны через toast #}
     </div>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script>
+        // Конвертируем flash-сообщения в toast-уведомления
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.error('{{ message|e }}');
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.warning('{{ message|e }}');
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.info('{{ message|e }}');
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.success('{{ message|e }}');
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
 </body>
 </html>
 

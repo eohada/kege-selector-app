@@ -176,32 +176,58 @@
         }
 
         .attached-files {
-            background: rgba(23, 96, 216, 0.12);
+            background: var(--surface-1);
             border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-sm);
-            padding: 1rem;
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
             margin-bottom: 1.5rem;
         }
 
         .attached-files h4 {
-            color: var(--accent-2);
-            margin-bottom: 0.5em;
-            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .file-list {
             list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .file-list li {
+            margin: 0;
         }
 
         .file-link {
-            color: var(--accent-2);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            padding: 0.65rem 1.2rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--stroke-1);
             text-decoration: none;
             font-weight: 600;
+            letter-spacing: 0.03em;
+            color: var(--text-primary);
+            background: var(--surface-2);
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
         }
 
         .file-link:hover {
-            color: var(--accent-2-strong);
-            text-decoration: underline;
+            transform: translateY(-1px);
+            border-color: var(--accent-1);
+            color: var(--accent-1);
+            background: var(--surface-1);
+            box-shadow: var(--shadow-soft);
         }
 
         .task-actions {
@@ -296,16 +322,15 @@
             </div>
         </header>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+        {# Flash messages будут показаны через toast #}
 
         <section class="glass-panel results-hero">
             <div>
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                    <a href="{{ url_for('kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator', assignment_type=assignment_type) }}" class="neo-button ghost" style="text-decoration: none;">
+                        ← Назад к генератору
+                    </a>
+                </div>
                 <p class="hero-eyebrow">результаты генератора</p>
                 <h1 class="hero-title">Задание {{ task_type }}</h1>
                 <p class="hero-subtitle">Найдено заданий: {{ tasks|length }} шт.</p>
@@ -385,9 +410,63 @@
         {% endfor %}
     </div>
 
+
     <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script>
+        // Функция для временного уведомления, если toast не загружен
+        function showTemporaryNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 1rem 1.5rem;
+                background: ${type === 'success' ? '#4CAF50' : '#f44336'};
+                color: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                z-index: 10000;
+                font-size: 14px;
+                max-width: 300px;
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+        
+        // Добавляем стили для анимации
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
     <script>
         const LESSON_ID = document.body.dataset.lessonId ? parseInt(document.body.dataset.lessonId) : null;
         const ASSIGNMENT_TYPE = document.body.dataset.assignmentType || 'homework';
@@ -410,6 +489,11 @@
         });
         
         document.addEventListener('DOMContentLoaded', function() {
+            // Проверяем, что toast загружен
+            if (typeof toast === 'undefined') {
+                console.error('Toast не загружен! Проверьте подключение toast.js');
+            }
+            
             const selectAllCheckbox = document.getElementById('select-all-checkbox');
             if (selectAllCheckbox) {
                 selectAllCheckbox.addEventListener('change', function() {
@@ -433,8 +517,44 @@
         
         function taskAction(taskId, action) {
             const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+            if (!taskElement) {
+                console.error('Task element not found:', taskId);
+                return;
+            }
+            
             const buttons = taskElement.querySelectorAll('.neo-button');
             buttons.forEach(btn => btn.disabled = true);
+            
+            // Показываем индикатор загрузки
+            let loaderId = null;
+            try {
+                if (typeof loading !== 'undefined' && loading && typeof loading.show === 'function') {
+                    loaderId = loading.show(taskElement, 'Обработка...');
+                }
+            } catch (e) {
+                console.warn('Не удалось показать индикатор загрузки:', e);
+            }
+            
+            // Таймаут на случай зависания запроса (30 секунд)
+            const timeoutId = setTimeout(() => {
+                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') {
+                    try {
+                        loading.hide(loaderId);
+                        loaderId = null;
+                    } catch (e) {
+                        const loader = document.querySelector(`[data-loader-id="${loaderId}"]`);
+                        if (loader) {
+                            loader.remove();
+                        }
+                        loaderId = null;
+                    }
+                }
+                buttons.forEach(btn => btn.disabled = false);
+                console.error('Таймаут запроса');
+                if (typeof toast !== 'undefined' && toast) {
+                    toast.error('Превышено время ожидания ответа');
+                }
+            }, 30000);
             
             const requestBody = {
                 action: action,
@@ -446,6 +566,8 @@
                 requestBody.lesson_id = LESSON_ID;
             }
             
+            console.log('Отправка запроса:', requestBody);
+            
             fetch('{{ url_for("task_action") }}', {
                 method: 'POST',
                 headers: {
@@ -455,9 +577,44 @@
                 },
                 body: JSON.stringify(requestBody)
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Получен ответ:', response.status, response.statusText);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
-                if (data.success) {
+                clearTimeout(timeoutId); // Отменяем таймаут
+                console.log('Данные ответа:', data);
+                // Всегда скрываем индикатор загрузки
+                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') {
+                    try {
+                        loading.hide(loaderId);
+                        loaderId = null; // Помечаем как скрытый
+                    } catch (e) {
+                        console.warn('Не удалось скрыть индикатор загрузки:', e);
+                        // Пытаемся удалить напрямую
+                        const loader = document.querySelector(`[data-loader-id="${loaderId}"]`);
+                        if (loader) {
+                            loader.remove();
+                        }
+                        loaderId = null;
+                    }
+                }
+                
+                if (data && data.success) {
+                    // Определяем сообщение в зависимости от действия
+                    let message = data.message;
+                    if (!message) {
+                        const actionMessages = {
+                            'accept': 'Задание принято',
+                            'skip': 'Задание пропущено',
+                            'blacklist': 'Задание добавлено в черный список'
+                        };
+                        message = actionMessages[action] || 'Действие выполнено успешно';
+                    }
+                    
                     taskElement.style.opacity = '0.5';
                     taskElement.style.transition = 'opacity 0.3s';
                     setTimeout(() => {
@@ -466,26 +623,77 @@
                             window.location.href = REDIRECT_URL;
                         }
                     }, 500);
-                    if (window.toast) {
-                        toast.success(data.message);
+                    
+                    // Всегда показываем уведомление
+                    if (typeof toast !== 'undefined' && toast) {
+                        toast.success(message);
+                    } else if (window.toast) {
+                        window.toast.success(message);
                     } else {
-                        alert(data.message);
+                        console.log('✅ Успех:', message);
+                        if (typeof showTemporaryNotification === 'function') {
+                            showTemporaryNotification(message, 'success');
+                        }
                     }
                 } else {
-                    if (window.toast) {
-                        toast.error(data.error || 'Неизвестная ошибка');
+                    const errorMessage = data ? (data.error || 'Неизвестная ошибка') : 'Ошибка при обработке ответа';
+                    if (typeof toast !== 'undefined' && toast) {
+                        toast.error(errorMessage);
+                    } else if (window.toast) {
+                        window.toast.error(errorMessage);
                     } else {
-                        alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                        console.error('❌ Ошибка:', errorMessage);
+                        if (typeof showTemporaryNotification === 'function') {
+                            showTemporaryNotification(errorMessage, 'error');
+                        }
                     }
                     buttons.forEach(btn => btn.disabled = false);
                 }
+                
+                // Всегда скрываем индикатор загрузки в конце
+                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') {
+                    try {
+                        loading.hide(loaderId);
+                    } catch (e) {
+                        console.warn('Не удалось скрыть индикатор загрузки:', e);
+                        const loader = document.querySelector(`[data-loader-id="${loaderId}"]`);
+                        if (loader) {
+                            loader.remove();
+                        }
+                    }
+                }
             })
             .catch(error => {
-                console.error('Error:', error);
-                if (window.toast) {
-                    toast.error('Ошибка при выполнении действия');
+                clearTimeout(timeoutId); // Отменяем таймаут
+                console.error('Ошибка при выполнении запроса:', error);
+                // Всегда скрываем индикатор загрузки
+                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') {
+                    try {
+                        loading.hide(loaderId);
+                        loaderId = null;
+                    } catch (e) {
+                        console.warn('Не удалось скрыть индикатор загрузки:', e);
+                        // Пытаемся удалить напрямую
+                        const loader = document.querySelector(`[data-loader-id="${loaderId}"]`);
+                        if (loader) {
+                            loader.remove();
+                        }
+                        loaderId = null;
+                    }
+                }
+                
+                const errorMessage = 'Ошибка при выполнении действия: ' + error.message;
+                if (typeof toast !== 'undefined' && toast) {
+                    toast.error(errorMessage);
+                } else if (window.toast) {
+                    window.toast.error(errorMessage);
                 } else {
-                    alert('Ошибка при выполнении действия');
+                    console.error('❌ Ошибка:', errorMessage);
+                    if (typeof showTemporaryNotification === 'function') {
+                        showTemporaryNotification(errorMessage, 'error');
+                    } else {
+                        alert(errorMessage);
+                    }
                 }
                 buttons.forEach(btn => btn.disabled = false);
             });
@@ -502,8 +710,6 @@
             if (checked.length === 0) {
                 if (window.toast) {
                     toast.error('Выберите хотя бы одно задание');
-                } else {
-                    alert('Выберите хотя бы одно задание');
                 }
                 return;
             }
@@ -515,9 +721,26 @@
                 'blacklist': 'добавить в черный список'
             };
             
-            if (!confirm(`Вы уверены, что хотите ${actionNames[action]} ${taskIds.length} заданий?`)) {
-                return;
-            }
+            // Показываем модальное окно подтверждения
+            showConfirmModal({
+                title: 'Подтверждение действия',
+                message: `Вы уверены, что хотите ${actionNames[action]} ${taskIds.length} заданий?`,
+                confirmText: 'Подтвердить',
+                cancelText: 'Отмена',
+                confirmClass: 'accent',
+                onConfirm: () => {
+                    performBulkAction(action, taskIds);
+                }
+            });
+            
+            return;
+        }
+        
+        function performBulkAction(action, taskIds) {
+            
+            // Показываем индикатор загрузки
+            const container = document.querySelector('.app-shell');
+            const loaderId = loading.show(container, `Обработка ${taskIds.length} заданий...`);
             
             const requestBody = {
                 action: action,
@@ -538,18 +761,44 @@
                 },
                 body: JSON.stringify(requestBody)
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
-                if (data.success) {
-                    checked.forEach(cb => {
-                        const taskElement = cb.closest('.task-card');
-                        taskElement.style.opacity = '0.5';
-                        setTimeout(() => taskElement.remove(), 300);
+                if (loaderId) loading.hide(loaderId);
+                if (data && data.success) {
+                    // Определяем сообщение
+                    let message = data.message;
+                    if (!message) {
+                        const actionMessages = {
+                            'accept': 'Задания приняты',
+                            'skip': 'Задания пропущены',
+                            'blacklist': 'Задания добавлены в черный список'
+                        };
+                        message = actionMessages[action] || `${taskIds.length} заданий обработано`;
+                    }
+                    
+                    taskIds.forEach(taskId => {
+                        const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+                        if (taskElement) {
+                            taskElement.style.opacity = '0.5';
+                            setTimeout(() => taskElement.remove(), 300);
+                        }
                     });
-                    if (window.toast) {
-                        toast.success(data.message);
+                    
+                    // Всегда показываем уведомление
+                    if (typeof toast !== 'undefined' && toast) {
+                        toast.success(message);
+                    } else if (window.toast) {
+                        window.toast.success(message);
                     } else {
-                        alert(data.message);
+                        console.log('✅ Успех:', message);
+                        if (typeof showTemporaryNotification === 'function') {
+                            showTemporaryNotification(message, 'success');
+                        }
                     }
                     
                     setTimeout(() => {
@@ -558,23 +807,71 @@
                         }
                     }, 500);
                 } else {
-                    if (window.toast) {
-                        toast.error(data.error || 'Неизвестная ошибка');
+                    const errorMessage = data.error || 'Неизвестная ошибка';
+                    if (typeof toast !== 'undefined' && toast) {
+                        toast.error(errorMessage);
+                    } else if (window.toast) {
+                        window.toast.error(errorMessage);
                     } else {
-                        alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                        console.error('❌ Ошибка:', errorMessage);
+                        if (typeof showTemporaryNotification === 'function') {
+                            showTemporaryNotification(errorMessage, 'error');
+                        }
                     }
                 }
             })
             .catch(error => {
+                if (loaderId) loading.hide(loaderId);
                 console.error('Error:', error);
-                if (window.toast) {
-                    toast.error('Ошибка при выполнении действия');
+                const errorMessage = 'Ошибка при выполнении действия';
+                if (typeof toast !== 'undefined' && toast) {
+                    toast.error(errorMessage);
+                } else if (window.toast) {
+                    window.toast.error(errorMessage);
                 } else {
-                    alert('Ошибка при выполнении действия');
+                    console.error('❌ Ошибка:', errorMessage);
+                    showTemporaryNotification(errorMessage, 'error');
                 }
             });
         }
     </script>
+    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script>
+        // Конвертируем flash-сообщения в toast-уведомления
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.error('{{ message|e }}');
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.warning('{{ message|e }}');
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.info('{{ message|e }}');
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.success('{{ message|e }}');
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
 </body>
 </html>

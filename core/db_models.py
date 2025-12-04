@@ -112,6 +112,10 @@ class Lesson(db.Model):
     @property
     def classwork_assignments(self):
         return [task for task in self.homework_tasks if (task.assignment_type or 'homework') == 'classwork']
+    
+    @property
+    def exam_assignments(self):
+        return [task for task in self.homework_tasks if (task.assignment_type or 'homework') == 'exam']
 
 class LessonTask(db.Model):
     __tablename__ = 'LessonTasks'

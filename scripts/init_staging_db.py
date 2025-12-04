@@ -167,7 +167,7 @@ def update_sequences(pg_conn):
         import traceback
         traceback.print_exc()
 
-def copy_table_data(sqlite_conn, pg_conn, table_name):
+def copy_table_data(sqlite_conn, pg_conn, table_name, valid_tester_ids=None):
 
     sqlite_cursor = sqlite_conn.cursor()
     pg_cursor = pg_conn.cursor()
@@ -235,14 +235,27 @@ def copy_table_data(sqlite_conn, pg_conn, table_name):
         
         # Конвертируем все данные
         converted_rows = []
+        nullified_fk_count = 0
         for row in rows:
             converted_row = []
+            row_nullified = False
+            
             for idx in column_indices:
                 val = row[idx]
                 
                 # Конвертация boolean: SQLite хранит как 0/1, PostgreSQL ожидает True/False
                 col_name = sqlite_column_names[idx]
                 pg_col_name = col_name.lower() if col_name.lower() in pg_column_names else col_name
+                
+                # Проверка внешнего ключа для AuditLog.tester_id
+                if table_name == 'AuditLog' and pg_col_name == 'tester_id' and val is not None:
+                    if valid_tester_ids is not None and val not in valid_tester_ids:
+                        # Устанавливаем tester_id в NULL, если тестер не существует
+                        val = None
+                        if not row_nullified:
+                            nullified_fk_count += 1
+                            row_nullified = True
+                
                 if pg_col_name in pg_columns_info:
                     pg_type = pg_columns_info[pg_col_name]
                     if pg_type == 'boolean':
@@ -282,7 +295,11 @@ def copy_table_data(sqlite_conn, pg_conn, table_name):
                                 print(f"  ⚠️  Обрезано значение в колонке {col_name} до {max_len} символов")
                 
                 converted_row.append(val)
+            
             converted_rows.append(tuple(converted_row))
+        
+        if nullified_fk_count > 0:
+            print(f"  ⚠️  Обнулено {nullified_fk_count} невалидных tester_id в AuditLog")
         
         # Используем execute_values для быстрой вставки
         try:
@@ -372,16 +389,33 @@ def init_staging_db():
             'UsageHistory',     # История использования
             'SkippedTasks',     # Пропущенные задания
             'BlacklistTasks',   # Черный список
-            'Testers',          # Тестировщики (если есть)
-            'AuditLog'          # Логи аудита (если есть)
+            'Testers',          # Тестировщики (если есть) - ДО AuditLog!
+            'AuditLog'          # Логи аудита (если есть) - ПОСЛЕ Testers!
         ]
         total_copied = 0
+        
+        # Получаем список валидных tester_id из PostgreSQL перед копированием AuditLog
+        valid_tester_ids = None
 
         for idx, table in enumerate(tables, 1):
             print(f"\n[{idx}/{len(tables)}] Обработка таблицы: {table}")
             try:
-                count = copy_table_data(sqlite_conn, pg_conn, table)
-                total_copied += count
+                # Если это Testers, после копирования получаем список ID
+                if table == 'Testers':
+                    count = copy_table_data(sqlite_conn, pg_conn, table)
+                    total_copied += count
+                    # Получаем список всех tester_id из PostgreSQL
+                    pg_cursor = pg_conn.cursor()
+                    pg_cursor.execute('SELECT "tester_id" FROM "Testers"')
+                    valid_tester_ids = {row[0] for row in pg_cursor.fetchall()}
+                    print(f"  ✅ Загружено {len(valid_tester_ids)} валидных tester_id для проверки внешних ключей")
+                elif table == 'AuditLog' and valid_tester_ids is not None:
+                    # Передаем список валидных tester_id для фильтрации
+                    count = copy_table_data(sqlite_conn, pg_conn, table, valid_tester_ids=valid_tester_ids)
+                    total_copied += count
+                else:
+                    count = copy_table_data(sqlite_conn, pg_conn, table)
+                    total_copied += count
             except Exception as e:
                 print(f"  ❌ Критическая ошибка при копировании {table}: {e}")
                 import traceback

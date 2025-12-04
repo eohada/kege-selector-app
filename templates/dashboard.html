@@ -121,13 +121,7 @@
             </div>
         </section>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+        {# Flash messages будут показаны через toast #}
 
         <section class="glass-panel filters-panel">
             <form method="GET" action="{{ url_for('dashboard') }}" class="filters-grid">
@@ -188,6 +182,20 @@
                 <strong>{{ completed_lessons }}</strong>
                 <span>ПРОВЕДЕНО</span>
             </article>
+            {% if in_progress_lessons %}
+            <article class="stat-card">
+                <strong>{{ in_progress_lessons }}</strong>
+                <span>ИДЕТ СЕЙЧАС</span>
+            </article>
+            {% endif %}
+            <article class="stat-card">
+                <strong>{{ recent_lessons }}</strong>
+                <span>ЗА НЕДЕЛЮ</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ lessons_with_homework }}</strong>
+                <span>С ДЗ</span>
+            </article>
             {% if not category_filter %}
             <article class="stat-card">
                 <strong>{{ ege_students }}</strong>
@@ -201,11 +209,19 @@
                 <strong>{{ levelup_students }}</strong>
                 <span>ЛЕВЕЛАП</span>
             </article>
-            <article class="stat-card"> <!-- Карточка по направлению программирования -->
-                <strong>{{ programming_students }}</strong> <!-- Количество учеников по программированию -->
-                <span>ПРОГРАММИРОВАНИЕ</span> <!-- Подпись карточки -->
+            <article class="stat-card">
+                <strong>{{ programming_students }}</strong>
+                <span>ПРОГРАММИРОВАНИЕ</span>
             </article>
             {% endif %}
+            <article class="stat-card">
+                <strong>{{ total_tasks }}</strong>
+                <span>ЗАДАНИЙ В БД</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ accepted_tasks_count }}</strong>
+                <span>ПРИНЯТО</span>
+            </article>
         </section>
 
         <section class="glass-panel students-panel">
@@ -319,7 +335,9 @@
     <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
     <script src="{{ url_for('static', filename='dashboard-ajax.js') }}"></script>
+    <script src="{{ url_for('static', filename='filter-storage.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
 </body>
 </html>

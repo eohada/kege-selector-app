@@ -1,0 +1,3342 @@
+{
+  "timestamp": "2025-12-04T06:09:04.103198",
+  "skipped": [
+    {
+      "task_fk": 3351,
+      "site_task_id": "13800",
+      "source_url": "https://kompege.ru/task?id=13800",
+      "date_skipped": "2025-11-15T09:02:11.234486",
+      "session_tag": null
+    },
+    {
+      "task_fk": 3432,
+      "site_task_id": "4093",
+      "source_url": "https://kompege.ru/task?id=4093",
+      "date_skipped": "2025-11-15T09:02:13.242808",
+      "session_tag": null
+    },
+    {
+      "task_fk": 3385,
+      "site_task_id": "8146",
+      "source_url": "https://kompege.ru/task?id=8146",
+      "date_skipped": "2025-11-15T09:02:17.776488",
+      "session_tag": null
+    },
+    {
+      "task_fk": 216,
+      "site_task_id": "31",
+      "source_url": "https://kompege.ru/task?id=31",
+      "date_skipped": "2025-11-15T11:40:47.757274",
+      "session_tag": null
+    },
+    {
+      "task_fk": 96,
+      "site_task_id": "6254",
+      "source_url": "https://kompege.ru/task?id=6254",
+      "date_skipped": "2025-11-15T11:41:14.840910",
+      "session_tag": null
+    },
+    {
+      "task_fk": 170,
+      "site_task_id": "1281",
+      "source_url": "https://kompege.ru/task?id=1281",
+      "date_skipped": "2025-11-15T11:41:42.937021",
+      "session_tag": null
+    },
+    {
+      "task_fk": 1337,
+      "site_task_id": "1946",
+      "source_url": "https://kompege.ru/task?id=1946",
+      "date_skipped": "2025-11-15T13:40:29.559657",
+      "session_tag": null
+    },
+    {
+      "task_fk": 1605,
+      "site_task_id": "24662",
+      "source_url": "https://kompege.ru/task?id=24662",
+      "date_skipped": "2025-11-15T14:51:17.857042",
+      "session_tag": null
+    },
+    {
+      "task_fk": 1621,
+      "site_task_id": "23814",
+      "source_url": "https://kompege.ru/task?id=23814",
+      "date_skipped": "2025-11-15T15:01:08.751342",
+      "session_tag": null
+    },
+    {
+      "task_fk": 1610,
+      "site_task_id": "24173",
+      "source_url": "https://kompege.ru/task?id=24173",
+      "date_skipped": "2025-11-15T15:02:21.643968",
+      "session_tag": null
+    },
+    {
+      "task_fk": 2129,
+      "site_task_id": "13297",
+      "source_url": "https://kompege.ru/task?id=13297",
+      "date_skipped": "2025-11-16T13:40:34.242346",
+      "session_tag": null
+    },
+    {
+      "task_fk": 3268,
+      "site_task_id": "19647",
+      "source_url": "https://kompege.ru/task?id=19647",
+      "date_skipped": "2025-11-17T09:39:42.860973",
+      "session_tag": null
+    },
+    {
+      "task_fk": 3101,
+      "site_task_id": "8432",
+      "source_url": "https://kompege.ru/task?id=8432",
+      "date_skipped": "2025-11-17T09:40:19.684067",
+      "session_tag": null
+    },
+    {
+      "task_fk": 87,
+      "site_task_id": "7284",
+      "source_url": "https://kompege.ru/task?id=7284",
+      "date_skipped": "2025-12-03T10:14:40.502851",
+      "session_tag": null
+    },
+    {
+      "task_fk": 54,
+      "site_task_id": "12489",
+      "source_url": "https://kompege.ru/task?id=12489",
+      "date_skipped": "2025-12-03T10:21:36.977582",
+      "session_tag": null
+    }
+  ],
+  "blacklist": [
+    {
+      "task_fk": 147,
+      "site_task_id": "2372",
+      "source_url": "https://kompege.ru/task?id=2372",
+      "date_added": "2025-11-15T03:48:52.369096",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 200,
+      "site_task_id": "293",
+      "source_url": "https://kompege.ru/task?id=293",
+      "date_added": "2025-11-15T04:14:26.075214",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 169,
+      "site_task_id": "1334",
+      "source_url": "https://kompege.ru/task?id=1334",
+      "date_added": "2025-11-15T11:40:50.694479",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 150,
+      "site_task_id": "2204",
+      "source_url": "https://kompege.ru/task?id=2204",
+      "date_added": "2025-11-15T11:41:47.730213",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1192,
+      "site_task_id": "11300",
+      "source_url": "https://kompege.ru/task?id=11300",
+      "date_added": "2025-11-15T13:40:32.760122",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1611,
+      "site_task_id": "24134",
+      "source_url": "https://kompege.ru/task?id=24134",
+      "date_added": "2025-11-15T15:00:47.210411",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1625,
+      "site_task_id": "23727",
+      "source_url": "https://kompege.ru/task?id=23727",
+      "date_added": "2025-11-15T15:00:52.065354",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1606,
+      "site_task_id": "24553",
+      "source_url": "https://kompege.ru/task?id=24553",
+      "date_added": "2025-11-15T15:00:57.105747",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1607,
+      "site_task_id": "24305",
+      "source_url": "https://kompege.ru/task?id=24305",
+      "date_added": "2025-11-15T15:01:24.495537",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 2139,
+      "site_task_id": "11531",
+      "source_url": "https://kompege.ru/task?id=11531",
+      "date_added": "2025-11-16T13:40:46.139489",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 3565,
+      "site_task_id": "19569",
+      "source_url": "https://kompege.ru/task?id=19569",
+      "date_added": "2025-11-16T20:14:00.738430",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 3363,
+      "site_task_id": "12091",
+      "source_url": "https://kompege.ru/task?id=12091",
+      "date_added": "2025-11-17T10:49:00.629990",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 3482,
+      "site_task_id": "914",
+      "source_url": "https://kompege.ru/task?id=914",
+      "date_added": "2025-11-17T10:49:02.859078",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 3358,
+      "site_task_id": "12718",
+      "source_url": "https://kompege.ru/task?id=12718",
+      "date_added": "2025-11-17T10:49:05.120079",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 4049,
+      "site_task_id": "18136",
+      "source_url": "https://kompege.ru/task?id=18136",
+      "date_added": "2025-11-17T15:36:00.936109",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 4039,
+      "site_task_id": "18964",
+      "source_url": "https://kompege.ru/task?id=18964",
+      "date_added": "2025-11-17T15:38:23.604567",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 4171,
+      "site_task_id": "2213",
+      "source_url": "https://kompege.ru/task?id=2213",
+      "date_added": "2025-11-17T17:50:35.385098",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 4128,
+      "site_task_id": "6264",
+      "source_url": "https://kompege.ru/task?id=6264",
+      "date_added": "2025-11-17T17:50:37.326270",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 4056,
+      "site_task_id": "17932",
+      "source_url": "https://kompege.ru/task?id=17932",
+      "date_added": "2025-11-17T17:50:54.231570",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 111,
+      "site_task_id": "5298",
+      "source_url": "https://kompege.ru/task?id=5298",
+      "date_added": "2025-11-17T18:49:07.597689",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 180,
+      "site_task_id": "956",
+      "source_url": "https://kompege.ru/task?id=956",
+      "date_added": "2025-11-17T18:49:11.349811",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 156,
+      "site_task_id": "1885",
+      "source_url": "https://kompege.ru/task?id=1885",
+      "date_added": "2025-11-17T18:49:14.884869",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 159,
+      "site_task_id": "1882",
+      "source_url": "https://kompege.ru/task?id=1882",
+      "date_added": "2025-11-17T18:49:17.926159",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 122,
+      "site_task_id": "4251",
+      "source_url": "https://kompege.ru/task?id=4251",
+      "date_added": "2025-11-17T18:49:26.922796",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 155,
+      "site_task_id": "1887",
+      "source_url": "https://kompege.ru/task?id=1887",
+      "date_added": "2025-11-17T18:49:34.378951",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 190,
+      "site_task_id": "484",
+      "source_url": "https://kompege.ru/task?id=484",
+      "date_added": "2025-11-17T18:49:44.376604",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1,
+      "site_task_id": "24610",
+      "source_url": "https://kompege.ru/task?id=24610",
+      "date_added": "2025-11-17T18:49:52.561673",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 632,
+      "site_task_id": "22272",
+      "source_url": "https://kompege.ru/task?id=22272",
+      "date_added": "2025-11-18T19:41:12.163103",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 660,
+      "site_task_id": "19870",
+      "source_url": "https://kompege.ru/task?id=19870",
+      "date_added": "2025-11-18T19:41:17.222868",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1040,
+      "site_task_id": "6006",
+      "source_url": "https://kompege.ru/task?id=6006",
+      "date_added": "2025-11-19T14:18:36.718880",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1050,
+      "site_task_id": "5262",
+      "source_url": "https://kompege.ru/task?id=5262",
+      "date_added": "2025-11-19T14:18:41.516471",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 964,
+      "site_task_id": "13849",
+      "source_url": "https://kompege.ru/task?id=13849",
+      "date_added": "2025-11-19T14:18:47.627475",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 967,
+      "site_task_id": "13846",
+      "source_url": "https://kompege.ru/task?id=13846",
+      "date_added": "2025-11-19T14:19:04.388026",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1334,
+      "site_task_id": "1950",
+      "source_url": "https://kompege.ru/task?id=1950",
+      "date_added": "2025-11-22T10:50:57.251208",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1131,
+      "site_task_id": "20269",
+      "source_url": "https://kompege.ru/task?id=20269",
+      "date_added": "2025-11-22T11:13:40.364827",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1232,
+      "site_task_id": "7810",
+      "source_url": "https://kompege.ru/task?id=7810",
+      "date_added": "2025-11-22T11:13:46.997661",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1297,
+      "site_task_id": "4359",
+      "source_url": "https://kompege.ru/task?id=4359",
+      "date_added": "2025-11-22T11:14:31.928665",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 3478,
+      "site_task_id": "1044",
+      "source_url": "https://kompege.ru/task?id=1044",
+      "date_added": "2025-11-22T11:49:11.741530",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 3499,
+      "site_task_id": "454",
+      "source_url": "https://kompege.ru/task?id=454",
+      "date_added": "2025-11-22T11:49:23.072180",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 3469,
+      "site_task_id": "1357",
+      "source_url": "https://kompege.ru/task?id=1357",
+      "date_added": "2025-11-24T16:49:18.198513",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1302,
+      "site_task_id": "3886",
+      "source_url": "https://kompege.ru/task?id=3886",
+      "date_added": "2025-11-25T06:45:34.562541",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1275,
+      "site_task_id": "5300",
+      "source_url": "https://kompege.ru/task?id=5300",
+      "date_added": "2025-11-25T06:45:40.747245",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1205,
+      "site_task_id": "11203",
+      "source_url": "https://kompege.ru/task?id=11203",
+      "date_added": "2025-11-25T06:45:46.627496",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1372,
+      "site_task_id": "1339",
+      "source_url": "https://kompege.ru/task?id=1339",
+      "date_added": "2025-11-25T06:46:10.506636",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1126,
+      "site_task_id": "20857",
+      "source_url": "https://kompege.ru/task?id=20857",
+      "date_added": "2025-11-25T06:46:16.759067",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1285,
+      "site_task_id": "4957",
+      "source_url": "https://kompege.ru/task?id=4957",
+      "date_added": "2025-11-25T06:46:27.566973",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1220,
+      "site_task_id": "8945",
+      "source_url": "https://kompege.ru/task?id=8945",
+      "date_added": "2025-11-25T06:46:39.246395",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1292,
+      "site_task_id": "4562",
+      "source_url": "https://kompege.ru/task?id=4562",
+      "date_added": "2025-11-25T06:46:53.333306",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 4099,
+      "site_task_id": "9366",
+      "source_url": "https://kompege.ru/task?id=9366",
+      "date_added": "2025-11-25T06:50:23.789342",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 3518,
+      "site_task_id": "74",
+      "source_url": "https://kompege.ru/task?id=74",
+      "date_added": "2025-11-26T22:17:31.207972",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 758,
+      "site_task_id": "5694",
+      "source_url": "https://kompege.ru/task?id=5694",
+      "date_added": "2025-11-26T22:38:44.577404",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 806,
+      "site_task_id": "2348",
+      "source_url": "https://kompege.ru/task?id=2348",
+      "date_added": "2025-11-26T22:38:52.350278",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1260,
+      "site_task_id": "5713",
+      "source_url": "https://kompege.ru/task?id=5713",
+      "date_added": "2025-11-29T16:08:06.081173",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 1161,
+      "site_task_id": "16319",
+      "source_url": "https://kompege.ru/task?id=16319",
+      "date_added": "2025-11-29T16:10:05.192841",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 771,
+      "site_task_id": "4872",
+      "source_url": "https://kompege.ru/task?id=4872",
+      "date_added": "2025-12-01T17:12:45.066123",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 109,
+      "site_task_id": "5303",
+      "source_url": "https://kompege.ru/task?id=5303",
+      "date_added": "2025-12-03T10:21:26.808655",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 9,
+      "site_task_id": "22074",
+      "source_url": "https://kompege.ru/task?id=22074",
+      "date_added": "2025-12-03T10:33:35.711373",
+      "reason": "Добавлено пользователем"
+    },
+    {
+      "task_fk": 153,
+      "site_task_id": "2110",
+      "source_url": "https://kompege.ru/task?id=2110",
+      "date_added": "2025-12-03T10:34:18.252475",
+      "reason": "Добавлено пользователем"
+    }
+  ],
+  "usage_history": [
+    {
+      "task_fk": 21,
+      "site_task_id": "19477",
+      "source_url": "https://kompege.ru/task?id=19477",
+      "date_issued": "2025-11-15T03:48:46.575590",
+      "session_tag": null
+    },
+    {
+      "task_fk": 137,
+      "site_task_id": "2921",
+      "source_url": "https://kompege.ru/task?id=2921",
+      "date_issued": "2025-11-15T03:48:50.686813",
+      "session_tag": null
+    },
+    {
+      "task_fk": 49,
+      "site_task_id": "13871",
+      "source_url": "https://kompege.ru/task?id=13871",
+      "date_issued": "2025-11-15T03:48:53.724026",
+      "session_tag": null
+    },
+    {
+      "task_fk": 200,
+      "site_task_id": "293",
+      "source_url": "https://kompege.ru/task?id=293",
+      "date_issued": "2025-11-15T03:49:06.069345",
+      "session_tag": null
+    },
+    {
+      "task_fk": 5,
+      "site_task_id": "23260",
+      "source_url": "https://kompege.ru/task?id=23260",
+      "date_issued": "2025-11-15T03:59:34.323068",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 6,
+      "site_task_id": "23185",
+      "source_url": "https://kompege.ru/task?id=23185",
+      "date_issued": "2025-11-15T03:59:34.344633",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 7,
+      "site_task_id": "22803",
+      "source_url": "https://kompege.ru/task?id=22803",
+      "date_issued": "2025-11-15T03:59:34.357566",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 14,
+      "site_task_id": "20893",
+      "source_url": "https://kompege.ru/task?id=20893",
+      "date_issued": "2025-11-15T03:59:34.368716",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 16,
+      "site_task_id": "20801",
+      "source_url": "https://kompege.ru/task?id=20801",
+      "date_issued": "2025-11-15T03:59:34.372359",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 20,
+      "site_task_id": "19885",
+      "source_url": "https://kompege.ru/task?id=19885",
+      "date_issued": "2025-11-15T03:59:34.410113",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 23,
+      "site_task_id": "19233",
+      "source_url": "https://kompege.ru/task?id=19233",
+      "date_issued": "2025-11-15T03:59:34.412653",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 25,
+      "site_task_id": "18869",
+      "source_url": "https://kompege.ru/task?id=18869",
+      "date_issued": "2025-11-15T03:59:34.414031",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 26,
+      "site_task_id": "18575",
+      "source_url": "https://kompege.ru/task?id=18575",
+      "date_issued": "2025-11-15T03:59:34.414773",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 28,
+      "site_task_id": "18308",
+      "source_url": "https://kompege.ru/task?id=18308",
+      "date_issued": "2025-11-15T03:59:34.415598",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 3308,
+      "site_task_id": "23548",
+      "source_url": "https://kompege.ru/task?id=23548",
+      "date_issued": "2025-11-15T03:59:35.897488",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 3309,
+      "site_task_id": "23361",
+      "source_url": "https://kompege.ru/task?id=23361",
+      "date_issued": "2025-11-15T03:59:35.927068",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 3310,
+      "site_task_id": "23261",
+      "source_url": "https://kompege.ru/task?id=23261",
+      "date_issued": "2025-11-15T03:59:35.934276",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 3311,
+      "site_task_id": "23186",
+      "source_url": "https://kompege.ru/task?id=23186",
+      "date_issued": "2025-11-15T03:59:35.942278",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 3312,
+      "site_task_id": "22423",
+      "source_url": "https://kompege.ru/task?id=22423",
+      "date_issued": "2025-11-15T03:59:35.950304",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 3313,
+      "site_task_id": "22421",
+      "source_url": "https://kompege.ru/task?id=22421",
+      "date_issued": "2025-11-15T03:59:35.958162",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 3314,
+      "site_task_id": "22073",
+      "source_url": "https://kompege.ru/task?id=22073",
+      "date_issued": "2025-11-15T03:59:35.977155",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 3315,
+      "site_task_id": "21888",
+      "source_url": "https://kompege.ru/task?id=21888",
+      "date_issued": "2025-11-15T03:59:35.985024",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 3316,
+      "site_task_id": "21697",
+      "source_url": "https://kompege.ru/task?id=21697",
+      "date_issued": "2025-11-15T03:59:35.991955",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 3317,
+      "site_task_id": "21401",
+      "source_url": "https://kompege.ru/task?id=21401",
+      "date_issued": "2025-11-15T03:59:36.000213",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 225,
+      "site_task_id": "23549",
+      "source_url": "https://kompege.ru/task?id=23549",
+      "date_issued": "2025-11-15T03:59:36.638650",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 226,
+      "site_task_id": "23362",
+      "source_url": "https://kompege.ru/task?id=23362",
+      "date_issued": "2025-11-15T03:59:36.641145",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 227,
+      "site_task_id": "23262",
+      "source_url": "https://kompege.ru/task?id=23262",
+      "date_issued": "2025-11-15T03:59:36.642178",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 229,
+      "site_task_id": "22565",
+      "source_url": "https://kompege.ru/task?id=22565",
+      "date_issued": "2025-11-15T03:59:36.642906",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 230,
+      "site_task_id": "22564",
+      "source_url": "https://kompege.ru/task?id=22564",
+      "date_issued": "2025-11-15T03:59:36.643587",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 232,
+      "site_task_id": "21889",
+      "source_url": "https://kompege.ru/task?id=21889",
+      "date_issued": "2025-11-15T03:59:36.644215",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 233,
+      "site_task_id": "21698",
+      "source_url": "https://kompege.ru/task?id=21698",
+      "date_issued": "2025-11-15T03:59:36.644902",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 234,
+      "site_task_id": "21589",
+      "source_url": "https://kompege.ru/task?id=21589",
+      "date_issued": "2025-11-15T03:59:36.645709",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 235,
+      "site_task_id": "21402",
+      "source_url": "https://kompege.ru/task?id=21402",
+      "date_issued": "2025-11-15T03:59:36.646496",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 416,
+      "site_task_id": "22513",
+      "source_url": "https://kompege.ru/task?id=22513",
+      "date_issued": "2025-11-15T03:59:36.735983",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 417,
+      "site_task_id": "22511",
+      "source_url": "https://kompege.ru/task?id=22511",
+      "date_issued": "2025-11-15T03:59:36.738815",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 418,
+      "site_task_id": "21890",
+      "source_url": "https://kompege.ru/task?id=21890",
+      "date_issued": "2025-11-15T03:59:36.739647",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 419,
+      "site_task_id": "21699",
+      "source_url": "https://kompege.ru/task?id=21699",
+      "date_issued": "2025-11-15T03:59:36.740319",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 421,
+      "site_task_id": "21403",
+      "source_url": "https://kompege.ru/task?id=21403",
+      "date_issued": "2025-11-15T03:59:36.740997",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 422,
+      "site_task_id": "21127",
+      "source_url": "https://kompege.ru/task?id=21127",
+      "date_issued": "2025-11-15T03:59:36.741632",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 426,
+      "site_task_id": "20067",
+      "source_url": "https://kompege.ru/task?id=20067",
+      "date_issued": "2025-11-15T03:59:36.742313",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 429,
+      "site_task_id": "19408",
+      "source_url": "https://kompege.ru/task?id=19408",
+      "date_issued": "2025-11-15T03:59:36.743101",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 431,
+      "site_task_id": "19236",
+      "source_url": "https://kompege.ru/task?id=19236",
+      "date_issued": "2025-11-15T03:59:36.743868",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 436,
+      "site_task_id": "18360",
+      "source_url": "https://kompege.ru/task?id=18360",
+      "date_issued": "2025-11-15T03:59:36.744780",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 629,
+      "site_task_id": "23189",
+      "source_url": "https://kompege.ru/task?id=23189",
+      "date_issued": "2025-11-15T03:59:36.850354",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 630,
+      "site_task_id": "22457",
+      "source_url": "https://kompege.ru/task?id=22457",
+      "date_issued": "2025-11-15T03:59:36.851817",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 631,
+      "site_task_id": "22456",
+      "source_url": "https://kompege.ru/task?id=22456",
+      "date_issued": "2025-11-15T03:59:36.852594",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 638,
+      "site_task_id": "21891",
+      "source_url": "https://kompege.ru/task?id=21891",
+      "date_issued": "2025-11-15T03:59:36.853334",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 640,
+      "site_task_id": "21700",
+      "source_url": "https://kompege.ru/task?id=21700",
+      "date_issued": "2025-11-15T03:59:36.854177",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 643,
+      "site_task_id": "21404",
+      "source_url": "https://kompege.ru/task?id=21404",
+      "date_issued": "2025-11-15T03:59:36.855490",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 648,
+      "site_task_id": "20896",
+      "source_url": "https://kompege.ru/task?id=20896",
+      "date_issued": "2025-11-15T03:59:36.856872",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 651,
+      "site_task_id": "20537",
+      "source_url": "https://kompege.ru/task?id=20537",
+      "date_issued": "2025-11-15T03:59:36.858019",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 661,
+      "site_task_id": "19695",
+      "source_url": "https://kompege.ru/task?id=19695",
+      "date_issued": "2025-11-15T03:59:36.858837",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 663,
+      "site_task_id": "19552",
+      "source_url": "https://kompege.ru/task?id=19552",
+      "date_issued": "2025-11-15T03:59:36.859538",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 647,
+      "site_task_id": "20951",
+      "source_url": "https://kompege.ru/task?id=20951",
+      "date_issued": "2025-11-15T03:59:36.860214",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 684,
+      "site_task_id": "16316",
+      "source_url": "https://kompege.ru/task?id=16316",
+      "date_issued": "2025-11-15T03:59:36.861099",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 687,
+      "site_task_id": "14331",
+      "source_url": "https://kompege.ru/task?id=14331",
+      "date_issued": "2025-11-15T03:59:36.862159",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 689,
+      "site_task_id": "14329",
+      "source_url": "https://kompege.ru/task?id=14329",
+      "date_issued": "2025-11-15T03:59:36.863540",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 691,
+      "site_task_id": "14327",
+      "source_url": "https://kompege.ru/task?id=14327",
+      "date_issued": "2025-11-15T03:59:36.864465",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 1112,
+      "site_task_id": "23808",
+      "source_url": "https://kompege.ru/task?id=23808",
+      "date_issued": "2025-11-15T03:59:36.962110",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 1114,
+      "site_task_id": "23554",
+      "source_url": "https://kompege.ru/task?id=23554",
+      "date_issued": "2025-11-15T03:59:36.965964",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 1117,
+      "site_task_id": "23192",
+      "source_url": "https://kompege.ru/task?id=23192",
+      "date_issued": "2025-11-15T03:59:36.969913",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 1119,
+      "site_task_id": "22417",
+      "source_url": "https://kompege.ru/task?id=22417",
+      "date_issued": "2025-11-15T03:59:36.973527",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 1122,
+      "site_task_id": "21703",
+      "source_url": "https://kompege.ru/task?id=21703",
+      "date_issued": "2025-11-15T03:59:36.977099",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 1125,
+      "site_task_id": "20898",
+      "source_url": "https://kompege.ru/task?id=20898",
+      "date_issued": "2025-11-15T03:59:36.980968",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 1134,
+      "site_task_id": "19753",
+      "source_url": "https://kompege.ru/task?id=19753",
+      "date_issued": "2025-11-15T03:59:36.984897",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 1151,
+      "site_task_id": "17862",
+      "source_url": "https://kompege.ru/task?id=17862",
+      "date_issued": "2025-11-15T03:59:36.989042",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 1157,
+      "site_task_id": "17627",
+      "source_url": "https://kompege.ru/task?id=17627",
+      "date_issued": "2025-11-15T03:59:36.991751",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 1159,
+      "site_task_id": "17521",
+      "source_url": "https://kompege.ru/task?id=17521",
+      "date_issued": "2025-11-15T03:59:36.995910",
+      "session_tag": "manual_import"
+    },
+    {
+      "task_fk": 3438,
+      "site_task_id": "3141",
+      "source_url": "https://kompege.ru/task?id=3141",
+      "date_issued": "2025-11-15T04:14:02.497573",
+      "session_tag": null
+    },
+    {
+      "task_fk": 211,
+      "site_task_id": "38",
+      "source_url": "https://kompege.ru/task?id=38",
+      "date_issued": "2025-12-03T10:22:48.811193",
+      "session_tag": null
+    },
+    {
+      "task_fk": 62,
+      "site_task_id": "10009",
+      "source_url": "https://kompege.ru/task?id=10009",
+      "date_issued": "2025-12-03T10:33:43.056299",
+      "session_tag": null
+    },
+    {
+      "task_fk": 113,
+      "site_task_id": "5107",
+      "source_url": "https://kompege.ru/task?id=5107",
+      "date_issued": "2025-12-03T10:34:11.624430",
+      "session_tag": null
+    }
+  ],
+  "lesson_tasks": [
+    {
+      "lesson_task_id": 1,
+      "lesson_id": 1,
+      "task_id": 117,
+      "site_task_id": "4606",
+      "source_url": "https://kompege.ru/task?id=4606",
+      "date_assigned": "2025-11-15T09:56:06.457330",
+      "notes": null,
+      "student_answer": "18",
+      "assignment_type": "homework",
+      "student_submission": "18"
+    },
+    {
+      "lesson_task_id": 2,
+      "lesson_id": 1,
+      "task_id": 209,
+      "site_task_id": "40",
+      "source_url": "https://kompege.ru/task?id=40",
+      "date_assigned": "2025-11-15T09:56:15.263169",
+      "notes": null,
+      "student_answer": "18",
+      "assignment_type": "homework",
+      "student_submission": "18"
+    },
+    {
+      "lesson_task_id": 3,
+      "lesson_id": 1,
+      "task_id": 3350,
+      "site_task_id": "14388",
+      "source_url": "https://kompege.ru/task?id=14388",
+      "date_assigned": "2025-11-15T09:56:37.776015",
+      "notes": null,
+      "student_answer": "yxzw",
+      "assignment_type": "homework",
+      "student_submission": "-1"
+    },
+    {
+      "lesson_task_id": 4,
+      "lesson_id": 1,
+      "task_id": 3471,
+      "site_task_id": "1307",
+      "source_url": "https://kompege.ru/task?id=1307",
+      "date_assigned": "2025-11-15T09:56:44.220261",
+      "notes": null,
+      "student_answer": "wzyx",
+      "assignment_type": "homework",
+      "student_submission": "yxzw"
+    },
+    {
+      "lesson_task_id": 5,
+      "lesson_id": 1,
+      "task_id": 607,
+      "site_task_id": "121",
+      "source_url": "https://kompege.ru/task?id=121",
+      "date_assigned": "2025-11-15T09:57:05.776867",
+      "notes": null,
+      "student_answer": "19",
+      "assignment_type": "homework",
+      "student_submission": "19"
+    },
+    {
+      "lesson_task_id": 6,
+      "lesson_id": 1,
+      "task_id": 580,
+      "site_task_id": "968",
+      "source_url": "https://kompege.ru/task?id=968",
+      "date_assigned": "2025-11-15T09:57:20.157901",
+      "notes": null,
+      "student_answer": "16",
+      "assignment_type": "homework",
+      "student_submission": "16"
+    },
+    {
+      "lesson_task_id": 7,
+      "lesson_id": 1,
+      "task_id": 723,
+      "site_task_id": "8658",
+      "source_url": "https://kompege.ru/task?id=8658",
+      "date_assigned": "2025-11-15T09:57:39.471690",
+      "notes": null,
+      "student_answer": "93",
+      "assignment_type": "homework",
+      "student_submission": "93"
+    },
+    {
+      "lesson_task_id": 8,
+      "lesson_id": 1,
+      "task_id": 652,
+      "site_task_id": "20486",
+      "source_url": "https://kompege.ru/task?id=20486",
+      "date_assigned": "2025-11-15T09:57:57.122556",
+      "notes": null,
+      "student_answer": "612",
+      "assignment_type": "homework",
+      "student_submission": "-1"
+    },
+    {
+      "lesson_task_id": 9,
+      "lesson_id": 8,
+      "task_id": 152,
+      "site_task_id": "2147",
+      "source_url": "https://kompege.ru/task?id=2147",
+      "date_assigned": "2025-11-15T11:40:39.860496",
+      "notes": null,
+      "student_answer": "1564237",
+      "assignment_type": "homework",
+      "student_submission": "1564237"
+    },
+    {
+      "lesson_task_id": 10,
+      "lesson_id": 8,
+      "task_id": 131,
+      "site_task_id": "3569",
+      "source_url": "https://kompege.ru/task?id=3569",
+      "date_assigned": "2025-11-15T11:40:56.499828",
+      "notes": null,
+      "student_answer": "52",
+      "assignment_type": "homework",
+      "student_submission": "52"
+    },
+    {
+      "lesson_task_id": 11,
+      "lesson_id": 8,
+      "task_id": 37,
+      "site_task_id": "17542",
+      "source_url": "https://kompege.ru/task?id=17542",
+      "date_assigned": "2025-11-15T11:40:59.601980",
+      "notes": null,
+      "student_answer": "37",
+      "assignment_type": "homework",
+      "student_submission": "37"
+    },
+    {
+      "lesson_task_id": 13,
+      "lesson_id": 8,
+      "task_id": 64,
+      "site_task_id": "9770",
+      "source_url": "https://kompege.ru/task?id=9770",
+      "date_assigned": "2025-11-15T11:41:51.134356",
+      "notes": null,
+      "student_answer": "61",
+      "assignment_type": "homework",
+      "student_submission": "61"
+    },
+    {
+      "lesson_task_id": 14,
+      "lesson_id": 8,
+      "task_id": 212,
+      "site_task_id": "37",
+      "source_url": "https://kompege.ru/task?id=37",
+      "date_assigned": "2025-11-15T11:41:56.815720",
+      "notes": null,
+      "student_answer": "67",
+      "assignment_type": "homework",
+      "student_submission": "67"
+    },
+    {
+      "lesson_task_id": 15,
+      "lesson_id": 9,
+      "task_id": 1608,
+      "site_task_id": "24176",
+      "source_url": "https://kompege.ru/task?id=24176",
+      "date_assigned": "2025-11-15T14:51:12.676186",
+      "notes": null,
+      "student_answer": "274",
+      "assignment_type": "homework",
+      "student_submission": "-1"
+    },
+    {
+      "lesson_task_id": 16,
+      "lesson_id": 9,
+      "task_id": 1609,
+      "site_task_id": "24174",
+      "source_url": "https://kompege.ru/task?id=24174",
+      "date_assigned": "2025-11-15T15:00:42.161340",
+      "notes": null,
+      "student_answer": "880",
+      "assignment_type": "homework",
+      "student_submission": "880"
+    },
+    {
+      "lesson_task_id": 17,
+      "lesson_id": 9,
+      "task_id": 1614,
+      "site_task_id": "23851",
+      "source_url": "https://kompege.ru/task?id=23851",
+      "date_assigned": "2025-11-15T15:04:15.422570",
+      "notes": null,
+      "student_answer": "651",
+      "assignment_type": "homework",
+      "student_submission": "651"
+    },
+    {
+      "lesson_task_id": 23,
+      "lesson_id": 11,
+      "task_id": 3496,
+      "site_task_id": "614",
+      "source_url": "https://kompege.ru/task?id=614",
+      "date_assigned": "2025-11-17T10:48:49.135058",
+      "notes": null,
+      "student_answer": "wyzx",
+      "assignment_type": "homework",
+      "student_submission": "wyzx"
+    },
+    {
+      "lesson_task_id": 24,
+      "lesson_id": 11,
+      "task_id": 3443,
+      "site_task_id": "2695",
+      "source_url": "https://kompege.ru/task?id=2695",
+      "date_assigned": "2025-11-17T10:48:57.816588",
+      "notes": null,
+      "student_answer": "4",
+      "assignment_type": "homework",
+      "student_submission": "4"
+    },
+    {
+      "lesson_task_id": 25,
+      "lesson_id": 11,
+      "task_id": 3507,
+      "site_task_id": "203",
+      "source_url": "https://kompege.ru/task?id=203",
+      "date_assigned": "2025-11-17T10:49:10.077065",
+      "notes": null,
+      "student_answer": "xzwy",
+      "assignment_type": "homework",
+      "student_submission": "xwzy"
+    },
+    {
+      "lesson_task_id": 26,
+      "lesson_id": 11,
+      "task_id": 3430,
+      "site_task_id": "4252",
+      "source_url": "https://kompege.ru/task?id=4252",
+      "date_assigned": "2025-11-17T10:51:08.341457",
+      "notes": null,
+      "student_answer": "zyxw",
+      "assignment_type": "homework",
+      "student_submission": "zyxw"
+    },
+    {
+      "lesson_task_id": 27,
+      "lesson_id": 11,
+      "task_id": 3364,
+      "site_task_id": "11650",
+      "source_url": "https://kompege.ru/task?id=11650",
+      "date_assigned": "2025-11-17T10:51:32.676389",
+      "notes": null,
+      "student_answer": "wzyx",
+      "assignment_type": "homework",
+      "student_submission": "wzyx"
+    },
+    {
+      "lesson_task_id": 28,
+      "lesson_id": 7,
+      "task_id": 745,
+      "site_task_id": "6903",
+      "source_url": "https://kompege.ru/task?id=6903",
+      "date_assigned": "2025-11-17T13:57:22.150946",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 29,
+      "lesson_id": 21,
+      "task_id": 4060,
+      "site_task_id": "17865",
+      "source_url": "https://kompege.ru/task?id=17865",
+      "date_assigned": "2025-11-17T15:25:32.746729",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 30,
+      "lesson_id": 21,
+      "task_id": 4024,
+      "site_task_id": "20957",
+      "source_url": "https://kompege.ru/task?id=20957",
+      "date_assigned": "2025-11-17T15:34:30.519649",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 31,
+      "lesson_id": 21,
+      "task_id": 4223,
+      "site_task_id": "126",
+      "source_url": "https://kompege.ru/task?id=126",
+      "date_assigned": "2025-11-17T15:38:18.736299",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 32,
+      "lesson_id": 21,
+      "task_id": 4051,
+      "site_task_id": "17971",
+      "source_url": "https://kompege.ru/task?id=17971",
+      "date_assigned": "2025-11-17T15:39:52.027957",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 33,
+      "lesson_id": 21,
+      "task_id": 4189,
+      "site_task_id": "876",
+      "source_url": "https://kompege.ru/task?id=876",
+      "date_assigned": "2025-11-17T15:39:58.746225",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 34,
+      "lesson_id": 21,
+      "task_id": 4121,
+      "site_task_id": "7087",
+      "source_url": "https://kompege.ru/task?id=7087",
+      "date_assigned": "2025-11-17T17:40:53.959291",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 35,
+      "lesson_id": 21,
+      "task_id": 4089,
+      "site_task_id": "11660",
+      "source_url": "https://kompege.ru/task?id=11660",
+      "date_assigned": "2025-11-17T17:50:06.023601",
+      "notes": null,
+      "student_answer": "263",
+      "assignment_type": "homework",
+      "student_submission": "263"
+    },
+    {
+      "lesson_task_id": 36,
+      "lesson_id": 21,
+      "task_id": 4067,
+      "site_task_id": "17524",
+      "source_url": "https://kompege.ru/task?id=17524",
+      "date_assigned": "2025-11-17T17:50:11.532188",
+      "notes": null,
+      "student_answer": "261",
+      "assignment_type": "homework",
+      "student_submission": "262"
+    },
+    {
+      "lesson_task_id": 37,
+      "lesson_id": 21,
+      "task_id": 4181,
+      "site_task_id": "1244",
+      "source_url": "https://kompege.ru/task?id=1244",
+      "date_assigned": "2025-11-17T17:50:26.309215",
+      "notes": null,
+      "student_answer": "43",
+      "assignment_type": "homework",
+      "student_submission": "43"
+    },
+    {
+      "lesson_task_id": 38,
+      "lesson_id": 21,
+      "task_id": 4163,
+      "site_task_id": "2673",
+      "source_url": "https://kompege.ru/task?id=2673",
+      "date_assigned": "2025-11-17T17:50:30.819785",
+      "notes": null,
+      "student_answer": "72",
+      "assignment_type": "homework",
+      "student_submission": "72"
+    },
+    {
+      "lesson_task_id": 39,
+      "lesson_id": 21,
+      "task_id": 4095,
+      "site_task_id": "9780",
+      "source_url": "https://kompege.ru/task?id=9780",
+      "date_assigned": "2025-11-17T17:50:42.499493",
+      "notes": null,
+      "student_answer": "560",
+      "assignment_type": "homework",
+      "student_submission": "560"
+    },
+    {
+      "lesson_task_id": 40,
+      "lesson_id": 21,
+      "task_id": 4012,
+      "site_task_id": "23557",
+      "source_url": "https://kompege.ru/task?id=23557",
+      "date_assigned": "2025-11-17T17:50:51.885714",
+      "notes": null,
+      "student_answer": "896",
+      "assignment_type": "homework",
+      "student_submission": "896"
+    },
+    {
+      "lesson_task_id": 41,
+      "lesson_id": 21,
+      "task_id": 4205,
+      "site_task_id": "369",
+      "source_url": "https://kompege.ru/task?id=369",
+      "date_assigned": "2025-11-17T17:51:06.464216",
+      "notes": null,
+      "student_answer": "18",
+      "assignment_type": "homework",
+      "student_submission": "18"
+    },
+    {
+      "lesson_task_id": 42,
+      "lesson_id": 26,
+      "task_id": 124,
+      "site_task_id": "4092",
+      "source_url": "https://kompege.ru/task?id=4092",
+      "date_assigned": "2025-11-17T18:49:30.885948",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 43,
+      "lesson_id": 26,
+      "task_id": 118,
+      "site_task_id": "4581",
+      "source_url": "https://kompege.ru/task?id=4581",
+      "date_assigned": "2025-11-17T18:49:36.456398",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 44,
+      "lesson_id": 26,
+      "task_id": 187,
+      "site_task_id": "683",
+      "source_url": "https://kompege.ru/task?id=683",
+      "date_assigned": "2025-11-17T18:49:38.421211",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 45,
+      "lesson_id": 26,
+      "task_id": 145,
+      "site_task_id": "2483",
+      "source_url": "https://kompege.ru/task?id=2483",
+      "date_assigned": "2025-11-17T18:49:47.869156",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 46,
+      "lesson_id": 26,
+      "task_id": 117,
+      "site_task_id": "4606",
+      "source_url": "https://kompege.ru/task?id=4606",
+      "date_assigned": "2025-11-17T18:49:57.209346",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 47,
+      "lesson_id": 26,
+      "task_id": 50,
+      "site_task_id": "13802",
+      "source_url": "https://kompege.ru/task?id=13802",
+      "date_assigned": "2025-11-17T18:50:11.847215",
+      "notes": null,
+      "student_answer": "21",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 48,
+      "lesson_id": 26,
+      "task_id": 55,
+      "site_task_id": "12455",
+      "source_url": "https://kompege.ru/task?id=12455",
+      "date_assigned": "2025-11-17T18:50:15.885343",
+      "notes": null,
+      "student_answer": "10",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 49,
+      "lesson_id": 26,
+      "task_id": 123,
+      "site_task_id": "4182",
+      "source_url": "https://kompege.ru/task?id=4182",
+      "date_assigned": "2025-11-17T18:50:18.691391",
+      "notes": null,
+      "student_answer": "92",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 50,
+      "lesson_id": 26,
+      "task_id": 68,
+      "site_task_id": "9356",
+      "source_url": "https://kompege.ru/task?id=9356",
+      "date_assigned": "2025-11-17T18:50:21.321867",
+      "notes": null,
+      "student_answer": "22",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 51,
+      "lesson_id": 26,
+      "task_id": 43,
+      "site_task_id": "14445",
+      "source_url": "https://kompege.ru/task?id=14445",
+      "date_assigned": "2025-11-17T18:50:25.307911",
+      "notes": null,
+      "student_answer": "14",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 52,
+      "lesson_id": 103,
+      "task_id": 622,
+      "site_task_id": "3",
+      "source_url": "https://kompege.ru/task?id=3",
+      "date_assigned": "2025-11-18T17:28:42.588107",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 53,
+      "lesson_id": 103,
+      "task_id": 478,
+      "site_task_id": "9359",
+      "source_url": "https://kompege.ru/task?id=9359",
+      "date_assigned": "2025-11-18T17:30:52.480561",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 54,
+      "lesson_id": 103,
+      "task_id": 607,
+      "site_task_id": "121",
+      "source_url": "https://kompege.ru/task?id=121",
+      "date_assigned": "2025-11-18T17:33:01.993529",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 60,
+      "lesson_id": 104,
+      "task_id": 588,
+      "site_task_id": "687",
+      "source_url": "https://kompege.ru/task?id=687",
+      "date_assigned": "2025-11-18T19:40:47.823324",
+      "notes": null,
+      "student_answer": "20",
+      "assignment_type": "homework",
+      "student_submission": "21"
+    },
+    {
+      "lesson_task_id": 61,
+      "lesson_id": 104,
+      "task_id": 485,
+      "site_task_id": "8549",
+      "source_url": "https://kompege.ru/task?id=8549",
+      "date_assigned": "2025-11-18T19:40:51.240137",
+      "notes": null,
+      "student_answer": "30",
+      "assignment_type": "homework",
+      "student_submission": "34"
+    },
+    {
+      "lesson_task_id": 62,
+      "lesson_id": 104,
+      "task_id": 522,
+      "site_task_id": "5231",
+      "source_url": "https://kompege.ru/task?id=5231",
+      "date_assigned": "2025-11-18T19:40:57.128928",
+      "notes": null,
+      "student_answer": "17",
+      "assignment_type": "homework",
+      "student_submission": "17"
+    },
+    {
+      "lesson_task_id": 63,
+      "lesson_id": 104,
+      "task_id": 732,
+      "site_task_id": "7991",
+      "source_url": "https://kompege.ru/task?id=7991",
+      "date_assigned": "2025-11-18T19:42:23.411417",
+      "notes": null,
+      "student_answer": "19",
+      "assignment_type": "homework",
+      "student_submission": "19"
+    },
+    {
+      "lesson_task_id": 64,
+      "lesson_id": 104,
+      "task_id": 654,
+      "site_task_id": "20182",
+      "source_url": "https://kompege.ru/task?id=20182",
+      "date_assigned": "2025-11-18T19:43:27.159322",
+      "notes": null,
+      "student_answer": "28",
+      "assignment_type": "homework",
+      "student_submission": "2"
+    },
+    {
+      "lesson_task_id": 65,
+      "lesson_id": 104,
+      "task_id": 693,
+      "site_task_id": "13874",
+      "source_url": "https://kompege.ru/task?id=13874",
+      "date_assigned": "2025-11-18T19:44:26.737991",
+      "notes": null,
+      "student_answer": "334",
+      "assignment_type": "homework",
+      "student_submission": "5"
+    },
+    {
+      "lesson_task_id": 72,
+      "lesson_id": 22,
+      "task_id": 959,
+      "site_task_id": "13873",
+      "source_url": "https://kompege.ru/task?id=13873",
+      "date_assigned": "2025-11-19T14:18:24.420334",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 73,
+      "lesson_id": 22,
+      "task_id": 1004,
+      "site_task_id": "9536",
+      "source_url": "https://kompege.ru/task?id=9536",
+      "date_assigned": "2025-11-19T14:18:30.815410",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 74,
+      "lesson_id": 22,
+      "task_id": 1026,
+      "site_task_id": "7027",
+      "source_url": "https://kompege.ru/task?id=7027",
+      "date_assigned": "2025-11-19T14:26:43.670097",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 75,
+      "lesson_id": 22,
+      "task_id": 1546,
+      "site_task_id": "4191",
+      "source_url": "https://kompege.ru/task?id=4191",
+      "date_assigned": "2025-11-19T14:27:28.537339",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 76,
+      "lesson_id": 22,
+      "task_id": 1445,
+      "site_task_id": "19893",
+      "source_url": "https://kompege.ru/task?id=19893",
+      "date_assigned": "2025-11-19T14:31:53.654687",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 77,
+      "lesson_id": 22,
+      "task_id": 1507,
+      "site_task_id": "7812",
+      "source_url": "https://kompege.ru/task?id=7812",
+      "date_assigned": "2025-11-19T14:31:57.548033",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 78,
+      "lesson_id": 22,
+      "task_id": 1478,
+      "site_task_id": "12727",
+      "source_url": "https://kompege.ru/task?id=12727",
+      "date_assigned": "2025-11-19T14:32:06.360520",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 79,
+      "lesson_id": 22,
+      "task_id": 1556,
+      "site_task_id": "2987",
+      "source_url": "https://kompege.ru/task?id=2987",
+      "date_assigned": "2025-11-19T14:32:19.972732",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 83,
+      "lesson_id": 22,
+      "task_id": 970,
+      "site_task_id": "13843",
+      "source_url": "https://kompege.ru/task?id=13843",
+      "date_assigned": "2025-11-19T21:12:06.536218",
+      "notes": null,
+      "student_answer": "449",
+      "assignment_type": "homework",
+      "student_submission": "397"
+    },
+    {
+      "lesson_task_id": 84,
+      "lesson_id": 22,
+      "task_id": 983,
+      "site_task_id": "13092",
+      "source_url": "https://kompege.ru/task?id=13092",
+      "date_assigned": "2025-11-19T21:12:11.776095",
+      "notes": null,
+      "student_answer": "50",
+      "assignment_type": "homework",
+      "student_submission": "50"
+    },
+    {
+      "lesson_task_id": 85,
+      "lesson_id": 22,
+      "task_id": 904,
+      "site_task_id": "23743",
+      "source_url": "https://kompege.ru/task?id=23743",
+      "date_assigned": "2025-11-19T21:12:23.781245",
+      "notes": null,
+      "student_answer": "251",
+      "assignment_type": "homework",
+      "student_submission": "251"
+    },
+    {
+      "lesson_task_id": 86,
+      "lesson_id": 22,
+      "task_id": 957,
+      "site_task_id": "14169",
+      "source_url": "https://kompege.ru/task?id=14169",
+      "date_assigned": "2025-11-19T21:12:27.242623",
+      "notes": null,
+      "student_answer": "128",
+      "assignment_type": "homework",
+      "student_submission": "128"
+    },
+    {
+      "lesson_task_id": 87,
+      "lesson_id": 22,
+      "task_id": 1065,
+      "site_task_id": "5186",
+      "source_url": "https://kompege.ru/task?id=5186",
+      "date_assigned": "2025-11-19T21:12:31.374256",
+      "notes": null,
+      "student_answer": "15",
+      "assignment_type": "homework",
+      "student_submission": "13"
+    },
+    {
+      "lesson_task_id": 93,
+      "lesson_id": 109,
+      "task_id": 3502,
+      "site_task_id": "335",
+      "source_url": "https://kompege.ru/task?id=335",
+      "date_assigned": "2025-11-21T10:51:18.356326",
+      "notes": null,
+      "student_answer": "wzyx",
+      "assignment_type": "homework",
+      "student_submission": "-1"
+    },
+    {
+      "lesson_task_id": 94,
+      "lesson_id": 109,
+      "task_id": 3376,
+      "site_task_id": "9149",
+      "source_url": "https://kompege.ru/task?id=9149",
+      "date_assigned": "2025-11-21T10:51:26.026175",
+      "notes": null,
+      "student_answer": "zwxy",
+      "assignment_type": "homework",
+      "student_submission": "-1"
+    },
+    {
+      "lesson_task_id": 95,
+      "lesson_id": 109,
+      "task_id": 3360,
+      "site_task_id": "12670",
+      "source_url": "https://kompege.ru/task?id=12670",
+      "date_assigned": "2025-11-21T10:51:34.329803",
+      "notes": null,
+      "student_answer": "yzwx",
+      "assignment_type": "homework",
+      "student_submission": "yzwx"
+    },
+    {
+      "lesson_task_id": 101,
+      "lesson_id": 110,
+      "task_id": 1385,
+      "site_task_id": "873",
+      "source_url": "https://kompege.ru/task?id=873",
+      "date_assigned": "2025-11-22T11:14:10.199298",
+      "notes": null,
+      "student_answer": "6400",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 102,
+      "lesson_id": 110,
+      "task_id": 1201,
+      "site_task_id": "11291",
+      "source_url": "https://kompege.ru/task?id=11291",
+      "date_assigned": "2025-11-22T11:16:00.974352",
+      "notes": null,
+      "student_answer": "40500",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 103,
+      "lesson_id": 110,
+      "task_id": 1113,
+      "site_task_id": "23746",
+      "source_url": "https://kompege.ru/task?id=23746",
+      "date_assigned": "2025-11-22T11:16:09.768771",
+      "notes": null,
+      "student_answer": "5058",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 104,
+      "lesson_id": 110,
+      "task_id": 1305,
+      "site_task_id": "3361",
+      "source_url": "https://kompege.ru/task?id=3361",
+      "date_assigned": "2025-11-22T11:16:48.278757",
+      "notes": null,
+      "student_answer": "883",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 105,
+      "lesson_id": 110,
+      "task_id": 1245,
+      "site_task_id": "6743",
+      "source_url": "https://kompege.ru/task?id=6743",
+      "date_assigned": "2025-11-22T11:16:57.177940",
+      "notes": null,
+      "student_answer": "2990",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 106,
+      "lesson_id": 112,
+      "task_id": 3411,
+      "site_task_id": "6009",
+      "source_url": "https://kompege.ru/task?id=6009",
+      "date_assigned": "2025-11-22T11:48:55.741187",
+      "notes": null,
+      "student_answer": "zwyx",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 107,
+      "lesson_id": 112,
+      "task_id": 3445,
+      "site_task_id": "2565",
+      "source_url": "https://kompege.ru/task?id=2565",
+      "date_assigned": "2025-11-22T11:49:01.533421",
+      "notes": null,
+      "student_answer": "yxwz",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 108,
+      "lesson_id": 112,
+      "task_id": 3320,
+      "site_task_id": "20820",
+      "source_url": "https://kompege.ru/task?id=20820",
+      "date_assigned": "2025-11-22T11:49:07.455238",
+      "notes": null,
+      "student_answer": "zxwy",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 109,
+      "lesson_id": 112,
+      "task_id": 3345,
+      "site_task_id": "15314",
+      "source_url": "https://kompege.ru/task?id=15314",
+      "date_assigned": "2025-11-22T11:49:15.978877",
+      "notes": null,
+      "student_answer": "wyzx",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 111,
+      "lesson_id": 113,
+      "task_id": 204,
+      "site_task_id": "45",
+      "source_url": "https://kompege.ru/task?id=45",
+      "date_assigned": "2025-11-22T12:52:19.260252",
+      "notes": null,
+      "student_answer": "",
+      "assignment_type": "homework",
+      "student_submission": "22"
+    },
+    {
+      "lesson_task_id": 112,
+      "lesson_id": 113,
+      "task_id": 191,
+      "site_task_id": "453",
+      "source_url": "https://kompege.ru/task?id=453",
+      "date_assigned": "2025-11-22T12:52:54.380988",
+      "notes": null,
+      "student_answer": "",
+      "assignment_type": "homework",
+      "student_submission": "20"
+    },
+    {
+      "lesson_task_id": 113,
+      "lesson_id": 113,
+      "task_id": 76,
+      "site_task_id": "8488",
+      "source_url": "https://kompege.ru/task?id=8488",
+      "date_assigned": "2025-11-22T12:53:00.181880",
+      "notes": null,
+      "student_answer": "",
+      "assignment_type": "homework",
+      "student_submission": "40"
+    },
+    {
+      "lesson_task_id": 114,
+      "lesson_id": 113,
+      "task_id": 209,
+      "site_task_id": "40",
+      "source_url": "https://kompege.ru/task?id=40",
+      "date_assigned": "2025-11-22T12:53:04.830105",
+      "notes": null,
+      "student_answer": "",
+      "assignment_type": "homework",
+      "student_submission": "18"
+    },
+    {
+      "lesson_task_id": 67,
+      "lesson_id": 108,
+      "task_id": 124,
+      "site_task_id": "4092",
+      "source_url": "https://kompege.ru/task?id=4092",
+      "date_assigned": "2025-11-19T13:57:06.010764",
+      "notes": null,
+      "student_answer": "25",
+      "assignment_type": "homework",
+      "student_submission": "25"
+    },
+    {
+      "lesson_task_id": 68,
+      "lesson_id": 108,
+      "task_id": 65,
+      "site_task_id": "9732",
+      "source_url": "https://kompege.ru/task?id=9732",
+      "date_assigned": "2025-11-19T13:57:07.762161",
+      "notes": null,
+      "student_answer": "25",
+      "assignment_type": "homework",
+      "student_submission": "-1"
+    },
+    {
+      "lesson_task_id": 70,
+      "lesson_id": 108,
+      "task_id": 209,
+      "site_task_id": "40",
+      "source_url": "https://kompege.ru/task?id=40",
+      "date_assigned": "2025-11-19T13:57:12.739377",
+      "notes": null,
+      "student_answer": "18",
+      "assignment_type": "homework",
+      "student_submission": "14"
+    },
+    {
+      "lesson_task_id": 80,
+      "lesson_id": 108,
+      "task_id": 3448,
+      "site_task_id": "2458",
+      "source_url": "https://kompege.ru/task?id=2458",
+      "date_assigned": "2025-11-19T19:52:39.903146",
+      "notes": null,
+      "student_answer": "xywz",
+      "assignment_type": "homework",
+      "student_submission": "xywz"
+    },
+    {
+      "lesson_task_id": 81,
+      "lesson_id": 108,
+      "task_id": 3339,
+      "site_task_id": "17621",
+      "source_url": "https://kompege.ru/task?id=17621",
+      "date_assigned": "2025-11-19T19:52:42.975781",
+      "notes": null,
+      "student_answer": "zxyw",
+      "assignment_type": "homework",
+      "student_submission": "ywxz"
+    },
+    {
+      "lesson_task_id": 88,
+      "lesson_id": 119,
+      "task_id": 12,
+      "site_task_id": "21400",
+      "source_url": "https://kompege.ru/task?id=21400",
+      "date_assigned": "2025-11-20T20:10:17.076262",
+      "notes": null,
+      "student_answer": "22",
+      "assignment_type": "homework",
+      "student_submission": "22"
+    },
+    {
+      "lesson_task_id": 89,
+      "lesson_id": 119,
+      "task_id": 72,
+      "site_task_id": "8693",
+      "source_url": "https://kompege.ru/task?id=8693",
+      "date_assigned": "2025-11-20T20:10:23.094165",
+      "notes": null,
+      "student_answer": "52",
+      "assignment_type": "homework",
+      "student_submission": "52"
+    },
+    {
+      "lesson_task_id": 90,
+      "lesson_id": 119,
+      "task_id": 43,
+      "site_task_id": "14445",
+      "source_url": "https://kompege.ru/task?id=14445",
+      "date_assigned": "2025-11-20T20:10:26.491942",
+      "notes": null,
+      "student_answer": "14",
+      "assignment_type": "homework",
+      "student_submission": "14"
+    },
+    {
+      "lesson_task_id": 91,
+      "lesson_id": 119,
+      "task_id": 40,
+      "site_task_id": "16312",
+      "source_url": "https://kompege.ru/task?id=16312",
+      "date_assigned": "2025-11-20T20:10:36.666068",
+      "notes": null,
+      "student_answer": "26",
+      "assignment_type": "homework",
+      "student_submission": "45"
+    },
+    {
+      "lesson_task_id": 92,
+      "lesson_id": 119,
+      "task_id": 11,
+      "site_task_id": "21696",
+      "source_url": "https://kompege.ru/task?id=21696",
+      "date_assigned": "2025-11-20T20:10:41.484296",
+      "notes": null,
+      "student_answer": "31",
+      "assignment_type": "homework",
+      "student_submission": "-1"
+    },
+    {
+      "lesson_task_id": 96,
+      "lesson_id": 111,
+      "task_id": 1371,
+      "site_task_id": "1363",
+      "source_url": "https://kompege.ru/task?id=1363",
+      "date_assigned": "2025-11-22T10:51:03.926549",
+      "notes": null,
+      "student_answer": "1562",
+      "assignment_type": "homework",
+      "student_submission": "1875"
+    },
+    {
+      "lesson_task_id": 97,
+      "lesson_id": 111,
+      "task_id": 1164,
+      "site_task_id": "15320",
+      "source_url": "https://kompege.ru/task?id=15320",
+      "date_assigned": "2025-11-22T10:51:12.305374",
+      "notes": null,
+      "student_answer": "131",
+      "assignment_type": "homework",
+      "student_submission": "131"
+    },
+    {
+      "lesson_task_id": 98,
+      "lesson_id": 111,
+      "task_id": 1183,
+      "site_task_id": "12724",
+      "source_url": "https://kompege.ru/task?id=12724",
+      "date_assigned": "2025-11-22T10:51:25.142246",
+      "notes": null,
+      "student_answer": "243698",
+      "assignment_type": "homework",
+      "student_submission": "821433"
+    },
+    {
+      "lesson_task_id": 99,
+      "lesson_id": 111,
+      "task_id": 1212,
+      "site_task_id": "9831",
+      "source_url": "https://kompege.ru/task?id=9831",
+      "date_assigned": "2025-11-22T10:51:30.127011",
+      "notes": null,
+      "student_answer": "840",
+      "assignment_type": "homework",
+      "student_submission": "896"
+    },
+    {
+      "lesson_task_id": 121,
+      "lesson_id": 125,
+      "task_id": 443,
+      "site_task_id": "17667",
+      "source_url": "https://kompege.ru/task?id=17667",
+      "date_assigned": "2025-11-24T10:48:59.085116",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 122,
+      "lesson_id": 125,
+      "task_id": 593,
+      "site_task_id": "456",
+      "source_url": "https://kompege.ru/task?id=456",
+      "date_assigned": "2025-11-24T10:49:09.225689",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 123,
+      "lesson_id": 125,
+      "task_id": 466,
+      "site_task_id": "12093",
+      "source_url": "https://kompege.ru/task?id=12093",
+      "date_assigned": "2025-11-24T10:49:31.950972",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 124,
+      "lesson_id": 125,
+      "task_id": 524,
+      "site_task_id": "4692",
+      "source_url": "https://kompege.ru/task?id=4692",
+      "date_assigned": "2025-11-24T10:49:38.044832",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 171,
+      "lesson_id": 180,
+      "task_id": 607,
+      "site_task_id": "121",
+      "source_url": "https://kompege.ru/task?id=121",
+      "date_assigned": "2025-11-27T14:53:56.892160",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 172,
+      "lesson_id": 180,
+      "task_id": 530,
+      "site_task_id": "4254",
+      "source_url": "https://kompege.ru/task?id=4254",
+      "date_assigned": "2025-11-27T14:53:57.377812",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 100,
+      "lesson_id": 111,
+      "task_id": 1229,
+      "site_task_id": "8152",
+      "source_url": "https://kompege.ru/task?id=8152",
+      "date_assigned": "2025-11-22T10:51:37.931170",
+      "notes": null,
+      "student_answer": "239",
+      "assignment_type": "homework",
+      "student_submission": "1058"
+    },
+    {
+      "lesson_task_id": 116,
+      "lesson_id": 115,
+      "task_id": 1166,
+      "site_task_id": "14415",
+      "source_url": "https://kompege.ru/task?id=14415",
+      "date_assigned": "2025-11-23T11:53:48.229847",
+      "notes": null,
+      "student_answer": "9780",
+      "assignment_type": "homework",
+      "student_submission": "9780"
+    },
+    {
+      "lesson_task_id": 117,
+      "lesson_id": 115,
+      "task_id": 1242,
+      "site_task_id": "6894",
+      "source_url": "https://kompege.ru/task?id=6894",
+      "date_assigned": "2025-11-23T11:53:53.406086",
+      "notes": null,
+      "student_answer": "319",
+      "assignment_type": "homework",
+      "student_submission": "319"
+    },
+    {
+      "lesson_task_id": 118,
+      "lesson_id": 115,
+      "task_id": 1170,
+      "site_task_id": "14411",
+      "source_url": "https://kompege.ru/task?id=14411",
+      "date_assigned": "2025-11-23T11:53:56.404948",
+      "notes": null,
+      "student_answer": "58955",
+      "assignment_type": "homework",
+      "student_submission": "58955"
+    },
+    {
+      "lesson_task_id": 119,
+      "lesson_id": 115,
+      "task_id": 1124,
+      "site_task_id": "20954",
+      "source_url": "https://kompege.ru/task?id=20954",
+      "date_assigned": "2025-11-23T11:54:05.316095",
+      "notes": null,
+      "student_answer": "1093",
+      "assignment_type": "homework",
+      "student_submission": "1093"
+    },
+    {
+      "lesson_task_id": 120,
+      "lesson_id": 115,
+      "task_id": 1284,
+      "site_task_id": "5114",
+      "source_url": "https://kompege.ru/task?id=5114",
+      "date_assigned": "2025-11-23T11:54:13.015451",
+      "notes": null,
+      "student_answer": "1176",
+      "assignment_type": "homework",
+      "student_submission": "1176"
+    },
+    {
+      "lesson_task_id": 135,
+      "lesson_id": 146,
+      "task_id": 3364,
+      "site_task_id": "11650",
+      "source_url": "https://kompege.ru/task?id=11650",
+      "date_assigned": "2025-11-25T07:08:59.165100",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 136,
+      "lesson_id": 146,
+      "task_id": 3365,
+      "site_task_id": "11606",
+      "source_url": "https://kompege.ru/task?id=11606",
+      "date_assigned": "2025-11-25T07:09:27.981423",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 137,
+      "lesson_id": 146,
+      "task_id": 3400,
+      "site_task_id": "6842",
+      "source_url": "https://kompege.ru/task?id=6842",
+      "date_assigned": "2025-11-25T07:09:28.480407",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 138,
+      "lesson_id": 146,
+      "task_id": 3503,
+      "site_task_id": "334",
+      "source_url": "https://kompege.ru/task?id=334",
+      "date_assigned": "2025-11-25T07:09:28.978600",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 140,
+      "lesson_id": 146,
+      "task_id": 3421,
+      "site_task_id": "5108",
+      "source_url": "https://kompege.ru/task?id=5108",
+      "date_assigned": "2025-11-25T07:09:29.977727",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 141,
+      "lesson_id": 146,
+      "task_id": 505,
+      "site_task_id": "6739",
+      "source_url": "https://kompege.ru/task?id=6739",
+      "date_assigned": "2025-11-25T07:11:12.102757",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 142,
+      "lesson_id": 146,
+      "task_id": 510,
+      "site_task_id": "6011",
+      "source_url": "https://kompege.ru/task?id=6011",
+      "date_assigned": "2025-11-25T07:11:33.369033",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 143,
+      "lesson_id": 146,
+      "task_id": 607,
+      "site_task_id": "121",
+      "source_url": "https://kompege.ru/task?id=121",
+      "date_assigned": "2025-11-25T07:11:39.577596",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 176,
+      "lesson_id": 193,
+      "task_id": 1376,
+      "site_task_id": "1191",
+      "source_url": "https://kompege.ru/task?id=1191",
+      "date_assigned": "2025-11-29T16:09:17.075735",
+      "notes": null,
+      "student_answer": "458752",
+      "assignment_type": "homework",
+      "student_submission": "458752"
+    },
+    {
+      "lesson_task_id": 177,
+      "lesson_id": 193,
+      "task_id": 1315,
+      "site_task_id": "2701",
+      "source_url": "https://kompege.ru/task?id=2701",
+      "date_assigned": "2025-11-29T16:10:15.051812",
+      "notes": null,
+      "student_answer": "19609",
+      "assignment_type": "homework",
+      "student_submission": "19609"
+    },
+    {
+      "lesson_task_id": 115,
+      "lesson_id": 113,
+      "task_id": 120,
+      "site_task_id": "4458",
+      "source_url": "https://kompege.ru/task?id=4458",
+      "date_assigned": "2025-11-22T12:53:15.458283",
+      "notes": null,
+      "student_answer": "",
+      "assignment_type": "homework",
+      "student_submission": "118"
+    },
+    {
+      "lesson_task_id": 125,
+      "lesson_id": 139,
+      "task_id": 1017,
+      "site_task_id": "7992",
+      "source_url": "https://kompege.ru/task?id=7992",
+      "date_assigned": "2025-11-25T06:34:59.405981",
+      "notes": null,
+      "student_answer": "26",
+      "assignment_type": "homework",
+      "student_submission": "26"
+    },
+    {
+      "lesson_task_id": 126,
+      "lesson_id": 139,
+      "task_id": 941,
+      "site_task_id": "17860",
+      "source_url": "https://kompege.ru/task?id=17860",
+      "date_assigned": "2025-11-25T06:36:23.189255",
+      "notes": null,
+      "student_answer": "44",
+      "assignment_type": "homework",
+      "student_submission": "44"
+    },
+    {
+      "lesson_task_id": 127,
+      "lesson_id": 139,
+      "task_id": 3529,
+      "site_task_id": "24126",
+      "source_url": "https://kompege.ru/task?id=24126",
+      "date_assigned": "2025-11-25T06:38:09.326374",
+      "notes": null,
+      "student_answer": "30",
+      "assignment_type": "homework",
+      "student_submission": "30"
+    },
+    {
+      "lesson_task_id": 128,
+      "lesson_id": 139,
+      "task_id": 3734,
+      "site_task_id": "1433",
+      "source_url": "https://kompege.ru/task?id=1433",
+      "date_assigned": "2025-11-25T06:41:00.142421",
+      "notes": null,
+      "student_answer": "12",
+      "assignment_type": "homework",
+      "student_submission": "12"
+    },
+    {
+      "lesson_task_id": 129,
+      "lesson_id": 139,
+      "task_id": 1243,
+      "site_task_id": "6892",
+      "source_url": "https://kompege.ru/task?id=6892",
+      "date_assigned": "2025-11-25T06:41:52.998252",
+      "notes": null,
+      "student_answer": "3700",
+      "assignment_type": "homework",
+      "student_submission": "3700"
+    },
+    {
+      "lesson_task_id": 130,
+      "lesson_id": 139,
+      "task_id": 1303,
+      "site_task_id": "3729",
+      "source_url": "https://kompege.ru/task?id=3729",
+      "date_assigned": "2025-11-25T06:48:00.651581",
+      "notes": null,
+      "student_answer": "1875",
+      "assignment_type": "homework",
+      "student_submission": "-1"
+    },
+    {
+      "lesson_task_id": 131,
+      "lesson_id": 139,
+      "task_id": 1463,
+      "site_task_id": "16376",
+      "source_url": "https://kompege.ru/task?id=16376",
+      "date_assigned": "2025-11-25T06:49:16.728528",
+      "notes": null,
+      "student_answer": "115",
+      "assignment_type": "homework",
+      "student_submission": "115"
+    },
+    {
+      "lesson_task_id": 132,
+      "lesson_id": 139,
+      "task_id": 1551,
+      "site_task_id": "3572",
+      "source_url": "https://kompege.ru/task?id=3572",
+      "date_assigned": "2025-11-25T06:49:31.139659",
+      "notes": null,
+      "student_answer": "12",
+      "assignment_type": "homework",
+      "student_submission": "12"
+    },
+    {
+      "lesson_task_id": 133,
+      "lesson_id": 139,
+      "task_id": 4204,
+      "site_task_id": "370",
+      "source_url": "https://kompege.ru/task?id=370",
+      "date_assigned": "2025-11-25T06:50:47.454975",
+      "notes": null,
+      "student_answer": "26",
+      "assignment_type": "homework",
+      "student_submission": "26"
+    },
+    {
+      "lesson_task_id": 134,
+      "lesson_id": 139,
+      "task_id": 4077,
+      "site_task_id": "14374",
+      "source_url": "https://kompege.ru/task?id=14374",
+      "date_assigned": "2025-11-25T06:51:03.707796",
+      "notes": null,
+      "student_answer": "750",
+      "assignment_type": "homework",
+      "student_submission": "750"
+    },
+    {
+      "lesson_task_id": 144,
+      "lesson_id": 168,
+      "task_id": 1048,
+      "site_task_id": "5379",
+      "source_url": "https://kompege.ru/task?id=5379",
+      "date_assigned": "2025-11-26T14:10:55.553591",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 145,
+      "lesson_id": 168,
+      "task_id": 916,
+      "site_task_id": "20952",
+      "source_url": "https://kompege.ru/task?id=20952",
+      "date_assigned": "2025-11-26T14:11:48.455313",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 146,
+      "lesson_id": 168,
+      "task_id": 3760,
+      "site_task_id": "690",
+      "source_url": "https://kompege.ru/task?id=690",
+      "date_assigned": "2025-11-26T14:12:26.471107",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 147,
+      "lesson_id": 168,
+      "task_id": 3550,
+      "site_task_id": "21406",
+      "source_url": "https://kompege.ru/task?id=21406",
+      "date_assigned": "2025-11-26T14:12:53.999787",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 148,
+      "lesson_id": 168,
+      "task_id": 1161,
+      "site_task_id": "16319",
+      "source_url": "https://kompege.ru/task?id=16319",
+      "date_assigned": "2025-11-26T14:15:26.412608",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 149,
+      "lesson_id": 168,
+      "task_id": 1378,
+      "site_task_id": "989",
+      "source_url": "https://kompege.ru/task?id=989",
+      "date_assigned": "2025-11-26T14:16:08.113352",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 150,
+      "lesson_id": 168,
+      "task_id": 1568,
+      "site_task_id": "1365",
+      "source_url": "https://kompege.ru/task?id=1365",
+      "date_assigned": "2025-11-26T14:16:49.146876",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 151,
+      "lesson_id": 168,
+      "task_id": 1503,
+      "site_task_id": "8366",
+      "source_url": "https://kompege.ru/task?id=8366",
+      "date_assigned": "2025-11-26T14:18:11.128170",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 152,
+      "lesson_id": 168,
+      "task_id": 4180,
+      "site_task_id": "1260",
+      "source_url": "https://kompege.ru/task?id=1260",
+      "date_assigned": "2025-11-26T14:18:53.246381",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 153,
+      "lesson_id": 168,
+      "task_id": 4149,
+      "site_task_id": "4192",
+      "source_url": "https://kompege.ru/task?id=4192",
+      "date_assigned": "2025-11-26T14:19:11.210539",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 154,
+      "lesson_id": 174,
+      "task_id": 579,
+      "site_task_id": "969",
+      "source_url": "https://kompege.ru/task?id=969",
+      "date_assigned": "2025-11-26T15:18:17.960899",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 155,
+      "lesson_id": 174,
+      "task_id": 605,
+      "site_task_id": "205",
+      "source_url": "https://kompege.ru/task?id=205",
+      "date_assigned": "2025-11-26T15:18:18.453881",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 156,
+      "lesson_id": 174,
+      "task_id": 317,
+      "site_task_id": "7336",
+      "source_url": "https://kompege.ru/task?id=7336",
+      "date_assigned": "2025-11-26T15:19:32.487757",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 157,
+      "lesson_id": 174,
+      "task_id": 683,
+      "site_task_id": "16371",
+      "source_url": "https://kompege.ru/task?id=16371",
+      "date_assigned": "2025-11-26T15:26:14.227455",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 158,
+      "lesson_id": 174,
+      "task_id": 1156,
+      "site_task_id": "17671",
+      "source_url": "https://kompege.ru/task?id=17671",
+      "date_assigned": "2025-11-26T15:27:08.447608",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 159,
+      "lesson_id": 156,
+      "task_id": 3318,
+      "site_task_id": "20948",
+      "source_url": "https://kompege.ru/task?id=20948",
+      "date_assigned": "2025-11-26T22:17:12.963204",
+      "notes": null,
+      "student_answer": "wxzy",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 160,
+      "lesson_id": 156,
+      "task_id": 3468,
+      "site_task_id": "1422",
+      "source_url": "https://kompege.ru/task?id=1422",
+      "date_assigned": "2025-11-26T22:19:08.535563",
+      "notes": null,
+      "student_answer": "zxwy",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 161,
+      "lesson_id": 156,
+      "task_id": 3431,
+      "site_task_id": "4183",
+      "source_url": "https://kompege.ru/task?id=4183",
+      "date_assigned": "2025-11-26T22:21:29.778562",
+      "notes": null,
+      "student_answer": "zxwy",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 162,
+      "lesson_id": 156,
+      "task_id": 3459,
+      "site_task_id": "1602",
+      "source_url": "https://kompege.ru/task?id=1602",
+      "date_assigned": "2025-11-26T22:24:11.287997",
+      "notes": null,
+      "student_answer": "xwyz",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 163,
+      "lesson_id": 156,
+      "task_id": 3376,
+      "site_task_id": "9149",
+      "source_url": "https://kompege.ru/task?id=9149",
+      "date_assigned": "2025-11-26T22:24:47.756792",
+      "notes": null,
+      "student_answer": "zwxy",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 110,
+      "lesson_id": 112,
+      "task_id": 3327,
+      "site_task_id": "19234",
+      "source_url": "https://kompege.ru/task?id=19234",
+      "date_assigned": "2025-11-22T11:49:28.277402",
+      "notes": null,
+      "student_answer": "yxwz",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 82,
+      "lesson_id": 108,
+      "task_id": 3507,
+      "site_task_id": "203",
+      "source_url": "https://kompege.ru/task?id=203",
+      "date_assigned": "2025-11-19T19:52:44.919519",
+      "notes": null,
+      "student_answer": "xzwy",
+      "assignment_type": "homework",
+      "student_submission": "xzwy"
+    },
+    {
+      "lesson_task_id": 168,
+      "lesson_id": 180,
+      "task_id": 526,
+      "site_task_id": "4609",
+      "source_url": "https://kompege.ru/task?id=4609",
+      "date_assigned": "2025-11-27T14:52:58.512804",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 169,
+      "lesson_id": 180,
+      "task_id": 588,
+      "site_task_id": "687",
+      "source_url": "https://kompege.ru/task?id=687",
+      "date_assigned": "2025-11-27T14:53:41.342082",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 170,
+      "lesson_id": 180,
+      "task_id": 453,
+      "site_task_id": "14322",
+      "source_url": "https://kompege.ru/task?id=14322",
+      "date_assigned": "2025-11-27T14:53:56.407685",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 188,
+      "lesson_id": 130,
+      "task_id": 3445,
+      "site_task_id": "2565",
+      "source_url": "https://kompege.ru/task?id=2565",
+      "date_assigned": "2025-12-02T06:29:19.923583",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 189,
+      "lesson_id": 130,
+      "task_id": 3320,
+      "site_task_id": "20820",
+      "source_url": "https://kompege.ru/task?id=20820",
+      "date_assigned": "2025-12-02T06:29:45.017444",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 190,
+      "lesson_id": 130,
+      "task_id": 3345,
+      "site_task_id": "15314",
+      "source_url": "https://kompege.ru/task?id=15314",
+      "date_assigned": "2025-12-02T06:30:05.681401",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 191,
+      "lesson_id": 130,
+      "task_id": 3327,
+      "site_task_id": "19234",
+      "source_url": "https://kompege.ru/task?id=19234",
+      "date_assigned": "2025-12-02T06:30:33.422666",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 178,
+      "lesson_id": 252,
+      "task_id": 647,
+      "site_task_id": "20951",
+      "source_url": "https://kompege.ru/task?id=20951",
+      "date_assigned": "2025-12-01T09:51:46.577421",
+      "notes": null,
+      "student_answer": "2521",
+      "assignment_type": "homework",
+      "student_submission": "2521"
+    },
+    {
+      "lesson_task_id": 179,
+      "lesson_id": 252,
+      "task_id": 684,
+      "site_task_id": "16316",
+      "source_url": "https://kompege.ru/task?id=16316",
+      "date_assigned": "2025-12-01T09:52:10.940426",
+      "notes": null,
+      "student_answer": "65",
+      "assignment_type": "homework",
+      "student_submission": "640"
+    },
+    {
+      "lesson_task_id": 180,
+      "lesson_id": 252,
+      "task_id": 687,
+      "site_task_id": "14331",
+      "source_url": "https://kompege.ru/task?id=14331",
+      "date_assigned": "2025-12-01T09:52:59.877167",
+      "notes": null,
+      "student_answer": "512",
+      "assignment_type": "homework",
+      "student_submission": "512"
+    },
+    {
+      "lesson_task_id": 181,
+      "lesson_id": 252,
+      "task_id": 689,
+      "site_task_id": "14329",
+      "source_url": "https://kompege.ru/task?id=14329",
+      "date_assigned": "2025-12-01T09:53:27.473594",
+      "notes": null,
+      "student_answer": "296",
+      "assignment_type": "homework",
+      "student_submission": "296"
+    },
+    {
+      "lesson_task_id": 182,
+      "lesson_id": 252,
+      "task_id": 691,
+      "site_task_id": "14327",
+      "source_url": "https://kompege.ru/task?id=14327",
+      "date_assigned": "2025-12-01T09:53:53.536811",
+      "notes": null,
+      "student_answer": "38",
+      "assignment_type": "homework",
+      "student_submission": "-1"
+    },
+    {
+      "lesson_task_id": 183,
+      "lesson_id": 130,
+      "task_id": 3411,
+      "site_task_id": "6009",
+      "source_url": "https://kompege.ru/task?id=6009",
+      "date_assigned": "2025-12-01T10:13:46.198701",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 193,
+      "lesson_id": 245,
+      "task_id": 4,
+      "site_task_id": "23360",
+      "source_url": "https://kompege.ru/task?id=23360",
+      "date_assigned": "2025-12-02T14:16:06.359530",
+      "notes": null,
+      "student_answer": "57",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 194,
+      "lesson_id": 245,
+      "task_id": 3444,
+      "site_task_id": "2664",
+      "source_url": "https://kompege.ru/task?id=2664",
+      "date_assigned": "2025-12-02T14:16:33.985770",
+      "notes": null,
+      "student_answer": "yxzw",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 195,
+      "lesson_id": 245,
+      "task_id": 3430,
+      "site_task_id": "4252",
+      "source_url": "https://kompege.ru/task?id=4252",
+      "date_assigned": "2025-12-02T14:17:01.702241",
+      "notes": null,
+      "student_answer": "zyxw",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 196,
+      "lesson_id": 245,
+      "task_id": 617,
+      "site_task_id": "111",
+      "source_url": "https://kompege.ru/task?id=111",
+      "date_assigned": "2025-12-02T14:17:24.782327",
+      "notes": null,
+      "student_answer": "14",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 197,
+      "lesson_id": 245,
+      "task_id": 530,
+      "site_task_id": "4254",
+      "source_url": "https://kompege.ru/task?id=4254",
+      "date_assigned": "2025-12-02T14:17:53.000280",
+      "notes": null,
+      "student_answer": "16",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 173,
+      "lesson_id": 193,
+      "task_id": 1153,
+      "site_task_id": "17798",
+      "source_url": "https://kompege.ru/task?id=17798",
+      "date_assigned": "2025-11-29T16:07:59.500043",
+      "notes": null,
+      "student_answer": "619",
+      "assignment_type": "homework",
+      "student_submission": "619"
+    },
+    {
+      "lesson_task_id": 174,
+      "lesson_id": 193,
+      "task_id": 1204,
+      "site_task_id": "11227",
+      "source_url": "https://kompege.ru/task?id=11227",
+      "date_assigned": "2025-11-29T16:08:25.542435",
+      "notes": null,
+      "student_answer": "1288",
+      "assignment_type": "homework",
+      "student_submission": "4"
+    },
+    {
+      "lesson_task_id": 175,
+      "lesson_id": 193,
+      "task_id": 1221,
+      "site_task_id": "8665",
+      "source_url": "https://kompege.ru/task?id=8665",
+      "date_assigned": "2025-11-29T16:08:34.884113",
+      "notes": null,
+      "student_answer": "48600",
+      "assignment_type": "homework",
+      "student_submission": "48600"
+    },
+    {
+      "lesson_task_id": 192,
+      "lesson_id": 245,
+      "task_id": 131,
+      "site_task_id": "3569",
+      "source_url": "https://kompege.ru/task?id=3569",
+      "date_assigned": "2025-12-02T14:15:46.958706",
+      "notes": null,
+      "student_answer": "52",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 198,
+      "lesson_id": 245,
+      "task_id": 753,
+      "site_task_id": "6037",
+      "source_url": "https://kompege.ru/task?id=6037",
+      "date_assigned": "2025-12-02T14:18:53.256892",
+      "notes": null,
+      "student_answer": "29",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 199,
+      "lesson_id": 245,
+      "task_id": 723,
+      "site_task_id": "8658",
+      "source_url": "https://kompege.ru/task?id=8658",
+      "date_assigned": "2025-12-02T14:19:23.897143",
+      "notes": null,
+      "student_answer": "93",
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 203,
+      "lesson_id": 253,
+      "task_id": 305,
+      "site_task_id": "8490",
+      "source_url": "https://kompege.ru/task?id=8490",
+      "date_assigned": "2025-12-02T16:44:29.445755",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 204,
+      "lesson_id": 253,
+      "task_id": 249,
+      "site_task_id": "19084",
+      "source_url": "https://kompege.ru/task?id=19084",
+      "date_assigned": "2025-12-02T16:45:00.184439",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 205,
+      "lesson_id": 253,
+      "task_id": 321,
+      "site_task_id": "6880",
+      "source_url": "https://kompege.ru/task?id=6880",
+      "date_assigned": "2025-12-02T16:45:31.461397",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "homework",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 206,
+      "lesson_id": 169,
+      "task_id": 682,
+      "site_task_id": "17518",
+      "source_url": "https://kompege.ru/task?id=17518",
+      "date_assigned": "2025-12-03T14:35:30.037749",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 207,
+      "lesson_id": 169,
+      "task_id": 796,
+      "site_task_id": "3027",
+      "source_url": "https://kompege.ru/task?id=3027",
+      "date_assigned": "2025-12-03T14:36:17.525392",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 208,
+      "lesson_id": 169,
+      "task_id": 694,
+      "site_task_id": "13820",
+      "source_url": "https://kompege.ru/task?id=13820",
+      "date_assigned": "2025-12-03T14:41:47.833566",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 209,
+      "lesson_id": 169,
+      "task_id": 690,
+      "site_task_id": "14328",
+      "source_url": "https://kompege.ru/task?id=14328",
+      "date_assigned": "2025-12-03T14:42:53.669302",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 184,
+      "lesson_id": 240,
+      "task_id": 738,
+      "site_task_id": "7607",
+      "source_url": "https://kompege.ru/task?id=7607",
+      "date_assigned": "2025-12-01T17:13:05.282141",
+      "notes": null,
+      "student_answer": "11",
+      "assignment_type": "homework",
+      "student_submission": "11"
+    },
+    {
+      "lesson_task_id": 185,
+      "lesson_id": 240,
+      "task_id": 627,
+      "site_task_id": "23364",
+      "source_url": "https://kompege.ru/task?id=23364",
+      "date_assigned": "2025-12-01T17:13:21.808280",
+      "notes": null,
+      "student_answer": "10",
+      "assignment_type": "homework",
+      "student_submission": "10"
+    },
+    {
+      "lesson_task_id": 186,
+      "lesson_id": 240,
+      "task_id": 723,
+      "site_task_id": "8658",
+      "source_url": "https://kompege.ru/task?id=8658",
+      "date_assigned": "2025-12-01T17:14:00.458133",
+      "notes": null,
+      "student_answer": "93",
+      "assignment_type": "homework",
+      "student_submission": "-1"
+    },
+    {
+      "lesson_task_id": 187,
+      "lesson_id": 240,
+      "task_id": 673,
+      "site_task_id": "18287",
+      "source_url": "https://kompege.ru/task?id=18287",
+      "date_assigned": "2025-12-01T17:14:39.077767",
+      "notes": null,
+      "student_answer": "1025",
+      "assignment_type": "homework",
+      "student_submission": "768"
+    },
+    {
+      "lesson_task_id": 210,
+      "lesson_id": 175,
+      "task_id": 1024,
+      "site_task_id": "7359",
+      "source_url": "https://kompege.ru/task?id=7359",
+      "date_assigned": "2025-12-03T15:43:22.732480",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 211,
+      "lesson_id": 175,
+      "task_id": 1445,
+      "site_task_id": "19893",
+      "source_url": "https://kompege.ru/task?id=19893",
+      "date_assigned": "2025-12-03T15:43:49.046513",
+      "notes": null,
+      "student_answer": null,
+      "assignment_type": "classwork",
+      "student_submission": null
+    },
+    {
+      "lesson_task_id": 164,
+      "lesson_id": 174,
+      "task_id": 511,
+      "site_task_id": "5897",
+      "source_url": "https://kompege.ru/task?id=5897",
+      "date_assigned": "2025-11-26T22:36:34.498108",
+      "notes": null,
+      "student_answer": "",
+      "assignment_type": "homework",
+      "student_submission": "18"
+    },
+    {
+      "lesson_task_id": 165,
+      "lesson_id": 174,
+      "task_id": 578,
+      "site_task_id": "970",
+      "source_url": "https://kompege.ru/task?id=970",
+      "date_assigned": "2025-11-26T22:37:40.531790",
+      "notes": null,
+      "student_answer": "",
+      "assignment_type": "homework",
+      "student_submission": "14"
+    },
+    {
+      "lesson_task_id": 166,
+      "lesson_id": 174,
+      "task_id": 657,
+      "site_task_id": "19874",
+      "source_url": "https://kompege.ru/task?id=19874",
+      "date_assigned": "2025-11-26T22:39:20.050885",
+      "notes": null,
+      "student_answer": "",
+      "assignment_type": "homework",
+      "student_submission": "-1"
+    },
+    {
+      "lesson_task_id": 167,
+      "lesson_id": 174,
+      "task_id": 1289,
+      "site_task_id": "4588",
+      "source_url": "https://kompege.ru/task?id=4588",
+      "date_assigned": "2025-11-26T22:41:29.734512",
+      "notes": null,
+      "student_answer": "",
+      "assignment_type": "homework",
+      "student_submission": "-1"
+    }
+  ]
+}

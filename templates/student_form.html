@@ -36,10 +36,22 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 1.5rem;
+            align-items: start;
         }
 
         .form-grid.form-grid-compact {
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+        
+        .form-grid .neo-field {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-grid.form-grid-compact .neo-label {
+            min-height: 2.8em;
+            display: flex;
+            align-items: flex-start;
         }
         
         .form-grid-full {
@@ -127,13 +139,7 @@
             </div>
         </header>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+        {# Flash messages будут показаны через toast #}
 
         <section class="glass-panel form-hero">
             <div>
@@ -263,8 +269,45 @@
         </form>
     </div>
     
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script>
+        // Конвертируем flash-сообщения в toast-уведомления
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.error('{{ message|e }}');
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.warning('{{ message|e }}');
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.info('{{ message|e }}');
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.success('{{ message|e }}');
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
     <script>
         document.addEventListener('DOMContentLoaded', () => { // Ждём загрузку документа
             const categorySelect = document.querySelector('select[name="category"]'); // Ищем селект категории

@@ -12,7 +12,7 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: 'MonaspaceNeon', 'Courier New', monospace;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             color: #e0e0e0;
             min-height: 100vh;
@@ -90,7 +90,7 @@
         }
         
         .markdown-text {
-            font-family: 'Courier New', 'Consolas', monospace;
+            font-family: 'Profontwindows', 'Courier New', 'Consolas', monospace;
             white-space: pre-wrap;
             word-wrap: break-word;
             color: #d0d0d0;
@@ -142,10 +142,13 @@
                     button.classList.remove('copied');
                 }, 2000);
             }).catch(err => {
-                alert('Ошибка при копировании: ' + err);
+                if (window.toast) {
+                    toast.error('Ошибка при копировании: ' + err);
+                }
             });
         }
     </script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
 </body>
 </html>

@@ -308,13 +308,7 @@
             </div>
         </header>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+        {# Flash messages будут показаны через toast #}
 
         {% if active_lesson and active_student and active_student.student_id == student.student_id %}
         <section class="glass-panel" style="text-align: center; padding: 4rem 2rem;">
@@ -334,6 +328,11 @@
         
         <section class="dashboard-hero glass-panel">
             <div>
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                    <a href="{{ url_for('dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
+                        ← К списку учеников
+                    </a>
+                </div>
                 <p class="hero-eyebrow">профиль ученика</p>
                 <h1 class="hero-title">{{ student.name }}</h1>
                 <p class="hero-subtitle">
@@ -362,12 +361,13 @@
                     <form method="POST" action="{{ url_for('student_start_lesson', student_id=student.student_id) }}" style="display: inline; margin: 0;">
                         <button type="submit" class="neo-button accent">🎓 Начать урок</button>
                     </form>
+                    <a href="{{ url_for('student_statistics', student_id=student.student_id) }}" class="neo-button accent" style="background: var(--accent-2);">📊 Статистика</a>
                     <a href="{{ url_for('student_edit', student_id=student.student_id) }}" class="neo-button ghost">✏️ Редактировать</a>
                     <form method="POST" action="{{ url_for('student_archive', student_id=student.student_id) }}" style="display: inline; margin: 0;">
                         <button type="submit" class="neo-button outline">📦 В архив</button>
                     </form>
                     <form method="POST" action="{{ url_for('student_delete', student_id=student.student_id) }}" 
-                          onsubmit="return confirm('Удалить ученика? Это действие нельзя отменить!')" style="display: inline; margin: 0;">
+                          class="confirm-delete-form" style="display: inline; margin: 0;">
                         <button type="submit" class="neo-button danger">🗑️ Удалить</button>
                     </form>
                 </div>
@@ -493,8 +493,10 @@
                 <div class="lesson-card">
                     {% set homework_assignments = lesson.homework_assignments %}
                     {% set classwork_assignments = lesson.classwork_assignments %}
+                    {% set exam_assignments = lesson.exam_assignments %}
                     {% set homework_count = homework_assignments|length %}
                     {% set classwork_count = classwork_assignments|length %}
+                    {% set exam_count = exam_assignments|length %}
                     <div class="lesson-header">
                         <div class="lesson-date">
                             {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
@@ -586,6 +588,20 @@
                     </div>
                     {% endif %}
                     
+                    {% if exam_count %}
+                    <div class="info-block" style="margin-top: 1em; background: var(--accent-2); border-color: var(--accent-2);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div class="info-block-title" style="font-size: 1.05em;">📊 Проверочная работа</div>
+                                <div style="color: var(--text-muted); font-size: 0.9em; margin-top: 0.3em;">
+                                    Всего заданий: {{ exam_count }} (вес ×2)
+                                </div>
+                            </div>
+                            <a href="{{ url_for('lesson_exam_view', lesson_id=lesson.lesson_id) }}" class="neo-button accent">👁️ Просмотр</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
                     <div class="lesson-actions">
                         {% if lesson.status == 'planned' %}
                         <form method="POST" action="{{ url_for('lesson_start', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
@@ -595,13 +611,14 @@
                         
                         <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="neo-button accent">📝 Сформировать ДЗ</a>
                         <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type='classwork') }}" class="neo-button outline">🏫 Сформировать классную работу</a>
+                        <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type='exam') }}" class="neo-button outline" style="background: var(--accent-2);">📊 Сформировать проверочную</a>
                         <form method="POST" action="{{ url_for('lesson_homework_not_assigned', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
                             <button type="submit" class="neo-button ghost">➖ ДЗ не задано</button>
                         </form>
                         
                         <a href="{{ url_for('lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">✏️ Редактировать</a>
                         <form method="POST" action="{{ url_for('lesson_delete', lesson_id=lesson.lesson_id) }}" 
-                              onsubmit="return confirm('Удалить этот урок?')" style="display: inline; margin: 0;">
+                              class="confirm-delete-form" style="display: inline; margin: 0;">
                             <button type="submit" class="neo-button danger">🗑️ Удалить</button>
                         </form>
                     </div>
@@ -626,5 +643,42 @@
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
+    <script>
+        // Конвертируем flash-сообщения в toast-уведомления
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.error('{{ message|e }}');
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.warning('{{ message|e }}');
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.info('{{ message|e }}');
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.success('{{ message|e }}');
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
 </body>
 </html>

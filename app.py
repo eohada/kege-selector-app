@@ -4,7 +4,7 @@ import ast
 import logging
 import shutil
 from decimal import Decimal, InvalidOperation
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, session, send_from_directory
 from flask_wtf import FlaskForm, CSRFProtect
 import re
 from html import unescape
@@ -197,7 +197,7 @@ def initialize_on_first_request():
 
 # Кеш для отслеживания времени последней проверки уроков
 _last_lesson_check = None
-_lesson_check_interval = timedelta(minutes=1)  # Проверяем не чаще раза в минуту
+_lesson_check_interval = timedelta(minutes=5)  # Проверяем не чаще раза в 5 минут для оптимизации
 
 @app.before_request
 def auto_update_lesson_status():
@@ -216,29 +216,66 @@ def auto_update_lesson_status():
         
         _last_lesson_check = now
         
-        # Находим все запланированные уроки
-        planned_lessons = Lesson.query.filter_by(status='planned').all()
-        
-        if not planned_lessons:
-            return
-        
-        updated_count = 0
-        for lesson in planned_lessons:
-            # Вычисляем время окончания урока
-            # lesson_date хранится в московском времени
-            lesson_end_time = lesson.lesson_date + timedelta(minutes=lesson.duration)
+        # Оптимизация: обновляем статусы напрямую через SQL, без загрузки всех уроков
+        # Находим уроки, которые должны быть завершены (время окончания прошло)
+        # lesson_date + duration <= now означает, что урок уже закончился
+        try:
+            # Используем SQL для массового обновления
+            from sqlalchemy import text
+            # Проверяем тип БД и используем соответствующий синтаксис
+            db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+            if 'postgresql' in db_url or 'postgres' in db_url:
+                # PostgreSQL синтаксис
+                result = db.session.execute(text("""
+                    UPDATE "Lessons" 
+                    SET status = 'completed', updated_at = :now
+                    WHERE status = 'planned' 
+                    AND (lesson_date + (duration || ' minutes')::interval) <= :now
+                """), {'now': now})
+            else:
+                # SQLite синтаксис
+                result = db.session.execute(text("""
+                    UPDATE Lessons 
+                    SET status = 'completed', updated_at = :now
+                    WHERE status = 'planned' 
+                    AND datetime(lesson_date, '+' || duration || ' minutes') <= :now
+                """), {'now': now})
             
-            # Если текущее время больше времени окончания, обновляем статус
-            if now >= lesson_end_time:
-                lesson.status = 'completed'
-                lesson.updated_at = now
-                updated_count += 1
-                logger.info(f"Автоматически обновлен статус урока {lesson.lesson_id} (ученик {lesson.student_id}) с 'planned' на 'completed'. Время окончания: {lesson_end_time}")
-        
-        # Сохраняем изменения одним коммитом
-        if updated_count > 0:
-            db.session.commit()
-            logger.info(f"Автоматически обновлено статусов уроков: {updated_count}")
+            updated_count = result.rowcount
+            
+            if updated_count > 0:
+                db.session.commit()
+                # Уменьшаем логирование - только если обновлено больше 0
+                if updated_count > 5:  # Логируем только если обновлено много уроков
+                    logger.info(f"Автоматически обновлено статусов уроков: {updated_count}")
+        except Exception as e:
+            # Fallback на старый метод, если SQL не работает
+            logger.warning(f"Ошибка при массовом обновлении статусов, используем старый метод: {e}")
+            try:
+                # Фильтруем только уроки, которые могли закончиться (за последние 24 часа)
+                yesterday = now - timedelta(days=1)
+                planned_lessons = Lesson.query.filter(
+                    Lesson.status == 'planned',
+                    Lesson.lesson_date >= yesterday
+                ).all()
+                
+                if not planned_lessons:
+                    return
+                
+                updated_count = 0
+                for lesson in planned_lessons:
+                    lesson_end_time = lesson.lesson_date + timedelta(minutes=lesson.duration)
+                    if now >= lesson_end_time:
+                        lesson.status = 'completed'
+                        lesson.updated_at = now
+                        updated_count += 1
+                
+                if updated_count > 0:
+                    db.session.commit()
+                    logger.info(f"Автоматически обновлено статусов уроков: {updated_count}")
+            except Exception as e2:
+                logger.error(f"Ошибка при обновлении статусов уроков: {e2}", exc_info=True)
+                db.session.rollback()
     
     except Exception as e:
         logger.error(f"Ошибка при автоматическом обновлении статуса уроков: {e}", exc_info=True)
@@ -386,13 +423,38 @@ def log_page_view(response):
 
     return response
 
+# Кеш для active_lesson, чтобы не делать запрос на каждом рендере
+_active_lesson_cache = None
+_active_lesson_cache_time = None
+_active_lesson_cache_ttl = timedelta(seconds=5)  # Кешируем на 5 секунд
+
+def clear_active_lesson_cache():
+    """Сбрасывает кеш активного урока (вызывается при изменении статуса урока)"""
+    global _active_lesson_cache, _active_lesson_cache_time
+    _active_lesson_cache = None
+    _active_lesson_cache_time = None
+
 @app.context_processor
 def inject_active_lesson():
+    global _active_lesson_cache, _active_lesson_cache_time
+    
     try:
+        # Используем кеш, если он еще актуален
+        now = moscow_now()
+        if (_active_lesson_cache is not None and 
+            _active_lesson_cache_time is not None and 
+            (now - _active_lesson_cache_time) < _active_lesson_cache_ttl):
+            return _active_lesson_cache
+        
+        # Обновляем кеш
         from sqlalchemy.orm import joinedload
         active_lesson = Lesson.query.options(joinedload(Lesson.student)).filter_by(status='in_progress').first()
         active_student = active_lesson.student if active_lesson else None
-        return dict(active_lesson=active_lesson, active_student=active_student)
+        
+        _active_lesson_cache = dict(active_lesson=active_lesson, active_student=active_student)
+        _active_lesson_cache_time = now
+        
+        return _active_lesson_cache
     except Exception as e:
         return dict(active_lesson=None, active_student=None)
 
@@ -603,6 +665,12 @@ class LessonForm(FlaskForm):
     ], default='assigned_not_done', validators=[DataRequired()])
     submit = SubmitField('Сохранить')
 
+@app.route('/font/<path:filename>')
+def font_files(filename):
+    """Сервим шрифты из папки font"""
+    font_dir = os.path.join(base_dir, 'font')
+    return send_from_directory(font_dir, filename, mimetype='font/otf' if filename.endswith('.otf') else 'font/ttf')
+
 @app.route('/index')
 @app.route('/home')
 def index():
@@ -643,23 +711,83 @@ def dashboard():
     students = pagination.items
 
     # Статистика зависит от того, показываем ли мы архив
-    if show_archive:
-        total_students = Student.query.filter_by(is_active=False).count()
-        ege_students = Student.query.filter_by(is_active=False, category='ЕГЭ').count() if category_filter != 'ЕГЭ' else len([s for s in students if s.category == 'ЕГЭ'])
-        oge_students = Student.query.filter_by(is_active=False, category='ОГЭ').count() if category_filter != 'ОГЭ' else len([s for s in students if s.category == 'ОГЭ'])
-        levelup_students = Student.query.filter_by(is_active=False, category='ЛЕВЕЛАП').count() if category_filter != 'ЛЕВЕЛАП' else len([s for s in students if s.category == 'ЛЕВЕЛАП'])
-        programming_students = Student.query.filter_by(is_active=False, category='ПРОГРАММИРОВАНИЕ').count() if category_filter != 'ПРОГРАММИРОВАНИЕ' else len([s for s in students if s.category == 'ПРОГРАММИРОВАНИЕ'])
-    else:
-        total_students = Student.query.filter_by(is_active=True).count()
-        ege_students = Student.query.filter_by(is_active=True, category='ЕГЭ').count() if category_filter != 'ЕГЭ' else len([s for s in students if s.category == 'ЕГЭ'])
-        oge_students = Student.query.filter_by(is_active=True, category='ОГЭ').count() if category_filter != 'ОГЭ' else len([s for s in students if s.category == 'ОГЭ'])
-        levelup_students = Student.query.filter_by(is_active=True, category='ЛЕВЕЛАП').count() if category_filter != 'ЛЕВЕЛАП' else len([s for s in students if s.category == 'ЛЕВЕЛАП'])
-        programming_students = Student.query.filter_by(is_active=True, category='ПРОГРАММИРОВАНИЕ').count() if category_filter != 'ПРОГРАММИРОВАНИЕ' else len([s for s in students if s.category == 'ПРОГРАММИРОВАНИЕ'])
+    # Оптимизация: используем один запрос с группировкой для категорий
+    from sqlalchemy import func
+    base_is_active = not show_archive
     
-    total_lessons = Lesson.query.count()
-    completed_lessons = Lesson.query.filter_by(status='completed').count()
-    planned_lessons = Lesson.query.filter_by(status='planned').count()
-    archived_students_count = Student.query.filter_by(is_active=False).count()  # Количество архивных учеников
+    if category_filter:
+        # Если есть фильтр категории, считаем только из текущей выборки
+        total_students = len(students)
+        ege_students = len([s for s in students if s.category == 'ЕГЭ']) if category_filter != 'ЕГЭ' else total_students
+        oge_students = len([s for s in students if s.category == 'ОГЭ']) if category_filter != 'ОГЭ' else total_students
+        levelup_students = len([s for s in students if s.category == 'ЛЕВЕЛАП']) if category_filter != 'ЛЕВЕЛАП' else total_students
+        programming_students = len([s for s in students if s.category == 'ПРОГРАММИРОВАНИЕ']) if category_filter != 'ПРОГРАММИРОВАНИЕ' else total_students
+    else:
+        # Если нет фильтра, используем один запрос с группировкой
+        total_students = Student.query.filter_by(is_active=base_is_active).count()
+        category_stats = db.session.query(
+            Student.category,
+            func.count(Student.student_id).label('count')
+        ).filter_by(is_active=base_is_active).group_by(Student.category).all()
+        
+        category_dict = {cat[0]: cat[1] for cat in category_stats if cat[0]}
+        ege_students = category_dict.get('ЕГЭ', 0)
+        oge_students = category_dict.get('ОГЭ', 0)
+        levelup_students = category_dict.get('ЛЕВЕЛАП', 0)
+        programming_students = category_dict.get('ПРОГРАММИРОВАНИЕ', 0)
+    
+    # Оптимизация: объединяем запросы статистики где возможно
+    # Статистика по урокам - один запрос с группировкой
+    lesson_stats = db.session.query(
+        Lesson.status,
+        func.count(Lesson.lesson_id).label('count')
+    ).group_by(Lesson.status).all()
+    
+    lesson_stats_dict = {stat[0]: stat[1] for stat in lesson_stats}
+    total_lessons = sum(lesson_stats_dict.values())
+    completed_lessons = lesson_stats_dict.get('completed', 0)
+    planned_lessons = lesson_stats_dict.get('planned', 0)
+    in_progress_lessons = lesson_stats_dict.get('in_progress', 0)
+    cancelled_lessons = lesson_stats_dict.get('cancelled', 0)
+    
+    archived_students_count = Student.query.filter_by(is_active=False).count()
+    
+    # Статистика по заданиям - используем подзапросы для оптимизации
+    total_tasks = Tasks.query.count()
+    # Используем подзапросы вместо distinct для лучшей производительности
+    accepted_tasks_count = db.session.query(func.count(func.distinct(UsageHistory.task_fk))).scalar() or 0
+    skipped_tasks_count = db.session.query(func.count(func.distinct(SkippedTasks.task_fk))).scalar() or 0
+    blacklisted_tasks_count = db.session.query(func.count(func.distinct(BlacklistTasks.task_fk))).scalar() or 0
+    
+    # Статистика по последним урокам (за последние 7 дней)
+    # Считаем только уроки, которые были проведены за последние 7 дней
+    now = moscow_now()
+    week_ago = now - timedelta(days=7)
+    
+    # Уроки, которые были проведены за последние 7 дней
+    recent_completed = Lesson.query.filter(
+        Lesson.status == 'completed',
+        Lesson.lesson_date >= week_ago,
+        Lesson.lesson_date <= now
+    ).count()
+    
+    # Уроки, запланированные на ближайшие 7 дней (в будущем)
+    week_ahead = now + timedelta(days=7)
+    recent_planned = Lesson.query.filter(
+        Lesson.status.in_(['planned', 'in_progress']),
+        Lesson.lesson_date >= now,
+        Lesson.lesson_date <= week_ahead
+    ).count()
+    
+    recent_lessons = recent_completed + recent_planned
+    
+    # Статистика по домашним заданиям (только за последние 7 дней - проведенные уроки)
+    lessons_with_homework = Lesson.query.filter(
+        Lesson.status == 'completed',
+        Lesson.lesson_date >= week_ago,
+        Lesson.lesson_date <= now,
+        Lesson.homework_status.in_(['assigned_done', 'assigned_not_done'])
+    ).count()
 
     return render_template('dashboard.html',
                          students=students,
@@ -671,11 +799,19 @@ def dashboard():
                          total_lessons=total_lessons,
                          completed_lessons=completed_lessons,
                          planned_lessons=planned_lessons,
+                         in_progress_lessons=in_progress_lessons,
+                         cancelled_lessons=cancelled_lessons,
                          ege_students=ege_students,
                          oge_students=oge_students,
                          levelup_students=levelup_students,
                          programming_students=programming_students,
-                         archived_students_count=archived_students_count)  # Передаем количество архивных учеников
+                         archived_students_count=archived_students_count,
+                         total_tasks=total_tasks,
+                         accepted_tasks_count=accepted_tasks_count,
+                         skipped_tasks_count=skipped_tasks_count,
+                         blacklisted_tasks_count=blacklisted_tasks_count,
+                         lessons_with_homework=lessons_with_homework,
+                         recent_lessons=recent_lessons)  # Передаем количество архивных учеников
 
 @app.route('/debug-db')
 def debug_db():
@@ -816,9 +952,77 @@ def student_new():
 
 @app.route('/student/<int:student_id>')
 def student_profile(student_id):
+    # КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: загружаем уроки отдельным запросом с joinedload для homework_tasks
+    # Это избегает N+1 проблем при обращении к lesson.homework_assignments в шаблоне
     student = Student.query.get_or_404(student_id)
-    lessons = Lesson.query.filter_by(student_id=student_id).order_by(Lesson.lesson_date.desc()).all()
+    
+    # Загружаем уроки с предзагрузкой homework_tasks и task для каждого homework_task
+    lessons = Lesson.query.filter_by(student_id=student_id).options(
+        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
+    ).order_by(Lesson.lesson_date.desc()).all()
+    
     return render_template('student_profile.html', student=student, lessons=lessons)
+
+@app.route('/student/<int:student_id>/statistics')
+def student_statistics(student_id):
+    """Страница статистики выполнения заданий по номерам"""
+    student = Student.query.get_or_404(student_id)
+    
+    # Загружаем все уроки с заданиями
+    lessons = Lesson.query.filter_by(student_id=student_id).options(
+        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
+    ).all()
+    
+    # Собираем статистику по номерам заданий
+    # Ключ: номер задания (task_number), значение: {correct: вес, total: вес}
+    task_stats = {}
+    
+    for lesson in lessons:
+        # Обрабатываем все типы заданий
+        for assignment_type in ['homework', 'classwork', 'exam']:
+            assignments = get_sorted_assignments(lesson, assignment_type)
+            weight = 2 if assignment_type == 'exam' else 1
+            
+            for lt in assignments:
+                if not lt.task or not lt.task.task_number:
+                    continue
+                
+                task_num = lt.task.task_number
+                
+                if task_num not in task_stats:
+                    task_stats[task_num] = {'correct': 0, 'total': 0}
+                
+                # Учитываем только задания с проверенными ответами
+                if lt.submission_correct is not None:
+                    task_stats[task_num]['total'] += weight
+                    if lt.submission_correct:
+                        task_stats[task_num]['correct'] += weight
+    
+    # Вычисляем проценты и формируем данные для диаграммы
+    chart_data = []
+    for task_num in sorted(task_stats.keys()):
+        stats = task_stats[task_num]
+        if stats['total'] > 0:
+            percent = round((stats['correct'] / stats['total']) * 100, 1)
+            # Определяем цвет: красный (0-40%), желтый (40-80%), зеленый (80-100%)
+            if percent < 40:
+                color = '#ef4444'  # красный
+            elif percent < 80:
+                color = '#eab308'  # желтый
+            else:
+                color = '#22c55e'  # зеленый
+            
+            chart_data.append({
+                'task_number': task_num,
+                'percent': percent,
+                'correct': stats['correct'],
+                'total': stats['total'],
+                'color': color
+            })
+    
+    return render_template('student_statistics.html', 
+                         student=student, 
+                         chart_data=chart_data)
 
 @app.route('/student/<int:student_id>/edit', methods=['GET', 'POST'])
 def student_edit(student_id):
@@ -1003,7 +1207,11 @@ def lesson_new(student_id):
 
 @app.route('/lesson/<int:lesson_id>/edit', methods=['GET', 'POST'])
 def lesson_edit(lesson_id):
-    lesson = Lesson.query.get_or_404(lesson_id)
+    # Оптимизация: используем joinedload для избежания N+1 проблем
+    lesson = Lesson.query.options(
+        db.joinedload(Lesson.student),
+        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
+    ).get_or_404(lesson_id)
     student = lesson.student
     form = LessonForm(obj=lesson)
     
@@ -1096,19 +1304,18 @@ def lesson_delete(lesson_id):
 
 @app.route('/student/<int:student_id>/lesson-mode')
 def lesson_mode(student_id):
+    # Оптимизация: загружаем все данные одним запросом
     student = Student.query.get_or_404(student_id)
-    lessons = Lesson.query.filter_by(student_id=student_id).order_by(Lesson.lesson_date.desc()).all()
-
-    current_lesson = Lesson.query.filter(
-        Lesson.student_id == student_id,
-        Lesson.status == 'in_progress'
-    ).first()
-
-    upcoming_lesson = Lesson.query.filter(
-        Lesson.student_id == student_id,
-        Lesson.status == 'planned',
-        Lesson.lesson_date >= moscow_now()
-    ).order_by(Lesson.lesson_date).first()
+    now = moscow_now()
+    
+    # Загружаем все уроки одним запросом
+    all_lessons = Lesson.query.filter_by(student_id=student_id).order_by(Lesson.lesson_date.desc()).all()
+    lessons = all_lessons
+    
+    # Находим текущий и ближайший урок из уже загруженных данных
+    current_lesson = next((l for l in all_lessons if l.status == 'in_progress'), None)
+    planned_lessons = [l for l in all_lessons if l.status == 'planned' and l.lesson_date and l.lesson_date >= now]
+    upcoming_lesson = sorted(planned_lessons, key=lambda x: x.lesson_date)[0] if planned_lessons else None
 
     return render_template('lesson_mode.html',
                          student=student,
@@ -1119,21 +1326,25 @@ def lesson_mode(student_id):
 @app.route('/student/<int:student_id>/start-lesson', methods=['POST'])
 def student_start_lesson(student_id):
     student = Student.query.get_or_404(student_id)
+    now = moscow_now()
 
+    # Оптимизация: один запрос вместо двух
     active_lesson = Lesson.query.filter_by(student_id=student_id, status='in_progress').first()
     if active_lesson:
         flash('Урок уже идет!', 'info')
         return redirect(url_for('student_profile', student_id=student_id))
 
+    # Оптимизация: используем limit(1) для лучшей производительности
     upcoming_lesson = Lesson.query.filter(
         Lesson.student_id == student_id,
         Lesson.status == 'planned',
-        Lesson.lesson_date >= moscow_now()
-    ).order_by(Lesson.lesson_date).first()
+        Lesson.lesson_date >= now
+    ).order_by(Lesson.lesson_date).limit(1).first()
 
     if upcoming_lesson:
         upcoming_lesson.status = 'in_progress'
         db.session.commit()
+        clear_active_lesson_cache()  # Сбрасываем кеш при изменении статуса
         flash(f'Урок начат!', 'success')
     else:
         new_lesson = Lesson(
@@ -1146,6 +1357,7 @@ def student_start_lesson(student_id):
         )
         db.session.add(new_lesson)
         db.session.commit()
+        clear_active_lesson_cache()  # Сбрасываем кеш при создании нового урока
         flash(f'Новый урок создан и начат!', 'success')
 
     return redirect(url_for('student_profile', student_id=student_id))
@@ -1155,6 +1367,7 @@ def lesson_start(lesson_id):
     lesson = Lesson.query.get_or_404(lesson_id)
     lesson.status = 'in_progress'
     db.session.commit()
+    clear_active_lesson_cache()  # Сбрасываем кеш при старте урока
     flash(f'Урок начат! Используй зеленую панель сверху для управления уроком.', 'success')
     return redirect(url_for('student_profile', student_id=lesson.student_id))
 
@@ -1172,12 +1385,24 @@ def lesson_complete(lesson_id):
     return redirect(url_for('student_profile', student_id=lesson.student_id))
 
 def get_sorted_assignments(lesson, assignment_type):
-    assignments = lesson.homework_assignments if assignment_type == 'homework' else lesson.classwork_assignments
+    """Получает отсортированные задания по типу"""
+    if assignment_type == 'homework':
+        assignments = lesson.homework_assignments
+    elif assignment_type == 'classwork':
+        assignments = lesson.classwork_assignments
+    elif assignment_type == 'exam':
+        assignments = lesson.exam_assignments
+    else:
+        assignments = lesson.homework_assignments
     return sorted(assignments, key=lambda ht: (ht.task.task_number if ht.task and ht.task.task_number is not None else ht.lesson_task_id))
 
 @app.route('/lesson/<int:lesson_id>/homework-tasks')
 def lesson_homework_view(lesson_id):
-    lesson = Lesson.query.get_or_404(lesson_id)
+    # Оптимизация: используем joinedload для избежания N+1 проблем
+    lesson = Lesson.query.options(
+        db.joinedload(Lesson.student),
+        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
+    ).get_or_404(lesson_id)
     student = lesson.student
     homework_tasks = get_sorted_assignments(lesson, 'homework')
     return render_template('lesson_homework.html',
@@ -1188,7 +1413,11 @@ def lesson_homework_view(lesson_id):
 
 @app.route('/lesson/<int:lesson_id>/classwork-tasks')
 def lesson_classwork_view(lesson_id):
-    lesson = Lesson.query.get_or_404(lesson_id)
+    # Оптимизация: используем joinedload для избежания N+1 проблем
+    lesson = Lesson.query.options(
+        db.joinedload(Lesson.student),
+        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
+    ).get_or_404(lesson_id)
     student = lesson.student
     classwork_tasks = get_sorted_assignments(lesson, 'classwork')
     return render_template('lesson_homework.html',
@@ -1196,6 +1425,21 @@ def lesson_classwork_view(lesson_id):
                            student=student,
                            homework_tasks=classwork_tasks,
                            assignment_type='classwork')
+
+@app.route('/lesson/<int:lesson_id>/exam-tasks')
+def lesson_exam_view(lesson_id):
+    # Оптимизация: используем joinedload для избежания N+1 проблем
+    lesson = Lesson.query.options(
+        db.joinedload(Lesson.student),
+        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
+    ).get_or_404(lesson_id)
+    student = lesson.student
+    exam_tasks = get_sorted_assignments(lesson, 'exam')
+    return render_template('lesson_homework.html',
+                           lesson=lesson,
+                           student=student,
+                           homework_tasks=exam_tasks,
+                           assignment_type='exam')
 
 @app.route('/lesson/<int:lesson_id>/homework-tasks/save', methods=['POST'])
 def lesson_homework_save(lesson_id):
@@ -1205,7 +1449,10 @@ def lesson_homework_save(lesson_id):
     for hw_task in homework_tasks:
         answer_key = f'answer_{hw_task.lesson_task_id}'
         if answer_key in request.form:
-            hw_task.student_answer = request.form.get(answer_key)
+            # Сохраняем ответ в student_answer (для ручного ввода или переопределения ответа из базы)
+            submitted_answer = request.form.get(answer_key).strip()
+            # Если ответ из базы был изменен вручную, сохраняем новый ответ
+            hw_task.student_answer = submitted_answer if submitted_answer else None
 
     percent_value = request.form.get('homework_result_percent', '').strip()
     if percent_value:
@@ -1267,20 +1514,20 @@ def normalize_answer_value(value):
         pass
     return text_single_space.lower()
 
-@app.route('/lesson/<int:lesson_id>/homework-auto-check', methods=['POST'])
-def lesson_homework_auto_check(lesson_id):
-    lesson = Lesson.query.get_or_404(lesson_id)
-    homework_tasks = get_sorted_assignments(lesson, 'homework')
-
-    if not homework_tasks:
-        flash('У этого урока нет заданий ДЗ для проверки.', 'warning')
-        return redirect(url_for('lesson_homework_view', lesson_id=lesson_id))
-
+def perform_auto_check(lesson, assignment_type):
+    """Универсальная функция автопроверки для homework, classwork и exam"""
+    tasks = get_sorted_assignments(lesson, assignment_type)
+    
+    if not tasks:
+        type_name = {'homework': 'ДЗ', 'classwork': 'классной работы', 'exam': 'проверочной'}.get(assignment_type, 'заданий')
+        flash(f'У этого урока нет заданий {type_name} для проверки.', 'warning')
+        return None, None
+    
     answers_raw = request.form.get('auto_answers', '').strip()
     if not answers_raw:
         flash('Вставь массив ответов в формате [1, -1, "Москва"].', 'warning')
-        return redirect(url_for('lesson_homework_view', lesson_id=lesson_id))
-
+        return None, None
+    
     try:
         parsed_answers = ast.literal_eval(answers_raw)
         if not isinstance(parsed_answers, (list, tuple)):
@@ -1288,50 +1535,70 @@ def lesson_homework_auto_check(lesson_id):
         answers_list = list(parsed_answers)
     except Exception:
         flash('Не удалось разобрать ответы. Используй формат [1, -1, "Москва"].', 'danger')
-        return redirect(url_for('lesson_homework_view', lesson_id=lesson_id))
-
-    total_tasks = len(homework_tasks)
+        return None, None
+    
+    total_tasks = len(tasks)
     correct_count = 0
     incorrect_count = 0
-
+    
+    # Для exam вес ×2
+    weight = 2 if assignment_type == 'exam' else 1
+    
     if len(answers_list) != total_tasks:
         flash(f'Количество ответов ({len(answers_list)}) не совпадает с числом заданий ({total_tasks}). Отсутствующие ответы будут считаться неверными.', 'warning')
-
+    
     def answer_at(index):
         if index < len(answers_list):
             return answers_list[index]
         return None
-
-    for idx, hw_task in enumerate(homework_tasks):
+    
+    for idx, task in enumerate(tasks):
         student_value = answer_at(idx)
         student_text = '' if student_value is None else str(student_value).strip()
-        hw_task.student_submission = student_text if student_text else None
-
+        task.student_submission = student_text if student_text else None
+        
         is_skip = student_text == '' or student_text == '-1' or student_text.lower() == 'null'
-        expected_text = hw_task.student_answer or ''
-
+        # Используем student_answer, если он был введен вручную, иначе ответ из базы данных (task.answer)
+        expected_text = (task.student_answer if task.student_answer else (task.task.answer if task.task and task.task.answer else '')) or ''
+        
         if not expected_text:
-            hw_task.submission_correct = False
-            incorrect_count += 1
+            task.submission_correct = False
+            incorrect_count += weight  # Учитываем вес для exam
             continue
-
+        
         if is_skip:
-            hw_task.submission_correct = False
-            incorrect_count += 1
+            task.submission_correct = False
+            incorrect_count += weight  # Учитываем вес для exam
             continue
-
+        
         normalized_student = normalize_answer_value(student_text)
         normalized_expected = normalize_answer_value(expected_text)
-
+        
         is_correct = normalized_student == normalized_expected and normalized_expected != ''
-        hw_task.submission_correct = is_correct
-
+        task.submission_correct = is_correct
+        
         if is_correct:
-            correct_count += 1
+            correct_count += weight  # Учитываем вес для exam
         else:
-            incorrect_count += 1
+            incorrect_count += weight  # Учитываем вес для exam
+    
+    # Для расчета процента учитываем вес
+    total_weighted = correct_count + incorrect_count
+    percent = round((correct_count / total_weighted) * 100, 2) if total_weighted > 0 else 0
+    
+    return correct_count, incorrect_count, percent, total_tasks
 
-    percent = round((correct_count / total_tasks) * 100, 2) if total_tasks else 0
+@app.route('/lesson/<int:lesson_id>/homework-auto-check', methods=['POST'])
+def lesson_homework_auto_check(lesson_id):
+    lesson = Lesson.query.get_or_404(lesson_id)
+    result = perform_auto_check(lesson, 'homework')
+    
+    if result[0] is None:
+        return redirect(url_for('lesson_homework_view', lesson_id=lesson_id))
+    
+    correct_count, incorrect_count, percent, total_tasks = result
+    homework_tasks = get_sorted_assignments(lesson, 'homework')
+
     lesson.homework_result_percent = percent
     summary = f"Автопроверка {moscow_now().strftime('%d.%m.%Y %H:%M')}: {correct_count}/{total_tasks} верных ({percent}%)."
     if lesson.homework_result_notes:
@@ -1348,6 +1615,94 @@ def lesson_homework_auto_check(lesson_id):
     
     # Логируем автопроверку ДЗ
     audit_logger.log(
+        action='auto_check_homework',
+        entity='Lesson',
+        entity_id=lesson_id,
+        status='success',
+        metadata={
+            'student_id': lesson.student_id,
+            'student_name': lesson.student.name,
+            'correct_count': correct_count,
+            'total_tasks': total_tasks,
+            'percent': percent
+        }
+    )
+    
+    flash(f'Автопроверка завершена: {correct_count}/{total_tasks} верных ({percent}%).', 'success')
+    return redirect(url_for('lesson_homework_view', lesson_id=lesson_id))
+
+@app.route('/lesson/<int:lesson_id>/classwork-auto-check', methods=['POST'])
+def lesson_classwork_auto_check(lesson_id):
+    lesson = Lesson.query.get_or_404(lesson_id)
+    result = perform_auto_check(lesson, 'classwork')
+    
+    if result[0] is None:
+        return redirect(url_for('lesson_classwork_view', lesson_id=lesson_id))
+    
+    correct_count, incorrect_count, percent, total_tasks = result
+    
+    # Для классной работы сохраняем результат в notes (так как нет отдельного поля)
+    summary = f"Автопроверка классной работы {moscow_now().strftime('%d.%m.%Y %H:%M')}: {correct_count}/{total_tasks} верных ({percent}%)."
+    if lesson.notes:
+        lesson.notes = lesson.notes + "\n" + summary
+    else:
+        lesson.notes = summary
+    
+    db.session.commit()
+    
+    audit_logger.log(
+        action='auto_check_classwork',
+        entity='Lesson',
+        entity_id=lesson_id,
+        status='success',
+        metadata={
+            'student_id': lesson.student_id,
+            'student_name': lesson.student.name,
+            'correct_count': correct_count,
+            'total_tasks': total_tasks,
+            'percent': percent
+        }
+    )
+    
+    flash(f'Автопроверка завершена: {correct_count}/{total_tasks} верных ({percent}%).', 'success')
+    return redirect(url_for('lesson_classwork_view', lesson_id=lesson_id))
+
+@app.route('/lesson/<int:lesson_id>/exam-auto-check', methods=['POST'])
+def lesson_exam_auto_check(lesson_id):
+    lesson = Lesson.query.get_or_404(lesson_id)
+    result = perform_auto_check(lesson, 'exam')
+    
+    if result[0] is None:
+        return redirect(url_for('lesson_exam_view', lesson_id=lesson_id))
+    
+    correct_count, incorrect_count, percent, total_tasks = result
+    
+    # Для проверочной работы сохраняем результат в notes
+    summary = f"Автопроверка проверочной {moscow_now().strftime('%d.%m.%Y %H:%M')}: {correct_count}/{total_tasks} верных ({percent}%). Вес ×2."
+    if lesson.notes:
+        lesson.notes = lesson.notes + "\n" + summary
+    else:
+        lesson.notes = summary
+    
+    db.session.commit()
+    
+    audit_logger.log(
+        action='auto_check_exam',
+        entity='Lesson',
+        entity_id=lesson_id,
+        status='success',
+        metadata={
+            'student_id': lesson.student_id,
+            'student_name': lesson.student.name,
+            'correct_count': correct_count,
+            'total_tasks': total_tasks,
+            'percent': percent,
+            'weight': 2
+        }
+    )
+    
+    flash(f'Автопроверка завершена: {correct_count}/{total_tasks} верных ({percent}%). Учтено с весом ×2.', 'success')
+    return redirect(url_for('lesson_exam_view', lesson_id=lesson_id))(
         action='auto_check_homework',
         entity='Lesson',
         entity_id=lesson_id,
@@ -1540,6 +1895,31 @@ def lesson_homework_export_md(lesson_id):
 
             img.replace_with(soup.new_string(f'\n\n{markdown_img}\n\n'))
 
+        # Обработка списков (ul, ol) - сохраняем структуру для правильного экспорта
+        for ul in soup.find_all('ul'):
+            if not ul.find_parent(['td', 'th', 'table']):
+                items = ul.find_all('li', recursive=False)
+                if items:
+                    list_text = '\n'.join([f"- {li.get_text(separator=' ', strip=True)}" for li in items if li.get_text(strip=True)])
+                    if list_text:
+                        ul.replace_with(soup.new_string(f'\n\n{list_text}\n\n'))
+                    else:
+                        ul.decompose()
+                else:
+                    ul.decompose()
+        
+        for ol in soup.find_all('ol'):
+            if not ol.find_parent(['td', 'th', 'table']):
+                items = ol.find_all('li', recursive=False)
+                if items:
+                    list_text = '\n'.join([f"{idx + 1}. {li.get_text(separator=' ', strip=True)}" for idx, li in enumerate(items) if li.get_text(strip=True)])
+                    if list_text:
+                        ol.replace_with(soup.new_string(f'\n\n{list_text}\n\n'))
+                    else:
+                        ol.decompose()
+                else:
+                    ol.decompose()
+        
         for br in soup.find_all('br'):
             br.replace_with(' ')
 
@@ -1557,6 +1937,17 @@ def lesson_homework_export_md(lesson_id):
         for div in soup.find_all('div'):
             process_element(div)
 
+        # Удаление строк "Файлы к заданию" и подобных перед экспортом
+        for text_node in soup.find_all(string=True):
+            if text_node.parent and text_node.parent.name not in ['script', 'style']:
+                text = str(text_node)
+                # Удаляем строки с "Файлы к заданию"
+                cleaned_text = re.sub(r'[Фф]айлы?\s+к\s+заданию[:\s-]*[^\n]*', '', text, flags=re.IGNORECASE)
+                cleaned_text = re.sub(r'[Фф]айлы?\s+к\s+задаче[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
+                cleaned_text = re.sub(r'[Пп]рикреплен[а-яё]*\s+файл[а-яё]*[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
+                if cleaned_text != text:
+                    text_node.replace_with(cleaned_text)
+        
         text = soup.get_text(separator=' ', strip=False)
         text = unescape(text)
         text = re.sub(r'\r\n?', '\n', text)
@@ -1567,6 +1958,7 @@ def lesson_homework_export_md(lesson_id):
         text = re.sub(r'\$ ', '$ ', text)
         text = re.sub(r' \n', '\n', text)
         text = re.sub(r'\n ', '\n', text)
+        # Более агрессивное удаление множественных пустых строк
         text = re.sub(r'\n{3,}', '\n\n', text)
         text = re.sub(r'\$\s+([^$]+)\s+\$', r'$\1$', text)
         lines = [line.rstrip() for line in text.splitlines()]
@@ -1578,6 +1970,7 @@ def lesson_homework_export_md(lesson_id):
                 cleaned.append(stripped)
                 prev_blank = False
             else:
+                # Оставляем максимум одну пустую строку подряд
                 if not prev_blank:
                     cleaned.append('')
                 prev_blank = True
@@ -1776,6 +2169,103 @@ def api_student_delete(student_id):
         db.session.rollback()
         logger.error(f'Ошибка при удалении студента через API: {e}')
         return jsonify({'success': False, 'error': f'Ошибка при удалении студента: {str(e)}'}), 500
+
+@app.route('/api/global-search', methods=['GET'])
+def api_global_search():
+    """Глобальный поиск по всем сущностям: ученики, уроки, задания"""
+    query = request.args.get('q', '').strip()
+    if not query or len(query) < 2:
+        return jsonify({
+            'success': False,
+            'error': 'Минимум 2 символа для поиска'
+        }), 400
+    
+    results = {
+        'students': [],
+        'lessons': [],
+        'tasks': []
+    }
+    
+    try:
+        # Поиск по ученикам
+        search_pattern = f'%{query}%'
+        students = Student.query.filter(
+            or_(
+                Student.name.ilike(search_pattern),
+                Student.platform_id.ilike(search_pattern),
+                Student.category.ilike(search_pattern)
+            )
+        ).limit(10).all()
+        
+        for student in students:
+            results['students'].append({
+                'id': student.student_id,
+                'name': student.name,
+                'category': student.category,
+                'platform_id': student.platform_id,
+                'is_active': student.is_active,
+                'url': url_for('student_profile', student_id=student.student_id)
+            })
+        
+        # Поиск по урокам
+        try:
+            lesson_id = int(query)
+            lessons = Lesson.query.filter(Lesson.lesson_id == lesson_id).limit(5).all()
+        except ValueError:
+            lessons = Lesson.query.filter(
+                or_(
+                    Lesson.topic.ilike(search_pattern),
+                    Lesson.notes.ilike(search_pattern),
+                    Lesson.homework.ilike(search_pattern)
+                )
+            ).limit(5).all()
+        
+        for lesson in lessons:
+            results['lessons'].append({
+                'id': lesson.lesson_id,
+                'student_name': lesson.student.name if lesson.student else 'Неизвестно',
+                'student_id': lesson.student_id,
+                'topic': lesson.topic,
+                'date': lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else None,
+                'status': lesson.status,
+                'url': url_for('lesson_edit', lesson_id=lesson.lesson_id)
+            })
+        
+        # Поиск по заданиям
+        try:
+            task_id = int(query)
+            tasks = Tasks.query.filter(
+                or_(
+                    Tasks.task_id == task_id,
+                    Tasks.site_task_id == task_id
+                )
+            ).limit(5).all()
+        except ValueError:
+            tasks = Tasks.query.filter(
+                Tasks.content_html.ilike(search_pattern)
+            ).limit(5).all()
+        
+        for task in tasks:
+            results['tasks'].append({
+                'id': task.task_id,
+                'site_task_id': task.site_task_id,
+                'task_number': task.task_number,
+                'content_preview': task.content_html[:200] + '...' if task.content_html and len(task.content_html) > 200 else (task.content_html or ''),
+                'url': url_for('generate_results', task_id=task.task_id)
+            })
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'total': len(results['students']) + len(results['lessons']) + len(results['tasks'])
+        })
+    
+    except Exception as e:
+        logger.error(f"Ошибка при глобальном поиске: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @app.route('/api/lesson/create', methods=['POST'])
 def api_lesson_create():
@@ -2378,22 +2868,20 @@ def generate_results():
     try:
         # Если передан search_task_id, получаем конкретное задание и ИГНОРИРУЕМ остальные параметры
         if search_task_id:
-            logger.info(f"Поиск конкретного задания по search_task_id={search_task_id}")
+            # Убираем избыточное логирование для оптимизации
             # Используем filter_by для надежного поиска по внутреннему task_id
             task = Tasks.query.filter_by(task_id=search_task_id).first()
             if task:
                 tasks = [task]  # Возвращаем ТОЛЬКО найденное задание
                 # Обновляем task_type на правильный номер типа найденного задания
                 task_type = task.task_number
-                logger.info(f"✓ Найдено задание по search_task_id={search_task_id}: task_id={task.task_id}, task_number={task.task_number}, site_task_id={task.site_task_id}")
             else:
                 logger.error(f"✗ Задание с search_task_id={search_task_id} не найдено в базе данных!")
                 flash(f'Задание с ID {search_task_id} не найдено.', 'warning')
                 # Если задание не найдено, не генерируем случайные - просто возвращаем пустой список
                 tasks = []
         else:
-            # Обычная генерация заданий
-            logger.info(f"Обычная генерация заданий: task_type={task_type}, limit_count={limit_count}")
+            # Обычная генерация заданий - убираем избыточное логирование
             tasks = get_unique_tasks(task_type, limit_count, use_skipped=use_skipped, student_id=student_id)
     except Exception as e:
         logger.error(f"Error getting unique tasks: {e}", exc_info=True)
@@ -2462,7 +2950,7 @@ def task_action():
             return jsonify({'success': False, 'error': 'Неверные параметры'}), 400
 
         assignment_type = data.get('assignment_type', 'homework')
-        assignment_type = assignment_type if assignment_type in ['homework', 'classwork'] else 'homework'
+        assignment_type = assignment_type if assignment_type in ['homework', 'classwork', 'exam'] else 'homework'
 
         if action == 'accept':
             if lesson_id:

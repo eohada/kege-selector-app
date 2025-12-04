@@ -55,13 +55,7 @@
 
         <h1>⊘ Пропущенные задания{% if task_type %}: Задание {{ task_type }}{% endif %} ({{ tasks|length }} шт.)</h1>
         
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+        {# Flash messages будут показаны через toast #}
         
         <div class="filter-section">
             <label for="task-type-filter"><strong>Фильтр по номеру задания:</strong></label>
@@ -164,6 +158,9 @@
             const buttons = taskElement.querySelectorAll('.btn');
             buttons.forEach(btn => btn.disabled = true);
             
+            // Показываем индикатор загрузки
+            const loaderId = loading.show(taskElement, 'Обработка...');
+            
             fetch('{{ url_for("task_action") }}', {
                 method: 'POST',
                 headers: {
@@ -176,6 +173,7 @@
             })
             .then(response => response.json())
             .then(data => {
+                if (loaderId) loading.hide(loaderId);
                 if (data.success) {
                     taskElement.style.opacity = '0.5';
                     taskElement.style.transition = 'opacity 0.3s';
@@ -185,15 +183,22 @@
                             window.location.href = '{{ url_for("kege_generator") }}';
                         }
                     }, 500);
-                    alert(data.message);
+                    if (window.toast) {
+                        toast.success(data.message);
+                    }
                 } else {
-                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                    if (window.toast) {
+                        toast.error(data.error || 'Неизвестная ошибка');
+                    }
                     buttons.forEach(btn => btn.disabled = false);
                 }
             })
             .catch(error => {
+                if (loaderId) loading.hide(loaderId);
                 console.error('Error:', error);
-                alert('Ошибка при выполнении действия');
+                if (window.toast) {
+                    toast.error('Ошибка при выполнении действия');
+                }
                 buttons.forEach(btn => btn.disabled = false);
             });
         }
@@ -207,7 +212,9 @@
         function bulkAction(action) {
             const checked = Array.from(document.querySelectorAll('.task-checkbox:checked'));
             if (checked.length === 0) {
-                alert('Выберите хотя бы одно задание');
+                if (window.toast) {
+                    toast.error('Выберите хотя бы одно задание');
+                }
                 return;
             }
             
@@ -217,9 +224,22 @@
                 'blacklist': 'добавить в черный список'
             };
             
-            if (!confirm(`Вы уверены, что хотите ${actionNames[action]} ${taskIds.length} заданий?`)) {
-                return;
-            }
+            // Показываем модальное окно подтверждения
+            showConfirmModal({
+                title: 'Подтверждение действия',
+                message: `Вы уверены, что хотите ${actionNames[action]} ${taskIds.length} заданий?`,
+                confirmText: 'Подтвердить',
+                cancelText: 'Отмена',
+                confirmClass: 'accent',
+                onConfirm: () => {
+                    performBulkAction(action, taskIds);
+                }
+            });
+            
+            return;
+        }
+        
+        function performBulkAction(action, taskIds) {
             
             fetch('{{ url_for("task_action") }}', {
                 method: 'POST',
@@ -234,12 +254,16 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    checked.forEach(cb => {
-                        const taskElement = cb.closest('.task');
-                        taskElement.style.opacity = '0.5';
-                        setTimeout(() => taskElement.remove(), 300);
+                    taskIds.forEach(taskId => {
+                        const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+                        if (taskElement) {
+                            taskElement.style.opacity = '0.5';
+                            setTimeout(() => taskElement.remove(), 300);
+                        }
                     });
-                    alert(data.message);
+                    if (window.toast) {
+                        toast.success(data.message);
+                    }
                     
                     // Проверяем, остались ли задания
                     setTimeout(() => {
@@ -248,12 +272,16 @@
                         }
                     }, 500);
                 } else {
-                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                    if (window.toast) {
+                        toast.error(data.error || 'Неизвестная ошибка');
+                    }
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Ошибка при выполнении действия');
+                if (window.toast) {
+                    toast.error('Ошибка при выполнении действия');
+                }
             });
         }
         
@@ -268,7 +296,46 @@
             }
         }
     </script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script>
+        // Конвертируем flash-сообщения в toast-уведомления
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.error('{{ message|e }}');
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.warning('{{ message|e }}');
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.info('{{ message|e }}');
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.success('{{ message|e }}');
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
 </body>
 </html>
 

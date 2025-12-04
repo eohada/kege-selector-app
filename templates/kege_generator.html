@@ -13,9 +13,32 @@
 </head>
 <body class="{% if active_lesson %}lesson-active{% endif %}">
     {% set is_homework = (assignment_type == 'homework') %}
-    {% set mode_label = 'домашнего задания' if is_homework else 'классной работы' %}
-    {% set banner_icon = '📝' if is_homework else '🏫' %}
-    {% set mode_class = 'generator-mode--homework' if is_homework else 'generator-mode--classwork' %}
+    {% set is_classwork = (assignment_type == 'classwork') %}
+    {% set is_exam = (assignment_type == 'exam') %}
+    {% if is_homework %}
+        {% set mode_label = 'домашнего задания' %}
+        {% set banner_icon = '📝' %}
+        {% set mode_class = 'generator-mode--homework' %}
+    {% elif is_exam %}
+        {% set mode_label = 'проверочной работы' %}
+        {% set banner_icon = '📊' %}
+        {% set mode_class = 'generator-mode--exam' %}
+    {% else %}
+        {% set mode_label = 'классной работы' %}
+        {% set banner_icon = '🏫' %}
+        {% set mode_class = 'generator-mode--classwork' %}
+    {% endif %}
+    {% if lesson_id %}
+        {% if is_homework %}
+            {% set mode_text = 'Домашняя работа без повторов' %}
+        {% elif is_exam %}
+            {% set mode_text = 'Проверочная работа без повторов' %}
+        {% else %}
+            {% set mode_text = 'Классная работа без повторов' %}
+        {% endif %}
+    {% else %}
+        {% set mode_text = 'Общий генератор' %}
+    {% endif %}
 
     {% if active_lesson %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
@@ -87,12 +110,12 @@
                 <p class="hero-subtitle">
                     Система бережно отслеживает историю принятых и пропущенных задач, чтобы выдавать
                     только релевантные карточки. Выбери тип задания, укажи лимит и мы подготовим набор
-                    для {{ 'домашнего задания' if is_homework else 'классной работы' }}.
+                    для {{ mode_label }}.
                 </p>
-                <div class="hero-actions">
+                <div class="hero-actions" style="display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;">
                     <span class="hero-eyebrow" style="margin-bottom: 0;">режим работы</span>
                     <span style="font-size: 1.1rem; font-weight: 600; color: var(--accent-1);">
-                        {{ 'Домашка без повторов' if is_homework else 'Классная работа в потоке' }}
+                        {{ mode_text }}
                     </span>
                 </div>
             </div>
@@ -112,13 +135,7 @@
             </div>
         </section>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ category }}">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+        {# Flash messages будут показаны через toast #}
 
         {% if lesson and student %}
         <section class="glass-panel generator-mode {{ mode_class }}">
@@ -138,8 +155,8 @@
                     {{ '💡 Все выбранные карточки попадут в ДЗ и скроются из будущих выдач.' if is_homework else '💡 Карточки добавляются в классную работу и не повторяются в последующем ДЗ.' }}
                 </div>
             </div>
-            <a href="{{ url_for('student_profile', student_id=student.student_id) }}" class="neo-button ghost">
-                ← К профилю
+            <a href="{{ url_for('lesson_homework_view', lesson_id=lesson.lesson_id) if assignment_type == 'homework' else url_for('lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">
+                ← К уроку
             </a>
         </section>
         {% endif %}
@@ -240,6 +257,44 @@
         });
     </script>
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
+    <script>
+        // Конвертируем flash-сообщения в toast-уведомления
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.error('{{ message|e }}');
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.warning('{{ message|e }}');
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.info('{{ message|e }}');
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.success('{{ message|e }}');
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
 </body>
 </html>

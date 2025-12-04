@@ -108,12 +108,26 @@ function initStudentCards() {
                 return; 
             }
 
-            if (!confirm(`Вы уверены, что хотите удалить ученика "${studentName}"?`)) {
-                return; 
-            }
-
-            const card = this.closest('.student-card'); 
-            const loaderId = card ? loading.show(card, 'Удаление...') : null; 
+            // Показываем модальное окно подтверждения
+            showConfirmModal({
+                title: 'Удалить ученика?',
+                message: `Вы уверены, что хотите удалить ученика "${studentName}"? Это действие нельзя отменить!`,
+                confirmText: 'Удалить',
+                cancelText: 'Отмена',
+                confirmClass: 'danger',
+                onConfirm: async () => {
+                    await performDelete(studentId, studentName, card, loaderId);
+                }
+            });
+            
+            return;
+        }
+        
+        async function performDelete(studentId, studentName, card, loaderId) {
+            // Показываем индикатор загрузки, если его еще нет
+            if (!loaderId && card) {
+                loaderId = loading.show(card, 'Удаление...');
+            } 
             
             try {
                 const response = await ajax.delete(`/api/student/${studentId}/delete`); 

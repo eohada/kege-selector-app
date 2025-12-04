@@ -39,7 +39,7 @@
         .tester-id {
             font-size: 0.85rem;
             color: var(--text-muted);
-            font-family: monospace;
+            font-family: 'MonaspaceNeon', 'Courier New', monospace;
         }
         .tester-stats {
             display: flex;
@@ -125,7 +125,7 @@
             <h1 style="margin-bottom: 1rem;">Управление тестировщиками</h1>
 
             <form method="POST" action="{{ url_for('admin_testers_clear_all') }}" 
-                  onsubmit="return confirm('⚠️ Вы уверены? Это удалит ВСЕХ тестировщиков и ВСЕ их логи!')" 
+                  class="confirm-delete-form" 
                   style="margin-bottom: 2rem;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <button type="submit" class="btn-clear-all">🗑️ Очистить всех тестировщиков</button>
@@ -176,7 +176,7 @@
                             <div class="action-buttons">
                                 <a href="{{ url_for('admin_testers_edit', tester_id=tester.tester_id) }}" class="btn-edit">✏️ Редактировать</a>
                                 <form method="POST" action="{{ url_for('admin_testers_delete', tester_id=tester.tester_id) }}" 
-                                      onsubmit="return confirm('Удалить тестировщика {{ tester.name }} и все его логи?')" 
+                                      class="confirm-delete-form" 
                                       style="display: inline;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="btn-delete">🗑️ Удалить</button>
@@ -199,6 +199,7 @@
             </div>
         </section>
     </div>
+    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
 </body>
 </html>
