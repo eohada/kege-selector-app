@@ -127,6 +127,11 @@
     <div class="app-shell">
         <header class="nav-primary">
             <div class="nav-brand">
+                {% if current_user and current_user.is_authenticated %}
+                <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                    {{ current_user.username[0].upper() }}
+                </a>
+                {% endif %}
                 <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
                     <div class="brand-mark">LOGO</div>
                     <div class="brand-caption">Админ-панель</div>
@@ -137,11 +142,16 @@
                 <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
                 <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
                 <a href="{{ url_for('admin_audit') }}" class="nav-link active">📊 Логи</a>
-                <a href="{{ url_for('admin_testers', secret=request.args.get('secret', '')) }}" class="nav-link">👥 Тестировщики</a>
+                <a href="{{ url_for('admin_testers') }}" class="nav-link">👥 Тестировщики</a>
             </nav>
         </header>
 
         <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <a href="{{ url_for('admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">
+                    ← К админ панели
+                </a>
+            </div>
             <h1 style="margin-bottom: 1rem;">Логи действий тестировщиков</h1>
 
             <div class="audit-stats">
@@ -166,11 +176,11 @@
             <form method="GET" class="audit-filters">
                 <div class="neo-field">
                     <label class="neo-label">Тестировщик</label>
-                    <select name="tester_id" class="neo-select">
+                    <select name="user_id" class="neo-select">
                         <option value="">Все</option>
-                        {% for tester in testers %}
-                        <option value="{{ tester.tester_id }}" {% if filters.tester_id == tester.tester_id %}selected{% endif %}>
-                            {{ tester.name }} ({{ tester.tester_id[:8] }}...)
+                        {% for user in users %}
+                        <option value="{{ user.id }}" {% if filters.user_id == user.id|string %}selected{% endif %}>
+                            {{ user.username }} ({{ user.get_role_display() }})
                         </option>
                         {% endfor %}
                     </select>
@@ -234,7 +244,7 @@
                         {% for log in logs %}
                         <tr>
                             <td>{{ log.timestamp.strftime('%d.%m.%Y %H:%M:%S') }}</td>
-                            <td>{{ log.tester_name or 'Anonymous' }}</td>
+                            <td>{% if log.user %}{{ log.user.username }} ({{ log.user.get_role_display() }}){% else %}{{ log.tester_name or 'Неизвестно' }}{% endif %}</td>
                             <td>{{ log.action }}</td>
                             <td>{{ log.entity or '-' }}</td>
                             <td>

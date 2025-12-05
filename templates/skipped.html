@@ -21,6 +21,11 @@
     <div class="app-shell">
         <header class="nav-primary">
             <div class="nav-brand">
+                {% if current_user and current_user.is_authenticated %}
+                <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                    {{ current_user.username[0].upper() }}
+                </a>
+                {% endif %}
                 <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
                     <div class="brand-mark">LOGO</div>
                     <div class="brand-caption">Слот под фирменный знак</div>
@@ -33,15 +38,6 @@
                 <a href="{{ url_for('kege_generator') }}" class="nav-link active">💻 Генератор</a>
                 <a href="{{ url_for('update_plans') }}" class="nav-link">📝 Планы</a>
             </nav>
-            {% if current_user and current_user.is_authenticated %}
-            <div class="nav-actions" style="display: flex; align-items: center; gap: 0.75rem;">
-                <a href="{{ url_for('user_profile') }}" style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9em; text-decoration: none; padding: 0.5em 0.75em; border-radius: var(--radius-sm); transition: all 0.2s ease;" onmouseover="this.style.background='var(--surface-2)'; this.style.color='var(--text-primary)'" onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)'">
-                    <span>👤</span>
-                    <span>{{ current_user.username }}</span>
-                    <span style="color: var(--accent-1); font-size: 0.85em;">({{ current_user.get_role_display() }})</span>
-                </a>
-            </div>
-            {% endif %}
         </header>
 
         <section class="glass-panel" style="margin-bottom: 2rem;">

@@ -504,6 +504,11 @@
     <div class="app-shell">
         <header class="nav-primary">
             <div class="nav-brand">
+                {% if current_user and current_user.is_authenticated %}
+                <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                    {{ current_user.username[0].upper() }}
+                </a>
+                {% endif %}
                 <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
                     <div class="brand-mark">LOGO</div>
                     <div class="brand-caption">Слот под фирменный знак</div>
@@ -536,11 +541,6 @@
                     </span>
                 </a>
             </nav>
-            <div class="nav-actions">
-                <div class="brand-caption icon-slot"> <!-- Контейнер иконки раздела Расписание -->
-                    <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="brand-icon"> <!-- Белая иконка календаря -->
-                </div>
-            </div>
         </header>
 
         <section class="glass-panel schedule-hero">

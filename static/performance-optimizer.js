@@ -126,3 +126,4 @@ document.addEventListener('DOMContentLoaded', () => {
     new PerformanceOptimizer();
 });
 
+

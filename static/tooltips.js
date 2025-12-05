@@ -117,3 +117,4 @@ class TooltipManager {
 // Инициализация
 const tooltipManager = new TooltipManager();
 
+

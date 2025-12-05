@@ -54,6 +54,9 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'local-dev-key-12345')
 app.config['WTF_CSRF_ENABLED'] = True
 app.config['WTF_CSRF_TIME_LIMIT'] = None
 
+# Определение окружения (production, sandbox, local)
+ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
+
 csrf = CSRFProtect(app)
 
 # Настройка логирования: вывод в консоль и в файл
@@ -311,10 +314,15 @@ def require_login():
 
 @app.before_request
 def identify_tester():
-
+    """Идентификация тестировщика (только для неавторизованных пользователей)"""
     try:
-
+        # Пропускаем для статических файлов
         if request.endpoint in ('static', 'favicon') or request.path.startswith('/static/'):
+            return
+
+        # Для авторизованных пользователей не создаем тестировщиков
+        # Логирование будет происходить через Flask-Login
+        if current_user.is_authenticated:
             return
 
         # Получаем имя тестировщика из заголовка, декодируя если нужно
@@ -336,82 +344,9 @@ def identify_tester():
                 tester_name = tester_name_raw
         else:
             tester_name = tester_name_raw
-        tester_uuid = request.headers.get('X-Tester-UUID')
-
-        # Если нет tester_id в сессии, ищем или создаем тестировщика
-        if 'tester_id' not in session:
-            from core.db_models import Tester
-            
-            tester = None
-            
-            # Ищем по имени (если имя не Anonymous)
-            if tester_name and tester_name != 'Anonymous':
-                tester = Tester.query.filter_by(name=tester_name).first()
-            
-            # Если не нашли по имени, ищем по UUID
-            if not tester and tester_uuid:
-                tester = Tester.query.filter_by(tester_id=tester_uuid).first()
-            
-            # Если нашли существующего - используем его
-            if tester:
-                tester_id = tester.tester_id
-                # Обновляем last_seen
-                # Убрано: обновление last_seen замедляет работу
-                # Обновляем имя если изменилось
-                if tester_name and tester_name != 'Anonymous' and tester.name != tester_name:
-                    tester.name = tester_name
-                    db.session.commit()
-            else:
-                # Создаем нового тестировщика только если есть имя (не Anonymous)
-                if tester_name and tester_name != 'Anonymous':
-                    # Используем UUID из заголовка или генерируем новый
-                    if tester_uuid:
-                        tester_id = tester_uuid
-                    else:
-                        tester_id = str(uuid.uuid4())
-                    
-                    tester = Tester(
-                        tester_id=tester_id,
-                        name=tester_name,
-                        ip_address=request.remote_addr,
-                        user_agent=request.headers.get('User-Agent'),
-                        session_id=session.get('_id')
-                    )
-                    db.session.add(tester)
-                    db.session.commit()
-                else:
-                    # Создаем тестировщика даже для анонимных, чтобы не нарушать внешний ключ в AuditLog
-                    if tester_uuid:
-                        tester_id = tester_uuid
-                    else:
-                        tester_id = str(uuid.uuid4())
-                    
-                    name_to_use = tester_name if tester_name else "Anonymous"
-                    tester = Tester(
-                        tester_id=tester_id,
-                        name=name_to_use,
-                        ip_address=request.remote_addr,
-                        user_agent=request.headers.get("User-Agent"),
-                        session_id=session.get("_id")
-                    )
-                    db.session.add(tester)
-                    db.session.commit()
-            
-            session['tester_id'] = tester_id
-            session['tester_name'] = tester_name if tester_name else 'Anonymous'
-        else:
-            # Если tester_id уже есть в сессии, обновляем last_seen если тестировщик существует
-            # ОПТИМИЗАЦИЯ: Обновляем данные только если имя изменилось (убрано обновление last_seen при каждом запросе)
-            tester_id = session.get('tester_id')
-            # Убрано: обновление last_seen при каждом запросе замедляет работу
-            if tester_id and tester_name and tester_name != session.get('tester_name') and tester_name != 'Anonymous':
-                from core.db_models import Tester
-                tester = Tester.query.get(tester_id)
-                if tester:
-                    tester.name = tester_name
-                    # Убрано: обновление last_seen замедляет работу
-                    db.session.commit()
-                session['tester_name'] = tester_name
+        # Для неавторизованных пользователей больше не создаем тестировщиков
+        # Логирование происходит только для авторизованных пользователей через Flask-Login
+        # Старая логика создания тестировщиков удалена
 
     except Exception as e:
         logger.error(f"Error identifying tester: {e}", exc_info=True)
@@ -3660,40 +3595,33 @@ def bulk_create_lessons():
         flash(f'Ошибка: {str(e)}', 'error')
         return redirect(url_for('bulk_create_lessons'))
 
-def check_admin_access():
-    # Если уже авторизован через сессию, пропускаем
-    if session.get('is_admin'):
-        return
-    
-    # Иначе проверяем секрет из URL
-    admin_secret = os.environ.get('ADMIN_SECRET', 'default-admin-secret-change-me')
-    request_secret = request.args.get('secret')
-
-    if request_secret != admin_secret:
-        from flask import abort
-        abort(403)
-
-    session['is_admin'] = True
-
 @app.route('/admin-audit')
+@login_required
 def admin_audit():
+    """Журнал аудита (только для создателя)"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('dashboard'))
 
-    check_admin_access()
-
-    from core.db_models import AuditLog, Tester
+    from core.db_models import AuditLog, User
     from sqlalchemy import func, and_
 
-    tester_id = request.args.get('tester_id', '')
+    user_id = request.args.get('user_id', '')
     action = request.args.get('action', '')
     entity = request.args.get('entity', '')
     status = request.args.get('status', '')
     date_from = request.args.get('date_from', '')
     date_to = request.args.get('date_to', '')
 
-    query = AuditLog.query
+    # Логируем только действия авторизованных пользователей
+    query = AuditLog.query.filter(AuditLog.user_id.isnot(None))
 
-    if tester_id:
-        query = query.filter(AuditLog.tester_id == tester_id)
+    if user_id:
+        try:
+            user_id_int = int(user_id)
+            query = query.filter(AuditLog.user_id == user_id_int)
+        except:
+            pass
     if action:
         query = query.filter(AuditLog.action == action)
     if entity:
@@ -3715,19 +3643,19 @@ def admin_audit():
         except:
             pass
 
-    total_events = AuditLog.query.count()
-    total_testers = Tester.query.filter_by(is_active=True).count()
-    error_count = AuditLog.query.filter_by(status='error').count()
+    total_events = AuditLog.query.filter(AuditLog.user_id.isnot(None)).count()
+    total_testers = User.query.count()  # Количество авторизованных пользователей
+    error_count = AuditLog.query.filter(AuditLog.status == 'error', AuditLog.user_id.isnot(None)).count()
 
     from datetime import datetime, timedelta
     today_start = datetime.now(MOSCOW_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
-    today_events = AuditLog.query.filter(AuditLog.timestamp >= today_start).count()
+    today_events = AuditLog.query.filter(AuditLog.timestamp >= today_start, AuditLog.user_id.isnot(None)).count()
 
-    actions = db.session.query(AuditLog.action).distinct().order_by(AuditLog.action).all()
+    actions = db.session.query(AuditLog.action).filter(AuditLog.user_id.isnot(None)).distinct().order_by(AuditLog.action).all()
     actions = [a[0] for a in actions if a[0]]
-    entities = db.session.query(AuditLog.entity).distinct().order_by(AuditLog.entity).all()
+    entities = db.session.query(AuditLog.entity).filter(AuditLog.user_id.isnot(None)).distinct().order_by(AuditLog.entity).all()
     entities = [e[0] for e in entities if e[0]]
-    testers = Tester.query.filter_by(is_active=True).order_by(Tester.last_seen.desc()).all()
+    users = User.query.order_by(User.id).all()  # Все авторизованные пользователи
 
     page = request.args.get('page', 1, type=int)
     per_page = 50
@@ -3735,7 +3663,7 @@ def admin_audit():
     logs = pagination.items
 
     filters = {
-        'tester_id': tester_id,
+        'user_id': user_id,
         'action': action,
         'entity': entity,
         'status': status,
@@ -3755,152 +3683,175 @@ def admin_audit():
                          filters=filters,
                          actions=actions,
                          entities=entities,
-                         testers=testers)
+                         users=users)  # Передаем users вместо testers
 
 @app.route('/admin-testers')
+@login_required
 def admin_testers():
-    """Управление тестировщиками"""
-    check_admin_access()
+    """Управление пользователями (только для создателя)"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('dashboard'))
     
-    from core.db_models import Tester, AuditLog
+    from core.db_models import User, AuditLog
     from sqlalchemy import func
     
-    # Получаем всех тестировщиков с статистикой
-    testers = db.session.query(
-        Tester,
+    # Получаем всех авторизованных пользователей с статистикой
+    users = db.session.query(
+        User,
         func.count(AuditLog.id).label('logs_count'),
         func.max(AuditLog.timestamp).label('last_action')
     ).outerjoin(
-        AuditLog, Tester.tester_id == AuditLog.tester_id
+        AuditLog, User.id == AuditLog.user_id
     ).group_by(
-        Tester.tester_id
+        User.id
     ).order_by(
-        Tester.first_seen.desc()
+        User.id.desc()
     ).all()
     
-    return render_template('admin_testers.html', testers=testers)
+    return render_template('admin_testers.html', users=users)  # Передаем users вместо testers
 
-@app.route('/admin-testers/<tester_id>/edit', methods=['GET', 'POST'])
-def admin_testers_edit(tester_id):
-    """Редактирование тестировщика"""
-    check_admin_access()
+@app.route('/admin-testers/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+def admin_testers_edit(user_id):
+    """Редактирование пользователя (только для создателя)"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('dashboard'))
     
-    from core.db_models import Tester
+    from core.db_models import User
     
-    tester = Tester.query.get_or_404(tester_id)
+    user = User.query.get_or_404(user_id)
     
     if request.method == 'POST':
-        new_name = request.form.get('name', '').strip()
-        is_active = request.form.get('is_active') == 'on'
+        new_username = request.form.get('username', '').strip()
+        new_role = request.form.get('role', 'tester')
         
-        if not new_name:
-            flash('Имя не может быть пустым', 'error')
-            return redirect(url_for('admin_testers_edit', tester_id=tester_id))
+        if not new_username:
+            flash('Имя пользователя не может быть пустым', 'error')
+            return redirect(url_for('admin_testers_edit', user_id=user_id))
         
-        old_name = tester.name
-        tester.name = new_name
-        tester.is_active = is_active
+        old_username = user.username
+        old_role = user.role
+        
+        # Проверяем, что не меняем роль создателя
+        if user.is_creator() and new_role != 'creator':
+            flash('Нельзя изменить роль создателя', 'error')
+            return redirect(url_for('admin_testers_edit', user_id=user_id))
+        
+        user.username = new_username
+        user.role = new_role
         db.session.commit()
         
         # Логируем изменение
         audit_logger.log(
-            action='edit_tester',
-            entity='Tester',
-            entity_id=tester_id,
+            action='edit_user',
+            entity='User',
+            entity_id=user_id,
             status='success',
             metadata={
-                'old_name': old_name,
-                'new_name': new_name,
-                'is_active': is_active
+                'old_username': old_username,
+                'new_username': new_username,
+                'old_role': old_role,
+                'new_role': new_role
             }
         )
         
-        flash(f'Тестировщик "{new_name}" обновлен', 'success')
+        flash(f'Пользователь "{new_username}" обновлен', 'success')
         return redirect(url_for('admin_testers'))
     
-    return render_template('admin_testers_edit.html', tester=tester)
+    return render_template('admin_testers_edit.html', user=user)
 
-@app.route('/admin-testers/<tester_id>/delete', methods=['POST'])
-def admin_testers_delete(tester_id):
-    """Удаление тестировщика"""
-    check_admin_access()
+@app.route('/admin-testers/<int:user_id>/delete', methods=['POST'])
+@login_required
+def admin_testers_delete(user_id):
+    """Удаление пользователя (только для создателя)"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('dashboard'))
     
-    from core.db_models import Tester, AuditLog
+    from core.db_models import User, AuditLog
     from sqlalchemy import delete
     
-    tester = Tester.query.get_or_404(tester_id)
-    tester_name = tester.name
+    user = User.query.get_or_404(user_id)
+    
+    # Нельзя удалить создателя
+    if user.is_creator():
+        flash('Нельзя удалить создателя', 'error')
+        return redirect(url_for('admin_testers'))
+    
+    username = user.username
     
     try:
-        # Удаляем все логи тестировщика
+        # Удаляем все логи пользователя
         deleted_logs = db.session.execute(
-            delete(AuditLog).where(AuditLog.tester_id == tester_id)
+            delete(AuditLog).where(AuditLog.user_id == user_id)
         ).rowcount
         
-        # Удаляем тестировщика
-        db.session.delete(tester)
+        # Удаляем пользователя
+        db.session.delete(user)
         db.session.commit()
         
         # Логируем удаление
         audit_logger.log(
-            action='delete_tester',
-            entity='Tester',
-            entity_id=tester_id,
+            action='delete_user',
+            entity='User',
+            entity_id=user_id,
             status='success',
             metadata={
-                'tester_name': tester_name,
+                'username': username,
                 'deleted_logs': deleted_logs
             }
         )
         
-        flash(f'Тестировщик "{tester_name}" и {deleted_logs} его логов удалены', 'success')
+        flash(f'Пользователь "{username}" и {deleted_logs} его логов удалены', 'success')
     except Exception as e:
         db.session.rollback()
-        logger.error(f'Ошибка при удалении тестировщика: {e}')
+        logger.error(f'Ошибка при удалении пользователя: {e}')
         flash(f'Ошибка при удалении: {str(e)}', 'error')
     
     return redirect(url_for('admin_testers'))
 
 @app.route('/admin-testers/clear-all', methods=['POST'])
+@login_required
 def admin_testers_clear_all():
-    """Очистить всех тестировщиков через админ-панель"""
-    check_admin_access()
+    """Очистить все логи пользователей (только для создателя)"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('dashboard'))
     
-    from core.db_models import Tester, AuditLog
+    from core.db_models import AuditLog
     from sqlalchemy import delete
     
     try:
-        testers_count = Tester.query.count()
-        logs_count = AuditLog.query.count()
+        logs_count = AuditLog.query.filter(AuditLog.user_id.isnot(None)).count()
         
-        if testers_count == 0 and logs_count == 0:
-            flash('Нет данных для очистки', 'info')
+        if logs_count == 0:
+            flash('Нет логов для очистки', 'info')
             return redirect(url_for('admin_testers'))
         
-        # Удаляем все логи
-        deleted_logs = db.session.execute(delete(AuditLog)).rowcount
-        
-        # Удаляем всех тестировщиков
-        deleted_testers = db.session.execute(delete(Tester)).rowcount
+        # Удаляем все логи авторизованных пользователей
+        deleted_logs = db.session.execute(
+            delete(AuditLog).where(AuditLog.user_id.isnot(None))
+        ).rowcount
         
         db.session.commit()
         
         # Логируем очистку
         audit_logger.log(
-            action='clear_all_testers',
-            entity='Tester',
+            action='clear_all_user_logs',
+            entity='AuditLog',
             entity_id=None,
             status='success',
             metadata={
-                'deleted_testers': deleted_testers,
                 'deleted_logs': deleted_logs
             }
         )
         
-        flash(f'Удалено {deleted_testers} тестировщиков и {deleted_logs} логов', 'success')
+        flash(f'Удалено {deleted_logs} логов пользователей', 'success')
     except Exception as e:
         db.session.rollback()
-        logger.error(f'Ошибка при очистке тестировщиков: {e}')
+        logger.error(f'Ошибка при очистке логов: {e}')
         flash(f'Ошибка при очистке: {str(e)}', 'error')
     
     return redirect(url_for('admin_testers'))

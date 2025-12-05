@@ -83,23 +83,24 @@ class AuditLogger:
     def _write_log(self, log_data: Dict[str, Any]):
 
         try:
-            from core.db_models import AuditLog, Tester
+            from core.db_models import AuditLog, User, Tester
+            
+            # Логируем только для авторизованных пользователей
+            user_id = log_data.get('user_id')
+            if not user_id:
+                logger.debug("Skipping audit log: user not authenticated")
+                return
+            
+            # Проверяем, существует ли пользователь в базе
+            user = User.query.get(user_id)
+            if not user:
+                logger.warning(f"User {user_id} not found in database, skipping audit log")
+                return
+            
             audit_log = AuditLog()
             audit_log.timestamp = log_data.get('timestamp', moscow_now())
-            
-            # Проверяем существование tester_id перед записью
-            tester_id = log_data.get('tester_id')
-            if tester_id:
-                # Проверяем, существует ли тестировщик в базе
-                tester = Tester.query.get(tester_id)
-                if not tester:
-                    # Если тестировщик не найден, устанавливаем tester_id в None
-                    # чтобы не нарушать внешний ключ
-                    logger.warning(f"Tester {tester_id} not found in database, setting tester_id to None")
-                    tester_id = None
-            
-            audit_log.tester_id = tester_id
-            audit_log.tester_name = log_data.get('tester_name')
+            audit_log.user_id = user_id
+            audit_log.tester_name = log_data.get('user_name')  # Имя авторизованного пользователя
             audit_log.action = log_data.get('action', 'unknown')
             audit_log.entity = log_data.get('entity')
             audit_log.entity_id = log_data.get('entity_id')
@@ -118,7 +119,7 @@ class AuditLogger:
 
             db.session.add(audit_log)
             db.session.commit()
-            logger.debug(f"Audit log written: {audit_log.action} by {audit_log.tester_name}")
+            logger.debug(f"Audit log written: {audit_log.action} by {audit_log.tester_name} (user_id: {user_id})")
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error writing audit log: {e}", exc_info=True)
@@ -127,66 +128,45 @@ class AuditLogger:
             logger.error(f"Traceback: {traceback.format_exc()}")
 
     def _get_tester_info(self) -> Dict[str, Any]:
-
+        """Получает информацию о пользователе для логирования"""
+        from flask_login import current_user
+        
+        user_id = None
+        user_name = None
         tester_id = None
         tester_name = None
         session_id = None
 
         if has_request_context():
-            tester_id = session.get('tester_id')
-            tester_name = session.get('tester_name')
+            # Приоритет: используем авторизованного пользователя из Flask-Login
+            if current_user.is_authenticated:
+                user_id = current_user.id
+                user_name = current_user.username
+            else:
+                # Для неавторизованных пользователей не логируем
+                return {
+                    'user_id': None,
+                    'user_name': None,
+                    'tester_id': None,
+                    'tester_name': None,
+                    'session_id': None
+                }
+            
             session_id = session.get('_id', request.cookies.get('session'))
 
-            # Убеждаемся, что тестировщик существует в БД (включая анонимных)
-            if tester_id:
-                self._ensure_tester_exists(tester_id, tester_name)
-
         return {
+            'user_id': user_id,
+            'user_name': user_name,
             'tester_id': tester_id,
             'tester_name': tester_name,
             'session_id': session_id
         }
 
     def _ensure_tester_exists(self, tester_id: str, tester_name: Optional[str]):
-
-        # Создаем тестировщика даже для анонимных, чтобы не нарушать внешний ключ
-        if not tester_id:
-            return
-
-        try:
-            tester = Tester.query.get(tester_id)
-            if not tester:
-                # Проверяем, не бот ли это
-                if has_request_context():
-                    user_agent = request.headers.get('User-Agent', '').lower()
-                    bot_patterns = [
-                        'bot', 'crawler', 'spider', 'scraper', 'monitor', 'health',
-                        'uptime', 'pingdom', 'newrelic', 'datadog', 'statuscake',
-                        'railway', 'render', 'vercel', 'netlify', 'uptimerobot'
-                    ]
-                    if any(pattern in user_agent for pattern in bot_patterns):
-                        return
-
-                tester = Tester(
-                    tester_id=tester_id,
-                    name=tester_name if tester_name else "Anonymous",
-                    ip_address=request.remote_addr if has_request_context() else None,
-                    user_agent=request.headers.get('User-Agent') if has_request_context() else None,
-                    session_id=session.get('_id') if has_request_context() else None
-                )
-                db.session.add(tester)
-            else:
-                if tester_name and tester_name != "Anonymous" and tester.name != tester_name:
-                    tester.name = tester_name
-                    try:
-                        db.session.commit()
-                    except Exception as e:
-                        db.session.rollback()
-                        logger.error(f"Error updating tester name: {e}")
-
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Error ensuring tester exists: {e}", exc_info=True)
+        """Устаревший метод - больше не используется, так как логируем только авторизованных пользователей"""
+        # Метод оставлен для обратной совместимости, но не выполняет никаких действий
+        # Логирование теперь происходит только для авторизованных пользователей через Flask-Login
+        pass
 
     def _get_request_info(self) -> Dict[str, Any]:
 
@@ -205,6 +185,12 @@ class AuditLogger:
             status: str = 'success', metadata: Optional[Dict[str, Any]] = None,
             duration_ms: Optional[int] = None):
 
+        # Логируем только для авторизованных пользователей
+        from flask_login import current_user
+        if not has_request_context() or not current_user.is_authenticated:
+            logger.debug(f"Skipping audit log for action '{action}': user not authenticated")
+            return
+
         # Ленивая инициализация worker thread при первом вызове
         if not self.is_running:
             if not self.app:
@@ -213,8 +199,13 @@ class AuditLogger:
             self.start_worker()
 
         try:
-            tester_info = self._get_tester_info()
+            user_info = self._get_tester_info()
             request_info = self._get_request_info()
+
+            # Проверяем, что есть user_id (пользователь авторизован)
+            if not user_info.get('user_id'):
+                logger.debug(f"Skipping audit log for action '{action}': no user_id")
+                return
 
             full_metadata = metadata or {}
             if request_info.get('referer'):
@@ -222,8 +213,10 @@ class AuditLogger:
 
             log_data = {
                 'timestamp': moscow_now(),
-                'tester_id': tester_info.get('tester_id'),
-                'tester_name': tester_info.get('tester_name'),
+                'user_id': user_info.get('user_id'),
+                'user_name': user_info.get('user_name'),
+                'tester_id': user_info.get('tester_id'),  # Оставляем для обратной совместимости
+                'tester_name': user_info.get('user_name'),  # Используем имя пользователя
                 'action': action,
                 'entity': entity,
                 'entity_id': entity_id,
@@ -231,14 +224,14 @@ class AuditLogger:
                 'metadata': full_metadata,
                 'ip_address': request_info.get('ip_address'),
                 'user_agent': request_info.get('user_agent'),
-                'session_id': tester_info.get('session_id'),
+                'session_id': user_info.get('session_id'),
                 'duration_ms': duration_ms,
                 'url': request_info.get('url'),
                 'method': request_info.get('method')
             }
 
             self.log_queue.put(log_data)
-            logger.debug(f"Audit log queued: {action} by {tester_info.get('tester_name', 'Unknown')}")
+            logger.debug(f"Audit log queued: {action} by {user_info.get('user_name', 'Unknown')}")
         except Exception as e:
             logger.error(f"Error queuing audit log: {e}", exc_info=True)
 

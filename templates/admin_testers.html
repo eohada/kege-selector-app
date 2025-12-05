@@ -68,6 +68,11 @@
     <div class="app-shell">
         <header class="nav-primary">
             <div class="nav-brand">
+                {% if current_user and current_user.is_authenticated %}
+                <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                    {{ current_user.username[0].upper() }}
+                </a>
+                {% endif %}
                 <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
                     <div class="brand-mark">LOGO</div>
                     <div class="brand-caption">Админ-панель</div>
@@ -77,54 +82,56 @@
                 <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
                 <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
                 <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
-                <a href="{{ url_for('admin_audit', secret=request.args.get('secret', '')) }}" class="nav-link">📊 Логи</a>
-                <a href="{{ url_for('admin_testers', secret=request.args.get('secret', '')) }}" class="nav-link active">👥 Тестировщики</a>
+                <a href="{{ url_for('admin_audit') }}" class="nav-link">📊 Логи</a>
+                <a href="{{ url_for('admin_testers') }}" class="nav-link active">👥 Тестировщики</a>
             </nav>
         </header>
 
         <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <a href="{{ url_for('admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">
+                    ← К админ панели
+                </a>
+            </div>
             <h1 style="margin-bottom: 1rem;">Управление тестировщиками</h1>
 
             <form method="POST" action="{{ url_for('admin_testers_clear_all') }}" 
                   class="confirm-delete-form" 
                   style="margin-bottom: 2rem;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="neo-button danger">🗑️ Очистить всех тестировщиков</button>
+                <button type="submit" class="neo-button danger">🗑️ Очистить все логи пользователей</button>
             </form>
 
             <table class="testers-table">
                 <thead>
                     <tr>
                         <th>Имя</th>
-                        <th>ID</th>
+                        <th>ID / Роль</th>
                         <th>Статус</th>
                         <th>Первое появление</th>
-                        <th>Последнее появление</th>
+                        <th>Последнее действие</th>
                         <th>Статистика</th>
                         <th>Действия</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for tester_data in testers %}
-                    {% set tester = tester_data[0] %}
-                    {% set logs_count = tester_data[1] or 0 %}
-                    {% set last_action = tester_data[2] %}
+                    {% if users %}
+                    {% for user_data in users %}
+                    {% set user = user_data[0] %}
+                    {% set logs_count = user_data[1] or 0 %}
+                    {% set last_action = user_data[2] %}
                     <tr>
                         <td>
-                            <div class="tester-name">{{ tester.name }}</div>
+                            <div class="tester-name">{{ user.username }}</div>
                         </td>
                         <td>
-                            <div class="tester-id">{{ tester.tester_id[:8] }}...</div>
+                            <div class="tester-id">ID: {{ user.id }} · {{ user.get_role_display() }}</div>
                         </td>
                         <td>
-                            {% if tester.is_active %}
                             <span class="status-active">● Активен</span>
-                            {% else %}
-                            <span class="status-inactive">○ Неактивен</span>
-                            {% endif %}
                         </td>
-                        <td>{{ tester.first_seen.strftime('%d.%m.%Y %H:%M') if tester.first_seen else '-' }}</td>
-                        <td>{{ tester.last_seen.strftime('%d.%m.%Y %H:%M') if tester.last_seen else '-' }}</td>
+                        <td>-</td>
+                        <td>{% if last_action %}{{ last_action.strftime('%d.%m.%Y %H:%M') }}{% else %}-{% endif %}</td>
                         <td>
                             <div class="tester-stats">
                                 <span class="stat-badge">{{ logs_count }} логов</span>
@@ -135,23 +142,26 @@
                         </td>
                         <td>
                             <div class="action-buttons">
-                                <a href="{{ url_for('admin_testers_edit', tester_id=tester.tester_id) }}" class="neo-button accent" style="font-size: 0.9rem; padding: 0.5rem 1rem; text-decoration: none;">✏️ Редактировать</a>
-                                <form method="POST" action="{{ url_for('admin_testers_delete', tester_id=tester.tester_id) }}" 
+                                <span class="neo-button ghost" style="font-size: 0.9rem; padding: 0.5rem 1rem;">{{ user.get_role_display() }}</span>
+                                {% if not user.is_creator() %}
+                                <form method="POST" action="{{ url_for('admin_testers_delete', user_id=user.id) }}" 
                                       class="confirm-delete-form" 
                                       style="display: inline;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="neo-button danger" style="font-size: 0.9rem; padding: 0.5rem 1rem;">🗑️ Удалить</button>
                                 </form>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
+                    {% endfor %}
                     {% else %}
                     <tr>
                         <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">
-                            Нет тестировщиков
+                            Нет пользователей
                         </td>
                     </tr>
-                    {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
 

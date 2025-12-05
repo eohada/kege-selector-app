@@ -190,8 +190,9 @@ class AuditLog(db.Model):
     __tablename__ = 'AuditLog'
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
-    tester_id = db.Column(db.String(36), db.ForeignKey('Testers.tester_id'), nullable=True, index=True)
-    tester_name = db.Column(db.String(100), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)  # Для авторизованных пользователей
+    tester_id = db.Column(db.String(36), db.ForeignKey('Testers.tester_id'), nullable=True, index=True)  # Для неавторизованных (устаревшее)
+    tester_name = db.Column(db.String(100), nullable=True)  # Имя пользователя или тестировщика
     action = db.Column(db.String(50), nullable=False, index=True)
     entity = db.Column(db.String(50), nullable=True, index=True)
     entity_id = db.Column(db.Integer, nullable=True, index=True)
@@ -204,7 +205,8 @@ class AuditLog(db.Model):
     url = db.Column(db.Text, nullable=True)
     method = db.Column(db.String(10), nullable=True)
 
-    tester = db.relationship('Tester', back_populates='audit_logs')
+    user = db.relationship('User', foreign_keys=[user_id])  # Связь с авторизованным пользователем
+    tester = db.relationship('Tester', back_populates='audit_logs')  # Связь с тестировщиком (устаревшее)
 
     __table_args__ = (
         Index('idx_audit_timestamp_tester', 'timestamp', 'tester_id'),

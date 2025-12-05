@@ -13,6 +13,11 @@
     <div class="app-shell">
         <header class="nav-primary">
             <div class="nav-brand">
+                {% if current_user and current_user.is_authenticated %}
+                <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                    {{ current_user.username[0].upper() }}
+                </a>
+                {% endif %}
                 <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
                     <div class="brand-mark">LOGO</div>
                     <div class="brand-caption">Админ-панель</div>
@@ -22,8 +27,8 @@
                 <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
                 <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
                 <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
-                <a href="{{ url_for('admin_audit', secret=request.args.get('secret', '')) }}" class="nav-link">📊 Логи</a>
-                <a href="{{ url_for('admin_testers', secret=request.args.get('secret', '')) }}" class="nav-link active">👥 Тестировщики</a>
+                <a href="{{ url_for('admin_audit') }}" class="nav-link">📊 Логи</a>
+                <a href="{{ url_for('admin_testers') }}" class="nav-link active">👥 Тестировщики</a>
             </nav>
         </header>
 
@@ -66,7 +71,7 @@
 
                 <div style="display: flex; gap: 1rem; margin-top: 1rem;">
                     <button type="submit" class="neo-button accent">💾 Сохранить</button>
-                    <a href="{{ url_for('admin_testers', secret=request.args.get('secret', '')) }}" class="neo-button ghost">❌ Отмена</a>
+                    <a href="{{ url_for('admin_testers') }}" class="neo-button ghost">❌ Отмена</a>
                 </div>
             </form>
         </section>
