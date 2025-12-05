@@ -1,9 +1,17 @@
 
-
 (function() {
     'use strict';  
 
+    function isUserAuthenticated() {
+        // Проверяем наличие аватара пользователя в DOM - он отображается только для авторизованных
+        return !!document.querySelector('.user-profile-avatar');
+    }
+
     function getTesterUUID() {
+        // Для авторизованных пользователей не нужен UUID тестировщика
+        if (isUserAuthenticated()) {
+            return null;
+        }
         let testerUUID = localStorage.getItem('tester_uuid');
         if (!testerUUID) {
             // Генерируем UUID один раз и сохраняем навсегда
@@ -18,6 +26,11 @@
     }
 
     function getTesterName() {
+        // Для авторизованных пользователей не запрашиваем имя тестировщика
+        if (isUserAuthenticated()) {
+            return null; // Возвращаем null, чтобы не отправлять заголовки тестировщика
+        }
+        
         let testerName = localStorage.getItem('tester_name');  
         if (!testerName) {  
             testerName = prompt('Введи своё имя для тестирования:');  
@@ -32,11 +45,35 @@
     }
 
     function sendAuditEvent(action, entity, entityId, status, metadata, durationMs) {
+        // Для авторизованных пользователей не отправляем заголовки тестировщика
+        // Логирование будет происходить через Flask-Login на сервере
+        if (isUserAuthenticated()) {
+            const headers = {
+                'Content-Type': 'application/json',  
+                'X-CSRFToken': getCSRFToken()  
+            };
+            fetch('/api/audit-log', {  
+                method: 'POST',  
+                headers: headers,
+                body: JSON.stringify({  
+                    action: action,  
+                    entity: entity,  
+                    entity_id: entityId,  
+                    status: status,  
+                    metadata: metadata || {},  
+                    duration_ms: durationMs  
+                })
+            }).catch(err => {  
+                console.error('Error sending audit event:', err);  
+            });
+            return;
+        }
+        
         const testerName = getTesterName();
         const testerUUID = getTesterUUID();
 
         // Кодируем имя тестировщика в base64, если оно содержит не-ASCII символы
-        const hasNonASCII = /[^\x00-\x7F]/.test(testerName);
+        const hasNonASCII = testerName && /[^\x00-\x7F]/.test(testerName);
         const headers = {
             'Content-Type': 'application/json',  
             'X-Tester-UUID': testerUUID,
@@ -167,23 +204,26 @@
             }
         }
         
-        const testerName = getTesterName();
-        const testerUUID = getTesterUUID();
-        // Кодируем имя тестировщика в base64, если оно содержит не-ASCII символы
-        // HTTP заголовки должны содержать только ISO-8859-1 символы
-        if (testerName && testerName !== 'Anonymous') {
-            // Проверяем, содержит ли имя не-ASCII символы
-            const hasNonASCII = /[^\x00-\x7F]/.test(testerName);
-            if (hasNonASCII) {
-                // Кодируем в base64 для безопасной передачи в заголовке
-                headersObj['X-Tester-Name'] = btoa(encodeURIComponent(testerName));
-                headersObj['X-Tester-Name-Encoded'] = 'base64';
-            } else {
-                headersObj['X-Tester-Name'] = testerName;
+        // Для авторизованных пользователей не отправляем заголовки тестировщика
+        if (!isUserAuthenticated()) {
+            const testerName = getTesterName();
+            const testerUUID = getTesterUUID();
+            // Кодируем имя тестировщика в base64, если оно содержит не-ASCII символы
+            // HTTP заголовки должны содержать только ISO-8859-1 символы
+            if (testerName && testerName !== 'Anonymous') {
+                // Проверяем, содержит ли имя не-ASCII символы
+                const hasNonASCII = /[^\x00-\x7F]/.test(testerName);
+                if (hasNonASCII) {
+                    // Кодируем в base64 для безопасной передачи в заголовке
+                    headersObj['X-Tester-Name'] = btoa(encodeURIComponent(testerName));
+                    headersObj['X-Tester-Name-Encoded'] = 'base64';
+                } else {
+                    headersObj['X-Tester-Name'] = testerName;
+                }
             }
-        }
-        if (testerUUID) {
-            headersObj['X-Tester-UUID'] = testerUUID;
+            if (testerUUID) {
+                headersObj['X-Tester-UUID'] = testerUUID;
+            }
         }
         
         // Устанавливаем обновленные заголовки обратно
@@ -272,4 +312,3 @@
     
     console.log('Audit tracker initialized');  
 })();
-
