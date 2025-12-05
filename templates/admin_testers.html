@@ -56,45 +56,6 @@
             display: flex;
             gap: 0.5rem;
         }
-        .btn-edit {
-            background: var(--accent-1);
-            color: white;
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 0.9rem;
-        }
-        .btn-edit:hover {
-            background: var(--accent-2);
-        }
-        .btn-delete {
-            background: #dc3545;
-            color: white;
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-        .btn-delete:hover {
-            background: #c82333;
-        }
-        .btn-clear-all {
-            background: #dc3545;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            font-weight: 600;
-            margin-bottom: 1rem;
-        }
-        .btn-clear-all:hover {
-            background: #c82333;
-        }
         .status-active {
             color: #28a745;
         }
@@ -128,7 +89,7 @@
                   class="confirm-delete-form" 
                   style="margin-bottom: 2rem;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="btn-clear-all">🗑️ Очистить всех тестировщиков</button>
+                <button type="submit" class="neo-button danger">🗑️ Очистить всех тестировщиков</button>
             </form>
 
             <table class="testers-table">
@@ -174,12 +135,12 @@
                         </td>
                         <td>
                             <div class="action-buttons">
-                                <a href="{{ url_for('admin_testers_edit', tester_id=tester.tester_id) }}" class="btn-edit">✏️ Редактировать</a>
+                                <a href="{{ url_for('admin_testers_edit', tester_id=tester.tester_id) }}" class="neo-button accent" style="font-size: 0.9rem; padding: 0.5rem 1rem; text-decoration: none;">✏️ Редактировать</a>
                                 <form method="POST" action="{{ url_for('admin_testers_delete', tester_id=tester.tester_id) }}" 
                                       class="confirm-delete-form" 
                                       style="display: inline;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button type="submit" class="btn-delete">🗑️ Удалить</button>
+                                    <button type="submit" class="neo-button danger" style="font-size: 0.9rem; padding: 0.5rem 1rem;">🗑️ Удалить</button>
                                 </form>
                             </div>
                         </td>
@@ -195,7 +156,7 @@
             </table>
 
             <div style="margin-top: 2rem;">
-                <a href="{{ url_for('admin_audit', secret=request.args.get('secret', '')) }}" class="neo-button">← Назад к логам</a>
+                <a href="{{ url_for('admin_audit', secret=request.args.get('secret', '')) }}" class="neo-button ghost">← Назад к логам</a>
             </div>
         </section>
     </div>

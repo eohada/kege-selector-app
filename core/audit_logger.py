@@ -83,10 +83,22 @@ class AuditLogger:
     def _write_log(self, log_data: Dict[str, Any]):
 
         try:
-            from core.db_models import AuditLog
+            from core.db_models import AuditLog, Tester
             audit_log = AuditLog()
             audit_log.timestamp = log_data.get('timestamp', moscow_now())
-            audit_log.tester_id = log_data.get('tester_id')
+            
+            # Проверяем существование tester_id перед записью
+            tester_id = log_data.get('tester_id')
+            if tester_id:
+                # Проверяем, существует ли тестировщик в базе
+                tester = Tester.query.get(tester_id)
+                if not tester:
+                    # Если тестировщик не найден, устанавливаем tester_id в None
+                    # чтобы не нарушать внешний ключ
+                    logger.warning(f"Tester {tester_id} not found in database, setting tester_id to None")
+                    tester_id = None
+            
+            audit_log.tester_id = tester_id
             audit_log.tester_name = log_data.get('tester_name')
             audit_log.action = log_data.get('action', 'unknown')
             audit_log.entity = log_data.get('entity')

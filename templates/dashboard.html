@@ -84,13 +84,19 @@
                     </span>
                 </a>
             </nav>
-            <div class="nav-actions">
-                <div class="brand-caption icon-slot"> <!-- Контейнер иконки раздела Ученики -->
-                    <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="brand-icon brand-icon--students"> <!-- Белая иконка учеников увеличенного размера -->
-                </div>
+            {% if current_user and current_user.is_authenticated %}
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 0.75rem;">
+                <a href="{{ url_for('user_profile') }}" style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9em; text-decoration: none; padding: 0.5em 0.75em; border-radius: var(--radius-sm); transition: all 0.2s ease;" onmouseover="this.style.background='var(--surface-2)'; this.style.color='var(--text-primary)'" onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)'">
+                    <span>👤</span>
+                    <span>{{ current_user.username }}</span>
+                    <span style="color: var(--accent-1); font-size: 0.85em;">({{ current_user.get_role_display() }})</span>
+                </a>
             </div>
+            {% endif %}
         </header>
 
+        {% include '_ux_enhancements.html' %}
+        
         <section class="dashboard-hero glass-panel">
             <div>
                 <p class="hero-eyebrow">панель управления</p>
@@ -127,8 +133,8 @@
             <form method="GET" action="{{ url_for('dashboard') }}" class="filters-grid">
                 <input type="hidden" name="show_archive" value="{{ 'true' if show_archive else 'false' }}">
                 <div class="neo-field">
-                    <label class="neo-label">Поиск</label>
-                    <input type="text" name="search" value="{{ search_query }}" class="neo-input" placeholder="Имя или ID ученика">
+                    <label class="neo-label">Поиск <span class="keyboard-hint" data-tooltip="Нажмите Ctrl+F для быстрого поиска"><kbd>Ctrl</kbd>+<kbd>F</kbd></span></label>
+                    <input type="text" name="search" value="{{ search_query }}" class="neo-input" placeholder="Имя или ID ученика" data-tooltip="Введите имя или ID ученика для поиска">
                 </div>
                 <div class="neo-field">
                     <label class="neo-label">Категория</label>
@@ -141,9 +147,9 @@
                     </select>
                 </div>
                 <div class="filters-actions">
-                    <button type="submit" class="neo-button accent">🔍 Найти</button>
+                    <button type="submit" class="neo-button accent" data-tooltip="Применить фильтры (Enter)">🔍 Найти</button>
                     {% if search_query or category_filter %}
-                    <a href="{{ url_for('dashboard', show_archive='true' if show_archive else 'false') }}" class="neo-button ghost">⟲ Сбросить</a>
+                    <a href="{{ url_for('dashboard', show_archive='true' if show_archive else 'false') }}" class="neo-button ghost" data-tooltip="Сбросить все фильтры">⟲ Сбросить</a>
                     {% endif %}
                 </div>
             </form>
@@ -232,7 +238,7 @@
                 </div>
                 <div class="hero-actions">
                     {% if not show_archive %}
-                    <a href="{{ url_for('student_new') }}" class="neo-button accent">+ Добавить</a>
+                    <a href="{{ url_for('student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)">+ Добавить</a>
                     {% endif %}
                 </div>
             </div>
@@ -321,11 +327,13 @@
             {% endif %}
             {% else %}
             <div class="empty-state">
-                <div style="font-size: 3rem; margin-bottom: 0.6rem;">{% if show_archive %}📦{% else %}👥{% endif %}</div>
-                <h3>{% if show_archive %}Архив пуст{% else %}Пока нет учеников{% endif %}</h3>
-                <p style="color: var(--text-muted);">{% if show_archive %}В архиве пока нет учеников{% else %}Добавьте первого ученика, чтобы начать работу{% endif %}</p>
+                <div class="empty-state-icon">{% if show_archive %}📦{% else %}👥{% endif %}</div>
+                <h3 class="empty-state-title">{% if show_archive %}Архив пуст{% else %}Пока нет учеников{% endif %}</h3>
+                <p class="empty-state-description">{% if show_archive %}В архиве пока нет учеников{% else %}Добавьте первого ученика, чтобы начать работу{% endif %}</p>
                 {% if not show_archive %}
-                <a href="{{ url_for('student_new') }}" class="neo-button accent" style="margin-top: 1rem;">Добавить</a>
+                <div class="empty-state-actions">
+                    <a href="{{ url_for('student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)">+ Добавить ученика</a>
+                </div>
                 {% endif %}
             </div>
             {% endif %}
@@ -338,6 +346,7 @@
     <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
     <script src="{{ url_for('static', filename='dashboard-ajax.js') }}"></script>
     <script src="{{ url_for('static', filename='filter-storage.js') }}"></script>
+    <script src="{{ url_for('static', filename='filter-state-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
 </body>
 </html>

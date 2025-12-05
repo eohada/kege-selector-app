@@ -3,110 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Импорт данных - Система управления учениками</title>
+    <title>Импорт данных · Чёрный неон</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <style>
-        .nav-bar {
-            display: flex;
-            gap: 1em;
-            margin-bottom: 2em;
-            padding: 1em;
-            background: linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
-            border-radius: 16px;
-            border: 1px solid rgba(147, 51, 234, 0.2);
-        }
-        
-        .nav-bar a {
-            padding: 0.8em 1.5em;
-            background: rgba(20, 20, 30, 0.6);
-            color: #c084fc;
-            text-decoration: none;
-            border-radius: 12px;
-            border: 2px solid rgba(147, 51, 234, 0.3);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-weight: 600;
-        }
-        
-        .nav-bar a:hover {
-            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(168, 85, 247, 0.6);
-        }
-        
-        .import-form {
-            background: rgba(30, 30, 46, 0.8);
-            border: 2px solid rgba(147, 51, 234, 0.3);
-            border-radius: 16px;
-            padding: 2em;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        
-        .form-group {
-            margin-bottom: 1.5em;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5em;
-            font-weight: 600;
-            color: #c084fc;
-        }
-        
-        .form-group input[type='file'] {
-            width: 100%;
-            padding: 1em;
-            border-radius: 12px;
-            border: 2px solid rgba(147, 51, 234, 0.3);
-            background: rgba(20, 20, 30, 0.6);
-            color: #e0e0e0;
-            cursor: pointer;
-        }
-        
-        .warning-box {
-            background: rgba(239, 68, 68, 0.1);
-            border-left: 4px solid #ef4444;
-            padding: 1em;
-            border-radius: 8px;
-            margin-bottom: 1.5em;
-            color: #fca5a5;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
 </head>
-<body>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
     {% include '_active_lesson_banner.html' %}
     
-    <div class="container">
-        <div class="nav-bar">
-            <a href="{{ url_for('dashboard') }}">👥 Ученики</a>
-            <a href="{{ url_for('kege_generator') }}">💻 Генератор КЕГЭ</a>
-        </div>
-        
-        <h1><span class="icon">📥</span><span class="title">Импорт данных</span></h1>
-        
-        {# Flash messages будут показаны через toast #}
-        
-        <div class="import-form">
-            <div class="warning-box">
-                <strong>⚠️ Внимание!</strong> Импорт добавит новые записи в базу данных. Существующие ученики с такими же именем и ID платформы будут пропущены.
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                    <div class="brand-mark">LOGO</div>
+                    <div class="brand-caption">Слот под фирменный знак</div>
+                </a>
             </div>
-            
-            <form method="POST" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label for="file">Выберите JSON файл для импорта:</label>
-                    <input type="file" id="file" name="file" accept=".json" required>
-                    <small style="color: #808090; display: block; margin-top: 0.5em;">Файл должен быть в формате JSON, экспортированный из этой системы</small>
+            {% include '_mobile_menu.html' %}
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link">📝 Планы</a>
+            </nav>
+        </header>
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div>
+                <p class="hero-eyebrow">импорт данных</p>
+                <h1 class="hero-title">📥 Импорт данных</h1>
+            </div>
+        </section>
+
+        {# Flash messages будут показаны через toast #}
+
+        <section class="glass-panel" style="margin-bottom: 2rem; border-left: 4px solid var(--danger);">
+            <div style="background: rgba(255, 108, 145, 0.12); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); padding: 1rem; color: var(--danger);">
+                <strong style="display: block; margin-bottom: 0.5rem;">⚠️ Внимание!</strong>
+                <p style="margin: 0; color: var(--text-primary);">Импорт добавит новые записи в базу данных. Существующие ученики с такими же именем и ID платформы будут пропущены.</p>
+            </div>
+        </section>
+
+        <section class="glass-panel">
+            <form method="POST" enctype="multipart/form-data" data-validate>
+                <div class="neo-field" style="margin-bottom: 1.5rem;">
+                    <label class="neo-label" for="file">Выберите JSON файл для импорта</label>
+                    <input type="file" 
+                           id="file" 
+                           name="file" 
+                           accept=".json" 
+                           required 
+                           class="neo-input"
+                           style="padding: 1rem; cursor: pointer;">
+                    <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.5em;">Файл должен быть в формате JSON, экспортированный из этой системы</small>
                 </div>
                 
-                <div style="display: flex; gap: 1em; margin-top: 2em;">
-                    <button type="submit" class="btn btn-primary">📥 Импортировать</button>
-                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Отмена</a>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button type="submit" class="neo-button accent">📥 Импортировать</button>
+                    <a href="{{ url_for('dashboard') }}" class="neo-button ghost">❌ Отмена</a>
                 </div>
             </form>
-        </div>
+        </section>
     </div>
+    
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
     <script>
         // Конвертируем flash-сообщения в toast-уведомления
@@ -146,4 +110,3 @@
     </script>
 </body>
 </html>
-

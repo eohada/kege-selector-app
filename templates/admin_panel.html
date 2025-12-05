@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ панель · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body>
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                    <div class="brand-mark">LOGO</div>
+                    <div class="brand-caption">Чёрный неон</div>
+                </a>
+            </div>
+            {% include '_mobile_menu.html' %}
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="nav-link-icon">
+                        <span class="nav-link-label">Ученики</span>
+                    </span>
+                </a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="nav-link-icon">
+                        <span class="nav-link-label">Расписание</span>
+                    </span>
+                </a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="nav-link-icon">
+                        <span class="nav-link-label">Генератор</span>
+                    </span>
+                </a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Планы" class="nav-link-icon">
+                        <span class="nav-link-label">Планы</span>
+                    </span>
+                </a>
+            </nav>
+            {% if current_user and current_user.is_authenticated %}
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 0.75rem;">
+                <a href="{{ url_for('user_profile') }}" style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9em; text-decoration: none; padding: 0.5em 0.75em; border-radius: var(--radius-sm); transition: all 0.2s ease;" onmouseover="this.style.background='var(--surface-2)'; this.style.color='var(--text-primary)'" onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)'">
+                    <span>👤</span>
+                    <span>{{ current_user.username }}</span>
+                    <span style="color: var(--accent-1); font-size: 0.85em;">({{ current_user.get_role_display() }})</span>
+                </a>
+            </div>
+            {% endif %}
+        </header>
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <a href="{{ url_for('user_profile') }}" class="neo-button ghost" style="text-decoration: none;">
+                    ← К профилю
+                </a>
+            </div>
+            <p class="hero-eyebrow">администрирование</p>
+            <h1 class="hero-title">⚙️ Админ панель</h1>
+            <p class="hero-subtitle">Управление системой и пользователями</p>
+        </section>
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Статистика пользователей</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Всего пользователей</div>
+                    <div style="font-size: 2em; font-weight: 700; color: var(--accent-1);">{{ total_users }}</div>
+                </div>
+                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Активных пользователей</div>
+                    <div style="font-size: 2em; font-weight: 700; color: var(--accent-2);">{{ active_users }}</div>
+                </div>
+                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Создателей</div>
+                    <div style="font-size: 2em; font-weight: 700; color: #22c55e;">{{ creators_count }}</div>
+                </div>
+                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Тестировщиков</div>
+                    <div style="font-size: 2em; font-weight: 700; color: #eab308;">{{ testers_count }}</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Статистика логов</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Всего логов</div>
+                    <div style="font-size: 2em; font-weight: 700; color: var(--accent-1);">{{ total_logs }}</div>
+                </div>
+                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Логов сегодня</div>
+                    <div style="font-size: 2em; font-weight: 700; color: var(--accent-2);">{{ today_logs }}</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-panel">
+            <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Быстрые действия</h2>
+            <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+                <a href="{{ url_for('admin_testers') }}" class="neo-button outline" style="text-decoration: none;">
+                    👥 Управление тестировщиками
+                </a>
+                <a href="{{ url_for('admin_audit') }}" class="neo-button outline" style="text-decoration: none;">
+                    📋 Журнал аудита
+                </a>
+            </div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error('{{ message|e }}');
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning('{{ message|e }}');
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info('{{ message|e }}');
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success('{{ message|e }}');
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
+</body>
+</html>

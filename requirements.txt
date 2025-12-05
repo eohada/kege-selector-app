@@ -1,6 +1,7 @@
 Flask==3.1.2
 Flask-SQLAlchemy==3.1.1
 Flask-WTF==1.2.2
+Flask-Login==0.6.3
 playwright==1.55.0
 playwright-stealth==2.0.0
 SQLAlchemy==2.0.44

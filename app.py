@@ -6,6 +6,8 @@ import shutil
 from decimal import Decimal, InvalidOperation
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, make_response, session, send_from_directory
 from flask_wtf import FlaskForm, CSRFProtect
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 import re
 from html import unescape
 from importlib import import_module
@@ -14,10 +16,10 @@ from datetime import datetime, UTC, timedelta, time
 import math
 
 BeautifulSoup = None
-from wtforms import SelectField, IntegerField, SubmitField, BooleanField, StringField, TextAreaField, DateTimeField, DateTimeLocalField
+from wtforms import SelectField, IntegerField, SubmitField, BooleanField, StringField, TextAreaField, DateTimeField, DateTimeLocalField, PasswordField
 from wtforms.validators import DataRequired, NumberRange, Optional, Email, ValidationError
 
-from core.db_models import db, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, Student, Lesson, LessonTask, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from core.db_models import db, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, Student, Lesson, LessonTask, User, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from core.selector_logic import (
     get_unique_tasks, record_usage, record_skipped, record_blacklist,
     reset_history, reset_skipped, reset_blacklist,
@@ -79,6 +81,18 @@ else:
 
 db.init_app(app)
 audit_logger.init_app(app)
+
+# Настройка Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Для доступа к системе необходимо войти.'
+login_manager.login_message_category = 'warning'
+
+@login_manager.user_loader
+def load_user(user_id):
+    """Загрузка пользователя для Flask-Login"""
+    return User.query.get(int(user_id))
 
 # Запускаем worker thread для audit logger при первом запросе
 @app.before_request
@@ -281,6 +295,19 @@ def auto_update_lesson_status():
         logger.error(f"Ошибка при автоматическом обновлении статуса уроков: {e}", exc_info=True)
         # Не блокируем запрос при ошибке
         db.session.rollback()
+
+@app.before_request
+def require_login():
+    """Проверка авторизации для всех маршрутов кроме login, logout и static"""
+    # Исключаем маршруты, которые не требуют авторизации
+    if request.endpoint in ('login', 'logout', 'static', 'font_files') or request.path.startswith('/static/') or request.path.startswith('/font/'):
+        return
+    
+    # Проверяем авторизацию
+    if not current_user.is_authenticated:
+        # Сохраняем URL для редиректа после входа
+        if request.endpoint and request.endpoint != 'login':
+            return redirect(url_for('login', next=request.url))
 
 @app.before_request
 def identify_tester():
@@ -665,19 +692,139 @@ class LessonForm(FlaskForm):
     ], default='assigned_not_done', validators=[DataRequired()])
     submit = SubmitField('Сохранить')
 
+class LoginForm(FlaskForm):
+    """Форма входа для пользователей"""
+    username = StringField('Логин', validators=[DataRequired()])
+    password = PasswordField('Пароль', validators=[DataRequired()])
+    submit = SubmitField('Войти')
+
 @app.route('/font/<path:filename>')
 def font_files(filename):
     """Сервим шрифты из папки font"""
     font_dir = os.path.join(base_dir, 'font')
     return send_from_directory(font_dir, filename, mimetype='font/otf' if filename.endswith('.otf') else 'font/ttf')
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Страница входа для тестеров"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    form = LoginForm()
+    if form.validate_on_submit():
+        username = form.username.data.strip()
+        password = form.password.data
+        
+        # Ищем пользователя по логину
+        user = User.query.filter_by(username=username).first()
+        
+        if user and user.is_active:
+            # Проверяем пароль
+            if check_password_hash(user.password_hash, password):
+                # Обновляем время последнего входа
+                user.last_login = moscow_now()
+                db.session.commit()
+                
+                # Входим
+                login_user(user, remember=True)
+                
+                # Логируем вход
+                audit_logger.log(
+                    action='login',
+                    entity='User',
+                    entity_id=user.id,
+                    status='success',
+                    metadata={'username': user.username, 'role': user.role}
+                )
+                
+                next_page = request.args.get('next')
+                if not next_page or not next_page.startswith('/'):
+                    next_page = url_for('dashboard')
+                flash('Вход выполнен успешно!', 'success')
+                return redirect(next_page)
+            else:
+                flash('Неверный логин или пароль.', 'danger')
+                audit_logger.log(
+                    action='login_failed',
+                    entity='User',
+                    status='error',
+                    metadata={'username': username, 'reason': 'invalid_password'}
+                )
+        else:
+            flash('Неверный логин или пароль.', 'danger')
+            audit_logger.log(
+                action='login_failed',
+                entity='User',
+                status='error',
+                metadata={'username': username, 'reason': 'user_not_found_or_inactive'}
+            )
+    
+    return render_template('login.html', form=form)
+
+@app.route('/logout', methods=['GET', 'POST'])
+@csrf.exempt  # Исключаем из CSRF защиты, так как выход - безопасная операция
+@login_required
+def logout():
+    """Выход из системы"""
+    username = current_user.username
+    logout_user()
+    flash('Вы вышли из системы.', 'info')
+    
+    audit_logger.log(
+        action='logout',
+        entity='User',
+        status='success',
+        metadata={'username': username}
+    )
+    
+    return redirect(url_for('login'))
+
+@app.route('/user/profile')
+@login_required
+def user_profile():
+    """Страница профиля пользователя"""
+    return render_template('user_profile.html')
+
+@app.route('/admin')
+@login_required
+def admin_panel():
+    """Админ панель (только для создателя)"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Статистика для админ панели
+    from core.db_models import User, Tester, AuditLog
+    from sqlalchemy import func
+    
+    total_users = User.query.count()
+    active_users = User.query.filter_by(is_active=True).count()
+    creators_count = User.query.filter_by(role='creator').count()
+    testers_count = User.query.filter_by(role='tester').count()
+    
+    # Статистика по логам
+    total_logs = AuditLog.query.count()
+    today_logs = AuditLog.query.filter(
+        func.date(AuditLog.timestamp) == func.current_date()
+    ).count()
+    
+    return render_template('admin_panel.html',
+                         total_users=total_users,
+                         active_users=active_users,
+                         creators_count=creators_count,
+                         testers_count=testers_count,
+                         total_logs=total_logs,
+                         today_logs=today_logs)
+
 @app.route('/index')
 @app.route('/home')
+@login_required
 def index():
     """Главная страница с описанием платформы"""
     return render_template('index.html')
 
 @app.route('/')
+@login_required
 def dashboard():
     search_query = request.args.get('search', '').strip()
     category_filter = request.args.get('category', '')
@@ -1520,12 +1667,19 @@ def perform_auto_check(lesson, assignment_type):
     
     if not tasks:
         type_name = {'homework': 'ДЗ', 'classwork': 'классной работы', 'exam': 'проверочной'}.get(assignment_type, 'заданий')
-        flash(f'У этого урока нет заданий {type_name} для проверки.', 'warning')
+        error_msg = f'У этого урока нет заданий {type_name} для проверки.'
+        # Для AJAX возвращаем ошибку в специальном формате
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return {'error': error_msg, 'category': 'warning'}, None
+        flash(error_msg, 'warning')
         return None, None
     
     answers_raw = request.form.get('auto_answers', '').strip()
     if not answers_raw:
-        flash('Вставь массив ответов в формате [1, -1, "Москва"].', 'warning')
+        error_msg = 'Вставь массив ответов в формате [1, -1, "Москва"].'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return {'error': error_msg, 'category': 'warning'}, None
+        flash(error_msg, 'warning')
         return None, None
     
     try:
@@ -1534,7 +1688,10 @@ def perform_auto_check(lesson, assignment_type):
             raise ValueError
         answers_list = list(parsed_answers)
     except Exception:
-        flash('Не удалось разобрать ответы. Используй формат [1, -1, "Москва"].', 'danger')
+        error_msg = 'Не удалось разобрать ответы. Используй формат [1, -1, "Москва"].'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return {'error': error_msg, 'category': 'danger'}, None
+        flash(error_msg, 'danger')
         return None, None
     
     total_tasks = len(tasks)
@@ -1545,7 +1702,9 @@ def perform_auto_check(lesson, assignment_type):
     weight = 2 if assignment_type == 'exam' else 1
     
     if len(answers_list) != total_tasks:
-        flash(f'Количество ответов ({len(answers_list)}) не совпадает с числом заданий ({total_tasks}). Отсутствующие ответы будут считаться неверными.', 'warning')
+        warning_msg = f'Количество ответов ({len(answers_list)}) не совпадает с числом заданий ({total_tasks}). Отсутствующие ответы будут считаться неверными.'
+        if request.headers.get('X-Requested-With') != 'XMLHttpRequest':
+            flash(warning_msg, 'warning')
     
     def answer_at(index):
         if index < len(answers_list):
@@ -1593,6 +1752,60 @@ def lesson_homework_auto_check(lesson_id):
     lesson = Lesson.query.get_or_404(lesson_id)
     result = perform_auto_check(lesson, 'homework')
     
+    # Если это AJAX-запрос, возвращаем JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if isinstance(result[0], dict) and 'error' in result[0]:
+            # Ошибка из perform_auto_check
+            return jsonify({'success': False, 'error': result[0]['error'], 'category': result[0].get('category', 'error')}), 400
+        if result[0] is None:
+            return jsonify({'success': False, 'error': 'Ошибка при выполнении автопроверки'}), 400
+        
+        correct_count, incorrect_count, percent, total_tasks = result
+        homework_tasks = get_sorted_assignments(lesson, 'homework')
+
+        lesson.homework_result_percent = percent
+        summary = f"Автопроверка {moscow_now().strftime('%d.%m.%Y %H:%M')}: {correct_count}/{total_tasks} верных ({percent}%)."
+        if lesson.homework_result_notes:
+            lesson.homework_result_notes = lesson.homework_result_notes + "\n" + summary
+        else:
+            lesson.homework_result_notes = summary
+
+        if lesson.lesson_type == 'introductory' or total_tasks == 0:
+            lesson.homework_status = 'not_assigned'
+        else:
+            lesson.homework_status = 'assigned_done' if correct_count == total_tasks else 'assigned_not_done'
+
+        db.session.commit()
+        
+        # Логируем автопроверку ДЗ
+        audit_logger.log(
+            action='auto_check_homework',
+            entity='Lesson',
+            entity_id=lesson_id,
+            status='success',
+            metadata={
+                'student_id': lesson.student_id,
+                'student_name': lesson.student.name,
+                'correct_count': correct_count,
+                'total_tasks': total_tasks,
+                'percent': percent
+            }
+        )
+        
+        message = f'Автопроверка завершена: {correct_count}/{total_tasks} верных ({percent}%).'
+        return jsonify({
+            'success': True,
+            'message': message,
+            'correct_count': correct_count,
+            'total_tasks': total_tasks,
+            'percent': percent
+        })
+    
+    # Обычный POST-запрос (fallback)
+    if isinstance(result[0], dict) and 'error' in result[0]:
+        flash(result[0]['error'], result[0].get('category', 'error'))
+        return redirect(url_for('lesson_homework_view', lesson_id=lesson_id))
+    
     if result[0] is None:
         return redirect(url_for('lesson_homework_view', lesson_id=lesson_id))
     
@@ -1636,6 +1849,50 @@ def lesson_classwork_auto_check(lesson_id):
     lesson = Lesson.query.get_or_404(lesson_id)
     result = perform_auto_check(lesson, 'classwork')
     
+    # Если это AJAX-запрос, возвращаем JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if result[0] is None:
+            return jsonify({'success': False, 'error': 'Ошибка при выполнении автопроверки'}), 400
+        
+        correct_count, incorrect_count, percent, total_tasks = result
+        
+        # Для классной работы сохраняем результат в notes (так как нет отдельного поля)
+        summary = f"Автопроверка классной работы {moscow_now().strftime('%d.%m.%Y %H:%M')}: {correct_count}/{total_tasks} верных ({percent}%)."
+        if lesson.notes:
+            lesson.notes = lesson.notes + "\n" + summary
+        else:
+            lesson.notes = summary
+        
+        db.session.commit()
+        
+        audit_logger.log(
+            action='auto_check_classwork',
+            entity='Lesson',
+            entity_id=lesson_id,
+            status='success',
+            metadata={
+                'student_id': lesson.student_id,
+                'student_name': lesson.student.name,
+                'correct_count': correct_count,
+                'total_tasks': total_tasks,
+                'percent': percent
+            }
+        )
+        
+        message = f'Автопроверка завершена: {correct_count}/{total_tasks} верных ({percent}%).'
+        return jsonify({
+            'success': True,
+            'message': message,
+            'correct_count': correct_count,
+            'total_tasks': total_tasks,
+            'percent': percent
+        })
+    
+    # Обычный POST-запрос (fallback)
+    if isinstance(result[0], dict) and 'error' in result[0]:
+        flash(result[0]['error'], result[0].get('category', 'error'))
+        return redirect(url_for('lesson_classwork_view', lesson_id=lesson_id))
+    
     if result[0] is None:
         return redirect(url_for('lesson_classwork_view', lesson_id=lesson_id))
     
@@ -1672,6 +1929,51 @@ def lesson_exam_auto_check(lesson_id):
     lesson = Lesson.query.get_or_404(lesson_id)
     result = perform_auto_check(lesson, 'exam')
     
+    # Если это AJAX-запрос, возвращаем JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if result[0] is None:
+            return jsonify({'success': False, 'error': 'Ошибка при выполнении автопроверки'}), 400
+        
+        correct_count, incorrect_count, percent, total_tasks = result
+        
+        # Для проверочной работы сохраняем результат в notes
+        summary = f"Автопроверка проверочной {moscow_now().strftime('%d.%m.%Y %H:%M')}: {correct_count}/{total_tasks} верных ({percent}%). Вес ×2."
+        if lesson.notes:
+            lesson.notes = lesson.notes + "\n" + summary
+        else:
+            lesson.notes = summary
+        
+        db.session.commit()
+        
+        audit_logger.log(
+            action='auto_check_exam',
+            entity='Lesson',
+            entity_id=lesson_id,
+            status='success',
+            metadata={
+                'student_id': lesson.student_id,
+                'student_name': lesson.student.name,
+                'correct_count': correct_count,
+                'total_tasks': total_tasks,
+                'percent': percent,
+                'weight': 2
+            }
+        )
+        
+        message = f'Автопроверка завершена: {correct_count}/{total_tasks} верных ({percent}%). Учтено с весом ×2.'
+        return jsonify({
+            'success': True,
+            'message': message,
+            'correct_count': correct_count,
+            'total_tasks': total_tasks,
+            'percent': percent
+        })
+    
+    # Обычный POST-запрос (fallback)
+    if isinstance(result[0], dict) and 'error' in result[0]:
+        flash(result[0]['error'], result[0].get('category', 'error'))
+        return redirect(url_for('lesson_exam_view', lesson_id=lesson_id))
+    
     if result[0] is None:
         return redirect(url_for('lesson_exam_view', lesson_id=lesson_id))
     
@@ -1702,23 +2004,7 @@ def lesson_exam_auto_check(lesson_id):
     )
     
     flash(f'Автопроверка завершена: {correct_count}/{total_tasks} верных ({percent}%). Учтено с весом ×2.', 'success')
-    return redirect(url_for('lesson_exam_view', lesson_id=lesson_id))(
-        action='auto_check_homework',
-        entity='Lesson',
-        entity_id=lesson_id,
-        status='success',
-        metadata={
-            'student_id': lesson.student_id,
-            'student_name': lesson.student.name,
-            'total_tasks': total_tasks,
-            'correct_count': correct_count,
-            'incorrect_count': incorrect_count,
-            'percent': percent
-        }
-    )
-    
-    flash(f'Автопроверка завершена. Правильных: {correct_count}, неправильных: {incorrect_count}.', 'success')
-    return redirect(url_for('lesson_homework_view', lesson_id=lesson_id))
+    return redirect(url_for('lesson_exam_view', lesson_id=lesson_id))
 
 @app.route('/lesson/<int:lesson_id>/homework-tasks/<int:lesson_task_id>/delete', methods=['POST'])
 def lesson_homework_delete_task(lesson_id, lesson_task_id):

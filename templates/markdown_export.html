@@ -3,146 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Экспорт в Markdown - {{ student.name }}</title>
+    <title>Экспорт в Markdown - {{ student.name }} · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'MonaspaceNeon', 'Courier New', monospace;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: #e0e0e0;
-            min-height: 100vh;
-            padding: 2em;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(99, 102, 241, 0.2) 100%);
-            border: 2px solid #8b5cf6;
-            border-radius: 16px;
-            padding: 1.5em;
-            margin-bottom: 2em;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .header h1 {
-            font-size: 1.8em;
-            color: #c4b5fd;
-        }
-        
-        .back-btn {
-            padding: 0.8em 1.5em;
-            background: rgba(139, 92, 246, 0.3);
-            color: #c4b5fd;
-            text-decoration: none;
-            border-radius: 12px;
-            font-weight: 600;
-            border: 1px solid rgba(139, 92, 246, 0.5);
-            transition: all 0.3s ease;
-        }
-        
-        .back-btn:hover {
-            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-            color: white;
-            transform: translateY(-2px);
-        }
-        
         .markdown-container {
-            background: rgba(30, 30, 45, 0.95);
-            border: 2px solid rgba(139, 92, 246, 0.3);
-            border-radius: 16px;
-            padding: 2em;
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
             position: relative;
+            margin-bottom: 2rem;
         }
         
         .copy-btn {
             position: absolute;
-            top: 1em;
-            right: 1em;
-            padding: 0.8em 1.5em;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
-        }
-        
-        .copy-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
-        }
-        
-        .copy-btn.copied {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            top: 1rem;
+            right: 1rem;
+            z-index: 10;
         }
         
         .markdown-text {
-            font-family: 'Profontwindows', 'Courier New', 'Consolas', monospace;
+            font-family: 'MonaspaceNeon', 'Courier New', monospace;
             white-space: pre-wrap;
             word-wrap: break-word;
-            color: #d0d0d0;
+            color: var(--text-primary);
             line-height: 1.6;
             font-size: 0.95em;
-            padding-top: 3em;
+            padding-top: 3rem;
+            background: var(--surface-2);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-top: 3rem;
         }
         
-        .info {
-            background: rgba(59, 130, 246, 0.1);
-            border-left: 3px solid #3b82f6;
-            border-radius: 8px;
-            padding: 1em;
-            margin-bottom: 2em;
-            color: #93c5fd;
+        .info-box {
+            background: rgba(31, 123, 255, 0.1);
+            border-left: 3px solid var(--accent-2);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            color: var(--accent-2);
         }
     </style>
 </head>
-<body>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
     {% include '_active_lesson_banner.html' %}
     
-    <div class="container">
-        <div class="header">
-            <h1>📄 Экспорт в Markdown (Obsidian)</h1>
-            <a href="{{ url_for('lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="back-btn">← Назад к ДЗ</a>
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                    <div class="brand-mark">LOGO</div>
+                    <div class="brand-caption">Слот под фирменный знак</div>
+                </a>
+            </div>
+            {% include '_mobile_menu.html' %}
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link">📝 Планы</a>
+            </nav>
+        </header>
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <p class="hero-eyebrow">экспорт в markdown</p>
+                    <h1 class="hero-title">📄 Экспорт в Markdown (Obsidian)</h1>
+                </div>
+                <a href="{{ url_for('lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">← Назад к ДЗ</a>
+            </div>
+        </section>
+        
+        <div class="info-box">
+            💡 Скопируй текст ниже и вставь в Obsidian. Блоки <code style="background: var(--surface-2); padding: 0.2em 0.4em; border-radius: 4px; font-family: 'MonaspaceNeon', 'Courier New', monospace;">spoiler-block</code> будут работать как скрытые спойлеры.
         </div>
         
-        <div class="info">
-            💡 Скопируй текст ниже и вставь в Obsidian. Блоки <code>spoiler-block</code> будут работать как скрытые спойлеры.
-        </div>
-        
-        <div class="markdown-container">
-            <button class="copy-btn" onclick="copyToClipboard()">📋 Копировать</button>
+        <section class="markdown-container">
+            <button class="neo-button accent copy-btn" onclick="copyToClipboard()" id="copyBtn">📋 Копировать</button>
             <div class="markdown-text" id="markdownText">{{ markdown_content }}</div>
-        </div>
+        </section>
     </div>
     
     <script>
         function copyToClipboard() {
             const text = document.getElementById('markdownText').textContent;
-            const button = document.querySelector('.copy-btn');
+            const button = document.getElementById('copyBtn');
             
             navigator.clipboard.writeText(text).then(() => {
                 button.textContent = '✓ Скопировано!';
-                button.classList.add('copied');
+                button.classList.remove('accent');
+                button.classList.add('ghost');
                 
                 setTimeout(() => {
                     button.textContent = '📋 Копировать';
-                    button.classList.remove('copied');
+                    button.classList.remove('ghost');
+                    button.classList.add('accent');
                 }, 2000);
             }).catch(err => {
-                if (window.toast) {
+                if (typeof toast !== 'undefined' && toast) {
                     toast.error('Ошибка при копировании: ' + err);
                 }
             });
@@ -152,4 +116,3 @@
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
 </body>
 </html>
-

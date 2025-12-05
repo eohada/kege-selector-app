@@ -65,8 +65,8 @@
                 </div>
 
                 <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                    <button type="submit" class="neo-button">💾 Сохранить</button>
-                    <a href="{{ url_for('admin_testers', secret=request.args.get('secret', '')) }}" class="neo-button" style="background: var(--surface-3);">❌ Отмена</a>
+                    <button type="submit" class="neo-button accent">💾 Сохранить</button>
+                    <a href="{{ url_for('admin_testers', secret=request.args.get('secret', '')) }}" class="neo-button ghost">❌ Отмена</a>
                 </div>
             </form>
         </section>

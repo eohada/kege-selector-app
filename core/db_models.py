@@ -132,6 +132,42 @@ class LessonTask(db.Model):
     lesson = db.relationship('Lesson', back_populates='homework_tasks')
     task = db.relationship('Tasks')
 
+class User(db.Model):
+    """Модель пользователя для авторизации"""
+    __tablename__ = 'Users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(50), default='tester', nullable=False)  # 'tester' или 'creator'
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    last_login = db.Column(db.DateTime, nullable=True)
+    
+    # Flask-Login методы
+    def get_id(self):
+        return str(self.id)
+    
+    def is_authenticated(self):
+        return True
+    
+    def is_anonymous(self):
+        return False
+    
+    def is_creator(self):
+        """Проверка, является ли пользователь создателем"""
+        return self.role == 'creator'
+    
+    def get_role_display(self):
+        """Возвращает отображаемое название роли"""
+        role_map = {
+            'tester': 'Тестировщик',
+            'creator': 'Создатель'
+        }
+        return role_map.get(self.role, self.role)
+    
+    def __repr__(self):
+        return f'<User {self.username} ({self.role})>'
+
 class Tester(db.Model):
 
     __tablename__ = 'Testers'

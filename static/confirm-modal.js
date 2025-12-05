@@ -199,4 +199,37 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmClass: confirmClass
         });
     });
+    
+    // Подтверждение для массовых операций с заданиями
+    const bulkActionForms = document.querySelectorAll('form[data-bulk-action]');
+    bulkActionForms.forEach(form => {
+        const actionType = form.getAttribute('data-bulk-action');
+        let title = 'Подтверждение массового действия';
+        let message = 'Это действие будет применено ко всем выбранным элементам.';
+        let confirmText = 'Применить';
+        let confirmClass = 'accent';
+        
+        if (actionType === 'accept') {
+            title = 'Принять все выбранные задания?';
+            message = 'Все выбранные задания будут приняты и больше не будут показываться.';
+            confirmText = 'Принять все';
+        } else if (actionType === 'skip') {
+            title = 'Пропустить все выбранные задания?';
+            message = 'Все выбранные задания будут пропущены и могут быть возвращены позже.';
+            confirmText = 'Пропустить все';
+        } else if (actionType === 'blacklist') {
+            title = 'Добавить в черный список?';
+            message = 'Все выбранные задания будут добавлены в черный список и никогда не будут показываться.';
+            confirmText = 'В черный список';
+            confirmClass = 'danger';
+        }
+        
+        confirmFormSubmit(form, {
+            title: title,
+            message: message,
+            confirmText: confirmText,
+            cancelText: 'Отмена',
+            confirmClass: confirmClass
+        });
+    });
 });

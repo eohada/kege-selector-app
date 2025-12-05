@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% include '_ux_enhancements.html' %}
     
     <style>
         .homework-hero {
@@ -577,13 +578,13 @@
             
             <div class="homework-actions">
                 {% if is_homework %}
-                <button type="submit" class="neo-button accent">💾 Сохранить все ответы</button>
+                <button type="submit" class="neo-button accent" data-tooltip="Сохранить все ответы и результаты (Ctrl+S)">💾 Сохранить все ответы</button>
                 {% endif %}
-                <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button accent">
+                <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button accent" data-tooltip="Добавить дополнительные задания">
                     ➕ Добавить ещё задания
                 </a>
                 {% if is_homework %}
-                <a href="{{ url_for('lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline">
+                <a href="{{ url_for('lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown">
                     📄 Экспорт в Obsidian
                 </a>
                 {% endif %}
@@ -601,10 +602,10 @@
         <section class="auto-check-panel">
             <h3>⚙️ Автопроверка по ответам</h3>
             <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p>
-            <form method="POST" action="{{ url_for('lesson_homework_auto_check', lesson_id=lesson.lesson_id) }}">
+            <form id="auto-check-form-homework" method="POST" action="{{ url_for('lesson_homework_auto_check', lesson_id=lesson.lesson_id) }}">
                 <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea>
                 <div style="margin-top: 1rem;">
-                    <button type="submit" class="neo-button accent">🤖 Проверить автоматически</button>
+                    <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button>
                 </div>
             </form>
         </section>
@@ -612,10 +613,10 @@
         <section class="auto-check-panel">
             <h3>⚙️ Автопроверка по ответам</h3>
             <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p>
-            <form method="POST" action="{{ url_for('lesson_classwork_auto_check', lesson_id=lesson.lesson_id) }}">
+            <form id="auto-check-form-classwork" method="POST" action="{{ url_for('lesson_classwork_auto_check', lesson_id=lesson.lesson_id) }}">
                 <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea>
                 <div style="margin-top: 1rem;">
-                    <button type="submit" class="neo-button accent">🤖 Проверить автоматически</button>
+                    <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button>
                 </div>
             </form>
         </section>
@@ -624,10 +625,10 @@
             <h3>⚙️ Автопроверка по ответам</h3>
             <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p>
             <p style="color: var(--accent-2); margin-top: 0.5rem;"><strong>⚠️ Проверочная работа учитывается в статистике с весом ×2</strong></p>
-            <form method="POST" action="{{ url_for('lesson_exam_auto_check', lesson_id=lesson.lesson_id) }}">
+            <form id="auto-check-form-exam" method="POST" action="{{ url_for('lesson_exam_auto_check', lesson_id=lesson.lesson_id) }}">
                 <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea>
                 <div style="margin-top: 1rem;">
-                    <button type="submit" class="neo-button accent">🤖 Проверить автоматически</button>
+                    <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button>
                 </div>
             </form>
         </section>
@@ -717,6 +718,74 @@
             });
         }
         
+        // Обработка форм автопроверки через AJAX
+        function initAutoCheckForms() {
+            const forms = ['auto-check-form-homework', 'auto-check-form-classwork', 'auto-check-form-exam'];
+            
+            forms.forEach(formId => {
+                const form = document.getElementById(formId);
+                if (!form) return;
+                
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    const originalText = submitButton.textContent;
+                    submitButton.disabled = true;
+                    submitButton.textContent = '⏳ Проверка...';
+                    
+                    const formData = new FormData(form);
+                    const loaderId = loading.show(form, 'Выполняется автопроверка...');
+                    
+                    try {
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRFToken': CSRF_TOKEN || formData.get('csrf_token') || ''
+                            },
+                            body: formData
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (loaderId) loading.hide(loaderId);
+                        submitButton.disabled = false;
+                        submitButton.textContent = originalText;
+                        
+                        if (data.success) {
+                            if (window.toast) {
+                                toast.success(data.message);
+                            }
+                            // Обновляем страницу через небольшую задержку, чтобы показать обновленные результаты
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1000);
+                        } else {
+                            const category = data.category || 'error';
+                            if (window.toast) {
+                                if (category === 'warning') {
+                                    toast.warning(data.error);
+                                } else if (category === 'danger' || category === 'error') {
+                                    toast.error(data.error);
+                                } else {
+                                    toast.info(data.error);
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        if (loaderId) loading.hide(loaderId);
+                        submitButton.disabled = false;
+                        submitButton.textContent = originalText;
+                        console.error('Ошибка автопроверки:', error);
+                        if (window.toast) {
+                            toast.error('Ошибка при выполнении автопроверки. Попробуйте еще раз.');
+                        }
+                    }
+                });
+            });
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('[data-delete-task]').forEach(button => {
                 button.addEventListener('click', function() {
@@ -725,6 +794,9 @@
                     handleDeleteTask(taskId, assignmentTypeValue);
                 });
             });
+
+            // Инициализация форм автопроверки
+            initAutoCheckForms();
 
             // Инициализация KaTeX для рендеринга формул
             if (typeof renderMathInElement !== 'undefined') {

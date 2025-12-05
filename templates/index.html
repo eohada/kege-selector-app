@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% include '_ux_enhancements.html' %}
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
@@ -47,6 +48,15 @@
                     </span>
                 </a>
             </nav>
+            {% if current_user and current_user.is_authenticated %}
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 0.75rem;">
+                <a href="{{ url_for('user_profile') }}" style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9em; text-decoration: none; padding: 0.5em 0.75em; border-radius: var(--radius-sm); transition: all 0.2s ease;" onmouseover="this.style.background='var(--surface-2)'; this.style.color='var(--text-primary)'" onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)'">
+                    <span>👤</span>
+                    <span>{{ current_user.username }}</span>
+                    <span style="color: var(--accent-1); font-size: 0.85em;">({{ current_user.get_role_display() }})</span>
+                </a>
+            </div>
+            {% endif %}
         </header>
 
         <section class="dashboard-hero glass-panel">

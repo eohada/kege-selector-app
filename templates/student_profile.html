@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% include '_ux_enhancements.html' %}
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
@@ -301,11 +302,15 @@
                     </span>
                 </a>
             </nav>
-            <div class="nav-actions">
-                <div class="brand-caption icon-slot"> <!-- Контейнер иконки раздела Ученики -->
-                    <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="brand-icon brand-icon--students"> <!-- Белая иконка учеников увеличенного размера -->
-                </div>
+            {% if current_user and current_user.is_authenticated %}
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 0.75rem;">
+                <a href="{{ url_for('user_profile') }}" style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9em; text-decoration: none; padding: 0.5em 0.75em; border-radius: var(--radius-sm); transition: all 0.2s ease;" onmouseover="this.style.background='var(--surface-2)'; this.style.color='var(--text-primary)'" onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)'">
+                    <span>👤</span>
+                    <span>{{ current_user.username }}</span>
+                    <span style="color: var(--accent-1); font-size: 0.85em;">({{ current_user.get_role_display() }})</span>
+                </a>
             </div>
+            {% endif %}
         </header>
 
         {# Flash messages будут показаны через toast #}
@@ -361,7 +366,7 @@
                     <form method="POST" action="{{ url_for('student_start_lesson', student_id=student.student_id) }}" style="display: inline; margin: 0;">
                         <button type="submit" class="neo-button accent">🎓 Начать урок</button>
                     </form>
-                    <a href="{{ url_for('student_statistics', student_id=student.student_id) }}" class="neo-button accent" style="background: var(--accent-2);">📊 Статистика</a>
+                    <a href="{{ url_for('student_statistics', student_id=student.student_id) }}" class="neo-button outline">📊 Статистика</a>
                     <a href="{{ url_for('student_edit', student_id=student.student_id) }}" class="neo-button ghost">✏️ Редактировать</a>
                     <form method="POST" action="{{ url_for('student_archive', student_id=student.student_id) }}" style="display: inline; margin: 0;">
                         <button type="submit" class="neo-button outline">📦 В архив</button>
@@ -483,7 +488,7 @@
                     <h2>История занятий</h2>
                 </div>
                 <div class="hero-actions">
-                    <a href="{{ url_for('lesson_new', student_id=student.student_id) }}" class="neo-button accent">+ Добавить урок</a>
+                    <a href="{{ url_for('lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)">+ Добавить урок</a>
                 </div>
             </div>
             
@@ -616,10 +621,10 @@
                             <button type="submit" class="neo-button ghost">➖ ДЗ не задано</button>
                         </form>
                         
-                        <a href="{{ url_for('lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">✏️ Редактировать</a>
+                        <a href="{{ url_for('lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" data-tooltip="Редактировать урок">✏️ Редактировать</a>
                         <form method="POST" action="{{ url_for('lesson_delete', lesson_id=lesson.lesson_id) }}" 
                               class="confirm-delete-form" style="display: inline; margin: 0;">
-                            <button type="submit" class="neo-button danger">🗑️ Удалить</button>
+                            <button type="submit" class="neo-button danger" data-tooltip="Удалить урок (необратимо)">🗑️ Удалить</button>
                         </form>
                     </div>
                 </div>
@@ -627,10 +632,13 @@
             </div>
             {% else %}
             <div class="empty-state">
-                <div style="font-size: 3rem; margin-bottom: 0.6rem;">📅</div>
-                <h3>Пока нет уроков</h3>
-                <p style="color: var(--text-muted);">Добавьте первый урок для этого ученика</p>
-                <a href="{{ url_for('lesson_new', student_id=student.student_id) }}" class="neo-button accent" style="margin-top: 1rem;">Добавить урок</a>
+                <div class="empty-state-icon">📅</div>
+                <h3 class="empty-state-title">Пока нет уроков</h3>
+                <p class="empty-state-description">Добавьте первый урок для этого ученика в расписании</p>
+                <div class="empty-state-actions">
+                    <a href="{{ url_for('lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)">+ Добавить урок</a>
+                    <a href="{{ url_for('schedule') }}" class="neo-button ghost" data-tooltip="Перейти к расписанию">📅 Расписание</a>
+                </div>
             </div>
             {% endif %}
         </section>

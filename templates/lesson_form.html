@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% include '_ux_enhancements.html' %}
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -221,10 +222,10 @@
         </section>
 
         {% if form.errors %}
-        <section class="glass-panel">
-            <div class="alert alert-danger">
-                <strong>Ошибки при заполнении формы:</strong>
-                <ul style="margin: 0.5em 0 0 1.5em;">
+        <section class="glass-panel" style="border-left: 4px solid var(--danger);">
+            <div style="background: rgba(255, 108, 145, 0.12); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); padding: 1rem; color: var(--danger);">
+                <strong style="display: block; margin-bottom: 0.5rem;">⚠️ Ошибки при заполнении формы:</strong>
+                <ul style="margin: 0.5em 0 0 1.5em; list-style: disc;">
                 {% for field_name, error_list in form.errors.items() %}
                     {% for error in error_list %}
                     <li>{{ field_name }}: {{ error }}</li>
@@ -245,7 +246,7 @@
                         {{ form.lesson_type.label(class='neo-label') }}
                         {{ form.lesson_type(class='neo-select') }}
                         {% if form.lesson_type.errors %}
-                            <div class="alert alert-danger" style="margin-top: 0.5em;">{{ form.lesson_type.errors[0] }}</div>
+                            <div class="field-error">{{ form.lesson_type.errors[0] }}</div>
                         {% endif %}
                         <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Выберите тип урока (обычный, проверочный или вводный)</small>
                     </div>
@@ -254,7 +255,7 @@
                         {{ form.timezone.label(class='neo-label') }}
                         {{ form.timezone(class='neo-select') }}
                         {% if form.timezone.errors %}
-                            <div class="alert alert-danger" style="margin-top: 0.5em;">{{ form.timezone.errors[0] }}</div>
+                            <div class="field-error">{{ form.timezone.errors[0] }}</div>
                         {% endif %}
                         <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Выберите часовой пояс для даты и времени урока</small>
                     </div>
@@ -263,7 +264,7 @@
                         {{ form.lesson_date.label(class='neo-label') }}
                         {{ form.lesson_date(class='neo-input') }}
                         {% if form.lesson_date.errors %}
-                            <div class="alert alert-danger" style="margin-top: 0.5em;">{{ form.lesson_date.errors[0] }}</div>
+                            <div class="field-error">{{ form.lesson_date.errors[0] }}</div>
                         {% endif %}
                         <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Дата и время проведения урока (в выбранном часовом поясе)</small>
                     </div>
@@ -272,7 +273,7 @@
                         {{ form.duration.label(class='neo-label') }}
                         {{ form.duration(class='neo-input', placeholder='60') }}
                         {% if form.duration.errors %}
-                            <div class="alert alert-danger" style="margin-top: 0.5em;">{{ form.duration.errors[0] }}</div>
+                            <div class="field-error">{{ form.duration.errors[0] }}</div>
                         {% endif %}
                         <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Продолжительность урока в минутах</small>
                     </div>
@@ -281,7 +282,7 @@
                         {{ form.status.label(class='neo-label') }}
                         {{ form.status(class='neo-select') }}
                         {% if form.status.errors %}
-                            <div class="alert alert-danger" style="margin-top: 0.5em;">{{ form.status.errors[0] }}</div>
+                            <div class="field-error">{{ form.status.errors[0] }}</div>
                         {% endif %}
                         <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Текущий статус урока</small>
                     </div>

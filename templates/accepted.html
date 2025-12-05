@@ -2,113 +2,133 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %} · Чёрный неон</title>
     
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
     <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
     <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
-    <style>
-        .nav-bar {
-            display: flex;
-            gap: 1em;
-            margin-bottom: 2em;
-            padding: 1em;
-            background: linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
-            border-radius: 16px;
-            border: 1px solid rgba(147, 51, 234, 0.2);
-        }
-        
-        .nav-bar a {
-            padding: 0.8em 1.5em;
-            background: rgba(20, 20, 30, 0.6);
-            color: #c084fc;
-            text-decoration: none;
-            border-radius: 12px;
-            border: 2px solid rgba(147, 51, 234, 0.3);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-weight: 600;
-        }
-        
-        .nav-bar a:hover {
-            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(168, 85, 247, 0.6);
-        }
-        
-        .nav-bar a.active {
-            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
-            color: white;
-        }
-    </style>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
 </head>
-<body>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
     {% include '_active_lesson_banner.html' %}
     
-    <div class="container">
-        <div class="nav-bar">
-            <a href="{{ url_for('dashboard') }}">👥 Ученики</a>
-            <a href="{{ url_for('kege_generator') }}" class="active">💻 Генератор КЕГЭ</a>
-        </div>
-
-        <h1>✓ Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %} ({{ tasks|length }} шт.)</h1>
-        
-        {# Flash messages будут показаны через toast #}
-        
-        <div class="filter-section">
-            <label for="task-type-filter"><strong>Фильтр по номеру задания:</strong></label>
-            <select id="task-type-filter" onchange="filterByTaskType(this.value)">
-                <option value="">Все задания</option>
-                {% for i in range(1, 28) %}
-                    <option value="{{ i }}" {% if task_type == i %}selected{% endif %}>Задание {{ i }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        {% for task in tasks %}
-        <div class="task" data-task-id="{{ task.task_id }}">
-            <div class="task-header">
-                <b>№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b> | 
-                <a href="{{ task.source_url }}" target="_blank" title="Открыть в новой вкладке">Источник (URL)</a>
-                <span class="accepted-badge">ПРИНЯТО</span>
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                    <div class="brand-mark">LOGO</div>
+                    <div class="brand-caption">Слот под фирменный знак</div>
+                </a>
             </div>
-            
-            <div class="task-content">
-                {{ task.content_html | safe }}
-            </div>
-            
-            {% if task.attached_files %}
-            <div class="attached-files">
-                <h4>Прикрепленные файлы:</h4>
-                <ul class="file-list">
-                    {% set files = task.attached_files | from_json %}
-                    {% for file in files %}
-                    <li>
-                        <a href="{{ file.url }}" target="_blank" class="file-link" download>
-                            {{ file.name }}
-                        </a>
-                    </li>
-                    {% endfor %}
-                </ul>
+            {% include '_mobile_menu.html' %}
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link active">💻 Генератор</a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link">📝 Планы</a>
+            </nav>
+            {% if current_user and current_user.is_authenticated %}
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 0.75rem;">
+                <a href="{{ url_for('user_profile') }}" style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9em; text-decoration: none; padding: 0.5em 0.75em; border-radius: var(--radius-sm); transition: all 0.2s ease;" onmouseover="this.style.background='var(--surface-2)'; this.style.color='var(--text-primary)'" onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)'">
+                    <span>👤</span>
+                    <span>{{ current_user.username }}</span>
+                    <span style="color: var(--accent-1); font-size: 0.85em;">({{ current_user.get_role_display() }})</span>
+                </a>
             </div>
             {% endif %}
+        </header>
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div>
+                <p class="hero-eyebrow">принятые задания</p>
+                <h1 class="hero-title">✓ Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %}</h1>
+                <p class="hero-subtitle">Всего: {{ tasks|length }} шт.</p>
+            </div>
+        </section>
+
+        {# Flash messages будут показаны через toast #}
+
+        <section class="glass-panel filters-panel">
+            <div class="neo-field">
+                <label class="neo-label" for="task-type-filter">Фильтр по номеру задания</label>
+                <select id="task-type-filter" class="neo-select" onchange="filterByTaskType(this.value)">
+                    <option value="">Все задания</option>
+                    {% for i in range(1, 28) %}
+                        <option value="{{ i }}" {% if task_type == i %}selected{% endif %}>Задание {{ i }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </section>
+
+        {% if tasks %}
+        <div>
+            {% for task in tasks %}
+            <section class="glass-panel task-card" data-task-id="{{ task.task_id }}" style="margin-bottom: 2rem;">
+                <div class="task-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--stroke-1);">
+                    <div>
+                        <b style="color: var(--text-primary);">№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b>
+                        <span style="color: var(--text-muted); margin: 0 0.5em;">|</span>
+                        <a href="{{ task.source_url }}" target="_blank" class="neo-button ghost" style="font-size: 0.9em; padding: 0.4em 0.8em;">🔗 Источник</a>
+                    </div>
+                    <span class="neo-button accent" style="font-size: 0.85em; padding: 0.4em 0.8em; cursor: default;">✓ ПРИНЯТО</span>
+                </div>
+                
+                <div class="task-content" style="line-height: 1.8; font-size: 1.05em; color: var(--text-primary); margin-bottom: 1.5rem;">
+                    {{ task.content_html | safe }}
+                </div>
+                
+                {% if task.attached_files %}
+                <div class="attached-files" style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">📎 Прикрепленные файлы</h4>
+                    <ul class="file-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                        {% set files = task.attached_files | from_json %}
+                        {% for file in files %}
+                        <li>
+                            <a href="{{ file.url }}" target="_blank" class="neo-button outline" style="font-size: 0.9rem; padding: 0.65rem 1.2rem; text-decoration: none;" download>
+                                {{ file.name }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </section>
+            {% endfor %}
         </div>
-        {% endfor %}
+        {% else %}
+        <section class="glass-panel">
+            <div class="empty-state">
+                <div class="empty-state-icon">✓</div>
+                <h3 class="empty-state-title">Нет принятых заданий</h3>
+                <p class="empty-state-description">Принятые задания будут отображаться здесь</p>
+                <div class="empty-state-actions">
+                    <a href="{{ url_for('kege_generator') }}" class="neo-button accent">💻 Перейти к генератору</a>
+                </div>
+            </div>
+        </section>
+        {% endif %}
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            renderMathInElement(document.body, {
-                delimiters: [
-                    {left: '$$', right: '$$', display: true},
-                    {left: '$', right: '$', display: false},
-                    {left: '\\(', right: '\\)', display: false},
-                    {left: '\\[', right: '\\]', display: true}
-                ],
-                throwOnError: false,
-                trust: true
-            });
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false,
+                    trust: true
+                });
+            }
         });
         
         function filterByTaskType(taskType) {
@@ -120,6 +140,7 @@
         }
     </script>
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
     <script>
         // Конвертируем flash-сообщения в toast-уведомления
@@ -159,4 +180,3 @@
     </script>
 </body>
 </html>
-

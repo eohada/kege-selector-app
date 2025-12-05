@@ -108,6 +108,13 @@ function initStudentCards() {
                 return; 
             }
 
+            // Сохраняем данные для undo
+            const studentData = {
+                id: studentId,
+                name: studentName,
+                card: card ? card.cloneNode(true) : null
+            };
+            
             // Показываем модальное окно подтверждения
             showConfirmModal({
                 title: 'Удалить ученика?',
@@ -116,14 +123,14 @@ function initStudentCards() {
                 cancelText: 'Отмена',
                 confirmClass: 'danger',
                 onConfirm: async () => {
-                    await performDelete(studentId, studentName, card, loaderId);
+                    await performDelete(studentId, studentName, card, loaderId, studentData);
                 }
             });
             
             return;
         }
         
-        async function performDelete(studentId, studentName, card, loaderId) {
+        async function performDelete(studentId, studentName, card, loaderId, studentData) {
             // Показываем индикатор загрузки, если его еще нет
             if (!loaderId && card) {
                 loaderId = loading.show(card, 'Удаление...');
@@ -133,6 +140,20 @@ function initStudentCards() {
                 const response = await ajax.delete(`/api/student/${studentId}/delete`); 
                 
                 if (response.success) {
+                    // Добавляем действие в undo manager
+                    if (typeof undoManager !== 'undefined') {
+                        undoManager.addAction({
+                            type: 'delete',
+                            entity: 'student',
+                            data: studentData,
+                            message: `Ученик "${studentName}" удален`,
+                            undo: async () => {
+                                // Восстанавливаем ученика через API (если есть такой endpoint)
+                                // Пока просто показываем сообщение
+                                toast.info('Восстановление ученика пока не реализовано');
+                            }
+                        });
+                    }
                     
                     toast.success(response.message); 
 

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body>
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                    <div class="brand-mark">LOGO</div>
+                    <div class="brand-caption">Чёрный неон</div>
+                </a>
+            </div>
+            {% include '_mobile_menu.html' %}
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="nav-link-icon">
+                        <span class="nav-link-label">Ученики</span>
+                    </span>
+                </a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="nav-link-icon">
+                        <span class="nav-link-label">Расписание</span>
+                    </span>
+                </a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="nav-link-icon">
+                        <span class="nav-link-label">Генератор</span>
+                    </span>
+                </a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Планы" class="nav-link-icon">
+                        <span class="nav-link-label">Планы</span>
+                    </span>
+                </a>
+            </nav>
+            {% if current_user and current_user.is_authenticated %}
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 0.75rem;">
+                <a href="{{ url_for('user_profile') }}" style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9em; text-decoration: none; padding: 0.5em 0.75em; border-radius: var(--radius-sm); transition: all 0.2s ease; background: var(--surface-2);" onmouseover="this.style.background='var(--surface-3)'; this.style.color='var(--text-primary)'" onmouseout="this.style.background='var(--surface-2)'; this.style.color='var(--text-muted)'">
+                    <span>👤</span>
+                    <span>{{ current_user.username }}</span>
+                    <span style="color: var(--accent-1); font-size: 0.85em;">({{ current_user.get_role_display() }})</span>
+                </a>
+            </div>
+            {% endif %}
+        </header>
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <a href="{{ url_for('dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
+                    ← Назад
+                </a>
+            </div>
+            <p class="hero-eyebrow">профиль пользователя</p>
+            <h1 class="hero-title">Профиль: {% if current_user %}{{ current_user.username }}{% else %}Неизвестный пользователь{% endif %}</h1>
+        </section>
+
+        {% if current_user %}
+        <section class="glass-panel">
+            <div style="display: grid; gap: 2rem;">
+                <div>
+                    <h2 style="margin-bottom: 1rem; color: var(--text-primary);">Информация о пользователе</h2>
+                    <div style="display: grid; gap: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
+                            <span style="color: var(--text-muted);">Логин:</span>
+                            <strong style="color: var(--text-primary);">{{ current_user.username }}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
+                            <span style="color: var(--text-muted);">Роль:</span>
+                            <strong style="color: var(--accent-1);">{{ current_user.get_role_display() }}</strong>
+                        </div>
+                        {% if current_user.created_at %}
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
+                            <span style="color: var(--text-muted);">Дата регистрации:</span>
+                            <span style="color: var(--text-primary);">{{ current_user.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                        </div>
+                        {% endif %}
+                        {% if current_user.last_login %}
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
+                            <span style="color: var(--text-muted);">Последний вход:</span>
+                            <span style="color: var(--text-primary);">{{ current_user.last_login.strftime('%d.%m.%Y %H:%M') }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if current_user.is_creator() %}
+                <div>
+                    <h2 style="margin-bottom: 1rem; color: var(--text-primary);">Администрирование</h2>
+                    <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+                        <a href="{{ url_for('admin_panel') }}" class="neo-button accent" style="text-decoration: none;">
+                            ⚙️ Админ панель
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div>
+                    <h2 style="margin-bottom: 1rem; color: var(--text-primary);">Действия</h2>
+                    <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
+                        <form method="POST" action="{{ url_for('logout') }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <button type="submit" class="neo-button outline" style="cursor: pointer; border-color: var(--danger); color: var(--danger);" onmouseover="this.style.background='rgba(255, 108, 145, 0.1)'" onmouseout="this.style.background='transparent'">
+                                🚪 Выход из системы
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+        {% else %}
+        <section class="glass-panel">
+            <div style="padding: 2rem; text-align: center; color: var(--text-muted);">
+                <p>Ошибка: пользователь не найден. Пожалуйста, войдите в систему.</p>
+                <a href="{{ url_for('login') }}" class="neo-button accent" style="margin-top: 1rem; text-decoration: none; display: inline-block;">Войти</a>
+            </div>
+        </section>
+        {% endif %}
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <script type="application/json" id="flash-messages">
+    [
+        {% for category, message in messages %}
+        {"category": "{{ category }}", "message": {{ message|tojson }}}{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+    </script>
+    {% endif %}
+    {% endwith %}
+    
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var flashMessagesEl = document.getElementById('flash-messages');
+            if (flashMessagesEl) {
+                try {
+                    var messages = JSON.parse(flashMessagesEl.textContent);
+                    messages.forEach(function(msg) {
+                        var toastFunc = window.toast || (typeof toast !== 'undefined' ? toast : null);
+                        if (!toastFunc) return;
+                        
+                        if (msg.category === 'error' || msg.category === 'danger') {
+                            toastFunc.error(msg.message);
+                        } else if (msg.category === 'warning') {
+                            toastFunc.warning(msg.message);
+                        } else if (msg.category === 'info') {
+                            toastFunc.info(msg.message);
+                        } else {
+                            toastFunc.success(msg.message);
+                        }
+                    });
+                } catch (e) {
+                    console.error('Error parsing flash messages:', e);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

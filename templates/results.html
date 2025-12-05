@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% include '_ux_enhancements.html' %}
     <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
     <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
     {% if csrf_token %}
@@ -315,11 +316,15 @@
                     </span>
                 </a>
             </nav>
-            <div class="nav-actions">
-                <div class="brand-caption icon-slot"> <!-- Контейнер иконки раздела Генератор -->
-                    <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="brand-icon"> <!-- Белая иконка генератора -->
-                </div>
+            {% if current_user and current_user.is_authenticated %}
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 0.75rem;">
+                <a href="{{ url_for('user_profile') }}" style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9em; text-decoration: none; padding: 0.5em 0.75em; border-radius: var(--radius-sm); transition: all 0.2s ease;" onmouseover="this.style.background='var(--surface-2)'; this.style.color='var(--text-primary)'" onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)'">
+                    <span>👤</span>
+                    <span>{{ current_user.username }}</span>
+                    <span style="color: var(--accent-1); font-size: 0.85em;">({{ current_user.get_role_display() }})</span>
+                </a>
             </div>
+            {% endif %}
         </header>
 
         {# Flash messages будут показаны через toast #}
@@ -359,40 +364,45 @@
         </section>
         {% endif %}
 
-        <section class="select-all">
-            <label>
-                <input type="checkbox" id="select-all-checkbox">
-                Выбрать все задания
-            </label>
-            <div class="select-all-actions">
-                <button class="neo-button accent" data-bulk-action="accept">{% if lesson %}{{ add_action_text }}{% else %}Принять выбранные{% endif %}</button>
-                <button class="neo-button outline" data-bulk-action="skip">Пропустить выбранные</button>
-                <button class="neo-button danger" data-bulk-action="blacklist">В черный список</button>
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div class="select-all" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <label style="display: flex; align-items: center; gap: 0.5em; cursor: pointer;">
+                    <input type="checkbox" id="select-all-checkbox" style="width: 20px; height: 20px; cursor: pointer;">
+                    <span style="color: var(--text-primary); font-weight: 600;">Выбрать все задания</span>
+                </label>
+                <div class="select-all-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="neo-button accent" data-bulk-action="accept" data-tooltip="Принять все выбранные задания">{% if lesson %}{{ add_action_text }}{% else %}Принять выбранные{% endif %}</button>
+                    <button class="neo-button outline" data-bulk-action="skip" data-tooltip="Пропустить все выбранные задания (можно вернуть позже)">Пропустить выбранные</button>
+                    <button class="neo-button danger" data-bulk-action="blacklist" data-tooltip="Добавить все выбранные задания в черный список (необратимо)">В черный список</button>
+                </div>
             </div>
         </section>
 
         {% for task in tasks %}
-        <section class="task-card" data-task-id="{{ task.task_id }}">
-            <div class="task-header">
-                <input type="checkbox" class="task-checkbox" value="{{ task.task_id }}" id="task-{{ task.task_id }}">
-                <label for="task-{{ task.task_id }}">
-                    <b>№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b> | 
-                    <a href="{{ task.source_url }}" target="_blank" title="Открыть в новой вкладке">Источник (URL)</a>
+        <section class="glass-panel task-card" data-task-id="{{ task.task_id }}" style="margin-bottom: 2rem;">
+            <div class="task-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--stroke-1); flex-wrap: wrap; gap: 1rem;">
+                <label style="display: flex; align-items: center; gap: 0.5em; cursor: pointer; flex: 1;">
+                    <input type="checkbox" class="task-checkbox" value="{{ task.task_id }}" id="task-{{ task.task_id }}" style="width: 20px; height: 20px; cursor: pointer;">
+                    <div>
+                        <b style="color: var(--text-primary);">№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b>
+                        <span style="color: var(--text-muted); margin: 0 0.5em;">|</span>
+                        <a href="{{ task.source_url }}" target="_blank" class="neo-button ghost" style="font-size: 0.9em; padding: 0.4em 0.8em; text-decoration: none;">🔗 Источник</a>
+                    </div>
                 </label>
             </div>
             
-            <div class="task-content">
+            <div class="task-content" style="line-height: 1.8; font-size: 1.05em; color: var(--text-primary); margin-bottom: 1.5rem;">
                 {{ task.content_html | safe }}
             </div>
             
             {% if task.attached_files %}
-            <div class="attached-files">
-                <h4>📎 Прикрепленные файлы:</h4>
-                <ul class="file-list">
+            <div class="attached-files" style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;">
+                <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">📎 Прикрепленные файлы</h4>
+                <ul class="file-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.75rem;">
                     {% set files = task.attached_files | from_json %}
                     {% for file in files %}
                     <li>
-                        <a href="{{ file.url }}" target="_blank" class="file-link" download>
+                        <a href="{{ file.url }}" target="_blank" class="neo-button outline" style="font-size: 0.9rem; padding: 0.65rem 1.2rem; text-decoration: none;" download>
                             {{ file.name }}
                         </a>
                     </li>
@@ -401,10 +411,10 @@
             </div>
             {% endif %}
             
-            <div class="task-actions">
-                <button class="neo-button accent" data-task-id="{{ task.task_id }}" data-action="accept">{% if lesson %}✓ {{ add_action_text }}{% else %}✓ Принять{% endif %}</button>
-                <button class="neo-button outline" data-task-id="{{ task.task_id }}" data-action="skip">⊘ Пропустить</button>
-                <button class="neo-button danger" data-task-id="{{ task.task_id }}" data-action="blacklist">✗ В черный список</button>
+            <div class="task-actions" style="display: flex; gap: 0.5em; flex-wrap: wrap; margin-top: 1rem;">
+                <button class="neo-button accent" data-task-id="{{ task.task_id }}" data-action="accept" data-tooltip="Принять задание">{% if lesson %}✓ {{ add_action_text }}{% else %}✓ Принять{% endif %}</button>
+                <button class="neo-button outline" data-task-id="{{ task.task_id }}" data-action="skip" data-tooltip="Пропустить задание (можно вернуть позже)">⊘ Пропустить</button>
+                <button class="neo-button danger" data-task-id="{{ task.task_id }}" data-action="blacklist" data-tooltip="Добавить в черный список (необратимо)">✗ В черный список</button>
             </div>
         </section>
         {% endfor %}
@@ -522,6 +532,26 @@
                 return;
             }
             
+            // Показываем подтверждение для критических действий
+            if (action === 'blacklist') {
+                showConfirmModal({
+                    title: 'Добавить в черный список?',
+                    message: 'Задание будет добавлено в черный список и никогда не будет показываться. Это действие необратимо.',
+                    confirmText: 'В черный список',
+                    cancelText: 'Отмена',
+                    confirmClass: 'danger',
+                    onConfirm: () => {
+                        performTaskAction(taskId, action, taskElement);
+                    }
+                });
+                return;
+            }
+            
+            // Для остальных действий выполняем сразу
+            performTaskAction(taskId, action, taskElement);
+        }
+        
+        function performTaskAction(taskId, action, taskElement) {
             const buttons = taskElement.querySelectorAll('.neo-button');
             buttons.forEach(btn => btn.disabled = true);
             
@@ -721,13 +751,33 @@
                 'blacklist': 'добавить в черный список'
             };
             
-            // Показываем модальное окно подтверждения
+            // Показываем модальное окно подтверждения с разными сообщениями
+            let title = 'Подтверждение действия';
+            let message = `Вы уверены, что хотите ${actionNames[action]} ${taskIds.length} заданий?`;
+            let confirmText = 'Подтвердить';
+            let confirmClass = 'accent';
+            
+            if (action === 'blacklist') {
+                title = 'Добавить в черный список?';
+                message = `Вы уверены, что хотите добавить ${taskIds.length} заданий в черный список? Это действие необратимо - задания никогда не будут показываться.`;
+                confirmText = 'В черный список';
+                confirmClass = 'danger';
+            } else if (action === 'accept') {
+                title = 'Принять задания?';
+                message = `Принять ${taskIds.length} выбранных заданий?`;
+                confirmText = 'Принять';
+            } else if (action === 'skip') {
+                title = 'Пропустить задания?';
+                message = `Пропустить ${taskIds.length} выбранных заданий? Их можно будет вернуть позже.`;
+                confirmText = 'Пропустить';
+            }
+            
             showConfirmModal({
-                title: 'Подтверждение действия',
-                message: `Вы уверены, что хотите ${actionNames[action]} ${taskIds.length} заданий?`,
-                confirmText: 'Подтвердить',
+                title: title,
+                message: message,
+                confirmText: confirmText,
                 cancelText: 'Отмена',
-                confirmClass: 'accent',
+                confirmClass: confirmClass,
                 onConfirm: () => {
                     performBulkAction(action, taskIds);
                 }

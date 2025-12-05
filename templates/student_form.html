@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% include '_ux_enhancements.html' %}
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
@@ -148,7 +149,7 @@
             </div>
         </section>
 
-        <form method="POST">
+        <form method="POST" data-validate>
             {{ form.hidden_tag() }}
             
             <section class="form-section">
@@ -156,7 +157,7 @@
                 <div class="form-grid">
                     <div class="neo-field">
                         {{ form.name.label(class='neo-label') }}
-                        {{ form.name(class='neo-input', placeholder='Петя') }}
+                        {{ form.name(class='neo-input', placeholder='Петя', required=True, minlength=2, data-tooltip='Введите полное имя ученика (минимум 2 символа)') }}
                         <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Полное имя ученика</small>
                     </div>
                     
@@ -184,7 +185,7 @@
                 <div class="form-grid"> <!-- Сетка для полей блока -->
                     <div class="neo-field category-field" data-field="numeric-goal"> <!-- Поле числовой цели -->
                         <label class="neo-label" for="{{ form.target_score.id }}" id="targetScoreLabel">Целевой балл (0-100)</label> <!-- Подпись для числовой цели -->
-                        {{ form.target_score(class='neo-input', placeholder='85') }} <!-- Поле ввода числовой цели -->
+                        {{ form.target_score(class='neo-input', placeholder='85', type='number', min=0, max=100, data-tooltip='Введите целевой балл от 0 до 100') }} <!-- Поле ввода числовой цели -->
                         <small id="targetScoreHint" style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Целевой балл ЕГЭ (0-100)</small> <!-- Подсказка для числовой цели -->
                     </div>
                     

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в систему · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        
+        .login-card {
+            width: 100%;
+            max-width: 450px;
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <section class="glass-panel">
+                <div class="login-header">
+                    <p class="hero-eyebrow">авторизация</p>
+                    <h1 class="hero-title">Вход в систему</h1>
+                    <p class="hero-subtitle">Введите ключ и пароль для доступа к платформе</p>
+                </div>
+                
+                {% if form and form.errors %}
+                <div style="background: rgba(255, 108, 145, 0.12); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1.5rem; color: var(--danger);">
+                    <strong>Ошибки:</strong>
+                    <ul style="margin: 0.5em 0 0 1.5em; list-style: disc;">
+                    {% for field_name, error_list in form.errors.items() %}
+                        {% for error in error_list %}
+                        <li>{{ field_name }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                {% if form %}
+                <form method="POST" action="{{ url_for('login') }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="neo-field" style="margin-bottom: 1.5rem;">
+                        <label class="neo-label">Ключ</label>
+                        {{ form.username(class='neo-input', placeholder='Введите ключ', autofocus=True) }}
+                        {% if form.username.errors %}
+                        <div class="field-error">{{ form.username.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="neo-field" style="margin-bottom: 1.5rem;">
+                        {{ form.password.label(class='neo-label') }}
+                        {{ form.password(class='neo-input', placeholder='Введите пароль') }}
+                        {% if form.password.errors %}
+                        <div class="field-error">{{ form.password.errors[0] }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        {{ form.submit(class='neo-button accent', style='flex: 1;') }}
+                    </div>
+                </form>
+                {% else %}
+                <div style="padding: 1rem; background: rgba(255, 108, 145, 0.12); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); color: var(--danger);">
+                    Ошибка: форма не загружена. Пожалуйста, обновите страницу.
+                </div>
+                {% endif %}
+            </section>
+            
+            <div style="text-align: center; margin-top: 2rem; color: var(--text-muted); font-size: 0.9em;">
+                <p>Платформа для управления учебным процессом</p>
+            </div>
+        </div>
+    </div>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <script type="application/json" id="flash-messages">
+    [
+        {% for category, message in messages %}
+        {"category": "{{ category }}", "message": {{ message|tojson }}}{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+    </script>
+    {% endif %}
+    {% endwith %}
+    
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var flashMessagesEl = document.getElementById('flash-messages');
+            if (flashMessagesEl) {
+                try {
+                    var messages = JSON.parse(flashMessagesEl.textContent);
+                    messages.forEach(function(msg) {
+                        var toastFunc = window.toast || (typeof toast !== 'undefined' ? toast : null);
+                        if (!toastFunc) return;
+                        
+                        if (msg.category === 'error' || msg.category === 'danger') {
+                            toastFunc.error(msg.message);
+                        } else if (msg.category === 'warning') {
+                            toastFunc.warning(msg.message);
+                        } else if (msg.category === 'info') {
+                            toastFunc.info(msg.message);
+                        } else {
+                            toastFunc.success(msg.message);
+                        }
+                    });
+                } catch (e) {
+                    console.error('Error parsing flash messages:', e);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

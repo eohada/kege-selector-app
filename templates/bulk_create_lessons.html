@@ -3,95 +3,60 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Массовое создание уроков</title>
+    <title>Массовое создание уроков · Чёрный неон</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <style>
-        body {
-            background: #0f172a;
-            color: #e2e8f0;
-            padding: 2em;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        .form-group {
-            margin-bottom: 1.5em;
-        }
-        label {
-            display: block;
-            margin-bottom: 0.5em;
-            font-weight: 600;
-            color: #c084fc;
-        }
-        textarea {
-            width: 100%;
-            min-height: 400px;
-            padding: 1em;
-            border-radius: 8px;
-            border: 2px solid rgba(147, 51, 234, 0.3);
-            background: rgba(20, 20, 30, 0.6);
-            color: #e0e0e0;
-            font-family: 'MonaspaceNeon', 'Courier New', monospace;
-            font-size: 0.9em;
-        }
-        textarea:focus {
-            outline: none;
-            border-color: #a855f7;
-        }
-        .btn {
-            padding: 0.8em 2em;
-            border-radius: 10px;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            font-size: 1em;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            color: #fff;
-        }
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 18px rgba(99, 102, 241, 0.4);
-        }
-        .example {
-            background: rgba(20, 20, 30, 0.6);
-            padding: 1em;
-            border-radius: 8px;
-            margin-top: 1em;
-            border: 1px solid rgba(147, 51, 234, 0.2);
-        }
-        .example code {
-            color: #c084fc;
-            font-family: 'MonaspaceNeon', 'Courier New', monospace;
-        }
-        .info-box {
-            background: rgba(59, 130, 246, 0.1);
-            border: 1px solid rgba(59, 130, 246, 0.3);
-            padding: 1em;
-            border-radius: 8px;
-            margin-bottom: 1.5em;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
 </head>
-<body>
-    <div class="container">
-        <h1>📅 Массовое создание уроков</h1>
-        
-        <div class="info-box">
-            <strong>Инструкция:</strong>
-            <ol style="margin: 0.5em 0 0 1.5em;">
-                <li>Убедитесь, что все ученики созданы в системе с правильными platform_id</li>
-                <li>Вставьте данные уроков в формате JSON ниже</li>
-                <li>Нажмите "Создать уроки"</li>
-            </ol>
-        </div>
-        
-        <form method="POST">
-            <div class="form-group">
-                <label for="lessons_data">Данные уроков (JSON формат):</label>
-                <textarea id="lessons_data" name="lessons_data" placeholder='[
+<body class="{% if active_lesson %}lesson-active{% endif %}">
+    {% include '_active_lesson_banner.html' %}
+    
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                    <div class="brand-mark">LOGO</div>
+                    <div class="brand-caption">Слот под фирменный знак</div>
+                </a>
+            </div>
+            {% include '_mobile_menu.html' %}
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link">📝 Планы</a>
+            </nav>
+        </header>
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div>
+                <p class="hero-eyebrow">массовое создание</p>
+                <h1 class="hero-title">📅 Массовое создание уроков</h1>
+            </div>
+        </section>
+
+        <section class="glass-panel" style="margin-bottom: 2rem; border-left: 4px solid var(--accent-2);">
+            <div style="background: rgba(31, 123, 255, 0.1); border-left: 3px solid var(--accent-2); border-radius: var(--radius-sm); padding: 1rem; color: var(--accent-2);">
+                <strong style="display: block; margin-bottom: 0.5rem;">💡 Инструкция:</strong>
+                <ol style="margin: 0.5em 0 0 1.5em; list-style: decimal;">
+                    <li>Убедитесь, что все ученики созданы в системе с правильными platform_id</li>
+                    <li>Вставьте данные уроков в формате JSON ниже</li>
+                    <li>Нажмите "Создать уроки"</li>
+                </ol>
+            </div>
+        </section>
+
+        <section class="glass-panel">
+            <form method="POST" data-validate>
+                <div class="neo-field" style="margin-bottom: 1.5rem;">
+                    <label class="neo-label" for="lessons_data">Данные уроков (JSON формат)</label>
+                    <textarea id="lessons_data" 
+                              name="lessons_data" 
+                              class="neo-textarea" 
+                              placeholder='[
   {
     "platform_id": "Иванов Иван 123",
     "date": "2024-09-23",
@@ -106,12 +71,14 @@
     "duration": 60,
     "status": "completed"
   }
-]'></textarea>
-            </div>
-            
-            <div class="example">
-                <strong>Формат данных:</strong>
-                <pre><code>[
+]'
+                              style="min-height: 400px; font-family: 'MonaspaceNeon', 'Courier New', monospace; font-size: 0.9em;"
+                              required></textarea>
+                </div>
+                
+                <div class="glass-panel" style="background: var(--surface-2); padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <strong style="color: var(--text-primary); display: block; margin-bottom: 0.5rem;">Формат данных:</strong>
+                    <pre style="color: var(--accent-1); font-family: 'MonaspaceNeon', 'Courier New', monospace; font-size: 0.85em; white-space: pre-wrap; word-break: break-word; margin: 0;">[
   {
     "platform_id": "ID ученика на платформе (например: Иванов Иван 123)",
     "date": "YYYY-MM-DD (например: 2024-09-23)",
@@ -119,16 +86,20 @@
     "duration": 60,  // длительность в минутах (опционально, по умолчанию 60)
     "status": "completed"  // статус: completed, planned, cancelled (опционально, по умолчанию completed)
   }
-]</code></pre>
-            </div>
-            
-            <button type="submit" class="btn btn-primary">Создать уроки</button>
-            <a href="{{ url_for('dashboard') }}" style="margin-left: 1em; color: #c084fc;">← Назад</a>
-        </form>
-        
-        {# Flash messages будут показаны через toast #}
+]</pre>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button type="submit" class="neo-button accent">📅 Создать уроки</button>
+                    <a href="{{ url_for('dashboard') }}" class="neo-button ghost">← Назад</a>
+                </div>
+            </form>
+        </section>
     </div>
+    
+    {# Flash messages будут показаны через toast #}
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
     <script>
         // Конвертируем flash-сообщения в toast-уведомления
@@ -168,4 +139,3 @@
     </script>
 </body>
 </html>
-

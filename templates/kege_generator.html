@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% include '_ux_enhancements.html' %}
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
@@ -96,11 +97,15 @@
                     </span>
                 </a>
             </nav>
-            <div class="nav-actions">
-                <div class="brand-caption icon-slot"> <!-- Контейнер иконки раздела Генератор -->
-                    <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="brand-icon"> <!-- Белая иконка генератора -->
-                </div>
+            {% if current_user and current_user.is_authenticated %}
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 0.75rem;">
+                <a href="{{ url_for('user_profile') }}" style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9em; text-decoration: none; padding: 0.5em 0.75em; border-radius: var(--radius-sm); transition: all 0.2s ease;" onmouseover="this.style.background='var(--surface-2)'; this.style.color='var(--text-primary)'" onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)'">
+                    <span>👤</span>
+                    <span>{{ current_user.username }}</span>
+                    <span style="color: var(--accent-1); font-size: 0.85em;">({{ current_user.get_role_display() }})</span>
+                </a>
             </div>
+            {% endif %}
         </header>
 
         <section class="glass-panel generator-hero">
@@ -167,7 +172,8 @@
                 <p>Выбери тип задания, лимит карточек и при необходимости включи пропущенные задачи.</p>
                 <form method="POST"
                       action="{{ url_for('kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator', assignment_type=assignment_type) }}"
-                      class="generator-form-grid">
+                      class="generator-form-grid"
+                      data-validate>
                     {{ selection_form.hidden_tag() }}
                     <div class="neo-field">
                         {{ selection_form.task_type.label(class_='neo-label') }}
@@ -184,7 +190,7 @@
                     <p class="generator-note">
                         Если опция включена, в выборку попадут задачи, которые уже пропускались ранее, но ещё не были решены.
                     </p>
-                    {{ selection_form.submit(class_='neo-button accent') }}
+                    {{ selection_form.submit(class_='neo-button accent', data_tooltip='Сгенерировать подборку заданий') }}
                 </form>
             </section>
 
@@ -215,7 +221,7 @@
                         {{ reset_form.reset_type.label(class_='neo-label') }}
                         {{ reset_form.reset_type(class_='neo-select') }}
                     </div>
-                    {{ reset_form.reset_submit(class_='neo-button danger') }}
+                    {{ reset_form.reset_submit(class_='neo-button danger', data_tooltip='Сбросить историю заданий (требует подтверждения)') }}
                 </form>
             </section>
 
@@ -230,7 +236,7 @@
                         {{ search_form.task_id.label(class_='neo-label') }}
                         {{ search_form.task_id(class_='neo-input') }}
                     </div>
-                    {{ search_form.search_submit(class_='neo-button accent') }}
+                    {{ search_form.search_submit(class_='neo-button accent', data_tooltip='Найти задание по ID и добавить в подборку') }}
                 </form>
                 <p class="generator-note">
                     Введи уникальный ID задания (например, 23715, 3348), и система найдёт его в базе данных и добавит в результаты.

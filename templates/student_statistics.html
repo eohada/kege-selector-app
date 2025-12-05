@@ -6,6 +6,7 @@
     <title>Статистика - {{ student.name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">

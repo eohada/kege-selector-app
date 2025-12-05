@@ -2,133 +2,154 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Пропущенные задания{% if task_type %}: Задание {{ task_type }}{% endif %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пропущенные задания{% if task_type %}: Задание {{ task_type }}{% endif %} · Чёрный неон</title>
     
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
     <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
     <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
-    <style>
-        /* Навигация */
-        .nav-bar {
-            display: flex;
-            gap: 1em;
-            margin-bottom: 2em;
-            padding: 1em;
-            background: linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
-            border-radius: 16px;
-            border: 1px solid rgba(147, 51, 234, 0.2);
-        }
-        
-        .nav-bar a {
-            padding: 0.8em 1.5em;
-            background: rgba(20, 20, 30, 0.6);
-            color: #c084fc;
-            text-decoration: none;
-            border-radius: 12px;
-            border: 2px solid rgba(147, 51, 234, 0.3);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-weight: 600;
-        }
-        
-        .nav-bar a:hover {
-            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(168, 85, 247, 0.6);
-        }
-        
-        .nav-bar a.active {
-            background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
-            color: white;
-        }
-    </style>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
 </head>
-<body>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
     {% include '_active_lesson_banner.html' %}
     
-    <div class="container">
-        <div class="nav-bar">
-            <a href="{{ url_for('dashboard') }}">👥 Ученики</a>
-            <a href="{{ url_for('kege_generator') }}" class="active">💻 Генератор КЕГЭ</a>
-        </div>
-
-        <h1>⊘ Пропущенные задания{% if task_type %}: Задание {{ task_type }}{% endif %} ({{ tasks|length }} шт.)</h1>
-        
-        {# Flash messages будут показаны через toast #}
-        
-        <div class="filter-section">
-            <label for="task-type-filter"><strong>Фильтр по номеру задания:</strong></label>
-            <select id="task-type-filter" onchange="filterByTaskType(this.value)">
-                <option value="">Все задания</option>
-                {% for i in range(1, 28) %}
-                    <option value="{{ i }}" {% if task_type == i %}selected{% endif %}>Задание {{ i }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <div class="select-all">
-            <label>
-                <input type="checkbox" id="select-all-checkbox">
-                Выбрать все задания
-            </label>
-            <div style="margin-top: 0.5em;">
-                <button class="btn btn-accept" data-bulk-action="accept">Принять выбранные</button>
-                <button class="btn btn-blacklist" data-bulk-action="blacklist">В черный список</button>
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                    <div class="brand-mark">LOGO</div>
+                    <div class="brand-caption">Слот под фирменный знак</div>
+                </a>
             </div>
-        </div>
-
-        {% for task in tasks %}
-        <div class="task" data-task-id="{{ task.task_id }}">
-            <div class="task-header">
-                <input type="checkbox" class="task-checkbox" value="{{ task.task_id }}" id="task-{{ task.task_id }}">
-                <label for="task-{{ task.task_id }}">
-                    <b>№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b> | 
-                    <a href="{{ task.source_url }}" target="_blank" title="Открыть в новой вкладке">Источник (URL)</a>
-                    <span class="skipped-badge">ПРОПУЩЕНО</span>
-                </label>
-            </div>
-            
-            <div class="task-content">
-                {{ task.content_html | safe }}
-            </div>
-            
-            {% if task.attached_files %}
-            <div class="attached-files">
-                <h4>Прикрепленные файлы:</h4>
-                <ul class="file-list">
-                    {% set files = task.attached_files | from_json %}
-                    {% for file in files %}
-                    <li>
-                        <a href="{{ file.url }}" target="_blank" class="file-link" download>
-                            {{ file.name }}
-                        </a>
-                    </li>
-                    {% endfor %}
-                </ul>
+            {% include '_mobile_menu.html' %}
+            <nav class="nav-links">
+                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator') }}" class="nav-link active">💻 Генератор</a>
+                <a href="{{ url_for('update_plans') }}" class="nav-link">📝 Планы</a>
+            </nav>
+            {% if current_user and current_user.is_authenticated %}
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 0.75rem;">
+                <a href="{{ url_for('user_profile') }}" style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9em; text-decoration: none; padding: 0.5em 0.75em; border-radius: var(--radius-sm); transition: all 0.2s ease;" onmouseover="this.style.background='var(--surface-2)'; this.style.color='var(--text-primary)'" onmouseout="this.style.background='transparent'; this.style.color='var(--text-muted)'">
+                    <span>👤</span>
+                    <span>{{ current_user.username }}</span>
+                    <span style="color: var(--accent-1); font-size: 0.85em;">({{ current_user.get_role_display() }})</span>
+                </a>
             </div>
             {% endif %}
-            
-            <div class="task-actions">
-                <button class="btn btn-accept" data-task-id="{{ task.task_id }}" data-action="accept">✓ Принять (удалить из пропущенных)</button>
-                <button class="btn btn-blacklist" data-task-id="{{ task.task_id }}" data-action="blacklist">✗ В черный список</button>
+        </header>
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div>
+                <p class="hero-eyebrow">пропущенные задания</p>
+                <h1 class="hero-title">⊘ Пропущенные задания{% if task_type %}: Задание {{ task_type }}{% endif %}</h1>
+                <p class="hero-subtitle">Всего: {{ tasks|length }} шт.</p>
             </div>
+        </section>
+
+        {# Flash messages будут показаны через toast #}
+
+        <section class="glass-panel filters-panel" style="margin-bottom: 2rem;">
+            <div class="neo-field">
+                <label class="neo-label" for="task-type-filter">Фильтр по номеру задания</label>
+                <select id="task-type-filter" class="neo-select" onchange="filterByTaskType(this.value)">
+                    <option value="">Все задания</option>
+                    {% for i in range(1, 28) %}
+                        <option value="{{ i }}" {% if task_type == i %}selected{% endif %}>Задание {{ i }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </section>
+
+        {% if tasks %}
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div class="select-all" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <label style="display: flex; align-items: center; gap: 0.5em; cursor: pointer;">
+                    <input type="checkbox" id="select-all-checkbox" style="width: 20px; height: 20px; cursor: pointer;">
+                    <span style="color: var(--text-primary); font-weight: 600;">Выбрать все задания</span>
+                </label>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="neo-button accent" data-bulk-action="accept" data-tooltip="Принять все выбранные задания">✓ Принять выбранные</button>
+                    <button class="neo-button danger" data-bulk-action="blacklist" data-tooltip="Добавить все выбранные задания в черный список (необратимо)">✗ В черный список</button>
+                </div>
+            </div>
+        </section>
+
+        <div>
+            {% for task in tasks %}
+            <section class="glass-panel task-card" data-task-id="{{ task.task_id }}" style="margin-bottom: 2rem;">
+                <div class="task-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--stroke-1); flex-wrap: wrap; gap: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5em; cursor: pointer; flex: 1;">
+                        <input type="checkbox" class="task-checkbox" value="{{ task.task_id }}" id="task-{{ task.task_id }}" style="width: 20px; height: 20px; cursor: pointer;">
+                        <div>
+                            <b style="color: var(--text-primary);">№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b>
+                            <span style="color: var(--text-muted); margin: 0 0.5em;">|</span>
+                            <a href="{{ task.source_url }}" target="_blank" class="neo-button ghost" style="font-size: 0.9em; padding: 0.4em 0.8em; text-decoration: none;">🔗 Источник</a>
+                        </div>
+                    </label>
+                    <span class="neo-button outline" style="font-size: 0.85em; padding: 0.4em 0.8em; cursor: default;">⊘ ПРОПУЩЕНО</span>
+                </div>
+                
+                <div class="task-content" style="line-height: 1.8; font-size: 1.05em; color: var(--text-primary); margin-bottom: 1.5rem;">
+                    {{ task.content_html | safe }}
+                </div>
+                
+                {% if task.attached_files %}
+                <div class="attached-files" style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">📎 Прикрепленные файлы</h4>
+                    <ul class="file-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                        {% set files = task.attached_files | from_json %}
+                        {% for file in files %}
+                        <li>
+                            <a href="{{ file.url }}" target="_blank" class="neo-button outline" style="font-size: 0.9rem; padding: 0.65rem 1.2rem; text-decoration: none;" download>
+                                {{ file.name }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                <div class="task-actions" style="display: flex; gap: 0.5em; flex-wrap: wrap; margin-top: 1rem;">
+                    <button class="neo-button accent" data-task-id="{{ task.task_id }}" data-action="accept" data-tooltip="Принять задание">✓ Принять (удалить из пропущенных)</button>
+                    <button class="neo-button danger" data-task-id="{{ task.task_id }}" data-action="blacklist" data-tooltip="Добавить в черный список (необратимо)">✗ В черный список</button>
+                </div>
+            </section>
+            {% endfor %}
         </div>
-        {% endfor %}
+        {% else %}
+        <section class="glass-panel">
+            <div class="empty-state">
+                <div class="empty-state-icon">⊘</div>
+                <h3 class="empty-state-title">Нет пропущенных заданий</h3>
+                <p class="empty-state-description">Пропущенные задания будут отображаться здесь</p>
+                <div class="empty-state-actions">
+                    <a href="{{ url_for('kege_generator') }}" class="neo-button accent">💻 Перейти к генератору</a>
+                </div>
+            </div>
+        </section>
+        {% endif %}
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            renderMathInElement(document.body, {
-                delimiters: [
-                    {left: '$$', right: '$$', display: true},
-                    {left: '$', right: '$', display: false},
-                    {left: '\\(', right: '\\)', display: false},
-                    {left: '\\[', right: '\\]', display: true}
-                ],
-                throwOnError: false,
-                trust: true
-            });
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false,
+                    trust: true
+                });
+            }
             
             const selectAllCheckbox = document.getElementById('select-all-checkbox');
             if (selectAllCheckbox) {
@@ -137,7 +158,7 @@
                 });
             }
             
-            document.querySelectorAll('.task-actions .btn-accept, .task-actions .btn-blacklist').forEach(button => {
+            document.querySelectorAll('.task-actions .neo-button[data-action]').forEach(button => {
                 button.addEventListener('click', function() {
                     const taskId = parseInt(this.getAttribute('data-task-id'));
                     const action = this.getAttribute('data-action');
@@ -155,16 +176,52 @@
         
         function taskAction(taskId, action) {
             const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
-            const buttons = taskElement.querySelectorAll('.btn');
+            if (!taskElement) {
+                console.error('Task element not found:', taskId);
+                return;
+            }
+            
+            // Показываем подтверждение для критических действий
+            if (action === 'blacklist') {
+                if (typeof showConfirmModal !== 'undefined') {
+                    showConfirmModal({
+                        title: 'Добавить в черный список?',
+                        message: 'Задание будет добавлено в черный список и никогда не будет показываться. Это действие необратимо.',
+                        confirmText: 'В черный список',
+                        cancelText: 'Отмена',
+                        confirmClass: 'danger',
+                        onConfirm: () => {
+                            performTaskAction(taskId, action, taskElement);
+                        }
+                    });
+                    return;
+                }
+            }
+            
+            // Для остальных действий выполняем сразу
+            performTaskAction(taskId, action, taskElement);
+        }
+        
+        function performTaskAction(taskId, action, taskElement) {
+            const buttons = taskElement.querySelectorAll('.neo-button');
             buttons.forEach(btn => btn.disabled = true);
             
             // Показываем индикатор загрузки
-            const loaderId = loading.show(taskElement, 'Обработка...');
+            let loaderId = null;
+            try {
+                if (typeof loading !== 'undefined' && loading && typeof loading.show === 'function') {
+                    loaderId = loading.show(taskElement, 'Обработка...');
+                }
+            } catch (e) {
+                console.warn('Не удалось показать индикатор загрузки:', e);
+            }
             
             fetch('{{ url_for("task_action") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': (document.querySelector('meta[name="csrf-token"]') || {getAttribute: () => null}).getAttribute('content') || '',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify({
                     action: action,
@@ -173,30 +230,34 @@
             })
             .then(response => response.json())
             .then(data => {
-                if (loaderId) loading.hide(loaderId);
+                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') {
+                    loading.hide(loaderId);
+                }
                 if (data.success) {
                     taskElement.style.opacity = '0.5';
                     taskElement.style.transition = 'opacity 0.3s';
                     setTimeout(() => {
                         taskElement.remove();
-                        if (document.querySelectorAll('.task').length === 0) {
+                        if (document.querySelectorAll('.task-card').length === 0) {
                             window.location.href = '{{ url_for("kege_generator") }}';
                         }
                     }, 500);
-                    if (window.toast) {
-                        toast.success(data.message);
+                    if (typeof toast !== 'undefined' && toast) {
+                        toast.success(data.message || 'Действие выполнено');
                     }
                 } else {
-                    if (window.toast) {
+                    if (typeof toast !== 'undefined' && toast) {
                         toast.error(data.error || 'Неизвестная ошибка');
                     }
                     buttons.forEach(btn => btn.disabled = false);
                 }
             })
             .catch(error => {
-                if (loaderId) loading.hide(loaderId);
+                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') {
+                    loading.hide(loaderId);
+                }
                 console.error('Error:', error);
-                if (window.toast) {
+                if (typeof toast !== 'undefined' && toast) {
                     toast.error('Ошибка при выполнении действия');
                 }
                 buttons.forEach(btn => btn.disabled = false);
@@ -212,7 +273,7 @@
         function bulkAction(action) {
             const checked = Array.from(document.querySelectorAll('.task-checkbox:checked'));
             if (checked.length === 0) {
-                if (window.toast) {
+                if (typeof toast !== 'undefined' && toast) {
                     toast.error('Выберите хотя бы одно задание');
                 }
                 return;
@@ -225,26 +286,51 @@
             };
             
             // Показываем модальное окно подтверждения
-            showConfirmModal({
-                title: 'Подтверждение действия',
-                message: `Вы уверены, что хотите ${actionNames[action]} ${taskIds.length} заданий?`,
-                confirmText: 'Подтвердить',
-                cancelText: 'Отмена',
-                confirmClass: 'accent',
-                onConfirm: () => {
-                    performBulkAction(action, taskIds);
+            if (typeof showConfirmModal !== 'undefined') {
+                let title = 'Подтверждение действия';
+                let message = `Вы уверены, что хотите ${actionNames[action]} ${taskIds.length} заданий?`;
+                let confirmText = 'Подтвердить';
+                let confirmClass = 'accent';
+                
+                if (action === 'blacklist') {
+                    title = 'Добавить в черный список?';
+                    message = `Вы уверены, что хотите добавить ${taskIds.length} заданий в черный список? Это действие необратимо - задания никогда не будут показываться.`;
+                    confirmText = 'В черный список';
+                    confirmClass = 'danger';
                 }
-            });
-            
-            return;
+                
+                showConfirmModal({
+                    title: title,
+                    message: message,
+                    confirmText: confirmText,
+                    cancelText: 'Отмена',
+                    confirmClass: confirmClass,
+                    onConfirm: () => {
+                        performBulkAction(action, taskIds);
+                    }
+                });
+            } else {
+                performBulkAction(action, taskIds);
+            }
         }
         
         function performBulkAction(action, taskIds) {
+            let loaderId = null;
+            const container = document.querySelector('.app-shell');
+            try {
+                if (typeof loading !== 'undefined' && loading && typeof loading.show === 'function') {
+                    loaderId = loading.show(container, `Обработка ${taskIds.length} заданий...`);
+                }
+            } catch (e) {
+                console.warn('Не удалось показать индикатор загрузки:', e);
+            }
             
             fetch('{{ url_for("task_action") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-CSRFToken': (document.querySelector('meta[name="csrf-token"]') || {getAttribute: () => null}).getAttribute('content') || '',
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: JSON.stringify({
                     action: action,
@@ -253,6 +339,9 @@
             })
             .then(response => response.json())
             .then(data => {
+                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') {
+                    loading.hide(loaderId);
+                }
                 if (data.success) {
                     taskIds.forEach(taskId => {
                         const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
@@ -261,37 +350,37 @@
                             setTimeout(() => taskElement.remove(), 300);
                         }
                     });
-                    if (window.toast) {
-                        toast.success(data.message);
+                    if (typeof toast !== 'undefined' && toast) {
+                        toast.success(data.message || `${taskIds.length} заданий обработано`);
                     }
                     
                     // Проверяем, остались ли задания
                     setTimeout(() => {
-                        if (document.querySelectorAll('.task').length === 0) {
+                        if (document.querySelectorAll('.task-card').length === 0) {
                             window.location.href = '{{ url_for("kege_generator") }}';
                         }
                     }, 500);
                 } else {
-                    if (window.toast) {
+                    if (typeof toast !== 'undefined' && toast) {
                         toast.error(data.error || 'Неизвестная ошибка');
                     }
                 }
             })
             .catch(error => {
+                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') {
+                    loading.hide(loaderId);
+                }
                 console.error('Error:', error);
-                if (window.toast) {
+                if (typeof toast !== 'undefined' && toast) {
                     toast.error('Ошибка при выполнении действия');
                 }
             });
         }
         
-        // Функция фильтрации по типу задания
         function filterByTaskType(taskType) {
             if (taskType === '') {
-                // Показать все задания
                 window.location.href = '{{ url_for("show_skipped") }}';
             } else {
-                // Показать задания конкретного типа
                 window.location.href = '{{ url_for("show_skipped") }}?task_type=' + taskType;
             }
         }
@@ -338,4 +427,3 @@
     </script>
 </body>
 </html>
-

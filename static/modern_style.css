@@ -660,7 +660,19 @@ body::after {
 .alert-warning { border-color: var(--warning); color: var(--warning); }
 .alert-info { border-color: var(--accent-1); color: var(--accent-1); }
 
-.task {
+.field-error {
+    margin-top: 0.5em;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 108, 145, 0.12);
+    border-left: 3px solid var(--danger);
+    color: var(--danger);
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.task,
+.task-card {
     background: var(--surface-1);
     border-radius: var(--radius-md);
     border: 1px solid var(--stroke-1);
@@ -1737,5 +1749,308 @@ body::after {
 
 .task-preview-body {
     color: var(--text-primary);
-    line-height: 1.6;
+}
+
+/* ============================================
+   UX УЛУЧШЕНИЯ
+   ============================================ */
+
+/* Breadcrumbs */
+.breadcrumbs-container {
+    margin-bottom: 1.5rem;
+}
+
+.breadcrumbs {
+    display: flex;
+    align-items: center;
+}
+
+.breadcrumbs-list {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-wrap: wrap;
+}
+
+.breadcrumbs-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.breadcrumbs-item:not(:last-child)::after {
+    content: '›';
+    margin-left: 0.5rem;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+}
+
+.breadcrumbs-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.breadcrumbs-link:hover {
+    color: var(--accent-1);
+}
+
+.breadcrumbs-current {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Form Validation */
+.neo-field {
+    position: relative;
+}
+
+.neo-input.error,
+.neo-select.error,
+.neo-textarea.error {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 3px rgba(255, 108, 145, 0.1);
+}
+
+.field-error {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--danger);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.field-error::before {
+    content: '⚠';
+    font-size: 1rem;
+}
+
+/* Tooltips */
+.tooltip {
+    position: fixed;
+    background: var(--surface-2);
+    border: 1px solid var(--stroke-2);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    z-index: 10000;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 0.2s, transform 0.2s;
+    max-width: 250px;
+    box-shadow: var(--shadow-soft);
+}
+
+.tooltip.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.tooltip::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border: 6px solid transparent;
+}
+
+.tooltip[data-position="top"]::after {
+    bottom: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-top-color: var(--surface-2);
+}
+
+.tooltip[data-position="bottom"]::after {
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-bottom-color: var(--surface-2);
+}
+
+.tooltip[data-position="left"]::after {
+    right: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-left-color: var(--surface-2);
+}
+
+.tooltip[data-position="right"]::after {
+    left: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-right-color: var(--surface-2);
+}
+
+/* Empty States */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-muted);
+}
+
+.empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-state-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.empty-state-description {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.empty-state-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Undo Notification */
+.undo-notification {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 400px;
+}
+
+.undo-notification-item {
+    background: var(--surface-2);
+    border: 1px solid var(--stroke-2);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    box-shadow: var(--shadow-soft);
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 0.3s, transform 0.3s;
+}
+
+.undo-notification-item span {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.undo-btn {
+    background: var(--accent-1);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 1rem;
+    color: var(--page-bg);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+}
+
+.undo-btn:hover {
+    background: var(--accent-1-strong);
+    transform: translateY(-2px);
+}
+
+/* Keyboard Shortcuts Hint */
+.keyboard-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: 0.5rem;
+}
+
+.keyboard-hint kbd {
+    background: var(--surface-2);
+    border: 1px solid var(--stroke-1);
+    border-radius: 4px;
+    padding: 0.2rem 0.4rem;
+    font-family: var(--font-base);
+    font-size: 0.7rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile Responsiveness Improvements */
+@media (max-width: 768px) {
+    .breadcrumbs-list {
+        font-size: 0.8rem;
+    }
+    
+    .breadcrumbs-item:not(:last-child)::after {
+        margin-left: 0.25rem;
+        font-size: 1rem;
+    }
+    
+    .empty-state {
+        padding: 2rem 1rem;
+    }
+    
+    .empty-state-icon {
+        font-size: 3rem;
+    }
+    
+    .empty-state-title {
+        font-size: 1.2rem;
+    }
+    
+    .undo-notification {
+        bottom: 1rem;
+        right: 1rem;
+        left: 1rem;
+        max-width: none;
+    }
+    
+    .tooltip {
+        max-width: 200px;
+        font-size: 0.8rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    
+    .students-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .filters-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .hero-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .hero-actions .neo-button {
+        width: 100%;
+    }
 }
