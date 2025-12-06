@@ -11,8 +11,7 @@
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
-    <body data-student-category="{{ student.category or '' }}">
-        
+    <style>
         .profile-details {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
