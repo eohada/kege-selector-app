@@ -610,9 +610,9 @@
                         </form>
                         {% endif %}
                         
-                        <button onclick="showTemplateModal({{ lesson.lesson_id }}, 'homework')" class="neo-button accent" type="button">📝 Сформировать ДЗ</button>
-                        <button onclick="showTemplateModal({{ lesson.lesson_id }}, 'classwork')" class="neo-button outline" type="button">🏫 Сформировать классную работу</button>
-                        <button onclick="showTemplateModal({{ lesson.lesson_id }}, 'exam')" class="neo-button outline" style="background: var(--accent-2);" type="button">📊 Сформировать проверочную</button>
+                        <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="neo-button accent" onclick="return tryShowTemplateModal(event, {{ lesson.lesson_id }}, 'homework')">📝 Сформировать ДЗ</a>
+                        <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type='classwork') }}" class="neo-button outline" onclick="return tryShowTemplateModal(event, {{ lesson.lesson_id }}, 'classwork')">🏫 Сформировать классную работу</a>
+                        <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type='exam') }}" class="neo-button outline" style="background: var(--accent-2);" onclick="return tryShowTemplateModal(event, {{ lesson.lesson_id }}, 'exam')">📊 Сформировать проверочную</a>
                         <form method="POST" action="{{ url_for('lesson_homework_not_assigned', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
                             <button type="submit" class="neo-button ghost">➖ ДЗ не задано</button>
                         </form>
@@ -688,25 +688,28 @@
         let currentLessonId = null;
         let currentAssignmentType = null;
 
-        function showTemplateModal(lessonId, assignmentType) {
+        function tryShowTemplateModal(event, lessonId, assignmentType) {
+            // Пытаемся показать модальное окно, если оно доступно
             try {
-                currentLessonId = lessonId;
-                currentAssignmentType = assignmentType;
-                
                 const modal = document.getElementById('templateModal');
                 if (!modal) {
-                    console.error('Модальное окно не найдено, перенаправляем на генератор');
-                    generateNewTasks();
-                    return;
+                    // Модальное окно не найдено - разрешаем переход по ссылке
+                    return true;
                 }
+                
+                // Предотвращаем переход по ссылке
+                event.preventDefault();
+                event.stopPropagation();
+                
+                currentLessonId = lessonId;
+                currentAssignmentType = assignmentType;
                 
                 const modalTitle = document.getElementById('templateModalTitle');
                 const templatesList = document.getElementById('templatesList');
                 
                 if (!modalTitle || !templatesList) {
-                    console.error('Элементы модального окна не найдены, перенаправляем на генератор');
-                    generateNewTasks();
-                    return;
+                    // Элементы не найдены - разрешаем переход
+                    return true;
                 }
                 
                 // Устанавливаем заголовок в зависимости от типа
@@ -722,10 +725,18 @@
                 loadTemplates(assignmentType, studentCategory);
                 
                 modal.style.display = 'flex';
+                
+                // Предотвращаем переход
+                return false;
             } catch (error) {
                 console.error('Ошибка при открытии модального окна:', error);
-                generateNewTasks();
+                // При ошибке разрешаем переход по ссылке
+                return true;
             }
+        }
+        
+        function showTemplateModal(lessonId, assignmentType) {
+            tryShowTemplateModal({ preventDefault: () => {}, stopPropagation: () => {} }, lessonId, assignmentType);
         }
 
         function closeTemplateModal() {
