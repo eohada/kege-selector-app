@@ -874,8 +874,24 @@
 
         function generateNewTasks() {
             closeTemplateModal();
+            
+            // Проверяем, что переменные установлены
+            if (!currentLessonId) {
+                console.error('currentLessonId не установлен');
+                // Пытаемся получить lesson_id из URL или других источников
+                const urlParams = new URLSearchParams(window.location.search);
+                const lessonIdFromUrl = urlParams.get('lesson_id');
+                if (!lessonIdFromUrl) {
+                    toast.error('Ошибка: не удалось определить ID урока');
+                    return;
+                }
+                currentLessonId = lessonIdFromUrl;
+            }
+            
             const assignmentType = currentAssignmentType || 'homework';
-            window.location.href = `{{ url_for('kege_generator') }}?lesson_id=${currentLessonId}&assignment_type=${assignmentType}`;
+            const url = `{{ url_for('kege_generator') }}?lesson_id=${currentLessonId}&assignment_type=${assignmentType}`;
+            console.log('Переход на генератор:', url);
+            window.location.href = url;
         }
 
         function getCsrfToken() {
