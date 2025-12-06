@@ -1021,12 +1021,15 @@ def student_new():
             logger.error(f'Ошибка при добавлении ученика: {e}')
             
             # Логируем ошибку
-            audit_logger.log_error(
-                action='create_student',
-                entity='Student',
-                error=str(e),
-                metadata={'form_data': {k: str(v) for k, v in form.data.items() if k != 'csrf_token'}}
-            )
+            try:
+                audit_logger.log_error(
+                    action='create_student',
+                    entity='Student',
+                    error=str(e),
+                    metadata={'form_data': {k: str(v) for k, v in form.data.items() if k != 'csrf_token'}}
+                )
+            except Exception as log_error:
+                logger.error(f'Ошибка при логировании: {log_error}')
             
             flash(f'Ошибка при добавлении ученика: {str(e)}', 'error')
 
