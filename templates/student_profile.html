@@ -884,17 +884,28 @@
         function generateNewTasks() {
             closeTemplateModal();
             
+            console.log('generateNewTasks вызвана:', { currentLessonId, currentAssignmentType });
+            
             // Проверяем, что переменные установлены
             if (!currentLessonId) {
-                console.error('currentLessonId не установлен');
-                // Пытаемся получить lesson_id из URL или других источников
-                const urlParams = new URLSearchParams(window.location.search);
-                const lessonIdFromUrl = urlParams.get('lesson_id');
-                if (!lessonIdFromUrl) {
-                    toast.error('Ошибка: не удалось определить ID урока');
+                console.error('currentLessonId не установлен, пытаемся получить из других источников');
+                // Пытаемся получить lesson_id из data-атрибутов кнопок или других источников
+                const buttons = document.querySelectorAll('[onclick*="tryShowTemplateModal"]');
+                for (let btn of buttons) {
+                    const onclickAttr = btn.getAttribute('onclick');
+                    const match = onclickAttr.match(/tryShowTemplateModal\([^,]+,\s*(\d+),\s*['"]([^'"]+)['"]/);
+                    if (match) {
+                        currentLessonId = match[1];
+                        currentAssignmentType = match[2];
+                        console.log('Найдены параметры из кнопки:', { currentLessonId, currentAssignmentType });
+                        break;
+                    }
+                }
+                
+                if (!currentLessonId) {
+                    toast.error('Ошибка: не удалось определить ID урока. Перезагрузите страницу и попробуйте снова.');
                     return;
                 }
-                currentLessonId = lessonIdFromUrl;
             }
             
             // Используем установленный тип задания (homework, classwork, exam)
@@ -907,8 +918,10 @@
                 currentAssignmentType = 'homework';
             }
             
-            const url = `{{ url_for('kege_generator') }}?lesson_id=${currentLessonId}&assignment_type=${currentAssignmentType || 'homework'}`;
-            console.log('Переход на генератор:', url, 'Тип:', currentAssignmentType);
+            const finalLessonId = currentLessonId;
+            const finalAssignmentType = currentAssignmentType || 'homework';
+            const url = `{{ url_for('kege_generator') }}?lesson_id=${finalLessonId}&assignment_type=${finalAssignmentType}`;
+            console.log('Переход на генератор:', url, 'Тип:', finalAssignmentType, 'Lesson ID:', finalLessonId);
             window.location.href = url;
         }
 
