@@ -609,9 +609,9 @@
                         </form>
                         {% endif %}
                         
-                        <a href="#" class="neo-button accent" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, 'homework'); return false;">📝 Сформировать ДЗ</a>
-                        <a href="#" class="neo-button outline" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, 'classwork'); return false;">🏫 Сформировать классную работу</a>
-                        <a href="#" class="neo-button outline" style="background: var(--accent-2);" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, 'exam'); return false;">📊 Сформировать проверочную</a>
+                        <a href="#" class="neo-button accent" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="homework" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">📝 Сформировать ДЗ</a>
+                        <a href="#" class="neo-button outline" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="classwork" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">🏫 Сформировать классную работу</a>
+                        <a href="#" class="neo-button outline" style="background: var(--accent-2);" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="exam" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">📊 Сформировать проверочную</a>
                         <form method="POST" action="{{ url_for('lesson_homework_not_assigned', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
                             <button type="submit" class="neo-button ghost">➖ ДЗ не задано</button>
                         </form>
@@ -730,7 +730,7 @@
                 
                 // Загружаем шаблоны через API
                 const studentCategory = document.body.dataset.studentCategory || '';
-                loadTemplates(assignmentType, studentCategory);
+                loadTemplates(assignmentType, studentCategory, lessonId);
                 
                 modal.style.display = 'flex';
                 
@@ -751,9 +751,14 @@
             document.getElementById('templateModal').style.display = 'none';
         }
 
-        function loadTemplates(type, category) {
+        function loadTemplates(type, category, lessonId) {
             const templatesList = document.getElementById('templatesList');
             templatesList.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="loading-spinner"></div><p>Загрузка шаблонов...</p></div>';
+            
+            // Сохраняем lessonId для использования в renderTemplates
+            if (lessonId) {
+                currentLessonId = lessonId;
+            }
             
             const params = new URLSearchParams({ type: type });
             if (category) params.append('category', category);
@@ -762,7 +767,7 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        renderTemplates(data.templates);
+                        renderTemplates(data.templates, type);
                     } else {
                         templatesList.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Ошибка загрузки шаблонов</div>';
                     }
@@ -773,8 +778,10 @@
                 });
         }
 
-        function renderTemplates(templates) {
+        function renderTemplates(templates, assignmentType) {
             const templatesList = document.getElementById('templatesList');
+            const lessonId = currentLessonId;
+            const type = assignmentType || currentAssignmentType || 'homework';
             
             if (templates.length === 0) {
                 templatesList.innerHTML = `
@@ -783,7 +790,7 @@
                         <h3>Нет шаблонов</h3>
                         <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Создайте шаблон в библиотеке шаблонов или сгенерируйте задания вручную</p>
                         <div style="display: flex; flex-direction: column; gap: 1rem; align-items: center;">
-                            <button onclick="generateNewTasks()" class="neo-button accent" style="width: 100%; max-width: 300px;">
+                            <button onclick="generateNewTasks(${lessonId}, '${type}')" class="neo-button accent" style="width: 100%; max-width: 300px;">
                                 🎲 Сгенерировать новые задания
                             </button>
                             <a href="{{ url_for('templates_list') }}" class="neo-button ghost" style="text-decoration: none; width: 100%; max-width: 300px; text-align: center;">
@@ -797,7 +804,7 @@
             
             // Сначала добавляем опцию "Сгенерировать новые задания" в начало
             const generateOption = `
-                <div class="template-option" onclick="generateNewTasks()" style="
+                <div class="template-option" onclick="generateNewTasks(${lessonId}, '${type}')" style="
                     padding: 1.5rem;
                     border: 2px solid var(--accent-1);
                     border-radius: var(--radius-lg);
@@ -881,47 +888,49 @@
             });
         }
 
-        function generateNewTasks() {
+        function generateNewTasks(lessonId, assignmentType) {
             closeTemplateModal();
             
-            console.log('generateNewTasks вызвана:', { currentLessonId, currentAssignmentType });
+            // Используем переданные параметры или глобальные переменные
+            const finalLessonId = lessonId || currentLessonId;
+            const finalAssignmentType = assignmentType || currentAssignmentType || 'homework';
             
-            // Проверяем, что переменные установлены
-            if (!currentLessonId) {
-                console.error('currentLessonId не установлен, пытаемся получить из других источников');
-                // Пытаемся получить lesson_id из data-атрибутов кнопок или других источников
-                const buttons = document.querySelectorAll('[onclick*="tryShowTemplateModal"]');
-                for (let btn of buttons) {
-                    const onclickAttr = btn.getAttribute('onclick');
-                    const match = onclickAttr.match(/tryShowTemplateModal\([^,]+,\s*(\d+),\s*['"]([^'"]+)['"]/);
-                    if (match) {
-                        currentLessonId = match[1];
-                        currentAssignmentType = match[2];
-                        console.log('Найдены параметры из кнопки:', { currentLessonId, currentAssignmentType });
-                        break;
+            console.log('generateNewTasks вызвана:', { 
+                passedLessonId: lessonId, 
+                passedAssignmentType: assignmentType,
+                currentLessonId, 
+                currentAssignmentType,
+                finalLessonId,
+                finalAssignmentType
+            });
+            
+            // Проверяем, что lesson_id установлен
+            if (!finalLessonId) {
+                console.error('lessonId не установлен, пытаемся получить из других источников');
+                // Пытаемся получить lesson_id из data-атрибутов кнопок
+                const buttons = document.querySelectorAll('[data-lesson-id]');
+                if (buttons.length > 0) {
+                    const btnLessonId = buttons[0].dataset.lessonId;
+                    const btnAssignmentType = buttons[0].dataset.assignmentType;
+                    if (btnLessonId) {
+                        console.log('Найдены параметры из data-атрибутов:', { btnLessonId, btnAssignmentType });
+                        const url = `{{ url_for('kege_generator') }}?lesson_id=${btnLessonId}&assignment_type=${btnAssignmentType || finalAssignmentType}`;
+                        console.log('Переход на генератор:', url);
+                        window.location.href = url;
+                        return;
                     }
                 }
                 
-                if (!currentLessonId) {
-                    toast.error('Ошибка: не удалось определить ID урока. Перезагрузите страницу и попробуйте снова.');
-                    return;
-                }
+                toast.error('Ошибка: не удалось определить ID урока. Перезагрузите страницу и попробуйте снова.');
+                return;
             }
-            
-            // Используем установленный тип задания (homework, classwork, exam)
-            const assignmentType = currentAssignmentType || 'homework';
             
             // Проверяем, что тип валидный
             const validTypes = ['homework', 'classwork', 'exam'];
-            if (!validTypes.includes(assignmentType)) {
-                console.warn(`Неизвестный тип задания: ${assignmentType}, используем homework`);
-                currentAssignmentType = 'homework';
-            }
+            const validAssignmentType = validTypes.includes(finalAssignmentType) ? finalAssignmentType : 'homework';
             
-            const finalLessonId = currentLessonId;
-            const finalAssignmentType = currentAssignmentType || 'homework';
-            const url = `{{ url_for('kege_generator') }}?lesson_id=${finalLessonId}&assignment_type=${finalAssignmentType}`;
-            console.log('Переход на генератор:', url, 'Тип:', finalAssignmentType, 'Lesson ID:', finalLessonId);
+            const url = `{{ url_for('kege_generator') }}?lesson_id=${finalLessonId}&assignment_type=${validAssignmentType}`;
+            console.log('Переход на генератор:', url, 'Тип:', validAssignmentType, 'Lesson ID:', finalLessonId);
             window.location.href = url;
         }
 
