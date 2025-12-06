@@ -689,10 +689,20 @@
 
         function tryShowTemplateModal(event, lessonId, assignmentType) {
             // ВСЕГДА устанавливаем переменные в самом начале, чтобы они были доступны для generateNewTasks()
-            currentLessonId = lessonId;
+            // Преобразуем lessonId в число, если это строка
+            currentLessonId = typeof lessonId === 'string' ? parseInt(lessonId, 10) : lessonId;
             currentAssignmentType = assignmentType;
             
-            console.log('tryShowTemplateModal вызвана:', { lessonId, assignmentType, currentLessonId, currentAssignmentType });
+            // ВЫВОДИМ ЯРКИЕ ЛОГИ ДЛЯ ОТЛАДКИ
+            console.log('%c🎯 TRY SHOW TEMPLATE MODAL ВЫЗВАНА', 'background: #4dabf7; color: white; font-size: 16px; padding: 5px;');
+            console.log('📥 Полученные параметры:', { 
+                receivedLessonId: lessonId, 
+                receivedAssignmentType: assignmentType
+            });
+            console.log('💾 Сохраненные переменные:', { 
+                currentLessonId, 
+                currentAssignmentType 
+            });
             
             // Предотвращаем переход по ссылке
             if (event) {
@@ -895,18 +905,25 @@
             const finalLessonId = lessonId || currentLessonId;
             const finalAssignmentType = assignmentType || currentAssignmentType || 'homework';
             
-            console.log('generateNewTasks вызвана:', { 
+            // ВЫВОДИМ ЯРКИЕ ЛОГИ ДЛЯ ОТЛАДКИ
+            console.log('%c🔍 GENERATE NEW TASKS ВЫЗВАНА', 'background: #ff6b6b; color: white; font-size: 16px; padding: 5px;');
+            console.log('📋 Переданные параметры:', { 
                 passedLessonId: lessonId, 
-                passedAssignmentType: assignmentType,
+                passedAssignmentType: assignmentType
+            });
+            console.log('📋 Глобальные переменные:', { 
                 currentLessonId, 
-                currentAssignmentType,
+                currentAssignmentType
+            });
+            console.log('📋 Финальные значения:', {
                 finalLessonId,
                 finalAssignmentType
             });
             
             // Проверяем, что lesson_id установлен
             if (!finalLessonId) {
-                console.error('lessonId не установлен, пытаемся получить из других источников');
+                console.error('%c❌ ОШИБКА: lessonId не установлен!', 'background: #ff0000; color: white; font-size: 14px; padding: 5px;');
+                console.log('Пытаемся получить из других источников...');
                 // Пытаемся получить lesson_id из data-атрибутов кнопок
                 const buttons = document.querySelectorAll('[data-lesson-id]');
                 if (buttons.length > 0) {
@@ -930,7 +947,18 @@
             const validAssignmentType = validTypes.includes(finalAssignmentType) ? finalAssignmentType : 'homework';
             
             const url = `{{ url_for('kege_generator') }}?lesson_id=${finalLessonId}&assignment_type=${validAssignmentType}`;
-            console.log('Переход на генератор:', url, 'Тип:', validAssignmentType, 'Lesson ID:', finalLessonId);
+            console.log('%c✅ ПЕРЕХОД НА ГЕНЕРАТОР', 'background: #51cf66; color: white; font-size: 16px; padding: 5px;');
+            console.log('🔗 URL:', url);
+            console.log('📝 Тип задания:', validAssignmentType);
+            console.log('🆔 ID урока:', finalLessonId);
+            
+            // Проверяем, что URL содержит параметры
+            if (!url.includes('lesson_id=') || !url.includes('assignment_type=')) {
+                console.error('%c❌ КРИТИЧЕСКАЯ ОШИБКА: URL не содержит нужные параметры!', 'background: #ff0000; color: white; font-size: 14px; padding: 5px;');
+                toast.error('Ошибка: не удалось сформировать правильный URL. Проверьте консоль.');
+                return;
+            }
+            
             window.location.href = url;
         }
 
