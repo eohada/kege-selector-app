@@ -889,9 +889,18 @@
                 currentLessonId = lessonIdFromUrl;
             }
             
+            // Используем установленный тип задания (homework, classwork, exam)
             const assignmentType = currentAssignmentType || 'homework';
-            const url = `{{ url_for('kege_generator') }}?lesson_id=${currentLessonId}&assignment_type=${assignmentType}`;
-            console.log('Переход на генератор:', url);
+            
+            // Проверяем, что тип валидный
+            const validTypes = ['homework', 'classwork', 'exam'];
+            if (!validTypes.includes(assignmentType)) {
+                console.warn(`Неизвестный тип задания: ${assignmentType}, используем homework`);
+                currentAssignmentType = 'homework';
+            }
+            
+            const url = `{{ url_for('kege_generator') }}?lesson_id=${currentLessonId}&assignment_type=${currentAssignmentType || 'homework'}`;
+            console.log('Переход на генератор:', url, 'Тип:', currentAssignmentType);
             window.location.href = url;
         }
 
