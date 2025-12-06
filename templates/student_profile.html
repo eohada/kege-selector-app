@@ -11,7 +11,7 @@
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
-    <style>
+    <body data-student-category="{{ student.category or '' }}">
         
         .profile-details {
             display: grid;
@@ -610,9 +610,9 @@
                         </form>
                         {% endif %}
                         
-                        <button onclick="showTemplateModal({{ lesson.lesson_id }}, 'homework')" class="neo-button accent">📝 Сформировать ДЗ</button>
-                        <button onclick="showTemplateModal({{ lesson.lesson_id }}, 'classwork')" class="neo-button outline">🏫 Сформировать классную работу</button>
-                        <button onclick="showTemplateModal({{ lesson.lesson_id }}, 'exam')" class="neo-button outline" style="background: var(--accent-2);">📊 Сформировать проверочную</button>
+                        <button onclick="showTemplateModal({{ lesson.lesson_id }}, 'homework')" class="neo-button accent" type="button">📝 Сформировать ДЗ</button>
+                        <button onclick="showTemplateModal({{ lesson.lesson_id }}, 'classwork')" class="neo-button outline" type="button">🏫 Сформировать классную работу</button>
+                        <button onclick="showTemplateModal({{ lesson.lesson_id }}, 'exam')" class="neo-button outline" style="background: var(--accent-2);" type="button">📊 Сформировать проверочную</button>
                         <form method="POST" action="{{ url_for('lesson_homework_not_assigned', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
                             <button type="submit" class="neo-button ghost">➖ ДЗ не задано</button>
                         </form>
@@ -689,25 +689,43 @@
         let currentAssignmentType = null;
 
         function showTemplateModal(lessonId, assignmentType) {
-            currentLessonId = lessonId;
-            currentAssignmentType = assignmentType;
-            
-            const modal = document.getElementById('templateModal');
-            const modalTitle = document.getElementById('templateModalTitle');
-            const templatesList = document.getElementById('templatesList');
-            
-            // Устанавливаем заголовок в зависимости от типа
-            const titles = {
-                'homework': 'Выберите шаблон для ДЗ',
-                'classwork': 'Выберите шаблон для классной работы',
-                'exam': 'Выберите шаблон для проверочной работы'
-            };
-            modalTitle.textContent = titles[assignmentType] || 'Выберите шаблон';
-            
-            // Загружаем шаблоны через API
-            loadTemplates(assignmentType, student.category || '');
-            
-            modal.style.display = 'flex';
+            try {
+                currentLessonId = lessonId;
+                currentAssignmentType = assignmentType;
+                
+                const modal = document.getElementById('templateModal');
+                if (!modal) {
+                    console.error('Модальное окно не найдено, перенаправляем на генератор');
+                    generateNewTasks();
+                    return;
+                }
+                
+                const modalTitle = document.getElementById('templateModalTitle');
+                const templatesList = document.getElementById('templatesList');
+                
+                if (!modalTitle || !templatesList) {
+                    console.error('Элементы модального окна не найдены, перенаправляем на генератор');
+                    generateNewTasks();
+                    return;
+                }
+                
+                // Устанавливаем заголовок в зависимости от типа
+                const titles = {
+                    'homework': 'Выберите шаблон для ДЗ',
+                    'classwork': 'Выберите шаблон для классной работы',
+                    'exam': 'Выберите шаблон для проверочной работы'
+                };
+                modalTitle.textContent = titles[assignmentType] || 'Выберите шаблон';
+                
+                // Загружаем шаблоны через API
+                const studentCategory = document.body.dataset.studentCategory || '';
+                loadTemplates(assignmentType, studentCategory);
+                
+                modal.style.display = 'flex';
+            } catch (error) {
+                console.error('Ошибка при открытии модального окна:', error);
+                generateNewTasks();
+            }
         }
 
         function closeTemplateModal() {
