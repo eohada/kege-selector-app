@@ -772,14 +772,41 @@
                     <div style="text-align: center; padding: 2rem;">
                         <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
                         <h3>Нет шаблонов</h3>
-                        <p style="color: var(--text-muted); margin-bottom: 1rem;">Создайте шаблон в библиотеке шаблонов</p>
-                        <a href="{{ url_for('templates_list') }}" class="neo-button accent">📚 Перейти в библиотеку</a>
+                        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Создайте шаблон в библиотеке шаблонов или сгенерируйте задания вручную</p>
+                        <div style="display: flex; flex-direction: column; gap: 1rem; align-items: center;">
+                            <button onclick="generateNewTasks()" class="neo-button accent" style="width: 100%; max-width: 300px;">
+                                🎲 Сгенерировать новые задания
+                            </button>
+                            <a href="{{ url_for('templates_list') }}" class="neo-button ghost" style="text-decoration: none; width: 100%; max-width: 300px; text-align: center;">
+                                📚 Перейти в библиотеку
+                            </a>
+                        </div>
                     </div>
                 `;
                 return;
             }
             
-            templatesList.innerHTML = templates.map(template => `
+            // Сначала добавляем опцию "Сгенерировать новые задания" в начало
+            const generateOption = `
+                <div class="template-option" onclick="generateNewTasks()" style="
+                    padding: 1.5rem;
+                    border: 2px solid var(--accent-1);
+                    border-radius: var(--radius-lg);
+                    background: var(--surface-1);
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    text-align: center;
+                    margin-bottom: 1rem;
+                " onmouseover="this.style.borderColor='var(--accent-2)'; this.style.background='var(--surface-2)'; this.style.transform='scale(1.02)'" 
+                   onmouseout="this.style.borderColor='var(--accent-1)'; this.style.background='var(--surface-1)'; this.style.transform='scale(1)'">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎲</div>
+                    <h3 style="margin: 0; font-size: 1.1em; font-weight: 700; color: var(--accent-1);">Сгенерировать новые задания</h3>
+                    <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9em;">Использовать генератор для создания уникального набора</p>
+                </div>
+            `;
+            
+            // Затем добавляем шаблоны
+            const templatesHtml = templates.map(template => `
                 <div class="template-option" onclick="applyTemplate(${template.id})" style="
                     padding: 1.5rem;
                     border: 1px solid var(--stroke-1);
@@ -805,23 +832,7 @@
                 </div>
             `).join('');
             
-            // Добавляем опцию "Сгенерировать новые задания"
-            templatesList.innerHTML += `
-                <div class="template-option" onclick="generateNewTasks()" style="
-                    padding: 1.5rem;
-                    border: 2px dashed var(--stroke-1);
-                    border-radius: var(--radius-lg);
-                    background: var(--surface-2);
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    text-align: center;
-                " onmouseover="this.style.borderColor='var(--accent-1)'; this.style.background='var(--surface-1)'" 
-                   onmouseout="this.style.borderColor='var(--stroke-1)'; this.style.background='var(--surface-2)'">
-                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎲</div>
-                    <h3 style="margin: 0; font-size: 1.1em; font-weight: 700;">Сгенерировать новые задания</h3>
-                    <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9em;">Использовать генератор для создания уникального набора</p>
-                </div>
-            `;
+            templatesList.innerHTML = generateOption + templatesHtml;
         }
 
         function applyTemplate(templateId) {
