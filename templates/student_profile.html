@@ -609,9 +609,9 @@
                         </form>
                         {% endif %}
                         
-                        <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="neo-button accent" onclick="return tryShowTemplateModal(event, {{ lesson.lesson_id }}, 'homework')">📝 Сформировать ДЗ</a>
-                        <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type='classwork') }}" class="neo-button outline" onclick="return tryShowTemplateModal(event, {{ lesson.lesson_id }}, 'classwork')">🏫 Сформировать классную работу</a>
-                        <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type='exam') }}" class="neo-button outline" style="background: var(--accent-2);" onclick="return tryShowTemplateModal(event, {{ lesson.lesson_id }}, 'exam')">📊 Сформировать проверочную</a>
+                        <a href="#" class="neo-button accent" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, 'homework'); return false;">📝 Сформировать ДЗ</a>
+                        <a href="#" class="neo-button outline" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, 'classwork'); return false;">🏫 Сформировать классную работу</a>
+                        <a href="#" class="neo-button outline" style="background: var(--accent-2);" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, 'exam'); return false;">📊 Сформировать проверочную</a>
                         <form method="POST" action="{{ url_for('lesson_homework_not_assigned', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
                             <button type="submit" class="neo-button ghost">➖ ДЗ не задано</button>
                         </form>
@@ -692,24 +692,32 @@
             currentLessonId = lessonId;
             currentAssignmentType = assignmentType;
             
+            console.log('tryShowTemplateModal вызвана:', { lessonId, assignmentType, currentLessonId, currentAssignmentType });
+            
+            // Предотвращаем переход по ссылке
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
             // Пытаемся показать модальное окно, если оно доступно
             try {
                 const modal = document.getElementById('templateModal');
                 if (!modal) {
-                    // Модальное окно не найдено - разрешаем переход по ссылке
-                    return true;
+                    // Модальное окно не найдено - переходим напрямую на генератор
+                    console.log('Модальное окно не найдено, переходим на генератор');
+                    generateNewTasks();
+                    return false;
                 }
-                
-                // Предотвращаем переход по ссылке
-                event.preventDefault();
-                event.stopPropagation();
                 
                 const modalTitle = document.getElementById('templateModalTitle');
                 const templatesList = document.getElementById('templatesList');
                 
                 if (!modalTitle || !templatesList) {
-                    // Элементы не найдены - разрешаем переход
-                    return true;
+                    // Элементы не найдены - переходим на генератор
+                    console.log('Элементы модального окна не найдены, переходим на генератор');
+                    generateNewTasks();
+                    return false;
                 }
                 
                 // Устанавливаем заголовок в зависимости от типа
