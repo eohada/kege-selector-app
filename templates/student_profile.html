@@ -688,6 +688,10 @@
         let currentAssignmentType = null;
 
         function tryShowTemplateModal(event, lessonId, assignmentType) {
+            // ВСЕГДА устанавливаем переменные в самом начале, чтобы они были доступны для generateNewTasks()
+            currentLessonId = lessonId;
+            currentAssignmentType = assignmentType;
+            
             // Пытаемся показать модальное окно, если оно доступно
             try {
                 const modal = document.getElementById('templateModal');
@@ -699,9 +703,6 @@
                 // Предотвращаем переход по ссылке
                 event.preventDefault();
                 event.stopPropagation();
-                
-                currentLessonId = lessonId;
-                currentAssignmentType = assignmentType;
                 
                 const modalTitle = document.getElementById('templateModalTitle');
                 const templatesList = document.getElementById('templatesList');
