@@ -976,8 +976,8 @@ def student_new():
                     return render_template('student_form.html', form=form, title='Добавить ученика', is_new=True)
 
             school_class_value = normalize_school_class(form.school_class.data)  # Приводим выбранный класс к допустимому значению
-            goal_text_value = form.goal_text.data.strip() if form.goal_text.data else None  # Забираем текстовую цель
-            programming_language_value = form.programming_language.data.strip() if form.programming_language.data else None  # Забираем язык программирования
+            goal_text_value = form.goal_text.data.strip() if (form.goal_text.data and form.goal_text.data.strip()) else None  # Забираем текстовую цель
+            programming_language_value = form.programming_language.data.strip() if (form.programming_language.data and form.programming_language.data.strip()) else None  # Забираем язык программирования
             student = Student(
                 name=form.name.data,
                 platform_id=platform_id,
