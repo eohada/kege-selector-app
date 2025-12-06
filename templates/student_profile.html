@@ -952,6 +952,18 @@
             console.log('📝 Тип задания:', validAssignmentType);
             console.log('🆔 ID урока:', finalLessonId);
             
+            // Сохраняем логи в localStorage для отладки
+            const debugInfo = {
+                timestamp: new Date().toISOString(),
+                url: url,
+                lessonId: finalLessonId,
+                assignmentType: validAssignmentType,
+                passedParams: { lessonId, assignmentType },
+                globalVars: { currentLessonId, currentAssignmentType }
+            };
+            localStorage.setItem('lastGeneratorRedirect', JSON.stringify(debugInfo));
+            console.log('💾 Логи сохранены в localStorage. Ключ: lastGeneratorRedirect');
+            
             // Проверяем, что URL содержит параметры
             if (!url.includes('lesson_id=') || !url.includes('assignment_type=')) {
                 console.error('%c❌ КРИТИЧЕСКАЯ ОШИБКА: URL не содержит нужные параметры!', 'background: #ff0000; color: white; font-size: 14px; padding: 5px;');
@@ -959,7 +971,11 @@
                 return;
             }
             
-            window.location.href = url;
+            // Показываем alert с информацией (можно закомментировать после отладки)
+            const alertMsg = `Переход на генератор:\n\nID урока: ${finalLessonId}\nТип: ${validAssignmentType}\n\nURL: ${url}\n\nЛоги сохранены в localStorage (ключ: lastGeneratorRedirect)\n\nНажмите OK для перехода...`;
+            if (confirm(alertMsg)) {
+                window.location.href = url;
+            }
         }
 
         function getCsrfToken() {
