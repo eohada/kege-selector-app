@@ -19,7 +19,7 @@ BeautifulSoup = None
 from wtforms import SelectField, IntegerField, SubmitField, BooleanField, StringField, TextAreaField, DateTimeField, DateTimeLocalField, PasswordField
 from wtforms.validators import DataRequired, NumberRange, Optional, Email, ValidationError
 
-from core.db_models import db, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, Student, Lesson, LessonTask, User, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from core.db_models import db, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, Student, Lesson, LessonTask, User, TaskTemplate, TemplateTask, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from core.selector_logic import (
     get_unique_tasks, record_usage, record_skipped, record_blacklist,
     reset_history, reset_skipped, reset_blacklist,
@@ -3973,6 +3973,333 @@ def clear_testers_data():
         db.session.rollback()
         logger.error(f"Ошибка при очистке данных тестировщиков: {e}", exc_info=True)
         print(f"❌ Ошибка: {e}")
+
+# ==================== БИБЛИОТЕКА ШАБЛОНОВ ====================
+
+@app.route('/templates')
+@login_required
+def templates_list():
+    """Список всех шаблонов с фильтрацией по типу"""
+    template_type = request.args.get('type', '')  # homework, classwork, exam, lesson
+    category = request.args.get('category', '')  # ЕГЭ, ОГЭ, ЛЕВЕЛАП, ПРОГРАММИРОВАНИЕ
+    
+    query = TaskTemplate.query.filter_by(is_active=True)
+    
+    if template_type:
+        query = query.filter_by(template_type=template_type)
+    if category:
+        query = query.filter_by(category=category)
+    
+    templates = query.options(
+        db.joinedload(TaskTemplate.template_tasks).joinedload(TemplateTask.task)
+    ).order_by(TaskTemplate.created_at.desc()).all()
+    
+    # Группируем по типам для отображения
+    templates_by_type = {
+        'homework': [],
+        'classwork': [],
+        'exam': [],
+        'lesson': []
+    }
+    
+    for template in templates:
+        templates_by_type[template.template_type].append(template)
+    
+    return render_template('templates_list.html',
+                         templates=templates,
+                         templates_by_type=templates_by_type,
+                         current_type=template_type,
+                         current_category=category)
+
+@app.route('/templates/new', methods=['GET', 'POST'])
+@login_required
+def template_new():
+    """Создание нового шаблона"""
+    if request.method == 'POST':
+        try:
+            data = request.get_json() if request.is_json else request.form.to_dict()
+            
+            name = data.get('name', '').strip()
+            if not name:
+                return jsonify({'success': False, 'error': 'Название шаблона обязательно'}), 400
+            
+            template = TaskTemplate(
+                name=name,
+                description=data.get('description', '').strip() or None,
+                template_type=data.get('template_type', 'homework'),
+                category=data.get('category') or None,
+                created_by=current_user.id if current_user.is_authenticated else None
+            )
+            db.session.add(template)
+            db.session.flush()  # Получаем template_id
+            
+            # Добавляем задания в шаблон
+            task_ids = data.get('task_ids', [])
+            for order, task_id in enumerate(task_ids):
+                template_task = TemplateTask(
+                    template_id=template.template_id,
+                    task_id=task_id,
+                    order=order
+                )
+                db.session.add(template_task)
+            
+            db.session.commit()
+            
+            audit_logger.log(
+                action='create_template',
+                entity='TaskTemplate',
+                entity_id=template.template_id,
+                status='success',
+                metadata={
+                    'name': name,
+                    'template_type': template.template_type,
+                    'task_count': len(task_ids)
+                }
+            )
+            
+            if request.is_json:
+                return jsonify({'success': True, 'template_id': template.template_id})
+            flash('Шаблон успешно создан', 'success')
+            return redirect(url_for('templates_list'))
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Ошибка при создании шаблона: {e}", exc_info=True)
+            if request.is_json:
+                return jsonify({'success': False, 'error': str(e)}), 500
+            flash(f'Ошибка при создании шаблона: {e}', 'error')
+            return redirect(url_for('templates_list'))
+    
+    # GET запрос - показываем форму создания
+    return render_template('template_form.html', template=None, is_new=True)
+
+@app.route('/templates/<int:template_id>')
+@login_required
+def template_view(template_id):
+    """Просмотр шаблона"""
+    template = TaskTemplate.query.options(
+        db.joinedload(TaskTemplate.template_tasks).joinedload(TemplateTask.task)
+    ).get_or_404(template_id)
+    
+    # Сортируем задания по порядку
+    template_tasks = sorted(template.template_tasks, key=lambda tt: tt.order)
+    
+    return render_template('template_view.html',
+                         template=template,
+                         template_tasks=template_tasks)
+
+@app.route('/templates/<int:template_id>/edit', methods=['GET', 'POST'])
+@login_required
+def template_edit(template_id):
+    """Редактирование шаблона"""
+    template = TaskTemplate.query.options(
+        db.joinedload(TaskTemplate.template_tasks).joinedload(TemplateTask.task)
+    ).get_or_404(template_id)
+    
+    if request.method == 'POST':
+        try:
+            data = request.get_json() if request.is_json else request.form.to_dict()
+            
+            template.name = data.get('name', template.name).strip()
+            template.description = data.get('description', '').strip() or None
+            template.template_type = data.get('template_type', template.template_type)
+            template.category = data.get('category') or None
+            template.updated_at = moscow_now()
+            
+            # Обновляем задания
+            task_ids = data.get('task_ids', [])
+            
+            # Удаляем старые задания
+            TemplateTask.query.filter_by(template_id=template_id).delete()
+            
+            # Добавляем новые задания
+            for order, task_id in enumerate(task_ids):
+                template_task = TemplateTask(
+                    template_id=template_id,
+                    task_id=task_id,
+                    order=order
+                )
+                db.session.add(template_task)
+            
+            db.session.commit()
+            
+            audit_logger.log(
+                action='edit_template',
+                entity='TaskTemplate',
+                entity_id=template_id,
+                status='success',
+                metadata={'name': template.name}
+            )
+            
+            if request.is_json:
+                return jsonify({'success': True})
+            flash('Шаблон успешно обновлен', 'success')
+            return redirect(url_for('template_view', template_id=template_id))
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Ошибка при редактировании шаблона: {e}", exc_info=True)
+            if request.is_json:
+                return jsonify({'success': False, 'error': str(e)}), 500
+            flash(f'Ошибка при редактировании шаблона: {e}', 'error')
+            return redirect(url_for('template_edit', template_id=template_id))
+    
+    # GET запрос - показываем форму редактирования
+    template_tasks = sorted(template.template_tasks, key=lambda tt: tt.order)
+    return render_template('template_form.html',
+                         template=template,
+                         template_tasks=template_tasks,
+                         is_new=False)
+
+@app.route('/templates/<int:template_id>/delete', methods=['POST'])
+@login_required
+def template_delete(template_id):
+    """Удаление шаблона (мягкое удаление - is_active=False)"""
+    template = TaskTemplate.query.get_or_404(template_id)
+    
+    template.is_active = False
+    template.updated_at = moscow_now()
+    db.session.commit()
+    
+    audit_logger.log(
+        action='delete_template',
+        entity='TaskTemplate',
+        entity_id=template_id,
+        status='success',
+        metadata={'name': template.name}
+    )
+    
+    flash('Шаблон удален', 'success')
+    return redirect(url_for('templates_list'))
+
+@app.route('/templates/<int:template_id>/apply', methods=['POST'])
+@login_required
+def template_apply(template_id):
+    """Применение шаблона к уроку"""
+    try:
+        data = request.get_json() if request.is_json else request.form.to_dict()
+        lesson_id = data.get('lesson_id')
+        
+        if not lesson_id:
+            return jsonify({'success': False, 'error': 'ID урока обязателен'}), 400
+        
+        lesson = Lesson.query.get_or_404(lesson_id)
+        template = TaskTemplate.query.options(
+            db.joinedload(TaskTemplate.template_tasks).joinedload(TemplateTask.task)
+        ).get_or_404(template_id)
+        
+        # Получаем задания из шаблона в правильном порядке
+        template_tasks = sorted(template.template_tasks, key=lambda tt: tt.order)
+        assignment_type = template.template_type  # homework, classwork, exam
+        
+        # Применяем задания к уроку
+        applied_count = 0
+        skipped_count = 0
+        
+        for template_task in template_tasks:
+            # Проверяем, не добавлено ли уже это задание
+            existing = LessonTask.query.filter_by(
+                lesson_id=lesson_id,
+                task_id=template_task.task_id
+            ).first()
+            
+            if not existing:
+                lesson_task = LessonTask(
+                    lesson_id=lesson_id,
+                    task_id=template_task.task_id,
+                    assignment_type=assignment_type
+                )
+                db.session.add(lesson_task)
+                applied_count += 1
+                
+                # Автоматически помечаем задание как использованное для этого ученика
+                # Создаем запись в UsageHistory
+                usage = UsageHistory(
+                    task_fk=template_task.task_id,
+                    session_tag=f"student_{lesson.student_id}"
+                )
+                db.session.add(usage)
+            else:
+                skipped_count += 1
+        
+        # Обновляем статус ДЗ урока
+        if assignment_type == 'homework':
+            if lesson.lesson_type != 'introductory':
+                lesson.homework_status = 'assigned_not_done'
+        elif assignment_type == 'classwork':
+            # Для классной работы статус не меняем
+            pass
+        elif assignment_type == 'exam':
+            # Для проверочной работы статус не меняем
+            pass
+        
+        db.session.commit()
+        
+        audit_logger.log(
+            action='apply_template',
+            entity='Lesson',
+            entity_id=lesson_id,
+            status='success',
+            metadata={
+                'template_id': template_id,
+                'template_name': template.name,
+                'assignment_type': assignment_type,
+                'applied_count': applied_count,
+                'skipped_count': skipped_count,
+                'student_id': lesson.student_id
+            }
+        )
+        
+        message = f'Шаблон применен: добавлено {applied_count} заданий'
+        if skipped_count > 0:
+            message += f', пропущено {skipped_count} (уже были добавлены)'
+        
+        if request.is_json:
+            return jsonify({
+                'success': True,
+                'message': message,
+                'applied_count': applied_count,
+                'skipped_count': skipped_count
+            })
+        
+        flash(message, 'success')
+        return redirect(url_for('lesson_homework_view', lesson_id=lesson_id))
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Ошибка при применении шаблона: {e}", exc_info=True)
+        if request.is_json:
+            return jsonify({'success': False, 'error': str(e)}), 500
+        flash(f'Ошибка при применении шаблона: {e}', 'error')
+        return redirect(url_for('templates_list'))
+
+@app.route('/api/templates', methods=['GET'])
+@login_required
+def api_templates():
+    """API для получения списка шаблонов (для выпадающих списков)"""
+    template_type = request.args.get('type', '')
+    category = request.args.get('category', '')
+    
+    query = TaskTemplate.query.filter_by(is_active=True)
+    
+    if template_type:
+        query = query.filter_by(template_type=template_type)
+    if category:
+        query = query.filter_by(category=category)
+    
+    templates = query.order_by(TaskTemplate.name).all()
+    
+    return jsonify({
+        'success': True,
+        'templates': [{
+            'id': t.template_id,
+            'name': t.name,
+            'description': t.description,
+            'type': t.template_type,
+            'category': t.category,
+            'task_count': len(t.template_tasks)
+        } for t in templates]
+    })
 
 if __name__ == '__main__':
     logger.info('Запуск приложения')

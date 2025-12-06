@@ -229,3 +229,39 @@ class AuditLog(db.Model):
 
     def __repr__(self):
         return f'<AuditLog {self.action} {self.entity} by {self.tester_name} at {self.timestamp}>'
+
+class TaskTemplate(db.Model):
+    """Модель шаблона заданий для библиотеки шаблонов"""
+    __tablename__ = 'TaskTemplates'
+    template_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)  # Название шаблона
+    description = db.Column(db.Text, nullable=True)  # Описание шаблона
+    template_type = db.Column(db.String(20), nullable=False)  # 'homework', 'classwork', 'exam', 'lesson'
+    category = db.Column(db.String(50), nullable=True)  # Категория ученика (ЕГЭ, ОГЭ, ЛЕВЕЛАП, ПРОГРАММИРОВАНИЕ)
+    created_by = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)  # Кто создал шаблон
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    # Связи
+    template_tasks = db.relationship('TemplateTask', back_populates='template', lazy=True, cascade='all, delete-orphan')
+    creator = db.relationship('User', foreign_keys=[created_by])
+    
+    def __repr__(self):
+        return f'<TaskTemplate {self.name} ({self.template_type})>'
+
+class TemplateTask(db.Model):
+    """Связь между шаблоном и заданиями"""
+    __tablename__ = 'TemplateTasks'
+    template_task_id = db.Column(db.Integer, primary_key=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('TaskTemplates.template_id'), nullable=False)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False)
+    order = db.Column(db.Integer, default=0)  # Порядок задания в шаблоне
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    
+    # Связи
+    template = db.relationship('TaskTemplate', back_populates='template_tasks')
+    task = db.relationship('Tasks')
+    
+    def __repr__(self):
+        return f'<TemplateTask template_id={self.template_id} task_id={self.task_id}>'

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Библиотека шаблонов · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    {% include '_ux_enhancements.html' %}
+</head>
+<body>
+    <header class="nav-primary">
+        <div class="nav-brand">
+            {% if current_user and current_user.is_authenticated %}
+            <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                {{ current_user.username[0].upper() }}
+            </a>
+            {% endif %}
+            <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                <div class="brand-mark">LOGO</div>
+                <div class="brand-caption">Слот под фирменный знак</div>
+            </a>
+        </div>
+        {% include '_mobile_menu.html' %}
+        <nav class="nav-links">
+            <a href="{{ url_for('dashboard') }}" class="nav-link">
+                <span class="nav-link-content">
+                    <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon">
+                    <span class="nav-link-label">Ученики</span>
+                </span>
+            </a>
+            <a href="{{ url_for('schedule') }}" class="nav-link">
+                <span class="nav-link-content">
+                    <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon">
+                    <span class="nav-link-label">Расписание</span>
+                </span>
+            </a>
+            <a href="{{ url_for('kege_generator') }}" class="nav-link">
+                <span class="nav-link-content">
+                    <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon">
+                    <span class="nav-link-label">Генератор</span>
+                </span>
+            </a>
+            <a href="{{ url_for('update_plans') }}" class="nav-link">
+                <span class="nav-link-content">
+                    <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Планы" class="nav-link-icon">
+                    <span class="nav-link-label">Планы</span>
+                </span>
+            </a>
+        </nav>
+    </header>
+
+    <div class="app-shell">
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div>
+                    <p class="hero-eyebrow">библиотека шаблонов</p>
+                    <h1 class="hero-title">📚 Шаблоны заданий</h1>
+                    <p class="hero-subtitle">Готовые наборы заданий для быстрого формирования ДЗ, классных и проверочных работ</p>
+                </div>
+                <a href="{{ url_for('template_new') }}" class="neo-button accent">➕ Создать шаблон</a>
+            </div>
+        </section>
+
+        <!-- Фильтры -->
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-muted);">Тип шаблона:</label>
+                    <select id="typeFilter" onchange="applyFilters()" style="padding: 0.5rem 1rem; border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); background: var(--surface-1); color: var(--text-primary);">
+                        <option value="">Все типы</option>
+                        <option value="homework" {% if current_type == 'homework' %}selected{% endif %}>Домашние задания</option>
+                        <option value="classwork" {% if current_type == 'classwork' %}selected{% endif %}>Классные работы</option>
+                        <option value="exam" {% if current_type == 'exam' %}selected{% endif %}>Проверочные работы</option>
+                        <option value="lesson" {% if current_type == 'lesson' %}selected{% endif %}>Уроки</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-muted);">Категория:</label>
+                    <select id="categoryFilter" onchange="applyFilters()" style="padding: 0.5rem 1rem; border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); background: var(--surface-1); color: var(--text-primary);">
+                        <option value="">Все категории</option>
+                        <option value="ЕГЭ" {% if current_category == 'ЕГЭ' %}selected{% endif %}>ЕГЭ</option>
+                        <option value="ОГЭ" {% if current_category == 'ОГЭ' %}selected{% endif %}>ОГЭ</option>
+                        <option value="ЛЕВЕЛАП" {% if current_category == 'ЛЕВЕЛАП' %}selected{% endif %}>ЛЕВЕЛАП</option>
+                        <option value="ПРОГРАММИРОВАНИЕ" {% if current_category == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Разделы шаблонов -->
+        {% for type_key, type_name, type_icon in [
+            ('homework', 'Домашние задания', '📝'),
+            ('classwork', 'Классные работы', '🏫'),
+            ('exam', 'Проверочные работы', '✅'),
+            ('lesson', 'Уроки', '📚')
+        ] %}
+        {% set type_templates = templates_by_type.get(type_key, []) %}
+        {% if not current_type or current_type == type_key %}
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">{{ type_icon }} {{ type_name }}</p>
+                    <h2>{{ type_templates|length }} шаблонов</h2>
+                </div>
+            </div>
+
+            {% if type_templates %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+                {% for template in type_templates %}
+                <div class="template-card" style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem; transition: all 0.3s ease;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2em; font-weight: 700;">{{ template.name }}</h3>
+                            {% if template.description %}
+                            <p style="margin: 0; color: var(--text-muted); font-size: 0.9em;">{{ template.description[:100] }}{% if template.description|length > 100 %}...{% endif %}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                        {% if template.category %}
+                        <span style="padding: 0.25rem 0.75rem; background: var(--accent-1); color: white; border-radius: var(--radius-sm); font-size: 0.85em; font-weight: 600;">{{ template.category }}</span>
+                        {% endif %}
+                        <span style="padding: 0.25rem 0.75rem; background: var(--surface-3); color: var(--text-muted); border-radius: var(--radius-sm); font-size: 0.85em;">
+                            {{ template.template_tasks|length }} заданий
+                        </span>
+                    </div>
+
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <a href="{{ url_for('template_view', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1; text-align: center; text-decoration: none;">👁️ Просмотр</a>
+                        <a href="{{ url_for('template_edit', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1; text-align: center; text-decoration: none;">✏️ Редактировать</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state" style="padding: 3rem; text-align: center;">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">📭</div>
+                <h3>Нет шаблонов</h3>
+                <p style="color: var(--text-muted);">Создайте первый шаблон для этого типа</p>
+            </div>
+            {% endif %}
+        </section>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>
+    <script>
+        function applyFilters() {
+            const type = document.getElementById('typeFilter').value;
+            const category = document.getElementById('categoryFilter').value;
+            const params = new URLSearchParams();
+            if (type) params.append('type', type);
+            if (category) params.append('category', category);
+            window.location.href = '{{ url_for("templates_list") }}?' + params.toString();
+        }
+    </script>
+</body>
+</html>
+

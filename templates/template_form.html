@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if is_new %}Создать шаблон{% else %}Редактировать шаблон{% endif %} · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    {% include '_ux_enhancements.html' %}
+</head>
+<body>
+    <header class="nav-primary">
+        <div class="nav-brand">
+            {% if current_user and current_user.is_authenticated %}
+            <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                {{ current_user.username[0].upper() }}
+            </a>
+            {% endif %}
+            <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                <div class="brand-mark">LOGO</div>
+                <div class="brand-caption">Слот под фирменный знак</div>
+            </a>
+        </div>
+        {% include '_mobile_menu.html' %}
+        <nav class="nav-links">
+            <a href="{{ url_for('dashboard') }}" class="nav-link">
+                <span class="nav-link-content">
+                    <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon">
+                    <span class="nav-link-label">Ученики</span>
+                </span>
+            </a>
+            <a href="{{ url_for('schedule') }}" class="nav-link">
+                <span class="nav-link-content">
+                    <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon">
+                    <span class="nav-link-label">Расписание</span>
+                </span>
+            </a>
+            <a href="{{ url_for('kege_generator') }}" class="nav-link">
+                <span class="nav-link-content">
+                    <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon">
+                    <span class="nav-link-label">Генератор</span>
+                </span>
+            </a>
+            <a href="{{ url_for('update_plans') }}" class="nav-link">
+                <span class="nav-link-content">
+                    <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Планы" class="nav-link-icon">
+                    <span class="nav-link-label">Планы</span>
+                </span>
+            </a>
+        </nav>
+    </header>
+
+    <div class="app-shell">
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <a href="{{ url_for('templates_list') }}" class="neo-button ghost" style="text-decoration: none;">← К библиотеке</a>
+            </div>
+            <p class="hero-eyebrow">{% if is_new %}создание шаблона{% else %}редактирование шаблона{% endif %}</p>
+            <h1 class="hero-title">{% if is_new %}➕ Создать шаблон{% else %}✏️ Редактировать шаблон{% endif %}</h1>
+        </section>
+
+        <form id="templateForm" class="glass-panel">
+            <div style="margin-bottom: 2rem;">
+                <label class="neo-label" for="name">Название шаблона *</label>
+                <input type="text" id="name" name="name" class="neo-input" 
+                       value="{{ template.name if template else '' }}" 
+                       placeholder="Например: Базовый набор заданий 1-5" required>
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <label class="neo-label" for="description">Описание</label>
+                <textarea id="description" name="description" class="neo-input" rows="3" 
+                          placeholder="Краткое описание шаблона (необязательно)">{{ template.description if template else '' }}</textarea>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                <div>
+                    <label class="neo-label" for="template_type">Тип шаблона *</label>
+                    <select id="template_type" name="template_type" class="neo-select" required>
+                        <option value="homework" {% if template and template.template_type == 'homework' %}selected{% endif %}>Домашние задания</option>
+                        <option value="classwork" {% if template and template.template_type == 'classwork' %}selected{% endif %}>Классные работы</option>
+                        <option value="exam" {% if template and template.template_type == 'exam' %}selected{% endif %}>Проверочные работы</option>
+                        <option value="lesson" {% if template and template.template_type == 'lesson' %}selected{% endif %}>Уроки</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="neo-label" for="category">Категория</label>
+                    <select id="category" name="category" class="neo-select">
+                        <option value="">Не указана</option>
+                        <option value="ЕГЭ" {% if template and template.category == 'ЕГЭ' %}selected{% endif %}>ЕГЭ</option>
+                        <option value="ОГЭ" {% if template and template.category == 'ОГЭ' %}selected{% endif %}>ОГЭ</option>
+                        <option value="ЛЕВЕЛАП" {% if template and template.category == 'ЛЕВЕЛАП' %}selected{% endif %}>ЛЕВЕЛАП</option>
+                        <option value="ПРОГРАММИРОВАНИЕ" {% if template and template.category == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option>
+                    </select>
+                </div>
+            </div>
+
+            {% if not is_new and template %}
+            <div style="margin-bottom: 2rem; padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-lg); border: 1px solid var(--stroke-1);">
+                <h3 style="margin: 0 0 1rem 0; font-size: 1.1em;">Задания в шаблоне ({{ template.template_tasks|length }})</h3>
+                <p style="color: var(--text-muted); margin: 0 0 1rem 0;">Для добавления или изменения заданий используйте генератор и сохраните выбранные задания в этот шаблон.</p>
+                <a href="{{ url_for('kege_generator') }}?template_id={{ template.template_id }}" class="neo-button accent">🎲 Добавить задания через генератор</a>
+            </div>
+            {% endif %}
+
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <a href="{{ url_for('templates_list') }}" class="neo-button ghost">Отмена</a>
+                <button type="submit" class="neo-button accent">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>
+    <script>
+        document.getElementById('templateForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('name').value.trim(),
+                description: document.getElementById('description').value.trim(),
+                template_type: document.getElementById('template_type').value,
+                category: document.getElementById('category').value || null,
+                task_ids: [] // Пока пустой, задания добавляются через генератор
+            };
+
+            const url = {% if is_new %}'{{ url_for("template_new") }}'{% else %}'{{ url_for("template_edit", template_id=template.template_id) }}'{% endif %};
+            const method = 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    toast.success('{% if is_new %}Шаблон создан{% else %}Шаблон сохранен{% endif %}');
+                    setTimeout(() => {
+                        window.location.href = '{{ url_for("templates_list") }}';
+                    }, 1000);
+                } else {
+                    toast.error(data.error || 'Ошибка при сохранении');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                toast.error('Ошибка при сохранении шаблона');
+            }
+        });
+    </script>
+</body>
+</html>
+

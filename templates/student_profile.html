@@ -610,9 +610,9 @@
                         </form>
                         {% endif %}
                         
-                        <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="neo-button accent">📝 Сформировать ДЗ</a>
-                        <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type='classwork') }}" class="neo-button outline">🏫 Сформировать классную работу</a>
-                        <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type='exam') }}" class="neo-button outline" style="background: var(--accent-2);">📊 Сформировать проверочную</a>
+                        <button onclick="showTemplateModal({{ lesson.lesson_id }}, 'homework')" class="neo-button accent">📝 Сформировать ДЗ</button>
+                        <button onclick="showTemplateModal({{ lesson.lesson_id }}, 'classwork')" class="neo-button outline">🏫 Сформировать классную работу</button>
+                        <button onclick="showTemplateModal({{ lesson.lesson_id }}, 'exam')" class="neo-button outline" style="background: var(--accent-2);">📊 Сформировать проверочную</button>
                         <form method="POST" action="{{ url_for('lesson_homework_not_assigned', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
                             <button type="submit" class="neo-button ghost">➖ ДЗ не задано</button>
                         </form>
@@ -683,6 +683,220 @@
                 {% endif %}
             {% endwith %}
         });
+
+        // Модальное окно для выбора шаблона
+        let currentLessonId = null;
+        let currentAssignmentType = null;
+
+        function showTemplateModal(lessonId, assignmentType) {
+            currentLessonId = lessonId;
+            currentAssignmentType = assignmentType;
+            
+            const modal = document.getElementById('templateModal');
+            const modalTitle = document.getElementById('templateModalTitle');
+            const templatesList = document.getElementById('templatesList');
+            
+            // Устанавливаем заголовок в зависимости от типа
+            const titles = {
+                'homework': 'Выберите шаблон для ДЗ',
+                'classwork': 'Выберите шаблон для классной работы',
+                'exam': 'Выберите шаблон для проверочной работы'
+            };
+            modalTitle.textContent = titles[assignmentType] || 'Выберите шаблон';
+            
+            // Загружаем шаблоны через API
+            loadTemplates(assignmentType, student.category || '');
+            
+            modal.style.display = 'flex';
+        }
+
+        function closeTemplateModal() {
+            document.getElementById('templateModal').style.display = 'none';
+        }
+
+        function loadTemplates(type, category) {
+            const templatesList = document.getElementById('templatesList');
+            templatesList.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="loading-spinner"></div><p>Загрузка шаблонов...</p></div>';
+            
+            const params = new URLSearchParams({ type: type });
+            if (category) params.append('category', category);
+            
+            fetch(`{{ url_for("api_templates") }}?${params.toString()}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderTemplates(data.templates);
+                    } else {
+                        templatesList.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Ошибка загрузки шаблонов</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки шаблонов:', error);
+                    templatesList.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Ошибка загрузки шаблонов</div>';
+                });
+        }
+
+        function renderTemplates(templates) {
+            const templatesList = document.getElementById('templatesList');
+            
+            if (templates.length === 0) {
+                templatesList.innerHTML = `
+                    <div style="text-align: center; padding: 2rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+                        <h3>Нет шаблонов</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 1rem;">Создайте шаблон в библиотеке шаблонов</p>
+                        <a href="{{ url_for('templates_list') }}" class="neo-button accent">📚 Перейти в библиотеку</a>
+                    </div>
+                `;
+                return;
+            }
+            
+            templatesList.innerHTML = templates.map(template => `
+                <div class="template-option" onclick="applyTemplate(${template.id})" style="
+                    padding: 1.5rem;
+                    border: 1px solid var(--stroke-1);
+                    border-radius: var(--radius-lg);
+                    background: var(--surface-1);
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    margin-bottom: 1rem;
+                " onmouseover="this.style.borderColor='var(--accent-1)'; this.style.transform='translateY(-2px)'" 
+                   onmouseout="this.style.borderColor='var(--stroke-1)'; this.style.transform='translateY(0)'">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div style="flex: 1;">
+                            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1em; font-weight: 700;">${template.name}</h3>
+                            ${template.description ? `<p style="margin: 0; color: var(--text-muted); font-size: 0.9em;">${template.description}</p>` : ''}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+                        ${template.category ? `<span style="padding: 0.25rem 0.75rem; background: var(--accent-1); color: white; border-radius: var(--radius-sm); font-size: 0.85em;">${template.category}</span>` : ''}
+                        <span style="padding: 0.25rem 0.75rem; background: var(--surface-3); color: var(--text-muted); border-radius: var(--radius-sm); font-size: 0.85em;">
+                            ${template.task_count} заданий
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Добавляем опцию "Сгенерировать новые задания"
+            templatesList.innerHTML += `
+                <div class="template-option" onclick="generateNewTasks()" style="
+                    padding: 1.5rem;
+                    border: 2px dashed var(--stroke-1);
+                    border-radius: var(--radius-lg);
+                    background: var(--surface-2);
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    text-align: center;
+                " onmouseover="this.style.borderColor='var(--accent-1)'; this.style.background='var(--surface-1)'" 
+                   onmouseout="this.style.borderColor='var(--stroke-1)'; this.style.background='var(--surface-2)'">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎲</div>
+                    <h3 style="margin: 0; font-size: 1.1em; font-weight: 700;">Сгенерировать новые задания</h3>
+                    <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9em;">Использовать генератор для создания уникального набора</p>
+                </div>
+            `;
+        }
+
+        function applyTemplate(templateId) {
+            if (!currentLessonId || !templateId) return;
+            
+            const loadingDiv = document.createElement('div');
+            loadingDiv.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+            loadingDiv.innerHTML = '<div style="background: var(--surface-1); padding: 2rem; border-radius: var(--radius-lg); text-align: center;"><div class="loading-spinner"></div><p>Применение шаблона...</p></div>';
+            document.body.appendChild(loadingDiv);
+            
+            fetch(`{{ url_for("template_apply", template_id=0) }}`.replace('0', templateId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    lesson_id: currentLessonId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.body.removeChild(loadingDiv);
+                if (data.success) {
+                    toast.success(data.message || 'Шаблон успешно применен');
+                    closeTemplateModal();
+                    // Перезагружаем страницу для отображения новых заданий
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    toast.error(data.error || 'Ошибка при применении шаблона');
+                }
+            })
+            .catch(error => {
+                document.body.removeChild(loadingDiv);
+                console.error('Ошибка применения шаблона:', error);
+                toast.error('Ошибка при применении шаблона');
+            });
+        }
+
+        function generateNewTasks() {
+            closeTemplateModal();
+            const assignmentType = currentAssignmentType || 'homework';
+            window.location.href = `{{ url_for('kege_generator') }}?lesson_id=${currentLessonId}&assignment_type=${assignmentType}`;
+        }
+
+        function getCsrfToken() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.content : '';
+        }
     </script>
+
+    <!-- Модальное окно выбора шаблона -->
+    <div id="templateModal" style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    ">
+        <div style="
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            max-width: 600px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 2rem;
+            position: relative;
+        ">
+            <button onclick="closeTemplateModal()" style="
+                position: absolute;
+                top: 1rem;
+                right: 1rem;
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: var(--text-muted);
+                padding: 0.5rem;
+                line-height: 1;
+            ">×</button>
+            
+            <h2 id="templateModalTitle" style="margin: 0 0 1.5rem 0; font-size: 1.5em; font-weight: 700;">Выберите шаблон</h2>
+            
+            <div id="templatesList"></div>
+            
+            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--stroke-1); text-align: center;">
+                <a href="{{ url_for('templates_list') }}" class="neo-button ghost" style="text-decoration: none;">📚 Управление шаблонами</a>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .template-option:hover {
+            box-shadow: var(--shadow-soft);
+        }
+    </style>
 </body>
 </html>
