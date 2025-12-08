@@ -3772,23 +3772,56 @@ def admin_testers():
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('dashboard'))
     
-    from core.db_models import User, AuditLog
-    from sqlalchemy import func
-    
-    # Получаем всех авторизованных пользователей с статистикой
-    users = db.session.query(
-        User,
-        func.count(AuditLog.id).label('logs_count'),
-        func.max(AuditLog.timestamp).label('last_action')
-    ).outerjoin(
-        AuditLog, User.id == AuditLog.user_id
-    ).group_by(
-        User.id
-    ).order_by(
-        User.id.desc()
-    ).all()
-    
-    return render_template('admin_testers.html', users=users)  # Передаем users вместо testers
+    try:
+        from core.db_models import User, AuditLog
+        from sqlalchemy import func
+        from sqlalchemy.exc import OperationalError, ProgrammingError
+        
+        # Проверяем, существует ли таблица AuditLog
+        try:
+            # Пробуем выполнить простой запрос к таблице AuditLog
+            db.session.query(AuditLog).limit(1).all()
+            audit_log_exists = True
+        except (OperationalError, ProgrammingError) as e:
+            # Если таблицы нет, работаем без неё
+            logger.warning(f"AuditLog table not found or not accessible: {e}")
+            audit_log_exists = False
+        
+        if audit_log_exists:
+            # Получаем всех авторизованных пользователей с статистикой
+            try:
+                users = db.session.query(
+                    User,
+                    func.count(AuditLog.id).label('logs_count'),
+                    func.max(AuditLog.timestamp).label('last_action')
+                ).outerjoin(
+                    AuditLog, User.id == AuditLog.user_id
+                ).group_by(
+                    User.id
+                ).order_by(
+                    User.id.desc()
+                ).all()
+            except Exception as e:
+                logger.error(f"Error querying users with AuditLog: {e}", exc_info=True)
+                # Fallback: получаем пользователей без статистики
+                users = [(user, 0, None) for user in User.query.order_by(User.id.desc()).all()]
+        else:
+            # Если таблицы AuditLog нет, получаем только пользователей
+            users = [(user, 0, None) for user in User.query.order_by(User.id.desc()).all()]
+        
+        return render_template('admin_testers.html', users=users)
+    except Exception as e:
+        logger.error(f"Error in admin_testers route: {e}", exc_info=True)
+        flash(f'Ошибка при загрузке данных: {str(e)}', 'error')
+        # Fallback: возвращаем пустой список пользователей
+        try:
+            from core.db_models import User
+            users = [(user, 0, None) for user in User.query.order_by(User.id.desc()).all()]
+            return render_template('admin_testers.html', users=users)
+        except Exception as e2:
+            logger.error(f"Error in fallback: {e2}", exc_info=True)
+            flash('Критическая ошибка при загрузке данных', 'error')
+            return redirect(url_for('admin_panel'))
 
 @app.route('/admin-testers/<int:user_id>/edit', methods=['GET', 'POST'])
 @login_required
