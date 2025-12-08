@@ -3791,24 +3791,60 @@ def admin_audit():
             except:
                 pass
 
-        total_events = AuditLog.query.filter(AuditLog.user_id.isnot(None)).count()
+        # Получаем статистику с обработкой ошибок
+        try:
+            total_events = AuditLog.query.filter(AuditLog.user_id.isnot(None)).count()
+        except Exception as e:
+            logger.warning(f"Error getting total_events: {e}")
+            db.session.rollback()
+            total_events = 0
+        
         total_testers = User.query.count()  # Количество авторизованных пользователей
-        error_count = AuditLog.query.filter(AuditLog.status == 'error', AuditLog.user_id.isnot(None)).count()
+        
+        try:
+            error_count = AuditLog.query.filter(AuditLog.status == 'error', AuditLog.user_id.isnot(None)).count()
+        except Exception as e:
+            logger.warning(f"Error getting error_count: {e}")
+            db.session.rollback()
+            error_count = 0
 
         from datetime import datetime, timedelta
         today_start = datetime.now(MOSCOW_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
-        today_events = AuditLog.query.filter(AuditLog.timestamp >= today_start, AuditLog.user_id.isnot(None)).count()
+        try:
+            today_events = AuditLog.query.filter(AuditLog.timestamp >= today_start, AuditLog.user_id.isnot(None)).count()
+        except Exception as e:
+            logger.warning(f"Error getting today_events: {e}")
+            db.session.rollback()
+            today_events = 0
 
-        actions = db.session.query(AuditLog.action).filter(AuditLog.user_id.isnot(None)).distinct().order_by(AuditLog.action).all()
-        actions = [a[0] for a in actions if a[0]]
-        entities = db.session.query(AuditLog.entity).filter(AuditLog.user_id.isnot(None)).distinct().order_by(AuditLog.entity).all()
-        entities = [e[0] for e in entities if e[0]]
+        try:
+            actions = db.session.query(AuditLog.action).filter(AuditLog.user_id.isnot(None)).distinct().order_by(AuditLog.action).all()
+            actions = [a[0] for a in actions if a[0]]
+        except Exception as e:
+            logger.warning(f"Error getting actions: {e}")
+            db.session.rollback()
+            actions = []
+        
+        try:
+            entities = db.session.query(AuditLog.entity).filter(AuditLog.user_id.isnot(None)).distinct().order_by(AuditLog.entity).all()
+            entities = [e[0] for e in entities if e[0]]
+        except Exception as e:
+            logger.warning(f"Error getting entities: {e}")
+            db.session.rollback()
+            entities = []
+        
         users = User.query.order_by(User.id).all()  # Все авторизованные пользователи
 
         page = request.args.get('page', 1, type=int)
         per_page = 50
-        pagination = query.order_by(AuditLog.timestamp.desc()).paginate(page=page, per_page=per_page, error_out=False)
-        logs = pagination.items
+        try:
+            pagination = query.order_by(AuditLog.timestamp.desc()).paginate(page=page, per_page=per_page, error_out=False)
+            logs = pagination.items
+        except Exception as e:
+            logger.warning(f"Error getting pagination: {e}")
+            db.session.rollback()
+            logs = []
+            pagination = None
 
         filters = {
             'user_id': user_id,
