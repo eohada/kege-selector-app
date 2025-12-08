@@ -3733,6 +3733,7 @@ def admin_audit():
             audit_log_exists = True
         except (OperationalError, ProgrammingError) as e:
             logger.warning(f"AuditLog table not found or not accessible: {e}")
+            db.session.rollback()  # Откатываем транзакцию после ошибки
             audit_log_exists = False
         
         if not audit_log_exists:
@@ -3833,6 +3834,7 @@ def admin_audit():
                              users=users)  # Передаем users вместо testers
     except Exception as e:
         logger.error(f"Error in admin_audit route: {e}", exc_info=True)
+        db.session.rollback()  # Откатываем транзакцию после ошибки
         flash(f'Ошибка при загрузке журнала аудита: {str(e)}', 'error')
         # Fallback: возвращаем пустую страницу
         try:
@@ -3853,6 +3855,7 @@ def admin_audit():
                                  users=users)
         except Exception as e2:
             logger.error(f"Error in fallback: {e2}", exc_info=True)
+            db.session.rollback()  # Откатываем транзакцию после ошибки в fallback
             flash('Критическая ошибка при загрузке данных', 'error')
             return redirect(url_for('admin_panel'))
 
