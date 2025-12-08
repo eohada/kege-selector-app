@@ -3913,6 +3913,7 @@ def admin_testers():
         logger.error(f"Error in admin_testers route: {e}", exc_info=True)
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
+        db.session.rollback()  # Откатываем транзакцию после ошибки
         flash(f'Ошибка при загрузке данных: {str(e)}', 'error')
         # Fallback: возвращаем пустой список пользователей
         try:
@@ -3920,6 +3921,7 @@ def admin_testers():
             users = [(user, 0, None) for user in User.query.order_by(User.id.desc()).all()]
             return render_template('admin_testers.html', users=users)
         except Exception as e2:
+            db.session.rollback()  # Откатываем транзакцию после ошибки в fallback
             logger.error(f"Error in fallback: {e2}", exc_info=True)
             flash('Критическая ошибка при загрузке данных', 'error')
             return redirect(url_for('admin_panel'))
