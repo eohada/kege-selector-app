@@ -3763,74 +3763,74 @@ def admin_audit():
         # Логируем только действия авторизованных пользователей
         query = AuditLog.query.filter(AuditLog.user_id.isnot(None))
 
-    if user_id:
-        try:
-            user_id_int = int(user_id)
-            query = query.filter(AuditLog.user_id == user_id_int)
-        except:
-            pass
-    if action:
-        query = query.filter(AuditLog.action == action)
-    if entity:
-        query = query.filter(AuditLog.entity == entity)
-    if status:
-        query = query.filter(AuditLog.status == status)
-    if date_from:
-        try:
-            from datetime import datetime
-            date_from_obj = datetime.strptime(date_from, '%Y-%m-%dT%H:%M')
-            query = query.filter(AuditLog.timestamp >= date_from_obj)
-        except:
-            pass
-    if date_to:
-        try:
-            from datetime import datetime
-            date_to_obj = datetime.strptime(date_to, '%Y-%m-%dT%H:%M')
-            query = query.filter(AuditLog.timestamp <= date_to_obj)
-        except:
-            pass
+        if user_id:
+            try:
+                user_id_int = int(user_id)
+                query = query.filter(AuditLog.user_id == user_id_int)
+            except:
+                pass
+        if action:
+            query = query.filter(AuditLog.action == action)
+        if entity:
+            query = query.filter(AuditLog.entity == entity)
+        if status:
+            query = query.filter(AuditLog.status == status)
+        if date_from:
+            try:
+                from datetime import datetime
+                date_from_obj = datetime.strptime(date_from, '%Y-%m-%dT%H:%M')
+                query = query.filter(AuditLog.timestamp >= date_from_obj)
+            except:
+                pass
+        if date_to:
+            try:
+                from datetime import datetime
+                date_to_obj = datetime.strptime(date_to, '%Y-%m-%dT%H:%M')
+                query = query.filter(AuditLog.timestamp <= date_to_obj)
+            except:
+                pass
 
-    total_events = AuditLog.query.filter(AuditLog.user_id.isnot(None)).count()
-    total_testers = User.query.count()  # Количество авторизованных пользователей
-    error_count = AuditLog.query.filter(AuditLog.status == 'error', AuditLog.user_id.isnot(None)).count()
+        total_events = AuditLog.query.filter(AuditLog.user_id.isnot(None)).count()
+        total_testers = User.query.count()  # Количество авторизованных пользователей
+        error_count = AuditLog.query.filter(AuditLog.status == 'error', AuditLog.user_id.isnot(None)).count()
 
-    from datetime import datetime, timedelta
-    today_start = datetime.now(MOSCOW_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
-    today_events = AuditLog.query.filter(AuditLog.timestamp >= today_start, AuditLog.user_id.isnot(None)).count()
+        from datetime import datetime, timedelta
+        today_start = datetime.now(MOSCOW_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+        today_events = AuditLog.query.filter(AuditLog.timestamp >= today_start, AuditLog.user_id.isnot(None)).count()
 
-    actions = db.session.query(AuditLog.action).filter(AuditLog.user_id.isnot(None)).distinct().order_by(AuditLog.action).all()
-    actions = [a[0] for a in actions if a[0]]
-    entities = db.session.query(AuditLog.entity).filter(AuditLog.user_id.isnot(None)).distinct().order_by(AuditLog.entity).all()
-    entities = [e[0] for e in entities if e[0]]
-    users = User.query.order_by(User.id).all()  # Все авторизованные пользователи
+        actions = db.session.query(AuditLog.action).filter(AuditLog.user_id.isnot(None)).distinct().order_by(AuditLog.action).all()
+        actions = [a[0] for a in actions if a[0]]
+        entities = db.session.query(AuditLog.entity).filter(AuditLog.user_id.isnot(None)).distinct().order_by(AuditLog.entity).all()
+        entities = [e[0] for e in entities if e[0]]
+        users = User.query.order_by(User.id).all()  # Все авторизованные пользователи
 
-    page = request.args.get('page', 1, type=int)
-    per_page = 50
-    pagination = query.order_by(AuditLog.timestamp.desc()).paginate(page=page, per_page=per_page, error_out=False)
-    logs = pagination.items
+        page = request.args.get('page', 1, type=int)
+        per_page = 50
+        pagination = query.order_by(AuditLog.timestamp.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        logs = pagination.items
 
-    filters = {
-        'user_id': user_id,
-        'action': action,
-        'entity': entity,
-        'status': status,
-        'date_from': date_from,
-        'date_to': date_to
-    }
+        filters = {
+            'user_id': user_id,
+            'action': action,
+            'entity': entity,
+            'status': status,
+            'date_from': date_from,
+            'date_to': date_to
+        }
 
-    return render_template('admin_audit.html',
-                         logs=logs,
-                         pagination=pagination,
-                         stats={
-                             'total_events': total_events,
-                             'total_testers': total_testers,
-                             'error_count': error_count,
-                             'today_events': today_events
-                         },
-                         filters=filters,
-                         actions=actions,
-                         entities=entities,
-                         users=users)  # Передаем users вместо testers
+        return render_template('admin_audit.html',
+                             logs=logs,
+                             pagination=pagination,
+                             stats={
+                                 'total_events': total_events,
+                                 'total_testers': 0,  # Устаревшее поле, оставляем 0
+                                 'error_count': error_count,
+                                 'today_events': today_events
+                             },
+                             filters=filters,
+                             actions=actions,
+                             entities=entities,
+                             users=users)  # Передаем users вместо testers
 
 @app.route('/admin-testers')
 @login_required
