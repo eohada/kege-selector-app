@@ -3831,6 +3831,30 @@ def admin_audit():
                              actions=actions,
                              entities=entities,
                              users=users)  # Передаем users вместо testers
+    except Exception as e:
+        logger.error(f"Error in admin_audit route: {e}", exc_info=True)
+        flash(f'Ошибка при загрузке журнала аудита: {str(e)}', 'error')
+        # Fallback: возвращаем пустую страницу
+        try:
+            from core.db_models import User
+            users = User.query.order_by(User.id).all()
+            return render_template('admin_audit.html',
+                                 logs=[],
+                                 pagination=None,
+                                 stats={
+                                     'total_events': 0,
+                                     'total_testers': 0,
+                                     'error_count': 0,
+                                     'today_events': 0
+                                 },
+                                 filters={},
+                                 actions=[],
+                                 entities=[],
+                                 users=users)
+        except Exception as e2:
+            logger.error(f"Error in fallback: {e2}", exc_info=True)
+            flash('Критическая ошибка при загрузке данных', 'error')
+            return redirect(url_for('admin_panel'))
 
 @app.route('/admin-testers')
 @login_required
