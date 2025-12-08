@@ -746,6 +746,7 @@ def admin_panel():
             audit_log_exists = True
         except (OperationalError, ProgrammingError) as e:
             logger.warning(f"AuditLog table not found or not accessible: {e}")
+            db.session.rollback()  # Откатываем транзакцию после ошибки
             audit_log_exists = False
         
         if audit_log_exists:
@@ -756,6 +757,7 @@ def admin_panel():
                 ).count()
             except Exception as e:
                 logger.error(f"Error querying AuditLog statistics: {e}", exc_info=True)
+                db.session.rollback()  # Откатываем транзакцию после ошибки
                 total_logs = 0
                 today_logs = 0
         else:
@@ -4038,9 +4040,14 @@ def admin_testers_delete(user_id):
     
     try:
         # Удаляем все логи пользователя
-        deleted_logs = db.session.execute(
-            delete(AuditLog).where(AuditLog.user_id == user_id)
-        ).rowcount
+        try:
+            deleted_logs = db.session.execute(
+                delete(AuditLog).where(AuditLog.user_id == user_id)
+            ).rowcount
+        except Exception as e:
+            logger.warning(f"Error deleting user logs: {e}")
+            db.session.rollback()
+            deleted_logs = 0
         
         # Удаляем пользователя
         db.session.delete(user)
@@ -4078,18 +4085,27 @@ def admin_testers_clear_all():
     from sqlalchemy import delete
     
     try:
-        logs_count = AuditLog.query.filter(AuditLog.user_id.isnot(None)).count()
+        try:
+            logs_count = AuditLog.query.filter(AuditLog.user_id.isnot(None)).count()
+        except Exception as e:
+            logger.warning(f"Error getting logs_count: {e}")
+            db.session.rollback()
+            logs_count = 0
         
         if logs_count == 0:
             flash('Нет логов для очистки', 'info')
             return redirect(url_for('admin_testers'))
         
         # Удаляем все логи авторизованных пользователей
-        deleted_logs = db.session.execute(
-            delete(AuditLog).where(AuditLog.user_id.isnot(None))
-        ).rowcount
-        
-        db.session.commit()
+        try:
+            deleted_logs = db.session.execute(
+                delete(AuditLog).where(AuditLog.user_id.isnot(None))
+            ).rowcount
+            db.session.commit()
+        except Exception as e:
+            logger.error(f"Error deleting logs: {e}")
+            db.session.rollback()
+            raise
         
         # Логируем очистку
         audit_logger.log(
@@ -4116,25 +4132,45 @@ def admin_audit_export():
     check_admin_access()
 
     from core.db_models import AuditLog
+    from sqlalchemy.exc import OperationalError, ProgrammingError
     import csv
     from io import StringIO
 
-    query = AuditLog.query
-    tester_id = request.args.get('tester_id', '')
-    action = request.args.get('action', '')
-    entity = request.args.get('entity', '')
-    status = request.args.get('status', '')
+    try:
+        # Проверяем, существует ли таблица AuditLog
+        try:
+            db.session.query(AuditLog).limit(1).all()
+            audit_log_exists = True
+        except (OperationalError, ProgrammingError) as e:
+            logger.warning(f"AuditLog table not found or not accessible: {e}")
+            db.session.rollback()
+            audit_log_exists = False
+        
+        if not audit_log_exists:
+            flash('Таблица AuditLog недоступна', 'error')
+            return redirect(url_for('admin_audit'))
+        
+        query = AuditLog.query
+        tester_id = request.args.get('tester_id', '')
+        action = request.args.get('action', '')
+        entity = request.args.get('entity', '')
+        status = request.args.get('status', '')
 
-    if tester_id:
-        query = query.filter(AuditLog.tester_id == tester_id)
-    if action:
-        query = query.filter(AuditLog.action == action)
-    if entity:
-        query = query.filter(AuditLog.entity == entity)
-    if status:
-        query = query.filter(AuditLog.status == status)
+        if tester_id:
+            query = query.filter(AuditLog.tester_id == tester_id)
+        if action:
+            query = query.filter(AuditLog.action == action)
+        if entity:
+            query = query.filter(AuditLog.entity == entity)
+        if status:
+            query = query.filter(AuditLog.status == status)
 
-    logs = query.order_by(AuditLog.timestamp.desc()).limit(10000).all()
+        logs = query.order_by(AuditLog.timestamp.desc()).limit(10000).all()
+    except Exception as e:
+        logger.error(f"Error in admin_audit_export: {e}", exc_info=True)
+        db.session.rollback()
+        flash(f'Ошибка при экспорте: {str(e)}', 'error')
+        return redirect(url_for('admin_audit'))
 
     output = StringIO()
     writer = csv.writer(output)
@@ -4167,11 +4203,28 @@ def rotate_audit_logs():
     from datetime import datetime, timedelta
 
     try:
+        from sqlalchemy.exc import OperationalError, ProgrammingError
+        
+        # Проверяем, существует ли таблица AuditLog
+        try:
+            db.session.query(AuditLog).limit(1).all()
+            audit_log_exists = True
+        except (OperationalError, ProgrammingError) as e:
+            logger.warning(f"AuditLog table not found or not accessible: {e}")
+            db.session.rollback()
+            print("Таблица AuditLog недоступна")
+            return
 
         week_ago = datetime.now(MOSCOW_TZ) - timedelta(days=7)
 
-        old_logs = AuditLog.query.filter(AuditLog.timestamp < week_ago).all()
-        count = len(old_logs)
+        try:
+            old_logs = AuditLog.query.filter(AuditLog.timestamp < week_ago).all()
+            count = len(old_logs)
+        except Exception as e:
+            logger.error(f"Error querying old logs: {e}")
+            db.session.rollback()
+            print(f"Ошибка при запросе логов: {e}")
+            return
 
         if count == 0:
             print("Нет логов для архивирования")
@@ -4193,27 +4246,85 @@ def clear_testers_data():
     from core.db_models import Tester, AuditLog
     
     try:
+        from sqlalchemy.exc import OperationalError, ProgrammingError
+        from sqlalchemy import delete
+        
+        # Проверяем, существуют ли таблицы
+        try:
+            db.session.query(Tester).limit(1).all()
+            testers_table_exists = True
+        except (OperationalError, ProgrammingError) as e:
+            logger.warning(f"Tester table not found: {e}")
+            db.session.rollback()
+            testers_table_exists = False
+        
+        try:
+            db.session.query(AuditLog).limit(1).all()
+            audit_log_exists = True
+        except (OperationalError, ProgrammingError) as e:
+            logger.warning(f"AuditLog table not found: {e}")
+            db.session.rollback()
+            audit_log_exists = False
+        
         # Подсчитываем количество записей перед удалением
-        testers_count = Tester.query.count()
-        logs_count = AuditLog.query.count()
+        testers_count = 0
+        logs_count = 0
+        
+        if testers_table_exists:
+            try:
+                testers_count = Tester.query.count()
+            except Exception as e:
+                logger.warning(f"Error counting testers: {e}")
+                db.session.rollback()
+        
+        if audit_log_exists:
+            try:
+                logs_count = AuditLog.query.count()
+            except Exception as e:
+                logger.warning(f"Error counting logs: {e}")
+                db.session.rollback()
         
         if testers_count == 0 and logs_count == 0:
             print("Нет данных тестировщиков для очистки")
             return
         
         # Удаляем все логи (сначала, чтобы не было проблем с foreign key)
-        # Используем правильный синтаксис для bulk delete
-        from sqlalchemy import delete
-        deleted_logs = db.session.execute(delete(AuditLog)).rowcount
+        deleted_logs = 0
+        if audit_log_exists:
+            try:
+                deleted_logs = db.session.execute(delete(AuditLog)).rowcount
+            except Exception as e:
+                logger.warning(f"Error deleting logs: {e}")
+                db.session.rollback()
         
         # Удаляем всех тестировщиков
-        deleted_testers = db.session.execute(delete(Tester)).rowcount
+        deleted_testers = 0
+        if testers_table_exists:
+            try:
+                deleted_testers = db.session.execute(delete(Tester)).rowcount
+            except Exception as e:
+                logger.warning(f"Error deleting testers: {e}")
+                db.session.rollback()
         
         db.session.commit()
         
         # Проверяем, что действительно удалилось
-        remaining_testers = Tester.query.count()
-        remaining_logs = AuditLog.query.count()
+        remaining_testers = 0
+        remaining_logs = 0
+        
+        if testers_table_exists:
+            try:
+                remaining_testers = Tester.query.count()
+            except Exception as e:
+                logger.warning(f"Error counting remaining testers: {e}")
+                db.session.rollback()
+        
+        if audit_log_exists:
+            try:
+                remaining_logs = AuditLog.query.count()
+            except Exception as e:
+                logger.warning(f"Error counting remaining logs: {e}")
+                db.session.rollback()
         
         if remaining_testers > 0 or remaining_logs > 0:
             print(f"⚠️  Внимание: осталось {remaining_testers} тестировщиков и {remaining_logs} логов")
