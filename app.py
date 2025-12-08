@@ -3722,18 +3722,46 @@ def admin_audit():
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('dashboard'))
 
-    from core.db_models import AuditLog, User
-    from sqlalchemy import func, and_
+    try:
+        from core.db_models import AuditLog, User
+        from sqlalchemy import func, and_
+        from sqlalchemy.exc import OperationalError, ProgrammingError
+        
+        # Проверяем, существует ли таблица AuditLog
+        try:
+            db.session.query(AuditLog).limit(1).all()
+            audit_log_exists = True
+        except (OperationalError, ProgrammingError) as e:
+            logger.warning(f"AuditLog table not found or not accessible: {e}")
+            audit_log_exists = False
+        
+        if not audit_log_exists:
+            # Если таблицы нет, возвращаем пустую страницу
+            from core.db_models import User
+            users = User.query.order_by(User.id).all()
+            return render_template('admin_audit.html',
+                                 logs=[],
+                                 pagination=None,
+                                 stats={
+                                     'total_events': 0,
+                                     'total_testers': 0,
+                                     'error_count': 0,
+                                     'today_events': 0
+                                 },
+                                 filters={},
+                                 actions=[],
+                                 entities=[],
+                                 users=users)
 
-    user_id = request.args.get('user_id', '')
-    action = request.args.get('action', '')
-    entity = request.args.get('entity', '')
-    status = request.args.get('status', '')
-    date_from = request.args.get('date_from', '')
-    date_to = request.args.get('date_to', '')
+        user_id = request.args.get('user_id', '')
+        action = request.args.get('action', '')
+        entity = request.args.get('entity', '')
+        status = request.args.get('status', '')
+        date_from = request.args.get('date_from', '')
+        date_to = request.args.get('date_to', '')
 
-    # Логируем только действия авторизованных пользователей
-    query = AuditLog.query.filter(AuditLog.user_id.isnot(None))
+        # Логируем только действия авторизованных пользователей
+        query = AuditLog.query.filter(AuditLog.user_id.isnot(None))
 
     if user_id:
         try:
