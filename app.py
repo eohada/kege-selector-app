@@ -728,28 +728,68 @@ def admin_panel():
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('dashboard'))
     
-    # Статистика для админ панели
-    from core.db_models import User, Tester, AuditLog
-    from sqlalchemy import func
-    
-    total_users = User.query.count()
-    active_users = User.query.filter_by(is_active=True).count()
-    creators_count = User.query.filter_by(role='creator').count()
-    testers_count = User.query.filter_by(role='tester').count()
-    
-    # Статистика по логам
-    total_logs = AuditLog.query.count()
-    today_logs = AuditLog.query.filter(
-        func.date(AuditLog.timestamp) == func.current_date()
-    ).count()
-    
-    return render_template('admin_panel.html',
-                         total_users=total_users,
-                         active_users=active_users,
-                         creators_count=creators_count,
-                         testers_count=testers_count,
-                         total_logs=total_logs,
-                         today_logs=today_logs)
+    try:
+        # Статистика для админ панели
+        from core.db_models import User, Tester, AuditLog
+        from sqlalchemy import func
+        from sqlalchemy.exc import OperationalError, ProgrammingError
+        
+        total_users = User.query.count()
+        active_users = User.query.filter_by(is_active=True).count()
+        creators_count = User.query.filter_by(role='creator').count()
+        testers_count = User.query.filter_by(role='tester').count()
+        
+        # Статистика по логам - с обработкой ошибок
+        try:
+            # Проверяем, существует ли таблица AuditLog
+            db.session.query(AuditLog).limit(1).all()
+            audit_log_exists = True
+        except (OperationalError, ProgrammingError) as e:
+            logger.warning(f"AuditLog table not found or not accessible: {e}")
+            audit_log_exists = False
+        
+        if audit_log_exists:
+            try:
+                total_logs = AuditLog.query.count()
+                today_logs = AuditLog.query.filter(
+                    func.date(AuditLog.timestamp) == func.current_date()
+                ).count()
+            except Exception as e:
+                logger.error(f"Error querying AuditLog statistics: {e}", exc_info=True)
+                total_logs = 0
+                today_logs = 0
+        else:
+            total_logs = 0
+            today_logs = 0
+        
+        return render_template('admin_panel.html',
+                             total_users=total_users,
+                             active_users=active_users,
+                             creators_count=creators_count,
+                             testers_count=testers_count,
+                             total_logs=total_logs,
+                             today_logs=today_logs)
+    except Exception as e:
+        logger.error(f"Error in admin_panel route: {e}", exc_info=True)
+        flash(f'Ошибка при загрузке статистики: {str(e)}', 'error')
+        # Fallback: возвращаем минимальную статистику
+        try:
+            from core.db_models import User
+            total_users = User.query.count()
+            active_users = User.query.filter_by(is_active=True).count()
+            creators_count = User.query.filter_by(role='creator').count()
+            testers_count = User.query.filter_by(role='tester').count()
+            return render_template('admin_panel.html',
+                                 total_users=total_users,
+                                 active_users=active_users,
+                                 creators_count=creators_count,
+                                 testers_count=testers_count,
+                                 total_logs=0,
+                                 today_logs=0)
+        except Exception as e2:
+            logger.error(f"Error in fallback: {e2}", exc_info=True)
+            flash('Критическая ошибка при загрузке данных', 'error')
+            return redirect(url_for('dashboard'))
 
 @app.route('/index')
 @app.route('/home')
