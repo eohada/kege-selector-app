@@ -3860,11 +3860,15 @@ def admin_audit():
 @login_required
 def admin_testers():
     """Управление пользователями (только для создателя)"""
+    logger.info(f"admin_testers route called by user: {current_user.username if current_user.is_authenticated else 'anonymous'}")
+    
     if not current_user.is_creator():
+        logger.warning(f"Access denied to admin_testers for user: {current_user.username if current_user.is_authenticated else 'anonymous'}")
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('dashboard'))
     
     try:
+        logger.info("Starting admin_testers query")
         from core.db_models import User, AuditLog
         from sqlalchemy import func
         from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -3901,9 +3905,12 @@ def admin_testers():
             # Если таблицы AuditLog нет, получаем только пользователей
             users = [(user, 0, None) for user in User.query.order_by(User.id.desc()).all()]
         
+        logger.info(f"admin_testers: found {len(users)} users, rendering template")
         return render_template('admin_testers.html', users=users)
     except Exception as e:
         logger.error(f"Error in admin_testers route: {e}", exc_info=True)
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         flash(f'Ошибка при загрузке данных: {str(e)}', 'error')
         # Fallback: возвращаем пустой список пользователей
         try:
