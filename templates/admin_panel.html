@@ -121,19 +121,19 @@
                     {% for category, message in messages %}
                         {% if category == 'error' or category == 'danger' %}
                             if (typeof toast !== 'undefined' && toast) {
-                                toast.error('{{ message|e }}');
+                                toast.error({{ message|tojson }});
                             }
                         {% elif category == 'warning' %}
                             if (typeof toast !== 'undefined' && toast) {
-                                toast.warning('{{ message|e }}');
+                                toast.warning({{ message|tojson }});
                             }
                         {% elif category == 'info' %}
                             if (typeof toast !== 'undefined' && toast) {
-                                toast.info('{{ message|e }}');
+                                toast.info({{ message|tojson }});
                             }
                         {% else %}
                             if (typeof toast !== 'undefined' && toast) {
-                                toast.success('{{ message|e }}');
+                                toast.success({{ message|tojson }});
                             }
                         {% endif %}
                     {% endfor %}
