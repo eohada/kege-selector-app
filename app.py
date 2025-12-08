@@ -3881,6 +3881,7 @@ def admin_testers():
         except (OperationalError, ProgrammingError) as e:
             # Если таблицы нет, работаем без неё
             logger.warning(f"AuditLog table not found or not accessible: {e}")
+            db.session.rollback()  # Откатываем транзакцию после ошибки
             audit_log_exists = False
         
         if audit_log_exists:
@@ -3899,6 +3900,7 @@ def admin_testers():
                 ).all()
             except Exception as e:
                 logger.error(f"Error querying users with AuditLog: {e}", exc_info=True)
+                db.session.rollback()  # Откатываем транзакцию после ошибки
                 # Fallback: получаем пользователей без статистики
                 users = [(user, 0, None) for user in User.query.order_by(User.id.desc()).all()]
         else:
