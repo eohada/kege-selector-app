@@ -1993,12 +1993,27 @@ def lesson_homework_not_assigned(lesson_id):
     flash('Домашнее задание отмечено как «не задано».', 'info')
     return redirect(url_for('student_profile', student_id=lesson.student_id))
 
-@app.route('/lesson/<int:lesson_id>/homework-export-md')
-def lesson_homework_export_md(lesson_id):
+def lesson_export_md(lesson_id, assignment_type='homework'):
+    """
+    Универсальная функция экспорта заданий в Markdown
+    assignment_type: 'homework', 'classwork', 'exam'
+    """
     lesson = Lesson.query.get_or_404(lesson_id)
     student = lesson.student
 
-    homework_tasks = sorted(lesson.homework_assignments, key=lambda ht: (ht.task.task_number if ht.task and ht.task.task_number is not None else ht.lesson_task_id))
+    # Получаем задания по типу
+    if assignment_type == 'homework':
+        tasks = sorted(lesson.homework_assignments, key=lambda ht: (ht.task.task_number if ht.task and ht.task.task_number is not None else ht.lesson_task_id))
+        title = "Домашнее задание"
+    elif assignment_type == 'classwork':
+        tasks = sorted(lesson.classwork_assignments, key=lambda ht: (ht.task.task_number if ht.task and ht.task.task_number is not None else ht.lesson_task_id))
+        title = "Классная работа"
+    elif assignment_type == 'exam':
+        tasks = sorted(lesson.exam_assignments, key=lambda ht: (ht.task.task_number if ht.task and ht.task.task_number is not None else ht.lesson_task_id))
+        title = "Проверочная работа"
+    else:
+        tasks = sorted(lesson.homework_assignments, key=lambda ht: (ht.task.task_number if ht.task and ht.task.task_number is not None else ht.lesson_task_id))
+        title = "Задания"
 
     ordinal_names = {
         1: "Первое", 2: "Второе", 3: "Третье", 4: "Четвертое", 5: "Пятое",
@@ -2120,12 +2135,40 @@ def lesson_homework_export_md(lesson_id):
             img.replace_with(soup.new_string(f'\n\n{markdown_img}\n\n'))
 
         # Обработка списков (ul, ol) - сохраняем структуру для правильного экспорта
+        # ВАЖНО: обрабатываем ДО обработки блочных элементов, чтобы сохранить структуру
+        def extract_list_item_text(li):
+            """Извлекает текст из элемента списка с сохранением переносов строк"""
+            parts = []
+            for child in li.children:
+                if isinstance(child, str):
+                    text = child.strip()
+                    if text:
+                        parts.append(text)
+                elif hasattr(child, 'name'):
+                    if child.name == 'br':
+                        parts.append('\n')
+                    elif child.name in ['p', 'div']:
+                        # Для блочных элементов внутри li сохраняем переносы строк
+                        p_text = child.get_text(separator='\n', strip=True)
+                        if p_text:
+                            parts.append(p_text)
+                    else:
+                        child_text = child.get_text(separator=' ', strip=True)
+                        if child_text:
+                            parts.append(child_text)
+            return ' '.join(parts).strip()
+        
         for ul in soup.find_all('ul'):
             if not ul.find_parent(['td', 'th', 'table']):
                 items = ul.find_all('li', recursive=False)
                 if items:
-                    list_text = '\n'.join([f"- {li.get_text(separator=' ', strip=True)}" for li in items if li.get_text(strip=True)])
-                    if list_text:
+                    list_items = []
+                    for li in items:
+                        li_text = extract_list_item_text(li)
+                        if li_text:
+                            list_items.append(f"- {li_text}")
+                    if list_items:
+                        list_text = '\n'.join(list_items)
                         ul.replace_with(soup.new_string(f'\n\n{list_text}\n\n'))
                     else:
                         ul.decompose()
@@ -2136,16 +2179,22 @@ def lesson_homework_export_md(lesson_id):
             if not ol.find_parent(['td', 'th', 'table']):
                 items = ol.find_all('li', recursive=False)
                 if items:
-                    list_text = '\n'.join([f"{idx + 1}. {li.get_text(separator=' ', strip=True)}" for idx, li in enumerate(items) if li.get_text(strip=True)])
-                    if list_text:
+                    list_items = []
+                    for idx, li in enumerate(items):
+                        li_text = extract_list_item_text(li)
+                        if li_text:
+                            list_items.append(f"{idx + 1}. {li_text}")
+                    if list_items:
+                        list_text = '\n'.join(list_items)
                         ol.replace_with(soup.new_string(f'\n\n{list_text}\n\n'))
                     else:
                         ol.decompose()
                 else:
                     ol.decompose()
         
+        # Заменяем <br> на переносы строк (не на пробелы!) для сохранения форматирования
         for br in soup.find_all('br'):
-            br.replace_with(' ')
+            br.replace_with(soup.new_string('\n'))
 
         def process_element(elem):
             if elem.name in ['p', 'div']:
@@ -2172,18 +2221,26 @@ def lesson_homework_export_md(lesson_id):
                 if cleaned_text != text:
                     text_node.replace_with(cleaned_text)
         
-        text = soup.get_text(separator=' ', strip=False)
+        # Используем separator='\n' вместо ' ' для сохранения переносов строк
+        text = soup.get_text(separator='\n', strip=False)
         text = unescape(text)
         text = re.sub(r'\r\n?', '\n', text)
-        text = re.sub(r'[ \t]+', ' ', text)
+        # Очистка пробелов в строках (но сохраняем переносы строк)
+        lines = text.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            # Схлопываем множественные пробелы/табы в строке, но сохраняем саму строку
+            cleaned_line = re.sub(r'[ \t]+', ' ', line)
+            cleaned_lines.append(cleaned_line)
+        text = '\n'.join(cleaned_lines)
         text = re.sub(r' \$\$', '\n\n$$', text)
         text = re.sub(r'\$\$ ', '$$\n\n', text)
         text = re.sub(r' \$', ' $', text)
         text = re.sub(r'\$ ', '$ ', text)
         text = re.sub(r' \n', '\n', text)
         text = re.sub(r'\n ', '\n', text)
-        # Более агрессивное удаление множественных пустых строк
-        text = re.sub(r'\n{3,}', '\n\n', text)
+        # Удаляем множественные пустые строки (оставляем максимум 2 подряд для разделения блоков)
+        text = re.sub(r'\n{4,}', '\n\n\n', text)
         text = re.sub(r'\$\s+([^$]+)\s+\$', r'$\1$', text)
         lines = [line.rstrip() for line in text.splitlines()]
         cleaned = []
@@ -2201,7 +2258,7 @@ def lesson_homework_export_md(lesson_id):
         result = '\n'.join(cleaned).strip()
         return result
 
-    markdown_content = f"# Домашнее задание\n\n"
+    markdown_content = f"# {title}\n\n"
     markdown_content += f"**Ученик:** {student.name}\n"
     if lesson.lesson_date:
         markdown_content += f"**Дата урока:** {lesson.lesson_date.strftime('%d.%m.%Y')}\n"
@@ -2209,7 +2266,7 @@ def lesson_homework_export_md(lesson_id):
         markdown_content += f"**Тема:** {lesson.topic}\n"
     markdown_content += f"\n---\n\n"
 
-    for idx, hw_task in enumerate(homework_tasks):
+    for idx, hw_task in enumerate(tasks):
         order_number = idx + 1
         task_name = ordinal_names.get(order_number, f"{order_number}-е")
 
@@ -2225,10 +2282,25 @@ def lesson_homework_export_md(lesson_id):
                 for file in files:
                     markdown_content += f"- [{file['name']}]({file['url']})\n"
                 markdown_content += "\n"
-        if idx < len(homework_tasks) - 1:
+        if idx < len(tasks) - 1:
             markdown_content += "---\n\n"
 
     return render_template('markdown_export.html', markdown_content=markdown_content, lesson=lesson, student=student)
+
+@app.route('/lesson/<int:lesson_id>/homework-export-md')
+def lesson_homework_export_md(lesson_id):
+    """Экспорт домашнего задания"""
+    return lesson_export_md(lesson_id, 'homework')
+
+@app.route('/lesson/<int:lesson_id>/classwork-export-md')
+def lesson_classwork_export_md(lesson_id):
+    """Экспорт классной работы"""
+    return lesson_export_md(lesson_id, 'classwork')
+
+@app.route('/lesson/<int:lesson_id>/exam-export-md')
+def lesson_exam_export_md(lesson_id):
+    """Экспорт проверочной работы"""
+    return lesson_export_md(lesson_id, 'exam')
 
 @app.route('/update-plans')
 def update_plans():
