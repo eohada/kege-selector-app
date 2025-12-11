@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 import ast
 import logging
@@ -1015,7 +1015,7 @@ def student_new():
                 existing_student = Student.query.filter_by(platform_id=platform_id).first()
                 if existing_student:
                     flash(f'Ученик с ID "{platform_id}" уже существует! (Ученик: {existing_student.name})', 'error')
-                    return render_template('student_form.html', form=form, title='Добавить ученика', is_new=True)
+                    return redirect(url_for('student_new'))
 
             school_class_value = normalize_school_class(form.school_class.data)  # Приводим выбранный класс к допустимому значению
             goal_text_value = form.goal_text.data.strip() if (form.goal_text.data and form.goal_text.data.strip()) else None  # Забираем текстовую цель
@@ -1040,11 +1040,11 @@ def student_new():
             db.session.add(student)
             db.session.commit()
             
-            # Логируем создание ученика
-            audit_logger.log(
-                action='create_student',
-                entity='Student',
-                entity_id=student.student_id,
+
+            # Логируем создание ученика (с обработкой ошибок, чтобы не ломать функционал)
+            try:
+                audit_logger.log(
+                    action='create_student',
                 status='success',
                 metadata={
                     'name': student.name,
@@ -1055,12 +1055,14 @@ def student_new():
                     'programming_language': student.programming_language  # Фиксируем выбранный язык программирования
                 }
             )
+            except Exception as log_err:
+                logger.warning(f"Ошибка при логировании создания ученика: {log_err}")
             
             flash(f'Ученик {student.name} успешно добавлен!', 'success')
             return redirect(url_for('dashboard'))
         except Exception as e:
             db.session.rollback()
-            logger.error(f'Ошибка при добавлении ученика: {e}')
+            logger.error(f'Ошибка при добавлении ученика: {e}', exc_info=True)
             
             # Логируем ошибку
             try:
@@ -1074,6 +1076,12 @@ def student_new():
                 logger.error(f'Ошибка при логировании: {log_error}')
             
             flash(f'Ошибка при добавлении ученика: {str(e)}', 'error')
+            # Редирект на GET запрос, чтобы избежать проблемы с повторной отправкой формы
+            return redirect(url_for('student_new'))
+
+    # Логируем попытку отправки формы для отладки, если это POST запрос
+    if request.method == 'POST' and not form.validate_on_submit():
+        logger.warning(f'Ошибки валидации формы при создании ученика: {form.errors}')
 
     return render_template('student_form.html', form=form, title='Добавить ученика', is_new=True)
 
@@ -3512,7 +3520,6 @@ def export_data():
         response.headers['Content-Disposition'] = f'attachment; filename=export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
         logger.info(f'Экспорт завершен: {len(export_data["students"])} учеников, {len(export_data["lessons"])} уроков')
         
-        # Логируем экспорт данных
         audit_logger.log(
             action='export_data',
             entity='Data',
