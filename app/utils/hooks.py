@@ -8,7 +8,7 @@ from datetime import timedelta
 from flask import request, redirect, url_for
 from flask_login import current_user
 from sqlalchemy import text
-from app.models import db, Lesson, moscow_now
+from app.models import db, Lesson, moscow_now, MOSCOW_TZ
 from app.utils.db_migrations import ensure_schema_columns
 from core.audit_logger import audit_logger
 
@@ -77,14 +77,20 @@ def register_hooks(app):
                 # Используем SQL для массового обновления
                 # Проверяем тип БД и используем соответствующий синтаксис
                 db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+                
+                # Конвертируем now в naive datetime для сравнения с lesson_date в БД
+                # lesson_date хранится как naive datetime в московском времени
+                now_naive = now.replace(tzinfo=None) if now.tzinfo else now
+                
                 if 'postgresql' in db_url or 'postgres' in db_url:
                     # PostgreSQL синтаксис
+                    # lesson_date хранится как naive datetime, считаем что это московское время
                     result = db.session.execute(text("""
                         UPDATE "Lessons" 
                         SET status = 'completed', updated_at = :now
                         WHERE status = 'planned' 
                         AND (lesson_date + (duration || ' minutes')::interval) <= :now
-                    """), {'now': now})
+                    """), {'now': now_naive})
                 else:
                     # SQLite синтаксис
                     result = db.session.execute(text("""
@@ -92,7 +98,7 @@ def register_hooks(app):
                         SET status = 'completed', updated_at = :now
                         WHERE status = 'planned' 
                         AND datetime(lesson_date, '+' || duration || ' minutes') <= :now
-                    """), {'now': now})
+                    """), {'now': now_naive})
                 
                 updated_count = result.rowcount
                 
@@ -106,7 +112,10 @@ def register_hooks(app):
                 logger.warning(f"Ошибка при массовом обновлении статусов, используем старый метод: {e}")
                 try:
                     # Фильтруем только уроки, которые могли закончиться (за последние 24 часа)
-                    yesterday = now - timedelta(days=1)
+                    # Конвертируем now в naive для сравнения с lesson_date в БД
+                    now_naive = now.replace(tzinfo=None) if now.tzinfo else now
+                    yesterday = now_naive - timedelta(days=1)
+                    
                     planned_lessons = Lesson.query.filter(
                         Lesson.status == 'planned',
                         Lesson.lesson_date >= yesterday
@@ -117,10 +126,16 @@ def register_hooks(app):
                     
                     updated_count = 0
                     for lesson in planned_lessons:
-                        lesson_end_time = lesson.lesson_date + timedelta(minutes=lesson.duration)
+                        # lesson.lesson_date может быть naive, нужно добавить timezone для сравнения
+                        lesson_date_with_tz = lesson.lesson_date
+                        if lesson_date_with_tz.tzinfo is None:
+                            # Если naive, считаем что это московское время
+                            lesson_date_with_tz = lesson_date_with_tz.replace(tzinfo=MOSCOW_TZ)
+                        
+                        lesson_end_time = lesson_date_with_tz + timedelta(minutes=lesson.duration)
                         if now >= lesson_end_time:
                             lesson.status = 'completed'
-                            lesson.updated_at = now
+                            lesson.updated_at = now_naive
                             updated_count += 1
                     
                     if updated_count > 0:

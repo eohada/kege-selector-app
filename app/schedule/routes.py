@@ -193,8 +193,12 @@ def schedule_create_lesson():
         input_tz = TOMSK_TZ if timezone == 'tomsk' else MOSCOW_TZ
         lesson_datetime_str = f"{lesson_date_str} {lesson_time_str}"
         lesson_datetime_local = datetime.strptime(lesson_datetime_str, '%Y-%m-%d %H:%M')
+        # Создаем timezone-aware datetime
         lesson_datetime_local = lesson_datetime_local.replace(tzinfo=input_tz)
+        # Конвертируем в московское время для хранения в БД
         base_lesson_datetime = lesson_datetime_local.astimezone(MOSCOW_TZ)
+        # Убираем timezone перед сохранением в БД (SQLAlchemy сохранит как naive)
+        base_lesson_datetime = base_lesson_datetime.replace(tzinfo=None)
 
         student = Student.query.get_or_404(student_id)
 

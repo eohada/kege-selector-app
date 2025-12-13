@@ -329,12 +329,25 @@ def lesson_new(student_id):
         timezone = form.timezone.data
         
         # Преобразуем локальное время в нужный часовой пояс
+        # Проверяем, что datetime naive (без timezone), иначе делаем его naive
+        if lesson_date_local.tzinfo is not None:
+            # Если уже есть timezone, убираем его и работаем с naive datetime
+            lesson_date_local = lesson_date_local.replace(tzinfo=None)
+        
         if timezone == 'tomsk':
+            # Создаем timezone-aware datetime для томского времени
             lesson_date_local = lesson_date_local.replace(tzinfo=TOMSK_TZ)
+            # Конвертируем в московское время для хранения в БД
             lesson_date_utc = lesson_date_local.astimezone(MOSCOW_TZ)
+            logger.debug(f"Томское время: {lesson_date_local}, Московское время: {lesson_date_utc}")
         else:
+            # Создаем timezone-aware datetime для московского времени
             lesson_date_local = lesson_date_local.replace(tzinfo=MOSCOW_TZ)
             lesson_date_utc = lesson_date_local
+        
+        # Убираем timezone перед сохранением в БД (SQLAlchemy сохранит как naive)
+        # lesson_date в БД хранится как naive datetime в московском времени
+        lesson_date_utc = lesson_date_utc.replace(tzinfo=None) if lesson_date_utc.tzinfo else lesson_date_utc
         
         lesson = Lesson(
             student_id=student_id,
