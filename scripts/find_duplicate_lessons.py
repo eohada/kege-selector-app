@@ -1,6 +1,6 @@
 """
 Скрипт для поиска дубликатов уроков в базе данных
-Находит уроки с одинаковым студентом и временем (с допуском 5 минут)
+Находит уроки с одинаковым студентом и датой (день), независимо от времени
 """
 import sys
 import os
@@ -11,12 +11,53 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import create_app, db
 from app.models import Lesson, Student
 
-def find_duplicate_lessons(dry_run=True):
+def get_lesson_fill_score(lesson):
+    """
+    Вычисляет "оценку заполненности" урока
+    Чем больше заполнено полей, тем выше оценка
+    
+    Returns:
+        int: Оценка заполненности (0-100)
+    """
+    score = 0
+    
+    # Статус урока (важнее всего)
+    if lesson.status == 'completed':
+        score += 40
+    elif lesson.status == 'in_progress':
+        score += 20
+    elif lesson.status == 'planned':
+        score += 5
+    
+    # Тема урока
+    if lesson.topic and lesson.topic.strip():
+        score += 15
+    
+    # Заметки
+    if lesson.notes and lesson.notes.strip():
+        score += 15
+    
+    # Домашнее задание
+    if lesson.homework and lesson.homework.strip():
+        score += 15
+    
+    # Статус ДЗ
+    if lesson.homework_status and lesson.homework_status != 'not_assigned':
+        score += 10
+    
+    # Результаты автопроверки
+    if lesson.homework_result_percent is not None:
+        score += 5
+    
+    return score
+
+def find_duplicate_lessons(dry_run=True, same_day_only=True):
     """
     Находит дубликаты уроков
     
     Args:
         dry_run: Если True, только показывает дубликаты, не удаляет их
+        same_day_only: Если True, ищет дубликаты только в один день, иначе в пределах ±3 часов
     """
     app = create_app()
     
@@ -28,12 +69,9 @@ def find_duplicate_lessons(dry_run=True):
         seen = {}  # {(student_id, lesson_date_normalized): [lesson_ids]}
         
         for lesson in lessons:
-            # Нормализуем дату до 5-минутных интервалов для поиска дубликатов
-            lesson_date_normalized = lesson.lesson_date.replace(
-                minute=(lesson.lesson_date.minute // 5) * 5,
-                second=0,
-                microsecond=0
-            )
+            # Нормализуем дату до дня для поиска дубликатов
+            # Считаем дубликатами уроки одного студента в один день
+            lesson_date_normalized = lesson.lesson_date.date()
             
             key = (lesson.student_id, lesson_date_normalized)
             
@@ -47,6 +85,26 @@ def find_duplicate_lessons(dry_run=True):
                 student_id, lesson_date = key
                 student = Student.query.get(student_id)
                 student_name = student.name if student else f"ID {student_id}"
+                
+                # Если same_day_only=False, дополнительно фильтруем по времени (в пределах ±3 часов)
+                if not same_day_only:
+                    filtered_lessons = []
+                    for lesson in lesson_list:
+                        # Проверяем, есть ли другие уроки в пределах ±3 часов
+                        has_nearby = False
+                        for other_lesson in lesson_list:
+                            if other_lesson.lesson_id != lesson.lesson_id:
+                                time_diff = abs((lesson.lesson_date - other_lesson.lesson_date).total_seconds() / 3600)
+                                if time_diff <= 3:
+                                    has_nearby = True
+                                    break
+                        if has_nearby:
+                            filtered_lessons.append(lesson)
+                    
+                    if len(filtered_lessons) > 1:
+                        lesson_list = filtered_lessons
+                    else:
+                        continue
                 
                 duplicates.append({
                     'student_id': student_id,
@@ -70,15 +128,28 @@ def find_duplicate_lessons(dry_run=True):
                 print(f"   📊 Статусы: {[l.status for l in dup['lessons']]}")
                 print()
                 
-                # Предлагаем оставить самый новый урок (с наибольшим lesson_id)
+                # Определяем, какой урок оставить
+                # Приоритет: более заполненный урок (с большим fill_score)
                 if not dry_run:
-                    # Сортируем по lesson_id (предполагаем, что больший ID = более новый)
-                    sorted_lessons = sorted(dup['lessons'], key=lambda x: x.lesson_id, reverse=True)
-                    keep_lesson = sorted_lessons[0]
-                    to_delete = sorted_lessons[1:]
+                    # Вычисляем оценку заполненности для каждого урока
+                    lessons_with_scores = []
+                    for lesson in dup['lessons']:
+                        fill_score = get_lesson_fill_score(lesson)
+                        lessons_with_scores.append((lesson, fill_score))
                     
-                    print(f"   ✅ Оставляем урок ID: {keep_lesson.lesson_id}")
-                    print(f"   ❌ Удаляем уроки: {[l.lesson_id for l in to_delete]}")
+                    # Сортируем по fill_score (убывание), затем по lesson_id (убывание) как запасной вариант
+                    lessons_with_scores.sort(key=lambda x: (x[1], x[0].lesson_id), reverse=True)
+                    
+                    keep_lesson, keep_score = lessons_with_scores[0]
+                    to_delete = [l for l, _ in lessons_with_scores[1:]]
+                    
+                    print(f"   ✅ Оставляем урок ID: {keep_lesson.lesson_id} (оценка заполненности: {keep_score})")
+                    print(f"      Время: {keep_lesson.lesson_date.strftime('%Y-%m-%d %H:%M')}")
+                    print(f"      Статус: {keep_lesson.status}")
+                    print(f"      Тема: {keep_lesson.topic or 'нет'}")
+                    print(f"   ❌ Удаляем уроки:")
+                    for lesson, score in lessons_with_scores[1:]:
+                        print(f"      ID: {lesson.lesson_id} (оценка: {score}, время: {lesson.lesson_date.strftime('%Y-%m-%d %H:%M')}, статус: {lesson.status})")
                     
                     for lesson in to_delete:
                         db.session.delete(lesson)
@@ -104,7 +175,8 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description='Поиск и удаление дубликатов уроков')
     parser.add_argument('--no-dry-run', action='store_true', help='Реально удалить дубликаты (по умолчанию только показывать)')
+    parser.add_argument('--time-window', action='store_true', help='Искать дубликаты в пределах ±3 часов, а не только в один день')
     args = parser.parse_args()
     
-    find_duplicate_lessons(dry_run=not args.no_dry_run)
+    find_duplicate_lessons(dry_run=not args.no_dry_run, same_day_only=not args.time_window)
 

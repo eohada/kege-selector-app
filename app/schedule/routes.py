@@ -220,16 +220,19 @@ def schedule_create_lesson():
         for week_offset in range(lessons_to_create):
             lesson_datetime = base_lesson_datetime + timedelta(weeks=week_offset)
             
-            # Проверяем, не существует ли уже урок с таким временем и студентом
-            # Допускаем разницу до 5 минут для учета возможных расхождений
+            # Проверяем, не существует ли уже урок с таким студентом в этот день
+            # Ищем уроки того же студента в тот же день (независимо от времени)
+            lesson_date_start = lesson_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
+            lesson_date_end = lesson_date_start + timedelta(days=1)
+            
             existing_lesson = Lesson.query.filter(
                 Lesson.student_id == student_id,
-                Lesson.lesson_date >= lesson_datetime - timedelta(minutes=5),
-                Lesson.lesson_date <= lesson_datetime + timedelta(minutes=5)
+                Lesson.lesson_date >= lesson_date_start,
+                Lesson.lesson_date < lesson_date_end
             ).first()
             
             if existing_lesson:
-                logger.warning(f"Урок уже существует для студента {student_id} в {lesson_datetime}, пропускаем")
+                logger.warning(f"Урок уже существует для студента {student_id} в день {lesson_datetime.date()} (существующий: {existing_lesson.lesson_date}, новый: {lesson_datetime}), пропускаем")
                 continue
             
             new_lesson = Lesson(
