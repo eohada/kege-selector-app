@@ -56,7 +56,7 @@
     <div class="app-shell">
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                <a href="{{ url_for('templates_manager.templates_list') }}" class="neo-button ghost" style="text-decoration: none;">← К библиотеке</a>
+                <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost" style="text-decoration: none;">← К библиотеке</a>
             </div>
             <p class="hero-eyebrow">{% if is_new %}создание шаблона{% else %}редактирование шаблона{% endif %}</p>
             <h1 class="hero-title">{% if is_new %}➕ Создать шаблон{% else %}✏️ Редактировать шаблон{% endif %}</h1>
@@ -108,7 +108,7 @@
             {% endif %}
 
             <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                <a href="{{ url_for('templates_manager.templates_list') }}" class="neo-button ghost">Отмена</a>
+                <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost">Отмена</a>
                 <button type="submit" class="neo-button accent">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
             </div>
         </form>
@@ -128,7 +128,7 @@
                 task_ids: [] // Пока пустой, задания добавляются через генератор
             };
 
-            const url = {% if is_new %}'{{ url_for('templates_manager.template_new') }}'{% else %}'{{ url_for('templates_manager.template_edit', template_id=template.template_id) }}'{% endif %};
+            const url = {% if is_new %}'{{ url_for('templates.template_new') }}'{% else %}'{{ url_for('templates.template_edit', template_id=template.template_id) }}'{% endif %};
             const method = 'POST';
 
             try {
@@ -146,7 +146,7 @@
                 if (data.success) {
                     toast.success('{% if is_new %}Шаблон создан{% else %}Шаблон сохранен{% endif %}');
                     setTimeout(() => {
-                        window.location.href = '{{ url_for('templates_manager.templates_list') }}';
+                        window.location.href = '{{ url_for('templates.templates_list') }}';
                     }, 1000);
                 } else {
                     toast.error(data.error || 'Ошибка при сохранении');

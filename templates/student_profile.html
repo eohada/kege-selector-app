@@ -803,7 +803,7 @@
                             <button onclick="generateNewTasks(${lessonId}, '${type}')" class="neo-button accent" style="width: 100%; max-width: 300px;">
                                 🎲 Сгенерировать новые задания
                             </button>
-                            <a href="{{ url_for('templates_manager.templates_list') }}" class="neo-button ghost" style="text-decoration: none; width: 100%; max-width: 300px; text-align: center;">
+                            <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost" style="text-decoration: none; width: 100%; max-width: 300px; text-align: center;">
                                 📚 Перейти в библиотеку
                             </a>
                         </div>
@@ -869,7 +869,7 @@
             loadingDiv.innerHTML = '<div style="background: var(--surface-1); padding: 2rem; border-radius: var(--radius-lg); text-align: center;"><div class="loading-spinner"></div><p>Применение шаблона...</p></div>';
             document.body.appendChild(loadingDiv);
             
-            fetch(`{{ url_for('templates_manager.template_apply', template_id=0) }}`.replace('0', templateId), {
+            fetch(`{{ url_for('templates.template_apply', template_id=0) }}`.replace('0', templateId), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1007,7 +1007,7 @@
             <div id="templatesList"></div>
             
             <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--stroke-1); text-align: center;">
-                <a href="{{ url_for('templates_manager.templates_list') }}" class="neo-button ghost" style="text-decoration: none;">📚 Управление шаблонами</a>
+                <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost" style="text-decoration: none;">📚 Управление шаблонами</a>
             </div>
         </div>
     </div>

@@ -61,7 +61,7 @@
                     <h1 class="hero-title">📚 Шаблоны заданий</h1>
                     <p class="hero-subtitle">Готовые наборы заданий для быстрого формирования ДЗ, классных и проверочных работ</p>
                 </div>
-                <a href="{{ url_for('templates_manager.template_new') }}" class="neo-button accent">➕ Создать шаблон</a>
+                <a href="{{ url_for('templates.template_new') }}" class="neo-button accent">➕ Создать шаблон</a>
             </div>
         </section>
 
@@ -131,8 +131,8 @@
                     </div>
 
                     <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                        <a href="{{ url_for('templates_manager.template_view', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1; text-align: center; text-decoration: none;">👁️ Просмотр</a>
-                        <a href="{{ url_for('templates_manager.template_edit', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1; text-align: center; text-decoration: none;">✏️ Редактировать</a>
+                        <a href="{{ url_for('templates.template_view', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1; text-align: center; text-decoration: none;">👁️ Просмотр</a>
+                        <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1; text-align: center; text-decoration: none;">✏️ Редактировать</a>
                     </div>
                 </div>
                 {% endfor %}
@@ -158,7 +158,7 @@
             const params = new URLSearchParams();
             if (type) params.append('type', type);
             if (category) params.append('category', category);
-            window.location.href = '{{ url_for('templates_manager.templates_list') }}?' + params.toString();
+            window.location.href = '{{ url_for('templates.templates_list') }}?' + params.toString();
         }
     </script>
 </body>
