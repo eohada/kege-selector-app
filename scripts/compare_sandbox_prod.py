@@ -34,15 +34,18 @@ def compare_lessons(sandbox_url, prod_url):
         print(f"❌ Ошибка подключения к БД: {e}")
         return
     
-    # Получаем текущую неделю
+    # Получаем последние 3 недели
     today = datetime.now(MOSCOW_TZ).date()
-    week_start = today - timedelta(days=today.weekday())
-    week_end = week_start + timedelta(days=6)
+    current_week_start = today - timedelta(days=today.weekday())
+    
+    # Начинаем с 3 недель назад
+    week_start = current_week_start - timedelta(weeks=2)
+    week_end = current_week_start + timedelta(days=6)  # До конца текущей недели
     
     week_start_datetime = datetime.combine(week_start, time.min)
     week_end_datetime = datetime.combine(week_end, time.max)
     
-    print(f"📅 Проверяем неделю: {week_start} - {week_end}\n")
+    print(f"📅 Проверяем период: {week_start} - {week_end} (3 недели)\n")
     
     # Получаем уроки из обеих БД
     sandbox_lessons = sandbox_session.query(Lesson).filter(
