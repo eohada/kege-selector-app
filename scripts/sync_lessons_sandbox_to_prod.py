@@ -139,12 +139,15 @@ def copy_lesson(sandbox_session, prod_session, sandbox_lesson, prod_student_id):
     
     return new_lesson_id
 
-def copy_lesson_tasks(sandbox_session, prod_session, sandbox_lesson_id, prod_lesson_id):
+def copy_lesson_tasks(sandbox_session, prod_session, sandbox_lesson_id, prod_lesson_id, dry_run=False):
     """Копирует задания урока (домашние и классные работы)"""
     tasks = get_lesson_tasks(sandbox_session, sandbox_lesson_id)
     
     if not tasks:
         return 0
+    
+    if dry_run:
+        return len(tasks)
     
     copied_count = 0
     for task in tasks:
@@ -293,7 +296,8 @@ def sync_lessons(sandbox_url=None, prod_url=None):
                             sandbox_session, 
                             prod_session, 
                             sandbox_lesson['lesson_id'], 
-                            prod_lesson['lesson_id']
+                            prod_lesson['lesson_id'],
+                            dry_run=dry_run
                         )
                         print(f"  ✅ Обновлен урок и скопировано {tasks_count} заданий")
                         synced_count += 1
@@ -317,7 +321,8 @@ def sync_lessons(sandbox_url=None, prod_url=None):
                             sandbox_session, 
                             prod_session, 
                             sandbox_lesson['lesson_id'], 
-                            new_lesson_id
+                            new_lesson_id,
+                            dry_run=dry_run
                         )
                         print(f"  ✅ Создан урок и скопировано {tasks_count} заданий")
                         synced_count += 1
