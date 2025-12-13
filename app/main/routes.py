@@ -170,28 +170,45 @@ def update_plans():
     """Страница планов обновления"""
     try:
         # Пробуем найти файл в разных местах
+        # На Railway рабочая директория может быть /app
+        current_file_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(os.path.dirname(current_file_dir))
+        
         possible_paths = [
             os.path.join(base_dir, 'UPDATE_PLANS.md'),
             os.path.join(base_dir, 'docs', 'UPDATE_PLANS.md'),
+            os.path.join(project_root, 'UPDATE_PLANS.md'),
+            os.path.join(project_root, 'docs', 'UPDATE_PLANS.md'),
             '/app/UPDATE_PLANS.md',
-            '/app/docs/UPDATE_PLANS.md'
+            '/app/docs/UPDATE_PLANS.md',
+            os.path.join(os.getcwd(), 'UPDATE_PLANS.md'),
+            os.path.join(os.getcwd(), 'docs', 'UPDATE_PLANS.md')
         ]
         
         plans_content = None
+        found_path = None
         for plans_file_path in possible_paths:
-            if os.path.exists(plans_file_path):
-                with open(plans_file_path, 'r', encoding='utf-8') as f:
-                    plans_content = f.read()
-                break
+            try:
+                if os.path.exists(plans_file_path) and os.path.isfile(plans_file_path):
+                    with open(plans_file_path, 'r', encoding='utf-8') as f:
+                        plans_content = f.read()
+                    found_path = plans_file_path
+                    logger.info(f"Файл UPDATE_PLANS.md найден: {found_path}")
+                    break
+            except Exception as path_error:
+                logger.debug(f"Не удалось проверить путь {plans_file_path}: {path_error}")
+                continue
         
         if plans_content is None:
             # Если файл не найден, возвращаем сообщение об этом
-            plans_content = "# Планы обновления\n\nФайл с планами обновления не найден."
-            logger.warning(f"Файл UPDATE_PLANS.md не найден ни в одном из мест: {possible_paths}")
+            plans_content = "# Планы обновления\n\nФайл с планами обновления не найден.\n\nПроверенные пути:\n" + "\n".join(f"- {p}" for p in possible_paths)
+            logger.warning(f"Файл UPDATE_PLANS.md не найден ни в одном из мест. Проверенные пути: {possible_paths}")
+            logger.warning(f"Текущая рабочая директория: {os.getcwd()}")
+            logger.warning(f"base_dir: {base_dir}, project_root: {project_root}")
         
         return render_template('update_plans.html', plans_content=plans_content)
     except Exception as e:
-        logger.error(f"Ошибка при чтении файла планов обновления: {e}")
+        logger.error(f"Ошибка при чтении файла планов обновления: {e}", exc_info=True)
         flash('Не удалось загрузить планы обновления', 'error')
         return redirect(url_for('main.dashboard'))
 
