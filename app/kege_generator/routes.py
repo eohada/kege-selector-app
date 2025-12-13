@@ -215,10 +215,25 @@ def generate_results():
         assignment_type = request.args.get('assignment_type', default='homework')
         search_task_id = request.args.get('search_task_id', type=int)
         
-        logger.info(f"generate_results вызван с параметрами: task_type={task_type}, limit_count={limit_count}, search_task_id={search_task_id}, lesson_id={lesson_id}")
+        # Валидация assignment_type
+        if assignment_type not in ['homework', 'classwork', 'exam']:
+            assignment_type = 'homework'
+            logger.warning(f"Некорректный assignment_type, установлен 'homework'")
+        
+        # Валидация обязательных параметров
+        if not task_type or not limit_count:
+            logger.error(f"Отсутствуют обязательные параметры: task_type={task_type}, limit_count={limit_count}")
+            flash('Не указаны тип задания или количество заданий.', 'danger')
+            if lesson_id:
+                return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
+            return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
+        
+        logger.info(f"generate_results вызван с параметрами: task_type={task_type}, limit_count={limit_count}, search_task_id={search_task_id}, lesson_id={lesson_id}, assignment_type={assignment_type}")
     except Exception as e:
         logger.error(f"Ошибка при получении параметров запроса: {e}", exc_info=True)
         flash('Неверные параметры запроса.', 'danger')
+        # Получаем assignment_type из запроса для редиректа
+        assignment_type = request.args.get('assignment_type', 'homework')
         if lesson_id:
             return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
         return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
