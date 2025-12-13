@@ -169,12 +169,28 @@ def dashboard():
 def update_plans():
     """Страница планов обновления"""
     try:
-        plans_file_path = os.path.join(base_dir, 'UPDATE_PLANS.md')
-        with open(plans_file_path, 'r', encoding='utf-8') as f:
-            plans_content = f.read()
+        # Пробуем найти файл в разных местах
+        possible_paths = [
+            os.path.join(base_dir, 'UPDATE_PLANS.md'),
+            os.path.join(base_dir, 'docs', 'UPDATE_PLANS.md'),
+            '/app/UPDATE_PLANS.md',
+            '/app/docs/UPDATE_PLANS.md'
+        ]
+        
+        plans_content = None
+        for plans_file_path in possible_paths:
+            if os.path.exists(plans_file_path):
+                with open(plans_file_path, 'r', encoding='utf-8') as f:
+                    plans_content = f.read()
+                break
+        
+        if plans_content is None:
+            # Если файл не найден, возвращаем сообщение об этом
+            plans_content = "# Планы обновления\n\nФайл с планами обновления не найден."
+            logger.warning(f"Файл UPDATE_PLANS.md не найден ни в одном из мест: {possible_paths}")
+        
         return render_template('update_plans.html', plans_content=plans_content)
     except Exception as e:
-        logger = logging.getLogger(__name__)
         logger.error(f"Ошибка при чтении файла планов обновления: {e}")
         flash('Не удалось загрузить планы обновления', 'error')
         return redirect(url_for('main.dashboard'))

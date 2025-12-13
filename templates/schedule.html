@@ -633,7 +633,7 @@
                 <div class="modal-title">Создать урок</div>
                 <button class="modal-close" onclick="closeCreateModal()">&times;</button>
             </div>
-            <form id="createLessonForm" method="POST" action="{{ url_for('schedule.create_lesson') }}">
+            <form id="createLessonForm" method="POST" action="{{ url_for('schedule.schedule_create_lesson') }}">
                 <input type="hidden" name="week_offset" value="{{ week_offset }}">
                 <input type="hidden" name="status_filter" value="{{ status_filter }}">
                 <input type="hidden" name="category_filter" value="{{ category_filter }}">
