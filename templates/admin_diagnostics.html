@@ -1,229 +1,285 @@
-{% extends "base.html" %}
-
-{% block title %}Диагностика окружения{% endblock %}
-
-{% block content %}
-<div class="container mt-4">
-    <h1>🔍 Диагностика окружения</h1>
-    <p class="text-muted">Эта страница помогает выявить различия между production и sandbox окружениями</p>
-    
-    {% if diagnostics_data.errors %}
-    <div class="alert alert-danger">
-        <h5>❌ Обнаружены ошибки:</h5>
-        <ul>
-            {% for error in diagnostics_data.errors %}
-            <li>{{ error }}</li>
-            {% endfor %}
-        </ul>
-    </div>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Диагностика окружения · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
-    
-    <div class="row mt-4">
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5>🌍 Окружение</h5>
-                </div>
-                <div class="card-body">
-                    <table class="table table-sm">
-                        <tr>
-                            <th>ENVIRONMENT</th>
-                            <td><span class="badge bg-info">{{ diagnostics_data.environment.ENVIRONMENT }}</span></td>
-                        </tr>
-                        <tr>
-                            <th>RAILWAY_ENVIRONMENT</th>
-                            <td><span class="badge bg-secondary">{{ diagnostics_data.environment.RAILWAY_ENVIRONMENT }}</span></td>
-                        </tr>
-                        <tr>
-                            <th>RAILWAY_SERVICE_NAME</th>
-                            <td>{{ diagnostics_data.environment.RAILWAY_SERVICE_NAME }}</td>
-                        </tr>
-                        <tr>
-                            <th>PORT</th>
-                            <td>{{ diagnostics_data.environment.PORT }}</td>
-                        </tr>
-                        <tr>
-                            <th>PYTHON_VERSION</th>
-                            <td>{{ diagnostics_data.environment.PYTHON_VERSION }}</td>
-                        </tr>
-                    </table>
-                </div>
+</head>
+<body>
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                {% if current_user and current_user.is_authenticated %}
+                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                    {{ current_user.username[0].upper() }}
+                </a>
+                {% endif %}
+                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                    <div class="brand-mark">LOGO</div>
+                    <div class="brand-caption">Чёрный неон</div>
+                </a>
             </div>
-        </div>
-        
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header bg-success text-white">
-                    <h5>💾 База данных</h5>
-                </div>
-                <div class="card-body">
-                    <table class="table table-sm">
-                        <tr>
-                            <th>Тип БД</th>
-                            <td><span class="badge bg-success">{{ diagnostics_data.database.database_type }}</span></td>
-                        </tr>
-                        <tr>
-                            <th>Подключение</th>
-                            <td>
-                                {% if diagnostics_data.database.connection_status == 'OK' %}
-                                <span class="badge bg-success">✓ OK</span>
-                                {% else %}
-                                <span class="badge bg-danger">✗ ERROR</span>
-                                <small class="text-danger d-block">{{ diagnostics_data.database.connection_error }}</small>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>DATABASE_URL</th>
-                            <td>
-                                {% if diagnostics_data.database.DATABASE_URL_set == 'YES' %}
-                                <span class="badge bg-success">Установлен</span>
-                                <small class="d-block text-muted">{{ diagnostics_data.database.DATABASE_URL_preview }}</small>
-                                {% else %}
-                                <span class="badge bg-danger">НЕ установлен</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>EXTERNAL_URL</th>
-                            <td>
-                                {% if diagnostics_data.database.DATABASE_EXTERNAL_URL_set == 'YES' %}
-                                <span class="badge bg-info">Установлен</span>
-                                <small class="d-block text-muted">{{ diagnostics_data.database.DATABASE_EXTERNAL_URL_preview }}</small>
-                                {% else %}
-                                <span class="badge bg-secondary">Не установлен</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% if diagnostics_data.database.postgres_version %}
-                        <tr>
-                            <th>PostgreSQL версия</th>
-                            <td><small>{{ diagnostics_data.database.postgres_version }}</small></td>
-                        </tr>
-                        {% endif %}
-                        <tr>
-                            <th>Таблиц в БД</th>
-                            <td>
-                                {% if diagnostics_data.database.tables_count is defined %}
-                                <span class="badge bg-info">{{ diagnostics_data.database.tables_count }}</span>
-                                {% else %}
-                                <span class="badge bg-danger">Ошибка проверки</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                    </table>
-                </div>
+            {% include '_mobile_menu.html' %}
+            <nav class="nav-links">
+                <a href="{{ url_for('main.dashboard') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="nav-link-icon">
+                        <span class="nav-link-label">Ученики</span>
+                    </span>
+                </a>
+                <a href="{{ url_for('schedule.schedule') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="nav-link-icon">
+                        <span class="nav-link-label">Расписание</span>
+                    </span>
+                </a>
+                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="nav-link-icon">
+                        <span class="nav-link-label">Генератор</span>
+                    </span>
+                </a>
+                <a href="{{ url_for('main.update_plans') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Планы" class="nav-link-icon">
+                        <span class="nav-link-label">Планы</span>
+                    </span>
+                </a>
+            </nav>
+        </header>
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">
+                    ← К админ-панели
+                </a>
             </div>
-        </div>
-    </div>
-    
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header bg-warning text-dark">
-                    <h5>📊 Данные в БД</h5>
+            <p class="hero-eyebrow">диагностика</p>
+            <h1 class="hero-title">🔍 Диагностика окружения</h1>
+            <p class="hero-subtitle">Эта страница помогает выявить различия между production и sandbox окружениями</p>
+        </section>
+
+        {% if diagnostics_data.errors %}
+        <section class="glass-panel" style="margin-bottom: 2rem; border-left: 3px solid var(--danger);">
+            <h2 style="color: var(--danger); margin-bottom: 1rem;">❌ Обнаружены ошибки:</h2>
+            <ul style="margin: 0; padding-left: 1.5rem;">
+                {% for error in diagnostics_data.errors %}
+                <li style="color: var(--danger); margin-bottom: 0.5rem;">{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+            <section class="glass-panel">
+                <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">🌍 Окружение</h2>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">ENVIRONMENT</div>
+                        <div style="font-size: 1.1em; font-weight: 600; color: var(--accent-1);">{{ diagnostics_data.environment.ENVIRONMENT }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">RAILWAY_ENVIRONMENT</div>
+                        <div style="font-size: 1.1em; font-weight: 600;">{{ diagnostics_data.environment.RAILWAY_ENVIRONMENT }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">RAILWAY_SERVICE_NAME</div>
+                        <div style="font-size: 1.1em; font-weight: 600;">{{ diagnostics_data.environment.RAILWAY_SERVICE_NAME }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">PORT</div>
+                        <div style="font-size: 1.1em; font-weight: 600;">{{ diagnostics_data.environment.PORT }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">PYTHON_VERSION</div>
+                        <div style="font-size: 1.1em; font-weight: 600;">{{ diagnostics_data.environment.PYTHON_VERSION }}</div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    {% if diagnostics_data.database.data_counts %}
-                    <table class="table table-sm">
-                        <tr>
-                            <th>Учеников</th>
-                            <td><span class="badge bg-primary">{{ diagnostics_data.database.data_counts.students }}</span></td>
-                        </tr>
-                        <tr>
-                            <th>Уроков</th>
-                            <td><span class="badge bg-primary">{{ diagnostics_data.database.data_counts.lessons }}</span></td>
-                        </tr>
-                        <tr>
-                            <th>Пользователей</th>
-                            <td><span class="badge bg-primary">{{ diagnostics_data.database.data_counts.users }}</span></td>
-                        </tr>
-                        <tr>
-                            <th>Заданий</th>
-                            <td><span class="badge bg-primary">{{ diagnostics_data.database.data_counts.tasks }}</span></td>
-                        </tr>
-                    </table>
-                    {% else %}
-                    <div class="alert alert-danger">
-                        <small>{{ diagnostics_data.database.data_counts_error }}</small>
+            </section>
+
+            <section class="glass-panel">
+                <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">💾 База данных</h2>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">Тип БД</div>
+                        <div style="font-size: 1.1em; font-weight: 600; color: var(--accent-2);">{{ diagnostics_data.database.database_type }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">Подключение</div>
+                        <div>
+                            {% if diagnostics_data.database.connection_status == 'OK' %}
+                            <span style="color: var(--accent-2); font-weight: 600;">✓ OK</span>
+                            {% else %}
+                            <span style="color: var(--danger); font-weight: 600;">✗ ERROR</span>
+                            <div style="font-size: 0.85em; color: var(--danger); margin-top: 0.25rem;">{{ diagnostics_data.database.connection_error }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">DATABASE_URL</div>
+                        <div>
+                            {% if diagnostics_data.database.DATABASE_URL_set == 'YES' %}
+                            <span style="color: var(--accent-2); font-weight: 600;">Установлен</span>
+                            <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 0.25rem; word-break: break-all;">{{ diagnostics_data.database.DATABASE_URL_preview }}</div>
+                            {% else %}
+                            <span style="color: var(--danger); font-weight: 600;">НЕ установлен</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">EXTERNAL_URL</div>
+                        <div>
+                            {% if diagnostics_data.database.DATABASE_EXTERNAL_URL_set == 'YES' %}
+                            <span style="color: var(--accent-1); font-weight: 600;">Установлен</span>
+                            <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 0.25rem; word-break: break-all;">{{ diagnostics_data.database.DATABASE_EXTERNAL_URL_preview }}</div>
+                            {% else %}
+                            <span style="color: var(--text-muted);">Не установлен</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if diagnostics_data.database.postgres_version %}
+                    <div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">PostgreSQL версия</div>
+                        <div style="font-size: 0.9em;">{{ diagnostics_data.database.postgres_version }}</div>
                     </div>
                     {% endif %}
+                    <div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">Таблиц в БД</div>
+                        <div>
+                            {% if diagnostics_data.database.tables_count is defined %}
+                            <span style="font-size: 1.1em; font-weight: 600; color: var(--accent-1);">{{ diagnostics_data.database.tables_count }}</span>
+                            {% else %}
+                            <span style="color: var(--danger);">Ошибка проверки</span>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </section>
         </div>
-        
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header bg-info text-white">
-                    <h5>⚙️ Приложение</h5>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+            <section class="glass-panel">
+                <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">📊 Данные в БД</h2>
+                {% if diagnostics_data.database.data_counts %}
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                    <div style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Учеников</div>
+                        <div style="font-size: 2em; font-weight: 700; color: var(--accent-1);">{{ diagnostics_data.database.data_counts.students }}</div>
+                    </div>
+                    <div style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Уроков</div>
+                        <div style="font-size: 2em; font-weight: 700; color: var(--accent-1);">{{ diagnostics_data.database.data_counts.lessons }}</div>
+                    </div>
+                    <div style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Пользователей</div>
+                        <div style="font-size: 2em; font-weight: 700; color: var(--accent-1);">{{ diagnostics_data.database.data_counts.users }}</div>
+                    </div>
+                    <div style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Заданий</div>
+                        <div style="font-size: 2em; font-weight: 700; color: var(--accent-1);">{{ diagnostics_data.database.data_counts.tasks }}</div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <table class="table table-sm">
-                        <tr>
-                            <th>SECRET_KEY</th>
-                            <td>
-                                {% if diagnostics_data.application.SECRET_KEY_set == 'YES' %}
-                                <span class="badge bg-success">Установлен</span>
-                                <small class="d-block text-muted">Длина: {{ diagnostics_data.application.SECRET_KEY_length }} символов</small>
-                                {% else %}
-                                <span class="badge bg-danger">НЕ установлен</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>CSRF защита</th>
-                            <td>
-                                {% if diagnostics_data.application.flask_config.WTF_CSRF_ENABLED %}
-                                <span class="badge bg-success">Включена</span>
-                                {% else %}
-                                <span class="badge bg-warning">Выключена</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                    </table>
+                {% else %}
+                <div style="padding: 1rem; background: rgba(255, 108, 145, 0.12); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); color: var(--danger);">
+                    <small>{{ diagnostics_data.database.data_counts_error }}</small>
                 </div>
-            </div>
+                {% endif %}
+            </section>
+
+            <section class="glass-panel">
+                <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">⚙️ Приложение</h2>
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+                    <div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">SECRET_KEY</div>
+                        <div>
+                            {% if diagnostics_data.application.SECRET_KEY_set == 'YES' %}
+                            <span style="color: var(--accent-2); font-weight: 600;">Установлен</span>
+                            <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 0.25rem;">Длина: {{ diagnostics_data.application.SECRET_KEY_length }} символов</div>
+                            {% else %}
+                            <span style="color: var(--danger); font-weight: 600;">НЕ установлен</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">CSRF защита</div>
+                        <div>
+                            {% if diagnostics_data.application.flask_config.WTF_CSRF_ENABLED %}
+                            <span style="color: var(--accent-2); font-weight: 600;">Включена</span>
+                            {% else %}
+                            <span style="color: var(--warning); font-weight: 600;">Выключена</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
-    </div>
-    
-    {% if diagnostics_data.database.tables %}
-    <div class="card mb-4">
-        <div class="card-header bg-secondary text-white">
-            <h5>📋 Таблицы в БД</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
+
+        {% if diagnostics_data.database.tables %}
+        <section class="glass-panel" style="margin-bottom: 1.5rem;">
+            <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">📋 Таблицы в БД</h2>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                 {% for table in diagnostics_data.database.tables %}
-                <div class="col-md-3 mb-2">
-                    <span class="badge bg-secondary">{{ table }}</span>
-                </div>
+                <span style="padding: 0.5rem 1rem; background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); font-size: 0.9em;">{{ table }}</span>
                 {% endfor %}
             </div>
+        </section>
+        {% endif %}
+
+        <section class="glass-panel" style="margin-bottom: 1.5rem;">
+            <h2 style="margin-bottom: 1rem; color: var(--text-primary);">💡 Как использовать эту информацию:</h2>
+            <ol style="margin: 0; padding-left: 1.5rem; line-height: 1.8;">
+                <li>Откройте эту страницу в <strong>production</strong> и скопируйте данные</li>
+                <li>Откройте эту страницу в <strong>sandbox</strong> и сравните</li>
+                <li>Обратите внимание на различия в:
+                    <ul style="margin-top: 0.5rem;">
+                        <li>Количестве данных в БД (может быть пустая БД в sandbox)</li>
+                        <li>Переменных окружения</li>
+                        <li>Статусе подключения к БД</li>
+                        <li>Наличии таблиц</li>
+                    </ul>
+                </li>
+            </ol>
+        </section>
+
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">← Назад к админ-панели</a>
+            <button onclick="location.reload()" class="neo-button accent">🔄 Обновить</button>
+            <a href="{{ url_for('admin.diagnostics_api') }}" class="neo-button outline" target="_blank" style="text-decoration: none;">📄 JSON API</a>
         </div>
     </div>
-    {% endif %}
-    
-    <div class="alert alert-info mt-4">
-        <h5>💡 Как использовать эту информацию:</h5>
-        <ol>
-            <li>Откройте эту страницу в <strong>production</strong> и скопируйте данные</li>
-            <li>Откройте эту страницу в <strong>sandbox</strong> и сравните</li>
-            <li>Обратите внимание на различия в:
-                <ul>
-                    <li>Количестве данных в БД (может быть пустая БД в sandbox)</li>
-                    <li>Переменных окружения</li>
-                    <li>Статусе подключения к БД</li>
-                    <li>Наличии таблиц</li>
-                </ul>
-            </li>
-        </ol>
-    </div>
-    
-    <div class="mt-3">
-        <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-secondary">← Назад к админ-панели</a>
-        <button onclick="location.reload()" class="btn btn-primary">🔄 Обновить</button>
-        <a href="{{ url_for('admin.diagnostics_api') }}" class="btn btn-info" target="_blank">📄 JSON API</a>
-    </div>
-</div>
-{% endblock %}
 
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error({{ message|tojson }});
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning({{ message|tojson }});
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info({{ message|tojson }});
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success({{ message|tojson }});
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
+</body>
+</html>
