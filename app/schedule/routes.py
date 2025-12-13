@@ -35,10 +35,16 @@ def schedule():
     time_labels = [f"{hour:02d}:00" for hour in range(day_start_hour, day_end_hour + 1)]
 
     # Создаем datetime для фильтрации (lesson_date в БД хранится как naive в московском времени)
+    # Используем date() для сравнения, чтобы избежать проблем с timezone
     week_start_datetime = datetime.combine(week_start, time.min)
     week_end_datetime = datetime.combine(week_end, time.max)
-
-    query = Lesson.query.filter(Lesson.lesson_date >= week_start_datetime, Lesson.lesson_date <= week_end_datetime)
+    
+    # Добавляем небольшой запас для учета возможных проблем с часовыми поясами
+    # Фильтруем уроки, которые попадают в диапазон недели
+    query = Lesson.query.filter(
+        Lesson.lesson_date >= week_start_datetime,
+        Lesson.lesson_date < week_end_datetime + timedelta(days=1)
+    )
 
     if status_filter:
         query = query.filter_by(status=status_filter)
@@ -57,6 +63,14 @@ def schedule():
         lesson_date_display = lesson_date.astimezone(display_tz)
         lesson_date_local = lesson_date_display.date()
         day_index = (lesson_date_local - week_start).days
+        
+        # Отладочное логирование для проблемных случаев
+        if day_index < 0 or day_index >= 7:
+            logger.debug(f"Урок {lesson.lesson_id} вне недели: lesson_date={lesson.lesson_date}, "
+                        f"lesson_date_local={lesson_date_local}, week_start={week_start}, day_index={day_index}")
+            continue
+        
+        # Проверяем, что урок действительно попадает в нужный день недели
         if 0 <= day_index < 7:
             start_time = lesson_date_display.time()
             end_time = (lesson_date_display + timedelta(minutes=lesson.duration)).time()
