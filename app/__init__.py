@@ -152,5 +152,43 @@ def create_app(config_name=None):
     from app.utils.hooks import register_hooks
     register_hooks(app)
     
+    # Регистрация фильтра markdown для Jinja2
+    @app.template_filter('markdown')
+    def markdown_filter(text):
+        """Фильтр для преобразования Markdown в HTML"""
+        if not text:
+            return ''
+        try:
+            import markdown
+            md = markdown.Markdown(extensions=['extra', 'codehilite', 'nl2br'])
+            return md.convert(text)
+        except ImportError:
+            # Если библиотека markdown не установлена, используем простую замену через regex
+            import re
+            html = text
+            
+            # Заголовки
+            html = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
+            html = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
+            html = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
+            html = re.sub(r'^#### (.+)$', r'<h4>\1</h4>', html, flags=re.MULTILINE)
+            
+            # Жирный и курсив
+            html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
+            html = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html)
+            
+            # Код
+            html = re.sub(r'`(.+?)`', r'<code>\1</code>', html)
+            
+            # Списки
+            html = re.sub(r'^- (.+)$', r'<li>\1</li>', html, flags=re.MULTILINE)
+            html = re.sub(r'(<li>.*?</li>)', r'<ul>\1</ul>', html, flags=re.DOTALL)
+            html = re.sub(r'^\d+\. (.+)$', r'<li>\1</li>', html, flags=re.MULTILINE)
+            
+            # Абзацы
+            html = re.sub(r'\n\n', r'</p><p>', html)
+            html = '<p>' + html + '</p>'
+            return html
+    
     return app
 
