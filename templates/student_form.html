@@ -272,9 +272,11 @@
     
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+    <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
     <script>
-        // Конвертируем flash-сообщения в toast-уведомления
+        // Конвертируем flash-сообщения в toast-уведомления при загрузке страницы
         document.addEventListener('DOMContentLoaded', function() {
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
@@ -307,6 +309,123 @@
                     {% endfor %}
                 {% endif %}
             {% endwith %}
+            
+            // Обработка отправки формы через AJAX для немедленного показа toast
+            // Выбираем форму создания/редактирования ученика (не форму завершения урока)
+            const studentForm = document.querySelector('section.form-hero') ? 
+                document.querySelector('section.form-hero').nextElementSibling?.querySelector('form[method="POST"]') : 
+                document.querySelector('form[method="POST"]:not([action*="lesson_complete"])');
+            
+            if (studentForm) {
+                // Проверяем, что это форма ученика (содержит поле name)
+                const nameField = studentForm.querySelector('input[name="name"]');
+                if (nameField && !studentForm.dataset.ajaxHandled) {
+                    studentForm.addEventListener('submit', async function(e) {
+                        e.preventDefault();
+                        
+                        const formData = new FormData(studentForm);
+                        const submitButton = studentForm.querySelector('button[type="submit"], input[type="submit"]');
+                        const originalText = submitButton ? (submitButton.textContent || submitButton.value) : '';
+                        
+                        // Показываем индикатор загрузки
+                        let loaderId = null;
+                        if (typeof loading !== 'undefined' && loading) {
+                            loaderId = loading.show(studentForm, 'Сохранение...');
+                        } else if (submitButton) {
+                            submitButton.disabled = true;
+                            if (submitButton.tagName === 'BUTTON') {
+                                submitButton.textContent = 'Сохранение...';
+                            }
+                        }
+                        
+                        try {
+                            // Определяем, создание или редактирование
+                            {% if student and student.student_id %}
+                            const isEdit = true;
+                            const studentId = {{ student.student_id }};
+                            const apiUrl = '{{ url_for("api.api_student_update", student_id=student.student_id) }}';
+                            {% else %}
+                            const isEdit = false;
+                            const apiUrl = '{{ url_for("api.api_student_create") }}';
+                            {% endif %}
+                            
+                            // Получаем CSRF токен
+                            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                                            studentForm.querySelector('input[name="csrf_token"]')?.value;
+                            
+                            const headers = {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            };
+                            
+                            if (csrfToken) {
+                                headers['X-CSRFToken'] = csrfToken;
+                            }
+                            
+                            // Отправляем через AJAX API
+                            const response = await fetch(apiUrl, {
+                                method: 'POST',
+                                body: formData,
+                                headers: headers
+                            });
+                            
+                            if (!response.ok) {
+                                const errorText = await response.text();
+                                throw new Error(errorText || `HTTP error! status: ${response.status}`);
+                            }
+                            
+                            const result = await response.json();
+                            
+                            if (result.success) {
+                                // Показываем toast сразу
+                                if (typeof toast !== 'undefined' && toast) {
+                                    toast.success(result.message || (isEdit ? 'Данные ученика обновлены!' : 'Ученик успешно добавлен!'));
+                                }
+                                
+                                // Перенаправляем на dashboard через небольшую задержку
+                                setTimeout(() => {
+                                    {% if student and student.student_id %}
+                                    window.location.href = '{{ url_for("students.student_profile", student_id=student.student_id) }}';
+                                    {% else %}
+                                    window.location.href = '{{ url_for("main.dashboard") }}';
+                                    {% endif %}
+                                }, 500);
+                            } else {
+                                // Показываем ошибку
+                                if (typeof toast !== 'undefined' && toast) {
+                                    toast.error(result.error || 'Ошибка при сохранении');
+                                }
+                                
+                                // Восстанавливаем кнопку
+                                if (loaderId && typeof loading !== 'undefined' && loading) {
+                                    loading.hide(loaderId);
+                                } else if (submitButton) {
+                                    submitButton.disabled = false;
+                                    if (submitButton.tagName === 'BUTTON') {
+                                        submitButton.textContent = originalText;
+                                    }
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Ошибка при отправке формы:', error);
+                            
+                            // Показываем ошибку
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error('Ошибка при сохранении. Попробуйте еще раз.');
+                            }
+                            
+                            // Восстанавливаем кнопку
+                            if (loaderId && typeof loading !== 'undefined' && loading) {
+                                loading.hide(loaderId);
+                            } else if (submitButton) {
+                                submitButton.disabled = false;
+                                if (submitButton.tagName === 'BUTTON') {
+                                    submitButton.textContent = originalText;
+                                }
+                            }
+                        }
+                    });
+                }
+            }
         });
     </script>
     <script>
