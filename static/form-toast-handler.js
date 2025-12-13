@@ -1,6 +1,6 @@
 /**
- * Универсальный обработчик форм для немедленного показа toast-уведомлений
- * Перехватывает отправку форм и отправляет их через AJAX, показывая toast сразу
+ * Универсальный обработчик форм и POST-запросов для немедленного показа toast-уведомлений
+ * Перехватывает отправку форм и POST-запросы, отправляет их через AJAX, показывая toast сразу
  */
 
 (function() {
@@ -13,6 +13,59 @@
     }
     
     const toastManager = typeof toast !== 'undefined' ? toast : window.toast;
+    
+    /**
+     * Обрабатывает POST-запросы через AJAX для немедленного показа toast
+     */
+    function handlePostRequest(url, formData, options = {}) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                                  formData.get('csrf_token');
+                
+                const headers = {
+                    'X-Requested-With': 'XMLHttpRequest'
+                };
+                
+                if (csrfToken) {
+                    headers['X-CSRFToken'] = csrfToken;
+                }
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData,
+                    headers: headers
+                });
+                
+                const contentType = response.headers.get('content-type');
+                
+                if (contentType && contentType.includes('application/json')) {
+                    const result = await response.json();
+                    resolve(result);
+                } else {
+                    // HTML ответ - значит это обычный endpoint с redirect
+                    // Показываем общее сообщение об успехе
+                    if (options.showSuccessMessage !== false) {
+                        toastManager.success(options.successMessage || 'Операция выполнена успешно!');
+                    }
+                    
+                    // Следуем redirect
+                    if (response.redirected || response.url !== window.location.href) {
+                        setTimeout(() => {
+                            window.location.href = response.url;
+                        }, options.delay || 500);
+                    } else {
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, options.delay || 500);
+                    }
+                    resolve({ success: true, redirected: true });
+                }
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
     
     /**
      * Инициализирует обработку форм на странице
@@ -122,22 +175,27 @@
                         }
                     } else {
                         // HTML ответ - значит это обычный endpoint с redirect
-                        // В этом случае flash-сообщение будет показано на следующей странице
-                        // Но мы можем попробовать извлечь сообщение из ответа или просто перезагрузить
-                        const text = await response.text();
+                        // Показываем общее сообщение об успехе сразу
+                        const successMessage = form.dataset.successMessage || 
+                                               submitButton?.dataset.successMessage || 
+                                               'Операция выполнена успешно!';
+                        toastManager.success(successMessage);
                         
                         // Если ответ содержит redirect, следуем ему
-                        if (response.redirected || response.url !== window.location.href) {
-                            // Показываем общее сообщение об успехе
-                            toastManager.success('Операция выполнена успешно!');
-                            
-                            // Следуем redirect
-                            setTimeout(() => {
-                                window.location.href = response.url;
-                            }, 500);
+                        if (response.redirected || response.status === 302 || response.status === 301) {
+                            // Получаем URL из заголовка Location или из response.url
+                            const redirectUrl = response.headers.get('Location') || response.url;
+                            if (redirectUrl && redirectUrl !== window.location.href) {
+                                setTimeout(() => {
+                                    window.location.href = redirectUrl;
+                                }, 500);
+                            } else {
+                                setTimeout(() => {
+                                    window.location.reload();
+                                }, 500);
+                            }
                         } else {
                             // Если нет redirect, перезагружаем страницу
-                            toastManager.info('Сохранение...');
                             setTimeout(() => {
                                 window.location.reload();
                             }, 500);
@@ -163,11 +221,122 @@
         });
     }
     
+    /**
+     * Инициализирует обработку POST-кнопок и ссылок
+     */
+    function initPostButtons() {
+        // Находим все формы и кнопки, которые отправляют POST запросы
+        const postButtons = document.querySelectorAll('button[type="submit"], input[type="submit"], form[method="POST"] button, a[data-method="POST"]');
+        const postForms = document.querySelectorAll('form[method="POST"]');
+        
+        // Обрабатываем кнопки внутри форм
+        postForms.forEach(form => {
+            const buttons = form.querySelectorAll('button[type="submit"], input[type="submit"]');
+            buttons.forEach(button => {
+                if (button.dataset.ajaxHandled === 'true') return;
+                
+                button.addEventListener('click', async function(e) {
+                    // Проверяем, не обрабатывается ли форма уже
+                    if (form.dataset.ajaxHandled === 'true') return;
+                    
+                    // Пропускаем специальные формы
+                    if (form.id === 'create-student-form' || 
+                        form.classList.contains('edit-student-form') ||
+                        form.id === 'createLessonForm' ||
+                        form.id === 'templateForm' ||
+                        (form.action && form.action.includes('lesson_complete'))) {
+                        return;
+                    }
+                    
+                    // Пропускаем, если это не основная кнопка отправки
+                    if (e.target !== button) return;
+                    
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    button.dataset.ajaxHandled = 'true';
+                    form.dataset.ajaxHandled = 'true';
+                    
+                    const formData = new FormData(form);
+                    const originalText = button.textContent || button.value;
+                    
+                    // Показываем индикатор загрузки
+                    let loaderId = null;
+                    if (typeof loading !== 'undefined' && loading) {
+                        loaderId = loading.show(form, 'Выполнение...');
+                    } else {
+                        button.disabled = true;
+                        if (button.tagName === 'BUTTON') {
+                            button.textContent = 'Выполнение...';
+                        }
+                    }
+                    
+                    try {
+                        const result = await handlePostRequest(form.action || window.location.href, formData, {
+                            successMessage: button.dataset.successMessage || 'Операция выполнена успешно!',
+                            delay: 500
+                        });
+                        
+                        if (result && result.success && !result.redirected) {
+                            toastManager.success(result.message || 'Операция выполнена успешно!');
+                        }
+                    } catch (error) {
+                        console.error('Ошибка при отправке формы:', error);
+                        toastManager.error('Ошибка при выполнении операции. Попробуйте еще раз.');
+                        
+                        if (loaderId && typeof loading !== 'undefined' && loading) {
+                            loading.hide(loaderId);
+                        } else {
+                            button.disabled = false;
+                            if (button.tagName === 'BUTTON') {
+                                button.textContent = originalText;
+                            }
+                        }
+                        button.dataset.ajaxHandled = 'false';
+                        form.dataset.ajaxHandled = 'false';
+                    }
+                });
+            });
+        });
+        
+        // Обрабатываем ссылки с data-method="POST"
+        document.querySelectorAll('a[data-method="POST"]').forEach(link => {
+            if (link.dataset.ajaxHandled === 'true') return;
+            
+            link.addEventListener('click', async function(e) {
+                e.preventDefault();
+                link.dataset.ajaxHandled = 'true';
+                
+                const formData = new FormData();
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ||
+                                  document.querySelector('input[name="csrf_token"]')?.value;
+                if (csrfToken) {
+                    formData.append('csrf_token', csrfToken);
+                }
+                
+                try {
+                    await handlePostRequest(link.href, formData, {
+                        successMessage: link.dataset.successMessage || 'Операция выполнена успешно!',
+                        delay: 500
+                    });
+                } catch (error) {
+                    console.error('Ошибка при выполнении POST запроса:', error);
+                    toastManager.error('Ошибка при выполнении операции. Попробуйте еще раз.');
+                    link.dataset.ajaxHandled = 'false';
+                }
+            });
+        });
+    }
+    
     // Инициализируем при загрузке DOM
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initFormHandlers);
+        document.addEventListener('DOMContentLoaded', () => {
+            initFormHandlers();
+            initPostButtons();
+        });
     } else {
         initFormHandlers();
+        initPostButtons();
     }
 })();
 
