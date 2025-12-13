@@ -34,8 +34,9 @@ def schedule():
     total_slots = int((24 * 60) / slot_minutes)
     time_labels = [f"{hour:02d}:00" for hour in range(day_start_hour, day_end_hour + 1)]
 
-    week_start_datetime = datetime.combine(week_start, time.min).replace(tzinfo=MOSCOW_TZ)
-    week_end_datetime = datetime.combine(week_end, time.max).replace(tzinfo=MOSCOW_TZ)
+    # Создаем datetime для фильтрации (lesson_date в БД хранится как naive в московском времени)
+    week_start_datetime = datetime.combine(week_start, time.min)
+    week_end_datetime = datetime.combine(week_end, time.max)
 
     query = Lesson.query.filter(Lesson.lesson_date >= week_start_datetime, Lesson.lesson_date <= week_end_datetime)
 
@@ -97,7 +98,14 @@ def schedule():
         event['start_total'] = event['start'].hour * 60 + event['start'].minute
         event['end_total'] = event['end'].hour * 60 + event['end'].minute
         event['top_px'] = offset_slots * visual_slot_height_px
-        event['height_px'] = max(duration_slots * visual_slot_height_px - 4, visual_slot_height_px * 0.75)
+        # Высота урока: минимум 48px (0.75 от 64px), но лучше использовать полную высоту слота для 60-минутных уроков
+        # Для уроков длительностью ровно 60 минут (1 слот) высота должна быть близка к visual_slot_height_px
+        if duration_slots >= 1.0:
+            # Для уроков >= 60 минут используем полную высоту с небольшим отступом
+            event['height_px'] = duration_slots * visual_slot_height_px - 4
+        else:
+            # Для уроков < 60 минут используем минимум 75% от высоты слота
+            event['height_px'] = max(duration_slots * visual_slot_height_px, visual_slot_height_px * 0.75)
         day_events[event['day_index']].append(event)
 
     for day_index, events in day_events.items():
@@ -118,7 +126,8 @@ def schedule():
             event['columns_total'] = max_columns
             column_width = 100 / max_columns
             event['left_percent'] = column_width * event['column_index']
-            event['width_percent'] = max(column_width - 1.5, 5)
+            # Ширина урока: минимум 8% для читаемости, но лучше использовать почти всю ширину колонки
+            event['width_percent'] = max(column_width - 1.5, 8)
 
     day_events_json = {i: [] for i in range(7)}
     for day_index, events in day_events.items():
@@ -210,6 +219,19 @@ def schedule_create_lesson():
         created_lessons = []
         for week_offset in range(lessons_to_create):
             lesson_datetime = base_lesson_datetime + timedelta(weeks=week_offset)
+            
+            # Проверяем, не существует ли уже урок с таким временем и студентом
+            # Допускаем разницу до 5 минут для учета возможных расхождений
+            existing_lesson = Lesson.query.filter(
+                Lesson.student_id == student_id,
+                Lesson.lesson_date >= lesson_datetime - timedelta(minutes=5),
+                Lesson.lesson_date <= lesson_datetime + timedelta(minutes=5)
+            ).first()
+            
+            if existing_lesson:
+                logger.warning(f"Урок уже существует для студента {student_id} в {lesson_datetime}, пропускаем")
+                continue
+            
             new_lesson = Lesson(
                 student_id=student_id,
                 lesson_date=lesson_datetime,
