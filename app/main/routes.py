@@ -2,14 +2,19 @@
 Основные маршруты приложения
 """
 import logging
-from flask import render_template, request, send_from_directory, flash, redirect, url_for
+import json
+import shutil
+from flask import render_template, request, send_from_directory, flash, redirect, url_for, make_response
 from flask_login import login_required
 import os
+from datetime import datetime
 
 from app.main import main_bp
 from app.models import Student, Lesson, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, db, moscow_now
+from app.students.forms import normalize_school_class
 from sqlalchemy import func, or_
 from datetime import timedelta
+from core.audit_logger import audit_logger
 
 # Базовая директория проекта
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -179,4 +184,238 @@ def font_files(filename):
     """Сервим шрифты из папки static/font"""
     font_dir = os.path.join(base_dir, 'static', 'font')
     return send_from_directory(font_dir, filename, mimetype='font/otf' if filename.endswith('.otf') else 'font/ttf')
+
+# Вспомогательная функция для нормализации статуса домашнего задания
+HOMEWORK_STATUS_VALUES = {'assigned_done', 'assigned_not_done', 'not_assigned'}
+LEGACY_HOMEWORK_STATUS_MAP = {
+    'completed': 'assigned_done',
+    'pending': 'assigned_not_done',
+    'not_done': 'assigned_not_done',
+    'not_assigned': 'not_assigned'
+}
+
+def normalize_homework_status_value(raw_status):
+    """Преобразует устаревшие статусы к актуальным"""
+    if raw_status is None:
+        return 'not_assigned'
+    if isinstance(raw_status, str):
+        normalized = raw_status.strip()
+    else:
+        normalized = raw_status
+    normalized = LEGACY_HOMEWORK_STATUS_MAP.get(normalized, normalized)
+    return normalized if normalized in HOMEWORK_STATUS_VALUES else 'not_assigned'
+
+logger = logging.getLogger(__name__)
+
+@main_bp.route('/export-data')
+@login_required
+def export_data():
+    """Экспорт данных в JSON"""
+    try:
+        logger.info('Начало экспорта данных')
+        export_data_dict = {
+            'students': [{
+                'name': s.name,
+                'platform_id': s.platform_id,
+                'category': s.category,
+                'target_score': s.target_score,
+                'deadline': s.deadline,
+                'diagnostic_level': s.diagnostic_level,
+                'description': s.description,
+                'notes': s.notes,
+                'strengths': s.strengths,
+                'weaknesses': s.weaknesses,
+                'preferences': s.preferences,
+                'overall_rating': s.overall_rating,
+                'school_class': s.school_class,
+                'goal_text': s.goal_text,
+                'programming_language': s.programming_language
+            } for s in Student.query.filter_by(is_active=True).all()],
+            'lessons': [{
+                'student_id': l.student_id,
+                'lesson_type': l.lesson_type,
+                'lesson_date': l.lesson_date.isoformat() if l.lesson_date else None,
+                'duration': l.duration,
+                'status': l.status,
+                'topic': l.topic,
+                'notes': l.notes,
+                'homework': l.homework,
+                'homework_status': l.homework_status,
+                'homework_result_percent': l.homework_result_percent,
+                'homework_result_notes': l.homework_result_notes
+            } for l in Lesson.query.all()]
+        }
+        response = make_response(json.dumps(export_data_dict, ensure_ascii=False, indent=2))
+        response.headers['Content-Type'] = 'application/json; charset=utf-8'
+        response.headers['Content-Disposition'] = f'attachment; filename=export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
+        logger.info(f'Экспорт завершен: {len(export_data_dict["students"])} учеников, {len(export_data_dict["lessons"])} уроков')
+        
+        audit_logger.log(
+            action='export_data',
+            entity='Data',
+            entity_id=None,
+            status='success',
+            metadata={
+                'students_count': len(export_data_dict["students"]),
+                'lessons_count': len(export_data_dict["lessons"])
+            }
+        )
+        
+        return response
+    except Exception as e:
+        logger.error(f'Ошибка при экспорте данных: {e}')
+        audit_logger.log_error(
+            action='export_data',
+            entity='Data',
+            error=str(e)
+        )
+        flash(f'Ошибка при экспорте данных: {str(e)}', 'error')
+        return redirect(url_for('main.dashboard'))
+
+@main_bp.route('/import-data', methods=['GET', 'POST'])
+@login_required
+def import_data():
+    """Импорт данных из JSON"""
+    if request.method == 'GET':
+        return render_template('import_data.html')
+    try:
+        if 'file' not in request.files:
+            flash('Файл не выбран', 'error')
+            return redirect(url_for('main.import_data'))
+        file = request.files['file']
+        if file.filename == '':
+            flash('Файл не выбран', 'error')
+            return redirect(url_for('main.import_data'))
+        if not file.filename.endswith('.json'):
+            flash('Поддерживаются только JSON файлы', 'error')
+            return redirect(url_for('main.import_data'))
+        data = json.loads(file.read().decode('utf-8'))
+        imported_students = 0
+        imported_lessons = 0
+        if 'students' in data:
+            for student_data in data['students']:
+                existing = Student.query.filter_by(
+                    name=student_data.get('name'),
+                    platform_id=student_data.get('platform_id')
+                ).first()
+                if not existing:
+                    student = Student(
+                        name=student_data.get('name'),
+                        platform_id=student_data.get('platform_id'),
+                        category=student_data.get('category'),
+                        target_score=student_data.get('target_score'),
+                        deadline=student_data.get('deadline'),
+                        diagnostic_level=student_data.get('diagnostic_level'),
+                        description=student_data.get('description'),
+                        notes=student_data.get('notes'),
+                        strengths=student_data.get('strengths'),
+                        weaknesses=student_data.get('weaknesses'),
+                        preferences=student_data.get('preferences'),
+                        overall_rating=student_data.get('overall_rating'),
+                        school_class=normalize_school_class(student_data.get('school_class')),
+                        goal_text=student_data.get('goal_text'),
+                        programming_language=student_data.get('programming_language'),
+                        is_active=True
+                    )
+                    db.session.add(student)
+                    imported_students += 1
+        if 'lessons' in data:
+            for lesson_data in data['lessons']:
+                if Student.query.get(lesson_data.get('student_id')):
+                    imported_type = lesson_data.get('lesson_type')
+                    imported_homework_status = normalize_homework_status_value(lesson_data.get('homework_status'))
+                    imported_homework = lesson_data.get('homework')
+                    if imported_type == 'introductory':
+                        imported_homework = ''
+                        imported_homework_status = 'not_assigned'
+                    lesson = Lesson(
+                        student_id=lesson_data.get('student_id'),
+                        lesson_type=imported_type,
+                        lesson_date=datetime.fromisoformat(lesson_data['lesson_date']) if lesson_data.get('lesson_date') else moscow_now(),
+                        duration=lesson_data.get('duration', 60),
+                        status=lesson_data.get('status', 'planned'),
+                        topic=lesson_data.get('topic'),
+                        notes=lesson_data.get('notes'),
+                        homework=imported_homework,
+                        homework_status=imported_homework_status,
+                        homework_result_percent=lesson_data.get('homework_result_percent'),
+                        homework_result_notes=lesson_data.get('homework_result_notes')
+                    )
+                    db.session.add(lesson)
+                    imported_lessons += 1
+        db.session.commit()
+        logger.info(f'Импорт завершен: {imported_students} учеников, {imported_lessons} уроков')
+        
+        audit_logger.log(
+            action='import_data',
+            entity='Data',
+            entity_id=None,
+            status='success',
+            metadata={
+                'students_count': imported_students,
+                'lessons_count': imported_lessons,
+                'filename': file.filename
+            }
+        )
+        
+        flash(f'Импорт завершен: добавлено {imported_students} учеников и {imported_lessons} уроков', 'success')
+        return redirect(url_for('main.dashboard'))
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при импорте данных: {e}')
+        audit_logger.log_error(
+            action='import_data',
+            entity='Data',
+            error=str(e)
+        )
+        flash(f'Ошибка при импорте данных: {str(e)}', 'error')
+        return redirect(url_for('main.import_data'))
+
+@main_bp.route('/backup-db')
+@login_required
+def backup_db():
+    """Создание резервной копии базы данных"""
+    try:
+        # Для PostgreSQL на Railway резервное копирование должно выполняться через pg_dump
+        # или через интерфейс Railway. Здесь просто логируем попытку.
+        logger.info('Попытка создания резервной копии базы данных')
+        
+        # Проверяем тип базы данных
+        db_url = os.environ.get('DATABASE_URL', '')
+        if 'postgresql' in db_url or 'postgres' in db_url:
+            flash('Для PostgreSQL резервное копирование должно выполняться через pg_dump или интерфейс Railway. Используйте экспорт данных для создания резервной копии.', 'info')
+            return redirect(url_for('main.export_data'))
+        
+        # Для SQLite (если используется локально)
+        backup_dir = os.path.join(base_dir, 'backups')
+        os.makedirs(backup_dir, exist_ok=True)
+        backup_filename = f'keg_tasks_backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}.db'
+        backup_path = os.path.join(backup_dir, backup_filename)
+        
+        # Если используется SQLite, копируем файл
+        db_path = os.path.join(base_dir, 'data', 'keg_tasks.db')
+        if os.path.exists(db_path):
+            shutil.copy2(db_path, backup_path)
+            logger.info(f'Резервная копия создана: {backup_path}')
+            
+            audit_logger.log(
+                action='backup_database',
+                entity='Database',
+                entity_id=None,
+                status='success',
+                metadata={
+                    'backup_filename': backup_filename,
+                    'backup_path': backup_path
+                }
+            )
+            flash(f'Резервная копия создана: {backup_filename}', 'success')
+        else:
+            flash('Файл базы данных не найден. Используется PostgreSQL.', 'info')
+            return redirect(url_for('main.export_data'))
+        
+        return redirect(url_for('main.dashboard'))
+    except Exception as e:
+        logger.error(f'Ошибка при создании резервной копии: {e}')
+        flash(f'Ошибка при создании резервной копии: {str(e)}', 'error')
+        return redirect(url_for('main.dashboard'))
 
