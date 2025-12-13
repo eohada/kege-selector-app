@@ -184,7 +184,7 @@ def copy_lesson_tasks(sandbox_session, prod_session, sandbox_lesson_id, prod_les
     prod_session.commit()
     return copied_count
 
-def sync_lessons(sandbox_url=None, prod_url=None):
+def sync_lessons(sandbox_url=None, prod_url=None, dry_run=False):
     """Основная функция синхронизации"""
     # Получаем URL баз данных из аргументов или переменных окружения
     if not sandbox_url:
