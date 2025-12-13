@@ -212,7 +212,7 @@
                 console.warn('Не удалось показать индикатор загрузки:', e);
             }
             
-            fetch('{{ url_for("task_action") }}', {
+            fetch('{{ url_for("kege_generator.task_action") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -321,7 +321,7 @@
                 console.warn('Не удалось показать индикатор загрузки:', e);
             }
             
-            fetch('{{ url_for("task_action") }}', {
+            fetch('{{ url_for("kege_generator.task_action") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -152,6 +152,18 @@ def create_app(config_name=None):
     from app.utils.hooks import register_hooks
     register_hooks(app)
     
+    # Регистрация фильтра from_json для Jinja2
+    @app.template_filter('from_json')
+    def from_json_filter(value):
+        """Фильтр для преобразования JSON строки в объект Python"""
+        if not value:
+            return []
+        try:
+            import json
+            return json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return []
+    
     # Регистрация фильтра markdown для Jinja2
     @app.template_filter('markdown')
     def markdown_filter(text):
