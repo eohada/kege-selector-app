@@ -169,42 +169,60 @@ def dashboard():
 def update_plans():
     """Страница планов обновления"""
     try:
-        # Пробуем найти файл в разных местах
-        # На Railway рабочая директория может быть /app
+        # Определяем пути относительно текущего файла и рабочей директории
         current_file_dir = os.path.dirname(os.path.abspath(__file__))
+        # app/main/routes.py -> app/ -> корень проекта
         project_root = os.path.dirname(os.path.dirname(current_file_dir))
+        cwd = os.getcwd()
         
+        # Список возможных путей (от наиболее вероятных к менее вероятным)
         possible_paths = [
+            # В корне проекта (локально и на Railway)
+            os.path.join(project_root, 'UPDATE_PLANS.md'),
+            os.path.join(cwd, 'UPDATE_PLANS.md'),
+            '/app/UPDATE_PLANS.md',  # Railway стандартный путь
+            # В docs/ (локально и на Railway)
+            os.path.join(project_root, 'docs', 'UPDATE_PLANS.md'),
+            os.path.join(cwd, 'docs', 'UPDATE_PLANS.md'),
+            '/app/docs/UPDATE_PLANS.md',  # Railway стандартный путь
+            # Через base_dir (старый способ)
             os.path.join(base_dir, 'UPDATE_PLANS.md'),
             os.path.join(base_dir, 'docs', 'UPDATE_PLANS.md'),
-            os.path.join(project_root, 'UPDATE_PLANS.md'),
-            os.path.join(project_root, 'docs', 'UPDATE_PLANS.md'),
-            '/app/UPDATE_PLANS.md',
-            '/app/docs/UPDATE_PLANS.md',
-            os.path.join(os.getcwd(), 'UPDATE_PLANS.md'),
-            os.path.join(os.getcwd(), 'docs', 'UPDATE_PLANS.md')
         ]
         
         plans_content = None
         found_path = None
+        
         for plans_file_path in possible_paths:
             try:
                 if os.path.exists(plans_file_path) and os.path.isfile(plans_file_path):
                     with open(plans_file_path, 'r', encoding='utf-8') as f:
                         plans_content = f.read()
                     found_path = plans_file_path
-                    logger.info(f"Файл UPDATE_PLANS.md найден: {found_path}")
+                    logger.info(f"✓ Файл UPDATE_PLANS.md найден: {found_path}")
                     break
-            except Exception as path_error:
-                logger.debug(f"Не удалось проверить путь {plans_file_path}: {path_error}")
+            except (OSError, IOError, UnicodeDecodeError) as path_error:
+                logger.debug(f"Не удалось прочитать путь {plans_file_path}: {path_error}")
                 continue
         
         if plans_content is None:
-            # Если файл не найден, возвращаем сообщение об этом
-            plans_content = "# Планы обновления\n\nФайл с планами обновления не найден.\n\nПроверенные пути:\n" + "\n".join(f"- {p}" for p in possible_paths)
-            logger.warning(f"Файл UPDATE_PLANS.md не найден ни в одном из мест. Проверенные пути: {possible_paths}")
-            logger.warning(f"Текущая рабочая директория: {os.getcwd()}")
-            logger.warning(f"base_dir: {base_dir}, project_root: {project_root}")
+            # Если файл не найден, логируем для отладки
+            logger.warning(f"✗ Файл UPDATE_PLANS.md не найден")
+            logger.warning(f"Текущая рабочая директория: {cwd}")
+            logger.warning(f"project_root: {project_root}, base_dir: {base_dir}")
+            logger.warning(f"Проверенные пути: {possible_paths}")
+            
+            # Возвращаем сообщение с информацией для отладки
+            debug_info = f"\n\n**Отладочная информация:**\n"
+            debug_info += f"- Рабочая директория: `{cwd}`\n"
+            debug_info += f"- Корень проекта: `{project_root}`\n"
+            debug_info += f"- base_dir: `{base_dir}`\n"
+            debug_info += f"\n**Проверенные пути:**\n"
+            for p in possible_paths:
+                exists = "✓" if os.path.exists(p) else "✗"
+                debug_info += f"- {exists} `{p}`\n"
+            
+            plans_content = f"# Планы обновления\n\n⚠️ Файл с планами обновления не найден.{debug_info}"
         
         return render_template('update_plans.html', plans_content=plans_content)
     except Exception as e:
