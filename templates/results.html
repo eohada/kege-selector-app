@@ -594,7 +594,7 @@
             
             console.log('Отправка запроса:', requestBody);
             
-            fetch('{{ url_for("task_action") }}', {
+            fetch('{{ url_for("kege_generator.task_action") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -798,7 +798,7 @@
                 requestBody.lesson_id = LESSON_ID;
             }
             
-            fetch('{{ url_for("task_action") }}', {
+            fetch('{{ url_for("kege_generator.task_action") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

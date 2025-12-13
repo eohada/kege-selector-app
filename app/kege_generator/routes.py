@@ -281,7 +281,10 @@ def generate_results():
             flash(f'Задания типа {task_type} закончились! Все доступные задания (включая пропущенные) были использованы.', 'warning')
         else:
             flash(f'Задания типа {task_type} закончились! Попробуйте включить пропущенные задания или сбросьте историю.', 'warning')
-        return redirect(url_for('kege_generator.kege_generator'))
+        # Сохраняем assignment_type при редиректе
+        if lesson_id:
+            return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
+        return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
 
     return render_template('results.html',
                            tasks=tasks,
