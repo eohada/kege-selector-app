@@ -34,9 +34,21 @@ python scripts/sync_lessons_sandbox_to_prod.py
 
 ### Способ 2: Через аргументы командной строки
 
+**Для Linux/Mac (bash):**
 ```bash
 python scripts/sync_lessons_sandbox_to_prod.py \
   --sandbox-url "postgresql://user:password@host:port/sandbox_db" \
+  --prod-url "postgresql://user:password@host:port/prod_db"
+```
+
+**Для Windows PowerShell:**
+```powershell
+# Вариант 1: Одна строка
+python scripts/sync_lessons_sandbox_to_prod.py --sandbox-url "postgresql://user:password@host:port/sandbox_db" --prod-url "postgresql://user:password@host:port/prod_db"
+
+# Вариант 2: Многострочная команда с обратным апострофом (backtick)
+python scripts/sync_lessons_sandbox_to_prod.py `
+  --sandbox-url "postgresql://user:password@host:port/sandbox_db" `
   --prod-url "postgresql://user:password@host:port/prod_db"
 ```
 
@@ -44,10 +56,23 @@ python scripts/sync_lessons_sandbox_to_prod.py \
 
 Перед реальной синхронизацией рекомендуется запустить скрипт в режиме проверки:
 
+**Linux/Mac:**
 ```bash
 python scripts/sync_lessons_sandbox_to_prod.py \
   --sandbox-url "..." \
   --prod-url "..." \
+  --dry-run
+```
+
+**Windows PowerShell:**
+```powershell
+# Одна строка
+python scripts/sync_lessons_sandbox_to_prod.py --sandbox-url "..." --prod-url "..." --dry-run
+
+# Или многострочная
+python scripts/sync_lessons_sandbox_to_prod.py `
+  --sandbox-url "..." `
+  --prod-url "..." `
   --dry-run
 ```
 
