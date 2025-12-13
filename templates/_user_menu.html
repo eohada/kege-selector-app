@@ -4,7 +4,7 @@
     <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.9em;">
         <span>👤 {{ current_user.username }}</span>
     </div>
-    <a href="{{ url_for('logout') }}" class="neo-button ghost" style="font-size: 0.9em; padding: 0.5em 1em; text-decoration: none;">🚪 Выход</a>
+    <a href="{{ url_for('auth.logout') }}" class="neo-button ghost" style="font-size: 0.9em; padding: 0.5em 1em; text-decoration: none;">🚪 Выход</a>
     {% endif %}
 </div>
 

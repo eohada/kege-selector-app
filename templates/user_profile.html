@@ -106,7 +106,7 @@
                 <div>
                     <h2 style="margin-bottom: 1rem; color: var(--text-primary);">Действия</h2>
                     <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
-                        <form method="POST" action="{{ url_for('logout') }}" style="display: inline;">
+                        <form method="POST" action="{{ url_for('auth.logout') }}" style="display: inline;">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <button type="submit" class="neo-button outline" style="cursor: pointer; border-color: var(--danger); color: var(--danger);" onmouseover="this.style.background='rgba(255, 108, 145, 0.1)'" onmouseout="this.style.background='transparent'">
                                 🚪 Выход из системы
