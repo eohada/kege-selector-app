@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+
+{% block title %}Диагностика окружения{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>🔍 Диагностика окружения</h1>
+    <p class="text-muted">Эта страница помогает выявить различия между production и sandbox окружениями</p>
+    
+    {% if diagnostics_data.errors %}
+    <div class="alert alert-danger">
+        <h5>❌ Обнаружены ошибки:</h5>
+        <ul>
+            {% for error in diagnostics_data.errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5>🌍 Окружение</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th>ENVIRONMENT</th>
+                            <td><span class="badge bg-info">{{ diagnostics_data.environment.ENVIRONMENT }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>RAILWAY_ENVIRONMENT</th>
+                            <td><span class="badge bg-secondary">{{ diagnostics_data.environment.RAILWAY_ENVIRONMENT }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>RAILWAY_SERVICE_NAME</th>
+                            <td>{{ diagnostics_data.environment.RAILWAY_SERVICE_NAME }}</td>
+                        </tr>
+                        <tr>
+                            <th>PORT</th>
+                            <td>{{ diagnostics_data.environment.PORT }}</td>
+                        </tr>
+                        <tr>
+                            <th>PYTHON_VERSION</th>
+                            <td>{{ diagnostics_data.environment.PYTHON_VERSION }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5>💾 База данных</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Тип БД</th>
+                            <td><span class="badge bg-success">{{ diagnostics_data.database.database_type }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Подключение</th>
+                            <td>
+                                {% if diagnostics_data.database.connection_status == 'OK' %}
+                                <span class="badge bg-success">✓ OK</span>
+                                {% else %}
+                                <span class="badge bg-danger">✗ ERROR</span>
+                                <small class="text-danger d-block">{{ diagnostics_data.database.connection_error }}</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>DATABASE_URL</th>
+                            <td>
+                                {% if diagnostics_data.database.DATABASE_URL_set == 'YES' %}
+                                <span class="badge bg-success">Установлен</span>
+                                <small class="d-block text-muted">{{ diagnostics_data.database.DATABASE_URL_preview }}</small>
+                                {% else %}
+                                <span class="badge bg-danger">НЕ установлен</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>EXTERNAL_URL</th>
+                            <td>
+                                {% if diagnostics_data.database.DATABASE_EXTERNAL_URL_set == 'YES' %}
+                                <span class="badge bg-info">Установлен</span>
+                                <small class="d-block text-muted">{{ diagnostics_data.database.DATABASE_EXTERNAL_URL_preview }}</small>
+                                {% else %}
+                                <span class="badge bg-secondary">Не установлен</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% if diagnostics_data.database.postgres_version %}
+                        <tr>
+                            <th>PostgreSQL версия</th>
+                            <td><small>{{ diagnostics_data.database.postgres_version }}</small></td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <th>Таблиц в БД</th>
+                            <td>
+                                {% if diagnostics_data.database.tables_count is defined %}
+                                <span class="badge bg-info">{{ diagnostics_data.database.tables_count }}</span>
+                                {% else %}
+                                <span class="badge bg-danger">Ошибка проверки</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5>📊 Данные в БД</h5>
+                </div>
+                <div class="card-body">
+                    {% if diagnostics_data.database.data_counts %}
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Учеников</th>
+                            <td><span class="badge bg-primary">{{ diagnostics_data.database.data_counts.students }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Уроков</th>
+                            <td><span class="badge bg-primary">{{ diagnostics_data.database.data_counts.lessons }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Пользователей</th>
+                            <td><span class="badge bg-primary">{{ diagnostics_data.database.data_counts.users }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Заданий</th>
+                            <td><span class="badge bg-primary">{{ diagnostics_data.database.data_counts.tasks }}</span></td>
+                        </tr>
+                    </table>
+                    {% else %}
+                    <div class="alert alert-danger">
+                        <small>{{ diagnostics_data.database.data_counts_error }}</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5>⚙️ Приложение</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th>SECRET_KEY</th>
+                            <td>
+                                {% if diagnostics_data.application.SECRET_KEY_set == 'YES' %}
+                                <span class="badge bg-success">Установлен</span>
+                                <small class="d-block text-muted">Длина: {{ diagnostics_data.application.SECRET_KEY_length }} символов</small>
+                                {% else %}
+                                <span class="badge bg-danger">НЕ установлен</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>CSRF защита</th>
+                            <td>
+                                {% if diagnostics_data.application.flask_config.WTF_CSRF_ENABLED %}
+                                <span class="badge bg-success">Включена</span>
+                                {% else %}
+                                <span class="badge bg-warning">Выключена</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if diagnostics_data.database.tables %}
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5>📋 Таблицы в БД</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for table in diagnostics_data.database.tables %}
+                <div class="col-md-3 mb-2">
+                    <span class="badge bg-secondary">{{ table }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="alert alert-info mt-4">
+        <h5>💡 Как использовать эту информацию:</h5>
+        <ol>
+            <li>Откройте эту страницу в <strong>production</strong> и скопируйте данные</li>
+            <li>Откройте эту страницу в <strong>sandbox</strong> и сравните</li>
+            <li>Обратите внимание на различия в:
+                <ul>
+                    <li>Количестве данных в БД (может быть пустая БД в sandbox)</li>
+                    <li>Переменных окружения</li>
+                    <li>Статусе подключения к БД</li>
+                    <li>Наличии таблиц</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+    
+    <div class="mt-3">
+        <a href="{{ url_for('admin.admin_panel') }}" class="btn btn-secondary">← Назад к админ-панели</a>
+        <button onclick="location.reload()" class="btn btn-primary">🔄 Обновить</button>
+        <a href="{{ url_for('admin.diagnostics_api') }}" class="btn btn-info" target="_blank">📄 JSON API</a>
+    </div>
+</div>
+{% endblock %}
+

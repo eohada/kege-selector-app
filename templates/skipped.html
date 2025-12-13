@@ -22,21 +22,21 @@
         <header class="nav-primary">
             <div class="nav-brand">
                 {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
                     {{ current_user.username[0].upper() }}
                 </a>
                 {% endif %}
-                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
                     <div class="brand-mark">LOGO</div>
                     <div class="brand-caption">Слот под фирменный знак</div>
                 </a>
             </div>
             {% include '_mobile_menu.html' %}
             <nav class="nav-links">
-                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
-                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
-                <a href="{{ url_for('kege_generator') }}" class="nav-link active">💻 Генератор</a>
-                <a href="{{ url_for('update_plans') }}" class="nav-link">📝 Планы</a>
+                <a href="{{ url_for('main.dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule.schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link active">💻 Генератор</a>
+                <a href="{{ url_for('main.update_plans') }}" class="nav-link">📝 Планы</a>
             </nav>
         </header>
 
@@ -125,7 +125,7 @@
                 <h3 class="empty-state-title">Нет пропущенных заданий</h3>
                 <p class="empty-state-description">Пропущенные задания будут отображаться здесь</p>
                 <div class="empty-state-actions">
-                    <a href="{{ url_for('kege_generator') }}" class="neo-button accent">💻 Перейти к генератору</a>
+                    <a href="{{ url_for('kege_generator.kege_generator') }}" class="neo-button accent">💻 Перейти к генератору</a>
                 </div>
             </div>
         </section>
@@ -235,7 +235,7 @@
                     setTimeout(() => {
                         taskElement.remove();
                         if (document.querySelectorAll('.task-card').length === 0) {
-                            window.location.href = '{{ url_for("kege_generator") }}';
+                            window.location.href = '{{ url_for('kege_generator.kege_generator') }}';
                         }
                     }, 500);
                     if (typeof toast !== 'undefined' && toast) {
@@ -353,7 +353,7 @@
                     // Проверяем, остались ли задания
                     setTimeout(() => {
                         if (document.querySelectorAll('.task-card').length === 0) {
-                            window.location.href = '{{ url_for("kege_generator") }}';
+                            window.location.href = '{{ url_for('kege_generator.kege_generator') }}';
                         }
                     }, 500);
                 } else {
@@ -375,9 +375,9 @@
         
         function filterByTaskType(taskType) {
             if (taskType === '') {
-                window.location.href = '{{ url_for("show_skipped") }}';
+                window.location.href = '{{ url_for('kege_generator.show_skipped') }}';
             } else {
-                window.location.href = '{{ url_for("show_skipped") }}?task_type=' + taskType;
+                window.location.href = '{{ url_for('kege_generator.show_skipped') }}?task_type=' + taskType;
             }
         }
     </script>

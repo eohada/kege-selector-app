@@ -463,7 +463,7 @@
         }
     </style>
 </head>
-<body class="{% if active_lesson %}lesson-active{% endif %}" data-schedule-url="{{ url_for('schedule') }}" data-week-offset="{{ week_offset }}" data-lesson-delete-url="{{ url_for('lesson_delete', lesson_id=0) }}" data-lesson-view-url="{{ url_for('lesson_view', lesson_id=0) }}" data-csrf-token="{{ csrf_token() if csrf_token else '' }}">
+<body class="{% if active_lesson %}lesson-active{% endif %}" data-schedule-url="{{ url_for('schedule.schedule') }}" data-week-offset="{{ week_offset }}" data-lesson-delete-url="{{ url_for('lessons.lesson_delete', lesson_id=0) }}" data-lesson-view-url="{{ url_for('lessons.lesson_view', lesson_id=0) }}" data-csrf-token="{{ csrf_token() if csrf_token else '' }}">
     {% if active_lesson %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
         🎧 Урок идет: {{ active_student.name }}
@@ -477,10 +477,10 @@
         <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
-            <form method="POST" action="{{ url_for('lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
                 <button type="submit" class="neo-button accent">✅ Завершить</button>
             </form>
-            <a href="{{ url_for('student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
         </div>
     </div>
     <script>
@@ -505,36 +505,36 @@
         <header class="nav-primary">
             <div class="nav-brand">
                 {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
                     {{ current_user.username[0].upper() }}
                 </a>
                 {% endif %}
-                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
                     <div class="brand-mark">LOGO</div>
                     <div class="brand-caption">Слот под фирменный знак</div>
                 </a>
             </div>
             {% include '_mobile_menu.html' %}
             <nav class="nav-links"> <!-- Основной набор ссылок -->
-                <a href="{{ url_for('dashboard') }}" class="nav-link"> <!-- Ссылка на учеников -->
+                <a href="{{ url_for('main.dashboard') }}" class="nav-link"> <!-- Ссылка на учеников -->
                     <span class="nav-link-content"> <!-- Контейнер для иконки и текста -->
                         <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon"> <!-- Иконка учеников -->
                         <span class="nav-link-label">Ученики</span> <!-- Текст ссылки -->
                     </span>
                 </a>
-                <a href="{{ url_for('schedule') }}" class="nav-link active"> <!-- Ссылка на расписание -->
+                <a href="{{ url_for('schedule.schedule') }}" class="nav-link active"> <!-- Ссылка на расписание -->
                     <span class="nav-link-content"> <!-- Контейнер для активной ссылки -->
                         <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon"> <!-- Иконка расписания -->
                         <span class="nav-link-label">Расписание</span> <!-- Текст ссылки -->
                     </span>
                 </a>
-                <a href="{{ url_for('kege_generator') }}" class="nav-link"> <!-- Ссылка на генератор -->
+                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link"> <!-- Ссылка на генератор -->
                     <span class="nav-link-content"> <!-- Контейнер генератора -->
                         <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon"> <!-- Иконка генератора -->
                         <span class="nav-link-label">Генератор</span> <!-- Текст ссылки -->
                     </span>
                 </a>
-                <a href="{{ url_for('update_plans') }}" class="nav-link"> <!-- Ссылка на планы -->
+                <a href="{{ url_for('main.update_plans') }}" class="nav-link"> <!-- Ссылка на планы -->
                     <span class="nav-link-content"> <!-- Контейнер планов -->
                         <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Планы" class="nav-link-icon"> <!-- Иконка планов -->
                         <span class="nav-link-label">Планы</span> <!-- Текст ссылки -->
@@ -633,7 +633,7 @@
                 <div class="modal-title">Создать урок</div>
                 <button class="modal-close" onclick="closeCreateModal()">&times;</button>
             </div>
-            <form id="createLessonForm" method="POST" action="{{ url_for('schedule_create_lesson') }}">
+            <form id="createLessonForm" method="POST" action="{{ url_for('schedule.create_lesson') }}">
                 <input type="hidden" name="week_offset" value="{{ week_offset }}">
                 <input type="hidden" name="status_filter" value="{{ status_filter }}">
                 <input type="hidden" name="category_filter" value="{{ category_filter }}">

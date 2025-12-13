@@ -25,10 +25,10 @@
         <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
-            <form method="POST" action="{{ url_for('lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
                 <button type="submit" class="neo-button accent">✅ Завершить</button>
             </form>
-            <a href="{{ url_for('student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
         </div>
     </div>
     <script>
@@ -53,36 +53,36 @@
         <header class="nav-primary">
             <div class="nav-brand">
                 {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
                     {{ current_user.username[0].upper() }}
                 </a>
                 {% endif %}
-                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
                     <div class="brand-mark">LOGO</div>
                     <div class="brand-caption">Слот под фирменный знак</div>
                 </a>
             </div>
             {% include '_mobile_menu.html' %}
             <nav class="nav-links"> <!-- Блок ссылок верхней навигации -->
-                <a href="{{ url_for('dashboard') }}" class="nav-link active"> <!-- Ссылка на страницу учеников -->
+                <a href="{{ url_for('main.dashboard') }}" class="nav-link active"> <!-- Ссылка на страницу учеников -->
                     <span class="nav-link-content"> <!-- Контейнер для иконки и подписи -->
                         <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon"> <!-- Иконка раздела Ученики -->
                         <span class="nav-link-label">Ученики</span> <!-- Подпись ссылки Ученики -->
                     </span>
                 </a>
-                <a href="{{ url_for('schedule') }}" class="nav-link"> <!-- Ссылка на расписание -->
+                <a href="{{ url_for('schedule.schedule') }}" class="nav-link"> <!-- Ссылка на расписание -->
                     <span class="nav-link-content"> <!-- Обертка для расписания -->
                         <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon"> <!-- Иконка раздела Расписание -->
                         <span class="nav-link-label">Расписание</span> <!-- Подпись ссылки Расписание -->
                     </span>
                 </a>
-                <a href="{{ url_for('kege_generator') }}" class="nav-link"> <!-- Ссылка на генератор -->
+                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link"> <!-- Ссылка на генератор -->
                     <span class="nav-link-content"> <!-- Обертка для генератора -->
                         <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon"> <!-- Иконка раздела Генератор -->
                         <span class="nav-link-label">Генератор</span> <!-- Подпись ссылки Генератор -->
                     </span>
                 </a>
-                <a href="{{ url_for('update_plans') }}" class="nav-link"> <!-- Ссылка на планы -->
+                <a href="{{ url_for('main.update_plans') }}" class="nav-link"> <!-- Ссылка на планы -->
                     <span class="nav-link-content"> <!-- Обертка для планов -->
                         <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Планы" class="nav-link-icon"> <!-- Иконка раздела Планы -->
                         <span class="nav-link-label">Планы</span> <!-- Подпись ссылки Планы -->
@@ -126,7 +126,7 @@
         {# Flash messages будут показаны через toast #}
 
         <section class="glass-panel filters-panel">
-            <form method="GET" action="{{ url_for('dashboard') }}" class="filters-grid">
+            <form method="GET" action="{{ url_for('main.dashboard') }}" class="filters-grid">
                 <input type="hidden" name="show_archive" value="{{ 'true' if show_archive else 'false' }}">
                 <div class="neo-field">
                     <label class="neo-label">Поиск <span class="keyboard-hint" data-tooltip="Нажмите Ctrl+F для быстрого поиска"><kbd>Ctrl</kbd>+<kbd>F</kbd></span></label>
@@ -145,17 +145,17 @@
                 <div class="filters-actions">
                     <button type="submit" class="neo-button accent" data-tooltip="Применить фильтры (Enter)">🔍 Найти</button>
                     {% if search_query or category_filter %}
-                    <a href="{{ url_for('dashboard', show_archive='true' if show_archive else 'false') }}" class="neo-button ghost" data-tooltip="Сбросить все фильтры">⟲ Сбросить</a>
+                    <a href="{{ url_for('main.dashboard', show_archive='true' if show_archive else 'false') }}" class="neo-button ghost" data-tooltip="Сбросить все фильтры">⟲ Сбросить</a>
                     {% endif %}
                 </div>
             </form>
             <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center;">
-                <a href="{{ url_for('dashboard', show_archive='false', search=search_query, category=category_filter) }}" 
+                <a href="{{ url_for('main.dashboard', show_archive='false', search=search_query, category=category_filter) }}" 
                    class="neo-button {% if not show_archive %}accent{% else %}ghost{% endif %}" 
                    style="text-decoration: none;">
                     👥 Активные ({{ total_students }})
                 </a>
-                <a href="{{ url_for('dashboard', show_archive='true', search=search_query, category=category_filter) }}" 
+                <a href="{{ url_for('main.dashboard', show_archive='true', search=search_query, category=category_filter) }}" 
                    class="neo-button {% if show_archive %}accent{% else %}ghost{% endif %}" 
                    style="text-decoration: none;">
                     📦 Архив ({{ archived_students_count }})
@@ -234,7 +234,7 @@
                 </div>
                 <div class="hero-actions">
                     {% if not show_archive %}
-                    <a href="{{ url_for('student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)">+ Добавить</a>
+                    <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)">+ Добавить</a>
                     {% endif %}
                 </div>
             </div>
@@ -242,14 +242,14 @@
             {% if students %}
             <div class="students-grid">
                 {% if not show_archive %}
-                <a href="{{ url_for('student_new') }}" class="student-card student-card--cta">
+                <a href="{{ url_for('students.student_new') }}" class="student-card student-card--cta">
                     <div class="hero-eyebrow">quick action</div>
                     <h3 style="margin: 0;">Создать нового ученика</h3>
                     <p class="hero-subtitle">Стартовая точка для целей, уроков и заметок.</p>
                 </a>
                 {% endif %}
                 {% for student in students %}
-                <a href="{{ url_for('student_profile', student_id=student.student_id) }}"
+                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}"
                    class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %}"
                    data-student-id="{{ student.student_id }}">
                     <div class="student-card__head">
@@ -309,13 +309,13 @@
             {% if pagination.pages > 1 %}
             <div class="pagination">
                 {% if pagination.has_prev %}
-                <a href="{{ url_for('dashboard', page=pagination.prev_num, search=search_query, category=category_filter, show_archive='true' if show_archive else 'false') }}" class="pagination-btn">‹ Назад</a>
+                <a href="{{ url_for('main.dashboard', page=pagination.prev_num, search=search_query, category=category_filter, show_archive='true' if show_archive else 'false') }}" class="pagination-btn">‹ Назад</a>
                 {% else %}
                 <span class="pagination-btn disabled">‹ Назад</span>
                 {% endif %}
                 <span>Страница {{ pagination.page }} из {{ pagination.pages }}</span>
                 {% if pagination.has_next %}
-                <a href="{{ url_for('dashboard', page=pagination.next_num, search=search_query, category=category_filter, show_archive='true' if show_archive else 'false') }}" class="pagination-btn">Вперёд ›</a>
+                <a href="{{ url_for('main.dashboard', page=pagination.next_num, search=search_query, category=category_filter, show_archive='true' if show_archive else 'false') }}" class="pagination-btn">Вперёд ›</a>
                 {% else %}
                 <span class="pagination-btn disabled">Вперёд ›</span>
                 {% endif %}
@@ -328,7 +328,7 @@
                 <p class="empty-state-description">{% if show_archive %}В архиве пока нет учеников{% else %}Добавьте первого ученика, чтобы начать работу{% endif %}</p>
                 {% if not show_archive %}
                 <div class="empty-state-actions">
-                    <a href="{{ url_for('student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)">+ Добавить ученика</a>
+                    <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)">+ Добавить ученика</a>
                 </div>
                 {% endif %}
             </div>

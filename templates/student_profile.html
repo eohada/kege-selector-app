@@ -242,10 +242,10 @@
         <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
-            <form method="POST" action="{{ url_for('lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
                 <button type="submit" class="neo-button accent">✅ Завершить</button>
             </form>
-            <a href="{{ url_for('student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
         </div>
     </div>
     <script>
@@ -270,36 +270,36 @@
         <header class="nav-primary">
             <div class="nav-brand">
                 {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
                     {{ current_user.username[0].upper() }}
                 </a>
                 {% endif %}
-                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
                     <div class="brand-mark">LOGO</div>
                     <div class="brand-caption">Слот под фирменный знак</div>
                 </a>
             </div>
             {% include '_mobile_menu.html' %}
             <nav class="nav-links"> <!-- Верхняя панель ссылок -->
-                <a href="{{ url_for('dashboard') }}" class="nav-link"> <!-- Переход к ученикам -->
+                <a href="{{ url_for('main.dashboard') }}" class="nav-link"> <!-- Переход к ученикам -->
                     <span class="nav-link-content"> <!-- Контейнер для иконки и текста -->
                         <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon"> <!-- Мини-иконка раздела Ученики -->
                         <span class="nav-link-label">Ученики</span> <!-- Текстовая подпись -->
                     </span>
                 </a>
-                <a href="{{ url_for('schedule') }}" class="nav-link"> <!-- Переход к расписанию -->
+                <a href="{{ url_for('schedule.schedule') }}" class="nav-link"> <!-- Переход к расписанию -->
                     <span class="nav-link-content"> <!-- Обертка для расписания -->
                         <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon"> <!-- Мини-иконка раздела Расписание -->
                         <span class="nav-link-label">Расписание</span> <!-- Текстовая подпись -->
                     </span>
                 </a>
-                <a href="{{ url_for('kege_generator') }}" class="nav-link"> <!-- Переход к генератору -->
+                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link"> <!-- Переход к генератору -->
                     <span class="nav-link-content"> <!-- Обертка для генератора -->
                         <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon"> <!-- Мини-иконка раздела Генератор -->
                         <span class="nav-link-label">Генератор</span> <!-- Текстовая подпись -->
                     </span>
                 </a>
-                <a href="{{ url_for('update_plans') }}" class="nav-link"> <!-- Переход к планам -->
+                <a href="{{ url_for('main.update_plans') }}" class="nav-link"> <!-- Переход к планам -->
                     <span class="nav-link-content"> <!-- Обертка для планов -->
                         <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Планы" class="nav-link-icon"> <!-- Мини-иконка раздела Планы -->
                         <span class="nav-link-label">Планы</span> <!-- Текстовая подпись -->
@@ -329,7 +329,7 @@
         <section class="dashboard-hero glass-panel">
             <div>
                 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                    <a href="{{ url_for('dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
+                    <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
                         ← К списку учеников
                     </a>
                 </div>
@@ -358,15 +358,15 @@
                 </div>
                 
                 <div class="hero-actions" style="margin-top: 1.5em;">
-                    <form method="POST" action="{{ url_for('student_start_lesson', student_id=student.student_id) }}" style="display: inline; margin: 0;">
+                    <form method="POST" action="{{ url_for('students.student_start_lesson', student_id=student.student_id) }}" style="display: inline; margin: 0;">
                         <button type="submit" class="neo-button accent">🎓 Начать урок</button>
                     </form>
-                    <a href="{{ url_for('student_statistics', student_id=student.student_id) }}" class="neo-button outline">📊 Статистика</a>
-                    <a href="{{ url_for('student_edit', student_id=student.student_id) }}" class="neo-button ghost">✏️ Редактировать</a>
-                    <form method="POST" action="{{ url_for('student_archive', student_id=student.student_id) }}" style="display: inline; margin: 0;">
+                    <a href="{{ url_for('students.student_statistics', student_id=student.student_id) }}" class="neo-button outline">📊 Статистика</a>
+                    <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="neo-button ghost">✏️ Редактировать</a>
+                    <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" style="display: inline; margin: 0;">
                         <button type="submit" class="neo-button outline">📦 В архив</button>
                     </form>
-                    <form method="POST" action="{{ url_for('student_delete', student_id=student.student_id) }}" 
+                    <form method="POST" action="{{ url_for('students.student_delete', student_id=student.student_id) }}" 
                           class="confirm-delete-form" style="display: inline; margin: 0;">
                         <button type="submit" class="neo-button danger">🗑️ Удалить</button>
                     </form>
@@ -483,7 +483,7 @@
                     <h2>История занятий</h2>
                 </div>
                 <div class="hero-actions">
-                    <a href="{{ url_for('lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)">+ Добавить урок</a>
+                    <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)">+ Добавить урок</a>
                 </div>
             </div>
             
@@ -567,8 +567,8 @@
                                 </div>
                             </div>
                             <div style="display: flex; gap: 0.5em; flex-wrap: wrap;">
-                                <a href="{{ url_for('lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button accent">👁️ Просмотр</a>
-                                <a href="{{ url_for('lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">📄 Экспорт</a>
+                                <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button accent">👁️ Просмотр</a>
+                                <a href="{{ url_for('lessons.lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">📄 Экспорт</a>
                             </div>
                         </div>
                     </div>
@@ -583,7 +583,7 @@
                                     Всего заданий: {{ classwork_count }}
                                 </div>
                             </div>
-                            <a href="{{ url_for('lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button accent">👁️ Просмотр</a>
+                            <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button accent">👁️ Просмотр</a>
                         </div>
                     </div>
                     {% endif %}
@@ -597,14 +597,14 @@
                                     Всего заданий: {{ exam_count }} (вес ×2)
                                 </div>
                             </div>
-                            <a href="{{ url_for('lesson_exam_view', lesson_id=lesson.lesson_id) }}" class="neo-button accent">👁️ Просмотр</a>
+                            <a href="{{ url_for('lessons.lesson_exam_view', lesson_id=lesson.lesson_id) }}" class="neo-button accent">👁️ Просмотр</a>
                         </div>
                     </div>
                     {% endif %}
                     
                     <div class="lesson-actions">
                         {% if lesson.status == 'planned' %}
-                        <form method="POST" action="{{ url_for('lesson_start', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
+                        <form method="POST" action="{{ url_for('lessons.lesson_start', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
                             <button type="submit" class="neo-button accent">🎓 Начать урок</button>
                         </form>
                         {% endif %}
@@ -612,12 +612,12 @@
                         <a href="#" class="neo-button accent" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="homework" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">📝 Сформировать ДЗ</a>
                         <a href="#" class="neo-button outline" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="classwork" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">🏫 Сформировать классную работу</a>
                         <a href="#" class="neo-button outline" style="background: var(--accent-2);" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="exam" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">📊 Сформировать проверочную</a>
-                        <form method="POST" action="{{ url_for('lesson_homework_not_assigned', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
+                        <form method="POST" action="{{ url_for('lessons.lesson_homework_not_assigned', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
                             <button type="submit" class="neo-button ghost">➖ ДЗ не задано</button>
                         </form>
                         
-                        <a href="{{ url_for('lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" data-tooltip="Редактировать урок">✏️ Редактировать</a>
-                        <form method="POST" action="{{ url_for('lesson_delete', lesson_id=lesson.lesson_id) }}" 
+                        <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" data-tooltip="Редактировать урок">✏️ Редактировать</a>
+                        <form method="POST" action="{{ url_for('lessons.lesson_delete', lesson_id=lesson.lesson_id) }}" 
                               class="confirm-delete-form" style="display: inline; margin: 0;">
                             <button type="submit" class="neo-button danger" data-tooltip="Удалить урок (необратимо)">🗑️ Удалить</button>
                         </form>
@@ -631,8 +631,8 @@
                 <h3 class="empty-state-title">Пока нет уроков</h3>
                 <p class="empty-state-description">Добавьте первый урок для этого ученика в расписании</p>
                 <div class="empty-state-actions">
-                    <a href="{{ url_for('lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)">+ Добавить урок</a>
-                    <a href="{{ url_for('schedule') }}" class="neo-button ghost" data-tooltip="Перейти к расписанию">📅 Расписание</a>
+                    <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)">+ Добавить урок</a>
+                    <a href="{{ url_for('schedule.schedule') }}" class="neo-button ghost" data-tooltip="Перейти к расписанию">📅 Расписание</a>
                 </div>
             </div>
             {% endif %}
@@ -803,7 +803,7 @@
                             <button onclick="generateNewTasks(${lessonId}, '${type}')" class="neo-button accent" style="width: 100%; max-width: 300px;">
                                 🎲 Сгенерировать новые задания
                             </button>
-                            <a href="{{ url_for('templates_list') }}" class="neo-button ghost" style="text-decoration: none; width: 100%; max-width: 300px; text-align: center;">
+                            <a href="{{ url_for('templates_manager.templates_list') }}" class="neo-button ghost" style="text-decoration: none; width: 100%; max-width: 300px; text-align: center;">
                                 📚 Перейти в библиотеку
                             </a>
                         </div>
@@ -869,7 +869,7 @@
             loadingDiv.innerHTML = '<div style="background: var(--surface-1); padding: 2rem; border-radius: var(--radius-lg); text-align: center;"><div class="loading-spinner"></div><p>Применение шаблона...</p></div>';
             document.body.appendChild(loadingDiv);
             
-            fetch(`{{ url_for("template_apply", template_id=0) }}`.replace('0', templateId), {
+            fetch(`{{ url_for('templates_manager.template_apply', template_id=0) }}`.replace('0', templateId), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -931,7 +931,7 @@
                     const btnAssignmentType = buttons[0].dataset.assignmentType;
                     if (btnLessonId) {
                         console.log('Найдены параметры из data-атрибутов:', { btnLessonId, btnAssignmentType });
-                        const url = `{{ url_for('kege_generator') }}?lesson_id=${btnLessonId}&assignment_type=${btnAssignmentType || finalAssignmentType}`;
+                        const url = `{{ url_for('kege_generator.kege_generator') }}?lesson_id=${btnLessonId}&assignment_type=${btnAssignmentType || finalAssignmentType}`;
                         console.log('Переход на генератор:', url);
                         window.location.href = url;
                         return;
@@ -946,7 +946,7 @@
             const validTypes = ['homework', 'classwork', 'exam'];
             const validAssignmentType = validTypes.includes(finalAssignmentType) ? finalAssignmentType : 'homework';
             
-            const url = `{{ url_for('kege_generator') }}?lesson_id=${finalLessonId}&assignment_type=${validAssignmentType}`;
+            const url = `{{ url_for('kege_generator.kege_generator') }}?lesson_id=${finalLessonId}&assignment_type=${validAssignmentType}`;
             
             // Проверяем, что URL содержит параметры
             if (!url.includes('lesson_id=') || !url.includes('assignment_type=')) {
@@ -1007,7 +1007,7 @@
             <div id="templatesList"></div>
             
             <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--stroke-1); text-align: center;">
-                <a href="{{ url_for('templates_list') }}" class="neo-button ghost" style="text-decoration: none;">📚 Управление шаблонами</a>
+                <a href="{{ url_for('templates_manager.templates_list') }}" class="neo-button ghost" style="text-decoration: none;">📚 Управление шаблонами</a>
             </div>
         </div>
     </div>

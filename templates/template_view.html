@@ -18,36 +18,36 @@
     <header class="nav-primary">
         <div class="nav-brand">
             {% if current_user and current_user.is_authenticated %}
-            <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+            <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
                 {{ current_user.username[0].upper() }}
             </a>
             {% endif %}
-            <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+            <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
                 <div class="brand-mark">LOGO</div>
                 <div class="brand-caption">Слот под фирменный знак</div>
             </a>
         </div>
         {% include '_mobile_menu.html' %}
         <nav class="nav-links">
-            <a href="{{ url_for('dashboard') }}" class="nav-link">
+            <a href="{{ url_for('main.dashboard') }}" class="nav-link">
                 <span class="nav-link-content">
                     <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon">
                     <span class="nav-link-label">Ученики</span>
                 </span>
             </a>
-            <a href="{{ url_for('schedule') }}" class="nav-link">
+            <a href="{{ url_for('schedule.schedule') }}" class="nav-link">
                 <span class="nav-link-content">
                     <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon">
                     <span class="nav-link-label">Расписание</span>
                 </span>
             </a>
-            <a href="{{ url_for('kege_generator') }}" class="nav-link">
+            <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">
                 <span class="nav-link-content">
                     <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon">
                     <span class="nav-link-label">Генератор</span>
                 </span>
             </a>
-            <a href="{{ url_for('update_plans') }}" class="nav-link">
+            <a href="{{ url_for('main.update_plans') }}" class="nav-link">
                 <span class="nav-link-content">
                     <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Планы" class="nav-link-icon">
                     <span class="nav-link-label">Планы</span>
@@ -59,7 +59,7 @@
     <div class="app-shell">
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                <a href="{{ url_for('templates_list') }}" class="neo-button ghost" style="text-decoration: none;">← К библиотеке</a>
+                <a href="{{ url_for('templates_manager.templates_list') }}" class="neo-button ghost" style="text-decoration: none;">← К библиотеке</a>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: start;">
                 <div>
@@ -70,7 +70,7 @@
                     {% endif %}
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
-                    <a href="{{ url_for('template_edit', template_id=template.template_id) }}" class="neo-button accent">✏️ Редактировать</a>
+                    <a href="{{ url_for('templates_manager.template_edit', template_id=template.template_id) }}" class="neo-button accent">✏️ Редактировать</a>
                 </div>
             </div>
             
@@ -140,7 +140,7 @@
                 <div style="font-size: 4rem; margin-bottom: 1rem;">📭</div>
                 <h3>Нет заданий</h3>
                 <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Добавьте задания в шаблон через генератор</p>
-                <a href="{{ url_for('kege_generator') }}?template_id={{ template.template_id }}" class="neo-button accent">🎲 Добавить задания</a>
+                <a href="{{ url_for('kege_generator.kege_generator') }}?template_id={{ template.template_id }}" class="neo-button accent">🎲 Добавить задания</a>
             </div>
         </section>
         {% endif %}
@@ -165,6 +165,13 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
 
 
 

@@ -174,7 +174,7 @@
 
 <div class="lesson-menu" id="lessonMenu">
     <div class="lesson-menu-header">Текущий урок</div>
-    <form id="lessonDataForm" method="POST" action="{{ url_for('lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+    <form id="lessonDataForm" method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
         <div class="lesson-menu-info" style="margin-bottom: 1em;"><strong>Ученик:</strong> {{ active_student.name }}</div>
         <div class="lesson-menu-info" style="margin-bottom: 0.5em;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
         <div class="lesson-menu-info" style="margin-bottom: 1em;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</div>
@@ -201,7 +201,7 @@
         
         <div class="lesson-menu-actions">
             <button type="submit" class="lesson-menu-btn complete">✅ Завершить урок и сохранить</button>
-            <a href="{{ url_for('student_profile', student_id=active_student.student_id) }}" class="lesson-menu-btn profile">
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="lesson-menu-btn profile">
                 👤 Открыть профиль
             </a>
         </div>

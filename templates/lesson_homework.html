@@ -386,10 +386,10 @@
         <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
-            <form method="POST" action="{{ url_for('lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
                 <button type="submit" class="neo-button accent">✅ Завершить</button>
             </form>
-            <a href="{{ url_for('student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
         </div>
     </div>
     <script>
@@ -414,36 +414,36 @@
         <header class="nav-primary">
             <div class="nav-brand">
                 {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
                     {{ current_user.username[0].upper() }}
                 </a>
                 {% endif %}
-                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
                     <div class="brand-mark">LOGO</div>
                     <div class="brand-caption">Слот под фирменный знак</div>
                 </a>
             </div>
             {% include '_mobile_menu.html' %}
             <nav class="nav-links"> <!-- Панель ссылок -->
-                <a href="{{ url_for('dashboard') }}" class="nav-link"> <!-- Переход к ученикам -->
+                <a href="{{ url_for('main.dashboard') }}" class="nav-link"> <!-- Переход к ученикам -->
                     <span class="nav-link-content"> <!-- Контейнер -->
                         <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon"> <!-- Иконка -->
                         <span class="nav-link-label">Ученики</span> <!-- Подпись -->
                     </span>
                 </a>
-                <a href="{{ url_for('schedule') }}" class="nav-link"> <!-- Переход к расписанию -->
+                <a href="{{ url_for('schedule.schedule') }}" class="nav-link"> <!-- Переход к расписанию -->
                     <span class="nav-link-content"> <!-- Контейнер -->
                         <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon"> <!-- Иконка -->
                         <span class="nav-link-label">Расписание</span> <!-- Подпись -->
                     </span>
                 </a>
-                <a href="{{ url_for('kege_generator') }}" class="nav-link"> <!-- Переход к генератору -->
+                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link"> <!-- Переход к генератору -->
                     <span class="nav-link-content"> <!-- Контейнер -->
                         <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon"> <!-- Иконка -->
                         <span class="nav-link-label">Генератор</span> <!-- Подпись -->
                     </span>
                 </a>
-                <a href="{{ url_for('update_plans') }}" class="nav-link"> <!-- Переход к планам -->
+                <a href="{{ url_for('main.update_plans') }}" class="nav-link"> <!-- Переход к планам -->
                     <span class="nav-link-content"> <!-- Контейнер -->
                         <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Планы" class="nav-link-icon"> <!-- Иконка -->
                         <span class="nav-link-label">Планы</span> <!-- Подпись -->
@@ -457,7 +457,7 @@
         <section class="glass-panel homework-hero">
             <div>
                 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                    <a href="{{ url_for('lesson_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="text-decoration: none;">
+                    <a href="{{ url_for('lessons.lesson_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="text-decoration: none;">
                         ← К уроку
                     </a>
                 </div>
@@ -479,12 +479,12 @@
                 <span class="homework-hint">{{ assignment_hint }}</span>
             </div>
             <div class="hero-actions" style="margin-top: 1.5rem;">
-                <a href="{{ url_for('student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Профиль ученика</a>
+                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Профиль ученика</a>
             </div>
         </section>
 
         {% if homework_tasks %}
-        <form method="POST" action="{{ url_for('lesson_homework_save', lesson_id=lesson.lesson_id) }}">
+        <form method="POST" action="{{ url_for('lessons.lesson_homework_save', lesson_id=lesson.lesson_id) }}">
             {% for hw_task in homework_tasks %}
             <section class="task-card" data-task-id="{{ hw_task.lesson_task_id }}">
                 <div class="task-header">
@@ -580,26 +580,26 @@
                 {% if is_homework %}
                 <button type="submit" class="neo-button accent" data-tooltip="Сохранить все ответы и результаты (Ctrl+S)">💾 Сохранить все ответы</button>
                 {% endif %}
-                <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button accent" data-tooltip="Добавить дополнительные задания">
+                <a href="{{ url_for('kege_generator.kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button accent" data-tooltip="Добавить дополнительные задания">
                     ➕ Добавить ещё задания
                 </a>
                 {% if is_homework %}
-                <a href="{{ url_for('lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown">
+                <a href="{{ url_for('lessons.lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown">
                     📄 Экспорт в Obsidian
                 </a>
                 {% elif is_classwork %}
-                <a href="{{ url_for('lesson_classwork_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown">
+                <a href="{{ url_for('lessons.lesson_classwork_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown">
                     📄 Экспорт в Obsidian
                 </a>
                 {% elif is_exam %}
-                <a href="{{ url_for('lesson_exam_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown">
+                <a href="{{ url_for('lessons.lesson_exam_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown">
                     📄 Экспорт в Obsidian
                 </a>
                 {% endif %}
             </div>
         </form>
         {% for hw_task in homework_tasks %}
-        <form id="delete-form-{{ hw_task.lesson_task_id }}" method="POST" action="{{ url_for('lesson_homework_delete_task', lesson_id=lesson.lesson_id, lesson_task_id=hw_task.lesson_task_id, assignment_type=assignment_type) }}" style="display: none;">
+        <form id="delete-form-{{ hw_task.lesson_task_id }}" method="POST" action="{{ url_for('lessons.lesson_homework_delete_task', lesson_id=lesson.lesson_id, lesson_task_id=hw_task.lesson_task_id, assignment_type=assignment_type) }}" style="display: none;">
             {% if csrf_token %}
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             {% endif %}
@@ -610,7 +610,7 @@
         <section class="auto-check-panel">
             <h3>⚙️ Автопроверка по ответам</h3>
             <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p>
-            <form id="auto-check-form-homework" method="POST" action="{{ url_for('lesson_homework_auto_check', lesson_id=lesson.lesson_id) }}">
+            <form id="auto-check-form-homework" method="POST" action="{{ url_for('lessons.lesson_homework_auto_check', lesson_id=lesson.lesson_id) }}">
                 <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea>
                 <div style="margin-top: 1rem;">
                     <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button>
@@ -621,7 +621,7 @@
         <section class="auto-check-panel">
             <h3>⚙️ Автопроверка по ответам</h3>
             <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p>
-            <form id="auto-check-form-classwork" method="POST" action="{{ url_for('lesson_classwork_auto_check', lesson_id=lesson.lesson_id) }}">
+            <form id="auto-check-form-classwork" method="POST" action="{{ url_for('lessons.lesson_classwork_auto_check', lesson_id=lesson.lesson_id) }}">
                 <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea>
                 <div style="margin-top: 1rem;">
                     <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button>
@@ -633,7 +633,7 @@
             <h3>⚙️ Автопроверка по ответам</h3>
             <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p>
             <p style="color: var(--accent-2); margin-top: 0.5rem;"><strong>⚠️ Проверочная работа учитывается в статистике с весом ×2</strong></p>
-            <form id="auto-check-form-exam" method="POST" action="{{ url_for('lesson_exam_auto_check', lesson_id=lesson.lesson_id) }}">
+            <form id="auto-check-form-exam" method="POST" action="{{ url_for('lessons.lesson_exam_auto_check', lesson_id=lesson.lesson_id) }}">
                 <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea>
                 <div style="margin-top: 1rem;">
                     <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button>
@@ -647,7 +647,7 @@
                 <div style="font-size: 4rem; margin-bottom: 0.6rem;">{{ assignment_icon }}</div>
                 <h3>Заданий пока нет</h3>
                 <p style="color: var(--text-muted);">{{ 'Добавь задания через генератор в режиме ДЗ' if is_homework else 'Добавь задания через генератор в режиме классной работы' }}</p>
-                <a href="{{ url_for('kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button accent" style="margin-top: 2em;">
+                <a href="{{ url_for('kege_generator.kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button accent" style="margin-top: 2em;">
                     ➕ Добавить задания
                 </a>
             </div>

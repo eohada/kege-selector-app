@@ -10,7 +10,7 @@
 <nav class="mobile-menu" id="mobileMenu">
     <div class="mobile-menu-header">
         <div class="nav-brand">
-            <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+            <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
                 <div class="brand-mark">LOGO</div>
                 <div class="brand-caption">Чёрный неон</div>
             </a>
@@ -18,19 +18,19 @@
         <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Закрыть меню">&times;</button>
     </div>
     <div class="mobile-nav-links">
-        <a href="{{ url_for('dashboard') }}" class="mobile-nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <a href="{{ url_for('main.dashboard') }}" class="mobile-nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
             <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="mobile-nav-link-icon">
             <span>Ученики</span>
         </a>
-        <a href="{{ url_for('schedule') }}" class="mobile-nav-link {% if request.endpoint == 'schedule' %}active{% endif %}">
+        <a href="{{ url_for('schedule.schedule') }}" class="mobile-nav-link {% if request.endpoint == 'schedule' %}active{% endif %}">
             <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="mobile-nav-link-icon">
             <span>Расписание</span>
         </a>
-        <a href="{{ url_for('kege_generator') }}" class="mobile-nav-link {% if request.endpoint == 'kege_generator' %}active{% endif %}">
+        <a href="{{ url_for('kege_generator.kege_generator') }}" class="mobile-nav-link {% if request.endpoint == 'kege_generator' %}active{% endif %}">
             <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="mobile-nav-link-icon">
             <span>Генератор</span>
         </a>
-        <a href="{{ url_for('update_plans') }}" class="mobile-nav-link {% if request.endpoint == 'update_plans' %}active{% endif %}">
+        <a href="{{ url_for('main.update_plans') }}" class="mobile-nav-link {% if request.endpoint == 'update_plans' %}active{% endif %}">
             <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Планы" class="mobile-nav-link-icon">
             <span>Планы</span>
         </a>

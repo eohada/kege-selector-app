@@ -128,27 +128,27 @@
         <header class="nav-primary">
             <div class="nav-brand">
                 {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
                     {{ current_user.username[0].upper() }}
                 </a>
                 {% endif %}
-                <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
                     <div class="brand-mark">LOGO</div>
                     <div class="brand-caption">Админ-панель</div>
                 </a>
             </div>
             <nav class="nav-links">
-                <a href="{{ url_for('dashboard') }}" class="nav-link">👥 Ученики</a>
-                <a href="{{ url_for('schedule') }}" class="nav-link">📅 Расписание</a>
-                <a href="{{ url_for('kege_generator') }}" class="nav-link">💻 Генератор</a>
-                <a href="{{ url_for('admin_audit') }}" class="nav-link active">📊 Логи</a>
-                <a href="{{ url_for('admin_testers') }}" class="nav-link">👥 Тестировщики</a>
+                <a href="{{ url_for('main.dashboard') }}" class="nav-link">👥 Ученики</a>
+                <a href="{{ url_for('schedule.schedule') }}" class="nav-link">📅 Расписание</a>
+                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">💻 Генератор</a>
+                <a href="{{ url_for('admin.admin_audit') }}" class="nav-link active">📊 Логи</a>
+                <a href="{{ url_for('admin.admin_testers') }}" class="nav-link">👥 Тестировщики</a>
             </nav>
         </header>
 
         <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                <a href="{{ url_for('admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">
+                <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">
                     ← К админ панели
                 </a>
             </div>
@@ -223,7 +223,7 @@
                 </div>
                 <div class="neo-field" style="display: flex; align-items: flex-end;">
                     <button type="submit" class="neo-button accent">Применить</button>
-                    <a href="{{ url_for('admin_audit') }}" class="neo-button ghost" style="margin-left: 0.5rem;">Сбросить</a>
+                    <a href="{{ url_for('admin.admin_audit') }}" class="neo-button ghost" style="margin-left: 0.5rem;">Сбросить</a>
                 </div>
             </form>
 
@@ -283,17 +283,17 @@
             {% if pagination %}
             <div class="pagination">
                 {% if pagination.has_prev %}
-                <a href="{{ url_for('admin_audit', page=pagination.prev_num, **filters) }}">← Назад</a>
+                <a href="{{ url_for('admin.admin_audit', page=pagination.prev_num, **filters) }}">← Назад</a>
                 {% endif %}
                 <span class="current">Страница {{ pagination.page }} из {{ pagination.pages }}</span>
                 {% if pagination.has_next %}
-                <a href="{{ url_for('admin_audit', page=pagination.next_num, **filters) }}">Вперёд →</a>
+                <a href="{{ url_for('admin.admin_audit', page=pagination.next_num, **filters) }}">Вперёд →</a>
                 {% endif %}
             </div>
             {% endif %}
 
             <div style="margin-top: 2rem; text-align: center;">
-                <a href="{{ url_for('admin_audit_export', **filters) }}" class="neo-button accent">
+                <a href="{{ url_for('admin.admin_audit_export', **filters) }}" class="neo-button accent">
                     📥 Экспорт в CSV
                 </a>
             </div>

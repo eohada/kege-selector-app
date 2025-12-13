@@ -15,36 +15,36 @@
     <header class="nav-primary">
         <div class="nav-brand">
             {% if current_user and current_user.is_authenticated %}
-            <a href="{{ url_for('user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+            <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
                 {{ current_user.username[0].upper() }}
             </a>
             {% endif %}
-            <a href="{{ url_for('index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+            <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
                 <div class="brand-mark">LOGO</div>
                 <div class="brand-caption">Слот под фирменный знак</div>
             </a>
         </div>
         {% include '_mobile_menu.html' %}
         <nav class="nav-links">
-            <a href="{{ url_for('dashboard') }}" class="nav-link">
+            <a href="{{ url_for('main.dashboard') }}" class="nav-link">
                 <span class="nav-link-content">
                     <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon">
                     <span class="nav-link-label">Ученики</span>
                 </span>
             </a>
-            <a href="{{ url_for('schedule') }}" class="nav-link">
+            <a href="{{ url_for('schedule.schedule') }}" class="nav-link">
                 <span class="nav-link-content">
                     <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon">
                     <span class="nav-link-label">Расписание</span>
                 </span>
             </a>
-            <a href="{{ url_for('kege_generator') }}" class="nav-link">
+            <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">
                 <span class="nav-link-content">
                     <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon">
                     <span class="nav-link-label">Генератор</span>
                 </span>
             </a>
-            <a href="{{ url_for('update_plans') }}" class="nav-link">
+            <a href="{{ url_for('main.update_plans') }}" class="nav-link">
                 <span class="nav-link-content">
                     <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Планы" class="nav-link-icon">
                     <span class="nav-link-label">Планы</span>
@@ -56,7 +56,7 @@
     <div class="app-shell">
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                <a href="{{ url_for('templates_list') }}" class="neo-button ghost" style="text-decoration: none;">← К библиотеке</a>
+                <a href="{{ url_for('templates_manager.templates_list') }}" class="neo-button ghost" style="text-decoration: none;">← К библиотеке</a>
             </div>
             <p class="hero-eyebrow">{% if is_new %}создание шаблона{% else %}редактирование шаблона{% endif %}</p>
             <h1 class="hero-title">{% if is_new %}➕ Создать шаблон{% else %}✏️ Редактировать шаблон{% endif %}</h1>
@@ -103,12 +103,12 @@
             <div style="margin-bottom: 2rem; padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-lg); border: 1px solid var(--stroke-1);">
                 <h3 style="margin: 0 0 1rem 0; font-size: 1.1em;">Задания в шаблоне ({{ template.template_tasks|length }})</h3>
                 <p style="color: var(--text-muted); margin: 0 0 1rem 0;">Для добавления или изменения заданий используйте генератор и сохраните выбранные задания в этот шаблон.</p>
-                <a href="{{ url_for('kege_generator') }}?template_id={{ template.template_id }}" class="neo-button accent">🎲 Добавить задания через генератор</a>
+                <a href="{{ url_for('kege_generator.kege_generator') }}?template_id={{ template.template_id }}" class="neo-button accent">🎲 Добавить задания через генератор</a>
             </div>
             {% endif %}
 
             <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                <a href="{{ url_for('templates_list') }}" class="neo-button ghost">Отмена</a>
+                <a href="{{ url_for('templates_manager.templates_list') }}" class="neo-button ghost">Отмена</a>
                 <button type="submit" class="neo-button accent">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
             </div>
         </form>
@@ -128,7 +128,7 @@
                 task_ids: [] // Пока пустой, задания добавляются через генератор
             };
 
-            const url = {% if is_new %}'{{ url_for("template_new") }}'{% else %}'{{ url_for("template_edit", template_id=template.template_id) }}'{% endif %};
+            const url = {% if is_new %}'{{ url_for('templates_manager.template_new') }}'{% else %}'{{ url_for('templates_manager.template_edit', template_id=template.template_id) }}'{% endif %};
             const method = 'POST';
 
             try {
@@ -146,7 +146,7 @@
                 if (data.success) {
                     toast.success('{% if is_new %}Шаблон создан{% else %}Шаблон сохранен{% endif %}');
                     setTimeout(() => {
-                        window.location.href = '{{ url_for("templates_list") }}';
+                        window.location.href = '{{ url_for('templates_manager.templates_list') }}';
                     }, 1000);
                 } else {
                     toast.error(data.error || 'Ошибка при сохранении');
@@ -159,6 +159,13 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
 
 
 

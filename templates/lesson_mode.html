@@ -195,7 +195,7 @@
     {% include '_active_lesson_banner.html' %}
     
     <div class="exit-lesson-mode">
-        <a href="{{ url_for('dashboard') }}" class="neo-button danger">✕ Выйти из режима урока</a>
+        <a href="{{ url_for('main.dashboard') }}" class="neo-button danger">✕ Выйти из режима урока</a>
     </div>
     
     <div class="app-shell">
@@ -249,7 +249,7 @@
             {% if current_lesson.homework %}
             <div style="margin-top: 0.5em; color: var(--text-primary);"><strong>Домашнее задание:</strong> {{ current_lesson.homework }}</div>
             {% endif %}
-            <form method="POST" action="{{ url_for('lesson_complete', lesson_id=current_lesson.lesson_id) }}" style="margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=current_lesson.lesson_id) }}" style="margin-top: 1rem;">
                 <button type="submit" class="neo-button accent">✅ Завершить урок</button>
             </form>
         </section>
@@ -272,26 +272,26 @@
             {% if upcoming_lesson.homework %}
             <div style="margin-top: 0.5em; color: var(--text-primary);"><strong>Домашнее задание:</strong> {{ upcoming_lesson.homework }}</div>
             {% endif %}
-            <form method="POST" action="{{ url_for('lesson_start', lesson_id=upcoming_lesson.lesson_id) }}" style="margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('lessons.lesson_start', lesson_id=upcoming_lesson.lesson_id) }}" style="margin-top: 1rem;">
                 <button type="submit" class="neo-button accent">🎓 Начать урок</button>
             </form>
         </section>
         {% endif %}
         
         <section class="quick-actions">
-            <a href="{{ url_for('kege_generator') }}" class="quick-action-card">
+            <a href="{{ url_for('kege_generator.kege_generator') }}" class="quick-action-card">
                 <div class="quick-action-icon">💻</div>
                 <div class="quick-action-title">Генератор КЕГЭ</div>
                 <div class="quick-action-desc">Подобрать задания для практики</div>
             </a>
             
-            <a href="{{ url_for('lesson_new', student_id=student.student_id) }}" class="quick-action-card">
+            <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="quick-action-card">
                 <div class="quick-action-icon">➕</div>
                 <div class="quick-action-title">Добавить урок</div>
                 <div class="quick-action-desc">Запланировать новое занятие</div>
             </a>
             
-            <a href="{{ url_for('student_profile', student_id=student.student_id) }}" class="quick-action-card">
+            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="quick-action-card">
                 <div class="quick-action-icon">👤</div>
                 <div class="quick-action-title">Профиль</div>
                 <div class="quick-action-desc">Открыть полный профиль ученика</div>
@@ -324,9 +324,9 @@
                             </div>
                         </div>
                         <div style="display: flex; gap: 0.5em; flex-wrap: wrap;">
-                            <a href="{{ url_for('lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.9em; padding: 0.5em 1em;">✏️ Редактировать</a>
+                            <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.9em; padding: 0.5em 1em;">✏️ Редактировать</a>
                             {% if lesson.homework_tasks %}
-                            <a href="{{ url_for('lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline" style="font-size: 0.9em; padding: 0.5em 1em;">📝 ДЗ</a>
+                            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline" style="font-size: 0.9em; padding: 0.5em 1em;">📝 ДЗ</a>
                             {% endif %}
                         </div>
                     </div>

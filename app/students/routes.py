@@ -1,0 +1,440 @@
+"""
+Маршруты для управления студентами
+"""
+import logging
+from flask import render_template, request, redirect, url_for, flash
+from flask_login import login_required
+
+from app.students import students_bp
+from app.students.forms import StudentForm, normalize_school_class
+from app.students.utils import get_sorted_assignments
+from app.lessons.forms import LessonForm, ensure_introductory_without_homework
+from app.models import Student, Lesson, LessonTask, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from core.audit_logger import audit_logger
+
+logger = logging.getLogger(__name__)
+
+@students_bp.route('/students')
+@login_required
+def students_list():
+    """Список всех студентов (активных и архивных)"""
+    active_students = Student.query.filter_by(is_active=True).order_by(Student.name).all()
+    archived_students = Student.query.filter_by(is_active=False).order_by(Student.name).all()
+    return render_template('students_list.html',
+                         active_students=active_students,
+                         archived_students=archived_students)
+
+@students_bp.route('/student/new', methods=['GET', 'POST'])
+@login_required
+def student_new():
+    """Создание нового студента"""
+    form = StudentForm()
+
+    if form.validate_on_submit():
+        try:
+            platform_id = form.platform_id.data.strip() if form.platform_id.data else None
+            if platform_id:
+                existing_student = Student.query.filter_by(platform_id=platform_id).first()
+                if existing_student:
+                    flash(f'Ученик с ID "{platform_id}" уже существует! (Ученик: {existing_student.name})', 'error')
+                    return redirect(url_for('students.student_new'))
+
+            school_class_value = normalize_school_class(form.school_class.data)
+            goal_text_value = form.goal_text.data.strip() if (form.goal_text.data and form.goal_text.data.strip()) else None
+            programming_language_value = form.programming_language.data.strip() if (form.programming_language.data and form.programming_language.data.strip()) else None
+            
+            student = Student(
+                name=form.name.data,
+                platform_id=platform_id,
+                target_score=form.target_score.data,
+                deadline=form.deadline.data,
+                diagnostic_level=form.diagnostic_level.data,
+                preferences=form.preferences.data,
+                strengths=form.strengths.data,
+                weaknesses=form.weaknesses.data,
+                overall_rating=form.overall_rating.data,
+                description=form.description.data,
+                notes=form.notes.data,
+                category=form.category.data if form.category.data else None,
+                school_class=school_class_value,
+                goal_text=goal_text_value,
+                programming_language=programming_language_value
+            )
+            db.session.add(student)
+            db.session.commit()
+            
+            # Логируем создание ученика
+            try:
+                audit_logger.log(
+                    action='create_student',
+                    status='success',
+                    metadata={
+                        'name': student.name,
+                        'platform_id': student.platform_id,
+                        'category': student.category,
+                        'school_class': student.school_class,
+                        'goal_text': student.goal_text,
+                        'programming_language': student.programming_language
+                    }
+                )
+            except Exception as log_err:
+                logger.warning(f"Ошибка при логировании создания ученика: {log_err}")
+            
+            flash(f'Ученик {student.name} успешно добавлен!', 'success')
+            return redirect(url_for('main.dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f'Ошибка при добавлении ученика: {e}', exc_info=True)
+            
+            # Логируем ошибку
+            try:
+                audit_logger.log_error(
+                    action='create_student',
+                    entity='Student',
+                    error=str(e),
+                    metadata={'form_data': {k: str(v) for k, v in form.data.items() if k != 'csrf_token'}}
+                )
+            except Exception as log_error:
+                logger.error(f'Ошибка при логировании: {log_error}')
+            
+            flash(f'Ошибка при добавлении ученика: {str(e)}', 'error')
+            return redirect(url_for('students.student_new'))
+
+    # Логируем попытку отправки формы для отладки, если это POST запрос
+    if request.method == 'POST' and not form.validate_on_submit():
+        logger.warning(f'Ошибки валидации формы при создании ученика: {form.errors}')
+
+    return render_template('student_form.html', form=form, title='Добавить ученика', is_new=True)
+
+@students_bp.route('/student/<int:student_id>')
+@login_required
+def student_profile(student_id):
+    """Профиль студента с уроками"""
+    # КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: загружаем уроки отдельным запросом с joinedload для homework_tasks
+    student = Student.query.get_or_404(student_id)
+    
+    # Загружаем уроки с предзагрузкой homework_tasks и task для каждого homework_task
+    lessons = Lesson.query.filter_by(student_id=student_id).options(
+        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
+    ).order_by(Lesson.lesson_date.desc()).all()
+    
+    return render_template('student_profile.html', student=student, lessons=lessons)
+
+@students_bp.route('/student/<int:student_id>/statistics')
+@login_required
+def student_statistics(student_id):
+    """Страница статистики выполнения заданий по номерам"""
+    student = Student.query.get_or_404(student_id)
+    
+    # Загружаем все уроки с заданиями
+    lessons = Lesson.query.filter_by(student_id=student_id).options(
+        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
+    ).all()
+    
+    # Собираем статистику по номерам заданий
+    task_stats = {}
+    
+    for lesson in lessons:
+        # Обрабатываем все типы заданий
+        for assignment_type in ['homework', 'classwork', 'exam']:
+            assignments = get_sorted_assignments(lesson, assignment_type)
+            weight = 2 if assignment_type == 'exam' else 1
+            
+            for lt in assignments:
+                if not lt.task or not lt.task.task_number:
+                    continue
+                
+                task_num = lt.task.task_number
+                
+                if task_num not in task_stats:
+                    task_stats[task_num] = {'correct': 0, 'total': 0}
+                
+                # Учитываем только задания с проверенными ответами
+                if lt.submission_correct is not None:
+                    task_stats[task_num]['total'] += weight
+                    if lt.submission_correct:
+                        task_stats[task_num]['correct'] += weight
+    
+    # Вычисляем проценты и формируем данные для диаграммы
+    chart_data = []
+    for task_num in sorted(task_stats.keys()):
+        stats = task_stats[task_num]
+        if stats['total'] > 0:
+            percent = round((stats['correct'] / stats['total']) * 100, 1)
+            # Определяем цвет: красный (0-40%), желтый (40-80%), зеленый (80-100%)
+            if percent < 40:
+                color = '#ef4444'  # красный
+            elif percent < 80:
+                color = '#eab308'  # желтый
+            else:
+                color = '#22c55e'  # зеленый
+            
+            chart_data.append({
+                'task_number': task_num,
+                'percent': percent,
+                'correct': stats['correct'],
+                'total': stats['total'],
+                'color': color
+            })
+    
+    return render_template('student_statistics.html', 
+                         student=student, 
+                         chart_data=chart_data)
+
+@students_bp.route('/student/<int:student_id>/edit', methods=['GET', 'POST'])
+@login_required
+def student_edit(student_id):
+    """Редактирование студента"""
+    student = Student.query.get_or_404(student_id)
+    form = StudentForm(obj=student)
+    form._student_id = student_id
+    if request.method == 'GET':
+        form.school_class.data = student.school_class if student.school_class else 0
+
+    if form.validate_on_submit():
+        try:
+            platform_id = form.platform_id.data.strip() if form.platform_id.data else None
+            if platform_id:
+                existing_student = Student.query.filter_by(platform_id=platform_id).first()
+                if existing_student and existing_student.student_id != student_id:
+                    flash(f'Ученик с ID "{platform_id}" уже существует! (Ученик: {existing_student.name})', 'error')
+                    return render_template('student_form.html', form=form, title='Редактировать ученика',
+                                         is_new=False, student=student)
+
+            student.name = form.name.data
+            student.platform_id = platform_id
+            student.target_score = form.target_score.data
+            student.deadline = form.deadline.data
+            student.diagnostic_level = form.diagnostic_level.data
+            student.preferences = form.preferences.data
+            student.strengths = form.strengths.data
+            student.weaknesses = form.weaknesses.data
+            student.overall_rating = form.overall_rating.data
+            student.description = form.description.data
+            student.notes = form.notes.data
+            student.category = form.category.data if form.category.data else None
+            student.school_class = normalize_school_class(form.school_class.data)
+            student.goal_text = form.goal_text.data.strip() if form.goal_text.data else None
+            student.programming_language = form.programming_language.data.strip() if form.programming_language.data else None
+            db.session.commit()
+            
+            # Логируем обновление ученика
+            audit_logger.log(
+                action='update_student',
+                entity='Student',
+                entity_id=student_id,
+                status='success',
+                metadata={
+                    'name': student.name,
+                    'platform_id': student.platform_id,
+                    'category': student.category,
+                    'school_class': student.school_class,
+                    'goal_text': student.goal_text,
+                    'programming_language': student.programming_language
+                }
+            )
+            
+            flash(f'Данные ученика {student.name} обновлены!', 'success')
+            return redirect(url_for('students.student_profile', student_id=student.student_id))
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f'Ошибка при обновлении ученика {student_id}: {e}')
+            
+            # Логируем ошибку
+            audit_logger.log_error(
+                action='update_student',
+                entity='Student',
+                entity_id=student_id,
+                error=str(e)
+            )
+            
+            flash(f'Ошибка при обновлении данных: {str(e)}', 'error')
+
+    return render_template('student_form.html', form=form, title='Редактировать ученика',
+                         is_new=False, student=student)
+
+@students_bp.route('/student/<int:student_id>/delete', methods=['POST'])
+@login_required
+def student_delete(student_id):
+    """Удаление студента"""
+    try:
+        student = Student.query.get_or_404(student_id)
+        name = student.name
+        platform_id = student.platform_id
+        category = student.category
+        
+        db.session.delete(student)
+        db.session.commit()
+        
+        # Логируем удаление ученика
+        audit_logger.log(
+            action='delete_student',
+            entity='Student',
+            entity_id=student_id,
+            status='success',
+            metadata={
+                'name': name,
+                'platform_id': platform_id,
+                'category': category
+            }
+        )
+        
+        flash(f'Ученик {name} удален из системы.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при удалении ученика {student_id}: {e}')
+        
+        # Логируем ошибку
+        audit_logger.log_error(
+            action='delete_student',
+            entity='Student',
+            entity_id=student_id,
+            error=str(e)
+        )
+        
+        flash(f'Ошибка при удалении ученика: {str(e)}', 'error')
+    return redirect(url_for('main.dashboard'))
+
+@students_bp.route('/student/<int:student_id>/archive', methods=['POST'])
+@login_required
+def student_archive(student_id):
+    """Архивирование/восстановление студента"""
+    student = Student.query.get_or_404(student_id)
+    student.is_active = not student.is_active
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        raise
+
+    if student.is_active:
+        flash(f'Ученик {student.name} восстановлен из архива.', 'success')
+    else:
+        flash(f'Ученик {student.name} перемещен в архив.', 'success')
+
+    return redirect(url_for('main.dashboard'))
+
+@students_bp.route('/student/<int:student_id>/lesson/new', methods=['GET', 'POST'])
+@login_required
+def lesson_new(student_id):
+    """Создание нового урока для студента"""
+    student = Student.query.get_or_404(student_id)
+    form = LessonForm()
+
+    if form.validate_on_submit():
+        ensure_introductory_without_homework(form)
+        
+        # Обрабатываем дату с учетом часового пояса
+        lesson_date_local = form.lesson_date.data
+        timezone = form.timezone.data
+        
+        # Преобразуем локальное время в нужный часовой пояс
+        if timezone == 'tomsk':
+            lesson_date_local = lesson_date_local.replace(tzinfo=TOMSK_TZ)
+            lesson_date_utc = lesson_date_local.astimezone(MOSCOW_TZ)
+        else:
+            lesson_date_local = lesson_date_local.replace(tzinfo=MOSCOW_TZ)
+            lesson_date_utc = lesson_date_local
+        
+        lesson = Lesson(
+            student_id=student_id,
+            lesson_type=form.lesson_type.data,
+            lesson_date=lesson_date_utc,
+            duration=form.duration.data,
+            status=form.status.data,
+            topic=form.topic.data,
+            notes=form.notes.data,
+            homework=form.homework.data,
+            homework_status=form.homework_status.data
+        )
+        db.session.add(lesson)
+        db.session.commit()
+        
+        # Логируем создание урока
+        audit_logger.log(
+            action='create_lesson',
+            entity='Lesson',
+            entity_id=lesson.lesson_id,
+            status='success',
+            metadata={
+                'student_id': student_id,
+                'student_name': student.name,
+                'lesson_type': lesson.lesson_type,
+                'lesson_date': str(lesson.lesson_date),
+                'status': lesson.status
+            }
+        )
+        
+        flash(f'Урок добавлен для ученика {student.name}!', 'success')
+        return redirect(url_for('students.student_profile', student_id=student_id))
+
+    return render_template('lesson_form.html', form=form, student=student, title='Добавить урок', is_new=True)
+
+@students_bp.route('/student/<int:student_id>/lesson-mode')
+@login_required
+def lesson_mode(student_id):
+    """Режим урока для студента"""
+    student = Student.query.get_or_404(student_id)
+    now = moscow_now()
+    
+    # Загружаем все уроки одним запросом
+    all_lessons = Lesson.query.filter_by(student_id=student_id).order_by(Lesson.lesson_date.desc()).all()
+    lessons = all_lessons
+    
+    # Находим текущий и ближайший урок из уже загруженных данных
+    current_lesson = next((l for l in all_lessons if l.status == 'in_progress'), None)
+    planned_lessons = [l for l in all_lessons if l.status == 'planned' and l.lesson_date and l.lesson_date >= now]
+    upcoming_lesson = sorted(planned_lessons, key=lambda x: x.lesson_date)[0] if planned_lessons else None
+
+    return render_template('lesson_mode.html',
+                         student=student,
+                         lessons=lessons,
+                         current_lesson=current_lesson,
+                         upcoming_lesson=upcoming_lesson)
+
+@students_bp.route('/student/<int:student_id>/start-lesson', methods=['POST'])
+@login_required
+def student_start_lesson(student_id):
+    """Начало урока для студента"""
+    student = Student.query.get_or_404(student_id)
+    now = moscow_now()
+
+    # Оптимизация: один запрос вместо двух
+    active_lesson = Lesson.query.filter_by(student_id=student_id, status='in_progress').first()
+    if active_lesson:
+        flash('Урок уже идет!', 'info')
+        return redirect(url_for('students.student_profile', student_id=student_id))
+
+    # Оптимизация: используем limit(1) для лучшей производительности
+    upcoming_lesson = Lesson.query.filter(
+        Lesson.student_id == student_id,
+        Lesson.status == 'planned',
+        Lesson.lesson_date >= now
+    ).order_by(Lesson.lesson_date).limit(1).first()
+
+    if upcoming_lesson:
+        upcoming_lesson.status = 'in_progress'
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            raise
+        flash(f'Урок начат!', 'success')
+    else:
+        new_lesson = Lesson(
+            student_id=student_id,
+            lesson_type='regular',
+            lesson_date=moscow_now(),
+            duration=60,
+            status='in_progress',
+            topic='Занятие'
+        )
+        db.session.add(new_lesson)
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            raise
+        flash(f'Новый урок создан и начат!', 'success')
+
+    return redirect(url_for('students.student_profile', student_id=student_id))
