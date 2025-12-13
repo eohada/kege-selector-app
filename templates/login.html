@@ -53,7 +53,7 @@
                 {% endif %}
                 
                 {% if form %}
-                <form method="POST" action="{{ url_for('login') }}">
+                <form method="POST" action="{{ url_for('auth.login') }}">
                     {{ form.hidden_tag() }}
                     
                     <div class="neo-field" style="margin-bottom: 1.5rem;">

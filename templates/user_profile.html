@@ -120,7 +120,7 @@
         <section class="glass-panel">
             <div style="padding: 2rem; text-align: center; color: var(--text-muted);">
                 <p>Ошибка: пользователь не найден. Пожалуйста, войдите в систему.</p>
-                <a href="{{ url_for('login') }}" class="neo-button accent" style="margin-top: 1rem; text-decoration: none; display: inline-block;">Войти</a>
+                <a href="{{ url_for('auth.login') }}" class="neo-button accent" style="margin-top: 1rem; text-decoration: none; display: inline-block;">Войти</a>
             </div>
         </section>
         {% endif %}
