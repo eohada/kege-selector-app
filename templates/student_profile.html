@@ -773,7 +773,7 @@
             const params = new URLSearchParams({ type: type });
             if (category) params.append('category', category);
             
-            fetch(`{{ url_for("api_templates") }}?${params.toString()}`)
+            fetch(`{{ url_for("api.api_templates") }}?${params.toString()}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
