@@ -493,7 +493,19 @@ def task_action():
         else:
             return jsonify({'success': False, 'error': 'Неизвестное действие'}), 400
 
-        return jsonify({'success': True, 'message': message})
+        # Если есть template_id, добавляем информацию о шаблоне в ответ
+        response_data = {'success': True, 'message': message}
+        if template_id:
+            response_data['template_id'] = template_id
+            # Получаем информацию о шаблоне для сообщения
+            try:
+                template = TaskTemplate.query.get(template_id)
+                if template:
+                    response_data['template_name'] = template.name
+            except Exception as e:
+                logger.warning(f"Не удалось получить информацию о шаблоне {template_id}: {e}")
+        
+        return jsonify(response_data)
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
