@@ -630,9 +630,12 @@
             
             if (TEMPLATE_ID) {
                 requestBody.template_id = TEMPLATE_ID;
+                console.log('✅ Добавляем template_id в запрос:', TEMPLATE_ID);
+            } else {
+                console.warn('⚠️ TEMPLATE_ID не определен:', TEMPLATE_ID, 'Тип:', typeof TEMPLATE_ID);
             }
             
-            console.log('Отправка запроса:', requestBody);
+            console.log('📤 Отправка запроса с телом:', JSON.stringify(requestBody, null, 2));
             
             fetch('{{ url_for("kege_generator.task_action") }}', {
                 method: 'POST',
