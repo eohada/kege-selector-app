@@ -633,6 +633,10 @@
             .then(data => {
                 clearTimeout(timeoutId); // Отменяем таймаут
                 console.log('Данные ответа:', data);
+                console.log('data.success:', data ? data.success : 'data is null');
+                console.log('taskElement:', taskElement);
+                console.log('taskElement.parentNode:', taskElement ? taskElement.parentNode : 'taskElement is null');
+                
                 // Всегда скрываем индикатор загрузки
                 if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') {
                     try {
@@ -649,7 +653,18 @@
                     }
                 }
                 
-                if (data && data.success) {
+                // Проверяем успешность ответа
+                if (!data) {
+                    console.error('Ответ от сервера пустой');
+                    const errorMessage = 'Пустой ответ от сервера';
+                    if (typeof toast !== 'undefined' && toast) {
+                        toast.error(errorMessage);
+                    }
+                    buttons.forEach(btn => btn.disabled = false);
+                    return;
+                }
+                
+                if (data.success === true || data.success === 'true') {
                     // Определяем сообщение в зависимости от действия
                     let message = data.message;
                     if (!message) {
