@@ -335,7 +335,15 @@ def task_action():
         lesson_id = data.get('lesson_id')
         template_id = data.get('template_id')  # Получаем template_id из запроса
         
-        logger.info(f"📋 Параметры запроса: action={action}, task_ids={task_ids}, lesson_id={lesson_id}, template_id={template_id}")
+        # Преобразуем template_id в int, если он передан
+        if template_id is not None:
+            try:
+                template_id = int(template_id)
+            except (ValueError, TypeError):
+                logger.warning(f"⚠️ Некорректный template_id: {template_id}, тип: {type(template_id)}")
+                template_id = None
+        
+        logger.info(f"📋 Параметры запроса: action={action}, task_ids={task_ids}, lesson_id={lesson_id}, template_id={template_id} (тип: {type(template_id)})")
 
         if not action or not task_ids:
             logger.error(f"❌ Неверные параметры: action={action}, task_ids={task_ids}")
