@@ -34,6 +34,10 @@
             <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Планы" class="mobile-nav-link-icon">
             <span>Планы</span>
         </a>
+        <a href="{{ url_for('templates.templates_list') }}" class="mobile-nav-link {% if request.endpoint == 'templates.templates_list' or request.endpoint == 'templates.template_view' or request.endpoint == 'templates.template_edit' or request.endpoint == 'templates.template_new' %}active{% endif %}">
+            <span style="font-size: 1.5rem;">📚</span>
+            <span>Шаблоны</span>
+        </a>
     </div>
 </nav>
 
