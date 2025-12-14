@@ -114,6 +114,16 @@ body {
     display: block; /* Убираем влияние baseline */
 }
 
+.nav-link-icon:not(img) { /* Стили для не-изображений (эмодзи, иконки) */
+    width: auto;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
 .nav-link-label { /* Текстовая часть ссылки */
     display: inline-block; /* Гарантируем корректные отступы */
     line-height: 1.1; /* Компактное вертикальное выравнивание */
