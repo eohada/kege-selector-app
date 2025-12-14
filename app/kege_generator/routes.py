@@ -328,16 +328,22 @@ def task_action():
     """Действия с заданиями (принять, пропустить, в черный список)"""
     try:
         data = request.get_json()
+        logger.info(f"📥 Получен запрос task_action: {data}")
+        
         action = data.get('action')
         task_ids = data.get('task_ids', [])
         lesson_id = data.get('lesson_id')
         template_id = data.get('template_id')  # Получаем template_id из запроса
+        
+        logger.info(f"📋 Параметры запроса: action={action}, task_ids={task_ids}, lesson_id={lesson_id}, template_id={template_id}")
 
         if not action or not task_ids:
+            logger.error(f"❌ Неверные параметры: action={action}, task_ids={task_ids}")
             return jsonify({'success': False, 'error': 'Неверные параметры'}), 400
 
         assignment_type = data.get('assignment_type', 'homework')
         assignment_type = assignment_type if assignment_type in ['homework', 'classwork', 'exam'] else 'homework'
+        logger.info(f"📝 Тип задания: {assignment_type}")
 
         if action == 'accept':
             # Если есть template_id, добавляем задания в шаблон
