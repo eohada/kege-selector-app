@@ -676,7 +676,18 @@
                     return;
                 }
                 
-                if (data.success === true || data.success === 'true') {
+                // Проверяем успешность ответа - может быть true, 'true', или просто truthy
+                const isSuccess = data && (data.success === true || data.success === 'true' || data.success);
+                
+                console.log('Проверка успешности:', {
+                    data: data,
+                    'data.success': data ? data.success : 'data is null',
+                    'data.success === true': data ? (data.success === true) : false,
+                    'data.success === "true"': data ? (data.success === 'true') : false,
+                    'isSuccess': isSuccess
+                });
+                
+                if (isSuccess) {
                     // Определяем сообщение в зависимости от действия
                     let message = data.message;
                     if (!message) {
