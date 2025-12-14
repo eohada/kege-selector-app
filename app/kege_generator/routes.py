@@ -342,15 +342,21 @@ def task_action():
         if action == 'accept':
             # Если есть template_id, добавляем задания в шаблон
             if template_id:
+                logger.info(f"Принятие заданий с template_id={template_id}, task_ids={task_ids}")
                 try:
                     template = TaskTemplate.query.get(template_id)
                     if not template:
+                        logger.error(f"Шаблон {template_id} не найден")
                         return jsonify({'success': False, 'error': 'Шаблон не найден'}), 404
+                    
+                    logger.info(f"Шаблон найден: {template.name}")
                     
                     # Получаем текущий максимальный порядок в шаблоне
                     max_order = db.session.query(db.func.max(TemplateTask.order)).filter_by(template_id=template_id).scalar() or 0
+                    logger.info(f"Текущий максимальный порядок в шаблоне: {max_order}")
                     
                     added_to_template = 0
+                    skipped_tasks = []
                     for task_id in task_ids:
                         # Проверяем, нет ли уже этого задания в шаблоне
                         existing = TemplateTask.query.filter_by(template_id=template_id, task_id=task_id).first()
@@ -363,17 +369,25 @@ def task_action():
                             )
                             db.session.add(template_task)
                             added_to_template += 1
+                            logger.info(f"Добавлено задание {task_id} в шаблон {template_id} с порядком {max_order}")
+                        else:
+                            skipped_tasks.append(task_id)
+                            logger.info(f"Задание {task_id} уже есть в шаблоне {template_id}, пропускаем")
                     
                     if added_to_template > 0:
                         db.session.commit()
-                        logger.info(f"Добавлено {added_to_template} заданий в шаблон {template_id}")
+                        logger.info(f"✅ Успешно добавлено {added_to_template} заданий в шаблон {template_id}")
+                        if skipped_tasks:
+                            logger.info(f"Пропущено заданий (уже были в шаблоне): {skipped_tasks}")
                     else:
                         logger.info(f"Все задания уже были в шаблоне {template_id}")
                 except Exception as e:
                     db.session.rollback()
-                    logger.error(f"Ошибка при добавлении заданий в шаблон: {e}", exc_info=True)
+                    logger.error(f"❌ Ошибка при добавлении заданий в шаблон {template_id}: {e}", exc_info=True)
                     # Возвращаем ошибку, чтобы пользователь знал о проблеме
                     return jsonify({'success': False, 'error': f'Ошибка при добавлении заданий в шаблон: {str(e)}'}), 500
+            else:
+                logger.info(f"Принятие заданий без template_id, task_ids={task_ids}")
             
             if lesson_id:
                 lesson = Lesson.query.get(lesson_id)
