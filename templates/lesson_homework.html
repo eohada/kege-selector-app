@@ -580,7 +580,7 @@
                 {% if is_homework %}
                 <button type="submit" class="neo-button accent" data-tooltip="Сохранить все ответы и результаты (Ctrl+S)">💾 Сохранить все ответы</button>
                 {% endif %}
-                <a href="{{ url_for('kege_generator.kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button accent" data-tooltip="Добавить дополнительные задания">
+                <a href="#" class="neo-button accent" data-tooltip="Добавить дополнительные задания" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">
                     ➕ Добавить ещё задания
                 </a>
                 {% if is_homework %}
@@ -647,7 +647,7 @@
                 <div style="font-size: 4rem; margin-bottom: 0.6rem;">{{ assignment_icon }}</div>
                 <h3>Заданий пока нет</h3>
                 <p style="color: var(--text-muted);">{{ 'Добавь задания через генератор в режиме ДЗ' if is_homework else 'Добавь задания через генератор в режиме классной работы' }}</p>
-                <a href="{{ url_for('kege_generator.kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button accent" style="margin-top: 2em;">
+                <a href="#" class="neo-button accent" style="margin-top: 2em;" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">
                     ➕ Добавить задания
                 </a>
             </div>

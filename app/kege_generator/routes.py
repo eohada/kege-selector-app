@@ -9,6 +9,7 @@ from flask_login import login_required
 from app.kege_generator import kege_generator_bp
 from app.kege_generator.forms import TaskSelectionForm, ResetForm, TaskSearchForm
 from app.models import Lesson, Tasks, LessonTask, db
+from app.models import TaskTemplate, TemplateTask
 from core.selector_logic import (
     get_unique_tasks, record_usage, record_skipped, record_blacklist,
     reset_history, reset_skipped, reset_blacklist,
@@ -32,13 +33,14 @@ def kege_generator(lesson_id=None):
     # Получаем lesson_id из query-параметров, если не передан в пути
     if lesson_id is None:
         lesson_id = request.args.get('lesson_id', type=int)
-    assignment_type = request.args.get('assignment_type') or request.form.get('assignment_type') or 'homework'
-    assignment_type = assignment_type if assignment_type in ['homework', 'classwork', 'exam'] else 'homework'
-    if not lesson_id and assignment_type == 'classwork':
-        assignment_type = 'homework'
-    if lesson_id:
-        lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
-        student = lesson.student
+        assignment_type = request.args.get('assignment_type') or request.form.get('assignment_type') or 'homework'
+        assignment_type = assignment_type if assignment_type in ['homework', 'classwork', 'exam'] else 'homework'
+        template_id = request.args.get('template_id', type=int)  # Получаем template_id из запроса
+        if not lesson_id and assignment_type == 'classwork':
+            assignment_type = 'homework'
+        if lesson_id:
+            lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+            student = lesson.student
 
     selection_form = TaskSelectionForm()
     reset_form = ResetForm()
@@ -82,9 +84,15 @@ def kege_generator(lesson_id=None):
         )
 
         if lesson_id:
-            return redirect(url_for('kege_generator.generate_results', task_type=task_type, limit_count=limit_count, use_skipped=use_skipped, lesson_id=lesson_id, assignment_type=assignment_type))
+            redirect_params = {'task_type': task_type, 'limit_count': limit_count, 'use_skipped': use_skipped, 'lesson_id': lesson_id, 'assignment_type': assignment_type}
+            if template_id:
+                redirect_params['template_id'] = template_id
+            return redirect(url_for('kege_generator.generate_results', **redirect_params))
         else:
-            return redirect(url_for('kege_generator.generate_results', task_type=task_type, limit_count=limit_count, use_skipped=use_skipped, assignment_type=assignment_type))
+            redirect_params = {'task_type': task_type, 'limit_count': limit_count, 'use_skipped': use_skipped, 'assignment_type': assignment_type}
+            if template_id:
+                redirect_params['template_id'] = template_id
+            return redirect(url_for('kege_generator.generate_results', **redirect_params))
 
     if reset_form.reset_submit.data and reset_form.validate_on_submit():
         task_type_to_reset = reset_form.task_type_reset.data
@@ -174,6 +182,8 @@ def kege_generator(lesson_id=None):
                 }
                 if lesson_id:
                     redirect_url_params['lesson_id'] = lesson_id
+                if template_id:
+                    redirect_url_params['template_id'] = template_id
                 
                 return redirect(url_for('kege_generator.generate_results', **redirect_url_params))
             else:
@@ -201,7 +211,8 @@ def kege_generator(lesson_id=None):
                            lesson=lesson,
                            student=student,
                            lesson_id=lesson_id,
-                           assignment_type=assignment_type)
+                           assignment_type=assignment_type,
+                           template_id=template_id)
 
 @kege_generator_bp.route('/results')
 @login_required
@@ -214,6 +225,7 @@ def generate_results():
         lesson_id = request.args.get('lesson_id', type=int)
         assignment_type = request.args.get('assignment_type', default='homework')
         search_task_id = request.args.get('search_task_id', type=int)
+        template_id = request.args.get('template_id', type=int)  # Получаем template_id из запроса
         
         # Валидация assignment_type
         if assignment_type not in ['homework', 'classwork', 'exam']:
@@ -307,7 +319,8 @@ def generate_results():
                            lesson=lesson,
                            student=student,
                            lesson_id=lesson_id,
-                           assignment_type=assignment_type)
+                           assignment_type=assignment_type,
+                           template_id=template_id)
 
 @kege_generator_bp.route('/action', methods=['POST'])
 @login_required
@@ -318,6 +331,7 @@ def task_action():
         action = data.get('action')
         task_ids = data.get('task_ids', [])
         lesson_id = data.get('lesson_id')
+        template_id = data.get('template_id')  # Получаем template_id из запроса
 
         if not action or not task_ids:
             return jsonify({'success': False, 'error': 'Неверные параметры'}), 400
@@ -326,6 +340,38 @@ def task_action():
         assignment_type = assignment_type if assignment_type in ['homework', 'classwork', 'exam'] else 'homework'
 
         if action == 'accept':
+            # Если есть template_id, добавляем задания в шаблон
+            if template_id:
+                try:
+                    template = TaskTemplate.query.get(template_id)
+                    if not template:
+                        return jsonify({'success': False, 'error': 'Шаблон не найден'}), 404
+                    
+                    # Получаем текущий максимальный порядок в шаблоне
+                    max_order = db.session.query(db.func.max(TemplateTask.order)).filter_by(template_id=template_id).scalar() or 0
+                    
+                    added_to_template = 0
+                    for task_id in task_ids:
+                        # Проверяем, нет ли уже этого задания в шаблоне
+                        existing = TemplateTask.query.filter_by(template_id=template_id, task_id=task_id).first()
+                        if not existing:
+                            max_order += 1
+                            template_task = TemplateTask(
+                                template_id=template_id,
+                                task_id=task_id,
+                                order=max_order
+                            )
+                            db.session.add(template_task)
+                            added_to_template += 1
+                    
+                    if added_to_template > 0:
+                        db.session.commit()
+                        logger.info(f"Добавлено {added_to_template} заданий в шаблон {template_id}")
+                except Exception as e:
+                    db.session.rollback()
+                    logger.error(f"Ошибка при добавлении заданий в шаблон: {e}", exc_info=True)
+                    # Не прерываем выполнение, просто логируем ошибку
+            
             if lesson_id:
                 lesson = Lesson.query.get(lesson_id)
                 if not lesson:

@@ -238,7 +238,7 @@
         }
     </style>
 </head>
-<body class="{% if active_lesson %}lesson-active{% endif %}" data-lesson-id="{% if lesson_id %}{{ lesson_id }}{% endif %}" data-assignment-type="{{ assignment_type }}">
+    <body class="{% if active_lesson %}lesson-active{% endif %}" data-lesson-id="{% if lesson_id %}{{ lesson_id }}{% endif %}" data-assignment-type="{{ assignment_type }}" data-template-id="{% if template_id %}{{ template_id }}{% endif %}">
     {% set is_homework = assignment_type == 'homework' %}
     {% set mode_label = 'домашнего задания' if is_homework else 'классной работы' %}
     {% set add_action_text = 'Добавить в ДЗ' if is_homework else 'Добавить в работу' %}
@@ -592,6 +592,14 @@
                 requestBody.lesson_id = LESSON_ID;
             }
             
+            if (TEMPLATE_ID) {
+                requestBody.template_id = TEMPLATE_ID;
+            }
+            
+            if (TEMPLATE_ID) {
+                requestBody.template_id = TEMPLATE_ID;
+            }
+            
             console.log('Отправка запроса:', requestBody);
             
             fetch('{{ url_for("kege_generator.task_action") }}', {
@@ -796,6 +804,10 @@
             
             if (LESSON_ID) {
                 requestBody.lesson_id = LESSON_ID;
+            }
+            
+            if (TEMPLATE_ID) {
+                requestBody.template_id = TEMPLATE_ID;
             }
             
             fetch('{{ url_for("kege_generator.task_action") }}', {
