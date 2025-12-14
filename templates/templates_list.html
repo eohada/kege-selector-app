@@ -137,8 +137,8 @@
                     </div>
 
                     <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                        <a href="{{ url_for('templates.template_view', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1; text-align: center; text-decoration: none;">👁️ Просмотр</a>
-                        <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1; text-align: center; text-decoration: none;">✏️ Редактировать</a>
+                        <a href="{{ url_for('templates.template_view', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1 1 0; min-width: 0; text-align: center; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">👁️ Просмотр</a>
+                        <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1 1 0; min-width: 0; text-align: center; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">✏️ Редактировать</a>
                     </div>
                 </div>
                 {% endfor %}
