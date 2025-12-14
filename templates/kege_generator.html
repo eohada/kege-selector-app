@@ -180,7 +180,7 @@
                 <h2>Сформировать подборку</h2>
                 <p>Выбери тип задания, лимит карточек и при необходимости включи пропущенные задачи.</p>
                 <form method="POST"
-                      action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
+                      action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
                       class="generator-form-grid"
                       data-validate>
                     {{ selection_form.hidden_tag() }}
@@ -219,7 +219,7 @@
                 <h3>Сброс истории</h3>
                 <p>Полное или частичное очищение истории использования задач, если текущий пул оказался исчерпан.</p>
                 <form method="POST"
-                      action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
+                      action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
                       class="generator-form-grid generator-reset">
                     {{ reset_form.hidden_tag() }}
                     <div class="neo-field">
@@ -238,7 +238,7 @@
                 <h3>Поиск задания по ID</h3>
                 <p>Найди конкретное задание по его уникальному ID и добавь его в подборку.</p>
                 <form method="POST"
-                      action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
+                      action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
                       class="generator-form-grid">
                     {{ search_form.hidden_tag() }}
                     <div class="neo-field">
