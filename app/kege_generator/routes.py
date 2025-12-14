@@ -240,7 +240,7 @@ def generate_results():
                 return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
             return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
         
-        logger.info(f"generate_results вызван с параметрами: task_type={task_type}, limit_count={limit_count}, search_task_id={search_task_id}, lesson_id={lesson_id}, assignment_type={assignment_type}")
+        logger.info(f"generate_results вызван с параметрами: task_type={task_type}, limit_count={limit_count}, search_task_id={search_task_id}, lesson_id={lesson_id}, assignment_type={assignment_type}, template_id={template_id}")
     except Exception as e:
         logger.error(f"Ошибка при получении параметров запроса: {e}", exc_info=True)
         flash('Неверные параметры запроса.', 'danger')
