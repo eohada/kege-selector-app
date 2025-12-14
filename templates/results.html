@@ -494,6 +494,21 @@
             }
         });
         
+        // Определяем константы в глобальной области видимости
+        const LESSON_ID = document.body.dataset.lessonId ? parseInt(document.body.dataset.lessonId) : null;
+        const ASSIGNMENT_TYPE = document.body.dataset.assignmentType || 'homework';
+        const TEMPLATE_ID = document.body.dataset.templateId ? parseInt(document.body.dataset.templateId) : null;
+        const REDIRECT_URL = "{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}";
+        const CSRF_TOKEN = (document.querySelector('meta[name="csrf-token"]') || {getAttribute: () => null}).getAttribute('content');
+        
+        console.log('Инициализация констант:', {
+            LESSON_ID,
+            ASSIGNMENT_TYPE,
+            TEMPLATE_ID,
+            REDIRECT_URL,
+            CSRF_TOKEN: CSRF_TOKEN ? 'present' : 'missing'
+        });
+        
         document.addEventListener('DOMContentLoaded', function() {
             // Проверяем, что toast загружен
             if (typeof toast === 'undefined') {
