@@ -596,10 +596,6 @@
                 requestBody.template_id = TEMPLATE_ID;
             }
             
-            if (TEMPLATE_ID) {
-                requestBody.template_id = TEMPLATE_ID;
-            }
-            
             console.log('Отправка запроса:', requestBody);
             
             fetch('{{ url_for("kege_generator.task_action") }}', {
@@ -840,10 +836,23 @@
                     }
                     
                     taskIds.forEach(taskId => {
-                        const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+                        // Ищем элемент задания - может быть как .task-card с data-task-id, так и section с data-task-id
+                        let taskElement = document.querySelector(`.task-card[data-task-id="${taskId}"]`);
+                        if (!taskElement) {
+                            taskElement = document.querySelector(`section[data-task-id="${taskId}"]`);
+                        }
+                        if (!taskElement) {
+                            // Пробуем найти по кнопке
+                            const button = document.querySelector(`button[data-task-id="${taskId}"]`);
+                            if (button) {
+                                taskElement = button.closest('.task-card') || button.closest('section');
+                            }
+                        }
                         if (taskElement) {
                             taskElement.style.opacity = '0.5';
                             setTimeout(() => taskElement.remove(), 300);
+                        } else {
+                            console.warn('Task element not found for removal:', taskId);
                         }
                     });
                     
