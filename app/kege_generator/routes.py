@@ -414,7 +414,10 @@ def task_action():
                         error=str(e)
                     )
                     return jsonify({'success': False, 'error': f'Ошибка при сохранении: {str(e)}'}), 500
-                if assignment_type == 'classwork':
+                if template_id:
+                    # Если есть template_id, сообщаем об этом
+                    message = f'{len(task_ids)} заданий добавлено в домашнее задание и в шаблон.'
+                elif assignment_type == 'classwork':
                     message = f'{len(task_ids)} заданий добавлено в классную работу.'
                 else:
                     message = f'{len(task_ids)} заданий добавлено в домашнее задание.'
