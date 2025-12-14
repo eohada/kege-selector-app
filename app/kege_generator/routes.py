@@ -367,10 +367,13 @@ def task_action():
                     if added_to_template > 0:
                         db.session.commit()
                         logger.info(f"Добавлено {added_to_template} заданий в шаблон {template_id}")
+                    else:
+                        logger.info(f"Все задания уже были в шаблоне {template_id}")
                 except Exception as e:
                     db.session.rollback()
                     logger.error(f"Ошибка при добавлении заданий в шаблон: {e}", exc_info=True)
-                    # Не прерываем выполнение, просто логируем ошибку
+                    # Возвращаем ошибку, чтобы пользователь знал о проблеме
+                    return jsonify({'success': False, 'error': f'Ошибка при добавлении заданий в шаблон: {str(e)}'}), 500
             
             if lesson_id:
                 lesson = Lesson.query.get(lesson_id)

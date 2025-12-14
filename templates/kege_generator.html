@@ -160,6 +160,19 @@
                 ← К уроку
             </a>
         </section>
+        {% elif template_id %}
+        <section class="glass-panel generator-mode {{ mode_class }}">
+            <div class="generator-mode__icon">📚</div>
+            <div style="flex: 1;">
+                <div class="generator-mode__title">Режим редактирования шаблона</div>
+                <div class="generator-mode__hint">
+                    💡 Все принятые задания будут добавлены в шаблон
+                </div>
+            </div>
+            <a href="{{ url_for('templates.template_view', template_id=template_id) }}" class="neo-button ghost">
+                ← К шаблону
+            </a>
+        </section>
         {% endif %}
 
         <div class="generator-layout">

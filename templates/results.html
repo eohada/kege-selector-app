@@ -328,9 +328,22 @@
         <section class="glass-panel results-hero">
             <div>
                 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                    <a href="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}" class="neo-button ghost" style="text-decoration: none;">
+                    {% if template_id %}
+                    <a href="{{ url_for('templates.template_view', template_id=template_id) }}" class="neo-button ghost" style="text-decoration: none;">
+                        ← К шаблону
+                    </a>
+                    <a href="{{ url_for('kege_generator.kege_generator', template_id=template_id, assignment_type=assignment_type) }}" class="neo-button ghost" style="text-decoration: none;">
+                        ← К генератору
+                    </a>
+                    {% elif lesson_id %}
+                    <a href="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) }}" class="neo-button ghost" style="text-decoration: none;">
                         ← Назад к генератору
                     </a>
+                    {% else %}
+                    <a href="{{ url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}" class="neo-button ghost" style="text-decoration: none;">
+                        ← Назад к генератору
+                    </a>
+                    {% endif %}
                 </div>
                 <p class="hero-eyebrow">результаты генератора</p>
                 <h1 class="hero-title">Задание {{ task_type }}</h1>
