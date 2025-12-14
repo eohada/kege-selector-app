@@ -522,9 +522,25 @@
         });
         
         function taskAction(taskId, action) {
-            const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
+            // Ищем элемент задания - сначала section с классом task-card, потом любой элемент с data-task-id
+            let taskElement = document.querySelector(`section.task-card[data-task-id="${taskId}"]`);
+            if (!taskElement) {
+                taskElement = document.querySelector(`.task-card[data-task-id="${taskId}"]`);
+            }
+            if (!taskElement) {
+                // Пробуем найти по кнопке и подняться к родителю
+                const button = document.querySelector(`button[data-task-id="${taskId}"]`);
+                if (button) {
+                    taskElement = button.closest('.task-card') || button.closest('section[data-task-id]');
+                }
+            }
             if (!taskElement) {
                 console.error('Task element not found:', taskId);
+                console.log('Available task elements:', Array.from(document.querySelectorAll('[data-task-id]')).map(el => ({
+                    tag: el.tagName,
+                    classes: el.className,
+                    taskId: el.getAttribute('data-task-id')
+                })));
                 return;
             }
             
