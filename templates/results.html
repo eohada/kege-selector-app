@@ -623,12 +623,24 @@
                 },
                 body: JSON.stringify(requestBody)
             })
-            .then(response => {
+            .then(async response => {
                 console.log('Получен ответ:', response.status, response.statusText);
+                console.log('Response headers:', response.headers);
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorText = await response.text();
+                    console.error('Ошибка ответа:', errorText);
+                    throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
                 }
-                return response.json();
+                const responseText = await response.text();
+                console.log('Raw response text:', responseText);
+                try {
+                    const jsonData = JSON.parse(responseText);
+                    console.log('Parsed JSON:', jsonData);
+                    return jsonData;
+                } catch (e) {
+                    console.error('Ошибка парсинга JSON:', e, 'Response text:', responseText);
+                    throw new Error('Invalid JSON response: ' + responseText);
+                }
             })
             .then(data => {
                 clearTimeout(timeoutId); // Отменяем таймаут
