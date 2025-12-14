@@ -335,19 +335,34 @@ def api_templates():
     try:
         from app.models import TaskTemplate
         
-        templates = TaskTemplate.query.order_by(TaskTemplate.id.desc()).all()
+        # Получаем параметры фильтрации
+        template_type = request.args.get('type', '')
+        category = request.args.get('category', '')
+        
+        # Строим запрос
+        query = TaskTemplate.query.filter_by(is_active=True)
+        
+        if template_type:
+            query = query.filter_by(template_type=template_type)
+        
+        if category:
+            query = query.filter_by(category=category)
+        
+        templates = query.options(
+            db.joinedload(TaskTemplate.template_tasks)
+        ).order_by(TaskTemplate.created_at.desc()).all()
         
         return jsonify({
             'success': True,
             'templates': [{
-                'id': t.id,
+                'id': t.template_id,
                 'name': t.name,
                 'description': t.description,
                 'type': t.template_type,
                 'category': t.category,
-                'task_count': len(t.template_tasks)
+                'task_count': len(t.template_tasks) if t.template_tasks else 0
             } for t in templates]
         })
     except Exception as e:
-        logger.error(f'Ошибка при получении шаблонов через API: {e}')
+        logger.error(f'Ошибка при получении шаблонов через API: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
