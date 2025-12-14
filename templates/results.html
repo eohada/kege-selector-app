@@ -676,14 +676,46 @@
                         message = actionMessages[action] || 'Действие выполнено успешно';
                     }
                     
-                    taskElement.style.opacity = '0.5';
-                    taskElement.style.transition = 'opacity 0.3s';
-                    setTimeout(() => {
-                        taskElement.remove();
-                        if (document.querySelectorAll('.task-card').length === 0) {
-                            window.location.href = REDIRECT_URL;
-                        }
-                    }, 500);
+                    console.log('Успешный ответ, удаляем задание');
+                    console.log('taskElement перед удалением:', taskElement);
+                    console.log('taskElement.parentNode:', taskElement ? taskElement.parentNode : 'taskElement is null');
+                    
+                    // Сразу делаем задание полупрозрачным
+                    if (taskElement) {
+                        taskElement.style.opacity = '0.5';
+                        taskElement.style.transition = 'opacity 0.3s';
+                        
+                        // Удаляем задание через небольшую задержку для анимации
+                        setTimeout(() => {
+                            console.log('Попытка удалить taskElement');
+                            if (taskElement) {
+                                if (taskElement.parentNode) {
+                                    console.log('Удаляем taskElement через parentNode.removeChild');
+                                    taskElement.parentNode.removeChild(taskElement);
+                                } else {
+                                    console.log('Удаляем taskElement напрямую через remove()');
+                                    taskElement.remove();
+                                }
+                            } else {
+                                console.error('taskElement стал null перед удалением');
+                            }
+                            
+                            // Проверяем, остались ли задания
+                            const remainingTasks = document.querySelectorAll('section.task-card[data-task-id], .task-card[data-task-id]');
+                            console.log('Оставшиеся задания:', remainingTasks.length);
+                            if (remainingTasks.length === 0) {
+                                console.log('Все задания обработаны, редирект');
+                                // Если есть template_id, возвращаемся к шаблону, иначе к генератору
+                                if (TEMPLATE_ID) {
+                                    window.location.href = `{{ url_for('templates.template_view', template_id=0) }}`.replace('0', TEMPLATE_ID);
+                                } else {
+                                    window.location.href = REDIRECT_URL;
+                                }
+                            }
+                        }, 500);
+                    } else {
+                        console.error('taskElement is null, не могу удалить');
+                    }
                     
                     // Всегда показываем уведомление
                     if (typeof toast !== 'undefined' && toast) {
