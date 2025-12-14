@@ -746,13 +746,29 @@
                             // Проверяем, остались ли задания
                             const remainingTasks = document.querySelectorAll('section.task-card[data-task-id], .task-card[data-task-id]');
                             console.log('Оставшиеся задания:', remainingTasks.length);
+                            
+                            // Если есть template_id в ответе, показываем сообщение о добавлении в шаблон
+                            if (data.template_id) {
+                                const templateMessage = data.template_name 
+                                    ? `Задания добавлены в шаблон "${data.template_name}"`
+                                    : `Задания добавлены в шаблон`;
+                                if (typeof toast !== 'undefined' && toast) {
+                                    toast.success(templateMessage);
+                                }
+                            }
+                            
                             if (remainingTasks.length === 0) {
                                 console.log('Все задания обработаны, редирект');
                                 // Если есть template_id, возвращаемся к шаблону, иначе к генератору
-                                if (TEMPLATE_ID) {
-                                    window.location.href = `{{ url_for('templates.template_view', template_id=0) }}`.replace('0', TEMPLATE_ID);
+                                if (TEMPLATE_ID || data.template_id) {
+                                    const finalTemplateId = TEMPLATE_ID || data.template_id;
+                                    setTimeout(() => {
+                                        window.location.href = `{{ url_for('templates.template_view', template_id=0) }}`.replace('0', finalTemplateId);
+                                    }, 1500);
                                 } else {
-                                    window.location.href = REDIRECT_URL;
+                                    setTimeout(() => {
+                                        window.location.href = REDIRECT_URL;
+                                    }, 1500);
                                 }
                             }
                         }, 500);
