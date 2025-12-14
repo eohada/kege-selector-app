@@ -394,6 +394,11 @@ def task_action():
                         # Коммитим изменения в шаблон отдельно
                         db.session.commit()
                         logger.info(f"✅ Успешно добавлено {added_to_template} заданий в шаблон {template_id}")
+                        
+                        # Проверяем, что задания действительно сохранились
+                        saved_count = TemplateTask.query.filter_by(template_id=template_id).count()
+                        logger.info(f"🔍 Проверка: в шаблоне {template_id} теперь {saved_count} заданий")
+                        
                         if skipped_tasks:
                             logger.info(f"⏭️ Пропущено заданий (уже были в шаблоне): {skipped_tasks}")
                     else:
