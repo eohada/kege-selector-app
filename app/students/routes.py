@@ -242,11 +242,12 @@ def update_statistics(student_id):
             return jsonify({'success': False, 'error': 'Не указан номер задания'}), 400
         
         task_number = int(data['task_number'])
-        manual_correct = int(data.get('manual_correct', 0))
-        manual_incorrect = int(data.get('manual_incorrect', 0))
+        # Получаем значения как приращения (сколько добавить)
+        manual_correct_delta = int(data.get('manual_correct', 0))
+        manual_incorrect_delta = int(data.get('manual_incorrect', 0))
         
         # Проверяем, что значения неотрицательные
-        if manual_correct < 0 or manual_incorrect < 0:
+        if manual_correct_delta < 0 or manual_incorrect_delta < 0:
             return jsonify({'success': False, 'error': 'Значения должны быть неотрицательными'}), 400
         
         # Ищем существующую запись или создаем новую
@@ -256,27 +257,29 @@ def update_statistics(student_id):
         ).first()
         
         if stat:
-            # Обновляем существующую запись
-            stat.manual_correct = manual_correct
-            stat.manual_incorrect = manual_incorrect
+            # Добавляем приращения к существующим значениям
+            stat.manual_correct += manual_correct_delta
+            stat.manual_incorrect += manual_incorrect_delta
             stat.updated_at = moscow_now()
+            logger.info(f"Добавлено к существующей записи: manual_correct_delta={manual_correct_delta}, manual_incorrect_delta={manual_incorrect_delta}, новое значение: manual_correct={stat.manual_correct}, manual_incorrect={stat.manual_incorrect}")
         else:
-            # Создаем новую запись
+            # Создаем новую запись с приращениями как начальными значениями
             stat = StudentTaskStatistics(
                 student_id=student_id,
                 task_number=task_number,
-                manual_correct=manual_correct,
-                manual_incorrect=manual_incorrect
+                manual_correct=manual_correct_delta,
+                manual_incorrect=manual_incorrect_delta
             )
             db.session.add(stat)
+            logger.info(f"Создана новая запись: manual_correct={manual_correct_delta}, manual_incorrect={manual_incorrect_delta}")
         
         db.session.commit()
         
         # Принудительно обновляем объект из базы данных для проверки
         db.session.refresh(stat)
         
-        logger.info(f"Статистика успешно обновлена: student_id={student_id}, task_number={task_number}, manual_correct={manual_correct}, manual_incorrect={manual_incorrect}")
-        logger.info(f"Проверка сохраненных данных: stat_id={stat.stat_id}, manual_correct={stat.manual_correct}, manual_incorrect={stat.manual_incorrect}")
+        logger.info(f"Статистика успешно обновлена: student_id={student_id}, task_number={task_number}, добавлено: manual_correct_delta={manual_correct_delta}, manual_incorrect_delta={manual_incorrect_delta}")
+        logger.info(f"Проверка сохраненных данных: stat_id={stat.stat_id}, итоговое значение: manual_correct={stat.manual_correct}, manual_incorrect={stat.manual_incorrect}")
         
         # Логируем изменение
         try:
@@ -289,8 +292,10 @@ def update_statistics(student_id):
                     'student_id': student_id,
                     'student_name': student.name,
                     'task_number': task_number,
-                    'manual_correct': manual_correct,
-                    'manual_incorrect': manual_incorrect
+                    'manual_correct_delta': manual_correct_delta,
+                    'manual_incorrect_delta': manual_incorrect_delta,
+                    'manual_correct_total': stat.manual_correct,
+                    'manual_incorrect_total': stat.manual_incorrect
                 }
             )
         except Exception as log_err:

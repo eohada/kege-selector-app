@@ -159,8 +159,14 @@
                                    min="0" 
                                    step="1"
                                    class="stat-input-correct" 
-                                   value="{{ item.manual_correct or 0 }}"
+                                   value="0"
+                                   placeholder="Сколько добавить"
                                    style="width: 100%; padding: 0.5rem; border: 1px solid var(--stroke-1); border-radius: 4px; background: var(--bg-1); color: var(--text-primary);">
+                            {% if item.manual_correct > 0 %}
+                            <small style="display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.85em;">
+                                Уже добавлено: {{ item.manual_correct }}
+                            </small>
+                            {% endif %}
                         </div>
                         <div>
                             <label style="display: block; font-size: 0.9em; margin-bottom: 0.25rem; color: var(--text-muted);">
@@ -170,8 +176,14 @@
                                    min="0" 
                                    step="1"
                                    class="stat-input-incorrect" 
-                                   value="{{ item.manual_incorrect or 0 }}"
+                                   value="0"
+                                   placeholder="Сколько добавить"
                                    style="width: 100%; padding: 0.5rem; border: 1px solid var(--stroke-1); border-radius: 4px; background: var(--bg-1); color: var(--text-primary);">
+                            {% if item.manual_incorrect > 0 %}
+                            <small style="display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.85em;">
+                                Уже добавлено: {{ item.manual_incorrect }}
+                            </small>
+                            {% endif %}
                         </div>
                         <div>
                             <button type="button" 
