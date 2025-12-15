@@ -112,8 +112,14 @@
                         <img src="{{ url_for('static', filename='icons/export.png') }}" alt="Экспорт" style="width: 20px; height: 20px; margin-right: 0.5rem; vertical-align: middle;">
                         Экспорт
                     </a>
-                    <a href="{{ url_for('main.import_data') }}" class="neo-button outline">📥 Импорт</a>
-                    <a href="{{ url_for('main.backup_db') }}" class="neo-button ghost">💾 Бэкап БД</a>
+                    <a href="{{ url_for('main.import_data') }}" class="neo-button outline">
+                        <img src="{{ url_for('static', filename='icons/import.png') }}" alt="Импорт" style="width: 20px; height: 20px; margin-right: 0.5rem; vertical-align: middle;">
+                        Импорт
+                    </a>
+                    <a href="{{ url_for('main.backup_db') }}" class="neo-button ghost">
+                        <img src="{{ url_for('static', filename='icons/bekap.png') }}" alt="Бэкап БД" style="width: 20px; height: 20px; margin-right: 0.5rem; vertical-align: middle;">
+                        Бэкап БД
+                    </a>
                 </div>
             </div>
             <div class="hero-pane">
@@ -152,7 +158,10 @@
                     </select>
                 </div>
                 <div class="filters-actions">
-                    <button type="submit" class="neo-button accent" data-tooltip="Применить фильтры (Enter)">🔍 Найти</button>
+                    <button type="submit" class="neo-button accent" data-tooltip="Применить фильтры (Enter)">
+                        <img src="{{ url_for('static', filename='icons/lupa.png') }}" alt="Найти" style="width: 16px; height: 16px; margin-right: 0.35rem; vertical-align: middle;">
+                        Найти
+                    </button>
                     {% if search_query or category_filter %}
                     <a href="{{ url_for('main.dashboard', show_archive='true' if show_archive else 'false') }}" class="neo-button ghost" data-tooltip="Сбросить все фильтры">⟲ Сбросить</a>
                     {% endif %}
@@ -162,12 +171,14 @@
                 <a href="{{ url_for('main.dashboard', show_archive='false', search=search_query, category=category_filter) }}" 
                    class="neo-button {% if not show_archive %}accent{% else %}ghost{% endif %}" 
                    style="text-decoration: none;">
-                    👥 Активные ({{ total_students }})
+                    <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Активные" style="width: 18px; height: 18px; margin-right: 0.4rem; vertical-align: middle;">
+                    Активные ({{ total_students }})
                 </a>
                 <a href="{{ url_for('main.dashboard', show_archive='true', search=search_query, category=category_filter) }}" 
                    class="neo-button {% if show_archive %}accent{% else %}ghost{% endif %}" 
                    style="text-decoration: none;">
-                    📦 Архив ({{ archived_students_count }})
+                    <img src="{{ url_for('static', filename='icons/archiv.png') }}" alt="Архив" style="width: 18px; height: 18px; margin-right: 0.4rem; vertical-align: middle;">
+                    Архив ({{ archived_students_count }})
                 </a>
             </div>
         </section>
@@ -290,25 +301,25 @@
                         <div>🎯 {% if student.category == 'ОГЭ' %}Целевая оценка{% else %}Цель{% endif %}: {{ student.target_score }}{% if student.category != 'ОГЭ' %} баллов{% endif %}</div> <!-- Числовая цель -->
                         {% endif %}
                         {% if student.category != 'ПРОГРАММИРОВАНИЕ' and student.deadline %}
-                        <div>⏰ Срок: {{ student.deadline }}</div> <!-- Срок достижения цели -->
+                        <div><img src="{{ url_for('static', filename='icons/krainii srok.png') }}" alt="Срок" style="width: 16px; height: 16px; margin-right: 0.35rem; vertical-align: middle;">Срок: {{ student.deadline }}</div> <!-- Срок достижения цели -->
                         {% endif %}
                         {% if student.school_class %}
-                        <div>🏫 Класс: {{ student.school_class }}</div> {# Информация о текущем классе #}
+                        <div><img src="{{ url_for('static', filename='icons/klass.png') }}" alt="Класс" style="width: 16px; height: 16px; margin-right: 0.35rem; vertical-align: middle;">Класс: {{ student.school_class }}</div> {# Информация о текущем классе #}
                         {% endif %}
                         {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.programming_language %}
                         <div>💻 Язык: {{ student.programming_language }}</div> <!-- Предпочитаемый язык программирования -->
                         {% endif %}
                         {% if student.diagnostic_level %}
-                        <div>📊 Диагностика: <span>{{ student.diagnostic_level }}</span></div>
+                        <div><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Диагностика" style="width: 16px; height: 16px; margin-right: 0.35rem; vertical-align: middle;">Диагностика: <span>{{ student.diagnostic_level }}</span></div>
                         {% endif %}
                         {% if student.overall_rating %}
-                        <div>⭐ Оценка: <span>{{ student.overall_rating }}</span></div>
+                        <div><img src="{{ url_for('static', filename='icons/ocenka.png') }}" alt="Оценка" style="width: 16px; height: 16px; margin-right: 0.35rem; vertical-align: middle;">Оценка: <span>{{ student.overall_rating }}</span></div>
                         {% endif %}
                         {% if student.strengths %}
-                        <div>💪 Сильные стороны: <span>{{ student.strengths[:60] }}{% if student.strengths|length > 60 %}…{% endif %}</span></div>
+                        <div><img src="{{ url_for('static', filename='icons/silnue storonu.png') }}" alt="Сильные стороны" style="width: 16px; height: 16px; margin-right: 0.35rem; vertical-align: middle;">Сильные стороны: <span>{{ student.strengths[:60] }}{% if student.strengths|length > 60 %}…{% endif %}</span></div>
                         {% endif %}
                         {% if student.weaknesses %}
-                        <div>🧩 Зоны роста: <span>{{ student.weaknesses[:60] }}{% if student.weaknesses|length > 60 %}…{% endif %}</span></div>
+                        <div><img src="{{ url_for('static', filename='icons/zona rosta.png') }}" alt="Зоны роста" style="width: 16px; height: 16px; margin-right: 0.35rem; vertical-align: middle;">Зоны роста: <span>{{ student.weaknesses[:60] }}{% if student.weaknesses|length > 60 %}…{% endif %}</span></div>
                         {% endif %}
                     </div>
                 </a>
