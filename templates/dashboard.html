@@ -108,7 +108,10 @@
                     и с визуальными акцентами на то, что важно прямо сейчас.
                 </p>
                 <div class="hero-actions">
-                    <a href="{{ url_for('main.export_data') }}" class="neo-button accent">📤 Экспорт</a>
+                    <a href="{{ url_for('main.export_data') }}" class="neo-button accent">
+                        <img src="{{ url_for('static', filename='icons/export.png') }}" alt="Экспорт" style="width: 20px; height: 20px; margin-right: 0.5rem; vertical-align: middle;">
+                        Экспорт
+                    </a>
                     <a href="{{ url_for('main.import_data') }}" class="neo-button outline">📥 Импорт</a>
                     <a href="{{ url_for('main.backup_db') }}" class="neo-button ghost">💾 Бэкап БД</a>
                 </div>
