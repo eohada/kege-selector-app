@@ -127,6 +127,65 @@
                 </p>
             </div>
         </section>
+        
+        <section class="glass-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">ручное редактирование</p>
+                    <h2>Изменить статистику</h2>
+                </div>
+            </div>
+            
+            <p style="margin-top: 1rem; color: var(--text-muted); font-size: 0.9em;">
+                Вы можете вручную добавить количество правильно или неправильно решенных заданий для каждого номера. 
+                Эти значения будут добавлены к автоматической статистике и сохранятся при дальнейших обновлениях.
+            </p>
+            
+            <div style="margin-top: 2rem;">
+                <div id="statisticsEditor" style="display: grid; gap: 1rem;">
+                    {% for item in chart_data %}
+                    <div class="stat-edit-item" data-task-number="{{ item.task_number }}" style="display: grid; grid-template-columns: 120px 1fr 1fr auto; gap: 1rem; align-items: center; padding: 1rem; background: var(--bg-2); border-radius: 8px;">
+                        <div>
+                            <strong>Задание {{ item.task_number }}</strong>
+                            <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 0.25rem;">
+                                {{ item.correct }}/{{ item.total }} ({{ item.percent }}%)
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.9em; margin-bottom: 0.25rem; color: var(--text-muted);">
+                                ✅ Правильно (добавить):
+                            </label>
+                            <input type="number" 
+                                   min="0" 
+                                   step="1"
+                                   class="stat-input-correct" 
+                                   value="{{ item.manual_correct or 0 }}"
+                                   style="width: 100%; padding: 0.5rem; border: 1px solid var(--stroke-1); border-radius: 4px; background: var(--bg-1); color: var(--text-primary);">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.9em; margin-bottom: 0.25rem; color: var(--text-muted);">
+                                ❌ Неправильно (добавить):
+                            </label>
+                            <input type="number" 
+                                   min="0" 
+                                   step="1"
+                                   class="stat-input-incorrect" 
+                                   value="{{ item.manual_incorrect or 0 }}"
+                                   style="width: 100%; padding: 0.5rem; border: 1px solid var(--stroke-1); border-radius: 4px; background: var(--bg-1); color: var(--text-primary);">
+                        </div>
+                        <div>
+                            <button type="button" 
+                                    class="neo-button accent stat-save-btn" 
+                                    data-task-number="{{ item.task_number }}"
+                                    style="white-space: nowrap;">
+                                💾 Сохранить
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
         {% else %}
         <section class="glass-panel">
             <div class="empty-state">
@@ -140,6 +199,71 @@
     
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>
+    
+    <script>
+        // Обработка сохранения статистики
+        document.addEventListener('DOMContentLoaded', function() {
+            const saveButtons = document.querySelectorAll('.stat-save-btn');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            
+            saveButtons.forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const taskNumber = parseInt(this.dataset.taskNumber);
+                    const item = this.closest('.stat-edit-item');
+                    const correctInput = item.querySelector('.stat-input-correct');
+                    const incorrectInput = item.querySelector('.stat-input-incorrect');
+                    
+                    const manualCorrect = parseInt(correctInput.value) || 0;
+                    const manualIncorrect = parseInt(incorrectInput.value) || 0;
+                    
+                    // Валидация
+                    if (manualCorrect < 0 || manualIncorrect < 0) {
+                        showTemporaryNotification('Значения должны быть неотрицательными', 'error');
+                        return;
+                    }
+                    
+                    // Показываем индикатор загрузки
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '⏳ Сохранение...';
+                    this.disabled = true;
+                    
+                    try {
+                        const response = await fetch(`{{ url_for('students.update_statistics', student_id=student.student_id) }}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken
+                            },
+                            body: JSON.stringify({
+                                task_number: taskNumber,
+                                manual_correct: manualCorrect,
+                                manual_incorrect: manualIncorrect
+                            })
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            showTemporaryNotification('Статистика успешно обновлена', 'success');
+                            // Перезагружаем страницу через небольшую задержку для обновления данных
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 500);
+                        } else {
+                            showTemporaryNotification(data.error || 'Ошибка при сохранении', 'error');
+                            this.innerHTML = originalText;
+                            this.disabled = false;
+                        }
+                    } catch (error) {
+                        console.error('Ошибка при сохранении статистики:', error);
+                        showTemporaryNotification('Ошибка при сохранении статистики', 'error');
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }
+                });
+            });
+        });
+    </script>
     
     {% if chart_data %}
     <script>

@@ -2,14 +2,14 @@
 Маршруты для управления студентами
 """
 import logging
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required
 
 from app.students import students_bp
 from app.students.forms import StudentForm, normalize_school_class
 from app.students.utils import get_sorted_assignments
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
-from app.models import Student, Lesson, LessonTask, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Student, StudentTaskStatistics, Lesson, LessonTask, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
@@ -147,13 +147,27 @@ def student_statistics(student_id):
                 task_num = lt.task.task_number
                 
                 if task_num not in task_stats:
-                    task_stats[task_num] = {'correct': 0, 'total': 0}
+                    task_stats[task_num] = {'correct': 0, 'total': 0, 'manual_correct': 0, 'manual_incorrect': 0}
                 
                 # Учитываем только задания с проверенными ответами
                 if lt.submission_correct is not None:
                     task_stats[task_num]['total'] += weight
                     if lt.submission_correct:
                         task_stats[task_num]['correct'] += weight
+    
+    # Загружаем ручные изменения статистики
+    manual_stats = StudentTaskStatistics.query.filter_by(student_id=student_id).all()
+    manual_stats_dict = {stat.task_number: stat for stat in manual_stats}
+    
+    # Применяем ручные изменения к статистике
+    for task_num in task_stats.keys():
+        if task_num in manual_stats_dict:
+            manual_stat = manual_stats_dict[task_num]
+            task_stats[task_num]['manual_correct'] = manual_stat.manual_correct
+            task_stats[task_num]['manual_incorrect'] = manual_stat.manual_incorrect
+            # Добавляем ручные изменения к автоматическим
+            task_stats[task_num]['correct'] += manual_stat.manual_correct
+            task_stats[task_num]['total'] += manual_stat.manual_correct + manual_stat.manual_incorrect
     
     # Вычисляем проценты и формируем данные для диаграммы
     chart_data = []
@@ -174,12 +188,91 @@ def student_statistics(student_id):
                 'percent': percent,
                 'correct': stats['correct'],
                 'total': stats['total'],
-                'color': color
+                'color': color,
+                'manual_correct': stats.get('manual_correct', 0),
+                'manual_incorrect': stats.get('manual_incorrect', 0)
             })
     
     return render_template('student_statistics.html', 
                          student=student, 
                          chart_data=chart_data)
+
+@students_bp.route('/student/<int:student_id>/statistics/update', methods=['POST'])
+@login_required
+def update_statistics(student_id):
+    """API endpoint для обновления ручной статистики"""
+    try:
+        
+        student = Student.query.get_or_404(student_id)
+        data = request.get_json()
+        
+        if not data or 'task_number' not in data:
+            return jsonify({'success': False, 'error': 'Не указан номер задания'}), 400
+        
+        task_number = int(data['task_number'])
+        manual_correct = int(data.get('manual_correct', 0))
+        manual_incorrect = int(data.get('manual_incorrect', 0))
+        
+        # Проверяем, что значения неотрицательные
+        if manual_correct < 0 or manual_incorrect < 0:
+            return jsonify({'success': False, 'error': 'Значения должны быть неотрицательными'}), 400
+        
+        # Ищем существующую запись или создаем новую
+        stat = StudentTaskStatistics.query.filter_by(
+            student_id=student_id,
+            task_number=task_number
+        ).first()
+        
+        if stat:
+            # Обновляем существующую запись
+            stat.manual_correct = manual_correct
+            stat.manual_incorrect = manual_incorrect
+            stat.updated_at = moscow_now()
+        else:
+            # Создаем новую запись
+            stat = StudentTaskStatistics(
+                student_id=student_id,
+                task_number=task_number,
+                manual_correct=manual_correct,
+                manual_incorrect=manual_incorrect
+            )
+            db.session.add(stat)
+        
+        db.session.commit()
+        
+        # Логируем изменение
+        audit_logger.log(
+            action='update_statistics',
+            entity='StudentTaskStatistics',
+            entity_id=stat.stat_id,
+            status='success',
+            metadata={
+                'student_id': student_id,
+                'student_name': student.name,
+                'task_number': task_number,
+                'manual_correct': manual_correct,
+                'manual_incorrect': manual_incorrect
+            }
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Статистика обновлена',
+            'stat_id': stat.stat_id
+        })
+        
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': f'Некорректные данные: {str(e)}'}), 400
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при обновлении статистики: {e}', exc_info=True)
+        audit_logger.log_error(
+            action='update_statistics',
+            entity='StudentTaskStatistics',
+            error=str(e)
+        )
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @students_bp.route('/student/<int:student_id>/edit', methods=['GET', 'POST'])
 @login_required

@@ -84,6 +84,23 @@ class Student(db.Model):
     is_active = db.Column(db.Boolean, default=True)
 
     lessons = db.relationship('Lesson', back_populates='student', lazy=True, cascade='all, delete-orphan')
+    task_statistics = db.relationship('StudentTaskStatistics', back_populates='student', lazy=True, cascade='all, delete-orphan')
+
+class StudentTaskStatistics(db.Model):
+    """Ручные изменения статистики выполнения заданий для ученика"""
+    __tablename__ = 'StudentTaskStatistics'
+    stat_id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False)
+    task_number = db.Column(db.Integer, nullable=False)
+    manual_correct = db.Column(db.Integer, default=0, nullable=False)  # Количество правильных, добавленных вручную
+    manual_incorrect = db.Column(db.Integer, default=0, nullable=False)  # Количество неправильных, добавленных вручную
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    
+    # Уникальный индекс для пары student_id + task_number
+    __table_args__ = (Index('ix_student_task_statistics', 'student_id', 'task_number', unique=True),)
+    
+    student = db.relationship('Student', back_populates='task_statistics')
 
 class Lesson(db.Model):
     __tablename__ = 'Lessons'

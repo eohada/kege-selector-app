@@ -70,6 +70,39 @@ def ensure_schema_columns(app):
             db.session.execute(text(f'UPDATE "{lessons_table}" SET homework_status = \'assigned_done\' WHERE homework_status = \'completed\''))  # Старый completed -> assigned_done
             db.session.execute(text(f'UPDATE "{lessons_table}" SET homework_status = \'assigned_not_done\' WHERE homework_status IN (\'pending\', \'not_done\')'))  # pending/not_done -> assigned_not_done
 
+            # Проверяем и создаем таблицу StudentTaskStatistics
+            stats_table = 'StudentTaskStatistics' if 'StudentTaskStatistics' in table_names else ('studenttaskstatistics' if 'studenttaskstatistics' in table_names else None)
+            if not stats_table:
+                # Создаем таблицу для ручных изменений статистики
+                db.session.execute(text("""
+                    CREATE TABLE IF NOT EXISTS "StudentTaskStatistics" (
+                        stat_id SERIAL PRIMARY KEY,
+                        student_id INTEGER NOT NULL REFERENCES "Students"(student_id) ON DELETE CASCADE,
+                        task_number INTEGER NOT NULL,
+                        manual_correct INTEGER DEFAULT 0 NOT NULL,
+                        manual_incorrect INTEGER DEFAULT 0 NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE(student_id, task_number)
+                    )
+                """))
+                db.session.execute(text("""
+                    CREATE INDEX IF NOT EXISTS ix_student_task_statistics 
+                    ON "StudentTaskStatistics"(student_id, task_number)
+                """))
+                logger.info("Created StudentTaskStatistics table")
+            else:
+                # Проверяем наличие всех колонок
+                stats_columns = {col['name'] for col in inspector.get_columns(stats_table)}
+                if 'manual_correct' not in stats_columns:
+                    db.session.execute(text(f'ALTER TABLE "{stats_table}" ADD COLUMN manual_correct INTEGER DEFAULT 0 NOT NULL'))
+                if 'manual_incorrect' not in stats_columns:
+                    db.session.execute(text(f'ALTER TABLE "{stats_table}" ADD COLUMN manual_incorrect INTEGER DEFAULT 0 NOT NULL'))
+                if 'created_at' not in stats_columns:
+                    db.session.execute(text(f'ALTER TABLE "{stats_table}" ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'))
+                if 'updated_at' not in stats_columns:
+                    db.session.execute(text(f'ALTER TABLE "{stats_table}" ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'))
+
             # Проверяем и обновляем AuditLog таблицу
             audit_log_table = 'AuditLog' if 'AuditLog' in table_names else ('auditlog' if 'auditlog' in table_names else None)
             if audit_log_table:
