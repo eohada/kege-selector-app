@@ -201,10 +201,87 @@
     <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>
     
     <script>
+        // Функция для временного уведомления, если toast не загружен
+        function showTemporaryNotification(message, type) {
+            // Пробуем использовать toast из toast.js
+            if (typeof toast !== 'undefined' && toast && typeof toast.show === 'function') {
+                toast.show(message, type);
+                return;
+            }
+            if (window.toast && typeof window.toast.show === 'function') {
+                window.toast.show(message, type);
+                return;
+            }
+            if (typeof toast !== 'undefined' && toast) {
+                if (type === 'success' && typeof toast.success === 'function') {
+                    toast.success(message);
+                    return;
+                }
+                if (type === 'error' && typeof toast.error === 'function') {
+                    toast.error(message);
+                    return;
+                }
+            }
+            
+            // Fallback: создаем уведомление вручную
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 1rem 1.5rem;
+                background: ${type === 'success' ? '#22c55e' : '#ef4444'};
+                color: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                z-index: 10000;
+                font-size: 14px;
+                max-width: 300px;
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+        
+        // Добавляем стили для анимации
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+        
         // Обработка сохранения статистики
         document.addEventListener('DOMContentLoaded', function() {
             const saveButtons = document.querySelectorAll('.stat-save-btn');
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            
+            if (!csrfToken) {
+                console.warn('CSRF токен не найден');
+            }
             
             saveButtons.forEach(btn => {
                 btn.addEventListener('click', async function() {
@@ -228,11 +305,15 @@
                     this.disabled = true;
                     
                     try {
-                        const response = await fetch(`{{ url_for('students.update_statistics', student_id=student.student_id) }}`, {
+                        const url = `{{ url_for('students.update_statistics', student_id=student.student_id) }}`;
+                        console.log('Отправка запроса на:', url);
+                        console.log('Данные:', { task_number: taskNumber, manual_correct: manualCorrect, manual_incorrect: manualIncorrect });
+                        
+                        const response = await fetch(url, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-CSRFToken': csrfToken
+                                'X-CSRFToken': csrfToken || ''
                             },
                             body: JSON.stringify({
                                 task_number: taskNumber,
@@ -241,22 +322,35 @@
                             })
                         });
                         
-                        const data = await response.json();
+                        console.log('Статус ответа:', response.status);
+                        console.log('Заголовки ответа:', response.headers);
                         
-                        if (data.success) {
+                        // Проверяем статус ответа
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            console.error('Ошибка HTTP:', response.status, errorText);
+                            throw new Error(`HTTP ${response.status}: ${errorText}`);
+                        }
+                        
+                        const data = await response.json();
+                        console.log('Ответ от сервера:', data);
+                        
+                        if (data && data.success) {
                             showTemporaryNotification('Статистика успешно обновлена', 'success');
                             // Перезагружаем страницу через небольшую задержку для обновления данных
                             setTimeout(() => {
                                 window.location.reload();
-                            }, 500);
+                            }, 1000);
                         } else {
-                            showTemporaryNotification(data.error || 'Ошибка при сохранении', 'error');
+                            const errorMsg = data?.error || 'Ошибка при сохранении';
+                            console.error('Ошибка от сервера:', errorMsg);
+                            showTemporaryNotification(errorMsg, 'error');
                             this.innerHTML = originalText;
                             this.disabled = false;
                         }
                     } catch (error) {
                         console.error('Ошибка при сохранении статистики:', error);
-                        showTemporaryNotification('Ошибка при сохранении статистики', 'error');
+                        showTemporaryNotification('Ошибка при сохранении статистики: ' + error.message, 'error');
                         this.innerHTML = originalText;
                         this.disabled = false;
                     }

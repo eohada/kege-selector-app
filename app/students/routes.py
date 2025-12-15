@@ -202,11 +202,15 @@ def student_statistics(student_id):
 def update_statistics(student_id):
     """API endpoint для обновления ручной статистики"""
     try:
+        logger.info(f"Получен запрос на обновление статистики для ученика {student_id}")
         
         student = Student.query.get_or_404(student_id)
         data = request.get_json()
         
+        logger.info(f"Данные запроса: {data}")
+        
         if not data or 'task_number' not in data:
+            logger.warning("Не указан номер задания в запросе")
             return jsonify({'success': False, 'error': 'Не указан номер задания'}), 400
         
         task_number = int(data['task_number'])
@@ -240,26 +244,34 @@ def update_statistics(student_id):
         
         db.session.commit()
         
-        # Логируем изменение
-        audit_logger.log(
-            action='update_statistics',
-            entity='StudentTaskStatistics',
-            entity_id=stat.stat_id,
-            status='success',
-            metadata={
-                'student_id': student_id,
-                'student_name': student.name,
-                'task_number': task_number,
-                'manual_correct': manual_correct,
-                'manual_incorrect': manual_incorrect
-            }
-        )
+        logger.info(f"Статистика успешно обновлена: student_id={student_id}, task_number={task_number}, manual_correct={manual_correct}, manual_incorrect={manual_incorrect}")
         
-        return jsonify({
+        # Логируем изменение
+        try:
+            audit_logger.log(
+                action='update_statistics',
+                entity='StudentTaskStatistics',
+                entity_id=stat.stat_id,
+                status='success',
+                metadata={
+                    'student_id': student_id,
+                    'student_name': student.name,
+                    'task_number': task_number,
+                    'manual_correct': manual_correct,
+                    'manual_incorrect': manual_incorrect
+                }
+            )
+        except Exception as log_err:
+            logger.warning(f"Ошибка при логировании: {log_err}")
+        
+        response_data = {
             'success': True,
             'message': 'Статистика обновлена',
             'stat_id': stat.stat_id
-        })
+        }
+        
+        logger.info(f"Отправка ответа: {response_data}")
+        return jsonify(response_data), 200
         
     except ValueError as e:
         db.session.rollback()
