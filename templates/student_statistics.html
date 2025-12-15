@@ -337,9 +337,12 @@
                         
                         if (data && data.success) {
                             showTemporaryNotification('Статистика успешно обновлена', 'success');
-                            // Перезагружаем страницу через небольшую задержку для обновления данных
+                            // Перезагружаем страницу с принудительным обновлением кеша
                             setTimeout(() => {
-                                window.location.reload();
+                                // Добавляем timestamp для обхода кеша
+                                const url = new URL(window.location.href);
+                                url.searchParams.set('_t', Date.now());
+                                window.location.href = url.toString();
                             }, 1000);
                         } else {
                             const errorMsg = data?.error || 'Ошибка при сохранении';

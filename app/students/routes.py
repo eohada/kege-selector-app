@@ -160,7 +160,8 @@ def student_statistics(student_id):
     manual_stats_dict = {stat.task_number: stat for stat in manual_stats}
     
     # Применяем ручные изменения к статистике
-    for task_num in task_stats.keys():
+    # Сначала применяем к существующим заданиям
+    for task_num in list(task_stats.keys()):
         if task_num in manual_stats_dict:
             manual_stat = manual_stats_dict[task_num]
             task_stats[task_num]['manual_correct'] = manual_stat.manual_correct
@@ -168,6 +169,17 @@ def student_statistics(student_id):
             # Добавляем ручные изменения к автоматическим
             task_stats[task_num]['correct'] += manual_stat.manual_correct
             task_stats[task_num]['total'] += manual_stat.manual_correct + manual_stat.manual_incorrect
+    
+    # Добавляем задания, для которых есть только ручные изменения (без автоматической статистики)
+    for task_num, manual_stat in manual_stats_dict.items():
+        if task_num not in task_stats:
+            # Создаем запись только с ручными изменениями
+            task_stats[task_num] = {
+                'correct': manual_stat.manual_correct,
+                'total': manual_stat.manual_correct + manual_stat.manual_incorrect,
+                'manual_correct': manual_stat.manual_correct,
+                'manual_incorrect': manual_stat.manual_incorrect
+            }
     
     # Вычисляем проценты и формируем данные для диаграммы
     chart_data = []
@@ -244,7 +256,11 @@ def update_statistics(student_id):
         
         db.session.commit()
         
+        # Принудительно обновляем объект из базы данных для проверки
+        db.session.refresh(stat)
+        
         logger.info(f"Статистика успешно обновлена: student_id={student_id}, task_number={task_number}, manual_correct={manual_correct}, manual_incorrect={manual_incorrect}")
+        logger.info(f"Проверка сохраненных данных: stat_id={stat.stat_id}, manual_correct={stat.manual_correct}, manual_incorrect={stat.manual_incorrect}")
         
         # Логируем изменение
         try:
