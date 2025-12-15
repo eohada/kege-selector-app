@@ -109,15 +109,15 @@
                 </p>
                 <div class="hero-actions">
                     <a href="{{ url_for('main.export_data') }}" class="neo-button accent">
-                        <img src="{{ url_for('static', filename='icons/export.png') }}" alt="Экспорт" style="width: 20px; height: 20px; margin-right: 0.5rem; vertical-align: middle;">
+                        <img src="{{ url_for('static', filename='icons/export.png') }}?v=1" alt="Экспорт" style="width: 20px; height: 20px; margin-right: 0.5rem; vertical-align: middle; object-fit: contain;" onerror="this.onerror=null; this.style.display='none'; this.insertAdjacentText('afterend','📤 ');">
                         Экспорт
                     </a>
                     <a href="{{ url_for('main.import_data') }}" class="neo-button outline">
-                        <img src="{{ url_for('static', filename='icons/import.png') }}" alt="Импорт" style="width: 20px; height: 20px; margin-right: 0.5rem; vertical-align: middle;">
+                        <img src="{{ url_for('static', filename='icons/import.png') }}?v=1" alt="Импорт" style="width: 20px; height: 20px; margin-right: 0.5rem; vertical-align: middle; object-fit: contain;" onerror="this.onerror=null; this.style.display='none'; this.insertAdjacentText('afterend','📥 ');">
                         Импорт
                     </a>
                     <a href="{{ url_for('main.backup_db') }}" class="neo-button ghost">
-                        <img src="{{ url_for('static', filename='icons/bekap.png') }}" alt="Бэкап БД" style="width: 20px; height: 20px; margin-right: 0.5rem; vertical-align: middle;">
+                        <img src="{{ url_for('static', filename='icons/bekap.png') }}?v=1" alt="Бэкап БД" style="width: 20px; height: 20px; margin-right: 0.5rem; vertical-align: middle; object-fit: contain;" onerror="this.onerror=null; this.style.display='none'; this.insertAdjacentText('afterend','💾 ');">
                         Бэкап БД
                     </a>
                 </div>
