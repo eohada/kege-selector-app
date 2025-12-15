@@ -134,6 +134,7 @@ def student_statistics(student_id):
     # Собираем статистику по номерам заданий
     task_stats = {}
     
+    # Сначала собираем автоматическую статистику (из LessonTask)
     for lesson in lessons:
         # Обрабатываем все типы заданий
         for assignment_type in ['homework', 'classwork', 'exam']:
@@ -147,17 +148,27 @@ def student_statistics(student_id):
                 task_num = lt.task.task_number
                 
                 if task_num not in task_stats:
-                    task_stats[task_num] = {'correct': 0, 'total': 0, 'manual_correct': 0, 'manual_incorrect': 0}
+                    task_stats[task_num] = {
+                        'auto_correct': 0, 
+                        'auto_total': 0,
+                        'manual_correct': 0, 
+                        'manual_incorrect': 0,
+                        'correct': 0,
+                        'total': 0
+                    }
                 
                 # Учитываем только задания с проверенными ответами
                 if lt.submission_correct is not None:
-                    task_stats[task_num]['total'] += weight
+                    task_stats[task_num]['auto_total'] += weight
                     if lt.submission_correct:
-                        task_stats[task_num]['correct'] += weight
+                        task_stats[task_num]['auto_correct'] += weight
     
     # Загружаем ручные изменения статистики
     manual_stats = StudentTaskStatistics.query.filter_by(student_id=student_id).all()
     manual_stats_dict = {stat.task_number: stat for stat in manual_stats}
+    
+    logger.info(f"Автоматическая статистика для ученика {student_id}: {[(k, v['auto_correct'], v['auto_total']) for k, v in task_stats.items()]}")
+    logger.info(f"Ручные изменения для ученика {student_id}: {[(s.task_number, s.manual_correct, s.manual_incorrect) for s in manual_stats]}")
     
     # Применяем ручные изменения к статистике
     # Сначала применяем к существующим заданиям
@@ -166,20 +177,25 @@ def student_statistics(student_id):
             manual_stat = manual_stats_dict[task_num]
             task_stats[task_num]['manual_correct'] = manual_stat.manual_correct
             task_stats[task_num]['manual_incorrect'] = manual_stat.manual_incorrect
-            # Добавляем ручные изменения к автоматическим
-            task_stats[task_num]['correct'] += manual_stat.manual_correct
-            task_stats[task_num]['total'] += manual_stat.manual_correct + manual_stat.manual_incorrect
+        
+        # Рассчитываем итоговые значения: автоматические + ручные
+        task_stats[task_num]['correct'] = task_stats[task_num]['auto_correct'] + task_stats[task_num]['manual_correct']
+        task_stats[task_num]['total'] = task_stats[task_num]['auto_total'] + task_stats[task_num]['manual_correct'] + task_stats[task_num]['manual_incorrect']
     
     # Добавляем задания, для которых есть только ручные изменения (без автоматической статистики)
     for task_num, manual_stat in manual_stats_dict.items():
         if task_num not in task_stats:
             # Создаем запись только с ручными изменениями
             task_stats[task_num] = {
+                'auto_correct': 0,
+                'auto_total': 0,
                 'correct': manual_stat.manual_correct,
                 'total': manual_stat.manual_correct + manual_stat.manual_incorrect,
                 'manual_correct': manual_stat.manual_correct,
                 'manual_incorrect': manual_stat.manual_incorrect
             }
+    
+    logger.info(f"Итоговая статистика для ученика {student_id}: {[(k, v['correct'], v['total']) for k, v in task_stats.items()]}")
     
     # Вычисляем проценты и формируем данные для диаграммы
     chart_data = []
