@@ -546,10 +546,20 @@ def admin_audit_export():
 @admin_bp.route('/maintenance')
 def maintenance_page():
     """Страница технических работ"""
+    # Приоритет: 1) сообщение из query параметра (от редиректа), 2) сообщение из БД, 3) дефолтное
+    message_from_query = request.args.get('message', '').strip()
     status = MaintenanceMode.get_status()
-    # Используем сообщение из БД, если оно есть, иначе дефолтное
-    message = status.message if status.message else 'В настоящее время ведутся технические работы. Пожалуйста, зайдите позже.'
-    logger.debug(f"Maintenance page: message from DB = '{status.message}', final message = '{message}'")
+    
+    if message_from_query:
+        message = message_from_query
+        logger.debug(f"Maintenance page: using message from query parameter: '{message[:50]}'")
+    elif status.message:
+        message = status.message
+        logger.debug(f"Maintenance page: using message from DB: '{message[:50]}'")
+    else:
+        message = 'В настоящее время ведутся технические работы. Пожалуйста, зайдите позже.'
+        logger.debug(f"Maintenance page: using default message")
+    
     return render_template('maintenance.html', message=message)
 
 @admin_bp.route('/api/maintenance-status')

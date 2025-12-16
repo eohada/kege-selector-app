@@ -254,9 +254,9 @@ def register_hooks(app):
             logger.info(f"Maintenance mode check: enabled={maintenance_enabled}, endpoint={request.endpoint}, path={request.path}")
             
             if maintenance_enabled:
-                logger.info(f"Maintenance mode enabled in sandbox, redirecting from {request.path} to maintenance page")
-                # Редиректим на страницу тех работ
-                return redirect(url_for('admin.maintenance_page'))
+                logger.info(f"Maintenance mode enabled in sandbox, redirecting from {request.path} to maintenance page with message: {maintenance_message[:50]}")
+                # Редиректим на страницу тех работ, передавая сообщение через query параметр
+                return redirect(url_for('admin.maintenance_page', message=maintenance_message))
         
         return None
     
