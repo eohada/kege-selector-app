@@ -551,15 +551,17 @@ def maintenance_page():
 
 @admin_bp.route('/api/maintenance-status')
 def maintenance_status_api():
-    """Публичный API для проверки статуса тех работ (используется песочницей)"""
+    """Публичный API для проверки статуса тех работ (используется песочницей) - без авторизации"""
     try:
         status = MaintenanceMode.get_status()
-        return jsonify({
+        response_data = {
             'enabled': status.is_enabled,
             'message': status.message or 'Ведутся технические работы. Скоро вернемся!'
-        }), 200
+        }
+        logger.debug(f"Maintenance status API called: enabled={status.is_enabled}")
+        return jsonify(response_data), 200
     except Exception as e:
-        logger.error(f'Ошибка при получении статуса тех работ: {e}')
+        logger.error(f'Ошибка при получении статуса тех работ: {e}', exc_info=True)
         return jsonify({'enabled': False, 'message': ''}), 500
 
 @admin_bp.route('/admin/maintenance/toggle', methods=['POST'])

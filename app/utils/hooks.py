@@ -202,23 +202,41 @@ def register_hooks(app):
                     try:
                         import requests
                         api_url = f"{production_url.rstrip('/')}/api/maintenance-status"
-                        response = requests.get(api_url, timeout=2)
+                        logger.debug(f"Checking maintenance status from production API: {api_url}")
+                        response = requests.get(api_url, timeout=5, headers={'User-Agent': 'Sandbox-Maintenance-Checker/1.0'})
+                        logger.debug(f"Production API response: status={response.status_code}, content-type={response.headers.get('Content-Type', 'unknown')}, content-preview={response.text[:200]}")
+                        
                         if response.status_code == 200:
-                            data = response.json()
-                            maintenance_enabled = data.get('enabled', False)
-                            maintenance_message = data.get('message', maintenance_message)
-                            logger.info(f"Maintenance mode from PRODUCTION API: enabled={maintenance_enabled}")
+                            try:
+                                data = response.json()
+                                maintenance_enabled = data.get('enabled', False)
+                                maintenance_message = data.get('message', maintenance_message)
+                                logger.info(f"Maintenance mode from PRODUCTION API: enabled={maintenance_enabled}, message={maintenance_message[:50]}")
+                            except ValueError as json_error:
+                                logger.error(f"Failed to parse JSON from production API: {json_error}. Response text: {response.text[:500]}")
+                                raise Exception(f"Invalid JSON response: {json_error}")
                         else:
-                            logger.warning(f"Production API returned status {response.status_code}, falling back to local DB")
+                            logger.warning(f"Production API returned status {response.status_code}, response: {response.text[:200]}")
                             raise Exception(f"API returned {response.status_code}")
-                    except Exception as e:
-                        logger.warning(f"Ошибка при запросе к API продакшена: {e}, проверяем локальную БД")
+                    except requests.exceptions.RequestException as req_error:
+                        logger.warning(f"Network error when requesting production API: {req_error}, проверяем локальную БД")
                         # Fallback на локальную БД
                         try:
                             maintenance_enabled = MaintenanceMode.is_maintenance_enabled()
                             status = MaintenanceMode.get_status()
                             maintenance_message = status.message
-                            logger.info(f"Maintenance mode from local DB: enabled={maintenance_enabled}")
+                            logger.info(f"Maintenance mode from local DB (after API error): enabled={maintenance_enabled}")
+                        except Exception as db_error:
+                            logger.warning(f"Ошибка при проверке режима тех работ из БД: {db_error}")
+                            maintenance_enabled = False
+                    except Exception as e:
+                        logger.error(f"Ошибка при запросе к API продакшена: {e}, проверяем локальную БД", exc_info=True)
+                        # Fallback на локальную БД
+                        try:
+                            maintenance_enabled = MaintenanceMode.is_maintenance_enabled()
+                            status = MaintenanceMode.get_status()
+                            maintenance_message = status.message
+                            logger.info(f"Maintenance mode from local DB (after error): enabled={maintenance_enabled}")
                         except Exception as db_error:
                             logger.warning(f"Ошибка при проверке режима тех работ из БД: {db_error}")
                             maintenance_enabled = False
@@ -246,7 +264,8 @@ def register_hooks(app):
     def require_login():
         """Проверка авторизации для всех маршрутов кроме login, logout и static"""
         # Исключаем маршруты, которые не требуют авторизации
-        if request.endpoint in ('auth.login', 'auth.logout', 'static', 'main.font_files') or request.path.startswith('/static/') or request.path.startswith('/font/'):
+        excluded_endpoints = ('auth.login', 'auth.logout', 'static', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page')
+        if request.endpoint in excluded_endpoints or request.path.startswith('/static/') or request.path.startswith('/font/'):
             return
         
         # Проверяем авторизацию

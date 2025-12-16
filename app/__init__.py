@@ -148,6 +148,10 @@ def create_app(config_name=None):
     from app.auth.routes import logout
     csrf.exempt(logout)
     
+    # Исключаем публичный API для проверки статуса тех работ из CSRF защиты
+    from app.admin.routes import maintenance_status_api
+    csrf.exempt(maintenance_status_api)
+    
     # Импорт и регистрация хуков before_request
     from app.utils.hooks import register_hooks
     register_hooks(app)
