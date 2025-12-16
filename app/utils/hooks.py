@@ -185,19 +185,60 @@ def register_hooks(app):
                 logger.debug(f"Maintenance check: endpoint {request.endpoint} excluded from redirect")
                 return None
             
-            # Проверяем статус тех работ
-            try:
-                maintenance_enabled = MaintenanceMode.is_maintenance_enabled()
-                logger.info(f"Maintenance mode check: enabled={maintenance_enabled}, endpoint={request.endpoint}, path={request.path}")
-                
-                if maintenance_enabled:
-                    logger.info(f"Maintenance mode enabled in sandbox, redirecting from {request.path} to maintenance page")
-                    # Редиректим на страницу тех работ
-                    return redirect(url_for('admin.maintenance_page'))
-            except Exception as e:
-                # Если ошибка при проверке, логируем и пропускаем (чтобы не сломать приложение)
-                logger.error(f"Ошибка при проверке режима тех работ: {e}", exc_info=True)
-                pass
+            # В песочнице проверяем статус тех работ из продакшена через API
+            # Приоритет: 1) переменная окружения MAINTENANCE_ENABLED, 2) API продакшена, 3) локальная БД
+            maintenance_enabled = False
+            maintenance_message = "Ведутся технические работы. Скоро вернемся!"
+            
+            # Сначала проверяем переменную окружения (самый быстрый способ)
+            maintenance_enabled_env = os.environ.get('MAINTENANCE_ENABLED', '').lower()
+            if maintenance_enabled_env in ('true', '1', 'yes', 'on'):
+                maintenance_enabled = True
+                logger.info(f"Maintenance mode from ENV: enabled=True (MAINTENANCE_ENABLED={maintenance_enabled_env})")
+            else:
+                # Если переменная не установлена, проверяем API продакшена
+                production_url = os.environ.get('PRODUCTION_URL', '')
+                if production_url:
+                    try:
+                        import requests
+                        api_url = f"{production_url.rstrip('/')}/api/maintenance-status"
+                        response = requests.get(api_url, timeout=2)
+                        if response.status_code == 200:
+                            data = response.json()
+                            maintenance_enabled = data.get('enabled', False)
+                            maintenance_message = data.get('message', maintenance_message)
+                            logger.info(f"Maintenance mode from PRODUCTION API: enabled={maintenance_enabled}")
+                        else:
+                            logger.warning(f"Production API returned status {response.status_code}, falling back to local DB")
+                            raise Exception(f"API returned {response.status_code}")
+                    except Exception as e:
+                        logger.warning(f"Ошибка при запросе к API продакшена: {e}, проверяем локальную БД")
+                        # Fallback на локальную БД
+                        try:
+                            maintenance_enabled = MaintenanceMode.is_maintenance_enabled()
+                            status = MaintenanceMode.get_status()
+                            maintenance_message = status.message
+                            logger.info(f"Maintenance mode from local DB: enabled={maintenance_enabled}")
+                        except Exception as db_error:
+                            logger.warning(f"Ошибка при проверке режима тех работ из БД: {db_error}")
+                            maintenance_enabled = False
+                else:
+                    # Если PRODUCTION_URL не установлен, проверяем локальную БД
+                    try:
+                        maintenance_enabled = MaintenanceMode.is_maintenance_enabled()
+                        status = MaintenanceMode.get_status()
+                        maintenance_message = status.message
+                        logger.info(f"Maintenance mode from local DB: enabled={maintenance_enabled}")
+                    except Exception as db_error:
+                        logger.warning(f"Ошибка при проверке режима тех работ из БД: {db_error}")
+                        maintenance_enabled = False
+            
+            logger.info(f"Maintenance mode check: enabled={maintenance_enabled}, endpoint={request.endpoint}, path={request.path}")
+            
+            if maintenance_enabled:
+                logger.info(f"Maintenance mode enabled in sandbox, redirecting from {request.path} to maintenance page")
+                # Редиректим на страницу тех работ
+                return redirect(url_for('admin.maintenance_page'))
         
         return None
     

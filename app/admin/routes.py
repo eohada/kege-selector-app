@@ -5,7 +5,7 @@ import logging
 import csv
 from io import StringIO
 from datetime import datetime, timedelta
-from flask import render_template, request, redirect, url_for, flash, make_response
+from flask import render_template, request, redirect, url_for, flash, make_response, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import func, delete
 from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -549,6 +549,19 @@ def maintenance_page():
     status = MaintenanceMode.get_status()
     return render_template('maintenance.html', message=status.message)
 
+@admin_bp.route('/api/maintenance-status')
+def maintenance_status_api():
+    """Публичный API для проверки статуса тех работ (используется песочницей)"""
+    try:
+        status = MaintenanceMode.get_status()
+        return jsonify({
+            'enabled': status.is_enabled,
+            'message': status.message or 'Ведутся технические работы. Скоро вернемся!'
+        }), 200
+    except Exception as e:
+        logger.error(f'Ошибка при получении статуса тех работ: {e}')
+        return jsonify({'enabled': False, 'message': ''}), 500
+
 @admin_bp.route('/admin/maintenance/toggle', methods=['POST'])
 @login_required
 def toggle_maintenance():
@@ -557,11 +570,31 @@ def toggle_maintenance():
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
+    import os
+    environment = os.environ.get('ENVIRONMENT', 'local')
+    railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+    is_production = environment == 'production' or ('production' in railway_environment.lower() and 'sandbox' not in railway_environment.lower())
+    
     try:
         status = MaintenanceMode.get_status()
         status.is_enabled = not status.is_enabled
         status.updated_by = current_user.id
         db.session.commit()
+        
+        # В продакшене: устанавливаем переменную окружения для песочницы через Railway API
+        # Но так как мы не можем напрямую менять переменные окружения другого сервиса,
+        # используем другой подход: сохраняем статус в БД, а песочница будет проверять БД продакшена
+        # Или проще: используем переменную окружения MAINTENANCE_ENABLED, которую нужно установить вручную в Railway
+        
+        if is_production:
+            # В продакшене: песочница автоматически проверит статус через API /api/maintenance-status
+            # Убедитесь, что в песочнице установлена переменная окружения PRODUCTION_URL с URL продакшена
+            if status.is_enabled:
+                flash(f'Режим технических работ включен. Песочница автоматически проверит статус через API. Убедитесь, что в песочнице установлена переменная PRODUCTION_URL.', 'success')
+            else:
+                flash(f'Режим технических работ выключен. Песочница автоматически получит обновление через API.', 'success')
+        else:
+            flash(f'Режим технических работ {"включен" if status.is_enabled else "выключен"}', 'success')
         
         audit_logger.log(
             action='toggle_maintenance',
@@ -570,11 +603,10 @@ def toggle_maintenance():
             status='success',
             metadata={
                 'is_enabled': status.is_enabled,
-                'updated_by': current_user.username
+                'updated_by': current_user.username,
+                'environment': environment
             }
         )
-        
-        flash(f'Режим технических работ {"включен" if status.is_enabled else "выключен"}', 'success')
     except Exception as e:
         db.session.rollback()
         logger.error(f'Ошибка при переключении режима тех работ: {e}')
