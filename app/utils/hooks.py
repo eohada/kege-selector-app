@@ -151,6 +151,57 @@ def register_hooks(app):
             db.session.rollback()
     
     @app.before_request
+    def check_maintenance_mode():
+        """Проверка режима технических работ в песочнице - ДО проверки авторизации"""
+        import os
+        from flask import redirect, url_for
+        from app.models import MaintenanceMode
+        
+        # Получаем окружение - проверяем оба варианта
+        environment = os.environ.get('ENVIRONMENT', 'local')
+        railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+        
+        # Определяем, что это песочница (либо ENVIRONMENT=sandbox, либо RAILWAY_ENVIRONMENT указывает на sandbox)
+        is_sandbox = environment == 'sandbox' or 'sandbox' in railway_environment.lower()
+        
+        # Пропускаем статические файлы сразу
+        if request.endpoint == 'static' or request.path.startswith('/static/'):
+            return None
+        
+        # Проверяем тех работы только в песочнице
+        if is_sandbox:
+            # Исключаем саму страницу тех работ и админ панель из редиректа
+            excluded_endpoints = [
+                'admin.maintenance_page', 
+                'admin.admin_panel', 
+                'admin.toggle_maintenance', 
+                'admin.update_maintenance_message',
+                'auth.login', 
+                'auth.logout',
+                'static'
+            ]
+            
+            if request.endpoint in excluded_endpoints:
+                logger.debug(f"Maintenance check: endpoint {request.endpoint} excluded from redirect")
+                return None
+            
+            # Проверяем статус тех работ
+            try:
+                maintenance_enabled = MaintenanceMode.is_maintenance_enabled()
+                logger.info(f"Maintenance mode check: enabled={maintenance_enabled}, endpoint={request.endpoint}, path={request.path}")
+                
+                if maintenance_enabled:
+                    logger.info(f"Maintenance mode enabled in sandbox, redirecting from {request.path} to maintenance page")
+                    # Редиректим на страницу тех работ
+                    return redirect(url_for('admin.maintenance_page'))
+            except Exception as e:
+                # Если ошибка при проверке, логируем и пропускаем (чтобы не сломать приложение)
+                logger.error(f"Ошибка при проверке режима тех работ: {e}", exc_info=True)
+                pass
+        
+        return None
+    
+    @app.before_request
     def require_login():
         """Проверка авторизации для всех маршрутов кроме login, logout и static"""
         # Исключаем маршруты, которые не требуют авторизации
