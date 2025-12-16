@@ -611,26 +611,8 @@
                 console.warn('Не удалось показать индикатор загрузки:', e);
             }
             
-            // Таймаут на случай зависания запроса (30 секунд)
-            const timeoutId = setTimeout(() => {
-                if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') {
-                    try {
-                        loading.hide(loaderId);
-                        loaderId = null;
-                    } catch (e) {
-                        const loader = document.querySelector(`[data-loader-id="${loaderId}"]`);
-                        if (loader) {
-                            loader.remove();
-                        }
-                        loaderId = null;
-                    }
-                }
-                buttons.forEach(btn => btn.disabled = false);
-                console.error('Таймаут запроса');
-                if (typeof toast !== 'undefined' && toast) {
-                    toast.error('Превышено время ожидания ответа');
-                }
-            }, 30000);
+            // Таймаут теперь обрабатывается внутри performRequest через AbortController
+            let timeoutId = null; // Оставляем для совместимости с clearTimeout в catch
             
             const requestBody = {
                 action: action,
@@ -651,34 +633,93 @@
             
             console.log('📤 Отправка запроса с телом:', JSON.stringify(requestBody, null, 2));
             
-            fetch('{{ url_for("kege_generator.task_action") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': CSRF_TOKEN || '',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify(requestBody)
-            })
-            .then(async response => {
-                console.log('Получен ответ:', response.status, response.statusText);
-                console.log('Response headers:', response.headers);
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Ошибка ответа:', errorText);
-                    throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-                }
-                const responseText = await response.text();
-                console.log('Raw response text:', responseText);
+            // Функция для выполнения запроса с retry-логикой
+            async function performRequest(retryCount = 0, maxRetries = 2) {
+                const controller = new AbortController();
+                let requestTimeoutId = null;
+                
                 try {
-                    const jsonData = JSON.parse(responseText);
-                    console.log('Parsed JSON:', jsonData);
-                    return jsonData;
-                } catch (e) {
-                    console.error('Ошибка парсинга JSON:', e, 'Response text:', responseText);
-                    throw new Error('Invalid JSON response: ' + responseText);
+                    // Устанавливаем таймаут 30 секунд
+                    requestTimeoutId = setTimeout(() => {
+                        controller.abort();
+                    }, 30000);
+                    
+                    const response = await fetch('{{ url_for("kege_generator.task_action") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN || '',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify(requestBody),
+                        signal: controller.signal
+                    });
+                    
+                    // Очищаем таймаут при успешном получении ответа
+                    if (requestTimeoutId) {
+                        clearTimeout(requestTimeoutId);
+                        requestTimeoutId = null;
+                    }
+                    
+                    console.log('Получен ответ:', response.status, response.statusText);
+                    console.log('Response headers:', response.headers);
+                    
+                    // Обработка 502 ошибок с автоматическим повтором
+                    if (response.status === 502 && retryCount < maxRetries) {
+                        console.warn(`⚠️ Получена 502 ошибка, повторная попытка ${retryCount + 1}/${maxRetries}...`);
+                        // Ждем перед повтором (экспоненциальная задержка)
+                        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+                        return performRequest(retryCount + 1, maxRetries);
+                    }
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Ошибка ответа:', errorText);
+                        
+                        // Более понятные сообщения для разных ошибок
+                        let userMessage = 'Ошибка при выполнении действия';
+                        if (response.status === 502) {
+                            userMessage = 'Сервер временно недоступен. Попробуйте еще раз.';
+                        } else if (response.status === 503) {
+                            userMessage = 'Сервис временно недоступен. Попробуйте через несколько секунд.';
+                        } else if (response.status === 504) {
+                            userMessage = 'Превышено время ожидания ответа. Попробуйте еще раз.';
+                        } else if (response.status >= 500) {
+                            userMessage = 'Ошибка сервера. Попробуйте еще раз.';
+                        }
+                        
+                        throw new Error(userMessage + ` (HTTP ${response.status})`);
+                    }
+                    
+                    const responseText = await response.text();
+                    console.log('Raw response text:', responseText);
+                    try {
+                        const jsonData = JSON.parse(responseText);
+                        console.log('Parsed JSON:', jsonData);
+                        return jsonData;
+                    } catch (e) {
+                        console.error('Ошибка парсинга JSON:', e, 'Response text:', responseText);
+                        throw new Error('Некорректный ответ от сервера. Попробуйте еще раз.');
+                    }
+                } catch (error) {
+                    // Очищаем таймаут при ошибке
+                    if (requestTimeoutId) {
+                        clearTimeout(requestTimeoutId);
+                        requestTimeoutId = null;
+                    }
+                    
+                    // Обработка ошибок сети с retry
+                    if ((error.name === 'AbortError' || error.name === 'TypeError' || error.message.includes('fetch')) && retryCount < maxRetries) {
+                        console.warn(`⚠️ Сетевая ошибка, повторная попытка ${retryCount + 1}/${maxRetries}...`);
+                        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+                        return performRequest(retryCount + 1, maxRetries);
+                    }
+                    
+                    throw error;
                 }
-            })
+            }
+            
+            performRequest()
             .then(data => {
                 clearTimeout(timeoutId); // Отменяем таймаут
                 console.log('Данные ответа:', data);
@@ -833,7 +874,7 @@
                 }
             })
             .catch(error => {
-                clearTimeout(timeoutId); // Отменяем таймаут
+                // Таймаут теперь обрабатывается внутри performRequest
                 console.error('Ошибка при выполнении запроса:', error);
                 // Всегда скрываем индикатор загрузки
                 if (loaderId && typeof loading !== 'undefined' && loading && typeof loading.hide === 'function') {
@@ -851,7 +892,24 @@
                     }
                 }
                 
-                const errorMessage = 'Ошибка при выполнении действия: ' + error.message;
+                // Более понятные сообщения об ошибках
+                let errorMessage = error.message || 'Ошибка при выполнении действия';
+                
+                // Если ошибка уже содержит понятное сообщение, используем его
+                if (error.message && !error.message.includes('HTTP error!') && !error.message.includes('status:')) {
+                    errorMessage = error.message;
+                } else if (error.message && error.message.includes('502')) {
+                    errorMessage = 'Сервер временно недоступен. Попробуйте нажать кнопку еще раз.';
+                } else if (error.message && error.message.includes('504')) {
+                    errorMessage = 'Превышено время ожидания. Попробуйте еще раз.';
+                } else if (error.name === 'AbortError') {
+                    errorMessage = 'Превышено время ожидания ответа. Попробуйте еще раз.';
+                } else if (error.message && error.message.includes('fetch')) {
+                    errorMessage = 'Ошибка соединения с сервером. Проверьте интернет-соединение и попробуйте еще раз.';
+                } else {
+                    errorMessage = 'Ошибка при выполнении действия. Попробуйте еще раз.';
+                }
+                
                 if (typeof toast !== 'undefined' && toast) {
                     toast.error(errorMessage);
                 } else if (window.toast) {
@@ -945,21 +1003,77 @@
                 requestBody.template_id = TEMPLATE_ID;
             }
             
-            fetch('{{ url_for("kege_generator.task_action") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': CSRF_TOKEN || '',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify(requestBody)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+            // Функция для выполнения запроса с retry-логикой
+            async function performBulkRequest(retryCount = 0, maxRetries = 2) {
+                const controller = new AbortController();
+                let requestTimeoutId = null;
+                
+                try {
+                    // Устанавливаем таймаут 30 секунд
+                    requestTimeoutId = setTimeout(() => {
+                        controller.abort();
+                    }, 30000);
+                    
+                    const response = await fetch('{{ url_for("kege_generator.task_action") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN || '',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify(requestBody),
+                        signal: controller.signal
+                    });
+                    
+                    // Очищаем таймаут при успешном получении ответа
+                    if (requestTimeoutId) {
+                        clearTimeout(requestTimeoutId);
+                        requestTimeoutId = null;
+                    }
+                    
+                    // Обработка 502 ошибок с автоматическим повтором
+                    if (response.status === 502 && retryCount < maxRetries) {
+                        console.warn(`⚠️ Получена 502 ошибка, повторная попытка ${retryCount + 1}/${maxRetries}...`);
+                        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+                        return performBulkRequest(retryCount + 1, maxRetries);
+                    }
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        let userMessage = 'Ошибка при выполнении действия';
+                        if (response.status === 502) {
+                            userMessage = 'Сервер временно недоступен. Попробуйте еще раз.';
+                        } else if (response.status >= 500) {
+                            userMessage = 'Ошибка сервера. Попробуйте еще раз.';
+                        }
+                        throw new Error(userMessage + ` (HTTP ${response.status})`);
+                    }
+                    
+                    const responseText = await response.text();
+                    try {
+                        return JSON.parse(responseText);
+                    } catch (e) {
+                        throw new Error('Некорректный ответ от сервера. Попробуйте еще раз.');
+                    }
+                } catch (error) {
+                    // Очищаем таймаут при ошибке
+                    if (requestTimeoutId) {
+                        clearTimeout(requestTimeoutId);
+                        requestTimeoutId = null;
+                    }
+                    
+                    // Обработка ошибок сети с retry
+                    if ((error.name === 'AbortError' || error.name === 'TypeError' || error.message.includes('fetch')) && retryCount < maxRetries) {
+                        console.warn(`⚠️ Сетевая ошибка, повторная попытка ${retryCount + 1}/${maxRetries}...`);
+                        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+                        return performBulkRequest(retryCount + 1, maxRetries);
+                    }
+                    
+                    throw error;
                 }
-                return response.json();
-            })
+            }
+            
+            performBulkRequest()
             .then(data => {
                 if (loaderId) loading.hide(loaderId);
                 if (data && data.success) {
@@ -1029,14 +1143,33 @@
             .catch(error => {
                 if (loaderId) loading.hide(loaderId);
                 console.error('Error:', error);
-                const errorMessage = 'Ошибка при выполнении действия';
+                
+                // Более понятные сообщения об ошибках
+                let errorMessage = error.message || 'Ошибка при выполнении действия';
+                
+                if (error.message && error.message.includes('502')) {
+                    errorMessage = 'Сервер временно недоступен. Попробуйте еще раз.';
+                } else if (error.message && error.message.includes('504')) {
+                    errorMessage = 'Превышено время ожидания. Попробуйте еще раз.';
+                } else if (error.name === 'AbortError') {
+                    errorMessage = 'Превышено время ожидания ответа. Попробуйте еще раз.';
+                } else if (error.message && error.message.includes('fetch')) {
+                    errorMessage = 'Ошибка соединения с сервером. Проверьте интернет-соединение и попробуйте еще раз.';
+                } else if (!error.message || error.message.includes('HTTP error!')) {
+                    errorMessage = 'Ошибка при выполнении действия. Попробуйте еще раз.';
+                }
+                
                 if (typeof toast !== 'undefined' && toast) {
                     toast.error(errorMessage);
                 } else if (window.toast) {
                     window.toast.error(errorMessage);
                 } else {
                     console.error('❌ Ошибка:', errorMessage);
-                    showTemporaryNotification(errorMessage, 'error');
+                    if (typeof showTemporaryNotification === 'function') {
+                        showTemporaryNotification(errorMessage, 'error');
+                    } else {
+                        alert(errorMessage);
+                    }
                 }
             });
         }

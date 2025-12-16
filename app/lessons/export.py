@@ -44,6 +44,12 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
     }
 
     def html_to_text(html_content):
+        """
+        Конвертирует HTML в чистый Markdown для Obsidian.
+        Удаляет ответы, файлы, видео/фото из контента.
+        Правильно форматирует математические формулы с пробелами.
+        Убирает лишние переносы строк и пустые строки.
+        """
         if not html_content:
             return ""
         global BeautifulSoup
@@ -55,18 +61,61 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
 
         soup = BeautifulSoup(html_content, 'html.parser')
 
+        # Удаляем скрипты и стили
         for tag in soup(['script', 'style']):
             tag.decompose()
 
+        # УДАЛЕНИЕ ОТВЕТОВ, ВИДЕО, ФОТО И ФАЙЛОВ ИЗ КОНТЕНТА
+        # Удаляем элементы с ответами
+        for elem in soup.find_all(['div', 'p', 'span'], class_=re.compile(r'answer|ответ|solution|решение', re.I)):
+            elem.decompose()
+        
+        # Удаляем ссылки на файлы и видео
+        for link in soup.find_all('a', href=True):
+            href = link.get('href', '').lower()
+            text = link.get_text(strip=True).lower()
+            # Удаляем ссылки на файлы, видео, ответы
+            if any(keyword in href or keyword in text for keyword in ['file', 'download', 'video', 'видео', 'файл', 'answer', 'ответ', '.doc', '.docx', '.pdf', '.xls', '.xlsx']):
+                link.decompose()
+        
+        # Удаляем изображения, которые являются ответами или файлами
+        for img in soup.find_all('img'):
+            src = img.get('src', '').lower()
+            alt = img.get('alt', '').lower()
+            # Удаляем изображения, которые явно являются ответами или файлами
+            if any(keyword in src or keyword in alt for keyword in ['answer', 'ответ', 'file', 'файл', 'download']):
+                img.decompose()
+        
+        # Удаляем текст с упоминанием файлов, ответов, видео
+        for text_node in soup.find_all(string=True):
+            if text_node.parent and text_node.parent.name not in ['script', 'style']:
+                text = str(text_node)
+                # Удаляем упоминания файлов
+                cleaned_text = re.sub(r'[Фф]айлы?\s+к\s+заданию[:\s-]*[^\n]*', '', text, flags=re.IGNORECASE)
+                cleaned_text = re.sub(r'[Фф]айлы?\s+к\s+задаче[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
+                cleaned_text = re.sub(r'[Пп]рикреплен[а-яё]*\s+файл[а-яё]*[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
+                # Удаляем упоминания ответов
+                cleaned_text = re.sub(r'[Оо]твет[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
+                cleaned_text = re.sub(r'[Рр]ешение[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
+                # Удаляем ссылки на файлы в тексте (например, "9.xls" или "10.docx")
+                cleaned_text = re.sub(r'\b\d+\.(xls|xlsx|doc|docx|pdf|txt)\b[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
+                # Удаляем URL-ы файлов
+                cleaned_text = re.sub(r'https?://[^\s]+\.(xls|xlsx|doc|docx|pdf|txt|mp4|avi|mov|jpg|jpeg|png|gif)[^\s]*', '', cleaned_text, flags=re.IGNORECASE)
+                if cleaned_text != text:
+                    text_node.replace_with(cleaned_text)
+
         def collapse_spaces(value: str) -> str:
+            """Схлопывает множественные пробелы в один"""
             return re.sub(r'\s+', ' ', value).strip()
 
         def sup_sub_text(node):
+            """Извлекает текст из sup/sub элементов"""
             text_value = collapse_spaces(node.get_text(separator=' ', strip=True))
             if not text_value:
                 return ''
             return text_value
 
+        # Обработка sup/sub
         for sup in list(soup.find_all('sup')):
             sup_content = sup_sub_text(sup)
             replacement = f"$^{{{sup_content}}}$" if sup_content else ''
@@ -78,6 +127,7 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
             sub.replace_with(soup.new_string(replacement))
 
         def extract_formula(node) -> str:
+            """Извлекает формулу из KaTeX элемента"""
             aria = node.get('aria-label')
             if aria:
                 return aria.strip()
@@ -87,18 +137,22 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
             text = node.get_text(strip=True)
             return text
 
+        # Обработка KaTeX формул - добавляем пробелы вокруг inline формул
         for katex_span in list(soup.select('.katex, .katex-display, .katex-inline')):
             formula = extract_formula(katex_span)
             if formula:
                 is_display = 'katex-display' in katex_span.get('class', [])
                 if is_display:
+                    # Display формулы - отдельные строки
                     katex_span.replace_with(soup.new_string(f"\n\n$${formula}$$\n\n"))
                 else:
+                    # Inline формулы - добавляем пробелы до и после
                     katex_span.replace_with(soup.new_string(f" ${formula}$ "))
             else:
                 katex_span.decompose()
 
         def table_to_markdown(table):
+            """Конвертирует HTML таблицу в Markdown"""
             rows = []
             for tr in table.find_all('tr'):
                 cells = []
@@ -137,6 +191,7 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
             md = table_to_markdown(table)
             table.replace_with(soup.new_string(f'\n\n{md}\n\n'))
 
+        # Обработка изображений (только те, что остались после фильтрации)
         for img in soup.find_all('img'):
             src = img.get('src', '')
             alt = img.get('alt', '')
@@ -155,6 +210,7 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
 
         # Обработка списков
         def extract_list_item_text(li):
+            """Извлекает текст из элемента списка"""
             parts = []
             for child in li.children:
                 if isinstance(child, str):
@@ -163,9 +219,10 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
                         parts.append(text)
                 elif hasattr(child, 'name'):
                     if child.name == 'br':
-                        parts.append('\n')
+                        # В списках br заменяем на пробел, не на перенос
+                        parts.append(' ')
                     elif child.name in ['p', 'div']:
-                        p_text = child.get_text(separator='\n', strip=True)
+                        p_text = child.get_text(separator=' ', strip=True)
                         if p_text:
                             parts.append(p_text)
                     else:
@@ -208,13 +265,22 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
                 else:
                     ol.decompose()
         
+        # Заменяем <br> на пробелы (не переносы), чтобы не ломать предложения
         for br in soup.find_all('br'):
-            br.replace_with(soup.new_string('\n'))
+            # Проверяем контекст - если br внутри параграфа, заменяем на пробел
+            parent = br.parent
+            if parent and parent.name in ['p', 'div', 'li', 'td', 'th']:
+                br.replace_with(soup.new_string(' '))
+            else:
+                br.replace_with(soup.new_string('\n'))
 
+        # Обработка параграфов и div - добавляем переносы только между блоками
         def process_element(elem):
+            """Обрабатывает p и div элементы"""
             if elem.name in ['p', 'div']:
-                if not elem.find_parent(['td', 'th', 'table']):
+                if not elem.find_parent(['td', 'th', 'table', 'li']):
                     if elem.get_text(strip=True):
+                        # Добавляем переносы только если есть контент
                         if elem.previous_sibling and not isinstance(elem.previous_sibling, str):
                             elem.insert_before('\n\n')
                         if elem.next_sibling and not isinstance(elem.next_sibling, str):
@@ -224,33 +290,54 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
             process_element(p)
         for div in soup.find_all('div'):
             process_element(div)
-
-        for text_node in soup.find_all(string=True):
-            if text_node.parent and text_node.parent.name not in ['script', 'style']:
-                text = str(text_node)
-                cleaned_text = re.sub(r'[Фф]айлы?\s+к\s+заданию[:\s-]*[^\n]*', '', text, flags=re.IGNORECASE)
-                cleaned_text = re.sub(r'[Фф]айлы?\s+к\s+задаче[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
-                cleaned_text = re.sub(r'[Пп]рикреплен[а-яё]*\s+файл[а-яё]*[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
-                if cleaned_text != text:
-                    text_node.replace_with(cleaned_text)
         
-        text = soup.get_text(separator='\n', strip=False)
+        # Получаем текст
+        text = soup.get_text(separator=' ', strip=False)  # Используем пробел как разделитель, чтобы не ломать предложения
         text = unescape(text)
+        
+        # Нормализация переносов строк
         text = re.sub(r'\r\n?', '\n', text)
+        
+        # Схлопываем множественные пробелы в один
+        text = re.sub(r'[ \t]+', ' ', text)
+        
+        # Обработка формул - добавляем пробелы вокруг inline формул $...$
+        # Сначала обрабатываем display формулы $$
+        text = re.sub(r'\s*\$\$\s*', '\n\n$$\n\n', text)
+        # Затем inline формулы - добавляем пробелы до и после
+        text = re.sub(r'([^\s$])\$([^$]+)\$([^\s$])', r'\1 $\2$ \3', text)  # Формула между символами
+        text = re.sub(r'([^\s$])\$([^$]+)\$', r'\1 $\2$ ', text)  # Формула перед концом строки/слова
+        text = re.sub(r'\$([^$]+)\$([^\s$])', r' $\1$ \2', text)  # Формула после начала строки/слова
+        # Убираем множественные пробелы вокруг формул
+        text = re.sub(r'\s+\$\s+([^$]+)\s+\$\s+', r' $\1$ ', text)
+        
+        # Убираем переносы строк внутри предложений (после букв, слов, знаков препинания кроме точки)
+        # Но сохраняем переносы после точек, если следующее слово с заглавной буквы
         lines = text.split('\n')
         cleaned_lines = []
-        for line in lines:
-            cleaned_line = re.sub(r'[ \t]+', ' ', line)
-            cleaned_lines.append(cleaned_line)
+        for i, line in enumerate(lines):
+            stripped = line.strip()
+            if not stripped:
+                cleaned_lines.append('')
+                continue
+            
+            # Если строка заканчивается на букву или знак препинания (кроме точки), и следующая строка начинается с маленькой буквы - склеиваем
+            if i < len(lines) - 1:
+                next_line = lines[i + 1].strip()
+                if next_line and next_line[0].islower():
+                    # Склеиваем строки, если текущая не заканчивается точкой, восклицательным или вопросительным знаком
+                    if not re.search(r'[.!?]\s*$', stripped):
+                        cleaned_lines.append(stripped + ' ')
+                        continue
+            
+            cleaned_lines.append(stripped)
+        
         text = '\n'.join(cleaned_lines)
-        text = re.sub(r' \$\$', '\n\n$$', text)
-        text = re.sub(r'\$\$ ', '$$\n\n', text)
-        text = re.sub(r' \$', ' $', text)
-        text = re.sub(r'\$ ', '$ ', text)
-        text = re.sub(r' \n', '\n', text)
-        text = re.sub(r'\n ', '\n', text)
-        text = re.sub(r'\n{4,}', '\n\n\n', text)
-        text = re.sub(r'\$\s+([^$]+)\s+\$', r'$\1$', text)
+        
+        # Убираем множественные пустые строки (более 2 подряд заменяем на 2)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        
+        # Финальная очистка - убираем пустые строки в начале и конце, нормализуем пробелы
         lines = [line.rstrip() for line in text.splitlines()]
         cleaned = []
         prev_blank = False
@@ -260,9 +347,11 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
                 cleaned.append(stripped)
                 prev_blank = False
             else:
+                # Оставляем максимум одну пустую строку подряд
                 if not prev_blank:
                     cleaned.append('')
                 prev_blank = True
+        
         result = '\n'.join(cleaned).strip()
         return result
 
