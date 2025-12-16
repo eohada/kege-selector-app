@@ -288,82 +288,112 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
         for div in soup.find_all('div'):
             process_element(div)
         
-        # Получаем текст - используем перенос строк как разделитель для сохранения структуры
-        text = soup.get_text(separator='\n', strip=False)
+        # Получаем текст - используем пробел как разделитель, чтобы сохранить структуру таблиц
+        # Но потом восстановим переносы для параграфов
+        text = soup.get_text(separator=' ', strip=False)
         text = unescape(text)
         
         # Нормализация переносов строк
         text = re.sub(r'\r\n?', '\n', text)
         
-        # Схлопываем множественные пробелы в один (но не переносы строк)
+        # Схлопываем множественные пробелы в один
         text = re.sub(r'[ \t]+', ' ', text)
         
-        # Обработка формул - добавляем пробелы ТОЛЬКО ВНЕ формул, не внутри $...$
-        # Сначала обрабатываем display формулы $$
-        text = re.sub(r'\s*\$\$\s*', '\n\n$$\n\n', text)
-        
-        # АГРЕССИВНО убираем пробелы ВНУТРИ всех формул
-        # Сначала убираем пробелы сразу после открывающего $ и перед закрывающим $
-        text = re.sub(r'\$\s+', '$', text)  # Пробел после открывающего $
-        text = re.sub(r'\s+\$', '$', text)  # Пробел перед закрывающим $
-        # Убираем пробелы внутри display формул $$
-        text = re.sub(r'\$\$\s+', '$$', text)  # Пробел после открывающего $$
-        text = re.sub(r'\s+\$\$', '$$', text)  # Пробел перед закрывающим $$
-        
-        # Убираем пробелы внутри содержимого формулы (в начале и конце)
-        # Обрабатываем inline формулы $...$
-        def clean_formula_content(match):
-            """Убирает пробелы в начале и конце содержимого формулы"""
+        # АГРЕССИВНО убираем пробелы ВНУТРИ всех формул - ДО добавления внешних пробелов
+        # Обрабатываем inline формулы $...$ - убираем ВСЕ пробелы внутри
+        def clean_inline_formula(match):
+            """Убирает все пробелы внутри inline формулы"""
             content = match.group(1)
-            # Убираем пробелы в начале и конце
+            # Убираем пробелы в начале, конце и между токенами
             content = content.strip()
+            # Убираем множественные пробелы внутри формулы
+            content = re.sub(r'\s+', '', content)  # Убираем ВСЕ пробелы внутри формулы
             return f'${content}$'
         
-        text = re.sub(r'\$([^$]+)\$', clean_formula_content, text)
+        text = re.sub(r'\$([^$]+)\$', clean_inline_formula, text)
         
-        # Обрабатываем display формулы $$...$$
-        def clean_display_formula_content(match):
-            """Убирает пробелы в начале и конце содержимого display формулы"""
+        # Обрабатываем display формулы $$...$$ - убираем пробелы в начале и конце
+        def clean_display_formula(match):
+            """Убирает пробелы в начале и конце display формулы"""
             content = match.group(1)
-            # Убираем пробелы в начале и конце
             content = content.strip()
             return f'$${content}$$'
         
-        text = re.sub(r'\$\$([^$]+)\$\$', clean_display_formula_content, text)
+        text = re.sub(r'\$\$([^$]+)\$\$', clean_display_formula, text)
+        
+        # Нормализуем display формулы - добавляем переносы вокруг них
+        text = re.sub(r'\s*\$\$\s*', '\n\n$$\n\n', text)
         
         # Затем добавляем пробелы ВНЕ формул, если их нет
         text = re.sub(r'([^\s$])\$([^$]+)\$([^\s$])', r'\1 $\2$ \3', text)  # Формула между символами - пробелы снаружи
         text = re.sub(r'([^\s$])\$([^$]+)\$', r'\1 $\2$ ', text)  # Формула перед концом - пробел снаружи
         text = re.sub(r'\$([^$]+)\$([^\s$])', r' $\1$ \2', text)  # Формула после начала - пробел снаружи
         
-        # Обработка строк - убираем пустые строки, но сохраняем структуру
+        # Обработка строк - убираем пустые строки, но сохраняем структуру и таблицы
         lines = text.split('\n')
         cleaned = []
         prev_blank = False
+        
         for i, line in enumerate(lines):
             stripped = line.strip()
-            if stripped:
-                # Непустая строка
-                cleaned.append(stripped)
-                prev_blank = False
-            else:
-                # Пустая строка - оставляем только между display формулами или как разделитель абзацев
+            
+            # Проверяем, является ли строка частью таблицы (начинается с |)
+            is_table_line = stripped.startswith('|') and '|' in stripped[1:]
+            
+            if not stripped:
+                # Пустая строка - оставляем только между display формулами
                 if i > 0 and i < len(lines) - 1:
                     prev_stripped = lines[i - 1].strip()
                     next_stripped = lines[i + 1].strip()
-                    # Если это между display формулами - оставляем
                     if prev_stripped.endswith('$$') and next_stripped.startswith('$$'):
                         if not prev_blank:
                             cleaned.append('')
                             prev_blank = True
                         continue
-                # Иначе пропускаем пустую строку (но не добавляем лишние)
+                # Если это пустая строка между строками таблицы - оставляем
+                if i > 0 and i < len(lines) - 1:
+                    prev_stripped = lines[i - 1].strip()
+                    next_stripped = lines[i + 1].strip()
+                    if prev_stripped.startswith('|') and next_stripped.startswith('|'):
+                        if not prev_blank:
+                            cleaned.append('')
+                            prev_blank = True
+                        continue
                 prev_blank = True
+                continue
+            
+            # Непустая строка
+            if is_table_line:
+                # Строка таблицы - добавляем как есть
+                cleaned.append(stripped)
+                prev_blank = False
+            else:
+                # Обычный текст
+                cleaned.append(stripped)
+                prev_blank = False
         
-        result = '\n'.join(cleaned).strip()
+        result = '\n'.join(cleaned)
         
-        # Финальная очистка - убираем множественные пустые строки (более 1 подряд)
+        # Финальная очистка - убираем множественные пустые строки (более 2 подряд), но сохраняем таблицы
+        # Защищаем таблицы перед очисткой
+        table_blocks = []
+        table_pattern = r'(\| [^\n]+\|(?:\n\|[ -]+\|)*\n(?:\| [^\n]+\|\n?)+)'
+        
+        def save_table(match):
+            table_blocks.append(match.group(0))
+            return f'__TABLE_{len(table_blocks)-1}__'
+        
+        result = re.sub(table_pattern, save_table, result, flags=re.MULTILINE)
+        
+        # Убираем множественные пустые строки
         result = re.sub(r'\n{3,}', '\n\n', result)
+        
+        # Восстанавливаем таблицы
+        for idx, table in enumerate(table_blocks):
+            result = result.replace(f'__TABLE_{idx}__', table)
+        
+        # Убираем пустые строки только в начале и конце
+        result = result.strip()
         
         return result
 
