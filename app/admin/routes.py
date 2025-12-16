@@ -541,7 +541,7 @@ def admin_audit_export():
     response = make_response(output.getvalue())
     response.headers['Content-Type'] = 'text/csv; charset=utf-8'
     response.headers['Content-Disposition'] = f'attachment; filename=audit_logs_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
-        return response
+    return response
 
 @admin_bp.route('/maintenance')
 def maintenance_page():
