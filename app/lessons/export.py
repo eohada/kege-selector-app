@@ -267,76 +267,103 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
                 else:
                     ol.decompose()
         
-        # Заменяем <br> на пробелы (не переносы), чтобы не ломать предложения
+        # Заменяем <br> на переносы строк для правильного форматирования
         for br in soup.find_all('br'):
-            # Проверяем контекст - если br внутри параграфа, заменяем на пробел
-            parent = br.parent
-            if parent and parent.name in ['p', 'div', 'li', 'td', 'th']:
-                br.replace_with(soup.new_string(' '))
-            else:
-                br.replace_with(soup.new_string('\n'))
+            br.replace_with(soup.new_string('\n'))
 
-        # Обработка параграфов и div - НЕ добавляем переносы, так как используем separator=' '
-        # Это позволит избежать создания лишних пустых строк
-        # Переносы будут добавляться только для display формул и списков
+        # Обработка параграфов и div - добавляем переносы между блоками
+        def process_element(elem):
+            """Обрабатывает p и div элементы"""
+            if elem.name in ['p', 'div']:
+                if not elem.find_parent(['td', 'th', 'table', 'li']):
+                    if elem.get_text(strip=True):
+                        # Добавляем переносы только если есть контент
+                        if elem.previous_sibling and not isinstance(elem.previous_sibling, str):
+                            elem.insert_before('\n')
+                        if elem.next_sibling and not isinstance(elem.next_sibling, str):
+                            elem.insert_after('\n')
+
+        for p in soup.find_all('p'):
+            process_element(p)
+        for div in soup.find_all('div'):
+            process_element(div)
         
-        # Получаем текст - используем пробел как разделитель, чтобы не создавать лишние переносы
-        text = soup.get_text(separator=' ', strip=False)
+        # Получаем текст - используем перенос строк как разделитель для сохранения структуры
+        text = soup.get_text(separator='\n', strip=False)
         text = unescape(text)
         
         # Нормализация переносов строк
         text = re.sub(r'\r\n?', '\n', text)
         
-        # Схлопываем множественные пробелы в один
+        # Схлопываем множественные пробелы в один (но не переносы строк)
         text = re.sub(r'[ \t]+', ' ', text)
         
         # Обработка формул - добавляем пробелы ТОЛЬКО ВНЕ формул, не внутри $...$
         # Сначала обрабатываем display формулы $$
         text = re.sub(r'\s*\$\$\s*', '\n\n$$\n\n', text)
         
-        # АГРЕССИВНО убираем пробелы ВНУТРИ всех формул (и inline, и display)
-        # Убираем пробелы сразу после открывающего $ и перед закрывающим $
+        # АГРЕССИВНО убираем пробелы ВНУТРИ всех формул
+        # Сначала убираем пробелы сразу после открывающего $ и перед закрывающим $
         text = re.sub(r'\$\s+', '$', text)  # Пробел после открывающего $
         text = re.sub(r'\s+\$', '$', text)  # Пробел перед закрывающим $
         # Убираем пробелы внутри display формул $$
         text = re.sub(r'\$\$\s+', '$$', text)  # Пробел после открывающего $$
         text = re.sub(r'\s+\$\$', '$$', text)  # Пробел перед закрывающим $$
         
+        # Убираем пробелы внутри содержимого формулы (в начале и конце)
+        # Обрабатываем inline формулы $...$
+        def clean_formula_content(match):
+            """Убирает пробелы в начале и конце содержимого формулы"""
+            content = match.group(1)
+            # Убираем пробелы в начале и конце
+            content = content.strip()
+            return f'${content}$'
+        
+        text = re.sub(r'\$([^$]+)\$', clean_formula_content, text)
+        
+        # Обрабатываем display формулы $$...$$
+        def clean_display_formula_content(match):
+            """Убирает пробелы в начале и конце содержимого display формулы"""
+            content = match.group(1)
+            # Убираем пробелы в начале и конце
+            content = content.strip()
+            return f'$${content}$$'
+        
+        text = re.sub(r'\$\$([^$]+)\$\$', clean_display_formula_content, text)
+        
         # Затем добавляем пробелы ВНЕ формул, если их нет
         text = re.sub(r'([^\s$])\$([^$]+)\$([^\s$])', r'\1 $\2$ \3', text)  # Формула между символами - пробелы снаружи
         text = re.sub(r'([^\s$])\$([^$]+)\$', r'\1 $\2$ ', text)  # Формула перед концом - пробел снаружи
         text = re.sub(r'\$([^$]+)\$([^\s$])', r' $\1$ \2', text)  # Формула после начала - пробел снаружи
-        # Для display формул тоже добавляем пробелы снаружи, если нужно
-        text = re.sub(r'([^\s\n])\$\$', r'\1\n\n$$', text)  # Пробел перед display формулой
-        text = re.sub(r'\$\$([^\s\n])', r'$$\n\n\1', text)  # Пробел после display формулы
         
-        # АГРЕССИВНОЕ удаление ВСЕХ пустых строк
-        # Разбиваем на строки и убираем все пустые, кроме тех, что между display формулами
+        # Обработка строк - убираем пустые строки, но сохраняем структуру
         lines = text.split('\n')
         cleaned = []
+        prev_blank = False
         for i, line in enumerate(lines):
             stripped = line.strip()
             if stripped:
+                # Непустая строка
                 cleaned.append(stripped)
+                prev_blank = False
             else:
-                # Пустую строку оставляем ТОЛЬКО если она между display формулами
+                # Пустая строка - оставляем только между display формулами или как разделитель абзацев
                 if i > 0 and i < len(lines) - 1:
                     prev_stripped = lines[i - 1].strip()
                     next_stripped = lines[i + 1].strip()
-                    # Проверяем, что предыдущая строка заканчивается на $$, а следующая начинается с $$
+                    # Если это между display формулами - оставляем
                     if prev_stripped.endswith('$$') and next_stripped.startswith('$$'):
-                        # Это пустая строка между display формулами - оставляем максимум одну
-                        if not cleaned or cleaned[-1] != '':
+                        if not prev_blank:
                             cleaned.append('')
+                            prev_blank = True
                         continue
-                # Все остальные пустые строки пропускаем
+                # Иначе пропускаем пустую строку (но не добавляем лишние)
+                prev_blank = True
         
         result = '\n'.join(cleaned).strip()
         
-        # Финальная проверка - если остались двойные переносы не между формулами, заменяем на пробел
-        result = re.sub(r'([^\n$])\n\n([^\n$])', r'\1 \2', result)
-        # Убираем одиночные переносы строк, которые не нужны (заменяем на пробелы)
-        result = re.sub(r'([^\n])\n([^\n$])', r'\1 \2', result)
+        # Финальная очистка - убираем множественные пустые строки (более 1 подряд)
+        result = re.sub(r'\n{3,}', '\n\n', result)
         
         return result
 
