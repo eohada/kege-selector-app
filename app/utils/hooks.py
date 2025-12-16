@@ -199,4 +199,34 @@ def register_hooks(app):
         except Exception as e:
             logger.error(f"Ошибка при идентификации тестировщика: {e}", exc_info=True)
             db.session.rollback()
+    
+    @app.before_request
+    def check_maintenance_mode():
+        """Проверка режима технических работ в песочнице"""
+        import os
+        from flask import redirect, url_for
+        from app.models import MaintenanceMode
+        
+        # Получаем окружение
+        environment = os.environ.get('ENVIRONMENT', 'local')
+        
+        # Проверяем тех работы только в песочнице
+        if environment == 'sandbox':
+            # Исключаем саму страницу тех работ и админ панель из редиректа
+            if request.endpoint in ['admin.maintenance_page', 'admin.admin_panel', 
+                                   'admin.toggle_maintenance', 'admin.update_maintenance_message',
+                                   'auth.login', 'auth.logout', 'static'] or request.path.startswith('/static/'):
+                return None
+            
+            # Проверяем статус тех работ
+            try:
+                if MaintenanceMode.is_maintenance_enabled():
+                    # Редиректим на страницу тех работ
+                    return redirect(url_for('admin.maintenance_page'))
+            except Exception as e:
+                # Если ошибка при проверке, пропускаем (чтобы не сломать приложение)
+                logger.warning(f"Ошибка при проверке режима тех работ: {e}")
+                pass
+        
+        return None
 

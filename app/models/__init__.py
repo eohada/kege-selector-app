@@ -17,6 +17,7 @@ from core.db_models import (
     TemplateTask,
     Tester,
     AuditLog,
+    MaintenanceMode,
     moscow_now,
     MOSCOW_TZ,
     TOMSK_TZ
@@ -37,6 +38,7 @@ __all__ = [
     'TemplateTask',
     'Tester',
     'AuditLog',
+    'MaintenanceMode',
     'moscow_now',
     'MOSCOW_TZ',
     'TOMSK_TZ'

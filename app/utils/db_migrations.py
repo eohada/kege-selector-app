@@ -98,6 +98,35 @@ def ensure_schema_columns(app):
                     db.session.execute(text(f'ALTER TABLE "{stats_table}" ADD COLUMN manual_correct INTEGER DEFAULT 0 NOT NULL'))
                 if 'manual_incorrect' not in stats_columns:
                     db.session.execute(text(f'ALTER TABLE "{stats_table}" ADD COLUMN manual_incorrect INTEGER DEFAULT 0 NOT NULL'))
+            
+            # Проверяем и создаем таблицу MaintenanceMode
+            maintenance_table = 'MaintenanceMode' if 'MaintenanceMode' in table_names else ('maintenancemode' if 'maintenancemode' in table_names else None)
+            if not maintenance_table:
+                # Создаем таблицу для управления режимом тех работ
+                db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+                if 'postgresql' in db_url or 'postgres' in db_url:
+                    # PostgreSQL синтаксис
+                    db.session.execute(text("""
+                        CREATE TABLE IF NOT EXISTS "MaintenanceMode" (
+                            id SERIAL PRIMARY KEY,
+                            is_enabled BOOLEAN DEFAULT FALSE NOT NULL,
+                            message TEXT,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_by INTEGER REFERENCES "Users"(id)
+                        )
+                    """))
+                else:
+                    # SQLite синтаксис
+                    db.session.execute(text("""
+                        CREATE TABLE IF NOT EXISTS MaintenanceMode (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            is_enabled INTEGER DEFAULT 0 NOT NULL,
+                            message TEXT,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_by INTEGER REFERENCES Users(id)
+                        )
+                    """))
+                logger.info("Created MaintenanceMode table")
                 if 'created_at' not in stats_columns:
                     db.session.execute(text(f'ALTER TABLE "{stats_table}" ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'))
                 if 'updated_at' not in stats_columns:

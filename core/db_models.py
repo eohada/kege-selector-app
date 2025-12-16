@@ -282,3 +282,34 @@ class TemplateTask(db.Model):
     
     def __repr__(self):
         return f'<TemplateTask template_id={self.template_id} task_id={self.task_id}>'
+
+class MaintenanceMode(db.Model):
+    """Модель для управления режимом технических работ"""
+    __tablename__ = 'MaintenanceMode'
+    id = db.Column(db.Integer, primary_key=True)
+    is_enabled = db.Column(db.Boolean, default=False, nullable=False)
+    message = db.Column(db.Text, nullable=True)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    updated_by = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+    
+    updated_by_user = db.relationship('User', foreign_keys=[updated_by])
+    
+    @classmethod
+    def get_status(cls):
+        """Получить текущий статус тех работ"""
+        status = cls.query.first()
+        if not status:
+            # Создаем запись по умолчанию, если её нет
+            status = cls(is_enabled=False, message='Ведутся технические работы. Пожалуйста, зайдите позже.')
+            db.session.add(status)
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        return status
+    
+    @classmethod
+    def is_maintenance_enabled(cls):
+        """Проверить, включен ли режим тех работ"""
+        status = cls.get_status()
+        return status.is_enabled

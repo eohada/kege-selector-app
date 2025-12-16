@@ -100,6 +100,53 @@
             </div>
         </section>
 
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Управление тех работами</h2>
+            <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1); margin-bottom: 1rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                    <div>
+                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">
+                            Режим технических работ
+                        </div>
+                        <div style="font-size: 0.9em; color: var(--text-muted);">
+                            {% if maintenance_enabled %}
+                                <span style="color: #ef4444;">● Включен</span> - все страницы в песочнице редиректят на страницу тех работ
+                            {% else %}
+                                <span style="color: #22c55e;">● Выключен</span> - приложение работает в штатном режиме
+                            {% endif %}
+                        </div>
+                    </div>
+                    <form method="POST" action="{{ url_for('admin.toggle_maintenance') }}" style="margin: 0;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="neo-button {% if maintenance_enabled %}danger{% else %}accent{% endif %}" style="min-width: 150px;">
+                            {% if maintenance_enabled %}
+                                🔴 Выключить
+                            {% else %}
+                                🟢 Включить
+                            {% endif %}
+                        </button>
+                    </form>
+                </div>
+                <form method="POST" action="{{ url_for('admin.update_maintenance_message') }}" style="margin-top: 1rem;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div style="margin-bottom: 0.5rem;">
+                        <label for="maintenance-message" style="display: block; font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">
+                            Сообщение на странице тех работ:
+                        </label>
+                        <textarea 
+                            id="maintenance-message" 
+                            name="message" 
+                            rows="3" 
+                            style="width: 100%; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; resize: vertical;"
+                            placeholder="Ведутся технические работы. Пожалуйста, зайдите позже.">{{ maintenance_message or '' }}</textarea>
+                    </div>
+                    <button type="submit" class="neo-button outline" style="width: 100%;">
+                        💾 Сохранить сообщение
+                    </button>
+                </form>
+            </div>
+        </section>
+
         <section class="glass-panel">
             <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Быстрые действия</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 1rem;">

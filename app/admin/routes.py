@@ -11,7 +11,7 @@ from sqlalchemy import func, delete
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.admin import admin_bp
-from app.models import User, AuditLog, db, moscow_now, MOSCOW_TZ
+from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
@@ -54,13 +54,18 @@ def admin_panel():
             total_logs = 0
             today_logs = 0
         
+        # Получаем статус тех работ
+        maintenance_status = MaintenanceMode.get_status()
+        
         return render_template('admin_panel.html',
                              total_users=total_users,
                              active_users=active_users,
                              creators_count=creators_count,
                              testers_count=testers_count,
                              total_logs=total_logs,
-                             today_logs=today_logs)
+                             today_logs=today_logs,
+                             maintenance_enabled=maintenance_status.is_enabled,
+                             maintenance_message=maintenance_status.message)
     except Exception as e:
         logger.error(f"Error in admin_panel route: {e}", exc_info=True)
         flash(f'Ошибка при загрузке статистики: {str(e)}', 'error')
@@ -536,4 +541,77 @@ def admin_audit_export():
     response = make_response(output.getvalue())
     response.headers['Content-Type'] = 'text/csv; charset=utf-8'
     response.headers['Content-Disposition'] = f'attachment; filename=audit_logs_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
-    return response
+        return response
+
+@admin_bp.route('/maintenance')
+def maintenance_page():
+    """Страница технических работ"""
+    status = MaintenanceMode.get_status()
+    return render_template('maintenance.html', message=status.message)
+
+@admin_bp.route('/admin/maintenance/toggle', methods=['POST'])
+@login_required
+def toggle_maintenance():
+    """Переключение режима технических работ (только для создателя)"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    try:
+        status = MaintenanceMode.get_status()
+        status.is_enabled = not status.is_enabled
+        status.updated_by = current_user.id
+        db.session.commit()
+        
+        audit_logger.log(
+            action='toggle_maintenance',
+            entity='MaintenanceMode',
+            entity_id=status.id,
+            status='success',
+            metadata={
+                'is_enabled': status.is_enabled,
+                'updated_by': current_user.username
+            }
+        )
+        
+        flash(f'Режим технических работ {"включен" if status.is_enabled else "выключен"}', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при переключении режима тех работ: {e}')
+        flash(f'Ошибка при переключении: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.admin_panel'))
+
+@admin_bp.route('/admin/maintenance/update-message', methods=['POST'])
+@login_required
+def update_maintenance_message():
+    """Обновление сообщения на странице тех работ (только для создателя)"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    try:
+        message = request.form.get('message', '').strip()
+        status = MaintenanceMode.get_status()
+        status.message = message if message else 'Ведутся технические работы. Пожалуйста, зайдите позже.'
+        status.updated_by = current_user.id
+        db.session.commit()
+        
+        audit_logger.log(
+            action='update_maintenance_message',
+            entity='MaintenanceMode',
+            entity_id=status.id,
+            status='success',
+            metadata={
+                'message': message,
+                'updated_by': current_user.username
+            }
+        )
+        
+        flash('Сообщение обновлено', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при обновлении сообщения: {e}')
+        flash(f'Ошибка при обновлении: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.admin_panel'))

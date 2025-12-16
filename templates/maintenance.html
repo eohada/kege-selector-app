@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Технические работы · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem;
+            background: var(--bg-primary);
+        }
+        .maintenance-container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        .maintenance-icon {
+            font-size: 5rem;
+            margin-bottom: 2rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .maintenance-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+        .maintenance-message {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="maintenance-container">
+        <div class="maintenance-icon">🔧</div>
+        <h1 class="maintenance-title">Технические работы</h1>
+        <p class="maintenance-message">
+            {{ message or 'В настоящее время ведутся технические работы. Пожалуйста, зайдите позже.' }}
+        </p>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">
+            Мы приносим извинения за временные неудобства.
+        </p>
+    </div>
+</body>
+</html>
+
