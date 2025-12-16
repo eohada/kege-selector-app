@@ -547,7 +547,10 @@ def admin_audit_export():
 def maintenance_page():
     """Страница технических работ"""
     status = MaintenanceMode.get_status()
-    return render_template('maintenance.html', message=status.message)
+    # Используем сообщение из БД, если оно есть, иначе дефолтное
+    message = status.message if status.message else 'В настоящее время ведутся технические работы. Пожалуйста, зайдите позже.'
+    logger.debug(f"Maintenance page: message from DB = '{status.message}', final message = '{message}'")
+    return render_template('maintenance.html', message=message)
 
 @admin_bp.route('/api/maintenance-status')
 def maintenance_status_api():
