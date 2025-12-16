@@ -137,7 +137,7 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
             text = node.get_text(strip=True)
             return text
 
-        # Обработка KaTeX формул - добавляем пробелы вокруг inline формул
+        # Обработка KaTeX формул - добавляем пробелы только ВНЕ формул, не внутри
         for katex_span in list(soup.select('.katex, .katex-display, .katex-inline')):
             formula = extract_formula(katex_span)
             if formula:
@@ -146,7 +146,7 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
                     # Display формулы - отдельные строки
                     katex_span.replace_with(soup.new_string(f"\n\n$${formula}$$\n\n"))
                 else:
-                    # Inline формулы - добавляем пробелы до и после
+                    # Inline формулы - пробелы только снаружи, не внутри $...$
                     katex_span.replace_with(soup.new_string(f" ${formula}$ "))
             else:
                 katex_span.decompose()
@@ -301,15 +301,15 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
         # Схлопываем множественные пробелы в один
         text = re.sub(r'[ \t]+', ' ', text)
         
-        # Обработка формул - добавляем пробелы вокруг inline формул $...$
+        # Обработка формул - добавляем пробелы ТОЛЬКО ВНЕ формул, не внутри $...$
         # Сначала обрабатываем display формулы $$
         text = re.sub(r'\s*\$\$\s*', '\n\n$$\n\n', text)
-        # Затем inline формулы - добавляем пробелы до и после
-        text = re.sub(r'([^\s$])\$([^$]+)\$([^\s$])', r'\1 $\2$ \3', text)  # Формула между символами
-        text = re.sub(r'([^\s$])\$([^$]+)\$', r'\1 $\2$ ', text)  # Формула перед концом строки/слова
-        text = re.sub(r'\$([^$]+)\$([^\s$])', r' $\1$ \2', text)  # Формула после начала строки/слова
-        # Убираем множественные пробелы вокруг формул
-        text = re.sub(r'\s+\$\s+([^$]+)\s+\$\s+', r' $\1$ ', text)
+        # Убираем пробелы ВНУТРИ inline формул (между $ и содержимым)
+        text = re.sub(r'\$\s+([^$]+)\s+\$', r'$\1$', text)  # Убираем пробелы внутри $...$
+        # Затем добавляем пробелы ВНЕ формул, если их нет
+        text = re.sub(r'([^\s$])\$([^$]+)\$([^\s$])', r'\1 $\2$ \3', text)  # Формула между символами - пробелы снаружи
+        text = re.sub(r'([^\s$])\$([^$]+)\$', r'\1 $\2$ ', text)  # Формула перед концом - пробел снаружи
+        text = re.sub(r'\$([^$]+)\$([^\s$])', r' $\1$ \2', text)  # Формула после начала - пробел снаружи
         
         # Убираем переносы строк внутри предложений (после букв, слов, знаков препинания кроме точки)
         # Но сохраняем переносы после точек, если следующее слово с заглавной буквы
