@@ -136,6 +136,39 @@ def ensure_schema_columns(app):
             audit_log_table = 'AuditLog' if 'AuditLog' in table_names else ('auditlog' if 'auditlog' in table_names else None)
             if audit_log_table:
                 audit_log_columns = {col['name'] for col in inspector.get_columns(audit_log_table)}
+                
+                # Добавляем колонку user_id если её нет
+                if 'user_id' not in audit_log_columns:
+                    db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+                    if 'postgresql' in db_url or 'postgres' in db_url:
+                        # PostgreSQL синтаксис
+                        try:
+                            db.session.execute(text("""
+                                ALTER TABLE "AuditLog" 
+                                ADD COLUMN user_id INTEGER 
+                                REFERENCES "Users"(id) 
+                                ON DELETE SET NULL
+                            """))
+                            # Создаем индекс для user_id
+                            db.session.execute(text("""
+                                CREATE INDEX IF NOT EXISTS idx_audit_user_id 
+                                ON "AuditLog"(user_id)
+                            """))
+                            logger.info(f"Added user_id column to {audit_log_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add user_id column: {e}")
+                    else:
+                        # SQLite синтаксис
+                        try:
+                            db.session.execute(text("""
+                                ALTER TABLE AuditLog 
+                                ADD COLUMN user_id INTEGER 
+                                REFERENCES Users(id)
+                            """))
+                            logger.info(f"Added user_id column to {audit_log_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add user_id column: {e}")
+                
                 # Изменяем session_id на TEXT если он VARCHAR(100)
                 try:
                     pg_cursor = db.session.connection().connection.cursor()

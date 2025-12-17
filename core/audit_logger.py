@@ -7,6 +7,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from flask import request, session, has_request_context
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from .db_models import db, AuditLog, Tester, moscow_now
 
@@ -120,6 +121,23 @@ class AuditLogger:
             db.session.add(audit_log)
             db.session.commit()
             logger.debug(f"Audit log written: {audit_log.action} by {audit_log.tester_name} (user_id: {user_id})")
+        except (OperationalError, ProgrammingError) as e:
+            # Ошибка структуры БД - возможно, таблица не обновлена
+            db.session.rollback()
+            error_msg = str(e)
+            if 'user_id' in error_msg.lower() or 'column' in error_msg.lower():
+                logger.error(f"Database schema error in AuditLog: {e}. Table may need migration.")
+                # Пытаемся вызвать миграцию
+                try:
+                    from app.utils.db_migrations import ensure_schema_columns
+                    from flask import current_app
+                    ensure_schema_columns(current_app)
+                    logger.info("Attempted to fix AuditLog schema, retrying log write...")
+                    # Не повторяем запись автоматически, чтобы избежать бесконечного цикла
+                except Exception as migration_error:
+                    logger.error(f"Failed to migrate AuditLog schema: {migration_error}")
+            else:
+                logger.error(f"Database error writing audit log: {e}")
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error writing audit log: {e}", exc_info=True)
