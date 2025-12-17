@@ -723,6 +723,8 @@ def debug_export():
     
     return render_template('admin/debug_export.html',
                          tasks_list=tasks_list,
+                         available_numbers=available_numbers,
+                         task_number=task_number,
                          original_html=original_html,
                          exported_markdown=exported_markdown,
                          task_info=task_info,
