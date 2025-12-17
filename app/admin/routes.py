@@ -662,3 +662,63 @@ def update_maintenance_message():
         flash(f'Ошибка при обновлении: {str(e)}', 'error')
     
     return redirect(url_for('admin.admin_panel'))
+
+
+@admin_bp.route('/admin/debug-export')
+@login_required
+def debug_export():
+    """Отладочный инструмент для проверки экспорта заданий в Markdown"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    # Получаем параметры из запроса
+    task_id = request.args.get('task_id', type=int)
+    custom_html = request.args.get('custom_html', '')
+    
+    # Получаем список заданий для выбора
+    tasks_list = []
+    
+    if task_id:
+        task = Tasks.query.get(task_id)
+        if task:
+            tasks_list = [task]
+    else:
+        # Получаем последние 20 заданий
+        tasks_list = Tasks.query.order_by(Tasks.task_id.desc()).limit(20).all()
+    
+    # Если передан task_id или custom_html, обрабатываем экспорт
+    original_html = ''
+    exported_markdown = ''
+    task_info = None
+    
+    if custom_html:
+        # Тестируем с пользовательским HTML
+        original_html = custom_html
+        from app.lessons.export import html_to_text
+        try:
+            exported_markdown = html_to_text(custom_html)
+        except Exception as e:
+            exported_markdown = f"Ошибка при экспорте: {str(e)}"
+    elif task_id:
+        task = Tasks.query.get(task_id)
+        if task:
+            task_info = {
+                'task_id': task.task_id,
+                'task_number': task.task_number,
+                'site_task_id': task.site_task_id
+            }
+            original_html = task.content_html or ''
+            # Импортируем и вызываем функцию экспорта
+            from app.lessons.export import html_to_text
+            try:
+                exported_markdown = html_to_text(original_html)
+            except Exception as e:
+                exported_markdown = f"Ошибка при экспорте: {str(e)}"
+    
+    return render_template('admin/debug_export.html',
+                         tasks_list=tasks_list,
+                         original_html=original_html,
+                         exported_markdown=exported_markdown,
+                         task_info=task_info,
+                         selected_task_id=task_id)
