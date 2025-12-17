@@ -256,8 +256,14 @@ def html_to_text(html_content):
     
     # Получаем текст - используем пробел как разделитель, чтобы сохранить структуру таблиц
     # Но потом восстановим переносы для параграфов
+    # ВАЖНО: используем strip=False чтобы не обрезать текст в начале и конце
     text = soup.get_text(separator=' ', strip=False)
     text = unescape(text)
+    
+    # Проверяем, что текст не пустой после обработки
+    if not text or not text.strip():
+        # Если текст пустой, возможно проблема в обработке - возвращаем исходный HTML как fallback
+        logger.warning("Text is empty after processing, this might indicate a problem")
     
     # Нормализация переносов строк
     text = re.sub(r'\r\n?', '\n', text)
@@ -358,8 +364,13 @@ def html_to_text(html_content):
     for idx, table in enumerate(table_blocks):
         result = result.replace(f'__TABLE_{idx}__', table)
     
-    # Убираем пустые строки только в начале и конце
-    result = result.strip()
+    # Убираем пустые строки только в начале и конце, но НЕ обрезаем сам текст
+    # Используем rstrip() и lstrip() только для переносов строк, не для пробелов
+    # Сначала убираем только завершающие переносы строк
+    result = result.rstrip('\n\r')
+    result = result.lstrip('\n\r')
+    # Затем убираем только начальные и конечные пробелы/табы, но сохраняем переносы строк
+    # НЕ используем strip(), так как он может обрезать важный контент
     
     return result
 
