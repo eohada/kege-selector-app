@@ -60,9 +60,13 @@ def html_to_text(html_content):
             cleaned_text = re.sub(r'[Фф]айлы?\s+к\s+заданию[:\s-]*[^\n]*', '', text, flags=re.IGNORECASE)
             cleaned_text = re.sub(r'[Фф]айлы?\s+к\s+задаче[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
             cleaned_text = re.sub(r'[Пп]рикреплен[а-яё]*\s+файл[а-яё]*[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
-            # Удаляем упоминания ответов
-            cleaned_text = re.sub(r'[Оо]твет[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
-            cleaned_text = re.sub(r'[Рр]ешение[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
+            # Удаляем упоминания ответов - только если это отдельная фраза "Ответ:" или "Ответ -"
+            # НЕ удаляем, если "ответ" является частью предложения (например, "В ответе запишите")
+            cleaned_text = re.sub(r'^[Оо]твет[:\s-]+[^\n]*$', '', cleaned_text, flags=re.IGNORECASE | re.MULTILINE)
+            cleaned_text = re.sub(r'^[Рр]ешение[:\s-]+[^\n]*$', '', cleaned_text, flags=re.IGNORECASE | re.MULTILINE)
+            # Также удаляем фразы типа "Ответ: число" в начале строки
+            cleaned_text = re.sub(r'\n[Оо]твет[:\s-]+[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
+            cleaned_text = re.sub(r'\n[Рр]ешение[:\s-]+[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
             # Удаляем ссылки на файлы в тексте (например, "9.xls" или "10.docx")
             cleaned_text = re.sub(r'\b\d+\.(xls|xlsx|doc|docx|pdf|txt)\b[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
             # Удаляем URL-ы файлов
