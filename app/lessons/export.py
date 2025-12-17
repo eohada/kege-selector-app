@@ -6,377 +6,95 @@ import re
 from html import unescape
 from importlib import import_module
 from app.models import Lesson
+from bs4 import BeautifulSoup
 
 BeautifulSoup = None
 
 def html_to_text(html_content):
     """
     Конвертирует HTML в чистый Markdown для Obsidian.
-    Удаляет ответы, файлы, видео/фото из контента.
-    Правильно форматирует математические формулы с пробелами.
-    Убирает лишние переносы строк и пустые строки.
+    Исправленная версия: корректные формулы, таблицы и картинки.
     """
     if not html_content:
         return ""
+
+    # Блок безопасного импорта (как у тебя было), чтобы не ломалось
     global BeautifulSoup
     if BeautifulSoup is None:
         try:
-            BeautifulSoup = import_module('bs4').BeautifulSoup
+            from bs4 import BeautifulSoup
         except ImportError as exc:
-            raise RuntimeError("BeautifulSoup is required for markdown export. Install 'beautifulsoup4'.") from exc
+            raise RuntimeError("BeautifulSoup is required. Install 'beautifulsoup4'") from exc
 
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # Удаляем скрипты и стили
-    for tag in soup(['script', 'style']):
+    # 1. Удаляем технический мусор
+    for tag in soup(['script', 'style', 'meta', 'link']):
         tag.decompose()
 
-    # УДАЛЕНИЕ ОТВЕТОВ, ВИДЕО, ФОТО И ФАЙЛОВ ИЗ КОНТЕНТА
-    # Удаляем элементы с ответами
-    for elem in soup.find_all(['div', 'p', 'span'], class_=re.compile(r'answer|ответ|solution|решение', re.I)):
-        elem.decompose()
-    
-    # Удаляем ссылки на файлы и видео
-    for link in soup.find_all('a', href=True):
-        href = link.get('href', '').lower()
-        text = link.get_text(strip=True).lower()
-        # Удаляем ссылки на файлы, видео, ответы
-        if any(keyword in href or keyword in text for keyword in ['file', 'download', 'video', 'видео', 'файл', 'answer', 'ответ', '.doc', '.docx', '.pdf', '.xls', '.xlsx']):
-            link.decompose()
-    
-    # Удаляем изображения, которые являются ответами или файлами
-    for img in soup.find_all('img'):
-        src = img.get('src', '').lower()
-        alt = img.get('alt', '').lower()
-        # Удаляем изображения, которые явно являются ответами или файлами
-        if any(keyword in src or keyword in alt for keyword in ['answer', 'ответ', 'file', 'файл', 'download']):
-            img.decompose()
-    
-    # Удаляем текст с упоминанием файлов, ответов, видео
-    for text_node in soup.find_all(string=True):
-        if text_node.parent and text_node.parent.name not in ['script', 'style']:
-            text = str(text_node)
-            # Удаляем упоминания файлов
-            cleaned_text = re.sub(r'[Фф]айлы?\s+к\s+заданию[:\s-]*[^\n]*', '', text, flags=re.IGNORECASE)
-            cleaned_text = re.sub(r'[Фф]айлы?\s+к\s+задаче[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
-            cleaned_text = re.sub(r'[Пп]рикреплен[а-яё]*\s+файл[а-яё]*[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
-            # Удаляем упоминания ответов - только если это отдельная фраза "Ответ:" или "Ответ -"
-            # НЕ удаляем, если "ответ" является частью предложения (например, "В ответе запишите")
-            cleaned_text = re.sub(r'^[Оо]твет[:\s-]+[^\n]*$', '', cleaned_text, flags=re.IGNORECASE | re.MULTILINE)
-            cleaned_text = re.sub(r'^[Рр]ешение[:\s-]+[^\n]*$', '', cleaned_text, flags=re.IGNORECASE | re.MULTILINE)
-            # Также удаляем фразы типа "Ответ: число" в начале строки
-            cleaned_text = re.sub(r'\n[Оо]твет[:\s-]+[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
-            cleaned_text = re.sub(r'\n[Рр]ешение[:\s-]+[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
-            # Удаляем ссылки на файлы в тексте (например, "9.xls" или "10.docx")
-            cleaned_text = re.sub(r'\b\d+\.(xls|xlsx|doc|docx|pdf|txt)\b[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
-            # Удаляем URL-ы файлов
-            cleaned_text = re.sub(r'https?://[^\s]+\.(xls|xlsx|doc|docx|pdf|txt|mp4|avi|mov|jpg|jpeg|png|gif)[^\s]*', '', cleaned_text, flags=re.IGNORECASE)
-            if cleaned_text != text:
-                text_node.replace_with(cleaned_text)
-
-    def collapse_spaces(value: str) -> str:
-        """Схлопывает множественные пробелы в один"""
-        return re.sub(r'\s+', ' ', value).strip()
-
-    def sup_sub_text(node):
-        """Извлекает текст из sup/sub элементов"""
-        text_value = collapse_spaces(node.get_text(separator=' ', strip=True))
-        if not text_value:
-            return ''
-        return text_value
-
-    # Обработка sup/sub
-    for sup in list(soup.find_all('sup')):
-        sup_content = sup_sub_text(sup)
-        replacement = f"$^{{{sup_content}}}$" if sup_content else ''
-        sup.replace_with(soup.new_string(replacement))
-
-    for sub in list(soup.find_all('sub')):
-        sub_content = sup_sub_text(sub)
-        replacement = f"$_{{{sub_content}}}$" if sub_content else ''
-        sub.replace_with(soup.new_string(replacement))
-
-    def extract_formula(node) -> str:
-        """Извлекает формулу из KaTeX элемента"""
-        aria = node.get('aria-label')
-        if aria:
-            return aria.strip()
-        annotation = node.select_one('annotation[encoding="application/x-tex"]')
-        if annotation:
-            return annotation.get_text(strip=True)
-        text = node.get_text(strip=True)
-        return text
-
-    # Обработка KaTeX формул - добавляем пробелы только ВНЕ формул, не внутри
-    for katex_span in list(soup.select('.katex, .katex-display, .katex-inline')):
-        formula = extract_formula(katex_span)
-        if formula:
-            # Убираем пробелы в начале и конце формулы
-            formula = formula.strip()
-            is_display = 'katex-display' in katex_span.get('class', [])
-            if is_display:
-                # Display формулы - отдельные строки
-                katex_span.replace_with(soup.new_string(f"\n\n$${formula}$$\n\n"))
+    # 2. ИСПРАВЛЕНИЕ ФОРМУЛ (KaTeX)
+    # Достаем чистый LaTeX код из скрытых аннотаций
+    for math_span in soup.find_all('span', class_='katex'):
+        tex_annotation = math_span.find('annotation', attrs={'encoding': 'application/x-tex'})
+        if tex_annotation:
+            tex = tex_annotation.get_text().strip()
+            # Если формула блочная (display mode), делаем ее с отступами
+            if 'katex-display' in math_span.get('class', []):
+                math_span.replace_with(f"\n$${tex}$$\n")
             else:
-                # Inline формулы - пробелы только снаружи, не внутри $...$
-                katex_span.replace_with(soup.new_string(f" ${formula}$ "))
-        else:
-            katex_span.decompose()
+                math_span.replace_with(f" ${tex}$ ")
 
-    def table_to_markdown(table):
-        """Конвертирует HTML таблицу в Markdown"""
-        rows = []
-        for tr in table.find_all('tr'):
-            cells = []
-            for cell in tr.find_all(['th', 'td']):
-                cell_text = cell.get_text(separator=' ', strip=True)
-                cell_text = collapse_spaces(cell_text)
-                cells.append(cell_text)
-            if cells:
-                rows.append(cells)
-        if not rows:
-            return ''
-
-        col_count = max(len(r) for r in rows)
-        for row in rows:
-            if len(row) < col_count:
-                row.extend([''] * (col_count - len(row)))
-
-        widths = [0] * col_count
-        for row in rows:
-            for idx, cell in enumerate(row):
-                widths[idx] = max(widths[idx], len(cell))
-
-        def fmt_row(row):
-            padded = [
-                row[i].ljust(widths[i]) if widths[i] else row[i]
-                for i in range(col_count)
-            ]
-            return '| ' + ' | '.join(padded) + ' |'
-
-        header = fmt_row(rows[0])
-        separator = '| ' + ' | '.join('-' * max(3, widths[i] or 3) for i in range(col_count)) + ' |'
-        body = [fmt_row(row) for row in rows[1:]] if len(rows) > 1 else []
-        return '\n'.join([header, separator, *body])
-
+    # 3. ИСПРАВЛЕНИЕ ТАБЛИЦ
     for table in soup.find_all('table'):
-        md = table_to_markdown(table)
-        table.replace_with(soup.new_string(f'\n\n{md}\n\n'))
+        md_rows = []
+        rows = table.find_all('tr')
+        if not rows: continue
+        
+        # Считаем макс. кол-во колонок, чтобы таблица не поехала
+        max_cols = 0
+        for r in rows:
+            max_cols = max(max_cols, len(r.find_all(['td', 'th'])))
 
-    # Обработка изображений (только те, что остались после фильтрации)
+        for i, row in enumerate(rows):
+            cells = row.find_all(['th', 'td'])
+            cell_texts = [c.get_text(strip=True).replace('\n', ' ') for c in cells]
+            
+            # Добиваем пустыми ячейками, если строка короче остальных
+            if len(cell_texts) < max_cols:
+                cell_texts += [""] * (max_cols - len(cell_texts))
+
+            md_rows.append("| " + " | ".join(cell_texts) + " |")
+
+            # Разделитель после заголовка
+            if i == 0: 
+                md_rows.append("| " + " | ".join(["---"] * max_cols) + " |")
+        
+        table.replace_with("\n" + "\n".join(md_rows) + "\n")
+
+    # 4. ОБРАБОТКА КАРТИНОК
     for img in soup.find_all('img'):
-        src = img.get('src', '')
-        alt = img.get('alt', '')
-        title = img.get('title', '')
+        src = img.get('src')
+        if src:
+            if src.startswith('/'): src = "https://kompege.ru" + src
+            img.replace_with(f"\n![Иллюстрация]({src})\n")
 
-        if not src:
-            img.decompose()
-            continue
+    # 5. ФОРМАТИРОВАНИЕ
+    for tag in soup.find_all(['b', 'strong']): tag.replace_with(f"**{tag.get_text()}**")
+    for tag in soup.find_all(['i', 'em']): tag.replace_with(f"*{tag.get_text()}*")
+    
+    # Сохраняем абзацы
+    for tag in soup.find_all(['p', 'div', 'br']):
+        if tag.name == 'br': tag.replace_with("\n")
+        else: tag.insert_after("\n")
 
-        if title:
-            markdown_img = f'![{alt}]({src} "{title}")'
-        else:
-            markdown_img = f'![{alt}]({src})'
-
-        img.replace_with(soup.new_string(f'\n\n{markdown_img}\n\n'))
-
-    # Обработка списков
-    def extract_list_item_text(li):
-        """Извлекает текст из элемента списка"""
-        parts = []
-        for child in li.children:
-            if isinstance(child, str):
-                text = child.strip()
-                if text:
-                    parts.append(text)
-            elif hasattr(child, 'name'):
-                if child.name == 'br':
-                    # В списках br заменяем на пробел, не на перенос
-                    parts.append(' ')
-                elif child.name in ['p', 'div']:
-                    p_text = child.get_text(separator=' ', strip=True)
-                    if p_text:
-                        parts.append(p_text)
-                else:
-                    child_text = child.get_text(separator=' ', strip=True)
-                    if child_text:
-                        parts.append(child_text)
-        return ' '.join(parts).strip()
+    # 6. ПОЛУЧЕНИЕ ЧИСТОГО ТЕКСТА
+    text = soup.get_text(separator=' ')
     
-    for ul in soup.find_all('ul'):
-        if not ul.find_parent(['td', 'th', 'table']):
-            items = ul.find_all('li', recursive=False)
-            if items:
-                list_items = []
-                for li in items:
-                    li_text = extract_list_item_text(li)
-                    if li_text:
-                        list_items.append(f"- {li_text}")
-                if list_items:
-                    list_text = '\n'.join(list_items)
-                    ul.replace_with(soup.new_string(f'\n\n{list_text}\n\n'))
-                else:
-                    ul.decompose()
-            else:
-                ul.decompose()
+    # Финальная чистка
+    text = re.sub(r'[ \t]+', ' ', text)     # Убираем лишние пробелы
+    text = re.sub(r'\n\s*\n', '\n\n', text) # Убираем лишние пустые строки
     
-    for ol in soup.find_all('ol'):
-        if not ol.find_parent(['td', 'th', 'table']):
-            items = ol.find_all('li', recursive=False)
-            if items:
-                list_items = []
-                for idx, li in enumerate(items):
-                    li_text = extract_list_item_text(li)
-                    if li_text:
-                        list_items.append(f"{idx + 1}. {li_text}")
-                if list_items:
-                    list_text = '\n'.join(list_items)
-                    ol.replace_with(soup.new_string(f'\n\n{list_text}\n\n'))
-                else:
-                    ol.decompose()
-            else:
-                ol.decompose()
-    
-    # Заменяем <br> на переносы строк для правильного форматирования
-    for br in soup.find_all('br'):
-        br.replace_with(soup.new_string('\n'))
-
-    # Обработка параграфов и div - добавляем переносы между блоками
-    def process_element(elem):
-        """Обрабатывает p и div элементы"""
-        if elem.name in ['p', 'div']:
-            if not elem.find_parent(['td', 'th', 'table', 'li']):
-                if elem.get_text(strip=True):
-                    # Добавляем переносы только если есть контент
-                    if elem.previous_sibling and not isinstance(elem.previous_sibling, str):
-                        elem.insert_before('\n')
-                    if elem.next_sibling and not isinstance(elem.next_sibling, str):
-                        elem.insert_after('\n')
-
-    for p in soup.find_all('p'):
-        process_element(p)
-    for div in soup.find_all('div'):
-        process_element(div)
-    
-    # Получаем текст - используем пробел как разделитель, чтобы сохранить структуру таблиц
-    # Но потом восстановим переносы для параграфов
-    # ВАЖНО: используем strip=False чтобы не обрезать текст в начале и конце
-    text = soup.get_text(separator=' ', strip=False)
-    text = unescape(text)
-    
-    # Проверяем, что текст не пустой после обработки
-    if not text or not text.strip():
-        # Если текст пустой, возможно проблема в обработке - возвращаем исходный HTML как fallback
-        logger.warning("Text is empty after processing, this might indicate a problem")
-    
-    # Нормализация переносов строк
-    text = re.sub(r'\r\n?', '\n', text)
-    
-    # Схлопываем множественные пробелы в один
-    text = re.sub(r'[ \t]+', ' ', text)
-    
-    # АГРЕССИВНО убираем пробелы ВНУТРИ всех формул - ДО добавления внешних пробелов
-    # Обрабатываем inline формулы $...$ - убираем ВСЕ пробелы внутри
-    def clean_inline_formula(match):
-        """Убирает все пробелы внутри inline формулы"""
-        content = match.group(1)
-        # Убираем пробелы в начале, конце и между токенами
-        content = content.strip()
-        # Убираем множественные пробелы внутри формулы
-        content = re.sub(r'\s+', '', content)  # Убираем ВСЕ пробелы внутри формулы
-        return f'${content}$'
-    
-    text = re.sub(r'\$([^$]+)\$', clean_inline_formula, text)
-    
-    # Обрабатываем display формулы $$...$$ - убираем пробелы в начале и конце
-    def clean_display_formula(match):
-        """Убирает пробелы в начале и конце display формулы"""
-        content = match.group(1)
-        content = content.strip()
-        return f'$${content}$$'
-    
-    text = re.sub(r'\$\$([^$]+)\$\$', clean_display_formula, text)
-    
-    # Нормализуем display формулы - добавляем переносы вокруг них
-    text = re.sub(r'\s*\$\$\s*', '\n\n$$\n\n', text)
-    
-    # Затем добавляем пробелы ВНЕ формул, если их нет
-    text = re.sub(r'([^\s$])\$([^$]+)\$([^\s$])', r'\1 $\2$ \3', text)  # Формула между символами - пробелы снаружи
-    text = re.sub(r'([^\s$])\$([^$]+)\$', r'\1 $\2$ ', text)  # Формула перед концом - пробел снаружи
-    text = re.sub(r'\$([^$]+)\$([^\s$])', r' $\1$ \2', text)  # Формула после начала - пробел снаружи
-    
-    # Обработка строк - убираем пустые строки, но сохраняем структуру и таблицы
-    lines = text.split('\n')
-    cleaned = []
-    prev_blank = False
-    
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        
-        # Проверяем, является ли строка частью таблицы (начинается с |)
-        is_table_line = stripped.startswith('|') and '|' in stripped[1:]
-        
-        if not stripped:
-            # Пустая строка - оставляем только между display формулами
-            if i > 0 and i < len(lines) - 1:
-                prev_stripped = lines[i - 1].strip()
-                next_stripped = lines[i + 1].strip()
-                if prev_stripped.endswith('$$') and next_stripped.startswith('$$'):
-                    if not prev_blank:
-                        cleaned.append('')
-                        prev_blank = True
-                    continue
-            # Если это пустая строка между строками таблицы - оставляем
-            if i > 0 and i < len(lines) - 1:
-                prev_stripped = lines[i - 1].strip()
-                next_stripped = lines[i + 1].strip()
-                if prev_stripped.startswith('|') and next_stripped.startswith('|'):
-                    if not prev_blank:
-                        cleaned.append('')
-                        prev_blank = True
-                    continue
-            prev_blank = True
-            continue
-        
-        # Непустая строка
-        if is_table_line:
-            # Строка таблицы - добавляем как есть
-            cleaned.append(stripped)
-            prev_blank = False
-        else:
-            # Обычный текст
-            cleaned.append(stripped)
-            prev_blank = False
-    
-    result = '\n'.join(cleaned)
-    
-    # Финальная очистка - убираем множественные пустые строки (более 2 подряд), но сохраняем таблицы
-    # Защищаем таблицы перед очисткой
-    table_blocks = []
-    table_pattern = r'(\| [^\n]+\|(?:\n\|[ -]+\|)*\n(?:\| [^\n]+\|\n?)+)'
-    
-    def save_table(match):
-        table_blocks.append(match.group(0))
-        return f'__TABLE_{len(table_blocks)-1}__'
-    
-    result = re.sub(table_pattern, save_table, result, flags=re.MULTILINE)
-    
-    # Убираем множественные пустые строки
-    result = re.sub(r'\n{3,}', '\n\n', result)
-    
-    # Восстанавливаем таблицы
-    for idx, table in enumerate(table_blocks):
-        result = result.replace(f'__TABLE_{idx}__', table)
-    
-    # Убираем пустые строки только в начале и конце, но НЕ обрезаем сам текст
-    # Используем rstrip() и lstrip() только для переносов строк, не для пробелов
-    # Сначала убираем только завершающие переносы строк
-    result = result.rstrip('\n\r')
-    result = result.lstrip('\n\r')
-    # Затем убираем только начальные и конечные пробелы/табы, но сохраняем переносы строк
-    # НЕ используем strip(), так как он может обрезать важный контент
-    
-    return result
+    return text.strip()
 
 def lesson_export_md(lesson_id, assignment_type='homework'):
     """
