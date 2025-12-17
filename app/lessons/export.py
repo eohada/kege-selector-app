@@ -12,13 +12,15 @@ BeautifulSoup = None
 
 def html_to_text(html_content):
     """
-    Конвертирует HTML в чистый Markdown для Obsidian.
-    Исправленная версия: корректные формулы, таблицы и картинки.
+    Финальная версия для Obsidian:
+    - Без фамилий авторов в начале.
+    - Без лишних звездочек (пустых жирных выделений).
+    - Без блока 'Прикрепленные файлы'.
+    - Без ответа, случайно попавшего в текст задания.
     """
     if not html_content:
         return ""
 
-    # Блок безопасного импорта (как у тебя было), чтобы не ломалось
     global BeautifulSoup
     if BeautifulSoup is None:
         try:
@@ -32,25 +34,43 @@ def html_to_text(html_content):
     for tag in soup(['script', 'style', 'meta', 'link']):
         tag.decompose()
 
-    # 2. ИСПРАВЛЕНИЕ ФОРМУЛ (KaTeX)
-    # Достаем чистый LaTeX код из скрытых аннотаций
+    # 2. УДАЛЕНИЕ ФАЙЛОВ И МУСОРА
+    # Удаляем ссылки на скачивание файлов (они не нужны в тексте)
+    for a in soup.find_all('a'):
+        # Если ссылка на скачивание или ведет на файл
+        if a.has_attr('download') or (a.has_attr('href') and a['href'].lower().endswith(('.txt', '.xls', '.xlsx', '.doc', '.docx', '.csv'))):
+            a.decompose()
+
+    # Удаляем фразы "Прикрепленные файлы", "Файлы к заданию" из текста
+    # Ищем текстовые узлы, содержащие эти фразы, и очищаем их
+    trash_phrases = [
+        re.compile(r'Файлы к заданию', re.I),
+        re.compile(r'Прикрепленн[а-я]+ файл', re.I),
+        re.compile(r'Файл к заданию', re.I)
+    ]
+    for text_node in soup.find_all(string=trash_phrases):
+        # Заменяем фразу на пустоту, оставляя остальной текст (если он был в том же узле)
+        clean_node = text_node
+        for p in trash_phrases:
+            clean_node = re.sub(p, '', clean_node)
+        text_node.replace_with(clean_node)
+
+    # 3. ИСПРАВЛЕНИЕ ФОРМУЛ (KaTeX)
     for math_span in soup.find_all('span', class_='katex'):
         tex_annotation = math_span.find('annotation', attrs={'encoding': 'application/x-tex'})
         if tex_annotation:
             tex = tex_annotation.get_text().strip()
-            # Если формула блочная (display mode), делаем ее с отступами
             if 'katex-display' in math_span.get('class', []):
                 math_span.replace_with(f"\n$${tex}$$\n")
             else:
                 math_span.replace_with(f" ${tex}$ ")
 
-    # 3. ИСПРАВЛЕНИЕ ТАБЛИЦ
+    # 4. ИСПРАВЛЕНИЕ ТАБЛИЦ
     for table in soup.find_all('table'):
         md_rows = []
         rows = table.find_all('tr')
         if not rows: continue
         
-        # Считаем макс. кол-во колонок, чтобы таблица не поехала
         max_cols = 0
         for r in rows:
             max_cols = max(max_cols, len(r.find_all(['td', 'th'])))
@@ -58,43 +78,72 @@ def html_to_text(html_content):
         for i, row in enumerate(rows):
             cells = row.find_all(['th', 'td'])
             cell_texts = [c.get_text(strip=True).replace('\n', ' ') for c in cells]
-            
-            # Добиваем пустыми ячейками, если строка короче остальных
             if len(cell_texts) < max_cols:
                 cell_texts += [""] * (max_cols - len(cell_texts))
-
             md_rows.append("| " + " | ".join(cell_texts) + " |")
-
-            # Разделитель после заголовка
             if i == 0: 
                 md_rows.append("| " + " | ".join(["---"] * max_cols) + " |")
         
         table.replace_with("\n" + "\n".join(md_rows) + "\n")
 
-    # 4. ОБРАБОТКА КАРТИНОК
+    # 5. КАРТИНКИ
     for img in soup.find_all('img'):
         src = img.get('src')
         if src:
             if src.startswith('/'): src = "https://kompege.ru" + src
-            img.replace_with(f"\n![Иллюстрация]({src})\n")
+            # Проверяем, не иконка ли это файла (иногда бывают маленькие иконки xls)
+            if 'file' not in src and 'icon' not in src: 
+                img.replace_with(f"\n![Иллюстрация]({src})\n")
+            else:
+                img.decompose()
 
-    # 5. ФОРМАТИРОВАНИЕ
-    for tag in soup.find_all(['b', 'strong']): tag.replace_with(f"**{tag.get_text()}**")
-    for tag in soup.find_all(['i', 'em']): tag.replace_with(f"*{tag.get_text()}*")
-    
+    # 6. ФОРМАТИРОВАНИЕ (с защитой от лишних звездочек)
+    # Жирный
+    for tag in soup.find_all(['b', 'strong']):
+        inner_text = tag.get_text(strip=True)
+        # Если текста нет или это просто пробел - не оборачиваем в звездочки
+        if inner_text:
+            tag.replace_with(f"**{tag.get_text()}**")
+        else:
+            tag.unwrap() # Просто убираем тег, оставляя содержимое (пробелы)
+
+    # Курсив
+    for tag in soup.find_all(['i', 'em']):
+        inner_text = tag.get_text(strip=True)
+        if inner_text:
+            tag.replace_with(f"*{tag.get_text()}*")
+        else:
+            tag.unwrap()
+
     # Сохраняем абзацы
     for tag in soup.find_all(['p', 'div', 'br']):
         if tag.name == 'br': tag.replace_with("\n")
         else: tag.insert_after("\n")
 
-    # 6. ПОЛУЧЕНИЕ ЧИСТОГО ТЕКСТА
+    # 7. ПОЛУЧЕНИЕ ТЕКСТА И ФИНАЛЬНАЯ ЧИСТКА
     text = soup.get_text(separator=' ')
     
-    # Финальная чистка
-    text = re.sub(r'[ \t]+', ' ', text)     # Убираем лишние пробелы
-    text = re.sub(r'\n\s*\n', '\n\n', text) # Убираем лишние пустые строки
-    
-    return text.strip()
+    # Схлопываем пробелы
+    text = re.sub(r'[ \t]+', ' ', text)
+    text = re.sub(r'\n\s*\n', '\n\n', text)
+    text = text.strip()
+
+    # --- ПОСТ-ОБРАБОТКА (Regex) ---
+
+    # A. Удаляем фамилию автора в начале (в скобках)
+    # Пример: "(А. Кужей) Текст..." -> "Текст..."
+    # Логика: Начало строки, скобка, буквы/точки/пробелы, скобка.
+    # Ограничиваем длину (до 50 символов), чтобы случайно не удалить пояснение в скобках.
+    text = re.sub(r'^\s*\([А-Яа-яЁёA-Za-z\s\.\-]{2,50}\)\s*', '', text)
+
+    # B. Удаляем "Ответ:" в конце текста
+    # Ищем "Ответ:", за которым следуют любые символы до конца строки/файла
+    text = re.sub(r'\n\s*(?:Ответ|Answer)[:\.]?\s*.*$', '', text, flags=re.IGNORECASE|re.DOTALL)
+
+    # C. Еще раз чистим пустые строки в конце после обрезания ответа
+    text = text.strip()
+
+    return text
 
 def lesson_export_md(lesson_id, assignment_type='homework'):
     """
