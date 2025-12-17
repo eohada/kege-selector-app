@@ -11,7 +11,7 @@ from sqlalchemy import func, delete
 from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.admin import admin_bp
-from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ
+from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ, Tasks, Lesson, LessonTask
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
