@@ -684,8 +684,17 @@ def debug_export():
         if task:
             tasks_list = [task]
     else:
-        # Получаем последние 20 заданий
-        tasks_list = Tasks.query.order_by(Tasks.task_id.desc()).limit(20).all()
+        # Получаем по одному заданию каждого номера (1-27) для разнообразия
+        tasks_by_number = {}
+        all_tasks = Tasks.query.order_by(Tasks.task_id.desc()).all()
+        for task in all_tasks:
+            if task.task_number and task.task_number not in tasks_by_number:
+                tasks_by_number[task.task_number] = task
+                if len(tasks_by_number) >= 27:  # Все номера от 1 до 27
+                    break
+        
+        # Сортируем по номеру задания
+        tasks_list = sorted(tasks_by_number.values(), key=lambda t: t.task_number or 0)
     
     # Если передан task_id или custom_html, обрабатываем экспорт
     original_html = ''
