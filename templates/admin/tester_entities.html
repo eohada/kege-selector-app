@@ -100,9 +100,46 @@
                 </a>
             </div>
             <h1 style="margin-bottom: 1rem;">Управление тестировщиками</h1>
-            <p style="color: var(--text-muted); margin-bottom: 2rem;">
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">
                 Управление записями тестировщиков (модель Tester). Эти записи используются для логирования действий неавторизованных пользователей.
             </p>
+            
+            {% if anonymous_count > 0 %}
+            <div style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.25rem;">
+                            Статистика записей
+                        </div>
+                        <div style="font-size: 0.9rem; color: var(--text-muted);">
+                            Всего: {{ total_count }} | Созданных вручную: {{ manual_count }} | Автоматических (Anonymous): {{ anonymous_count }}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        {% if show_anonymous %}
+                            <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button outline" style="text-decoration: none;">
+                                🔒 Скрыть Anonymous
+                            </a>
+                            {% if anonymous_count > 0 %}
+                            <form method="POST" 
+                                  action="{{ url_for('admin.admin_tester_entities_delete_anonymous') }}" 
+                                  style="display: inline;"
+                                  onsubmit="return confirm('Вы уверены, что хотите удалить все {{ anonymous_count }} автоматически созданных записей «Anonymous»? Это действие нельзя отменить.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="neo-button danger" style="text-decoration: none;">
+                                    🗑️ Удалить все Anonymous
+                                </button>
+                            </form>
+                            {% endif %}
+                        {% else %}
+                            <a href="{{ url_for('admin.admin_tester_entities', show_anonymous='true') }}" class="neo-button outline" style="text-decoration: none;">
+                                👁️ Показать Anonymous ({{ anonymous_count }})
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
 
             {% if testers %}
             <table class="testers-table">

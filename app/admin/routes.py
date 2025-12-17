@@ -741,20 +741,39 @@ def admin_tester_entities():
         return redirect(url_for('main.dashboard'))
     
     try:
+        # Параметр для показа автоматически созданных записей "Anonymous"
+        show_anonymous = request.args.get('show_anonymous', 'false').lower() == 'true'
+        
         # Получаем всех тестировщиков с количеством логов
-        testers = db.session.query(
+        query = db.session.query(
             Tester,
             func.count(AuditLog.id).label('logs_count'),
             func.max(AuditLog.timestamp).label('last_action')
         ).outerjoin(
             AuditLog, Tester.tester_id == AuditLog.tester_id
-        ).group_by(
+        )
+        
+        # По умолчанию скрываем автоматически созданные записи "Anonymous"
+        if not show_anonymous:
+            query = query.filter(Tester.name != 'Anonymous')
+        
+        testers = query.group_by(
             Tester.tester_id
         ).order_by(
             Tester.last_seen.desc()
         ).all()
         
-        return render_template('admin/tester_entities.html', testers=testers)
+        # Подсчитываем общее количество записей (включая Anonymous) для информации
+        total_count = Tester.query.count()
+        anonymous_count = Tester.query.filter_by(name='Anonymous').count()
+        manual_count = total_count - anonymous_count
+        
+        return render_template('admin/tester_entities.html', 
+                             testers=testers,
+                             show_anonymous=show_anonymous,
+                             total_count=total_count,
+                             anonymous_count=anonymous_count,
+                             manual_count=manual_count)
     except Exception as e:
         logger.error(f"Error in admin_tester_entities: {e}", exc_info=True)
         db.session.rollback()
@@ -899,5 +918,45 @@ def admin_tester_entities_delete(tester_id):
         db.session.rollback()
         logger.error(f"Error deleting tester: {e}", exc_info=True)
         flash('Ошибка при удалении тестировщика.', 'error')
+    
+    return redirect(url_for('admin.admin_tester_entities'))
+
+
+@admin_bp.route('/admin/tester-entities/delete-anonymous', methods=['POST'])
+@login_required
+def admin_tester_entities_delete_anonymous():
+    """Массовое удаление всех записей Anonymous - только для создателя"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    try:
+        # Находим все записи с именем "Anonymous"
+        anonymous_testers = Tester.query.filter_by(name='Anonymous').all()
+        count = len(anonymous_testers)
+        
+        if count == 0:
+            flash('Записи Anonymous не найдены.', 'info')
+            return redirect(url_for('admin.admin_tester_entities'))
+        
+        # Удаляем все записи
+        for tester in anonymous_testers:
+            db.session.delete(tester)
+        
+        db.session.commit()
+        
+        audit_logger.log(
+            action='bulk_delete',
+            entity='Tester',
+            entity_id=None,
+            status='success',
+            metadata={'count': count, 'name_filter': 'Anonymous'}
+        )
+        
+        flash(f'Удалено {count} автоматически созданных записей «Anonymous».', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting anonymous testers: {e}", exc_info=True)
+        flash('Ошибка при удалении записей Anonymous.', 'error')
     
     return redirect(url_for('admin.admin_tester_entities'))
