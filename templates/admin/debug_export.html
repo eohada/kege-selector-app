@@ -1,96 +1,130 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отладка экспорта в Markdown · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body>
+    <div class="app-shell">
+        <header class="nav-primary">
+            <div class="nav-brand">
+                {% if current_user and current_user.is_authenticated %}
+                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                    {{ current_user.username[0].upper() }}
+                </a>
+                {% endif %}
+                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                    <div class="brand-mark">LOGO</div>
+                    <div class="brand-caption">Чёрный неон</div>
+                </a>
+            </div>
+            {% include '_mobile_menu.html' %}
+            <nav class="nav-links">
+                <a href="{{ url_for('main.dashboard') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="nav-link-icon">
+                        <span class="nav-link-label">Ученики</span>
+                    </span>
+                </a>
+                <a href="{{ url_for('admin.admin_panel') }}" class="nav-link active">
+                    <span class="nav-link-content">
+                        <span class="nav-link-label">Админ панель</span>
+                    </span>
+                </a>
+            </nav>
+        </header>
 
-{% block title %}Отладка экспорта в Markdown{% endblock %}
-
-{% block content %}
-<div class="app-shell">
-    <header class="nav-primary">
-        <nav class="nav-link">
-            <a href="{{ url_for('main.dashboard') }}" class="nav-link">Ученики</a>
-            <a href="{{ url_for('admin.admin_panel') }}" class="nav-link active">Админ панель</a>
-        </nav>
-    </header>
-
-    <section class="glass-panel" style="margin: 2rem auto; max-width: 1600px; padding: 2rem;">
-        <h1 style="font-size: 2em; margin-bottom: 1.5rem; color: var(--text-primary);">🔧 Отладка экспорта в Markdown</h1>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
-            <!-- Левая колонка: Выбор задания и исходный HTML -->
-            <div>
-                <h2 style="font-size: 1.5em; margin-bottom: 1rem; color: var(--text-primary);">Исходный HTML</h2>
-                
-                <form method="GET" action="{{ url_for('admin.debug_export') }}" style="margin-bottom: 1.5rem;">
-                    <div style="margin-bottom: 1rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Выберите задание:</label>
-                        <select name="task_id" style="width: 100%; padding: 0.75rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); color: var(--text-primary);">
-                            <option value="">-- Выберите задание --</option>
-                            {% for task in tasks_list %}
-                            <option value="{{ task.task_id }}" {% if selected_task_id == task.task_id %}selected{% endif %}>
-                                Задание {{ task.task_number }} (ID: {{ task.task_id }}, Site ID: {{ task.site_task_id or 'N/A' }})
-                            </option>
-                            {% endfor %}
-                        </select>
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 1600px; padding: 2rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">
+                    ← К админ панели
+                </a>
+            </div>
+            <h1 style="font-size: 2em; margin-bottom: 1.5rem; color: var(--text-primary);">🔧 Отладка экспорта в Markdown</h1>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+                <!-- Левая колонка: Выбор задания и исходный HTML -->
+                <div>
+                    <h2 style="font-size: 1.5em; margin-bottom: 1rem; color: var(--text-primary);">Исходный HTML</h2>
+                    
+                    <form method="GET" action="{{ url_for('admin.debug_export') }}" style="margin-bottom: 1.5rem;">
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Выберите задание:</label>
+                            <select name="task_id" style="width: 100%; padding: 0.75rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); color: var(--text-primary);">
+                                <option value="">-- Выберите задание --</option>
+                                {% for task in tasks_list %}
+                                <option value="{{ task.task_id }}" {% if selected_task_id == task.task_id %}selected{% endif %}>
+                                    Задание {{ task.task_number }} (ID: {{ task.task_id }}, Site ID: {{ task.site_task_id or 'N/A' }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="neo-button accent" style="width: 100%;">Загрузить задание</button>
+                    </form>
+                    
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Или вставьте свой HTML:</label>
+                        <form method="GET" action="{{ url_for('admin.debug_export') }}">
+                            <textarea name="custom_html" rows="10" style="width: 100%; padding: 0.75rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); color: var(--text-primary); font-family: monospace; font-size: 0.9em;" placeholder="Вставьте HTML здесь...">{{ original_html }}</textarea>
+                            <button type="submit" class="neo-button outline" style="width: 100%; margin-top: 0.5rem;">Тестировать HTML</button>
+                        </form>
                     </div>
                     
-                    <button type="submit" class="neo-button accent" style="width: 100%;">Загрузить задание</button>
-                </form>
-                
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Или вставьте свой HTML:</label>
-                    <form method="GET" action="{{ url_for('admin.debug_export') }}">
-                        <textarea name="custom_html" rows="10" style="width: 100%; padding: 0.75rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); color: var(--text-primary); font-family: monospace; font-size: 0.9em;" placeholder="Вставьте HTML здесь...">{{ original_html }}</textarea>
-                        <button type="submit" class="neo-button outline" style="width: 100%; margin-top: 0.5rem;">Тестировать HTML</button>
-                    </form>
+                    {% if original_html %}
+                    <div style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); padding: 1rem; max-height: 500px; overflow-y: auto;">
+                        <h3 style="font-size: 1.2em; margin-bottom: 0.5rem; color: var(--text-primary);">Исходный HTML:</h3>
+                        <pre style="white-space: pre-wrap; word-wrap: break-word; color: var(--text-secondary); font-size: 0.85em; margin: 0;">{{ original_html }}</pre>
+                    </div>
+                    {% endif %}
+                    
+                    {% if task_info %}
+                    <div style="margin-top: 1rem; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
+                        <p style="margin: 0.25rem 0; color: var(--text-secondary);"><strong>ID задания:</strong> {{ task_info.task_id }}</p>
+                        <p style="margin: 0.25rem 0; color: var(--text-secondary);"><strong>Номер задания:</strong> {{ task_info.task_number }}</p>
+                        <p style="margin: 0.25rem 0; color: var(--text-secondary);"><strong>Site ID:</strong> {{ task_info.site_task_id or 'N/A' }}</p>
+                    </div>
+                    {% endif %}
                 </div>
                 
-                {% if original_html %}
-                <div style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); padding: 1rem; max-height: 500px; overflow-y: auto;">
-                    <h3 style="font-size: 1.2em; margin-bottom: 0.5rem; color: var(--text-primary);">Исходный HTML:</h3>
-                    <pre style="white-space: pre-wrap; word-wrap: break-word; color: var(--text-secondary); font-size: 0.85em; margin: 0;">{{ original_html }}</pre>
+                <!-- Правая колонка: Результат экспорта -->
+                <div>
+                    <h2 style="font-size: 1.5em; margin-bottom: 1rem; color: var(--text-primary);">Результат экспорта (Markdown)</h2>
+                    
+                    {% if exported_markdown %}
+                    <div style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); padding: 1rem; max-height: 500px; overflow-y: auto;">
+                        <pre style="white-space: pre-wrap; word-wrap: break-word; color: var(--text-primary); font-size: 0.9em; margin: 0; font-family: 'Monaspace Neon', monospace;">{{ exported_markdown }}</pre>
+                    </div>
+                    
+                    <div style="margin-top: 1rem;">
+                        <button onclick="copyToClipboard()" class="neo-button outline" style="width: 100%;">📋 Копировать Markdown</button>
+                    </div>
+                    {% else %}
+                    <div style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); padding: 2rem; text-align: center; color: var(--text-muted);">
+                        <p>Выберите задание или вставьте HTML для просмотра результата экспорта</p>
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
-                
-                {% if task_info %}
-                <div style="margin-top: 1rem; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
-                    <p style="margin: 0.25rem 0; color: var(--text-secondary);"><strong>ID задания:</strong> {{ task_info.task_id }}</p>
-                    <p style="margin: 0.25rem 0; color: var(--text-secondary);"><strong>Номер задания:</strong> {{ task_info.task_number }}</p>
-                    <p style="margin: 0.25rem 0; color: var(--text-secondary);"><strong>Site ID:</strong> {{ task_info.site_task_id or 'N/A' }}</p>
-                </div>
-                {% endif %}
             </div>
-            
-            <!-- Правая колонка: Результат экспорта -->
-            <div>
-                <h2 style="font-size: 1.5em; margin-bottom: 1rem; color: var(--text-primary);">Результат экспорта (Markdown)</h2>
-                
-                {% if exported_markdown %}
-                <div style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); padding: 1rem; max-height: 500px; overflow-y: auto;">
-                    <pre style="white-space: pre-wrap; word-wrap: break-word; color: var(--text-primary); font-size: 0.9em; margin: 0; font-family: 'Monaspace Neon', monospace;">{{ exported_markdown }}</pre>
-                </div>
-                
-                <div style="margin-top: 1rem;">
-                    <button onclick="copyToClipboard()" class="neo-button outline" style="width: 100%;">📋 Копировать Markdown</button>
-                </div>
-                {% else %}
-                <div style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); padding: 2rem; text-align: center; color: var(--text-muted);">
-                    <p>Выберите задание или вставьте HTML для просмотра результата экспорта</p>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-    </section>
-</div>
+        </section>
+    </div>
 
-<script>
-function copyToClipboard() {
-    const markdown = `{{ exported_markdown|replace('`', '\\`')|replace('\n', '\\n')|replace('\r', '\\r') }}`;
-    navigator.clipboard.writeText(markdown).then(() => {
-        alert('Markdown скопирован в буфер обмена!');
-    }).catch(err => {
-        console.error('Ошибка копирования:', err);
-        alert('Не удалось скопировать. Попробуйте выделить текст вручную.');
-    });
-}
-</script>
-{% endblock %}
-
+    <script>
+    function copyToClipboard() {
+        const markdown = `{{ exported_markdown|replace('`', '\\`')|replace('\n', '\\n')|replace('\r', '\\r') }}`;
+        navigator.clipboard.writeText(markdown).then(() => {
+            alert('Markdown скопирован в буфер обмена!');
+        }).catch(err => {
+            console.error('Ошибка копирования:', err);
+            alert('Не удалось скопировать. Попробуйте выделить текст вручную.');
+        });
+    }
+    </script>
+</body>
+</html>
