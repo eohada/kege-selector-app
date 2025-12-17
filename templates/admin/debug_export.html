@@ -55,18 +55,35 @@
                     
                     <form method="GET" action="{{ url_for('admin.debug_export') }}" style="margin-bottom: 1.5rem;">
                         <div style="margin-bottom: 1rem;">
-                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Выберите задание:</label>
-                            <select name="task_id" style="width: 100%; padding: 0.75rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); color: var(--text-primary);">
-                                <option value="">-- Выберите задание --</option>
-                                {% for task in tasks_list %}
-                                <option value="{{ task.task_id }}" {% if selected_task_id == task.task_id %}selected{% endif %}>
-                                    Задание {{ task.task_number }} (ID: {{ task.task_id }}, Site ID: {{ task.site_task_id or 'N/A' }})
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Шаг 1: Выберите номер задания:</label>
+                            <select name="task_number" id="task_number_select" onchange="this.form.submit()" style="width: 100%; padding: 0.75rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); color: var(--text-primary);">
+                                <option value="">-- Выберите номер задания (1-27) --</option>
+                                {% for num in available_numbers %}
+                                <option value="{{ num }}" {% if task_number == num %}selected{% endif %}>
+                                    Задание {{ num }}
                                 </option>
                                 {% endfor %}
                             </select>
                         </div>
                         
+                        {% if task_number %}
+                        <div style="margin-bottom: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Шаг 2: Выберите конкретное задание (до 10 вариантов):</label>
+                            <select name="task_id" style="width: 100%; padding: 0.75rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); color: var(--text-primary);">
+                                <option value="">-- Выберите задание --</option>
+                                {% for task in tasks_list %}
+                                <option value="{{ task.task_id }}" {% if selected_task_id == task.task_id %}selected{% endif %}>
+                                    ID: {{ task.task_id }}, Site ID: {{ task.site_task_id or 'N/A' }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <input type="hidden" name="task_number" value="{{ task_number }}">
+                        </div>
+                        {% endif %}
+                        
+                        {% if task_number %}
                         <button type="submit" class="neo-button accent" style="width: 100%;">Загрузить задание</button>
+                        {% endif %}
                     </form>
                     
                     <div style="margin-bottom: 1.5rem;">

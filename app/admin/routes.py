@@ -674,7 +674,11 @@ def debug_export():
     
     # Получаем параметры из запроса
     task_id = request.args.get('task_id', type=int)
+    task_number = request.args.get('task_number', type=int)
     custom_html = request.args.get('custom_html', '')
+    
+    # Получаем список номеров заданий (1-27)
+    available_numbers = sorted([n for n in range(1, 28) if Tasks.query.filter_by(task_number=n).first()])
     
     # Получаем список заданий для выбора
     tasks_list = []
@@ -683,18 +687,10 @@ def debug_export():
         task = Tasks.query.get(task_id)
         if task:
             tasks_list = [task]
-    else:
-        # Получаем по одному заданию каждого номера (1-27) для разнообразия
-        tasks_by_number = {}
-        all_tasks = Tasks.query.order_by(Tasks.task_id.desc()).all()
-        for task in all_tasks:
-            if task.task_number and task.task_number not in tasks_by_number:
-                tasks_by_number[task.task_number] = task
-                if len(tasks_by_number) >= 27:  # Все номера от 1 до 27
-                    break
-        
-        # Сортируем по номеру задания
-        tasks_list = sorted(tasks_by_number.values(), key=lambda t: t.task_number or 0)
+            task_number = task.task_number  # Устанавливаем номер для отображения
+    elif task_number:
+        # Получаем до 10 заданий выбранного номера
+        tasks_list = Tasks.query.filter_by(task_number=task_number).order_by(Tasks.task_id.desc()).limit(10).all()
     
     # Если передан task_id или custom_html, обрабатываем экспорт
     original_html = ''
