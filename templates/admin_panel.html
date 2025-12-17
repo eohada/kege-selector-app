@@ -151,7 +151,10 @@
             <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Быстрые действия</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
                 <a href="{{ url_for('admin.admin_testers') }}" class="neo-button outline" style="text-decoration: none;">
-                    👥 Управление тестировщиками
+                    👥 Управление пользователями
+                </a>
+                <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button outline" style="text-decoration: none;">
+                    🧪 Управление тестировщиками
                 </a>
                 <a href="{{ url_for('admin.admin_audit') }}" class="neo-button outline" style="text-decoration: none;">
                     📋 Журнал аудита

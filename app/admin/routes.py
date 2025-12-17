@@ -12,6 +12,7 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.admin import admin_bp
 from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ, Tasks, Lesson, LessonTask
+from core.db_models import Tester
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
@@ -729,3 +730,174 @@ def debug_export():
                          exported_markdown=exported_markdown,
                          task_info=task_info,
                          selected_task_id=task_id)
+
+
+@admin_bp.route('/admin/tester-entities')
+@login_required
+def admin_tester_entities():
+    """Управление тестировщиками (модель Tester) - только для создателя"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    try:
+        # Получаем всех тестировщиков с количеством логов
+        testers = db.session.query(
+            Tester,
+            func.count(AuditLog.id).label('logs_count'),
+            func.max(AuditLog.timestamp).label('last_action')
+        ).outerjoin(
+            AuditLog, Tester.tester_id == AuditLog.tester_id
+        ).group_by(
+            Tester.tester_id
+        ).order_by(
+            Tester.last_seen.desc()
+        ).all()
+        
+        return render_template('admin/tester_entities.html', testers=testers)
+    except Exception as e:
+        logger.error(f"Error in admin_tester_entities: {e}", exc_info=True)
+        db.session.rollback()
+        flash('Ошибка при загрузке списка тестировщиков.', 'error')
+        return redirect(url_for('admin.admin_panel'))
+
+
+@admin_bp.route('/admin/tester-entities/create', methods=['GET', 'POST'])
+@login_required
+def admin_tester_entities_create():
+    """Создание нового тестировщика - только для создателя"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name', '').strip()
+            if not name:
+                flash('Имя тестировщика обязательно.', 'error')
+                return render_template('admin/tester_entities_form.html', tester=None)
+            
+            # Проверяем, нет ли уже тестировщика с таким именем
+            existing = Tester.query.filter_by(name=name).first()
+            if existing:
+                flash('Тестировщик с таким именем уже существует.', 'error')
+                return render_template('admin/tester_entities_form.html', tester=None)
+            
+            # Создаем нового тестировщика
+            import uuid
+            tester = Tester(
+                tester_id=str(uuid.uuid4()),
+                name=name,
+                ip_address=request.form.get('ip_address', '').strip() or None,
+                user_agent=request.form.get('user_agent', '').strip() or None,
+                session_id=request.form.get('session_id', '').strip() or None,
+                is_active=request.form.get('is_active') == 'on'
+            )
+            
+            db.session.add(tester)
+            db.session.commit()
+            
+            audit_logger.log(
+                action='create',
+                entity='Tester',
+                entity_id=tester.tester_id,
+                status='success',
+                metadata={'name': tester.name}
+            )
+            
+            flash(f'Тестировщик "{tester.name}" успешно создан.', 'success')
+            return redirect(url_for('admin.admin_tester_entities'))
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error creating tester: {e}", exc_info=True)
+            flash('Ошибка при создании тестировщика.', 'error')
+            return render_template('admin/tester_entities_form.html', tester=None)
+    
+    return render_template('admin/tester_entities_form.html', tester=None)
+
+
+@admin_bp.route('/admin/tester-entities/<tester_id>/edit', methods=['GET', 'POST'])
+@login_required
+def admin_tester_entities_edit(tester_id):
+    """Редактирование тестировщика - только для создателя"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    tester = Tester.query.get_or_404(tester_id)
+    
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name', '').strip()
+            if not name:
+                flash('Имя тестировщика обязательно.', 'error')
+                return render_template('admin/tester_entities_form.html', tester=tester)
+            
+            # Проверяем, нет ли другого тестировщика с таким именем
+            existing = Tester.query.filter(Tester.name == name, Tester.tester_id != tester_id).first()
+            if existing:
+                flash('Тестировщик с таким именем уже существует.', 'error')
+                return render_template('admin/tester_entities_form.html', tester=tester)
+            
+            # Обновляем данные
+            old_name = tester.name
+            tester.name = name
+            tester.ip_address = request.form.get('ip_address', '').strip() or None
+            tester.user_agent = request.form.get('user_agent', '').strip() or None
+            tester.session_id = request.form.get('session_id', '').strip() or None
+            tester.is_active = request.form.get('is_active') == 'on'
+            
+            db.session.commit()
+            
+            audit_logger.log(
+                action='update',
+                entity='Tester',
+                entity_id=tester.tester_id,
+                status='success',
+                metadata={'old_name': old_name, 'new_name': tester.name}
+            )
+            
+            flash(f'Тестировщик "{tester.name}" успешно обновлен.', 'success')
+            return redirect(url_for('admin.admin_tester_entities'))
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error updating tester: {e}", exc_info=True)
+            flash('Ошибка при обновлении тестировщика.', 'error')
+            return render_template('admin/tester_entities_form.html', tester=tester)
+    
+    return render_template('admin/tester_entities_form.html', tester=tester)
+
+
+@admin_bp.route('/admin/tester-entities/<tester_id>/delete', methods=['POST'])
+@login_required
+def admin_tester_entities_delete(tester_id):
+    """Удаление тестировщика - только для создателя"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    tester = Tester.query.get_or_404(tester_id)
+    tester_name = tester.name
+    
+    try:
+        # Удаляем связанные логи (опционально, можно оставить)
+        # AuditLog.query.filter_by(tester_id=tester_id).delete()
+        
+        db.session.delete(tester)
+        db.session.commit()
+        
+        audit_logger.log(
+            action='delete',
+            entity='Tester',
+            entity_id=tester_id,
+            status='success',
+            metadata={'name': tester_name}
+        )
+        
+        flash(f'Тестировщик "{tester_name}" успешно удален.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting tester: {e}", exc_info=True)
+        flash('Ошибка при удалении тестировщика.', 'error')
+    
+    return redirect(url_for('admin.admin_tester_entities'))
