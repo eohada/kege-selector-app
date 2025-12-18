@@ -656,10 +656,11 @@
                 <button type="button"
                         class="autocheck-square"
                         data-task-id="{{ hw_task.lesson_task_id }}"
+                        data-order-num="{{ order_num }}"
                         style="background: {% if is_correct == true %}var(--success-color, #10b981){% elif is_correct == false %}var(--danger-color, #ef4444){% else %}var(--surface-1){% endif %};"
                         title="N{{ hw_task.task.task_number }} - {{ ordinal_name }}{% if is_correct is not none %} ({% if is_correct %}✓{% else %}✗{% endif %}){% endif %}"
-                        onclick="scrollToTask({{ hw_task.lesson_task_id }})">
-                    {{ hw_task.task.task_number }}
+                        onclick="scrollToTaskByOrder({{ order_num }})">
+                    {{ order_num }}
                 </button>
             {% endfor %}
         </div>
@@ -1000,7 +1001,7 @@
         
         // Функция для прокрутки к заданию по его ID
         function scrollToTask(lessonTaskId) {
-            const taskElement = document.querySelector(`[data-task-id="${lessonTaskId}"]`);
+            const taskElement = document.querySelector(`section[data-task-id="${lessonTaskId}"]`);
             if (taskElement) {
                 taskElement.scrollIntoView({behavior: 'smooth', block: 'start'});
                 // Добавляем временную подсветку для визуального эффекта
@@ -1009,6 +1010,31 @@
                 setTimeout(() => {
                     taskElement.style.boxShadow = '';
                 }, 1000);
+            } else {
+                console.error('Task element not found for ID:', lessonTaskId);
+            }
+        }
+        
+        // Функция для прокрутки к заданию по порядковому номеру
+        function scrollToTaskByOrder(orderNum) {
+            // Находим все карточки заданий
+            const taskCards = document.querySelectorAll('section.task-card[data-task-id]');
+            if (taskCards && taskCards.length >= orderNum) {
+                // Порядковый номер начинается с 1, а индекс массива с 0
+                const targetCard = taskCards[orderNum - 1];
+                if (targetCard) {
+                    targetCard.scrollIntoView({behavior: 'smooth', block: 'start'});
+                    // Добавляем временную подсветку для визуального эффекта
+                    targetCard.style.transition = 'box-shadow 0.3s ease';
+                    targetCard.style.boxShadow = '0 0 20px rgba(23, 96, 216, 0.5)';
+                    setTimeout(() => {
+                        targetCard.style.boxShadow = '';
+                    }, 1000);
+                } else {
+                    console.error('Task card not found for order number:', orderNum);
+                }
+            } else {
+                console.error('Task cards not found or order number out of range:', orderNum);
             }
         }
         
