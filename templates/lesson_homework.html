@@ -72,6 +72,14 @@
             box-shadow: var(--shadow-soft);
         }
         
+        .task-card.autocheck-correct {
+            border: 2px solid var(--success-color, #10b981);
+        }
+        
+        .task-card.autocheck-incorrect {
+            border: 2px solid var(--danger-color, #ef4444);
+        }
+        
         .task-header {
             display: flex;
             justify-content: space-between;
@@ -108,14 +116,20 @@
         }
         
         .autocheck-square {
-            width: 24px;
-            height: 24px;
+            width: 32px;
+            height: 32px;
             border: 2px solid var(--stroke-1);
             border-radius: 4px;
             cursor: pointer;
             transition: all 0.2s ease;
             padding: 0;
             margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85em;
+            color: var(--text-primary);
         }
         
         .autocheck-square:hover {
@@ -540,7 +554,8 @@
                         data-task-id="{{ hw_task.lesson_task_id }}"
                         style="background: {% if is_correct == true %}var(--success-color, #10b981){% elif is_correct == false %}var(--danger-color, #ef4444){% else %}var(--surface-1){% endif %};"
                         title="N{{ hw_task.task.task_number }} - {{ ordinal_name }}{% if is_correct is not none %} ({% if is_correct %}✓{% else %}✗{% endif %}){% endif %}"
-                        onclick="document.querySelector('[data-task-id=\'{{ hw_task.lesson_task_id }}\']').scrollIntoView({behavior: 'smooth', block: 'start'});">
+                        onclick="scrollToTask({{ hw_task.lesson_task_id }})">
+                    {{ hw_task.task.task_number }}
                 </button>
             {% endfor %}
         </div>
@@ -550,7 +565,8 @@
             {% for hw_task in homework_tasks %}
             {% set order_num = loop.index %}
             {% set ordinal_name = ordinal_names.get(order_num, order_num ~ "-е") %}
-            <section class="task-card" data-task-id="{{ hw_task.lesson_task_id }}">
+            {% set is_correct = hw_task.submission_correct if hw_task.submission_correct is not none else none %}
+            <section class="task-card {% if is_correct == true %}autocheck-correct{% elif is_correct == false %}autocheck-incorrect{% endif %}" data-task-id="{{ hw_task.lesson_task_id }}">
                 <div class="task-header">
                     <div>
                         <div class="task-number">N{{ hw_task.task.task_number }} - {{ ordinal_name }}</div>
@@ -857,6 +873,20 @@
                     }
                 });
             });
+        }
+        
+        // Функция для прокрутки к заданию по его ID
+        function scrollToTask(lessonTaskId) {
+            const taskElement = document.querySelector(`[data-task-id="${lessonTaskId}"]`);
+            if (taskElement) {
+                taskElement.scrollIntoView({behavior: 'smooth', block: 'start'});
+                // Добавляем временную подсветку для визуального эффекта
+                taskElement.style.transition = 'box-shadow 0.3s ease';
+                taskElement.style.boxShadow = '0 0 20px rgba(23, 96, 216, 0.5)';
+                setTimeout(() => {
+                    taskElement.style.boxShadow = '';
+                }, 1000);
+            }
         }
         
         document.addEventListener('DOMContentLoaded', function() {
