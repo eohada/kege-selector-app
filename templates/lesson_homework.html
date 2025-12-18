@@ -800,9 +800,8 @@
                 {% endif %}
 
                 {% if (is_homework or is_classwork or is_exam) and hw_task.student_submission %}
-                <div class="auto-check-result {{ 'correct' if hw_task.submission_correct else 'incorrect' }}">
+                <div class="auto-check-result">
                     <div><strong>Ответ ученика:</strong> {{ hw_task.student_submission }}</div>
-                    <div><strong>Статус:</strong> {{ '✅ Верно' if hw_task.submission_correct else '❌ Неверно' }}</div>
                 </div>
                 {% endif %}
                 
