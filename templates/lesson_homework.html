@@ -529,18 +529,7 @@
         
         {# Визуальный индикатор результатов автопроверки #}
         {% if has_autocheck_results %}
-        <div class="autocheck-indicator" style="
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            padding: 1rem;
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            margin-bottom: 2rem;
-            justify-content: center;
-            align-items: center;
-        ">
+        <div class="autocheck-indicator">
             <div style="font-weight: 600; color: var(--text-primary); margin-right: 0.5rem;">Результаты автопроверки:</div>
             {% for hw_task in homework_tasks %}
                 {% set order_num = loop.index %}
@@ -549,18 +538,8 @@
                 <button type="button"
                         class="autocheck-square"
                         data-task-id="{{ hw_task.lesson_task_id }}"
-                        style="
-                            width: 24px;
-                            height: 24px;
-                            border: 2px solid var(--stroke-1);
-                            border-radius: 4px;
-                            cursor: pointer;
-                            transition: all 0.2s ease;
-                            background: {% if is_correct == true %}var(--success-color, #10b981){% elif is_correct == false %}var(--danger-color, #ef4444){% else %}var(--surface-1){% endif %};
-                        "
+                        style="background: {% if is_correct == true %}var(--success-color, #10b981){% elif is_correct == false %}var(--danger-color, #ef4444){% else %}var(--surface-1){% endif %};"
                         title="N{{ hw_task.task.task_number }} - {{ ordinal_name }}{% if is_correct is not none %} ({% if is_correct %}✓{% else %}✗{% endif %}){% endif %}"
-                        onmouseover="this.style.transform='scale(1.2)'; this.style.borderColor='var(--accent-1)'"
-                        onmouseout="this.style.transform='scale(1)'; this.style.borderColor='var(--stroke-1)'"
                         onclick="document.querySelector('[data-task-id=\'{{ hw_task.lesson_task_id }}\']').scrollIntoView({behavior: 'smooth', block: 'start'});">
                 </button>
             {% endfor %}
