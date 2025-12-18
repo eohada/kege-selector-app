@@ -80,6 +80,110 @@
             border: 2px solid var(--danger-color, #ef4444);
         }
         
+        /* Овальный переключатель с тремя положениями */
+        .status-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        
+        .status-toggle-label {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.9em;
+        }
+        
+        .status-toggle-switch {
+            position: relative;
+            width: 120px;
+            height: 36px;
+            background: var(--surface-2);
+            border: 2px solid var(--stroke-1);
+            border-radius: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            padding: 0 4px;
+        }
+        
+        .status-toggle-switch:hover {
+            border-color: var(--accent-1);
+        }
+        
+        .status-toggle-slider {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            background: var(--surface-1);
+            border: 2px solid var(--stroke-1);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75em;
+            font-weight: 700;
+        }
+        
+        .status-toggle-switch[data-status="correct"] {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--success-color, #10b981);
+        }
+        
+        .status-toggle-switch[data-status="correct"] .status-toggle-slider {
+            left: 4px;
+            background: var(--success-color, #10b981);
+            color: white;
+            border-color: var(--success-color, #10b981);
+        }
+        
+        .status-toggle-switch[data-status="incorrect"] {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: var(--danger-color, #ef4444);
+        }
+        
+        .status-toggle-switch[data-status="incorrect"] .status-toggle-slider {
+            right: 4px;
+            background: var(--danger-color, #ef4444);
+            color: white;
+            border-color: var(--danger-color, #ef4444);
+        }
+        
+        .status-toggle-switch[data-status="none"] .status-toggle-slider {
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface-1);
+            color: var(--text-muted);
+        }
+        
+        .status-toggle-labels {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 8px;
+            pointer-events: none;
+            font-size: 0.7em;
+            font-weight: 600;
+        }
+        
+        .status-toggle-labels span {
+            color: var(--text-muted);
+            transition: color 0.3s ease;
+        }
+        
+        .status-toggle-switch[data-status="correct"] .status-toggle-labels span:first-child {
+            color: var(--success-color, #10b981);
+        }
+        
+        .status-toggle-switch[data-status="incorrect"] .status-toggle-labels span:last-child {
+            color: var(--danger-color, #ef4444);
+        }
+        
         .task-header {
             display: flex;
             justify-content: space-between;
@@ -630,6 +734,25 @@
                     <div><strong>Статус:</strong> {{ '✅ Верно' if hw_task.submission_correct else '❌ Неверно' }}</div>
                 </div>
                 {% endif %}
+                
+                {% if is_homework or is_classwork or is_exam %}
+                <div class="status-toggle">
+                    <span class="status-toggle-label">Статус задания:</span>
+                    <div class="status-toggle-switch" 
+                         data-task-id="{{ hw_task.lesson_task_id }}"
+                         data-status="{% if hw_task.submission_correct == true %}correct{% elif hw_task.submission_correct == false %}incorrect{% else %}none{% endif %}"
+                         onclick="toggleTaskStatus({{ hw_task.lesson_task_id }}, this)">
+                        <div class="status-toggle-slider">
+                            {% if hw_task.submission_correct == true %}✓{% elif hw_task.submission_correct == false %}✗{% else %}○{% endif %}
+                        </div>
+                        <div class="status-toggle-labels">
+                            <span>✓</span>
+                            <span>○</span>
+                            <span>✗</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </section>
             {% endfor %}
             
@@ -887,6 +1010,115 @@
                     taskElement.style.boxShadow = '';
                 }, 1000);
             }
+        }
+        
+        // Функция для переключения статуса задания
+        function toggleTaskStatus(lessonTaskId, toggleElement) {
+            const currentStatus = toggleElement.getAttribute('data-status');
+            let newStatus;
+            
+            // Циклическое переключение: none -> correct -> incorrect -> none
+            if (currentStatus === 'none') {
+                newStatus = 'correct';
+            } else if (currentStatus === 'correct') {
+                newStatus = 'incorrect';
+            } else {
+                newStatus = 'none';
+            }
+            
+            // Визуальное обновление сразу (оптимистичное обновление)
+            toggleElement.setAttribute('data-status', newStatus);
+            const slider = toggleElement.querySelector('.status-toggle-slider');
+            if (newStatus === 'correct') {
+                slider.textContent = '✓';
+            } else if (newStatus === 'incorrect') {
+                slider.textContent = '✗';
+            } else {
+                slider.textContent = '○';
+            }
+            
+            // Обновляем обводку задания
+            const taskCard = document.querySelector(`[data-task-id="${lessonTaskId}"]`);
+            if (taskCard) {
+                taskCard.classList.remove('autocheck-correct', 'autocheck-incorrect');
+                if (newStatus === 'correct') {
+                    taskCard.classList.add('autocheck-correct');
+                } else if (newStatus === 'incorrect') {
+                    taskCard.classList.add('autocheck-incorrect');
+                }
+            }
+            
+            // Отправляем запрос на сервер
+            const lessonId = {{ lesson.lesson_id }};
+            fetch(`/lesson/${lessonId}/task/${lessonTaskId}/set-status`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': CSRF_TOKEN || ''
+                },
+                body: JSON.stringify({ status: newStatus })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    // Откатываем изменения при ошибке
+                    toggleElement.setAttribute('data-status', currentStatus);
+                    if (currentStatus === 'correct') {
+                        slider.textContent = '✓';
+                    } else if (currentStatus === 'incorrect') {
+                        slider.textContent = '✗';
+                    } else {
+                        slider.textContent = '○';
+                    }
+                    if (taskCard) {
+                        taskCard.classList.remove('autocheck-correct', 'autocheck-incorrect');
+                        if (currentStatus === 'correct') {
+                            taskCard.classList.add('autocheck-correct');
+                        } else if (currentStatus === 'incorrect') {
+                            taskCard.classList.add('autocheck-incorrect');
+                        }
+                    }
+                    if (window.toast) {
+                        toast.error(data.error || 'Ошибка при сохранении статуса');
+                    }
+                } else {
+                    // Обновляем индикатор автопроверки, если он есть
+                    const indicatorSquare = document.querySelector(`.autocheck-square[data-task-id="${lessonTaskId}"]`);
+                    if (indicatorSquare) {
+                        if (newStatus === 'correct') {
+                            indicatorSquare.style.background = 'var(--success-color, #10b981)';
+                        } else if (newStatus === 'incorrect') {
+                            indicatorSquare.style.background = 'var(--danger-color, #ef4444)';
+                        } else {
+                            indicatorSquare.style.background = 'var(--surface-1)';
+                        }
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при сохранении статуса:', error);
+                // Откатываем изменения при ошибке
+                toggleElement.setAttribute('data-status', currentStatus);
+                if (currentStatus === 'correct') {
+                    slider.textContent = '✓';
+                } else if (currentStatus === 'incorrect') {
+                    slider.textContent = '✗';
+                } else {
+                    slider.textContent = '○';
+                }
+                if (taskCard) {
+                    taskCard.classList.remove('autocheck-correct', 'autocheck-incorrect');
+                    if (currentStatus === 'correct') {
+                        taskCard.classList.add('autocheck-correct');
+                    } else if (currentStatus === 'incorrect') {
+                        taskCard.classList.add('autocheck-incorrect');
+                    }
+                }
+                if (window.toast) {
+                    toast.error('Ошибка при сохранении статуса');
+                }
+            });
         }
         
         document.addEventListener('DOMContentLoaded', function() {

@@ -275,6 +275,63 @@ def lesson_homework_save(lesson_id):
     flash('Данные по ДЗ сохранены!', 'success')
     return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))
 
+
+@lessons_bp.route('/lesson/<int:lesson_id>/task/<int:lesson_task_id>/set-status', methods=['POST'])
+@login_required
+def lesson_task_set_status(lesson_id, lesson_task_id):
+    """Установка статуса задания (правильно/неправильно/не решено)"""
+    lesson = Lesson.query.get_or_404(lesson_id)
+    lesson_task = LessonTask.query.filter_by(
+        lesson_task_id=lesson_task_id,
+        lesson_id=lesson_id
+    ).first_or_404()
+    
+    # Получаем статус из запроса
+    status = request.json.get('status') if request.is_json else request.form.get('status')
+    
+    # Преобразуем строковый статус в Boolean или None
+    if status == 'correct':
+        lesson_task.submission_correct = True
+    elif status == 'incorrect':
+        lesson_task.submission_correct = False
+    elif status == 'none' or status is None:
+        lesson_task.submission_correct = None
+    else:
+        return jsonify({'success': False, 'error': 'Неверный статус'}), 400
+    
+    try:
+        db.session.commit()
+        
+        audit_logger.log(
+            action='set_task_status',
+            entity='LessonTask',
+            entity_id=lesson_task_id,
+            status='success',
+            metadata={
+                'lesson_id': lesson_id,
+                'student_id': lesson.student_id,
+                'task_status': status,
+                'task_number': lesson_task.task.task_number if lesson_task.task else None
+            }
+        )
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({
+                'success': True,
+                'status': status,
+                'submission_correct': lesson_task.submission_correct
+            })
+        
+        flash('Статус задания обновлен!', 'success')
+        return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error setting task status: {e}", exc_info=True)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json:
+            return jsonify({'success': False, 'error': 'Ошибка при сохранении статуса'}), 500
+        flash('Ошибка при сохранении статуса.', 'error')
+        return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))
+
 @lessons_bp.route('/lesson/<int:lesson_id>/homework-auto-check', methods=['POST'])
 @login_required
 def lesson_homework_auto_check(lesson_id):
