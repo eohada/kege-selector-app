@@ -94,6 +94,36 @@
             font-weight: 600;
         }
         
+        .autocheck-indicator {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            padding: 1rem;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            margin-bottom: 2rem;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .autocheck-square {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--stroke-1);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .autocheck-square:hover {
+            transform: scale(1.2);
+            border-color: var(--accent-1);
+            box-shadow: 0 0 8px rgba(23, 96, 216, 0.3);
+        }
+        
         .task-actions {
             display: flex;
             gap: 0.8em;
@@ -484,12 +514,67 @@
         </section>
 
         {% if homework_tasks %}
+        {# Словарь для порядковых числительных #}
+        {% set ordinal_names = {
+            1: "первое", 2: "второе", 3: "третье", 4: "четвертое", 5: "пятое",
+            6: "шестое", 7: "седьмое", 8: "восьмое", 9: "девятое", 10: "десятое",
+            11: "одиннадцатое", 12: "двенадцатое", 13: "тринадцатое", 14: "четырнадцатое", 15: "пятнадцатое",
+            16: "шестнадцатое", 17: "семнадцатое", 18: "восемнадцатое", 19: "девятнадцатое", 20: "двадцатое",
+            21: "двадцать первое", 22: "двадцать второе", 23: "двадцать третье", 24: "двадцать четвертое",
+            25: "двадцать пятое", 26: "двадцать шестое", 27: "двадцать седьмое"
+        } %}
+        
+        {# Проверяем, есть ли результаты автопроверки для отображения индикатора #}
+        {% set has_autocheck_results = homework_tasks | selectattr('submission_correct', 'ne', none) | list | length > 0 %}
+        
+        {# Визуальный индикатор результатов автопроверки #}
+        {% if has_autocheck_results %}
+        <div class="autocheck-indicator" style="
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            padding: 1rem;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            margin-bottom: 2rem;
+            justify-content: center;
+            align-items: center;
+        ">
+            <div style="font-weight: 600; color: var(--text-primary); margin-right: 0.5rem;">Результаты автопроверки:</div>
+            {% for hw_task in homework_tasks %}
+                {% set order_num = loop.index %}
+                {% set ordinal_name = ordinal_names.get(order_num, order_num ~ "-е") %}
+                {% set is_correct = hw_task.submission_correct if hw_task.submission_correct is not none else none %}
+                <button type="button"
+                        class="autocheck-square"
+                        data-task-id="{{ hw_task.lesson_task_id }}"
+                        style="
+                            width: 24px;
+                            height: 24px;
+                            border: 2px solid var(--stroke-1);
+                            border-radius: 4px;
+                            cursor: pointer;
+                            transition: all 0.2s ease;
+                            background: {% if is_correct == true %}var(--success-color, #10b981){% elif is_correct == false %}var(--danger-color, #ef4444){% else %}var(--surface-1){% endif %};
+                        "
+                        title="N{{ hw_task.task.task_number }} - {{ ordinal_name }}{% if is_correct is not none %} ({% if is_correct %}✓{% else %}✗{% endif %}){% endif %}"
+                        onmouseover="this.style.transform='scale(1.2)'; this.style.borderColor='var(--accent-1)'"
+                        onmouseout="this.style.transform='scale(1)'; this.style.borderColor='var(--stroke-1)'"
+                        onclick="document.querySelector('[data-task-id=\'{{ hw_task.lesson_task_id }}\']').scrollIntoView({behavior: 'smooth', block: 'start'});">
+                </button>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
         <form method="POST" action="{{ url_for('lessons.lesson_homework_save', lesson_id=lesson.lesson_id) }}">
             {% for hw_task in homework_tasks %}
+            {% set order_num = loop.index %}
+            {% set ordinal_name = ordinal_names.get(order_num, order_num ~ "-е") %}
             <section class="task-card" data-task-id="{{ hw_task.lesson_task_id }}">
                 <div class="task-header">
                     <div>
-                        <div class="task-number">Задание {{ hw_task.task.task_number }}</div>
+                        <div class="task-number">N{{ hw_task.task.task_number }} - {{ ordinal_name }}</div>
                         <div class="task-site-id">№ {{ hw_task.task.site_task_id }}</div>
                     </div>
                     <div class="task-actions">
@@ -528,7 +613,8 @@
                     <label class="answer-label" for="answer_{{ hw_task.lesson_task_id }}">
                         ✅ Правильный ответ:
                     </label>
-                    {% set correct_answer = hw_task.task.answer if hw_task.task and hw_task.task.answer else hw_task.student_answer %}
+                    {# Приоритет у student_answer (ручное редактирование), затем task.answer из базы #}
+                    {% set correct_answer = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}
                     <input type="text" 
                            class="answer-input" 
                            id="answer_{{ hw_task.lesson_task_id }}" 
