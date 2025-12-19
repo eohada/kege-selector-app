@@ -51,57 +51,143 @@
         .lessons-list {
             display: flex;
             flex-direction: column;
-            gap: 1.25rem;
+            gap: 1.5rem;
         }
         
         /* Премиальный дизайн карточки урока */
         .lesson-card {
             background: linear-gradient(135deg, var(--surface-1) 0%, rgba(15, 17, 28, 0.95) 100%);
             border: 1px solid var(--stroke-1);
-            border-radius: 16px;
+            border-radius: 20px;
             overflow: hidden;
-            transition: all 0.3s ease;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
+            display: grid;
+            grid-template-columns: 80px 1fr;
         }
         
-        .lesson-card::before {
+        /* Левая панель с эмблемой */
+        .lesson-emblem {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem 0.75rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .lesson-emblem::before {
             content: '';
             position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 5px;
-            background: var(--stroke-1);
-            transition: all 0.3s ease;
+            inset: 0;
+            opacity: 0.15;
         }
         
-        .lesson-card[data-status="planned"]::before { 
-            background: linear-gradient(180deg, var(--accent-2), rgba(23, 96, 216, 0.5)); 
+        .lesson-card[data-status="planned"] .lesson-emblem::before {
+            background: linear-gradient(180deg, var(--accent-2), transparent);
         }
-        .lesson-card[data-status="in_progress"]::before { 
-            background: linear-gradient(180deg, var(--warning), rgba(255, 193, 7, 0.5));
-            animation: pulse-glow 2s ease-in-out infinite;
+        .lesson-card[data-status="in_progress"] .lesson-emblem::before {
+            background: linear-gradient(180deg, var(--warning), transparent);
         }
-        .lesson-card[data-status="completed"]::before { 
-            background: linear-gradient(180deg, var(--success), rgba(0, 254, 202, 0.3)); 
+        .lesson-card[data-status="completed"] .lesson-emblem::before {
+            background: linear-gradient(180deg, var(--success), transparent);
         }
-        .lesson-card[data-status="cancelled"]::before { 
-            background: linear-gradient(180deg, var(--danger), rgba(255, 108, 145, 0.3)); 
+        .lesson-card[data-status="cancelled"] .lesson-emblem::before {
+            background: linear-gradient(180deg, var(--danger), transparent);
+        }
+        
+        .lesson-emblem-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .lesson-emblem-day {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--text-primary);
+            line-height: 1;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .lesson-emblem-month {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .lesson-card[data-status="planned"] .lesson-emblem-day { color: var(--accent-2); }
+        .lesson-card[data-status="in_progress"] .lesson-emblem-day { color: var(--warning); }
+        .lesson-card[data-status="completed"] .lesson-emblem-day { color: var(--success); }
+        .lesson-card[data-status="cancelled"] .lesson-emblem-day { color: var(--danger); }
+        
+        /* Декоративная линия между панелями */
+        .lesson-emblem::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 15%;
+            bottom: 15%;
+            width: 1px;
+            background: linear-gradient(180deg, transparent, var(--stroke-2), transparent);
         }
         
         @keyframes pulse-glow {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+        }
+        
+        .lesson-card[data-status="in_progress"] .lesson-emblem-icon {
+            animation: pulse-glow 2s ease-in-out infinite;
         }
         
         .lesson-card:hover {
             border-color: var(--accent-1);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 32px rgba(0, 198, 164, 0.15);
+            transform: translateY(-4px);
+            box-shadow: 
+                0 12px 40px rgba(0, 198, 164, 0.15),
+                0 0 0 1px rgba(0, 198, 164, 0.1);
+        }
+        
+        /* Декоративный угловой элемент при hover */
+        .lesson-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, transparent 50%, rgba(0, 198, 164, 0.1) 50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .lesson-card:hover::after {
+            opacity: 1;
         }
         
         .lesson-card-inner {
-            padding: 1.5rem;
+            padding: 1.5rem 1.5rem 1.5rem 1.25rem;
+        }
+        
+        /* Responsive: на мобильных убираем эмблему */
+        @media (max-width: 600px) {
+            .lesson-card {
+                grid-template-columns: 1fr;
+            }
+            .lesson-emblem {
+                display: none;
+            }
+            .lesson-card-inner {
+                padding: 1.25rem;
+            }
         }
         
         /* Header с датой и статусом */
@@ -137,6 +223,27 @@
             font-size: 1rem;
             color: var(--text-muted);
             font-weight: 500;
+        }
+        
+        .lesson-time-big {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+        }
+        
+        .lesson-year {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            padding: 0.2rem 0.5rem;
+            background: var(--surface-2);
+            border-radius: 4px;
+        }
+        
+        .lesson-badge.type-regular {
+            background: var(--surface-3);
+            color: var(--text-secondary);
         }
         
         .lesson-badges {
@@ -458,6 +565,62 @@
         .create-dropdown-item.homework { color: var(--accent-2); }
         .create-dropdown-item.classwork { color: var(--success); }
         .create-dropdown-item.exam { color: var(--warning); }
+        
+        /* Индикатор заданий */
+        .lesson-tasks-indicator {
+            display: flex;
+            gap: 6px;
+            margin-top: 0.75rem;
+        }
+        
+        .task-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--stroke-2);
+        }
+        
+        .task-dot.homework { background: var(--accent-2); }
+        .task-dot.classwork { background: var(--success); }
+        .task-dot.exam { background: var(--warning); }
+        
+        /* Прогресс-бар для результата */
+        .lesson-progress {
+            margin-top: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .progress-bar {
+            flex: 1;
+            height: 6px;
+            background: var(--surface-3);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+        
+        .progress-fill.excellent { background: linear-gradient(90deg, var(--success), #00ffd5); }
+        .progress-fill.good { background: linear-gradient(90deg, var(--accent-1), var(--accent-2)); }
+        .progress-fill.average { background: linear-gradient(90deg, var(--warning), #ffb347); }
+        .progress-fill.poor { background: linear-gradient(90deg, var(--danger), #ff8a8a); }
+        
+        .progress-value {
+            font-size: 0.9rem;
+            font-weight: 700;
+            min-width: 45px;
+        }
+        
+        .progress-value.excellent { color: var(--success); }
+        .progress-value.good { color: var(--accent-1); }
+        .progress-value.average { color: var(--warning); }
+        .progress-value.poor { color: var(--danger); }
         
         .lesson-homework-text {
             margin-top: 1em;
@@ -1069,27 +1232,43 @@
                     {% set classwork_count = classwork_assignments|length %}
                     {% set exam_count = exam_assignments|length %}
                     
+                    <!-- Левая эмблема с датой -->
+                    <div class="lesson-emblem">
+                        <span class="lesson-emblem-icon">
+                            {% if lesson.status == 'in_progress' %}🎓
+                            {% elif lesson.lesson_type == 'exam' %}📊
+                            {% elif lesson.lesson_type == 'introductory' %}👋
+                            {% elif lesson.status == 'completed' %}✅
+                            {% elif lesson.status == 'cancelled' %}❌
+                            {% else %}📚{% endif %}
+                        </span>
+                        <span class="lesson-emblem-day">{{ lesson.lesson_date.strftime('%d') }}</span>
+                        <span class="lesson-emblem-month">{{ ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'][lesson.lesson_date.month - 1] }}</span>
+                    </div>
+                    
                     <div class="lesson-card-inner">
-                        <!-- Header: дата + статус -->
+                        <!-- Header: время + бейджи + статус -->
                         <div class="lesson-header">
                             <div class="lesson-header-left">
                                 <div class="lesson-date-row">
-                                    <span class="lesson-date">{{ lesson.lesson_date.strftime('%d.%m.%Y') }}</span>
-                                    <span class="lesson-time">{{ lesson.lesson_date.strftime('%H:%M') }}</span>
+                                    <span class="lesson-time-big">{{ lesson.lesson_date.strftime('%H:%M') }}</span>
+                                    <span class="lesson-year">{{ lesson.lesson_date.strftime('%Y') }}</span>
                                 </div>
                                 <div class="lesson-badges">
                                     {% if lesson.lesson_type == 'exam' %}
-                                    <span class="lesson-badge type-exam">📊 Проверочный</span>
+                                    <span class="lesson-badge type-exam">Проверочный</span>
                                     {% elif lesson.lesson_type == 'introductory' %}
-                                    <span class="lesson-badge type-introductory">👋 Вводный</span>
+                                    <span class="lesson-badge type-introductory">Вводный</span>
+                                    {% else %}
+                                    <span class="lesson-badge type-regular">Обычный</span>
                                     {% endif %}
                                 </div>
                             </div>
                             <span class="lesson-status-badge {{ lesson.status }}">
-                                {% if lesson.status == 'planned' %}📅 Запланирован
-                                {% elif lesson.status == 'in_progress' %}🎓 Идёт сейчас
-                                {% elif lesson.status == 'completed' %}✅ Проведён
-                                {% elif lesson.status == 'cancelled' %}❌ Отменён
+                                {% if lesson.status == 'planned' %}Запланирован
+                                {% elif lesson.status == 'in_progress' %}Идёт сейчас
+                                {% elif lesson.status == 'completed' %}Проведён
+                                {% elif lesson.status == 'cancelled' %}Отменён
                                 {% endif %}
                             </span>
                         </div>
@@ -1119,12 +1298,19 @@
                                 </span>
                                 {% endif %}
                             {% endif %}
-                            {% if lesson.homework_result_percent is not none %}
-                            <span class="lesson-meta-item result">
-                                <span class="icon">📊</span> Результат: {{ lesson.homework_result_percent }}%
-                            </span>
-                            {% endif %}
                         </div>
+                        
+                        <!-- Прогресс-бар результата -->
+                        {% if lesson.homework_result_percent is not none %}
+                        {% set pct = lesson.homework_result_percent %}
+                        {% set level = 'excellent' if pct >= 85 else ('good' if pct >= 70 else ('average' if pct >= 50 else 'poor')) %}
+                        <div class="lesson-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill {{ level }}" style="width: {{ pct }}%"></div>
+                            </div>
+                            <span class="progress-value {{ level }}">{{ pct }}%</span>
+                        </div>
+                        {% endif %}
                         
                         <!-- Карточки заданий -->
                         {% if homework_count or classwork_count or exam_count %}
