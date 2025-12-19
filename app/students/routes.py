@@ -130,17 +130,8 @@ def student_profile(student_id):
     # Два ближайших запланированных урока (самые ранние по дате)
     upcoming_lessons = sorted(planned_lessons, key=lambda x: x.lesson_date if x.lesson_date else now)[:2]
     
-    # Собираем ID актуальных уроков для исключения из общего списка
-    featured_ids = set()
-    if last_completed:
-        featured_ids.add(last_completed.lesson_id)
-    if in_progress_lesson:
-        featured_ids.add(in_progress_lesson.lesson_id)
-    for lesson in upcoming_lessons:
-        featured_ids.add(lesson.lesson_id)
-    
-    # Остальные уроки (исключая актуальные)
-    other_lessons = [l for l in all_lessons if l.lesson_id not in featured_ids]
+    # Все уроки отображаются в общем списке (ключевые дублируются сверху для удобства)
+    other_lessons = all_lessons
     
     return render_template('student_profile.html', 
                            student=student, 

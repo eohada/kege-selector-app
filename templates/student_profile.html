@@ -651,11 +651,12 @@
                         {% if lesson.homework_status == 'assigned_not_done' %}<div>❌ ДЗ не выполнено</div>{% endif %}
                     </div>
                     {% set hw_count = lesson.homework_assignments|length %}
-                    {% if hw_count %}
-                    <div style="margin-top: 0.5rem;">
+                    <div class="lesson-actions" style="margin-top: 0.5rem;">
+                        {% if hw_count %}
                         <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button accent" style="font-size: 0.85rem; padding: 0.5rem 1rem;">👁️ ДЗ ({{ hw_count }})</a>
+                        {% endif %}
+                        <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.85rem; padding: 0.5rem 1rem;">✏️</a>
                     </div>
-                    {% endif %}
                 </div>
                 {% endif %}
                 
