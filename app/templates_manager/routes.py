@@ -6,7 +6,7 @@ from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 
 from app.templates_manager import templates_bp
-from app.models import TaskTemplate, TemplateTask, Lesson, LessonTask, UsageHistory, db, moscow_now
+from app.models import TaskTemplate, TemplateTask, Lesson, LessonTask, UsageHistory, Tasks, db, moscow_now
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
@@ -210,6 +210,77 @@ def template_delete(template_id):
     
     flash('Шаблон удален', 'success')
     return redirect(url_for('templates_manager.templates_list'))
+
+@templates_bp.route('/templates/manual-create', methods=['GET', 'POST'])
+@login_required
+def template_manual_create():
+    """Ручное создание шаблона с заданиями"""
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            
+            # 1. Create Template
+            name = data.get('name', '').strip()
+            if not name:
+                return jsonify({'success': False, 'error': 'Название шаблона обязательно'}), 400
+                
+            template = TaskTemplate(
+                name=name,
+                description=data.get('description', '').strip() or None,
+                template_type=data.get('template_type', 'homework'),
+                category=data.get('category') or None,
+                created_by=current_user.id if current_user.is_authenticated else None
+            )
+            db.session.add(template)
+            db.session.flush() # Get template_id
+            
+            # 2. Create Tasks and Link
+            tasks_data = data.get('tasks', [])
+            count = 0
+            
+            for index, task_data in enumerate(tasks_data):
+                # Create Manual Task
+                new_task = Tasks(
+                    task_number=int(task_data.get('number', 1)),
+                    content_html=f'<div class="task-text">{task_data.get("content", "")}</div>',
+                    answer=task_data.get('answer', ''),
+                    site_task_id=None, # Indicates manual
+                    source_url=None
+                )
+                db.session.add(new_task)
+                db.session.flush() # Get task_id
+                
+                # Link to Template
+                template_task = TemplateTask(
+                    template_id=template.template_id,
+                    task_id=new_task.task_id,
+                    order=index
+                )
+                db.session.add(template_task)
+                count += 1
+                
+            db.session.commit()
+            
+            audit_logger.log(
+                action='create_manual_template',
+                entity='TaskTemplate',
+                entity_id=template.template_id,
+                status='success',
+                metadata={
+                    'name': name,
+                    'tasks_count': count,
+                    'template_type': template.template_type
+                }
+            )
+            
+            return jsonify({'success': True, 'template_id': template.template_id})
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error creating manual template: {e}", exc_info=True)
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    return render_template('template_manual_create.html')
 
 @templates_bp.route('/templates/<int:template_id>/apply', methods=['POST'])
 @login_required
