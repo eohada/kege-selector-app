@@ -507,40 +507,84 @@
             color: var(--danger);
         }
         
-        /* Выпадающее меню */
+        /* Выпадающее меню - боковое */
         .create-dropdown {
             position: relative;
+        }
+        
+        .create-dropdown-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.65rem 1.1rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: var(--surface-2);
+            color: var(--text-primary);
+            border: 1px solid var(--stroke-2);
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        
+        .create-dropdown-btn:hover {
+            background: var(--surface-3);
+            border-color: var(--accent-1);
+        }
+        
+        .create-dropdown-btn .arrow {
+            transition: transform 0.2s ease;
+            font-size: 0.7rem;
+        }
+        
+        .create-dropdown.open .create-dropdown-btn .arrow {
+            transform: rotate(180deg);
         }
         
         .create-dropdown-content {
             display: none;
             position: absolute;
-            top: calc(100% + 8px);
-            left: 0;
+            top: 50%;
+            left: calc(100% + 10px);
+            transform: translateY(-50%);
             background: var(--surface-1);
             border: 1px solid var(--stroke-2);
             border-radius: 12px;
             min-width: 220px;
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
             z-index: 9999;
-            overflow: visible;
+            overflow: hidden;
         }
         
-        .create-dropdown:hover .create-dropdown-content,
-        .create-dropdown:focus-within .create-dropdown-content {
+        /* Стрелка-указатель */
+        .create-dropdown-content::before {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 8px solid transparent;
+            border-right-color: var(--stroke-2);
+        }
+        
+        .create-dropdown-content::after {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 6px solid transparent;
+            border-right-color: var(--surface-1);
+        }
+        
+        .create-dropdown.open .create-dropdown-content {
             display: block;
-            animation: dropdownFade 0.2s ease;
+            animation: dropdownSlide 0.2s ease;
         }
         
-        /* Поднимаем карточку при открытом дропдауне */
-        .lesson-card:has(.create-dropdown:hover),
-        .lesson-card:has(.create-dropdown:focus-within) {
-            z-index: 100;
-        }
-        
-        @keyframes dropdownFade {
-            from { opacity: 0; transform: translateY(-8px); }
-            to { opacity: 1; transform: translateY(0); }
+        @keyframes dropdownSlide {
+            from { opacity: 0; transform: translateY(-50%) translateX(-10px); }
+            to { opacity: 1; transform: translateY(-50%) translateX(0); }
         }
         
         .create-dropdown-item {
@@ -1952,17 +1996,19 @@
                                 </form>
                                 {% endif %}
                                 
-                                <!-- Выпадающее меню -->
-                                <div class="create-dropdown">
-                                    <button type="button" class="action-btn secondary">➕ Сформировать задания</button>
-                                    <div class="create-dropdown-content">
-                                        <a href="#" class="create-dropdown-item homework" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="homework" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">
+                                <!-- Выпадающее меню (боковое, по клику) -->
+                                <div class="create-dropdown" onclick="toggleDropdown(event, this)">
+                                    <button type="button" class="create-dropdown-btn">
+                                        ➕ Сформировать <span class="arrow">▶</span>
+                                    </button>
+                                    <div class="create-dropdown-content" onclick="event.stopPropagation()">
+                                        <a href="#" class="create-dropdown-item homework" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="homework" onclick="closeAllDropdowns(); tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">
                                             <span class="icon">📝</span> Домашнее задание
                                         </a>
-                                        <a href="#" class="create-dropdown-item classwork" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="classwork" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">
+                                        <a href="#" class="create-dropdown-item classwork" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="classwork" onclick="closeAllDropdowns(); tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">
                                             <span class="icon">🏫</span> Классная работа
                                         </a>
-                                        <a href="#" class="create-dropdown-item exam" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="exam" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">
+                                        <a href="#" class="create-dropdown-item exam" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="exam" onclick="closeAllDropdowns(); tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">
                                             <span class="icon">📊</span> Проверочная работа
                                         </a>
                                         <form method="POST" action="{{ url_for('lessons.lesson_homework_not_assigned', lesson_id=lesson.lesson_id) }}" style="margin: 0;">
@@ -2334,6 +2380,27 @@
             const meta = document.querySelector('meta[name="csrf-token"]');
             return meta ? meta.content : '';
         }
+        
+        // Управление боковым дропдауном
+        function toggleDropdown(event, element) {
+            event.stopPropagation();
+            const wasOpen = element.classList.contains('open');
+            closeAllDropdowns();
+            if (!wasOpen) {
+                element.classList.add('open');
+            }
+        }
+        
+        function closeAllDropdowns() {
+            document.querySelectorAll('.create-dropdown.open').forEach(d => d.classList.remove('open'));
+        }
+        
+        // Закрытие при клике вне
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.create-dropdown')) {
+                closeAllDropdowns();
+            }
+        });
         
         // Фильтрация уроков
         function filterLessons() {
