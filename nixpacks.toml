@@ -1,0 +1,14 @@
+[phases.setup]
+nixPkgs = ["python311", "chromium", "ffmpeg"]
+
+[phases.install]
+cmds = [
+    "python -m venv /opt/venv",
+    ". /opt/venv/bin/activate && pip install --upgrade pip",
+    ". /opt/venv/bin/activate && pip install -r requirements.txt",
+    ". /opt/venv/bin/activate && playwright install chromium"
+]
+
+[start]
+cmd = ". /opt/venv/bin/activate && gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 120"
+
