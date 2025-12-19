@@ -8,7 +8,7 @@ from flask_login import login_required
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, perform_auto_check
-from app.models import Lesson, LessonTask, Student, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, LessonTask, Student, Tasks, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
@@ -692,3 +692,58 @@ def lesson_exam_export_md(lesson_id):
     """Экспорт проверочной работы в Markdown"""
     from app.lessons.export import lesson_export_md
     return lesson_export_md(lesson_id, 'exam')
+
+@lessons_bp.route('/lesson/<int:lesson_id>/manual-create', methods=['GET', 'POST'])
+@login_required
+def lesson_manual_create(lesson_id):
+    """Ручное создание заданий"""
+    lesson = Lesson.query.get_or_404(lesson_id)
+    assignment_type = request.args.get('type', 'homework')
+    
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            tasks_data = data.get('tasks', [])
+            
+            count = 0
+            for task_data in tasks_data:
+                # Create Task
+                new_task = Tasks(
+                    task_number=int(task_data.get('number', 1)),
+                    content_html=f'<div class="task-text">{task_data.get("content", "")}</div>',
+                    answer=task_data.get('answer', ''),
+                    site_task_id=None, # Indicates manual
+                    source_url=None
+                )
+                db.session.add(new_task)
+                db.session.flush() # Get task_id
+                
+                # Link to Lesson
+                lesson_task = LessonTask(
+                    lesson_id=lesson.lesson_id,
+                    task_id=new_task.task_id,
+                    assignment_type=assignment_type
+                )
+                db.session.add(lesson_task)
+                count += 1
+                
+            db.session.commit()
+            
+            audit_logger.log(
+                action='create_manual_tasks',
+                entity='Lesson',
+                entity_id=lesson_id,
+                status='success',
+                metadata={
+                    'count': count,
+                    'assignment_type': assignment_type
+                }
+            )
+            
+            return jsonify({'success': True, 'count': count})
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error creating manual tasks: {e}", exc_info=True)
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    return render_template('lesson_manual_create.html', lesson=lesson, assignment_type=assignment_type)
