@@ -2125,3 +2125,53 @@ body::after {
         width: 100%;
     }
 }
+
+/* ===== Кнопка "Наверх" (Scroll to Top) ===== */
+.scroll-to-top {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 48px;
+    height: 48px;
+    background: var(--surface-1);
+    border: 2px solid var(--stroke-1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.scroll-to-top.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.scroll-to-top:hover {
+    background: var(--accent-1);
+    border-color: var(--accent-1);
+    transform: translateY(-4px);
+    box-shadow: 0 6px 16px rgba(23, 96, 216, 0.3);
+}
+
+.scroll-to-top:active {
+    transform: translateY(-2px);
+}
+
+.scroll-to-top svg {
+    width: 24px;
+    height: 24px;
+    fill: var(--text-primary);
+    transition: fill 0.2s ease;
+}
+
+.scroll-to-top:hover svg {
+    fill: white;
+}
