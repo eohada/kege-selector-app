@@ -1502,6 +1502,22 @@
                     <h3 style="margin: 0; font-size: 1.1em; font-weight: 700; color: var(--accent-1);">Сгенерировать новые задания</h3>
                     <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9em;">Использовать генератор для создания уникального набора</p>
                 </div>
+                
+                <div class="template-option" onclick="manualCreateTasks(${lessonId}, '${type}')" style="
+                    padding: 1.5rem;
+                    border: 2px solid var(--text-primary);
+                    border-radius: var(--radius-lg);
+                    background: var(--surface-1);
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    text-align: center;
+                    margin-bottom: 1rem;
+                " onmouseover="this.style.borderColor='var(--accent-1)'; this.style.background='var(--surface-2)'; this.style.transform='scale(1.02)'" 
+                   onmouseout="this.style.borderColor='var(--text-primary)'; this.style.background='var(--surface-1)'; this.style.transform='scale(1)'">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">📝</div>
+                    <h3 style="margin: 0; font-size: 1.1em; font-weight: 700; color: var(--text-primary);">Создать вручную</h3>
+                    <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9em;">Конструктор для ручного добавления заданий</p>
+                </div>
             `;
             
             // Затем добавляем шаблоны
@@ -1600,6 +1616,25 @@
             
             const url = `{{ url_for('kege_generator.kege_generator') }}?lesson_id=${finalLessonId}&assignment_type=${validAssignmentType}`;
             console.log('Переход на генератор:', url);
+            window.location.href = url;
+        }
+        
+        function manualCreateTasks(lessonId, assignmentType) {
+            closeTemplateModal();
+            
+            const finalLessonId = lessonId || currentLessonId;
+            const finalAssignmentType = assignmentType || currentAssignmentType || 'homework';
+            
+            if (!finalLessonId) {
+                console.error('manualCreateTasks: lessonId не установлен');
+                if (typeof toast !== 'undefined' && toast) {
+                    toast.error('Ошибка: не удалось определить ID урока');
+                }
+                return;
+            }
+            
+            const url = `/lesson/${finalLessonId}/manual-create?type=${finalAssignmentType}`;
+            console.log('Переход на ручное создание:', url);
             window.location.href = url;
         }
     </script>

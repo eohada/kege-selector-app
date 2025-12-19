@@ -1,175 +1,196 @@
-{% extends "layout.html" %}
-
-{% block title %}Ручное создание заданий - {{ lesson.student.name }}{% endblock %}
-
-{% block content %}
-<div class="container">
-    <div class="glass-panel" style="margin-bottom: 2rem;">
-        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="text-decoration: none;">
-                ← Вернуться назад
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ручное создание заданий · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    {% include '_ux_enhancements.html' %}
+</head>
+<body>
+    <header class="nav-primary">
+        <div class="nav-brand">
+            {% if current_user and current_user.is_authenticated %}
+            <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
+                {{ current_user.username[0].upper() }}
+            </a>
+            {% endif %}
+            <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+                <div class="brand-mark">LOGO</div>
+                <div class="brand-caption">Слот под фирменный знак</div>
             </a>
         </div>
-        <h1 class="hero-title">📝 Ручное создание заданий</h1>
-        <p class="hero-subtitle">Добавление собственных заданий для ученика {{ lesson.student.name }}</p>
-    </div>
+        {% include '_mobile_menu.html' %}
+        <nav class="nav-links">
+            <a href="{{ url_for('main.dashboard') }}" class="nav-link">
+                <span class="nav-link-content">
+                    <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon">
+                    <span class="nav-link-label">Ученики</span>
+                </span>
+            </a>
+            <a href="{{ url_for('schedule.schedule') }}" class="nav-link">
+                <span class="nav-link-content">
+                    <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon">
+                    <span class="nav-link-label">Расписание</span>
+                </span>
+            </a>
+            <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">
+                <span class="nav-link-content">
+                    <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon">
+                    <span class="nav-link-label">Генератор</span>
+                </span>
+            </a>
+        </nav>
+    </header>
 
-    <div id="tasks-container">
-        <!-- Здесь будут появляться карточки заданий -->
-    </div>
-
-    <div class="glass-panel" style="text-align: center; margin-top: 2rem; border-style: dashed;">
-        <button onclick="addTaskCard()" class="neo-button outline" style="width: 100%; padding: 1.5rem;">
-            ➕ Добавить еще задание
-        </button>
-    </div>
-
-    <div class="glass-panel" style="position: sticky; bottom: 2rem; margin-top: 2rem; z-index: 100;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div id="status-text" style="color: var(--text-muted);">Заданий: <span id="tasks-count">0</span></div>
-            <button onclick="saveTasks()" class="neo-button accent">
-                💾 Сохранить и добавить в урок
-            </button>
-        </div>
-    </div>
-</div>
-
-<template id="task-card-template">
-    <div class="glass-panel task-card-entry" style="margin-bottom: 1.5rem; position: relative;">
-        <button onclick="removeTaskCard(this)" class="neo-button danger" style="position: absolute; top: 1rem; right: 1rem; padding: 0.5rem;">
-            🗑️
-        </button>
-        
-        <div class="form-group" style="margin-bottom: 1.5rem; max-width: 200px;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Номер задания (ЕГЭ)</label>
-            <input type="number" class="task-number-input" min="1" max="27" value="1" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary);">
-        </div>
-
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Текст задания</label>
-            <div class="editor-toolbar" style="margin-bottom: 0.5rem; display: flex; gap: 0.5rem;">
-                <button type="button" onclick="insertTag(this, 'b')" class="neo-button ghost small">B</button>
-                <button type="button" onclick="insertTag(this, 'code')" class="neo-button ghost small">&lt;/&gt;</button>
-                <button type="button" onclick="insertTag(this, 'pre')" class="neo-button ghost small">Code Block</button>
-                <button type="button" onclick="insertTag(this, 'table')" class="neo-button ghost small">Table</button>
+    <div class="app-shell">
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="text-decoration: none;">
+                    ← Вернуться назад
+                </a>
             </div>
-            <textarea class="task-content-input" rows="6" placeholder="Введите текст задания..." style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary); font-family: inherit;"></textarea>
-            <small style="color: var(--text-muted);">Поддерживается HTML и Markdown-подобная разметка</small>
+            <p class="hero-eyebrow">ручное создание</p>
+            <h1 class="hero-title">📝 Ручное создание заданий</h1>
+            <p class="hero-subtitle">Добавление собственных заданий для ученика {{ lesson.student.name }}</p>
+        </section>
+
+        <div id="tasks-container">
+            <!-- Здесь будут появляться карточки заданий -->
         </div>
 
-        <div class="form-group">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Правильный ответ</label>
-            <input type="text" class="task-answer-input" placeholder="Например: 42" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary);">
-        </div>
+        <section class="glass-panel" style="text-align: center; margin-top: 2rem; border-style: dashed;">
+            <button onclick="addTaskCard()" class="neo-button outline" style="width: 100%; padding: 1.5rem;">
+                ➕ Добавить еще задание
+            </button>
+        </section>
+
+        <section class="glass-panel" style="position: sticky; bottom: 2rem; margin-top: 2rem; z-index: 100;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div id="status-text" style="color: var(--text-muted);">Заданий: <span id="tasks-count">0</span></div>
+                <button onclick="saveTasks()" class="neo-button accent">
+                    💾 Сохранить и добавить в урок
+                </button>
+            </div>
+        </section>
     </div>
-</template>
 
-<script>
-    function addTaskCard() {
-        const template = document.getElementById('task-card-template');
-        const clone = template.content.cloneNode(true);
-        document.getElementById('tasks-container').appendChild(clone);
-        updateCount();
-    }
+    <template id="task-card-template">
+        <section class="glass-panel task-card-entry" style="margin-bottom: 1.5rem; position: relative;">
+            <button type="button" onclick="removeTaskCard(this)" class="neo-button danger" style="position: absolute; top: 1rem; right: 1rem; padding: 0.5rem;">
+                🗑️
+            </button>
+            
+            <div class="form-group" style="margin-bottom: 1.5rem; max-width: 200px;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Номер задания (ЕГЭ)</label>
+                <input type="number" class="task-number-input" min="1" max="27" value="1" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary);">
+            </div>
 
-    function removeTaskCard(btn) {
-        btn.closest('.task-card-entry').remove();
-        updateCount();
-    }
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Текст задания</label>
+                <textarea class="task-content-input" rows="6" placeholder="Введите текст задания..." style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary); font-family: inherit;"></textarea>
+                <small style="color: var(--text-muted);">Поддерживается HTML-разметка</small>
+            </div>
 
-    function updateCount() {
-        const count = document.querySelectorAll('.task-card-entry').length;
-        document.getElementById('tasks-count').textContent = count;
-    }
+            <div class="form-group">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Правильный ответ</label>
+                <input type="text" class="task-answer-input" placeholder="Например: 42" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary);">
+            </div>
+        </section>
+    </template>
 
-    function insertTag(btn, tag) {
-        const textarea = btn.closest('.form-group').querySelector('textarea');
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const text = textarea.value;
-        
-        let replacement = '';
-        if (tag === 'b') replacement = `<b>${text.substring(start, end)}</b>`;
-        else if (tag === 'code') replacement = `<code>${text.substring(start, end)}</code>`;
-        else if (tag === 'pre') replacement = `<pre>${text.substring(start, end)}</pre>`;
-        else if (tag === 'table') replacement = `<table border="1"><tr><td>Cell 1</td><td>Cell 2</td></tr></table>`;
-        
-        textarea.value = text.substring(0, start) + replacement + text.substring(end);
-        textarea.focus();
-    }
-
-    async function saveTasks() {
-        const cards = document.querySelectorAll('.task-card-entry');
-        if (cards.length === 0) {
-            toast.warning('Добавьте хотя бы одно задание');
-            return;
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script>
+        function addTaskCard() {
+            const template = document.getElementById('task-card-template');
+            const clone = template.content.cloneNode(true);
+            document.getElementById('tasks-container').appendChild(clone);
+            updateCount();
         }
 
-        const tasks = [];
-        let hasError = false;
+        function removeTaskCard(btn) {
+            btn.closest('.task-card-entry').remove();
+            updateCount();
+        }
 
-        cards.forEach((card, index) => {
-            const number = card.querySelector('.task-number-input').value;
-            const content = card.querySelector('.task-content-input').value;
-            const answer = card.querySelector('.task-answer-input').value;
+        function updateCount() {
+            const count = document.querySelectorAll('.task-card-entry').length;
+            document.getElementById('tasks-count').textContent = count;
+        }
 
-            if (!content.trim()) {
-                card.querySelector('.task-content-input').style.borderColor = 'var(--danger-color)';
-                hasError = true;
-            } else {
-                tasks.push({
-                    number: parseInt(number),
-                    content: content,
-                    answer: answer
-                });
+        async function saveTasks() {
+            const cards = document.querySelectorAll('.task-card-entry');
+            if (cards.length === 0) {
+                toast.warning('Добавьте хотя бы одно задание');
+                return;
             }
-        });
 
-        if (hasError) {
-            toast.error('Заполните текст всех заданий');
-            return;
-        }
+            const tasks = [];
+            let hasError = false;
 
-        const loaderId = loading.show(document.body, 'Сохранение заданий...');
+            cards.forEach((card, index) => {
+                const number = card.querySelector('.task-number-input').value;
+                const content = card.querySelector('.task-content-input').value;
+                const answer = card.querySelector('.task-answer-input').value;
 
-        try {
-            const response = await fetch(window.location.href, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({ tasks: tasks })
+                if (!content.trim()) {
+                    card.querySelector('.task-content-input').style.borderColor = 'var(--danger-color)';
+                    hasError = true;
+                } else {
+                    tasks.push({
+                        number: parseInt(number),
+                        content: content,
+                        answer: answer
+                    });
+                }
             });
 
-            const data = await response.json();
-
-            if (data.success) {
-                toast.success(`Успешно создано заданий: ${data.count}`);
-                setTimeout(() => {
-                    window.location.href = "{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}";
-                }, 1000);
-            } else {
-                toast.error(data.error || 'Ошибка при сохранении');
+            if (hasError) {
+                toast.error('Заполните текст всех заданий');
+                return;
             }
-        } catch (e) {
-            console.error(e);
-            toast.error('Ошибка сети');
-        } finally {
-            loading.hide(loaderId);
+
+            const loaderId = loading.show(document.body, 'Сохранение заданий...');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+
+            try {
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken ? csrfToken.content : ''
+                    },
+                    body: JSON.stringify({ tasks: tasks })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    toast.success(`Успешно создано заданий: ${data.count}`);
+                    setTimeout(() => {
+                        window.location.href = "{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}";
+                    }, 1000);
+                } else {
+                    toast.error(data.error || 'Ошибка при сохранении');
+                }
+            } catch (e) {
+                console.error(e);
+                toast.error('Ошибка сети');
+            } finally {
+                loading.hide(loaderId);
+            }
         }
-    }
 
-    // Add first card automatically
-    document.addEventListener('DOMContentLoaded', () => {
-        addTaskCard();
-    });
-</script>
-
-<style>
-    .editor-toolbar button {
-        padding: 4px 8px;
-        font-size: 0.8em;
-    }
-</style>
-{% endblock %}
+        // Add first card automatically
+        document.addEventListener('DOMContentLoaded', () => {
+            addTaskCard();
+        });
+    </script>
+</body>
+</html>
