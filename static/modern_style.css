@@ -179,7 +179,13 @@ body::after {
     pointer-events: none;
 }
 
+/* Глобально: не подсвечиваем большие секции при hover.
+   Если когда-то понадобится подсветка для отдельной панели — добавь класс .panel-hover */
 .glass-panel:hover::after {
+    opacity: 0;
+}
+
+.glass-panel.panel-hover:hover::after {
     opacity: 1;
 }
 
@@ -364,8 +370,13 @@ body::after {
 }
 
 .neo-button:hover {
-    transform: translateY(-1px);
+    transform: translateY(-2px);
     color: #fff;
+}
+
+.neo-button:not(.accent):not(.danger):hover {
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.22);
+    border-color: rgba(0, 198, 164, 0.25);
 }
 
 .dashboard-hero {
