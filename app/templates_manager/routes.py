@@ -281,6 +281,11 @@ def template_manual_create():
             return jsonify({'success': False, 'error': str(e)}), 500
 
     return render_template('template_manual_create.html')
+    # try:
+    #     return render_template('template_manual_create.html')
+    # except Exception as e:
+    #     logger.error(f"Error rendering template: {e}", exc_info=True)
+    #     return str(e), 500
 
 @templates_bp.route('/templates/<int:template_id>/apply', methods=['POST'])
 @login_required
