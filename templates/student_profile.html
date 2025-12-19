@@ -51,16 +51,16 @@
         .lessons-list {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 1.25rem;
         }
         
-        /* Новый дизайн карточки урока */
+        /* Премиальный дизайн карточки урока */
         .lesson-card {
-            background: var(--surface-1);
+            background: linear-gradient(135deg, var(--surface-1) 0%, rgba(15, 17, 28, 0.95) 100%);
             border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
+            border-radius: 16px;
             overflow: hidden;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
             position: relative;
         }
         
@@ -70,44 +70,73 @@
             left: 0;
             top: 0;
             bottom: 0;
-            width: 4px;
+            width: 5px;
             background: var(--stroke-1);
+            transition: all 0.3s ease;
         }
         
-        .lesson-card[data-status="planned"]::before { background: var(--accent-2); }
-        .lesson-card[data-status="in_progress"]::before { background: var(--warning); }
-        .lesson-card[data-status="completed"]::before { background: var(--success); }
-        .lesson-card[data-status="cancelled"]::before { background: var(--danger); }
+        .lesson-card[data-status="planned"]::before { 
+            background: linear-gradient(180deg, var(--accent-2), rgba(23, 96, 216, 0.5)); 
+        }
+        .lesson-card[data-status="in_progress"]::before { 
+            background: linear-gradient(180deg, var(--warning), rgba(255, 193, 7, 0.5));
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        .lesson-card[data-status="completed"]::before { 
+            background: linear-gradient(180deg, var(--success), rgba(0, 254, 202, 0.3)); 
+        }
+        .lesson-card[data-status="cancelled"]::before { 
+            background: linear-gradient(180deg, var(--danger), rgba(255, 108, 145, 0.3)); 
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
         
         .lesson-card:hover {
-            border-color: var(--stroke-2);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border-color: var(--accent-1);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(0, 198, 164, 0.15);
         }
         
         .lesson-card-inner {
-            padding: 1.25rem 1.25rem 1.25rem 1.5rem;
+            padding: 1.5rem;
         }
         
+        /* Header с датой и статусом */
         .lesson-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             gap: 1rem;
-            margin-bottom: 0.75rem;
+            margin-bottom: 1rem;
         }
         
         .lesson-header-left {
             display: flex;
-            align-items: center;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .lesson-date-row {
+            display: flex;
+            align-items: baseline;
             gap: 0.75rem;
-            flex-wrap: wrap;
         }
         
         .lesson-date {
-            font-size: 1.1em;
-            font-weight: 700;
+            font-size: 1.35em;
+            font-weight: 800;
             color: var(--text-primary);
             font-variant-numeric: tabular-nums;
+            letter-spacing: -0.02em;
+        }
+        
+        .lesson-time {
+            font-size: 1rem;
+            color: var(--text-muted);
+            font-weight: 500;
         }
         
         .lesson-badges {
@@ -117,172 +146,260 @@
         }
         
         .lesson-badge {
-            padding: 0.25rem 0.6rem;
-            border-radius: 4px;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
             font-size: 0.75rem;
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.02em;
+            letter-spacing: 0.05em;
         }
         
-        .lesson-badge.type-exam { background: linear-gradient(120deg, var(--warning), #ffb347); color: #1c0f02; }
-        .lesson-badge.type-introductory { background: var(--success); color: #001b18; }
-        .lesson-badge.type-regular { background: var(--surface-3); color: var(--text-muted); }
+        .lesson-badge.type-exam { 
+            background: linear-gradient(120deg, var(--warning), #ffb347); 
+            color: #1c0f02;
+            box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+        }
+        .lesson-badge.type-introductory { 
+            background: linear-gradient(120deg, var(--success), #00c6ad); 
+            color: #001b18;
+            box-shadow: 0 2px 8px rgba(0, 254, 202, 0.3);
+        }
         
-        .lesson-badge.status-planned { background: rgba(23, 96, 216, 0.25); color: var(--accent-2); }
-        .lesson-badge.status-in_progress { background: rgba(255, 193, 7, 0.25); color: var(--warning); }
-        .lesson-badge.status-completed { background: rgba(255, 255, 255, 0.08); color: var(--text-muted); }
-        .lesson-badge.status-cancelled { background: rgba(255, 108, 145, 0.2); color: var(--danger); }
+        .lesson-status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
         
+        .lesson-status-badge.planned { 
+            background: rgba(23, 96, 216, 0.2); 
+            color: var(--accent-2);
+            border: 1px solid rgba(23, 96, 216, 0.4);
+        }
+        .lesson-status-badge.in_progress { 
+            background: rgba(255, 193, 7, 0.2); 
+            color: var(--warning);
+            border: 1px solid rgba(255, 193, 7, 0.4);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .lesson-status-badge.completed { 
+            background: rgba(0, 254, 202, 0.1); 
+            color: var(--success);
+            border: 1px solid rgba(0, 254, 202, 0.3);
+        }
+        .lesson-status-badge.cancelled { 
+            background: rgba(255, 108, 145, 0.15); 
+            color: var(--danger);
+            border: 1px solid rgba(255, 108, 145, 0.3);
+        }
+        
+        /* Тема урока */
         .lesson-topic {
-            font-size: 1rem;
+            font-size: 1.15rem;
             color: var(--accent-1);
-            font-weight: 600;
-            margin-bottom: 0.5rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
         }
         
+        /* Мета-информация */
         .lesson-meta {
             display: flex;
             align-items: center;
-            gap: 1.5rem;
-            color: var(--text-muted);
-            font-size: 0.85rem;
+            gap: 1.25rem;
+            padding: 0.75rem 1rem;
+            background: var(--surface-2);
+            border-radius: 10px;
+            margin-bottom: 1rem;
             flex-wrap: wrap;
         }
         
         .lesson-meta-item {
             display: flex;
             align-items: center;
-            gap: 0.35rem;
+            gap: 0.4rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .lesson-meta-item .icon {
+            font-size: 1.1rem;
         }
         
         .lesson-meta-item.hw-done { color: var(--success); }
         .lesson-meta-item.hw-not-done { color: var(--danger); }
         .lesson-meta-item.hw-not-assigned { color: var(--text-muted); }
+        .lesson-meta-item.result { 
+            color: var(--accent-1);
+            font-weight: 700;
+        }
         
-        /* Секция заданий */
+        /* Секция заданий - крупные карточки */
         .lesson-assignments {
             display: flex;
-            gap: 0.5rem;
-            margin-top: 0.75rem;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
             flex-wrap: wrap;
         }
         
-        .assignment-chip {
-            display: inline-flex;
+        .assignment-card {
+            display: flex;
             align-items: center;
-            gap: 0.35rem;
-            padding: 0.4rem 0.75rem;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 500;
+            gap: 0.75rem;
+            padding: 0.85rem 1.25rem;
+            border-radius: 12px;
             text-decoration: none;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
+            min-width: 140px;
         }
         
-        .assignment-chip.homework {
-            background: rgba(23, 96, 216, 0.15);
-            color: var(--accent-2);
+        .assignment-card.homework {
+            background: linear-gradient(135deg, rgba(23, 96, 216, 0.15), rgba(23, 96, 216, 0.05));
             border: 1px solid rgba(23, 96, 216, 0.3);
         }
         
-        .assignment-chip.classwork {
-            background: rgba(0, 254, 202, 0.12);
-            color: var(--success);
+        .assignment-card.classwork {
+            background: linear-gradient(135deg, rgba(0, 254, 202, 0.12), rgba(0, 254, 202, 0.04));
             border: 1px solid rgba(0, 254, 202, 0.3);
         }
         
-        .assignment-chip.exam {
-            background: rgba(255, 193, 7, 0.15);
-            color: var(--warning);
+        .assignment-card.exam {
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 193, 7, 0.05));
             border: 1px solid rgba(255, 193, 7, 0.3);
         }
         
-        .assignment-chip:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        .assignment-card:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
         }
         
-        .assignment-chip .count {
-            background: rgba(255, 255, 255, 0.15);
-            padding: 0.1rem 0.4rem;
-            border-radius: 4px;
+        .assignment-card .icon {
+            font-size: 1.5rem;
+        }
+        
+        .assignment-card .info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .assignment-card .label {
             font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.8;
         }
         
-        /* Действия */
+        .assignment-card.homework .label { color: var(--accent-2); }
+        .assignment-card.classwork .label { color: var(--success); }
+        .assignment-card.exam .label { color: var(--warning); }
+        
+        .assignment-card .count {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        /* Заметки */
+        .lesson-notes {
+            padding: 1rem 1.25rem;
+            background: linear-gradient(135deg, var(--surface-2), rgba(22, 25, 38, 0.6));
+            border-radius: 10px;
+            border-left: 3px solid var(--accent-1);
+            margin-bottom: 1rem;
+        }
+        
+        .lesson-notes-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent-1);
+            margin-bottom: 0.5rem;
+        }
+        
+        .lesson-notes-text {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        
+        /* Панель действий */
         .lesson-actions-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 0.75rem;
-            margin-top: 1rem;
+            gap: 1rem;
             padding-top: 1rem;
             border-top: 1px solid var(--stroke-1);
         }
         
         .lesson-primary-actions {
             display: flex;
-            gap: 0.5rem;
+            gap: 0.75rem;
             flex-wrap: wrap;
         }
         
         .lesson-secondary-actions {
             display: flex;
-            gap: 0.25rem;
+            gap: 0.5rem;
         }
         
+        /* Кнопки действий */
         .action-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 0.35rem;
-            padding: 0.5rem 0.85rem;
-            border-radius: 6px;
-            font-size: 0.8rem;
+            gap: 0.5rem;
+            padding: 0.65rem 1.1rem;
+            border-radius: 10px;
+            font-size: 0.85rem;
             font-weight: 600;
             text-decoration: none;
             border: none;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
         }
         
         .action-btn.primary {
-            background: var(--accent-1);
+            background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
             color: white;
+            box-shadow: 0 4px 15px rgba(0, 198, 164, 0.3);
         }
         
         .action-btn.primary:hover {
-            background: var(--accent-2);
-            transform: translateY(-1px);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 198, 164, 0.4);
         }
         
         .action-btn.secondary {
             background: var(--surface-2);
             color: var(--text-primary);
-            border: 1px solid var(--stroke-1);
+            border: 1px solid var(--stroke-2);
         }
         
         .action-btn.secondary:hover {
             background: var(--surface-3);
-            border-color: var(--stroke-2);
+            border-color: var(--accent-1);
+            color: var(--accent-1);
         }
         
         .action-btn.icon-only {
-            padding: 0.5rem;
-            width: 32px;
-            height: 32px;
-        }
-        
-        .action-btn.danger {
-            color: var(--danger);
+            padding: 0.65rem;
+            width: 40px;
+            height: 40px;
+            font-size: 1rem;
         }
         
         .action-btn.danger:hover {
-            background: rgba(255, 108, 145, 0.15);
+            background: rgba(255, 108, 145, 0.2);
+            border-color: var(--danger);
+            color: var(--danger);
         }
         
-        /* Дропдаун для формирования заданий */
+        /* Выпадающее меню */
         .create-dropdown {
             position: relative;
         }
@@ -290,13 +407,13 @@
         .create-dropdown-content {
             display: none;
             position: absolute;
-            top: calc(100% + 4px);
+            top: calc(100% + 8px);
             left: 0;
             background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: 8px;
-            min-width: 200px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--stroke-2);
+            border-radius: 12px;
+            min-width: 220px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
             z-index: 100;
             overflow: hidden;
         }
@@ -304,17 +421,24 @@
         .create-dropdown:hover .create-dropdown-content,
         .create-dropdown:focus-within .create-dropdown-content {
             display: block;
+            animation: dropdownFade 0.2s ease;
+        }
+        
+        @keyframes dropdownFade {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         .create-dropdown-item {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1rem;
+            gap: 0.75rem;
+            padding: 0.9rem 1.25rem;
             color: var(--text-primary);
             text-decoration: none;
-            font-size: 0.85rem;
-            transition: background 0.15s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
             cursor: pointer;
             border: none;
             background: none;
@@ -324,27 +448,16 @@
         
         .create-dropdown-item:hover {
             background: var(--surface-2);
+            padding-left: 1.5rem;
+        }
+        
+        .create-dropdown-item .icon {
+            font-size: 1.2rem;
         }
         
         .create-dropdown-item.homework { color: var(--accent-2); }
         .create-dropdown-item.classwork { color: var(--success); }
         .create-dropdown-item.exam { color: var(--warning); }
-        
-        /* Заметки - сворачиваемые */
-        .lesson-notes {
-            margin-top: 0.75rem;
-            padding: 0.75rem;
-            background: var(--surface-2);
-            border-radius: 6px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-        
-        .lesson-notes-label {
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 0.25rem;
-        }
         
         .lesson-homework-text {
             margin-top: 1em;
@@ -957,76 +1070,100 @@
                     {% set exam_count = exam_assignments|length %}
                     
                     <div class="lesson-card-inner">
-                        <!-- Header: дата + бейджи -->
+                        <!-- Header: дата + статус -->
                         <div class="lesson-header">
                             <div class="lesson-header-left">
-                                <span class="lesson-date">{{ lesson.lesson_date.strftime('%d.%m.%Y') }}</span>
-                                <span style="color: var(--text-muted); font-size: 0.9em;">{{ lesson.lesson_date.strftime('%H:%M') }}</span>
+                                <div class="lesson-date-row">
+                                    <span class="lesson-date">{{ lesson.lesson_date.strftime('%d.%m.%Y') }}</span>
+                                    <span class="lesson-time">{{ lesson.lesson_date.strftime('%H:%M') }}</span>
+                                </div>
                                 <div class="lesson-badges">
                                     {% if lesson.lesson_type == 'exam' %}
-                                    <span class="lesson-badge type-exam">проверочный</span>
+                                    <span class="lesson-badge type-exam">📊 Проверочный</span>
                                     {% elif lesson.lesson_type == 'introductory' %}
-                                    <span class="lesson-badge type-introductory">вводный</span>
+                                    <span class="lesson-badge type-introductory">👋 Вводный</span>
                                     {% endif %}
                                 </div>
                             </div>
-                            <span class="lesson-badge status-{{ lesson.status }}">
-                                {% if lesson.status == 'planned' %}запланирован
-                                {% elif lesson.status == 'in_progress' %}идёт
-                                {% elif lesson.status == 'completed' %}проведён
-                                {% elif lesson.status == 'cancelled' %}отменён
+                            <span class="lesson-status-badge {{ lesson.status }}">
+                                {% if lesson.status == 'planned' %}📅 Запланирован
+                                {% elif lesson.status == 'in_progress' %}🎓 Идёт сейчас
+                                {% elif lesson.status == 'completed' %}✅ Проведён
+                                {% elif lesson.status == 'cancelled' %}❌ Отменён
                                 {% endif %}
                             </span>
                         </div>
                         
-                        <!-- Тема -->
+                        <!-- Тема урока -->
                         {% if lesson.topic %}
                         <div class="lesson-topic">{{ lesson.topic }}</div>
                         {% endif %}
                         
-                        <!-- Мета-информация -->
+                        <!-- Мета-информация в блоке -->
                         <div class="lesson-meta">
-                            <span class="lesson-meta-item">⏱ {{ lesson.duration }} мин</span>
+                            <span class="lesson-meta-item">
+                                <span class="icon">⏱</span> {{ lesson.duration }} минут
+                            </span>
                             {% if lesson.lesson_type != 'introductory' and lesson.homework_status %}
                                 {% if lesson.homework_status == 'assigned_done' %}
-                                <span class="lesson-meta-item hw-done">✓ ДЗ выполнено</span>
+                                <span class="lesson-meta-item hw-done">
+                                    <span class="icon">✅</span> ДЗ выполнено
+                                </span>
                                 {% elif lesson.homework_status == 'assigned_not_done' %}
-                                <span class="lesson-meta-item hw-not-done">✗ ДЗ не сдано</span>
+                                <span class="lesson-meta-item hw-not-done">
+                                    <span class="icon">❌</span> ДЗ не сдано
+                                </span>
                                 {% elif lesson.homework_status == 'not_assigned' %}
-                                <span class="lesson-meta-item hw-not-assigned">— ДЗ не задано</span>
+                                <span class="lesson-meta-item hw-not-assigned">
+                                    <span class="icon">➖</span> Без ДЗ
+                                </span>
                                 {% endif %}
                             {% endif %}
                             {% if lesson.homework_result_percent is not none %}
-                            <span class="lesson-meta-item" style="color: var(--success);">📊 {{ lesson.homework_result_percent }}%</span>
+                            <span class="lesson-meta-item result">
+                                <span class="icon">📊</span> Результат: {{ lesson.homework_result_percent }}%
+                            </span>
                             {% endif %}
                         </div>
                         
-                        <!-- Чипы заданий -->
+                        <!-- Карточки заданий -->
                         {% if homework_count or classwork_count or exam_count %}
                         <div class="lesson-assignments">
                             {% if homework_count %}
-                            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="assignment-chip homework">
-                                📝 ДЗ <span class="count">{{ homework_count }}</span>
+                            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="assignment-card homework">
+                                <span class="icon">📝</span>
+                                <div class="info">
+                                    <span class="label">Домашнее задание</span>
+                                    <span class="count">{{ homework_count }} заданий</span>
+                                </div>
                             </a>
                             {% endif %}
                             {% if classwork_count %}
-                            <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="assignment-chip classwork">
-                                🏫 КР <span class="count">{{ classwork_count }}</span>
+                            <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="assignment-card classwork">
+                                <span class="icon">🏫</span>
+                                <div class="info">
+                                    <span class="label">Классная работа</span>
+                                    <span class="count">{{ classwork_count }} заданий</span>
+                                </div>
                             </a>
                             {% endif %}
                             {% if exam_count %}
-                            <a href="{{ url_for('lessons.lesson_exam_view', lesson_id=lesson.lesson_id) }}" class="assignment-chip exam">
-                                📊 Провер. <span class="count">{{ exam_count }}</span>
+                            <a href="{{ url_for('lessons.lesson_exam_view', lesson_id=lesson.lesson_id) }}" class="assignment-card exam">
+                                <span class="icon">📊</span>
+                                <div class="info">
+                                    <span class="label">Проверочная</span>
+                                    <span class="count">{{ exam_count }} заданий</span>
+                                </div>
                             </a>
                             {% endif %}
                         </div>
                         {% endif %}
                         
-                        <!-- Заметки (если есть) -->
+                        <!-- Заметки -->
                         {% if lesson.notes %}
                         <div class="lesson-notes">
-                            <div class="lesson-notes-label">Заметки</div>
-                            <div>{{ lesson.notes|truncate(150) }}</div>
+                            <div class="lesson-notes-label">📋 Заметки</div>
+                            <div class="lesson-notes-text">{{ lesson.notes|truncate(200) }}</div>
                         </div>
                         {% endif %}
                         
@@ -1035,40 +1172,40 @@
                             <div class="lesson-primary-actions">
                                 {% if lesson.status == 'planned' %}
                                 <form method="POST" action="{{ url_for('lessons.lesson_start', lesson_id=lesson.lesson_id) }}" style="margin: 0;">
-                                    <button type="submit" class="action-btn primary">🎓 Начать</button>
+                                    <button type="submit" class="action-btn primary">🎓 Начать урок</button>
                                 </form>
                                 {% endif %}
                                 
-                                <!-- Выпадающее меню для формирования заданий -->
+                                <!-- Выпадающее меню -->
                                 <div class="create-dropdown">
-                                    <button type="button" class="action-btn secondary">➕ Сформировать</button>
+                                    <button type="button" class="action-btn secondary">➕ Сформировать задания</button>
                                     <div class="create-dropdown-content">
                                         <a href="#" class="create-dropdown-item homework" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="homework" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">
-                                            📝 Домашнее задание
+                                            <span class="icon">📝</span> Домашнее задание
                                         </a>
                                         <a href="#" class="create-dropdown-item classwork" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="classwork" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">
-                                            🏫 Классная работа
+                                            <span class="icon">🏫</span> Классная работа
                                         </a>
                                         <a href="#" class="create-dropdown-item exam" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="exam" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">
-                                            📊 Проверочная
+                                            <span class="icon">📊</span> Проверочная работа
                                         </a>
                                         <form method="POST" action="{{ url_for('lessons.lesson_homework_not_assigned', lesson_id=lesson.lesson_id) }}" style="margin: 0;">
                                             <button type="submit" class="create-dropdown-item" style="color: var(--text-muted);">
-                                                ➖ ДЗ не задано
+                                                <span class="icon">➖</span> ДЗ не задано
                                             </button>
                                         </form>
                                     </div>
                                 </div>
                                 
                                 {% if homework_count %}
-                                <a href="{{ url_for('lessons.lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="action-btn secondary" title="Экспорт ДЗ">📄</a>
+                                <a href="{{ url_for('lessons.lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="action-btn secondary" title="Экспортировать ДЗ в Markdown">📄 Экспорт</a>
                                 {% endif %}
                             </div>
                             
                             <div class="lesson-secondary-actions">
-                                <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="action-btn secondary icon-only" title="Редактировать">✏️</a>
+                                <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="action-btn secondary icon-only" title="Редактировать урок">✏️</a>
                                 <form method="POST" action="{{ url_for('lessons.lesson_delete', lesson_id=lesson.lesson_id) }}" class="confirm-delete-form" style="margin: 0;">
-                                    <button type="submit" class="action-btn secondary icon-only danger" title="Удалить">🗑️</button>
+                                    <button type="submit" class="action-btn secondary icon-only danger" title="Удалить урок">🗑️</button>
                                 </form>
                             </div>
                         </div>
