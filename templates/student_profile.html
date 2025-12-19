@@ -855,30 +855,46 @@
         .student-hero {
             display: grid;
             grid-template-columns: 1fr auto;
-            gap: 2rem;
-            padding: 2rem;
-            background: linear-gradient(135deg, var(--surface-1), rgba(15, 17, 28, 0.95));
-            border: 1px solid var(--stroke-1);
-            border-radius: 24px;
+            gap: 2.5rem;
+            padding: 2.5rem;
+            background: 
+                linear-gradient(135deg, rgba(8, 10, 18, 0.98), rgba(15, 17, 28, 0.95)),
+                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0, 198, 164, 0.02) 10px, rgba(0, 198, 164, 0.02) 20px);
+            border: 2px solid var(--stroke-1);
+            border-radius: 28px;
             position: relative;
             overflow: hidden;
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
         
         .student-hero::before {
             content: '';
             position: absolute;
-            top: -50%;
-            right: -20%;
+            top: -100px;
+            right: -100px;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(0, 198, 164, 0.12), transparent 50%);
+            pointer-events: none;
+        }
+        
+        .student-hero::after {
+            content: '';
+            position: absolute;
+            bottom: -150px;
+            left: -100px;
             width: 400px;
             height: 400px;
-            background: radial-gradient(circle, rgba(0, 198, 164, 0.08), transparent 60%);
+            background: radial-gradient(circle, rgba(23, 96, 216, 0.1), transparent 50%);
             pointer-events: none;
         }
         
         .student-info {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 1.25rem;
             position: relative;
             z-index: 1;
         }
@@ -886,90 +902,126 @@
         .student-header {
             display: flex;
             align-items: center;
-            gap: 1.5rem;
+            gap: 1.75rem;
         }
         
         .student-avatar {
-            width: 80px;
-            height: 80px;
-            border-radius: 20px;
+            width: 100px;
+            height: 100px;
+            border-radius: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            font-size: 2.5rem;
             font-weight: 900;
             color: white;
             background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
-            box-shadow: 0 8px 24px rgba(0, 198, 164, 0.25);
+            box-shadow: 
+                0 12px 30px rgba(0, 198, 164, 0.35),
+                inset 0 2px 0 rgba(255, 255, 255, 0.2);
             flex-shrink: 0;
+            position: relative;
+            border: 3px solid rgba(255, 255, 255, 0.1);
         }
         
-        .student-avatar.ege { background: linear-gradient(135deg, #1760d8, #00c6a4); }
-        .student-avatar.oge { background: linear-gradient(135deg, #6366f1, #a855f7); }
-        .student-avatar.programming { background: linear-gradient(135deg, #f59e0b, #ef4444); }
-        .student-avatar.levelup { background: linear-gradient(135deg, #10b981, #3b82f6); }
+        .student-avatar::after {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 28px;
+            border: 2px dashed rgba(255, 255, 255, 0.1);
+            animation: spin 20s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .student-avatar.ege { 
+            background: linear-gradient(135deg, #1760d8, #00c6a4);
+            box-shadow: 0 12px 30px rgba(23, 96, 216, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.2);
+        }
+        .student-avatar.oge { 
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            box-shadow: 0 12px 30px rgba(99, 102, 241, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.2);
+        }
+        .student-avatar.programming { 
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            box-shadow: 0 12px 30px rgba(245, 158, 11, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.2);
+        }
+        .student-avatar.levelup { 
+            background: linear-gradient(135deg, #10b981, #3b82f6);
+            box-shadow: 0 12px 30px rgba(16, 185, 129, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.2);
+        }
         
         .student-name-block {
             display: flex;
             flex-direction: column;
-            gap: 0.25rem;
+            gap: 0.5rem;
         }
         
         .student-name {
-            font-size: 2rem;
+            font-size: 2.5rem;
             font-weight: 900;
             color: var(--text-primary);
-            letter-spacing: -0.02em;
-            line-height: 1.2;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
         
         .student-category-tag {
             display: inline-flex;
             align-items: center;
-            gap: 0.4rem;
-            padding: 0.4rem 0.85rem;
-            border-radius: 8px;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
             font-size: 0.8rem;
-            font-weight: 700;
+            font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.08em;
             width: fit-content;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
         
         .student-category-tag.ege {
-            background: linear-gradient(135deg, rgba(23, 96, 216, 0.2), rgba(0, 198, 164, 0.15));
+            background: linear-gradient(135deg, rgba(23, 96, 216, 0.25), rgba(0, 198, 164, 0.2));
             color: var(--accent-1);
-            border: 1px solid rgba(0, 198, 164, 0.3);
+            border: 2px solid rgba(0, 198, 164, 0.4);
         }
         
         .student-category-tag.oge {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.15));
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(168, 85, 247, 0.2));
             color: #a78bfa;
-            border: 1px solid rgba(168, 85, 247, 0.3);
+            border: 2px solid rgba(168, 85, 247, 0.4);
         }
         
         .student-category-tag.programming {
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(239, 68, 68, 0.15));
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(239, 68, 68, 0.2));
             color: #fbbf24;
-            border: 1px solid rgba(245, 158, 11, 0.3);
+            border: 2px solid rgba(245, 158, 11, 0.4);
         }
         
         .student-category-tag.levelup {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.15));
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(59, 130, 246, 0.2));
             color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.3);
+            border: 2px solid rgba(16, 185, 129, 0.4);
         }
         
         .student-description {
             color: var(--text-muted);
-            font-size: 1rem;
-            line-height: 1.5;
+            font-size: 1.05rem;
+            line-height: 1.6;
             max-width: 600px;
+            padding: 1rem 1.25rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border-left: 3px solid var(--accent-1);
         }
         
         .student-tags {
             display: flex;
-            gap: 0.75rem;
+            gap: 1rem;
             flex-wrap: wrap;
             align-items: center;
         }
@@ -977,65 +1029,102 @@
         .student-tag-item {
             display: inline-flex;
             align-items: center;
-            gap: 0.4rem;
-            padding: 0.35rem 0.75rem;
-            background: var(--surface-2);
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: linear-gradient(135deg, var(--surface-2), rgba(22, 25, 38, 0.8));
             border: 1px solid var(--stroke-1);
-            border-radius: 8px;
-            font-size: 0.85rem;
+            border-radius: 10px;
+            font-size: 0.9rem;
             color: var(--text-secondary);
+            transition: all 0.25s ease;
+        }
+        
+        .student-tag-item:hover {
+            border-color: var(--accent-1);
+            transform: translateY(-1px);
         }
         
         .student-tag-item .value {
             color: var(--accent-1);
-            font-weight: 600;
+            font-weight: 700;
         }
         
         /* Метрики справа */
         .student-metrics {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
+            gap: 1.25rem;
             position: relative;
             z-index: 1;
         }
         
         .metric-card {
-            background: linear-gradient(135deg, var(--surface-2), rgba(22, 25, 38, 0.8));
-            border: 1px solid var(--stroke-1);
-            border-radius: 16px;
-            padding: 1.25rem;
-            min-width: 130px;
+            background: 
+                linear-gradient(135deg, rgba(22, 25, 38, 0.9), rgba(15, 17, 28, 0.95)),
+                radial-gradient(ellipse at top right, rgba(0, 198, 164, 0.05), transparent 70%);
+            border: 2px solid var(--stroke-1);
+            border-radius: 20px;
+            padding: 1.5rem 1.25rem;
+            min-width: 140px;
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
-            transition: all 0.3s ease;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--accent-1), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .metric-card:hover::before {
+            opacity: 1;
         }
         
         .metric-card:hover {
             border-color: var(--accent-1);
-            transform: translateY(-2px);
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 12px 30px rgba(0, 198, 164, 0.15);
         }
         
         .metric-icon {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
+            font-size: 2rem;
+            margin-bottom: 0.75rem;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
         }
         
         .metric-value {
-            font-size: 2rem;
+            font-size: 2.5rem;
             font-weight: 900;
             color: var(--text-primary);
             line-height: 1;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
         
         .metric-label {
             font-size: 0.7rem;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.1em;
             color: var(--text-muted);
-            margin-top: 0.35rem;
+            margin-top: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .metric-card.highlight {
+            border-color: var(--accent-1);
+            background: 
+                linear-gradient(135deg, rgba(0, 198, 164, 0.1), rgba(23, 96, 216, 0.08)),
+                linear-gradient(135deg, rgba(22, 25, 38, 0.9), rgba(15, 17, 28, 0.95));
         }
         
         .metric-card.highlight .metric-value {
@@ -1043,6 +1132,7 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            filter: drop-shadow(0 2px 4px rgba(0, 198, 164, 0.3));
         }
         
         /* Кнопки действий */
@@ -1056,68 +1146,109 @@
         /* ===== Блок основных данных ===== */
         .data-cards {
             display: flex;
-            gap: 1rem;
+            gap: 1.25rem;
             flex-wrap: wrap;
-            padding: 1.5rem;
-            background: linear-gradient(135deg, var(--surface-1), rgba(15, 17, 28, 0.9));
-            border: 1px solid var(--stroke-1);
-            border-radius: 20px;
+            padding: 1.75rem;
+            background: 
+                linear-gradient(135deg, rgba(8, 10, 18, 0.95), rgba(15, 17, 28, 0.9)),
+                repeating-linear-gradient(-45deg, transparent, transparent 8px, rgba(255, 255, 255, 0.01) 8px, rgba(255, 255, 255, 0.01) 16px);
+            border: 2px solid var(--stroke-1);
+            border-radius: 24px;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+        
+        .data-cards::before {
+            content: '📋 ОСНОВНЫЕ ДАННЫЕ';
+            position: absolute;
+            top: -12px;
+            left: 24px;
+            background: var(--page-bg);
+            padding: 0 0.75rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--accent-1);
         }
         
         .data-card {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            padding: 0.85rem 1.25rem;
-            background: var(--surface-2);
+            gap: 1rem;
+            padding: 1rem 1.5rem;
+            background: linear-gradient(135deg, var(--surface-2), rgba(22, 25, 38, 0.8));
             border: 1px solid var(--stroke-1);
-            border-radius: 12px;
-            transition: all 0.25s ease;
+            border-radius: 14px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .data-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--accent-1), var(--accent-2));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .data-card:hover::before {
+            opacity: 1;
         }
         
         .data-card:hover {
-            border-color: var(--stroke-2);
-            transform: translateY(-1px);
+            border-color: var(--accent-1);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
         }
         
         .data-card-icon {
-            font-size: 1.3rem;
+            font-size: 1.75rem;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
         }
         
         .data-card-content {
             display: flex;
             flex-direction: column;
+            gap: 0.15rem;
         }
         
         .data-card-label {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.08em;
             color: var(--text-muted);
+            font-weight: 600;
         }
         
         .data-card-value {
-            font-size: 1rem;
-            font-weight: 700;
+            font-size: 1.1rem;
+            font-weight: 800;
             color: var(--text-primary);
         }
         
         /* ===== Карточки сильных/слабых сторон ===== */
         .trait-cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.25rem;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
             margin-bottom: 2rem;
         }
         
         .trait-card {
-            padding: 1.5rem;
-            background: linear-gradient(135deg, var(--surface-1), rgba(15, 17, 28, 0.95));
-            border: 1px solid var(--stroke-1);
-            border-radius: 16px;
+            padding: 1.75rem;
+            background: 
+                linear-gradient(135deg, rgba(8, 10, 18, 0.95), rgba(15, 17, 28, 0.9));
+            border: 2px solid var(--stroke-1);
+            border-radius: 20px;
             position: relative;
             overflow: hidden;
-            transition: all 0.3s ease;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
         }
         
         .trait-card::before {
@@ -1126,36 +1257,59 @@
             left: 0;
             top: 0;
             bottom: 0;
-            width: 4px;
+            width: 5px;
         }
         
-        .trait-card.strengths::before { background: linear-gradient(180deg, var(--success), transparent); }
-        .trait-card.weaknesses::before { background: linear-gradient(180deg, var(--danger), transparent); }
-        .trait-card.preferences::before { background: linear-gradient(180deg, var(--accent-2), transparent); }
-        .trait-card.notes::before { background: linear-gradient(180deg, var(--accent-1), transparent); }
+        .trait-card::after {
+            content: '';
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            opacity: 0.08;
+            pointer-events: none;
+        }
+        
+        .trait-card.strengths::before { background: linear-gradient(180deg, var(--success), rgba(0, 254, 202, 0.3)); }
+        .trait-card.strengths::after { background: radial-gradient(circle, var(--success), transparent 70%); }
+        .trait-card.weaknesses::before { background: linear-gradient(180deg, var(--danger), rgba(255, 108, 145, 0.3)); }
+        .trait-card.weaknesses::after { background: radial-gradient(circle, var(--danger), transparent 70%); }
+        .trait-card.preferences::before { background: linear-gradient(180deg, var(--accent-2), rgba(23, 96, 216, 0.3)); }
+        .trait-card.preferences::after { background: radial-gradient(circle, var(--accent-2), transparent 70%); }
+        .trait-card.notes::before { background: linear-gradient(180deg, var(--accent-1), rgba(0, 198, 164, 0.3)); }
+        .trait-card.notes::after { background: radial-gradient(circle, var(--accent-1), transparent 70%); }
         
         .trait-card:hover {
-            border-color: var(--stroke-2);
-            transform: translateY(-2px);
+            transform: translateY(-4px);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
         }
+        
+        .trait-card.strengths:hover { border-color: var(--success); }
+        .trait-card.weaknesses:hover { border-color: var(--danger); }
+        .trait-card.preferences:hover { border-color: var(--accent-2); }
+        .trait-card.notes:hover { border-color: var(--accent-1); }
         
         .trait-header {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
+            gap: 0.85rem;
+            margin-bottom: 1.25rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--stroke-1);
         }
         
         .trait-icon {
-            font-size: 1.5rem;
+            font-size: 2rem;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
         }
         
         .trait-title {
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
-            font-weight: 700;
+            letter-spacing: 0.1em;
+            font-weight: 800;
         }
         
         .trait-card.strengths .trait-title { color: var(--success); }
@@ -1165,8 +1319,10 @@
         
         .trait-content {
             color: var(--text-secondary);
-            font-size: 0.95rem;
-            line-height: 1.6;
+            font-size: 1rem;
+            line-height: 1.7;
+            position: relative;
+            z-index: 1;
         }
         
         @media (max-width: 900px) {
