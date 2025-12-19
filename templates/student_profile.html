@@ -850,6 +850,347 @@
             padding: 3rem;
             color: var(--text-muted);
         }
+        
+        /* ===== Улучшенный профиль ученика ===== */
+        .student-hero {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 2rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--surface-1), rgba(15, 17, 28, 0.95));
+            border: 1px solid var(--stroke-1);
+            border-radius: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .student-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(0, 198, 164, 0.08), transparent 60%);
+            pointer-events: none;
+        }
+        
+        .student-info {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .student-header {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        
+        .student-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 900;
+            color: white;
+            background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+            box-shadow: 0 8px 24px rgba(0, 198, 164, 0.25);
+            flex-shrink: 0;
+        }
+        
+        .student-avatar.ege { background: linear-gradient(135deg, #1760d8, #00c6a4); }
+        .student-avatar.oge { background: linear-gradient(135deg, #6366f1, #a855f7); }
+        .student-avatar.programming { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+        .student-avatar.levelup { background: linear-gradient(135deg, #10b981, #3b82f6); }
+        
+        .student-name-block {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        .student-name {
+            font-size: 2rem;
+            font-weight: 900;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+        
+        .student-category-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.85rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            width: fit-content;
+        }
+        
+        .student-category-tag.ege {
+            background: linear-gradient(135deg, rgba(23, 96, 216, 0.2), rgba(0, 198, 164, 0.15));
+            color: var(--accent-1);
+            border: 1px solid rgba(0, 198, 164, 0.3);
+        }
+        
+        .student-category-tag.oge {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.15));
+            color: #a78bfa;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+        
+        .student-category-tag.programming {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(239, 68, 68, 0.15));
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        
+        .student-category-tag.levelup {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(59, 130, 246, 0.15));
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .student-description {
+            color: var(--text-muted);
+            font-size: 1rem;
+            line-height: 1.5;
+            max-width: 600px;
+        }
+        
+        .student-tags {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .student-tag-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.75rem;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        
+        .student-tag-item .value {
+            color: var(--accent-1);
+            font-weight: 600;
+        }
+        
+        /* Метрики справа */
+        .student-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, var(--surface-2), rgba(22, 25, 38, 0.8));
+            border: 1px solid var(--stroke-1);
+            border-radius: 16px;
+            padding: 1.25rem;
+            min-width: 130px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .metric-card:hover {
+            border-color: var(--accent-1);
+            transform: translateY(-2px);
+        }
+        
+        .metric-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 900;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+        
+        .metric-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-top: 0.35rem;
+        }
+        
+        .metric-card.highlight .metric-value {
+            background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Кнопки действий */
+        .student-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+        
+        /* ===== Блок основных данных ===== */
+        .data-cards {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            padding: 1.5rem;
+            background: linear-gradient(135deg, var(--surface-1), rgba(15, 17, 28, 0.9));
+            border: 1px solid var(--stroke-1);
+            border-radius: 20px;
+        }
+        
+        .data-card {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.85rem 1.25rem;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: 12px;
+            transition: all 0.25s ease;
+        }
+        
+        .data-card:hover {
+            border-color: var(--stroke-2);
+            transform: translateY(-1px);
+        }
+        
+        .data-card-icon {
+            font-size: 1.3rem;
+        }
+        
+        .data-card-content {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .data-card-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+        
+        .data-card-value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        /* ===== Карточки сильных/слабых сторон ===== */
+        .trait-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+        
+        .trait-card {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, var(--surface-1), rgba(15, 17, 28, 0.95));
+            border: 1px solid var(--stroke-1);
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .trait-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+        }
+        
+        .trait-card.strengths::before { background: linear-gradient(180deg, var(--success), transparent); }
+        .trait-card.weaknesses::before { background: linear-gradient(180deg, var(--danger), transparent); }
+        .trait-card.preferences::before { background: linear-gradient(180deg, var(--accent-2), transparent); }
+        .trait-card.notes::before { background: linear-gradient(180deg, var(--accent-1), transparent); }
+        
+        .trait-card:hover {
+            border-color: var(--stroke-2);
+            transform: translateY(-2px);
+        }
+        
+        .trait-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        
+        .trait-icon {
+            font-size: 1.5rem;
+        }
+        
+        .trait-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+        
+        .trait-card.strengths .trait-title { color: var(--success); }
+        .trait-card.weaknesses .trait-title { color: var(--danger); }
+        .trait-card.preferences .trait-title { color: var(--accent-2); }
+        .trait-card.notes .trait-title { color: var(--accent-1); }
+        
+        .trait-content {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        
+        @media (max-width: 900px) {
+            .student-hero {
+                grid-template-columns: 1fr;
+            }
+            .student-metrics {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .student-metrics {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .student-avatar {
+                width: 60px;
+                height: 60px;
+                font-size: 1.5rem;
+            }
+            .student-name {
+                font-size: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body class="{% if active_lesson %}lesson-active{% endif %}" data-csrf-token="{{ csrf_token() if csrf_token else '' }}">
@@ -956,152 +1297,210 @@
         {% set planned_lessons = lessons|selectattr('status', 'equalto', 'planned')|list|length %}
         {% set in_progress_lessons = lessons|selectattr('status', 'equalto', 'in_progress')|list|length %}
         
-        <section class="dashboard-hero glass-panel">
-            <div>
-                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                    <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
-                        ← К списку учеников
-                    </a>
+        <!-- Навигация -->
+        <div style="margin-bottom: 1rem;">
+            <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
+                ← К списку учеников
+            </a>
+        </div>
+        
+        <!-- Профиль ученика -->
+        {% set cat_class = 'ege' if student.category == 'ЕГЭ' else ('oge' if student.category == 'ОГЭ' else ('programming' if student.category == 'ПРОГРАММИРОВАНИЕ' else 'levelup')) %}
+        <section class="student-hero">
+            <div class="student-info">
+                <div class="student-header">
+                    <div class="student-avatar {{ cat_class }}">
+                        {{ student.name[0].upper() }}
+                    </div>
+                    <div class="student-name-block">
+                        <h1 class="student-name">{{ student.name }}</h1>
+                        {% if student.category %}
+                        <span class="student-category-tag {{ cat_class }}">
+                            {% if student.category == 'ЕГЭ' %}🎯{% elif student.category == 'ОГЭ' %}📝{% elif student.category == 'ПРОГРАММИРОВАНИЕ' %}💻{% else %}🚀{% endif %}
+                            {{ student.category }}
+                        </span>
+                        {% endif %}
+                    </div>
                 </div>
-                <p class="hero-eyebrow">профиль ученика</p>
-                <h1 class="hero-title">{{ student.name }}</h1>
-                <p class="hero-subtitle">
-                    {% if student.description %}
-                    {{ student.description }}
-                    {% else %}
-                    Профиль ученика с историей занятий и прогрессом обучения.
-                    {% endif %}
-                </p>
                 
-                <div style="display: flex; gap: 1em; align-items: center; flex-wrap: wrap; margin-top: 1.5em;">
-                    {% if student.category %}
-                    <span class="student-tag student-category">{{ student.category }}</span>
-                    {% endif %}
+                {% if student.description %}
+                <p class="student-description">{{ student.description }}</p>
+                {% endif %}
+                
+                <div class="student-tags">
                     {% if student.school_class %}
-                    <span class="student-tag student-class">{{ student.school_class }} класс</span> {# Тег с текущим классом ученика #}
+                    <span class="student-tag-item">
+                        🏫 <span class="value">{{ student.school_class }} класс</span>
+                    </span>
                     {% endif %}
                     {% if student.platform_id %}
-                    <span style="color: var(--text-muted); font-size: 0.9em;">
-                        ID: <span style="color: var(--accent-1); font-weight: 600;">{{ student.platform_id }}</span>
+                    <span class="student-tag-item">
+                        ID: <span class="value">{{ student.platform_id }}</span>
                     </span>
                     {% endif %}
                 </div>
                 
-                <div class="hero-actions" style="margin-top: 1.5em;">
-                    <form method="POST" action="{{ url_for('students.student_start_lesson', student_id=student.student_id) }}" style="display: inline; margin: 0;">
+                <div class="student-actions">
+                    <form method="POST" action="{{ url_for('students.student_start_lesson', student_id=student.student_id) }}" style="margin: 0;">
                         <button type="submit" class="neo-button accent">🎓 Начать урок</button>
                     </form>
                     <a href="{{ url_for('students.student_statistics', student_id=student.student_id) }}" class="neo-button outline">📊 Статистика</a>
-                    <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="neo-button ghost">✏️ Редактировать</a>
-                    <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" style="display: inline; margin: 0;">
-                        <button type="submit" class="neo-button outline">📦 В архив</button>
+                    <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="neo-button ghost">✏️</a>
+                    <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" style="margin: 0;">
+                        <button type="submit" class="neo-button ghost">📦</button>
                     </form>
-                    <form method="POST" action="{{ url_for('students.student_delete', student_id=student.student_id) }}" 
-                          class="confirm-delete-form" style="display: inline; margin: 0;">
-                        <button type="submit" class="neo-button danger">🗑️ Удалить</button>
+                    <form method="POST" action="{{ url_for('students.student_delete', student_id=student.student_id) }}" class="confirm-delete-form" style="margin: 0;">
+                        <button type="submit" class="neo-button danger">🗑️</button>
                     </form>
                 </div>
             </div>
-            <div class="hero-pane">
-                <div class="hero-metric">
-                    <div class="hero-metric-label">всего уроков</div>
-                    <div class="hero-metric-value">{{ total_lessons }}</div>
+            
+            <div class="student-metrics">
+                <div class="metric-card">
+                    <span class="metric-icon">📚</span>
+                    <span class="metric-value">{{ total_lessons }}</span>
+                    <span class="metric-label">всего уроков</span>
                 </div>
-                <div class="hero-metric">
-                    <div class="hero-metric-label">проведено</div>
-                    <div class="hero-metric-value">{{ completed_lessons }}</div>
+                <div class="metric-card">
+                    <span class="metric-icon">✅</span>
+                    <span class="metric-value">{{ completed_lessons }}</span>
+                    <span class="metric-label">проведено</span>
                 </div>
-                <div class="hero-metric">
-                    <div class="hero-metric-label">запланировано</div>
-                    <div class="hero-metric-value">{{ planned_lessons }}</div>
+                <div class="metric-card">
+                    <span class="metric-icon">📅</span>
+                    <span class="metric-value">{{ planned_lessons }}</span>
+                    <span class="metric-label">запланировано</span>
                 </div>
                 {% if student.target_score %}
-                <div class="hero-metric">
-                    <div class="hero-metric-label">целевой балл</div>
-                    <div class="hero-metric-value">{{ student.target_score }}</div>
+                <div class="metric-card highlight">
+                    <span class="metric-icon">🎯</span>
+                    <span class="metric-value">{{ student.target_score }}</span>
+                    <span class="metric-label">целевой балл</span>
                 </div>
                 {% endif %}
             </div>
         </section>
         
-        {% if student.target_score or student.deadline or student.diagnostic_level or student.overall_rating %}
-        <section class="glass-panel">
-            <p class="hero-eyebrow">основные данные</p>
-            <div class="profile-details" style="margin-top: 1rem;">
-                {% if student.school_class %}
-                <div class="profile-detail"> <!-- Контейнер для отображения класса -->
-                    🏫 Класс: <span>{{ student.school_class }} класс</span> {# Показываем школьный класс ученика #}
+        {% if student.target_score or student.deadline or student.diagnostic_level or student.overall_rating or student.goal_text or student.programming_language %}
+        <section class="data-cards">
+            {% if student.school_class %}
+            <div class="data-card">
+                <span class="data-card-icon">🏫</span>
+                <div class="data-card-content">
+                    <span class="data-card-label">Класс</span>
+                    <span class="data-card-value">{{ student.school_class }} класс</span>
                 </div>
-                {% endif %}
-                {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.goal_text %}
-                <div class="profile-detail"> <!-- Текстовая цель для программирования -->
-                    🎯 Цель: <span>{{ student.goal_text }}</span>
-                </div>
-                {% elif student.category == 'ЛЕВЕЛАП' and student.goal_text %}
-                <div class="profile-detail"> <!-- Текстовая цель для ЛЕВЕЛАП -->
-                    🎯 Цель: <span>{{ student.goal_text }}</span>
-                </div>
-                {% elif student.target_score %}
-                <div class="profile-detail"> <!-- Числовая цель для ЕГЭ/ОГЭ -->
-                    {% if student.category == 'ОГЭ' %}🎯 Целевая оценка{% else %}🎯 Целевой балл{% endif %}: <span>{{ student.target_score }}</span>
-                </div>
-                {% endif %}
-                
-                {% if student.category != 'ПРОГРАММИРОВАНИЕ' and student.deadline %}
-                <div class="profile-detail"> <!-- Сроки для категорий с дедлайном -->
-                    ⏰ Сроки: <span>{{ student.deadline }}</span>
-                </div>
-                {% endif %}
-                
-                {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.programming_language %}
-                <div class="profile-detail"> <!-- Язык программирования -->
-                    💻 Язык: <span>{{ student.programming_language }}</span>
-                </div>
-                {% endif %}
-                
-                {% if student.diagnostic_level %}
-                <div class="profile-detail">
-                    📊 Диагностика: <span>{{ student.diagnostic_level }}</span>
-                </div>
-                {% endif %}
-                
-                {% if student.overall_rating %}
-                <div class="profile-detail">
-                    ⭐ Общая оценка: <span>{{ student.overall_rating }}</span>
-                </div>
-                {% endif %}
             </div>
+            {% endif %}
+            
+            {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.goal_text %}
+            <div class="data-card">
+                <span class="data-card-icon">🎯</span>
+                <div class="data-card-content">
+                    <span class="data-card-label">Цель</span>
+                    <span class="data-card-value">{{ student.goal_text }}</span>
+                </div>
+            </div>
+            {% elif student.category == 'ЛЕВЕЛАП' and student.goal_text %}
+            <div class="data-card">
+                <span class="data-card-icon">🎯</span>
+                <div class="data-card-content">
+                    <span class="data-card-label">Цель</span>
+                    <span class="data-card-value">{{ student.goal_text }}</span>
+                </div>
+            </div>
+            {% elif student.target_score %}
+            <div class="data-card">
+                <span class="data-card-icon">🎯</span>
+                <div class="data-card-content">
+                    <span class="data-card-label">{% if student.category == 'ОГЭ' %}Целевая оценка{% else %}Целевой балл{% endif %}</span>
+                    <span class="data-card-value">{{ student.target_score }}</span>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if student.category != 'ПРОГРАММИРОВАНИЕ' and student.deadline %}
+            <div class="data-card">
+                <span class="data-card-icon">⏰</span>
+                <div class="data-card-content">
+                    <span class="data-card-label">Сроки</span>
+                    <span class="data-card-value">{{ student.deadline }}</span>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.programming_language %}
+            <div class="data-card">
+                <span class="data-card-icon">💻</span>
+                <div class="data-card-content">
+                    <span class="data-card-label">Язык</span>
+                    <span class="data-card-value">{{ student.programming_language }}</span>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if student.diagnostic_level %}
+            <div class="data-card">
+                <span class="data-card-icon">📊</span>
+                <div class="data-card-content">
+                    <span class="data-card-label">Диагностика</span>
+                    <span class="data-card-value">{{ student.diagnostic_level }}</span>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if student.overall_rating %}
+            <div class="data-card">
+                <span class="data-card-icon">⭐</span>
+                <div class="data-card-content">
+                    <span class="data-card-label">Общая оценка</span>
+                    <span class="data-card-value">{{ student.overall_rating }}</span>
+                </div>
+            </div>
+            {% endif %}
         </section>
         {% endif %}
         
         {% if student.strengths or student.weaknesses or student.preferences or student.notes %}
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="trait-cards">
             {% if student.strengths %}
-            <section class="glass-panel">
-                <p class="hero-eyebrow">сильные стороны</p>
-                <div class="info-block-content" style="margin-top: 0.8rem; color: var(--success);">{{ student.strengths }}</div>
-            </section>
+            <div class="trait-card strengths">
+                <div class="trait-header">
+                    <span class="trait-icon">💪</span>
+                    <span class="trait-title">Сильные стороны</span>
+                </div>
+                <div class="trait-content">{{ student.strengths }}</div>
+            </div>
             {% endif %}
             
             {% if student.weaknesses %}
-            <section class="glass-panel">
-                <p class="hero-eyebrow">зоны роста</p>
-                <div class="info-block-content" style="margin-top: 0.8rem; color: var(--danger);">{{ student.weaknesses }}</div>
-            </section>
+            <div class="trait-card weaknesses">
+                <div class="trait-header">
+                    <span class="trait-icon">📈</span>
+                    <span class="trait-title">Зоны роста</span>
+                </div>
+                <div class="trait-content">{{ student.weaknesses }}</div>
+            </div>
             {% endif %}
             
             {% if student.preferences %}
-            <section class="glass-panel">
-                <p class="hero-eyebrow">предпочтения</p>
-                <div class="info-block-content" style="margin-top: 0.8rem;">{{ student.preferences }}</div>
-            </section>
+            <div class="trait-card preferences">
+                <div class="trait-header">
+                    <span class="trait-icon">💡</span>
+                    <span class="trait-title">Предпочтения</span>
+                </div>
+                <div class="trait-content">{{ student.preferences }}</div>
+            </div>
             {% endif %}
             
             {% if student.notes %}
-            <section class="glass-panel">
-                <p class="hero-eyebrow">заметки</p>
-                <div class="info-block-content" style="margin-top: 0.8rem; white-space: pre-wrap;">{{ student.notes }}</div>
-            </section>
+            <div class="trait-card notes">
+                <div class="trait-header">
+                    <span class="trait-icon">📋</span>
+                    <span class="trait-title">Заметки</span>
+                </div>
+                <div class="trait-content" style="white-space: pre-wrap;">{{ student.notes }}</div>
+            </div>
             {% endif %}
         </div>
         {% endif %}
