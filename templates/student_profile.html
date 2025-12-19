@@ -226,6 +226,132 @@
             align-items: center;
             flex-wrap: wrap;
         }
+        
+        /* Актуальные уроки */
+        .featured-lessons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .featured-lesson-card {
+            background: var(--surface-1);
+            border: 2px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .featured-lesson-card:hover {
+            border-color: var(--accent-1);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-soft);
+        }
+        
+        .featured-lesson-card.completed {
+            border-color: var(--success);
+            background: linear-gradient(135deg, rgba(0, 254, 202, 0.05), transparent);
+        }
+        
+        .featured-lesson-card.planned {
+            border-color: var(--accent-2);
+            background: linear-gradient(135deg, rgba(23, 96, 216, 0.05), transparent);
+        }
+        
+        .featured-lesson-card.in_progress {
+            border-color: var(--warning);
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.08), transparent);
+            animation: pulse-border 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-border {
+            0%, 100% { border-color: var(--warning); }
+            50% { border-color: var(--accent-1); }
+        }
+        
+        .featured-label {
+            position: absolute;
+            top: -0.6rem;
+            left: 1rem;
+            padding: 0.25rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-radius: var(--radius-sm);
+        }
+        
+        .featured-label.completed {
+            background: var(--success);
+            color: #001b18;
+        }
+        
+        .featured-label.planned {
+            background: var(--accent-2);
+            color: white;
+        }
+        
+        .featured-label.in_progress {
+            background: var(--warning);
+            color: #1c0f02;
+        }
+        
+        /* Фильтры и поиск */
+        .lessons-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            align-items: center;
+        }
+        
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.75rem 1rem;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-1);
+        }
+        
+        .filter-select {
+            padding: 0.75rem 1rem;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+        
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--accent-1);
+        }
+        
+        .lessons-count {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        
+        .lesson-card.hidden {
+            display: none;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 <body class="{% if active_lesson %}lesson-active{% endif %}" data-csrf-token="{{ csrf_token() if csrf_token else '' }}">
@@ -482,21 +608,124 @@
         </div>
         {% endif %}
         
+        <!-- Актуальные уроки -->
+        {% if in_progress_lesson or last_completed or upcoming_lessons %}
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">актуальные</p>
+                    <h2>📌 Ключевые уроки</h2>
+                </div>
+            </div>
+            
+            <div class="featured-lessons">
+                <!-- Урок в процессе -->
+                {% if in_progress_lesson %}
+                {% set lesson = in_progress_lesson %}
+                <div class="featured-lesson-card in_progress">
+                    <span class="featured-label in_progress">🎓 Сейчас идёт</span>
+                    <div class="lesson-date" style="margin-top: 0.5rem;">{{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
+                    {% if lesson.topic %}<div class="lesson-topic">{{ lesson.topic }}</div>{% endif %}
+                    <div class="lesson-info">
+                        <div>⏱️ {{ lesson.duration }} минут</div>
+                    </div>
+                    <div class="lesson-actions">
+                        <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
+                            <button type="submit" class="neo-button accent">✅ Завершить</button>
+                        </form>
+                        <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">✏️</a>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Последний проведённый урок -->
+                {% if last_completed %}
+                {% set lesson = last_completed %}
+                <div class="featured-lesson-card completed">
+                    <span class="featured-label completed">✅ Последний</span>
+                    <div class="lesson-date" style="margin-top: 0.5rem;">{{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
+                    {% if lesson.topic %}<div class="lesson-topic">{{ lesson.topic }}</div>{% endif %}
+                    <div class="lesson-info">
+                        <div>⏱️ {{ lesson.duration }} минут</div>
+                        {% if lesson.homework_status == 'assigned_done' %}<div>✅ ДЗ выполнено</div>{% endif %}
+                        {% if lesson.homework_status == 'assigned_not_done' %}<div>❌ ДЗ не выполнено</div>{% endif %}
+                    </div>
+                    {% set hw_count = lesson.homework_assignments|length %}
+                    {% if hw_count %}
+                    <div style="margin-top: 0.5rem;">
+                        <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button accent" style="font-size: 0.85rem; padding: 0.5rem 1rem;">👁️ ДЗ ({{ hw_count }})</a>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+                
+                <!-- Ближайшие запланированные -->
+                {% for lesson in upcoming_lessons %}
+                <div class="featured-lesson-card planned">
+                    <span class="featured-label planned">📅 {% if loop.first %}Следующий{% else %}Запланирован{% endif %}</span>
+                    <div class="lesson-date" style="margin-top: 0.5rem;">{{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
+                    {% if lesson.topic %}<div class="lesson-topic">{{ lesson.topic }}</div>{% endif %}
+                    <div class="lesson-info">
+                        <div>⏱️ {{ lesson.duration }} минут</div>
+                        {% if lesson.lesson_type == 'exam' %}<div>📊 Проверочный</div>{% endif %}
+                    </div>
+                    <div class="lesson-actions">
+                        <form method="POST" action="{{ url_for('lessons.lesson_start', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
+                            <button type="submit" class="neo-button accent" style="font-size: 0.85rem; padding: 0.5rem 1rem;">🎓 Начать</button>
+                        </form>
+                        <a href="#" class="neo-button outline" style="font-size: 0.85rem; padding: 0.5rem 1rem;" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="homework" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">📝 ДЗ</a>
+                        <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.85rem; padding: 0.5rem 1rem;">✏️</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Все уроки -->
         <section class="glass-panel">
             <div class="panel-head">
                 <div>
-                    <p class="eyebrow">уроки</p>
-                    <h2>История занятий</h2>
+                    <p class="eyebrow">история</p>
+                    <h2>📚 Все уроки</h2>
                 </div>
                 <div class="hero-actions">
                     <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)">+ Добавить урок</a>
                 </div>
             </div>
             
-            {% if lessons %}
-            <div class="lessons-list">
-                {% for lesson in lessons %}
-                <div class="lesson-card">
+            <!-- Фильтры и поиск -->
+            <div class="lessons-filters">
+                <input type="text" class="search-input" id="lessonSearch" placeholder="🔍 Поиск по теме или заметкам..." oninput="filterLessons()">
+                <select class="filter-select" id="statusFilter" onchange="filterLessons()">
+                    <option value="">Все статусы</option>
+                    <option value="planned">📅 Запланированы</option>
+                    <option value="in_progress">🎓 В процессе</option>
+                    <option value="completed">✅ Проведены</option>
+                    <option value="cancelled">❌ Отменены</option>
+                </select>
+                <select class="filter-select" id="typeFilter" onchange="filterLessons()">
+                    <option value="">Все типы</option>
+                    <option value="regular">📚 Обычные</option>
+                    <option value="exam">📊 Проверочные</option>
+                    <option value="introductory">👋 Вводные</option>
+                </select>
+                <select class="filter-select" id="sortFilter" onchange="filterLessons()">
+                    <option value="date_desc">📆 Сначала новые</option>
+                    <option value="date_asc">📆 Сначала старые</option>
+                </select>
+                <span class="lessons-count" id="lessonsCount"></span>
+            </div>
+            
+            {% if other_lessons %}
+            <div class="lessons-list" id="lessonsList">
+                {% for lesson in other_lessons %}
+                <div class="lesson-card" 
+                     data-status="{{ lesson.status }}" 
+                     data-type="{{ lesson.lesson_type }}"
+                     data-date="{{ lesson.lesson_date.strftime('%Y-%m-%d %H:%M') if lesson.lesson_date else '' }}"
+                     data-topic="{{ lesson.topic|lower if lesson.topic else '' }}"
+                     data-notes="{{ lesson.notes|lower if lesson.notes else '' }}">
                     {% set homework_assignments = lesson.homework_assignments %}
                     {% set classwork_assignments = lesson.classwork_assignments %}
                     {% set exam_assignments = lesson.exam_assignments %}
@@ -631,11 +860,19 @@
                 </div>
                 {% endfor %}
             </div>
+            
+            <!-- Сообщение когда нет результатов фильтрации -->
+            <div class="no-results" id="noResults" style="display: none;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+                <h3>Ничего не найдено</h3>
+                <p>Попробуйте изменить параметры поиска или фильтры</p>
+                <button onclick="resetFilters()" class="neo-button outline" style="margin-top: 1rem;">Сбросить фильтры</button>
+            </div>
             {% else %}
             <div class="empty-state">
                 <div class="empty-state-icon">📅</div>
-                <h3 class="empty-state-title">Пока нет уроков</h3>
-                <p class="empty-state-description">Добавьте первый урок для этого ученика в расписании</p>
+                <h3 class="empty-state-title">Пока нет других уроков</h3>
+                <p class="empty-state-description">Все уроки отображены в блоке "Ключевые уроки" выше</p>
                 <div class="empty-state-actions">
                     <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)">+ Добавить урок</a>
                     <a href="{{ url_for('schedule.schedule') }}" class="neo-button ghost" data-tooltip="Перейти к расписанию">📅 Расписание</a>
@@ -968,6 +1205,97 @@
             const meta = document.querySelector('meta[name="csrf-token"]');
             return meta ? meta.content : '';
         }
+        
+        // Фильтрация уроков
+        function filterLessons() {
+            const searchQuery = document.getElementById('lessonSearch')?.value.toLowerCase() || '';
+            const statusFilter = document.getElementById('statusFilter')?.value || '';
+            const typeFilter = document.getElementById('typeFilter')?.value || '';
+            const sortFilter = document.getElementById('sortFilter')?.value || 'date_desc';
+            
+            const lessonsList = document.getElementById('lessonsList');
+            if (!lessonsList) return;
+            
+            const lessons = Array.from(lessonsList.querySelectorAll('.lesson-card'));
+            let visibleCount = 0;
+            
+            // Сортировка
+            lessons.sort((a, b) => {
+                const dateA = a.dataset.date || '';
+                const dateB = b.dataset.date || '';
+                if (sortFilter === 'date_asc') {
+                    return dateA.localeCompare(dateB);
+                } else {
+                    return dateB.localeCompare(dateA);
+                }
+            });
+            
+            // Переупорядочиваем элементы в DOM
+            lessons.forEach(lesson => lessonsList.appendChild(lesson));
+            
+            // Фильтрация
+            lessons.forEach(lesson => {
+                const status = lesson.dataset.status || '';
+                const type = lesson.dataset.type || '';
+                const topic = lesson.dataset.topic || '';
+                const notes = lesson.dataset.notes || '';
+                
+                let visible = true;
+                
+                // Фильтр по статусу
+                if (statusFilter && status !== statusFilter) {
+                    visible = false;
+                }
+                
+                // Фильтр по типу
+                if (typeFilter && type !== typeFilter) {
+                    visible = false;
+                }
+                
+                // Поиск по тексту
+                if (searchQuery && !topic.includes(searchQuery) && !notes.includes(searchQuery)) {
+                    visible = false;
+                }
+                
+                if (visible) {
+                    lesson.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    lesson.classList.add('hidden');
+                }
+            });
+            
+            // Обновляем счётчик
+            const countEl = document.getElementById('lessonsCount');
+            if (countEl) {
+                countEl.textContent = `Показано: ${visibleCount} из ${lessons.length}`;
+            }
+            
+            // Показываем/скрываем сообщение "нет результатов"
+            const noResults = document.getElementById('noResults');
+            if (noResults) {
+                noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+            }
+        }
+        
+        function resetFilters() {
+            const searchInput = document.getElementById('lessonSearch');
+            const statusFilter = document.getElementById('statusFilter');
+            const typeFilter = document.getElementById('typeFilter');
+            const sortFilter = document.getElementById('sortFilter');
+            
+            if (searchInput) searchInput.value = '';
+            if (statusFilter) statusFilter.value = '';
+            if (typeFilter) typeFilter.value = '';
+            if (sortFilter) sortFilter.value = 'date_desc';
+            
+            filterLessons();
+        }
+        
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', function() {
+            filterLessons();
+        });
     </script>
 
     <!-- Модальное окно выбора шаблона -->

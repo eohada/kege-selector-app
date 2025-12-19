@@ -112,13 +112,43 @@ def student_profile(student_id):
     """Профиль студента с уроками"""
     # КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: загружаем уроки отдельным запросом с joinedload для homework_tasks
     student = Student.query.get_or_404(student_id)
+    now = moscow_now()
     
     # Загружаем уроки с предзагрузкой homework_tasks и task для каждого homework_task
-    lessons = Lesson.query.filter_by(student_id=student_id).options(
+    all_lessons = Lesson.query.filter_by(student_id=student_id).options(
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
     ).order_by(Lesson.lesson_date.desc()).all()
     
-    return render_template('student_profile.html', student=student, lessons=lessons)
+    # Разделяем уроки на категории для "Актуальные уроки"
+    completed_lessons = [l for l in all_lessons if l.status == 'completed']
+    planned_lessons = [l for l in all_lessons if l.status == 'planned']
+    in_progress_lesson = next((l for l in all_lessons if l.status == 'in_progress'), None)
+    
+    # Последний проведённый урок (самый недавний completed)
+    last_completed = completed_lessons[0] if completed_lessons else None
+    
+    # Два ближайших запланированных урока (самые ранние по дате)
+    upcoming_lessons = sorted(planned_lessons, key=lambda x: x.lesson_date if x.lesson_date else now)[:2]
+    
+    # Собираем ID актуальных уроков для исключения из общего списка
+    featured_ids = set()
+    if last_completed:
+        featured_ids.add(last_completed.lesson_id)
+    if in_progress_lesson:
+        featured_ids.add(in_progress_lesson.lesson_id)
+    for lesson in upcoming_lessons:
+        featured_ids.add(lesson.lesson_id)
+    
+    # Остальные уроки (исключая актуальные)
+    other_lessons = [l for l in all_lessons if l.lesson_id not in featured_ids]
+    
+    return render_template('student_profile.html', 
+                           student=student, 
+                           lessons=all_lessons,
+                           last_completed=last_completed,
+                           upcoming_lessons=upcoming_lessons,
+                           in_progress_lesson=in_progress_lesson,
+                           other_lessons=other_lessons)
 
 @students_bp.route('/student/<int:student_id>/statistics')
 @login_required
