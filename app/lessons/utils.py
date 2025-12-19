@@ -17,7 +17,7 @@ def get_sorted_assignments(lesson, assignment_type):
         assignments = lesson.exam_assignments
     else:
         assignments = lesson.homework_assignments
-    return sorted(assignments, key=lambda ht: (ht.task.task_number if ht.task and ht.task.task_number is not None else ht.lesson_task_id))
+    return sorted(assignments, key=lambda ht: (ht.task.task_number if ht.task and ht.task.task_number is not None else 999, ht.lesson_task_id))
 
 def normalize_answer_value(value):
     """Нормализует значение ответа для сравнения"""
