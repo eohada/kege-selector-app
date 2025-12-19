@@ -510,7 +510,6 @@
         /* Выпадающее меню */
         .create-dropdown {
             position: relative;
-            z-index: 50;
         }
         
         .create-dropdown-content {
@@ -522,8 +521,8 @@
             border: 1px solid var(--stroke-2);
             border-radius: 12px;
             min-width: 220px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-            z-index: 1000;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+            z-index: 9999;
             overflow: visible;
         }
         
@@ -531,6 +530,12 @@
         .create-dropdown:focus-within .create-dropdown-content {
             display: block;
             animation: dropdownFade 0.2s ease;
+        }
+        
+        /* Поднимаем карточку при открытом дропдауне */
+        .lesson-card:has(.create-dropdown:hover),
+        .lesson-card:has(.create-dropdown:focus-within) {
+            z-index: 100;
         }
         
         @keyframes dropdownFade {
