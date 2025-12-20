@@ -331,13 +331,34 @@ def generate_results():
 def task_action():
     """Действия с заданиями (принять, пропустить, в черный список)"""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}  # Безопасно парсим JSON (не падаем на пустом/битом теле)
+        if not isinstance(data, dict):  # Проверяем, что пришёл объект
+            return jsonify({'success': False, 'error': 'Некорректный формат запроса'}), 400  # Возвращаем 400 вместо 500
         logger.info(f"📥 Получен запрос task_action: {data}")
         
         action = data.get('action')
-        task_ids = data.get('task_ids', [])
-        lesson_id = data.get('lesson_id')
+        task_ids = data.get('task_ids', [])  # Сырые ID заданий (могут прийти строками)
+        lesson_id = data.get('lesson_id')  # Сырой ID урока (может прийти строкой)
         template_id = data.get('template_id')  # Получаем template_id из запроса
+
+        # Нормализуем lesson_id в int, чтобы не ловить типовые ошибки БД (integer vs text)
+        if lesson_id is not None and lesson_id != '':  # Если lesson_id вообще передали
+            try:
+                lesson_id = int(lesson_id)  # Приводим к int
+            except (ValueError, TypeError):
+                logger.warning(f"⚠️ Некорректный lesson_id: {lesson_id}, тип: {type(lesson_id)}")  # Логируем проблему
+                lesson_id = None  # Сбрасываем lesson_id, чтобы ветки работали корректно
+        else:
+            lesson_id = None  # Явно нормализуем пустые значения в None
+
+        # Нормализуем task_ids в список int, чтобы не ловить типовые ошибки БД (integer vs text)
+        normalized_task_ids = []  # Сюда соберём только валидные int
+        for raw_id in (task_ids or []):  # Проходим по входному списку (или пустому)
+            try:
+                normalized_task_ids.append(int(raw_id))  # Приводим к int (поддерживает строки "123")
+            except (ValueError, TypeError):
+                logger.warning(f"⚠️ Пропускаем некорректный task_id: {raw_id}, тип: {type(raw_id)}")  # Логируем мусор
+        task_ids = normalized_task_ids  # Подменяем список на нормализованный
         
         # Преобразуем template_id в int, если он передан
         if template_id is not None:

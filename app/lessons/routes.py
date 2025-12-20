@@ -2,8 +2,9 @@
 Маршруты для управления уроками
 """
 import logging
-from flask import render_template, request, redirect, url_for, flash, jsonify, make_response
+from flask import render_template, request, redirect, url_for, flash, jsonify, make_response, current_app  # current_app нужен для определения типа БД (Postgres)
 from flask_login import login_required
+from sqlalchemy import text  # text нужен для setval(pg_get_serial_sequence(...)) при сбитых sequences
 
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
@@ -704,6 +705,16 @@ def lesson_manual_create(lesson_id):
         try:
             data = request.get_json()
             tasks_data = data.get('tasks', [])
+
+            # Фикс для PostgreSQL: если sequence у Tasks.task_id сбит, ручное создание заданий падает на duplicate key
+            try:  # Пытаемся выровнять sequence превентивно (без падения, если не Postgres)
+                db_url = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')  # Берём URI базы
+                is_pg = ('postgresql' in db_url) or ('postgres' in db_url)  # Проверяем, что это Postgres
+                if is_pg:  # Выполняем только для Postgres
+                    db.session.execute(text('SELECT setval(pg_get_serial_sequence(\'"Tasks"\', \'task_id\'), COALESCE((SELECT MAX("task_id") FROM "Tasks"), 0), true)'))  # Выравниваем sequence Tasks.task_id
+                    db.session.commit()  # Коммитим фиксацию sequence
+            except Exception:  # Если не удалось/не нужно — продолжаем без блокировки
+                db.session.rollback()  # Откатываем на всякий случай
             
             count = 0
             for task_data in tasks_data:

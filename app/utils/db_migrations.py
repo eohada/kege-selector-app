@@ -8,6 +8,73 @@ from core.db_models import Tester, AuditLog
 
 logger = logging.getLogger(__name__)
 
+def _is_postgres(app):  # Проверяем, что подключена PostgreSQL (в ней есть sequences/serial)
+    try:  # Пытаемся безопасно прочитать строку подключения
+        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')  # Берём URI из конфига Flask
+        return ('postgresql' in db_url) or ('postgres' in db_url)  # True, если похоже на Postgres
+    except Exception:  # На всякий случай не ломаем миграции
+        return False  # Если не удалось определить — считаем, что не Postgres
+
+def _resolve_table_name(table_names, preferred):  # Находим реальное имя таблицы (учитываем возможный lower-case)
+    if preferred in table_names:  # Если таблица есть в точном регистре
+        return preferred  # Возвращаем её как есть
+    lower = preferred.lower()  # Готовим lower-case вариант имени
+    if lower in table_names:  # Если таблица есть в нижнем регистре
+        return lower  # Возвращаем lower-case имя
+    return None  # Таблица не найдена
+
+def _fix_postgres_sequences(app, inspector):  # Выравниваем sequences, чтобы nextval() не выдавал занятые PK после импорта
+    if not _is_postgres(app):  # Если это не Postgres — выходим (SQLite не нуждается)
+        return  # Ничего не делаем
+    try:  # Защищаемся от падений при попытке setval
+        table_names = inspector.get_table_names()  # Список таблиц в БД
+        sequences_map = {  # Таблица -> pk-колонка (как в scripts/fix_sequences.py)
+            'Students': 'student_id',  # PK учеников
+            'Lessons': 'lesson_id',  # PK уроков
+            'LessonTasks': 'lesson_task_id',  # PK связки урок-задание
+            'Tasks': 'task_id',  # PK задач (важно для ручного создания)
+            'UsageHistory': 'usage_id',  # PK истории принятия
+            'SkippedTasks': 'skipped_id',  # PK пропусков
+            'BlacklistTasks': 'blacklist_id',  # PK черного списка
+            'Testers': 'tester_id',  # PK тестировщиков
+            'AuditLog': 'id',  # PK логов
+            'MaintenanceMode': 'id',  # PK режима техработ
+            'StudentTaskStatistics': 'stat_id',  # PK ручной статистики
+            'TaskTemplate': 'template_id',  # PK шаблонов
+            'TemplateTask': 'id',  # PK связки шаблон-задание (если есть)
+            'Users': 'id',  # PK пользователей
+        }  # Конец mapping
+
+        for preferred_table, pk_column in sequences_map.items():  # Проходим по всем таблицам, где есть SERIAL/IDENTITY
+            real_table = _resolve_table_name(table_names, preferred_table)  # Определяем реальное имя таблицы
+            if not real_table:  # Если таблицы нет — пропускаем
+                continue  # Переходим к следующей
+            try:  # Пытаемся починить sequence для конкретной таблицы
+                cols = {col['name'] for col in inspector.get_columns(real_table)}  # Список колонок таблицы
+                if pk_column not in cols:  # Если PK колонки нет — пропускаем
+                    continue  # Переходим к следующей
+                # Важно: используем pg_get_serial_sequence, чтобы не гадать имя sequence
+                db.session.execute(  # Выполняем SQL-команду setval
+                    text(  # Оборачиваем в text()
+                        f"SELECT setval("  # Начинаем setval
+                        f"pg_get_serial_sequence('\"{real_table}\"', '{pk_column}'), "  # Получаем имя sequence по таблице+PK
+                        f"COALESCE((SELECT MAX(\"{pk_column}\") FROM \"{real_table}\"), 0), "  # Берём текущий max(pk)
+                        f"true"  # is_called=true => следующий nextval будет max+1
+                        f")"  # Закрываем setval
+                    )  # Конец SQL
+                )  # Конец execute
+            except Exception as e:  # Если не удалось (например, таблица без sequence)
+                logger.warning(f"Could not fix sequence for {real_table}.{pk_column}: {e}")  # Логируем и продолжаем
+        try:  # Коммитим изменения setval одной транзакцией
+            db.session.commit()  # Фиксируем обновления sequences
+            logger.info("PostgreSQL sequences synchronized successfully")  # Пишем в лог об успехе
+        except Exception as e:  # Если коммит не прошёл
+            db.session.rollback()  # Откатываем
+            logger.warning(f"Could not commit sequence synchronization: {e}")  # Логируем проблему
+    except Exception as e:  # Если общий процесс упал
+        db.session.rollback()  # Откатываем на всякий случай
+        logger.warning(f"Sequence synchronization skipped due to error: {e}")  # Не блокируем запуск приложения
+
 def ensure_schema_columns(app):
     """
     Обеспечивает наличие всех необходимых колонок в таблицах БД
@@ -184,6 +251,7 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not update session_id column: {e}")
 
+            _fix_postgres_sequences(app, inspector)  # После миграций синхронизируем sequences (чинит 500 duplicate key на SERIAL)
             db.session.commit()
     except Exception as e:
         db.session.rollback()

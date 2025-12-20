@@ -604,6 +604,12 @@
                         <span class="nav-link-label">Планы</span> <!-- Подпись -->
                     </span>
                 </a>
+                <a href="{{ url_for('templates.templates_list') }}" class="nav-link"> <!-- Переход к шаблонам -->
+                    <span class="nav-link-content"> <!-- Контейнер -->
+                        <span class="nav-link-icon">📚</span> <!-- Иконка -->
+                        <span class="nav-link-label">Шаблоны</span> <!-- Подпись -->
+                    </span>
+                </a>
             </nav>
         </header>
 
@@ -1313,6 +1319,18 @@
             }
         }
 
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const shouldOpen = params.get('open_create') === '1';
+                if (shouldOpen) {
+                    tryShowTemplateModal(null, currentLessonId, currentAssignmentType);
+                }
+            } catch (e) {
+                console.warn('Не удалось автозапустить модалку шаблонов:', e);
+            }
+        });
+
         function loadTemplates(type, category, lessonId) {
             const templatesList = document.getElementById('templatesList');
             if (!templatesList) {
@@ -1456,6 +1474,9 @@
                 return;
             }
             
+            const validTypes = ['homework', 'classwork', 'exam']; // Разрешённые типы заданий для урока
+            const safeType = validTypes.includes(currentAssignmentType) ? currentAssignmentType : 'homework'; // Фикс: всегда передаём валидный тип
+            
             const loadingDiv = document.createElement('div');
             loadingDiv.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
             loadingDiv.innerHTML = '<div style="background: var(--surface-1); padding: 2rem; border-radius: var(--radius-lg); text-align: center;"><div class="loading-spinner"></div><p>Применение шаблона...</p></div>';
@@ -1470,7 +1491,8 @@
                     'X-CSRFToken': csrfToken
                 },
                 body: JSON.stringify({
-                    lesson_id: currentLessonId
+                    lesson_id: currentLessonId, // ID урока
+                    assignment_type: safeType // Тип (ДЗ/КР/Провер.) — чтобы задания попадали в правильный раздел
                 })
             })
             .then(response => response.json())

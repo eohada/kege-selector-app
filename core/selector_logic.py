@@ -1,5 +1,29 @@
 from .db_models import db, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, moscow_now, Lesson, LessonTask
-from sqlalchemy import text
+from sqlalchemy import text  # Используем text() для сырого SQL (PostgreSQL setval/pg_get_serial_sequence и выборки) 
+
+def _looks_like_pg_sequence_problem(error):  # Определяем по тексту ошибки, что это сбитая sequence в PostgreSQL
+    msg = str(error)  # Приводим исключение к строке для простого анализа
+    return (  # Возвращаем True, если похоже на дубликат PK из-за sequence
+        'psycopg2.errors.UniqueViolation' in msg  # Типовая сигнатура psycopg2 для unique violation
+        and 'duplicate key value violates unique constraint' in msg  # Текст PostgreSQL про дубликат ключа
+        and '_pkey' in msg  # Указывает, что упали на primary key
+    )  # Конец условия
+
+def _fix_pg_serial_sequence(table_name, pk_column):  # Поднимаем sequence для SERIAL/IDENTITY, чтобы nextval не выдавал занятый id
+    try:  # Пытаемся починить sequence без падения всего запроса
+        # Важно: table_name должен быть с кавычками для case-sensitive таблиц, например '"UsageHistory"'
+        db.session.execute(  # Выполняем SQL в рамках текущей транзакции
+            text(  # Используем text() для корректного выполнения сырого SQL
+                f"SELECT setval(pg_get_serial_sequence('{table_name}', '{pk_column}'), "  # Находим sequence по таблице+колонке
+                f"COALESCE((SELECT MAX(\"{pk_column}\") FROM {table_name}), 0), "  # Ставим текущий max(pk) или 0
+                f"true)"  # is_called=true => следующий nextval вернёт max+1
+            )  # Конец SQL
+        )  # Конец execute
+        db.session.commit()  # Коммитим фиксацию sequence
+        return True  # Сообщаем, что починили
+    except Exception:  # Если не удалось (например, не Postgres), не ломаем логику
+        db.session.rollback()  # Откатываем возможные изменения
+        return False  # Сообщаем, что починить не удалось
 
 def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None):
     if student_id:
@@ -70,7 +94,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
     tasks = [tasks_dict[tid] for tid in task_ids if tid in tasks_dict]
     return tasks
 
-def record_usage(task_ids, session_tag=None):
+def record_usage(task_ids, session_tag=None, _retry=False):  # _retry нужен для одного безопасного повтора после фикса sequence
     if not task_ids:
         return
     try:
@@ -81,6 +105,10 @@ def record_usage(task_ids, session_tag=None):
             db.session.commit()
     except Exception as e:
         db.session.rollback()
+        if (not _retry) and _looks_like_pg_sequence_problem(e):  # Если это похоже на сбитую sequence и мы ещё не ретраили
+            fixed = _fix_pg_serial_sequence('"UsageHistory"', 'usage_id')  # Чиним sequence для UsageHistory.usage_id
+            if fixed:  # Если успешно починили
+                return record_usage(task_ids, session_tag=session_tag, _retry=True)  # Повторяем вставку ровно один раз
         raise
 
 def record_skipped(task_ids, session_tag=None):

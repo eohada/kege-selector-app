@@ -1,9 +1,10 @@
 """
 Маршруты для управления студентами
 """
-import logging
-from flask import render_template, request, redirect, url_for, flash, jsonify
+import logging  # Логирование для отладки и прод-логов
+from flask import render_template, request, redirect, url_for, flash, jsonify, current_app  # current_app нужен для определения типа БД (Postgres)
 from flask_login import login_required
+from sqlalchemy import text  # text нужен для выполнения SQL setval(pg_get_serial_sequence(...)) при сбитых sequences
 
 from app.students import students_bp
 from app.students.forms import StudentForm, normalize_school_class
@@ -524,7 +525,26 @@ def lesson_new(student_id):
             homework_status=form.homework_status.data
         )
         db.session.add(lesson)
-        db.session.commit()
+        try:  # Пытаемся сохранить урок обычным способом
+            db.session.commit()  # Коммитим вставку урока
+        except Exception as e:  # Если упали (часто из‑за сбитого sequence lesson_id)
+            db.session.rollback()  # Откатываем транзакцию перед повтором
+            msg = str(e)  # Превращаем ошибку в строку для распознавания
+            is_unique = ('psycopg2.errors.UniqueViolation' in msg) or ('duplicate key value violates unique constraint' in msg)  # Признак UniqueViolation на Postgres
+            is_lesson_pk = ('Lessons_pkey' in msg) or ('lesson_id' in msg)  # Признак, что упали именно на PK уроков
+            db_url = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')  # Берём строку подключения
+            is_pg = ('postgresql' in db_url) or ('postgres' in db_url)  # Определяем, что это PostgreSQL
+            if is_pg and is_unique and is_lesson_pk:  # Если это именно сбитый sequence у Lessons
+                try:  # Пытаемся починить sequence и повторить commit один раз
+                    db.session.execute(text('SELECT setval(pg_get_serial_sequence(\'"Lessons"\', \'lesson_id\'), COALESCE((SELECT MAX("lesson_id") FROM "Lessons"), 0), true)'))  # Выравниваем sequence по MAX(lesson_id)
+                    db.session.commit()  # Коммитим фиксацию sequence
+                    db.session.add(lesson)  # Повторно добавляем объект урока в сессию
+                    db.session.commit()  # Повторяем вставку урока
+                except Exception as e2:  # Если не удалось починить/повторить
+                    db.session.rollback()  # Откатываем
+                    raise  # Пробрасываем реальную ошибку дальше
+            else:  # Если это не sequence‑проблема — не маскируем её
+                raise  # Пробрасываем реальную ошибку дальше
         
         # Логируем создание урока
         audit_logger.log(
@@ -542,7 +562,14 @@ def lesson_new(student_id):
         )
         
         flash(f'Урок добавлен для ученика {student.name}!', 'success')
-        return redirect(url_for('students.student_profile', student_id=student_id))
+        next_action = request.form.get('next', '').strip()  # Куда перейти сразу после создания (ДЗ/КР/Проверочная)
+        if next_action == 'homework':  # Домашнее задание
+            return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id, open_create=1))  # Открываем страницу ДЗ и автозапуск модалки
+        if next_action == 'classwork':  # Классная работа
+            return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id, open_create=1))  # Открываем страницу КР и автозапуск модалки
+        if next_action == 'exam':  # Проверочная работа
+            return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson.lesson_id, open_create=1))  # Открываем страницу проверочной и автозапуск модалки
+        return redirect(url_for('students.student_profile', student_id=student_id))  # Дефолт: возвращаемся в профиль
 
     return render_template('lesson_form.html', form=form, student=student, title='Добавить урок', is_new=True)
 

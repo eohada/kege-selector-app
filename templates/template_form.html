@@ -12,7 +12,8 @@
     {% include '_ux_enhancements.html' %}
 </head>
 <body>
-    <header class="nav-primary">
+    <div class="app-shell">
+        <header class="nav-primary">
         <div class="nav-brand">
             {% if current_user and current_user.is_authenticated %}
             <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
@@ -58,8 +59,6 @@
             </a>
         </nav>
     </header>
-
-    <div class="app-shell">
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
                 <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost" style="text-decoration: none;">← К библиотеке</a>
@@ -86,10 +85,10 @@
                 <div>
                     <label class="neo-label" for="template_type">Тип шаблона *</label>
                     <select id="template_type" name="template_type" class="neo-select" required>
-                        <option value="homework" {% if template and template.template_type == 'homework' %}selected{% endif %}>Домашние задания</option>
-                        <option value="classwork" {% if template and template.template_type == 'classwork' %}selected{% endif %}>Классные работы</option>
-                        <option value="exam" {% if template and template.template_type == 'exam' %}selected{% endif %}>Проверочные работы</option>
-                        <option value="lesson" {% if template and template.template_type == 'lesson' %}selected{% endif %}>Уроки</option>
+                        <option value="homework" {% if (template and template.template_type == 'homework') or (is_new and preset_type == 'homework') %}selected{% endif %}>Домашние задания</option>
+                        <option value="classwork" {% if (template and template.template_type == 'classwork') or (is_new and preset_type == 'classwork') %}selected{% endif %}>Классные работы</option>
+                        <option value="exam" {% if (template and template.template_type == 'exam') or (is_new and preset_type == 'exam') %}selected{% endif %}>Проверочные работы</option>
+                        <option value="lesson" {% if (template and template.template_type == 'lesson') or (is_new and preset_type == 'lesson') %}selected{% endif %}>Уроки</option>
                     </select>
                 </div>
 
@@ -97,10 +96,10 @@
                     <label class="neo-label" for="category">Категория</label>
                     <select id="category" name="category" class="neo-select">
                         <option value="">Не указана</option>
-                        <option value="ЕГЭ" {% if template and template.category == 'ЕГЭ' %}selected{% endif %}>ЕГЭ</option>
-                        <option value="ОГЭ" {% if template and template.category == 'ОГЭ' %}selected{% endif %}>ОГЭ</option>
-                        <option value="ЛЕВЕЛАП" {% if template and template.category == 'ЛЕВЕЛАП' %}selected{% endif %}>ЛЕВЕЛАП</option>
-                        <option value="ПРОГРАММИРОВАНИЕ" {% if template and template.category == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option>
+                        <option value="ЕГЭ" {% if (template and template.category == 'ЕГЭ') or (is_new and preset_category == 'ЕГЭ') %}selected{% endif %}>ЕГЭ</option>
+                        <option value="ОГЭ" {% if (template and template.category == 'ОГЭ') or (is_new and preset_category == 'ОГЭ') %}selected{% endif %}>ОГЭ</option>
+                        <option value="ЛЕВЕЛАП" {% if (template and template.category == 'ЛЕВЕЛАП') or (is_new and preset_category == 'ЛЕВЕЛАП') %}selected{% endif %}>ЛЕВЕЛАП</option>
+                        <option value="ПРОГРАММИРОВАНИЕ" {% if (template and template.category == 'ПРОГРАММИРОВАНИЕ') or (is_new and preset_category == 'ПРОГРАММИРОВАНИЕ') %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option>
                     </select>
                 </div>
             </div>
@@ -115,7 +114,8 @@
 
             <div style="display: flex; gap: 1rem; justify-content: flex-end;">
                 <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost">Отмена</a>
-                <button type="submit" class="neo-button accent">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
+                <button type="submit" class="neo-button outline" data-after="generator">{% if is_new %}Создать и добавить задания{% else %}Сохранить и добавить задания{% endif %}</button>
+                <button type="submit" class="neo-button accent" data-after="list">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
             </div>
         </form>
     </div>
@@ -123,16 +123,19 @@
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>
     <script>
-        document.getElementById('templateForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+        document.getElementById('templateForm').addEventListener('submit', async function(e) { // Сабмит формы шаблона
+            e.preventDefault(); // Не даём браузеру перезагрузить страницу
             
-            const formData = {
-                name: document.getElementById('name').value.trim(),
-                description: document.getElementById('description').value.trim(),
-                template_type: document.getElementById('template_type').value,
-                category: document.getElementById('category').value || null,
-                task_ids: [] // Пока пустой, задания добавляются через генератор
-            };
+            const submitter = e.submitter || null; // Кнопка, которой отправили форму (если браузер поддерживает)
+            const after = (submitter && submitter.dataset && submitter.dataset.after) ? submitter.dataset.after : 'list'; // Куда редиректить после сохранения
+            
+            const formData = { // Данные, которые отправляем на бекенд
+                name: document.getElementById('name').value.trim(), // Название шаблона
+                description: document.getElementById('description').value.trim(), // Описание шаблона
+                template_type: document.getElementById('template_type').value, // Тип шаблона (homework/classwork/exam/lesson)
+                category: document.getElementById('category').value || null, // Категория шаблона
+                task_ids: [] // Задания добавляются сразу после создания через генератор (template_id)
+            }; // Конец payload
 
             const url = {% if is_new %}'{{ url_for('templates.template_new') }}'{% else %}'{{ url_for('templates.template_edit', template_id=template.template_id) }}'{% endif %};
             const method = 'POST';
@@ -149,11 +152,19 @@
 
                 const data = await response.json();
                 
-                if (data.success) {
-                    toast.success('{% if is_new %}Шаблон создан{% else %}Шаблон сохранен{% endif %}');
-                    setTimeout(() => {
-                        window.location.href = '{{ url_for('templates.templates_list') }}';
-                    }, 1000);
+                if (data.success) { // Если бекенд сохранил шаблон
+                    toast.success('{% if is_new %}Шаблон создан{% else %}Шаблон сохранен{% endif %}'); // Показываем успех
+                    const templateId = data.template_id || {{ template.template_id if template else 'null' }}; // Получаем id шаблона (для редиректа)
+                    if (after === 'generator' && templateId) { // Если пользователь выбрал “добавить задания”
+                        const params = new URLSearchParams(); // Собираем параметры
+                        params.set('template_id', String(templateId)); // Передаём template_id для режима редактирования шаблона
+                        params.set('assignment_type', String(formData.template_type || 'homework')); // Передаём тип (не обязательно, но полезно)
+                        window.location.href = '{{ url_for('kege_generator.kege_generator') }}' + '?' + params.toString(); // Редиректим в генератор
+                        return; // Завершаем обработчик
+                    } // Конец ветки generator
+                    setTimeout(() => { // Небольшая задержка, чтобы тост успел показаться
+                        window.location.href = '{% if is_new %}{{ url_for('templates.templates_list') }}{% else %}{{ url_for('templates.template_view', template_id=template.template_id) }}{% endif %}'; // Редиректим в список/просмотр
+                    }, 800); // Таймаут редиректа
                 } else {
                     toast.error(data.error || 'Ошибка при сохранении');
                 }

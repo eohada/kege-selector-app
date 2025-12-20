@@ -204,6 +204,12 @@
                         <span class="nav-link-label">Планы</span> <!-- Подпись -->
                     </span>
                 </a>
+                <a href="{{ url_for('templates.templates_list') }}" class="nav-link"> <!-- Шаблоны -->
+                    <span class="nav-link-content"> <!-- Контейнер шаблонов -->
+                        <span class="nav-link-icon">📚</span> <!-- Иконка шаблонов -->
+                        <span class="nav-link-label">Шаблоны</span> <!-- Подпись -->
+                    </span>
+                </a>
             </nav>
         </header>
 
@@ -325,6 +331,11 @@
             
             <section class="form-section">
                 <div class="form-actions" style="display: flex; gap: 1em; justify-content: flex-end; margin-top: 0;">
+                    {% if is_new %}
+                    <button type="submit" class="neo-button outline" name="next" value="homework">Создать → ДЗ</button>
+                    <button type="submit" class="neo-button outline" name="next" value="classwork">Создать → КР</button>
+                    <button type="submit" class="neo-button outline" name="next" value="exam">Создать → Провер.</button>
+                    {% endif %}
                     {{ form.submit(class='neo-button accent') }}
                     <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">Отмена</a>
                 </div>

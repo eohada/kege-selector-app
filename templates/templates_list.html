@@ -12,7 +12,8 @@
     {% include '_ux_enhancements.html' %}
 </head>
 <body>
-    <header class="nav-primary">
+    <div class="app-shell">
+        <header class="nav-primary">
         <div class="nav-brand">
             {% if current_user and current_user.is_authenticated %}
             <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
@@ -58,8 +59,6 @@
             </a>
         </nav>
     </header>
-
-    <div class="app-shell">
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <div>
@@ -112,6 +111,12 @@
                 <div>
                     <p class="eyebrow">{{ type_icon }} {{ type_name }}</p>
                     <h2>{{ type_templates|length }} шаблонов</h2>
+                </div>
+                <div style="display: flex; gap: 0.6rem; align-items: center;">
+                    <a href="{{ url_for('templates.template_new') }}?template_type={{ type_key }}{% if current_category %}&category={{ current_category }}{% endif %}"
+                       class="neo-button outline"
+                       style="padding: 0.55rem 0.8rem; min-width: 0; text-decoration: none;"
+                       title="Создать шаблон в разделе «{{ type_name }}»">➕</a>
                 </div>
             </div>
 
