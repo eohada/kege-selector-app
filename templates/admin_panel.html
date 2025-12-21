@@ -87,16 +87,15 @@
                     <div class="hero-metric-label">режим</div>
                     <div class="hero-metric-value" style="font-size: 1.4rem;">{% if is_production %}production{% else %}safe{% endif %}</div>
                 </div>
+                <div class="hero-metric">
+                    <div class="hero-metric-label">пользователей (prod)</div>
+                    <div class="hero-metric-value" style="font-size: 1.6rem;">{{ total_users }}</div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hero-metric-label">логов сегодня (prod)</div>
+                    <div class="hero-metric-value" style="font-size: 1.6rem;">{{ today_logs }}</div>
+                </div>
             </div>
-        </section>
-
-        <section class="stats-grid">
-            <article class="stat-card"><strong>{{ total_users }}</strong><span>ПОЛЬЗОВАТЕЛЕЙ</span></article>
-            <article class="stat-card"><strong>{{ active_users }}</strong><span>АКТИВНЫХ</span></article>
-            <article class="stat-card"><strong>{{ creators_count }}</strong><span>CREATOR</span></article>
-            <article class="stat-card"><strong>{{ testers_count }}</strong><span>TESTER</span></article>
-            <article class="stat-card"><strong>{{ total_logs }}</strong><span>ЛОГОВ</span></article>
-            <article class="stat-card"><strong>{{ today_logs }}</strong><span>СЕГОДНЯ</span></article>
         </section>
 
         <section class="glass-panel" style="margin-bottom: 2rem;">
@@ -143,11 +142,17 @@
         </section>
 
         {% if is_production and sandbox_base_url %}
-        <section class="glass-panel" style="margin-bottom: 2rem;">
+        <section class="glass-panel" id="sandbox" style="margin-bottom: 2rem;">
             <div class="panel-head">
                 <div>
                     <p class="eyebrow">sandbox</p>
                     <h2>Тестировщики и логирование</h2>
+                    {% if sandbox_summary and sandbox_summary.success %}
+                    <div style="color: var(--text-muted); margin-top: 0.35rem;">
+                        User testers: <strong style="color: var(--text-primary);">{{ sandbox_summary.users|length }}</strong>
+                        · Tester entities: <strong style="color: var(--text-primary);">{{ sandbox_summary.tester_entities|length }}</strong>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
 
