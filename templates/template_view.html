@@ -56,7 +56,7 @@
             </a>
             <a href="{{ url_for('templates.templates_list') }}" class="nav-link active">
                 <span class="nav-link-content">
-                    <span class="nav-link-icon">📚</span>
+                    <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon">
                     <span class="nav-link-label">Шаблоны</span>
                 </span>
             </a>
@@ -75,7 +75,7 @@
                     {% endif %}
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
-                    <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button accent">✏️ Редактировать</a>
+                    <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm">Редактировать</a>
                 </div>
             </div>
             
@@ -83,7 +83,7 @@
                 <span style="padding: 0.5rem 1rem; background: var(--surface-2); color: var(--text-primary); border-radius: var(--radius-sm); font-weight: 600;">
                     {% if template.template_type == 'homework' %}📝 Домашние задания
                     {% elif template.template_type == 'classwork' %}🏫 Классные работы
-                    {% elif template.template_type == 'exam' %}✅ Проверочные работы
+                    {% elif template.template_type == 'exam' %}<img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проверочные" class="ui-icon ui-icon--sm">Проверочные работы
                     {% else %}📚 Уроки{% endif %}
                 </span>
                 {% if template.category %}

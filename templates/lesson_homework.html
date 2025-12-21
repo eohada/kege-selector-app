@@ -542,7 +542,7 @@
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent">✅ Завершить</button>
+                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
             </form>
             <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
         </div>
@@ -606,7 +606,7 @@
                 </a>
                 <a href="{{ url_for('templates.templates_list') }}" class="nav-link"> <!-- Переход к шаблонам -->
                     <span class="nav-link-content"> <!-- Контейнер -->
-                        <span class="nav-link-icon">📚</span> <!-- Иконка -->
+                        <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon"> <!-- Иконка -->
                         <span class="nav-link-label">Шаблоны</span> <!-- Подпись -->
                     </span>
                 </a>
@@ -724,7 +724,7 @@
                 {% if is_homework or is_classwork or is_exam %}
                 <div class="answer-section">
                     <label class="answer-label" for="answer_{{ hw_task.lesson_task_id }}">
-                        ✅ Правильный ответ:
+                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Правильный ответ" class="ui-icon ui-icon--sm">Правильный ответ:
                     </label>
                     {# Приоритет у student_answer (ручное редактирование), затем task.answer из базы #}
                     {% set correct_answer = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}
@@ -797,7 +797,7 @@
                 <button type="submit" class="neo-button accent" data-tooltip="Сохранить все ответы и результаты (Ctrl+S)">💾 Сохранить все ответы</button>
                 {% endif %}
                 <a href="#" class="neo-button accent" data-tooltip="Добавить дополнительные задания" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">
-                    ➕ Добавить ещё задания
+                    <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">Добавить ещё задания
                 </a>
                 {% if is_homework %}
                 <a href="{{ url_for('lessons.lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown">
@@ -864,7 +864,7 @@
                 <h3>Заданий пока нет</h3>
                 <p style="color: var(--text-muted);">{{ 'Добавь задания через генератор в режиме ДЗ' if is_homework else 'Добавь задания через генератор в режиме классной работы' }}</p>
                 <a href="#" class="neo-button accent" style="margin-top: 2em;" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">
-                    ➕ Добавить задания
+                    <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">Добавить задания
                 </a>
             </div>
         </section>

@@ -33,7 +33,7 @@
                 <a href="{{ url_for('schedule.schedule') }}" class="nav-link">📅 Расписание</a>
                 <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">💻 Генератор</a>
                 <a href="{{ url_for('main.update_plans') }}" class="nav-link">📝 Планы</a>
-                <a href="{{ url_for('templates.templates_list') }}" class="nav-link">📚 Шаблоны</a>
+                <a href="{{ url_for('templates.templates_list') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="ui-icon ui-icon--sm">Шаблоны</a>
             </nav>
         </header>
 
@@ -42,7 +42,7 @@
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div>
                 <p class="hero-eyebrow">импорт данных</p>
-                <h1 class="hero-title">📥 Импорт данных</h1>
+                <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-загрузка-настольного-компьютера-100.png') }}" alt="Импорт" class="ui-icon ui-icon--md">Импорт данных</h1>
             </div>
         </section>
 
@@ -70,8 +70,8 @@
                 </div>
                 
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                    <button type="submit" class="neo-button accent">📥 Импортировать</button>
-                    <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost">❌ Отмена</a>
+                    <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-загрузка-настольного-компьютера-100.png') }}" alt="Импорт" class="ui-icon ui-icon--sm">Импортировать</button>
+                    <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Отмена" class="ui-icon ui-icon--sm">Отмена</a>
                 </div>
             </form>
         </section>

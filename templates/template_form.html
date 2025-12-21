@@ -53,7 +53,7 @@
             </a>
             <a href="{{ url_for('templates.templates_list') }}" class="nav-link active">
                 <span class="nav-link-content">
-                    <span class="nav-link-icon">📚</span>
+                    <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon">
                     <span class="nav-link-label">Шаблоны</span>
                 </span>
             </a>
@@ -64,7 +64,7 @@
                 <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost" style="text-decoration: none;">← К библиотеке</a>
             </div>
             <p class="hero-eyebrow">{% if is_new %}создание шаблона{% else %}редактирование шаблона{% endif %}</p>
-            <h1 class="hero-title">{% if is_new %}➕ Создать шаблон{% else %}✏️ Редактировать шаблон{% endif %}</h1>
+            <h1 class="hero-title">{% if is_new %}<img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Создать" class="ui-icon ui-icon--md">Создать шаблон{% else %}<img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--md">Редактировать шаблон{% endif %}</h1>
         </section>
 
         <form id="templateForm" class="glass-panel">

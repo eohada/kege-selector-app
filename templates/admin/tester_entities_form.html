@@ -84,7 +84,7 @@
                 <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">💻 Генератор</a>
                 <a href="{{ url_for('admin.admin_audit') }}" class="nav-link">📊 Логи</a>
                 <a href="{{ url_for('admin.admin_tester_entities') }}" class="nav-link active">🧪 Тестировщики</a>
-                <a href="{{ url_for('templates.templates_list') }}" class="nav-link">📚 Шаблоны</a>
+                <a href="{{ url_for('templates.templates_list') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="ui-icon ui-icon--sm">Шаблоны</a>
             </nav>
         </header>
 
@@ -203,7 +203,7 @@
                             {% if tester %}
                                 💾 Сохранить изменения
                             {% else %}
-                                ➕ Создать тестировщика
+                                <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Создать" class="ui-icon ui-icon--sm">Создать тестировщика
                             {% endif %}
                         </button>
                         <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button outline" style="text-decoration: none; flex: 1; text-align: center;">

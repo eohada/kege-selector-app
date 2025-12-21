@@ -27,7 +27,7 @@
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent">✅ Завершить</button>
+                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
             </form>
             <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
         </div>
@@ -81,7 +81,7 @@
             </a>
             <a href="{{ url_for('templates.templates_list') }}" class="nav-link">
                 <span class="nav-link-content">
-                    <span class="nav-link-icon">📚</span>
+                    <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon">
                     <span class="nav-link-label">Шаблоны</span>
                 </span>
             </a>
@@ -158,7 +158,7 @@
                         </div>
                         <div>
                             <label style="display: block; font-size: 0.9em; margin-bottom: 0.25rem; color: var(--text-muted);">
-                                ✅ Правильно (добавить):
+                                <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Правильно" class="ui-icon ui-icon--sm">Правильно (добавить):
                             </label>
                             <input type="number" 
                                    min="0" 
@@ -175,7 +175,7 @@
                         </div>
                         <div>
                             <label style="display: block; font-size: 0.9em; margin-bottom: 0.25rem; color: var(--text-muted);">
-                                ❌ Неправильно (добавить):
+                                <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Неправильно" class="ui-icon ui-icon--sm">Неправильно (добавить):
                             </label>
                             <input type="number" 
                                    min="0" 

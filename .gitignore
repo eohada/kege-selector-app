@@ -59,6 +59,9 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Иконки-архивы (исходники) — в репозиторий не кладём
+static/icons/*.zip
+
 # Backups
 backups/*.db
 !backups/.gitkeep

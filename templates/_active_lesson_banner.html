@@ -200,7 +200,7 @@
         </div>
         
         <div class="lesson-menu-actions">
-            <button type="submit" class="lesson-menu-btn complete">✅ Завершить урок и сохранить</button>
+            <button type="submit" class="lesson-menu-btn complete"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить урок и сохранить</button>
             <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="lesson-menu-btn profile">
                 👤 Открыть профиль
             </a>

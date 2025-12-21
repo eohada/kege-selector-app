@@ -107,6 +107,15 @@
             position: relative;
             z-index: 1;
         }
+
+        .lesson-emblem-icon img { /* Увеличиваем PNG-иконку статуса в большой эмблеме */ /* comment */
+            width: 28px; /* comment */
+            height: 28px; /* comment */
+            margin: 0; /* comment */
+            vertical-align: middle; /* comment */
+            object-fit: contain; /* comment */
+            display: inline-block; /* comment */
+        }
         
         .lesson-emblem-day {
             font-size: 1.5rem;
@@ -389,6 +398,15 @@
         
         .assignment-card .icon {
             font-size: 1.5rem;
+        }
+
+        .assignment-card .icon img { /* Увеличиваем PNG-иконки внутри карточек заданий */ /* comment */
+            width: 28px; /* comment */
+            height: 28px; /* comment */
+            margin: 0; /* comment */
+            vertical-align: middle; /* comment */
+            object-fit: contain; /* comment */
+            display: inline-block; /* comment */
         }
         
         .assignment-card .info {
@@ -918,6 +936,14 @@
             color: var(--text-primary);
             font-size: 0.95rem;
         }
+
+        #lessonSearch { /* Иконка поиска для input через background (в placeholder img нельзя) */ /* comment */
+            padding-left: 2.35rem; /* comment */
+            background-image: url('{{ url_for('static', filename='icons/icons8-лупа-100-2.png') }}'); /* comment */
+            background-repeat: no-repeat; /* comment */
+            background-position: 0.8rem center; /* comment */
+            background-size: 18px 18px; /* comment */
+        }
         
         .search-input:focus {
             outline: none;
@@ -932,6 +958,14 @@
             color: var(--text-primary);
             font-size: 0.95rem;
             cursor: pointer;
+        }
+
+        #sortFilter { /* Иконка сортировки для select через background (в option img нельзя) */ /* comment */
+            padding-left: 2.35rem; /* comment */
+            background-image: url('{{ url_for('static', filename='icons/schedule_white.png') }}'); /* comment */
+            background-repeat: no-repeat; /* comment */
+            background-position: 0.8rem center; /* comment */
+            background-size: 18px 18px; /* comment */
         }
         
         .filter-select:focus {
@@ -1219,6 +1253,14 @@
             font-size: 2rem;
             margin-bottom: 0.75rem;
             filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+        }
+
+        .metric-icon img { /* Увеличиваем иконки метрик (контейнер большой, 18px выглядит мелко) */ /* comment */
+            width: 28px; /* comment */
+            height: 28px; /* comment */
+            margin: 0; /* comment */
+            object-fit: contain; /* comment */
+            display: block; /* comment */
         }
         
         .metric-value {
@@ -1510,7 +1552,7 @@
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent">✅ Завершить</button>
+                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
             </form>
             <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
         </div>
@@ -1574,7 +1616,7 @@
                 </a>
                 <a href="{{ url_for('templates.templates_list') }}" class="nav-link"> <!-- Переход к шаблонам -->
                     <span class="nav-link-content"> <!-- Обертка для шаблонов -->
-                        <span class="nav-link-icon">📚</span> <!-- Иконка шаблонов -->
+                        <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon"> <!-- Иконка шаблонов -->
                         <span class="nav-link-label">Шаблоны</span> <!-- Текстовая подпись -->
                     </span>
                 </a>
@@ -1618,7 +1660,7 @@
                         <h1 class="student-name">{{ student.name }}</h1>
                         {% if student.category %}
                         <span class="student-category-tag {{ cat_class }}">
-                            {% if student.category == 'ЕГЭ' %}🎯{% elif student.category == 'ОГЭ' %}📝{% elif student.category == 'ПРОГРАММИРОВАНИЕ' %}💻{% else %}🚀{% endif %}
+                            {% if student.category == 'ЕГЭ' %}<img src="{{ url_for('static', filename='icons/icons8-мишень-100.png') }}" alt="ЕГЭ" class="ui-icon ui-icon--sm">{% elif student.category == 'ОГЭ' %}📝{% elif student.category == 'ПРОГРАММИРОВАНИЕ' %}💻{% else %}🚀{% endif %}
                             {{ student.category }}
                         </span>
                         {% endif %}
@@ -1632,7 +1674,7 @@
                 <div class="student-tags">
                     {% if student.school_class %}
                     <span class="student-tag-item">
-                        🏫 <span class="value">{{ student.school_class }} класс</span>
+                        <img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Класс" class="ui-icon ui-icon--sm"> <span class="value">{{ student.school_class }} класс</span>
                     </span>
                     {% endif %}
                     {% if student.platform_id %}
@@ -1644,32 +1686,32 @@
                 
                 <div class="student-actions">
                     <form method="POST" action="{{ url_for('students.student_start_lesson', student_id=student.student_id) }}" style="margin: 0;">
-                        <button type="submit" class="neo-button accent">🎓 Начать урок</button>
+                        <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Начать урок" class="ui-icon ui-icon--sm">Начать урок</button>
                     </form>
-                    <a href="{{ url_for('students.student_statistics', student_id=student.student_id) }}" class="neo-button outline">📊 Статистика</a>
-                    <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="neo-button ghost">✏️</a>
+                    <a href="{{ url_for('students.student_statistics', student_id=student.student_id) }}" class="neo-button outline"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Статистика" class="ui-icon ui-icon--sm">Статистика</a>
+                    <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm ui-icon--only"></a>
                     <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" style="margin: 0;">
-                        <button type="submit" class="neo-button ghost">📦</button>
+                        <button type="submit" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/ARHIV.png') }}" alt="Архив" class="ui-icon ui-icon--sm ui-icon--only"></button>
                     </form>
                     <form method="POST" action="{{ url_for('students.student_delete', student_id=student.student_id) }}" class="confirm-delete-form" style="margin: 0;">
-                        <button type="submit" class="neo-button danger">🗑️</button>
+                        <button type="submit" class="neo-button danger"><img src="{{ url_for('static', filename='icons/MUSORN.png') }}" alt="Удалить" class="ui-icon ui-icon--sm ui-icon--only"></button>
                     </form>
                 </div>
             </div>
             
             <div class="student-metrics">
                 <div class="metric-card">
-                    <span class="metric-icon">📚</span>
+                    <span class="metric-icon"><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Всего уроков" class="ui-icon ui-icon--only"></span>
                     <span class="metric-value">{{ total_lessons }}</span>
                     <span class="metric-label">всего уроков</span>
                 </div>
                 <div class="metric-card">
-                    <span class="metric-icon">✅</span>
+                    <span class="metric-icon"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проведено" class="ui-icon ui-icon--only"></span>
                     <span class="metric-value">{{ completed_lessons }}</span>
                     <span class="metric-label">проведено</span>
                 </div>
                 <div class="metric-card">
-                    <span class="metric-icon">📅</span>
+                    <span class="metric-icon"><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Запланировано" class="ui-icon ui-icon--only"></span>
                     <span class="metric-value">{{ planned_lessons }}</span>
                     <span class="metric-label">запланировано</span>
                 </div>
@@ -1687,7 +1729,7 @@
         <section class="data-cards">
             {% if student.school_class %}
             <div class="data-card">
-                <span class="data-card-icon">🏫</span>
+                <span class="data-card-icon"><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Класс" class="ui-icon ui-icon--only"></span>
                 <div class="data-card-content">
                     <span class="data-card-label">Класс</span>
                     <span class="data-card-value">{{ student.school_class }} класс</span>
@@ -1697,7 +1739,7 @@
             
             {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.goal_text %}
             <div class="data-card">
-                <span class="data-card-icon">🎯</span>
+                <span class="data-card-icon"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--only"></span>
                 <div class="data-card-content">
                     <span class="data-card-label">Цель</span>
                     <span class="data-card-value">{{ student.goal_text }}</span>
@@ -1705,7 +1747,7 @@
             </div>
             {% elif student.category == 'ЛЕВЕЛАП' and student.goal_text %}
             <div class="data-card">
-                <span class="data-card-icon">🎯</span>
+                <span class="data-card-icon"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--only"></span>
                 <div class="data-card-content">
                     <span class="data-card-label">Цель</span>
                     <span class="data-card-value">{{ student.goal_text }}</span>
@@ -1713,7 +1755,7 @@
             </div>
             {% elif student.target_score %}
             <div class="data-card">
-                <span class="data-card-icon">🎯</span>
+                <span class="data-card-icon"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--only"></span>
                 <div class="data-card-content">
                     <span class="data-card-label">{% if student.category == 'ОГЭ' %}Целевая оценка{% else %}Целевой балл{% endif %}</span>
                     <span class="data-card-value">{{ student.target_score }}</span>
@@ -1723,7 +1765,7 @@
             
             {% if student.category != 'ПРОГРАММИРОВАНИЕ' and student.deadline %}
             <div class="data-card">
-                <span class="data-card-icon">⏰</span>
+                <span class="data-card-icon"><img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Срок" class="ui-icon ui-icon--only"></span>
                 <div class="data-card-content">
                     <span class="data-card-label">Сроки</span>
                     <span class="data-card-value">{{ student.deadline }}</span>
@@ -1743,7 +1785,7 @@
             
             {% if student.diagnostic_level %}
             <div class="data-card">
-                <span class="data-card-icon">📊</span>
+                <span class="data-card-icon"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Диагностика" class="ui-icon ui-icon--only"></span>
                 <div class="data-card-content">
                     <span class="data-card-label">Диагностика</span>
                     <span class="data-card-value">{{ student.diagnostic_level }}</span>
@@ -1753,7 +1795,7 @@
             
             {% if student.overall_rating %}
             <div class="data-card">
-                <span class="data-card-icon">⭐</span>
+                <span class="data-card-icon"><img src="{{ url_for('static', filename='icons/OSENKA.png') }}" alt="Оценка" class="ui-icon ui-icon--only"></span>
                 <div class="data-card-content">
                     <span class="data-card-label">Общая оценка</span>
                     <span class="data-card-value">{{ student.overall_rating }}</span>
@@ -1768,7 +1810,7 @@
             {% if student.strengths %}
             <div class="trait-card strengths">
                 <div class="trait-header">
-                    <span class="trait-icon">💪</span>
+                    <span class="trait-icon"><img src="{{ url_for('static', filename='icons/SILSTORON.png') }}" alt="Сильные стороны" class="ui-icon ui-icon--only"></span>
                     <span class="trait-title">Сильные стороны</span>
                 </div>
                 <div class="trait-content">{{ student.strengths }}</div>
@@ -1778,7 +1820,7 @@
             {% if student.weaknesses %}
             <div class="trait-card weaknesses">
                 <div class="trait-header">
-                    <span class="trait-icon">📈</span>
+                    <span class="trait-icon"><img src="{{ url_for('static', filename='icons/ROSTA ZONA.png') }}" alt="Зоны роста" class="ui-icon ui-icon--only"></span>
                     <span class="trait-title">Зоны роста</span>
                 </div>
                 <div class="trait-content">{{ student.weaknesses }}</div>
@@ -1788,7 +1830,7 @@
             {% if student.preferences %}
             <div class="trait-card preferences">
                 <div class="trait-header">
-                    <span class="trait-icon">💡</span>
+                    <span class="trait-icon"><img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" alt="Предпочтения" class="ui-icon ui-icon--only"></span>
                     <span class="trait-title">Предпочтения</span>
                 </div>
                 <div class="trait-content">{{ student.preferences }}</div>
@@ -1798,7 +1840,7 @@
             {% if student.notes %}
             <div class="trait-card notes">
                 <div class="trait-header">
-                    <span class="trait-icon">📋</span>
+                    <span class="trait-icon"><img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Заметки" class="ui-icon ui-icon--only"></span>
                     <span class="trait-title">Заметки</span>
                 </div>
                 <div class="trait-content" style="white-space: pre-wrap;">{{ student.notes }}</div>
@@ -1826,13 +1868,13 @@
                     <div class="lesson-date" style="margin-top: 0.5rem;">{{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
                     {% if lesson.topic %}<div class="lesson-topic">{{ lesson.topic }}</div>{% endif %}
                     <div class="lesson-info">
-                        <div>⏱️ {{ lesson.duration }} минут</div>
+                        <div><img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Длительность" class="ui-icon ui-icon--sm"> {{ lesson.duration }} минут</div>
                     </div>
                     <div class="lesson-actions">
                         <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
-                            <button type="submit" class="neo-button accent">✅ Завершить</button>
+                            <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
                         </form>
-                        <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">✏️</a>
+                        <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm ui-icon--only"></a>
                     </div>
                 </div>
                 {% endif %}
@@ -1841,20 +1883,20 @@
                 {% if last_completed %}
                 {% set lesson = last_completed %}
                 <div class="featured-lesson-card completed">
-                    <span class="featured-label completed">✅ Последний</span>
+                    <span class="featured-label completed"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Последний" class="ui-icon ui-icon--sm">Последний</span>
                     <div class="lesson-date" style="margin-top: 0.5rem;">{{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
                     {% if lesson.topic %}<div class="lesson-topic">{{ lesson.topic }}</div>{% endif %}
                     <div class="lesson-info">
-                        <div>⏱️ {{ lesson.duration }} минут</div>
-                        {% if lesson.homework_status == 'assigned_done' %}<div>✅ ДЗ выполнено</div>{% endif %}
-                        {% if lesson.homework_status == 'assigned_not_done' %}<div>❌ ДЗ не выполнено</div>{% endif %}
+                        <div><img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Длительность" class="ui-icon ui-icon--sm"> {{ lesson.duration }} минут</div>
+                        {% if lesson.homework_status == 'assigned_done' %}<div><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="ДЗ выполнено" class="ui-icon ui-icon--sm">ДЗ выполнено</div>{% endif %}
+                        {% if lesson.homework_status == 'assigned_not_done' %}<div><img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="ДЗ не выполнено" class="ui-icon ui-icon--sm">ДЗ не выполнено</div>{% endif %}
                     </div>
                     {% set hw_count = lesson.homework_assignments|length %}
                     <div class="lesson-actions" style="margin-top: 0.5rem;">
                         {% if hw_count %}
-                        <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button accent" style="font-size: 0.85rem; padding: 0.5rem 1rem;">👁️ ДЗ ({{ hw_count }})</a>
+                        <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button accent" style="font-size: 0.85rem; padding: 0.5rem 1rem;"><img src="{{ url_for('static', filename='icons/icons8-спрятать-100.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm">ДЗ ({{ hw_count }})</a>
                         {% endif %}
-                        <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.85rem; padding: 0.5rem 1rem;">✏️</a>
+                        <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.85rem; padding: 0.5rem 1rem;"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm ui-icon--only"></a>
                     </div>
                 </div>
                 {% endif %}
@@ -1866,15 +1908,15 @@
                     <div class="lesson-date" style="margin-top: 0.5rem;">{{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
                     {% if lesson.topic %}<div class="lesson-topic">{{ lesson.topic }}</div>{% endif %}
                     <div class="lesson-info">
-                        <div>⏱️ {{ lesson.duration }} минут</div>
-                        {% if lesson.lesson_type == 'exam' %}<div>📊 Проверочный</div>{% endif %}
+                        <div><img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Длительность" class="ui-icon ui-icon--sm"> {{ lesson.duration }} минут</div>
+                        {% if lesson.lesson_type == 'exam' %}<div><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Проверочный" class="ui-icon ui-icon--sm">Проверочный</div>{% endif %}
                     </div>
                     <div class="lesson-actions">
                         <form method="POST" action="{{ url_for('lessons.lesson_start', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
                             <button type="submit" class="neo-button accent" style="font-size: 0.85rem; padding: 0.5rem 1rem;">🎓 Начать</button>
                         </form>
                         <a href="#" class="neo-button outline" style="font-size: 0.85rem; padding: 0.5rem 1rem;" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="homework" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">📝 ДЗ</a>
-                        <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.85rem; padding: 0.5rem 1rem;">✏️</a>
+                        <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.85rem; padding: 0.5rem 1rem;"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm ui-icon--only"></a>
                     </div>
                 </div>
                 {% endfor %}
@@ -1887,22 +1929,22 @@
             <div class="panel-head">
                 <div>
                     <p class="eyebrow">история</p>
-                    <h2>📚 Все уроки</h2>
+                    <h2><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Все уроки" class="ui-icon ui-icon--md">Все уроки</h2>
                 </div>
                 <div class="hero-actions">
-                    <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)">+ Добавить урок</a>
+                    <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить урок" class="ui-icon ui-icon--sm">Добавить урок</a>
                 </div>
             </div>
             
             <!-- Фильтры и поиск -->
             <div class="lessons-filters">
-                <input type="text" class="search-input" id="lessonSearch" placeholder="🔍 Поиск по теме или заметкам..." oninput="filterLessons()">
+                <input type="text" class="search-input" id="lessonSearch" placeholder="Поиск по теме или заметкам..." oninput="filterLessons()">
                 <select class="filter-select" id="statusFilter" onchange="filterLessons()">
                     <option value="">Все статусы</option>
                     <option value="planned">📅 Запланированы</option>
                     <option value="in_progress">🎓 В процессе</option>
-                    <option value="completed">✅ Проведены</option>
-                    <option value="cancelled">❌ Отменены</option>
+                    <option value="completed">Проведены</option>
+                    <option value="cancelled">Отменены</option>
                 </select>
                 <select class="filter-select" id="typeFilter" onchange="filterLessons()">
                     <option value="">Все типы</option>
@@ -1911,8 +1953,8 @@
                     <option value="introductory">👋 Вводные</option>
                 </select>
                 <select class="filter-select" id="sortFilter" onchange="filterLessons()">
-                    <option value="date_desc">📆 Сначала новые</option>
-                    <option value="date_asc">📆 Сначала старые</option>
+                    <option value="date_desc">Сначала новые</option>
+                    <option value="date_asc">Сначала старые</option>
                 </select>
                 <span class="lessons-count" id="lessonsCount"></span>
             </div>
@@ -1937,10 +1979,10 @@
                     <div class="lesson-emblem">
                         <span class="lesson-emblem-icon">
                             {% if lesson.status == 'in_progress' %}🎓
-                            {% elif lesson.lesson_type == 'exam' %}📊
+                            {% elif lesson.lesson_type == 'exam' %}<img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Проверочный" class="ui-icon ui-icon--sm ui-icon--only">
                             {% elif lesson.lesson_type == 'introductory' %}👋
-                            {% elif lesson.status == 'completed' %}✅
-                            {% elif lesson.status == 'cancelled' %}❌
+                            {% elif lesson.status == 'completed' %}<img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проведён" class="ui-icon ui-icon--sm ui-icon--only">
+                            {% elif lesson.status == 'cancelled' %}<img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Отменён" class="ui-icon ui-icon--sm ui-icon--only">
                             {% else %}📚{% endif %}
                         </span>
                         <span class="lesson-emblem-day">{{ lesson.lesson_date.strftime('%d') }}</span>
@@ -1987,11 +2029,11 @@
                             {% if lesson.lesson_type != 'introductory' and lesson.homework_status %}
                                 {% if lesson.homework_status == 'assigned_done' %}
                                 <span class="lesson-meta-item hw-done">
-                                    <span class="icon">✅</span> ДЗ выполнено
+                                    <span class="icon"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="ДЗ выполнено" class="ui-icon ui-icon--sm ui-icon--only"></span> ДЗ выполнено
                                 </span>
                                 {% elif lesson.homework_status == 'assigned_not_done' %}
                                 <span class="lesson-meta-item hw-not-done">
-                                    <span class="icon">❌</span> ДЗ не сдано
+                                    <span class="icon"><img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="ДЗ не сдано" class="ui-icon ui-icon--sm ui-icon--only"></span> ДЗ не сдано
                                 </span>
                                 {% elif lesson.homework_status == 'not_assigned' %}
                                 <span class="lesson-meta-item hw-not-assigned">
@@ -2018,7 +2060,7 @@
                         <div class="lesson-assignments">
                             {% if homework_count %}
                             <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="assignment-card homework">
-                                <span class="icon">📝</span>
+                                <span class="icon"><img src="{{ url_for('static', filename='icons/DOMZ.png') }}" alt="ДЗ" class="ui-icon ui-icon--only"></span>
                                 <div class="info">
                                     <span class="label">Домашнее задание</span>
                                     <span class="count">{{ homework_count }} заданий</span>
@@ -2027,7 +2069,7 @@
                             {% endif %}
                             {% if classwork_count %}
                             <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="assignment-card classwork">
-                                <span class="icon">🏫</span>
+                                <span class="icon"><img src="{{ url_for('static', filename='icons/klassrab.png') }}" alt="КР" class="ui-icon ui-icon--only"></span>
                                 <div class="info">
                                     <span class="label">Классная работа</span>
                                     <span class="count">{{ classwork_count }} заданий</span>
@@ -2036,7 +2078,7 @@
                             {% endif %}
                             {% if exam_count %}
                             <a href="{{ url_for('lessons.lesson_exam_view', lesson_id=lesson.lesson_id) }}" class="assignment-card exam">
-                                <span class="icon">📊</span>
+                                <span class="icon"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Проверочная" class="ui-icon ui-icon--only"></span>
                                 <div class="info">
                                     <span class="label">Проверочная</span>
                                     <span class="count">{{ exam_count }} заданий</span>
@@ -2066,23 +2108,23 @@
                                 <!-- Горизонтальное меню (раскрывается вправо по клику) -->
                                 <div class="create-dropdown" onclick="toggleDropdown(event, this)">
                                     <button type="button" class="create-dropdown-btn">
-                                        ➕ Сформировать <span class="arrow">▶</span>
+                                        <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Сформировать" class="ui-icon ui-icon--sm">Сформировать <span class="arrow">▶</span>
                                     </button>
                                     <div class="create-dropdown-content" onclick="event.stopPropagation()">
                                         <a href="#" class="create-dropdown-item homework" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="homework" onclick="closeAllDropdowns(); tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">
-                                            <span class="icon">📝</span> ДЗ
+                                            <span class="icon"><img src="{{ url_for('static', filename='icons/DOMZ.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm ui-icon--only"></span> ДЗ
                                         </a>
                                         <a href="#" class="create-dropdown-item classwork" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="classwork" onclick="closeAllDropdowns(); tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">
-                                            <span class="icon">🏫</span> КР
+                                            <span class="icon"><img src="{{ url_for('static', filename='icons/klassrab.png') }}" alt="КР" class="ui-icon ui-icon--sm ui-icon--only"></span> КР
                                         </a>
                                         <a href="#" class="create-dropdown-item exam" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="exam" onclick="closeAllDropdowns(); tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;">
-                                            <span class="icon">📊</span> Пров.
+                                            <span class="icon"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Пров." class="ui-icon ui-icon--sm ui-icon--only"></span> Пров.
                                         </a>
                                     </div>
                                 </div>
                                 
                                 <form method="POST" action="{{ url_for('lessons.lesson_homework_not_assigned', lesson_id=lesson.lesson_id) }}" style="margin: 0;">
-                                    <button type="submit" class="action-btn secondary icon-only" title="ДЗ не задано">➖</button>
+                                    <button type="submit" class="action-btn secondary icon-only" title="ДЗ не задано"><img src="{{ url_for('static', filename='icons/MINUS.png') }}" alt="ДЗ не задано" class="ui-icon ui-icon--only"></button>
                                 </form>
                                 
                                 {% if homework_count %}
@@ -2091,9 +2133,9 @@
                             </div>
                             
                             <div class="lesson-secondary-actions">
-                                <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="action-btn secondary icon-only" title="Редактировать урок">✏️</a>
+                                <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="action-btn secondary icon-only" title="Редактировать урок"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm ui-icon--only"></a>
                                 <form method="POST" action="{{ url_for('lessons.lesson_delete', lesson_id=lesson.lesson_id) }}" class="confirm-delete-form" style="margin: 0;">
-                                    <button type="submit" class="action-btn secondary icon-only danger" title="Удалить урок">🗑️</button>
+                                    <button type="submit" class="action-btn secondary icon-only danger" title="Удалить урок"><img src="{{ url_for('static', filename='icons/MUSORN.png') }}" alt="Удалить" class="ui-icon ui-icon--sm ui-icon--only"></button>
                                 </form>
                             </div>
                         </div>
@@ -2115,7 +2157,7 @@
                 <h3 class="empty-state-title">Пока нет других уроков</h3>
                 <p class="empty-state-description">Все уроки отображены в блоке "Ключевые уроки" выше</p>
                 <div class="empty-state-actions">
-                    <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)">+ Добавить урок</a>
+                    <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить урок" class="ui-icon ui-icon--sm">Добавить урок</a>
                     <a href="{{ url_for('schedule.schedule') }}" class="neo-button ghost" data-tooltip="Перейти к расписанию">📅 Расписание</a>
                 </div>
             </div>

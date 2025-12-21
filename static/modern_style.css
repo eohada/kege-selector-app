@@ -668,6 +668,31 @@ body::after {
     align-items: center;
 }
 
+.ui-icon { /* Унифицированная inline-иконка для кнопок/лейблов по проекту */
+    width: 18px; /* Базовый размер */
+    height: 18px; /* Базовый размер */
+    margin-right: 0.4rem; /* Отступ справа от иконки до текста */
+    vertical-align: middle; /* Ровняем по baseline текста */
+    object-fit: contain; /* Не искажаем PNG */
+    display: inline-block; /* Стабильная геометрия */
+}
+
+.ui-icon--sm { /* Компактный вариант */
+    width: 16px; /* Чуть меньше */
+    height: 16px; /* Чуть меньше */
+    margin-right: 0.35rem; /* Чуть меньше отступ */
+}
+
+.ui-icon--md { /* Чуть крупнее для hero-кнопок */
+    width: 20px; /* Крупнее */
+    height: 20px; /* Крупнее */
+    margin-right: 0.5rem; /* Чуть больше отступ */
+}
+
+.ui-icon--only { /* Для icon-only кнопок */
+    margin-right: 0; /* Убираем отступ */
+}
+
 .pagination-btn {
     padding: 0.7rem 1.5rem;
     border-radius: var(--radius-sm);

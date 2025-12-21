@@ -53,7 +53,7 @@
             </a>
             <a href="{{ url_for('templates.templates_list') }}" class="nav-link active">
                 <span class="nav-link-content">
-                    <span class="nav-link-icon">📚</span>
+                    <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon">
                     <span class="nav-link-label">Шаблоны</span>
                 </span>
             </a>
@@ -63,10 +63,10 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <div>
                     <p class="hero-eyebrow">библиотека шаблонов</p>
-                    <h1 class="hero-title">📚 Шаблоны заданий</h1>
+                    <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="ui-icon ui-icon--md">Шаблоны заданий</h1>
                     <p class="hero-subtitle">Готовые наборы заданий для быстрого формирования ДЗ, классных и проверочных работ</p>
                 </div>
-                <a href="{{ url_for('templates.template_new') }}" class="neo-button accent">➕ Создать шаблон</a>
+                <a href="{{ url_for('templates.template_new') }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Создать" class="ui-icon ui-icon--sm">Создать шаблон</a>
                 <a href="{{ url_for('templates.template_manual_create') }}" class="neo-button outline" style="margin-left: 1rem;">📝 Создать вручную</a>
             </div>
         </section>
@@ -101,7 +101,7 @@
         {% for type_key, type_name, type_icon in [
             ('homework', 'Домашние задания', '📝'),
             ('classwork', 'Классные работы', '🏫'),
-            ('exam', 'Проверочные работы', '✅'),
+            ('exam', 'Проверочные работы', '__CHECK__'),
             ('lesson', 'Уроки', '📚')
         ] %}
         {% set type_templates = templates_by_type.get(type_key, []) %}
@@ -109,14 +109,21 @@
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div class="panel-head">
                 <div>
-                    <p class="eyebrow">{{ type_icon }} {{ type_name }}</p>
+                    <p class="eyebrow">
+                        {% if type_icon == '__CHECK__' %}
+                            <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проверочные" class="ui-icon ui-icon--sm">
+                        {% else %}
+                            {{ type_icon }}
+                        {% endif %}
+                        {{ type_name }}
+                    </p>
                     <h2>{{ type_templates|length }} шаблонов</h2>
                 </div>
                 <div style="display: flex; gap: 0.6rem; align-items: center;">
                     <a href="{{ url_for('templates.template_new') }}?template_type={{ type_key }}{% if current_category %}&category={{ current_category }}{% endif %}"
                        class="neo-button outline"
                        style="padding: 0.55rem 0.8rem; min-width: 0; text-decoration: none;"
-                       title="Создать шаблон в разделе «{{ type_name }}»">➕</a>
+                       title="Создать шаблон в разделе «{{ type_name }}»"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Создать" class="ui-icon ui-icon--sm ui-icon--only"></a>
                 </div>
             </div>
 
@@ -143,9 +150,9 @@
                     </div>
 
                     <div style="display: flex; gap: 0.5rem; margin-top: 1rem; width: 100%;">
-                        <a href="{{ url_for('templates.template_view', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1 1 0%; min-width: 0; text-align: center; text-decoration: none; padding: 0.85rem 0.75rem; font-size: 0.9rem;">👁️ Просмотр</a>
-                        <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1 1 0%; min-width: 0; text-align: center; text-decoration: none; padding: 0.85rem 0.75rem; font-size: 0.9rem;">✏️ Изменить</a>
-                        <button type="button" class="neo-button ghost danger" onclick="confirmDeleteTemplate({{ template.template_id }})" style="flex: 0 0 auto; padding: 0.85rem 0.75rem; font-size: 0.9rem;">🗑️</button>
+                        <a href="{{ url_for('templates.template_view', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1 1 0%; min-width: 0; text-align: center; text-decoration: none; padding: 0.85rem 0.75rem; font-size: 0.9rem;"><img src="{{ url_for('static', filename='icons/icons8-спрятать-100.png') }}" alt="Просмотр" class="ui-icon ui-icon--sm">Просмотр</a>
+                        <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1 1 0%; min-width: 0; text-align: center; text-decoration: none; padding: 0.85rem 0.75rem; font-size: 0.9rem;"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Изменить" class="ui-icon ui-icon--sm">Изменить</a>
+                        <button type="button" class="neo-button ghost danger" onclick="confirmDeleteTemplate({{ template.template_id }})" style="flex: 0 0 auto; padding: 0.85rem 0.75rem; font-size: 0.9rem;"><img src="{{ url_for('static', filename='icons/MUSORN.png') }}" alt="Удалить" class="ui-icon ui-icon--sm ui-icon--only"></button>
                     </div>
                 </div>
                 {% endfor %}

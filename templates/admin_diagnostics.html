@@ -52,7 +52,7 @@
                 </a>
                 <a href="{{ url_for('templates.templates_list') }}" class="nav-link">
                     <span class="nav-link-content">
-                        <span class="nav-link-icon">📚</span>
+                        <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon">
                         <span class="nav-link-label">Шаблоны</span>
                     </span>
                 </a>
@@ -74,7 +74,7 @@
 
         {% if diagnostics_data.errors %}
         <section class="glass-panel" style="margin-bottom: 2rem; border-left: 3px solid var(--danger);">
-            <h2 style="color: var(--danger); margin-bottom: 1rem;">❌ Обнаружены ошибки:</h2>
+            <h2 style="color: var(--danger); margin-bottom: 1rem;"><img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Ошибки" class="ui-icon ui-icon--sm">Обнаружены ошибки:</h2>
             <ul style="margin: 0; padding-left: 1.5rem;">
                 {% for error in diagnostics_data.errors %}
                 <li style="color: var(--danger); margin-bottom: 0.5rem;">{{ error }}</li>

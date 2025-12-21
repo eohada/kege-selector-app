@@ -48,7 +48,7 @@
             </a>
             <a href="{{ url_for('templates.templates_list') }}" class="nav-link">
                 <span class="nav-link-content">
-                    <span class="nav-link-icon">📚</span>
+                    <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon">
                     <span class="nav-link-label">Шаблоны</span>
                 </span>
             </a>
@@ -71,7 +71,7 @@
 
         <section class="glass-panel" style="text-align: center; margin-top: 2rem; border-style: dashed;">
             <button onclick="addTaskCard()" class="neo-button outline" style="width: 100%; padding: 1.5rem;">
-                ➕ Добавить еще задание
+                <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">Добавить еще задание
             </button>
         </section>
 
@@ -88,7 +88,7 @@
     <template id="task-card-template">
         <section class="glass-panel task-card-entry" style="margin-bottom: 1.5rem; position: relative;">
             <button type="button" onclick="removeTaskCard(this)" class="neo-button danger" style="position: absolute; top: 1rem; right: 1rem; padding: 0.5rem;">
-                🗑️
+                <img src="{{ url_for('static', filename='icons/MUSORN.png') }}" alt="Удалить" class="ui-icon ui-icon--sm ui-icon--only">
             </button>
             
             <div class="form-group" style="margin-bottom: 1.5rem; max-width: 200px;">

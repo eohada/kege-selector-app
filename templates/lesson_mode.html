@@ -234,7 +234,7 @@
             <h3>Текущий урок</h3>
             <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Дата:</strong> {{ current_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
             {% if current_lesson.lesson_type == 'exam' %}
-            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> ✅ Проверочный урок</div>
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проверочный" class="ui-icon ui-icon--sm">Проверочный урок</div>
             {% elif current_lesson.lesson_type == 'introductory' %}
             <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> 👋 Вводный урок</div>
             {% else %}
@@ -250,7 +250,7 @@
             <div style="margin-top: 0.5em; color: var(--text-primary);"><strong>Домашнее задание:</strong> {{ current_lesson.homework }}</div>
             {% endif %}
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=current_lesson.lesson_id) }}" style="margin-top: 1rem;">
-                <button type="submit" class="neo-button accent">✅ Завершить урок</button>
+                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить урок</button>
             </form>
         </section>
         {% endif %}
@@ -260,7 +260,7 @@
             <h3>📅 Ближайший запланированный урок</h3>
             <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Дата:</strong> {{ upcoming_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
             {% if upcoming_lesson.lesson_type == 'exam' %}
-            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> ✅ Проверочный урок</div>
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проверочный" class="ui-icon ui-icon--sm">Проверочный урок</div>
             {% elif upcoming_lesson.lesson_type == 'introductory' %}
             <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> 👋 Вводный урок</div>
             {% else %}
@@ -286,7 +286,7 @@
             </a>
             
             <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="quick-action-card">
-                <div class="quick-action-icon">➕</div>
+                <div class="quick-action-icon"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--only"></div>
                 <div class="quick-action-title">Добавить урок</div>
                 <div class="quick-action-desc">Запланировать новое занятие</div>
             </a>
@@ -317,14 +317,14 @@
                             </div>
                             <div style="color: var(--text-muted); font-size: 0.9em;">
                                 ⏱️ {{ lesson.duration }} минут | 
-                                {% if lesson.status == 'completed' %}✅ Проведен
+                                {% if lesson.status == 'completed' %}<img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проведен" class="ui-icon ui-icon--sm">Проведен
                                 {% elif lesson.status == 'planned' %}📅 Запланирован
-                                {% elif lesson.status == 'cancelled' %}❌ Отменен
+                                {% elif lesson.status == 'cancelled' %}<img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Отменен" class="ui-icon ui-icon--sm">Отменен
                                 {% else %}🔄 {{ lesson.status }}{% endif %}
                             </div>
                         </div>
                         <div style="display: flex; gap: 0.5em; flex-wrap: wrap;">
-                            <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.9em; padding: 0.5em 1em;">✏️ Редактировать</a>
+                            <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.9em; padding: 0.5em 1em;"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm">Редактировать</a>
                             {% if lesson.homework_tasks %}
                             <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline" style="font-size: 0.9em; padding: 0.5em 1em;">📝 ДЗ</a>
                             {% endif %}
