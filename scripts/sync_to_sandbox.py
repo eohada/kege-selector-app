@@ -148,10 +148,10 @@ def sync_databases(prod_url=None, sandbox_url=None):
             ('Students', 'student_id'),
             ('Users', 'id'),
             ('Lessons', 'lesson_id'),
-            ('LessonTasks', 'id'),
-            ('UsageHistory', 'id'),
-            ('SkippedTasks', 'id'),
-            ('BlacklistTasks', 'id'),
+            ('LessonTasks', 'lesson_task_id'),
+            ('UsageHistory', 'usage_id'),
+            ('SkippedTasks', 'skipped_id'),
+            ('BlacklistTasks', 'blacklist_id'),
         ]
         
         # Таблицы, которые НЕ синхронизируем (логи, временные данные)
@@ -170,29 +170,28 @@ def sync_databases(prod_url=None, sandbox_url=None):
         
         for table_name, primary_key in tables:
             try:
-                # Получаем максимальный ID
                 sandbox_cursor.execute(f'SELECT MAX("{primary_key}") FROM "{table_name}"')
-                max_id = sandbox_cursor.fetchone()[0] or 0
-                
-                if max_id is None:
-                    max_id = 0
-                
-                # Ищем правильное имя sequence
-                sandbox_cursor.execute(f"""
-                    SELECT sequence_name 
-                    FROM information_schema.sequences 
-                    WHERE sequence_name LIKE '%{primary_key}%' 
-                    AND sequence_schema = 'public'
-                """)
-                sequences = sandbox_cursor.fetchall()
-                
-                if sequences:
-                    sequence_name = sequences[0][0]
-                    sandbox_cursor.execute(f"SELECT setval('{sequence_name}', {max_id + 1}, false)")
+                max_id = sandbox_cursor.fetchone()[0]
+                max_id = int(max_id) if max_id is not None else 0
+
+                sandbox_cursor.execute(
+                    "SELECT pg_get_serial_sequence(%s, %s)",
+                    (f'"{table_name}"', primary_key)
+                )
+                seq_name = sandbox_cursor.fetchone()[0]
+
+                if not seq_name:
+                    print(f"  ⚠️  {table_name}: sequence не найден (возможно, не SERIAL/IDENTITY)")
+                    continue
+
+                if max_id <= 0:
+                    sandbox_cursor.execute("SELECT setval(%s, %s, false)", (seq_name, 1))
                     sandbox_conn.commit()
-                    print(f"  ✅ {table_name}: sequence '{sequence_name}' установлен на {max_id + 1}")
+                    print(f"  ✅ {table_name}: sequence '{seq_name}' установлен на 1")
                 else:
-                    print(f"  ⚠️  {table_name}: sequence не найден (возможно, используется SERIAL)")
+                    sandbox_cursor.execute("SELECT setval(%s, %s, true)", (seq_name, max_id))
+                    sandbox_conn.commit()
+                    print(f"  ✅ {table_name}: sequence '{seq_name}' установлен на {max_id}")
             except Exception as e:
                 sandbox_conn.rollback()
                 print(f"  ⚠️  {table_name}: не удалось обновить sequence ({e})")
