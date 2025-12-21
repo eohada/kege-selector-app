@@ -151,6 +151,26 @@ def create_app(config_name=None):
     # Исключаем публичный API для проверки статуса тех работ из CSRF защиты
     from app.admin.routes import maintenance_status_api
     csrf.exempt(maintenance_status_api)
+
+    # Исключаем внутренний sandbox-admin API из CSRF (server-to-server по токену)
+    from app.admin.routes import (
+        sandbox_internal_summary,
+        sandbox_internal_user_tester_create,
+        sandbox_internal_user_set_password,
+        sandbox_internal_user_toggle_active,
+        sandbox_internal_user_delete,
+        sandbox_internal_tester_entity_create,
+        sandbox_internal_tester_entity_toggle_active,
+        sandbox_internal_tester_entity_delete,
+    )
+    csrf.exempt(sandbox_internal_summary)
+    csrf.exempt(sandbox_internal_user_tester_create)
+    csrf.exempt(sandbox_internal_user_set_password)
+    csrf.exempt(sandbox_internal_user_toggle_active)
+    csrf.exempt(sandbox_internal_user_delete)
+    csrf.exempt(sandbox_internal_tester_entity_create)
+    csrf.exempt(sandbox_internal_tester_entity_toggle_active)
+    csrf.exempt(sandbox_internal_tester_entity_delete)
     
     # Импорт и регистрация хуков before_request
     from app.utils.hooks import register_hooks

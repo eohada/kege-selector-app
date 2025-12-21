@@ -1303,9 +1303,6 @@ def admin_tester_entities():
         return redirect(url_for('main.dashboard'))
     
     try:
-        # Параметр для показа автоматически созданных записей "Anonymous"
-        show_anonymous = request.args.get('show_anonymous', 'false').lower() == 'true'
-        
         # Получаем всех тестировщиков с количеством логов
         query = db.session.query(
             Tester,
@@ -1315,9 +1312,8 @@ def admin_tester_entities():
             AuditLog, Tester.tester_id == AuditLog.tester_id
         )
         
-        # По умолчанию скрываем автоматически созданные записи "Anonymous"
-        if not show_anonymous:
-            query = query.filter(Tester.name != 'Anonymous')
+        # Всегда скрываем legacy записи "Anonymous" (это не "профили", а исторический мусор)
+        query = query.filter(Tester.name != 'Anonymous')
         
         testers = query.group_by(
             Tester.tester_id
@@ -1325,17 +1321,12 @@ def admin_tester_entities():
             Tester.last_seen.desc()
         ).all()
         
-        # Подсчитываем общее количество записей (включая Anonymous) для информации
-        total_count = Tester.query.count()
+        # Показываем только созданные вручную записи; Anonymous держим отдельно для очистки
         anonymous_count = Tester.query.filter_by(name='Anonymous').count()
-        manual_count = total_count - anonymous_count
         
         return render_template('admin/tester_entities.html', 
                              testers=testers,
-                             show_anonymous=show_anonymous,
-                             total_count=total_count,
-                             anonymous_count=anonymous_count,
-                             manual_count=manual_count)
+                             anonymous_count=anonymous_count)
     except Exception as e:
         logger.error(f"Error in admin_tester_entities: {e}", exc_info=True)
         db.session.rollback()
