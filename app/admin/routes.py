@@ -119,10 +119,12 @@ def admin_panel():
         if is_production and sandbox_base_url:
             try:
                 resp = _sandbox_remote_request('GET', '/internal/sandbox-admin/summary')
-                if resp.status_code == 200:
+                content_type = (resp.headers.get('Content-Type') or '').lower()
+                if resp.status_code == 200 and 'application/json' in content_type:
                     sandbox_summary = resp.json()
                 else:
-                    sandbox_error = f"Sandbox API error: {resp.status_code}"
+                    preview = (resp.text or '')[:200]
+                    sandbox_error = f"Sandbox API error: {resp.status_code} {content_type} {preview}"
             except Exception as e:
                 sandbox_error = str(e)
         
@@ -158,10 +160,12 @@ def admin_panel():
             if is_production and sandbox_base_url:
                 try:
                     resp = _sandbox_remote_request('GET', '/internal/sandbox-admin/summary')
-                    if resp.status_code == 200:
+                    content_type = (resp.headers.get('Content-Type') or '').lower()
+                    if resp.status_code == 200 and 'application/json' in content_type:
                         sandbox_summary = resp.json()
                     else:
-                        sandbox_error = f"Sandbox API error: {resp.status_code}"
+                        preview = (resp.text or '')[:200]
+                        sandbox_error = f"Sandbox API error: {resp.status_code} {content_type} {preview}"
                 except Exception as e:
                     sandbox_error = str(e)
 
@@ -1303,6 +1307,10 @@ def admin_tester_entities():
         return redirect(url_for('main.dashboard'))
     
     try:
+        environment, railway_environment = _get_environment()
+        is_production = _is_production(environment, railway_environment)
+        sandbox_base_url, _ = _sandbox_remote_config()
+
         # Получаем всех тестировщиков с количеством логов
         query = db.session.query(
             Tester,
@@ -1326,7 +1334,9 @@ def admin_tester_entities():
         
         return render_template('admin/tester_entities.html', 
                              testers=testers,
-                             anonymous_count=anonymous_count)
+                             anonymous_count=anonymous_count,
+                             is_production=is_production,
+                             sandbox_base_url=sandbox_base_url)
     except Exception as e:
         logger.error(f"Error in admin_tester_entities: {e}", exc_info=True)
         db.session.rollback()

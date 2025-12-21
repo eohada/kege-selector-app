@@ -270,6 +270,10 @@ def register_hooks(app):
         excluded_endpoints = ('auth.login', 'auth.logout', 'static', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page')
         if request.endpoint in excluded_endpoints or request.path.startswith('/static/') or request.path.startswith('/font/'):
             return
+
+        # Внутренний sandbox-admin API — server-to-server по токену, не требует Flask-Login
+        if request.path.startswith('/internal/sandbox-admin/'):
+            return
         
         # Проверяем авторизацию
         if not current_user.is_authenticated:

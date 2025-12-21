@@ -98,13 +98,19 @@
                         ← К админ панели
                     </a>
                 </div>
+                {% if is_production and sandbox_base_url %}
+                <a href="{{ url_for('admin.admin_panel') }}#sandbox" class="neo-button accent" style="text-decoration: none;">
+                    <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Создать" class="ui-icon ui-icon--sm">Создать в sandbox
+                </a>
+                {% else %}
                 <a href="{{ url_for('admin.admin_tester_entities_create') }}" class="neo-button accent" style="text-decoration: none;">
                     <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Создать" class="ui-icon ui-icon--sm">Создать тестировщика
                 </a>
+                {% endif %}
             </div>
             <h1 style="margin-bottom: 1rem;">Управление тестировщиками</h1>
             <p style="color: var(--text-muted); margin-bottom: 1rem;">
-                Управление записями тестировщиков (модель Tester). Эти записи используются для логирования действий неавторизованных пользователей.
+                Управление записями <code>Tester</code> (tester entities). Это отдельная сущность от <code>User</code> (логин/пароль).
             </p>
             
             {% if anonymous_count and anonymous_count > 0 %}
