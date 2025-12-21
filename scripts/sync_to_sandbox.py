@@ -9,7 +9,6 @@
 import os
 import sys
 import psycopg2
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from psycopg2.extras import execute_values
 from urllib.parse import urlparse
 from datetime import datetime
@@ -17,14 +16,21 @@ from datetime import datetime
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(project_root)
 
-def get_connection(database_url, name="database"):
+def _normalize_url(database_url: str) -> str:
+    if not database_url:
+        return ''
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    return database_url.strip()
+
+
+def get_connection(database_url, name="database", readonly=False):
     """Подключение к базе данных"""
+    database_url = _normalize_url(database_url)
+
     if not database_url:
         print(f"❌ {name} URL не установлен")
         return None
-    
-    if database_url.startswith('postgres://'):
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
     
     try:
         parsed = urlparse(database_url)
@@ -35,6 +41,8 @@ def get_connection(database_url, name="database"):
             password=parsed.password,
             database=parsed.path[1:] if parsed.path.startswith('/') else parsed.path
         )
+        if readonly:
+            conn.set_session(readonly=True, autocommit=True)
         return conn
     except Exception as e:
         print(f"❌ Ошибка подключения к {name}: {e}")
@@ -100,16 +108,19 @@ def sync_table(prod_conn, sandbox_conn, table_name, primary_key='id', exclude_co
         print(f"  ❌ Ошибка синхронизации {table_name}: {e}")
         return 0
 
-def sync_databases():
+def sync_databases(prod_url=None, sandbox_url=None):
     """Основная функция синхронизации"""
     print("🔄 Синхронизация Production → Sandbox")
     print("=" * 50)
     
     # Получаем URL баз данных
-    prod_url = os.environ.get('PRODUCTION_DATABASE_URL')
-    sandbox_url = os.environ.get('SANDBOX_DATABASE_URL')
+    prod_url = prod_url or os.environ.get('PRODUCTION_DATABASE_URL')
+    sandbox_url = sandbox_url or os.environ.get('SANDBOX_DATABASE_URL')
+
+    prod_url_norm = _normalize_url(prod_url or '')
+    sandbox_url_norm = _normalize_url(sandbox_url or '')
     
-    if not prod_url or not sandbox_url:
+    if not prod_url_norm or not sandbox_url_norm:
         print("❌ Необходимо установить переменные окружения:")
         print("   PRODUCTION_DATABASE_URL - URL production базы")
         print("   SANDBOX_DATABASE_URL - URL sandbox базы")
@@ -118,10 +129,14 @@ def sync_databases():
         print("   2. Вкладка 'Connect'")
         print("   3. Скопируйте 'Public Network' URL")
         return False
+
+    if prod_url_norm == sandbox_url_norm:
+        print("❌ PRODUCTION_DATABASE_URL и SANDBOX_DATABASE_URL совпадают. Остановлено для безопасности.")
+        return False
     
     # Подключаемся к базам
-    prod_conn = get_connection(prod_url, "Production")
-    sandbox_conn = get_connection(sandbox_url, "Sandbox")
+    prod_conn = get_connection(prod_url_norm, "Production", readonly=True)
+    sandbox_conn = get_connection(sandbox_url_norm, "Sandbox", readonly=False)
     
     if not prod_conn or not sandbox_conn:
         return False

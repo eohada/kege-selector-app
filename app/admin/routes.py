@@ -4,11 +4,15 @@
 import logging
 import csv
 from io import StringIO
+import io
+import contextlib
+import threading
+import time
 from datetime import datetime, timedelta
 import os  # Окружение (ENVIRONMENT/RAILWAY_ENVIRONMENT) для безопасных ограничений. # comment
 import hmac
 import requests
-from flask import render_template, request, redirect, url_for, flash, make_response, jsonify
+from flask import render_template, request, redirect, url_for, flash, make_response, jsonify, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import func, delete
 from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -20,6 +24,15 @@ from core.db_models import Tester
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
+
+_DB_SYNC_LOCK = threading.Lock()
+_DB_SYNC_STATE = {
+    'running': False,
+    'started_at': None,
+    'finished_at': None,
+    'ok': None,
+    'log': '',
+}
 
 
 def _get_environment():
@@ -128,6 +141,9 @@ def admin_panel():
             except Exception as e:
                 sandbox_error = str(e)
         
+        with _DB_SYNC_LOCK:
+            db_sync_state = dict(_DB_SYNC_STATE)
+
         return render_template('admin_panel.html',
                              total_users=total_users,
                              active_users=active_users,
@@ -141,7 +157,8 @@ def admin_panel():
                              is_production=is_production,
                              sandbox_base_url=sandbox_base_url,
                              sandbox_summary=sandbox_summary,
-                             sandbox_error=sandbox_error)
+                             sandbox_error=sandbox_error,
+                             db_sync_state=db_sync_state)
     except Exception as e:
         logger.error(f"Error in admin_panel route: {e}", exc_info=True)
         flash(f'Ошибка при загрузке статистики: {str(e)}', 'error')
@@ -169,6 +186,9 @@ def admin_panel():
                 except Exception as e:
                     sandbox_error = str(e)
 
+            with _DB_SYNC_LOCK:
+                db_sync_state = dict(_DB_SYNC_STATE)
+
             return render_template('admin_panel.html',
                                  total_users=total_users,
                                  active_users=active_users,
@@ -180,11 +200,96 @@ def admin_panel():
                                  is_production=is_production,
                                  sandbox_base_url=sandbox_base_url,
                                  sandbox_summary=sandbox_summary,
-                                 sandbox_error=sandbox_error)
+                                 sandbox_error=sandbox_error,
+                                 db_sync_state=db_sync_state)
         except Exception as e2:
             logger.error(f"Error in fallback: {e2}", exc_info=True)
             flash('Критическая ошибка при загрузке данных', 'error')
             return redirect(url_for('main.dashboard'))
+
+
+def _start_db_sync_job(prod_db_url: str, sandbox_db_url: str):
+    app = current_app._get_current_object()
+
+    def worker():
+        out = io.StringIO()
+        ok = False
+        started_at = time.time()
+        try:
+            with app.app_context():
+                from scripts.sync_to_sandbox import sync_databases
+                with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+                    ok = bool(sync_databases(prod_url=prod_db_url, sandbox_url=sandbox_db_url))
+        except Exception as e:
+            out.write(f"\nERROR: {e}\n")
+            ok = False
+        finally:
+            finished_at = time.time()
+            log_text = out.getvalue()
+            if len(log_text) > 20000:
+                log_text = log_text[-20000:]
+            with _DB_SYNC_LOCK:
+                _DB_SYNC_STATE['running'] = False
+                _DB_SYNC_STATE['started_at'] = started_at
+                _DB_SYNC_STATE['finished_at'] = finished_at
+                _DB_SYNC_STATE['ok'] = ok
+                _DB_SYNC_STATE['log'] = log_text
+
+    t = threading.Thread(target=worker, daemon=True)
+    t.start()
+
+
+@admin_bp.route('/admin/sandbox/db-sync/run', methods=['POST'])
+@login_required
+def admin_sandbox_db_sync_run():
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    environment, railway_environment = _get_environment()
+    if not _is_production(environment, railway_environment):
+        flash('Синхронизация доступна только из production.', 'warning')
+        return redirect(url_for('admin.admin_panel'))
+
+    sandbox_db_url = (os.environ.get('SANDBOX_DATABASE_URL') or '').strip()
+    if not sandbox_db_url:
+        flash('Не задан SANDBOX_DATABASE_URL в production.', 'error')
+        return redirect(url_for('admin.admin_panel'))
+
+    prod_db_url = (current_app.config.get('SQLALCHEMY_DATABASE_URI') or '').strip()
+    if not prod_db_url or 'postgres' not in prod_db_url:
+        flash('Production DB не PostgreSQL или URL не определён.', 'error')
+        return redirect(url_for('admin.admin_panel'))
+
+    if prod_db_url.replace('postgres://', 'postgresql://', 1).strip() == sandbox_db_url.replace('postgres://', 'postgresql://', 1).strip():
+        flash('PROD и SANDBOX DB URL совпадают. Остановлено для безопасности.', 'danger')
+        return redirect(url_for('admin.admin_panel'))
+
+    with _DB_SYNC_LOCK:
+        if _DB_SYNC_STATE['running']:
+            flash('Синхронизация уже выполняется.', 'info')
+            return redirect(url_for('admin.admin_panel'))
+        _DB_SYNC_STATE['running'] = True
+        _DB_SYNC_STATE['started_at'] = time.time()
+        _DB_SYNC_STATE['finished_at'] = None
+        _DB_SYNC_STATE['ok'] = None
+        _DB_SYNC_STATE['log'] = ''
+
+    _start_db_sync_job(prod_db_url, sandbox_db_url)
+    flash('Запущена синхронизация Production → Sandbox (в фоне).', 'success')
+    return redirect(url_for('admin.admin_panel', _anchor='db-sync'))
+
+
+@admin_bp.route('/admin/sandbox/db-sync/status', methods=['GET'])
+@login_required
+def admin_sandbox_db_sync_status():
+    if not current_user.is_creator():
+        return jsonify({'success': False, 'error': 'forbidden'}), 403
+
+    with _DB_SYNC_LOCK:
+        state = dict(_DB_SYNC_STATE)
+
+    return jsonify({'success': True, 'state': state}), 200
 
 
 @admin_bp.route('/admin-testers/create', methods=['POST'])

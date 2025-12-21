@@ -237,6 +237,27 @@
         </section>
         {% endif %}
 
+        {% if is_production %}
+        <section class="glass-panel" id="db-sync" style="margin-bottom: 2rem;">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">синхронизация</p>
+                    <h2>Production → Sandbox (БД)</h2>
+                    <div style="color: var(--text-muted); margin-top: 0.35rem;">
+                        Важно: операция очищает и заново заполняет таблицы в sandbox (TRUNCATE + INSERT).
+                    </div>
+                </div>
+                <form method="POST" action="{{ url_for('admin.admin_sandbox_db_sync_run') }}" style="margin:0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button id="dbSyncBtn" type="submit" class="neo-button accent">Запустить</button>
+                </form>
+            </div>
+
+            <div id="dbSyncMeta" style="color: var(--text-muted); margin-bottom: 0.75rem;"></div>
+            <pre id="dbSyncLog" style="white-space: pre-wrap; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); padding: 1rem; max-height: 260px; overflow: auto;">{% if db_sync_state and db_sync_state.log %}{{ db_sync_state.log }}{% else %}Лог синхронизации появится здесь.{% endif %}</pre>
+        </section>
+        {% endif %}
+
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div class="panel-head">
                 <div>
@@ -295,6 +316,30 @@
                     {% endfor %}
                 {% endif %}
             {% endwith %}
+
+            const btn = document.getElementById('dbSyncBtn');
+            const meta = document.getElementById('dbSyncMeta');
+            const logEl = document.getElementById('dbSyncLog');
+
+            async function refreshDbSync() {
+                if (!btn || !meta || !logEl) return;
+                try {
+                    const res = await fetch('{{ url_for('admin.admin_sandbox_db_sync_status') }}', { headers: { 'Accept': 'application/json' } });
+                    const data = await res.json();
+                    if (!data || !data.success) return;
+                    const state = data.state || {};
+                    btn.disabled = !!state.running;
+                    btn.textContent = state.running ? 'Выполняется…' : 'Запустить';
+                    const started = state.started_at ? new Date(state.started_at * 1000).toLocaleString() : '—';
+                    const finished = state.finished_at ? new Date(state.finished_at * 1000).toLocaleString() : '—';
+                    const ok = state.ok === null || typeof state.ok === 'undefined' ? '—' : (state.ok ? 'OK' : 'FAIL');
+                    meta.textContent = `Статус: ${state.running ? 'RUNNING' : ok} · Старт: ${started} · Конец: ${finished}`;
+                    if (state.log) logEl.textContent = state.log;
+                } catch (e) {}
+            }
+
+            refreshDbSync();
+            setInterval(refreshDbSync, 3000);
         });
     </script>
 </body>
