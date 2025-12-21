@@ -107,14 +107,19 @@
                 </div>
             </div>
 
-            {% if is_production %}
+            {% if is_production and sandbox_base_url %}
+            <div style="margin-bottom: 1rem; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid rgba(0, 254, 202, 0.25); background: rgba(0, 254, 202, 0.06);">
+                <strong style="display: block; margin-bottom: 0.35rem;">Управление sandbox из production</strong>
+                <div style="color: var(--text-muted); font-size: 0.95rem;">Команды отправляются в sandbox по `SANDBOX_ADMIN_URL`.</div>
+            </div>
+            {% elif is_production %}
             <div style="margin-bottom: 1rem; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid rgba(255, 108, 145, 0.35); background: rgba(255, 108, 145, 0.08);">
                 <strong style="display: block; margin-bottom: 0.35rem;">Внимание: production</strong>
-                <div style="color: var(--text-muted); font-size: 0.95rem;">Создание тестировщиков в production требует явного подтверждения.</div>
+                <div style="color: var(--text-muted); font-size: 0.95rem;">Sandbox не подключён (нужны `SANDBOX_ADMIN_URL` и `SANDBOX_ADMIN_TOKEN`).</div>
             </div>
             {% endif %}
 
-            <form method="POST" action="{{ url_for('admin.admin_testers_create') }}" class="filters-grid" style="align-items: end;">
+            <form method="POST" action="{% if is_production and sandbox_base_url %}{{ url_for('admin.admin_sandbox_user_tester_create') }}{% else %}{{ url_for('admin.admin_testers_create') }}{% endif %}" class="filters-grid" style="align-items: end;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="neo-field">
                     <label class="neo-label" for="tester-username">Логин</label>
@@ -130,16 +135,102 @@
                         <input type="checkbox" name="allow_update">
                         <span style="color: var(--text-muted);">Обновить существующего</span>
                     </label>
-                    <label style="display:flex; gap:0.6rem; align-items:center; color: var(--text-primary); margin-top: 0.35rem;">
-                        <input type="checkbox" name="force_production" {% if not is_production %}disabled{% endif %}>
-                        <span style="color: var(--text-muted);">Force production</span>
-                    </label>
                 </div>
                 <div class="filters-actions">
                     <button type="submit" class="neo-button accent" style="min-width: 220px;">Создать</button>
                 </div>
             </form>
         </section>
+
+        {% if is_production and sandbox_base_url %}
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">sandbox</p>
+                    <h2>Тестировщики и логирование</h2>
+                </div>
+            </div>
+
+            {% if sandbox_error %}
+            <div style="margin-bottom: 1rem; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid rgba(255, 108, 145, 0.35); background: rgba(255, 108, 145, 0.08);">
+                <strong style="display: block; margin-bottom: 0.35rem;">Ошибка связи с sandbox</strong>
+                <div style="color: var(--text-muted); font-size: 0.95rem;">{{ sandbox_error }}</div>
+            </div>
+            {% endif %}
+
+            {% if sandbox_summary and sandbox_summary.success %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem;">
+                <div style="padding: 1.25rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-md);">
+                    <div style="font-weight: 700; margin-bottom: 0.75rem;">User testers (sandbox)</div>
+                    <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                        {% for u in sandbox_summary.users[:12] %}
+                        <div style="display:flex; justify-content:space-between; gap:0.75rem; align-items:center; padding:0.6rem 0.75rem; border:1px solid var(--stroke-1); border-radius: 12px; background: var(--surface-3);">
+                            <div style="min-width:0;">
+                                <div style="font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ u.username }}</div>
+                                <div style="color: var(--text-muted); font-size: 0.85rem;">id {{ u.id }} · logs {{ u.logs_count }}{% if u.last_action %} · last {{ u.last_action[:19].replace('T',' ') }}{% endif %}</div>
+                            </div>
+                            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; justify-content:flex-end;">
+                                <form method="POST" action="{{ url_for('admin.admin_sandbox_user_toggle_active', user_id=u.id) }}" style="margin:0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="neo-button ghost" style="padding:0.5rem 0.75rem;">{% if u.is_active %}⏸{% else %}▶{% endif %}</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('admin.admin_sandbox_user_delete', user_id=u.id) }}" class="confirm-delete-form" style="margin:0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="neo-button danger" style="padding:0.5rem 0.75rem;">🗑️</button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div style="margin-top: 1rem;">
+                        <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem;">Смена пароля (sandbox user id)</div>
+                        <form method="POST" action="{{ url_for('admin.admin_sandbox_user_set_password', user_id=0) }}" style="display:flex; gap:0.6rem; flex-wrap:wrap;" onsubmit="this.action = this.action.replace('/0/','/' + this.querySelector('[name=user_id]').value + '/');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input name="user_id" class="neo-input" placeholder="id" style="max-width:120px;" required>
+                            <input name="password" type="password" class="neo-input" placeholder="новый пароль" style="min-width:220px;" required>
+                            <button type="submit" class="neo-button outline">Обновить</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div style="padding: 1.25rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-md);">
+                    <div style="font-weight: 700; margin-bottom: 0.75rem;">Tester entities (sandbox)</div>
+                    <form method="POST" action="{{ url_for('admin.admin_sandbox_tester_entity_create') }}" style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom: 0.8rem;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input name="name" class="neo-input" placeholder="имя (например: AnonymousLab)" required>
+                        <label style="display:flex; gap:0.5rem; align-items:center; color: var(--text-muted);">
+                            <input type="checkbox" name="is_active" checked>
+                            active
+                        </label>
+                        <button type="submit" class="neo-button accent">Создать</button>
+                    </form>
+
+                    <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                        {% for t in sandbox_summary.tester_entities[:12] %}
+                        <div style="display:flex; justify-content:space-between; gap:0.75rem; align-items:center; padding:0.6rem 0.75rem; border:1px solid var(--stroke-1); border-radius: 12px; background: var(--surface-3);">
+                            <div style="min-width:0;">
+                                <div style="font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ t.name }}</div>
+                                <div style="color: var(--text-muted); font-size: 0.85rem;">logs {{ t.logs_count }}{% if t.last_action %} · last {{ t.last_action[:19].replace('T',' ') }}{% endif %}</div>
+                            </div>
+                            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; justify-content:flex-end;">
+                                <form method="POST" action="{{ url_for('admin.admin_sandbox_tester_entity_toggle_active', tester_id=t.tester_id) }}" style="margin:0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="neo-button ghost" style="padding:0.5rem 0.75rem;">{% if t.is_active %}⏸{% else %}▶{% endif %}</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('admin.admin_sandbox_tester_entity_delete', tester_id=t.tester_id) }}" class="confirm-delete-form" style="margin:0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="neo-button danger" style="padding:0.5rem 0.75rem;">🗑️</button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </section>
+        {% endif %}
 
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div class="panel-head">

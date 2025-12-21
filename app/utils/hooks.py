@@ -156,6 +156,9 @@ def register_hooks(app):
         import os
         from flask import redirect, url_for
         from app.models import MaintenanceMode
+
+        if request.path.startswith('/internal/sandbox-admin/'):
+            return None
         
         # Получаем окружение - проверяем оба варианта
         environment = os.environ.get('ENVIRONMENT', 'local')
@@ -317,6 +320,9 @@ def register_hooks(app):
         import os
         from flask import redirect, url_for
         from app.models import MaintenanceMode
+
+        if request.path.startswith('/internal/sandbox-admin/'):
+            return None
         
         # Получаем окружение - проверяем оба варианта
         environment = os.environ.get('ENVIRONMENT', 'local')

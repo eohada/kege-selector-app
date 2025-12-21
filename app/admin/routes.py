@@ -6,6 +6,8 @@ import csv
 from io import StringIO
 from datetime import datetime, timedelta
 import os  # Окружение (ENVIRONMENT/RAILWAY_ENVIRONMENT) для безопасных ограничений. # comment
+import hmac
+import requests
 from flask import render_template, request, redirect, url_for, flash, make_response, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import func, delete
@@ -19,6 +21,54 @@ from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
 
+
+def _get_environment():
+    environment = os.environ.get('ENVIRONMENT', 'local')
+    railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+    return environment, railway_environment
+
+
+def _is_production(environment: str, railway_environment: str) -> bool:
+    return environment == 'production' or ('production' in railway_environment.lower() and 'sandbox' not in railway_environment.lower())
+
+
+def _is_sandbox(environment: str, railway_environment: str) -> bool:
+    return environment == 'sandbox' or 'sandbox' in railway_environment.lower()
+
+
+def _sandbox_remote_config():
+    base_url = (os.environ.get('SANDBOX_ADMIN_URL') or '').strip().rstrip('/')
+    token = (os.environ.get('SANDBOX_ADMIN_TOKEN') or '').strip()
+    return base_url, token
+
+
+def _sandbox_remote_request(method: str, path: str, payload=None):
+    base_url, token = _sandbox_remote_config()
+    if not base_url or not token:
+        raise RuntimeError('Sandbox remote admin is not configured')
+
+    url = f"{base_url}{path}"
+    headers = {'X-Admin-Token': token, 'User-Agent': 'Prod-Admin/1.0'}
+    timeout = 8
+
+    if method.upper() == 'GET':
+        return requests.get(url, headers=headers, timeout=timeout)
+
+    return requests.post(url, headers=headers, json=(payload or {}), timeout=timeout)
+
+
+def _sandbox_internal_guard():
+    environment, railway_environment = _get_environment()
+    if not _is_sandbox(environment, railway_environment):
+        return False
+
+    expected = (os.environ.get('SANDBOX_ADMIN_TOKEN') or '').strip()
+    if not expected:
+        return False
+
+    provided = (request.headers.get('X-Admin-Token') or '').strip()
+    return hmac.compare_digest(provided, expected)
+
 @admin_bp.route('/admin')
 @login_required
 def admin_panel():
@@ -28,9 +78,8 @@ def admin_panel():
         return redirect(url_for('main.dashboard'))
     
     try:
-        environment = os.environ.get('ENVIRONMENT', 'local')  # Текущее окружение приложения. # comment
-        railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')  # Окружение Railway (если есть). # comment
-        is_production = environment == 'production' or ('production' in railway_environment.lower() and 'sandbox' not in railway_environment.lower())  # Признак production. # comment
+        environment, railway_environment = _get_environment()
+        is_production = _is_production(environment, railway_environment)
 
         total_users = User.query.count()
         active_users = User.query.filter_by(is_active=True).count()
@@ -63,6 +112,19 @@ def admin_panel():
         
         # Получаем статус тех работ
         maintenance_status = MaintenanceMode.get_status()
+
+        sandbox_summary = None
+        sandbox_error = None
+        sandbox_base_url, _ = _sandbox_remote_config()
+        if is_production and sandbox_base_url:
+            try:
+                resp = _sandbox_remote_request('GET', '/internal/sandbox-admin/summary')
+                if resp.status_code == 200:
+                    sandbox_summary = resp.json()
+                else:
+                    sandbox_error = f"Sandbox API error: {resp.status_code}"
+            except Exception as e:
+                sandbox_error = str(e)
         
         return render_template('admin_panel.html',
                              total_users=total_users,
@@ -74,19 +136,35 @@ def admin_panel():
                              maintenance_enabled=maintenance_status.is_enabled,
                              maintenance_message=maintenance_status.message,
                              environment=environment,
-                             is_production=is_production)
+                             is_production=is_production,
+                             sandbox_base_url=sandbox_base_url,
+                             sandbox_summary=sandbox_summary,
+                             sandbox_error=sandbox_error)
     except Exception as e:
         logger.error(f"Error in admin_panel route: {e}", exc_info=True)
         flash(f'Ошибка при загрузке статистики: {str(e)}', 'error')
         try:
-            environment = os.environ.get('ENVIRONMENT', 'local')  # Текущее окружение приложения. # comment
-            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')  # Окружение Railway (если есть). # comment
-            is_production = environment == 'production' or ('production' in railway_environment.lower() and 'sandbox' not in railway_environment.lower())  # Признак production. # comment
+            environment, railway_environment = _get_environment()
+            is_production = _is_production(environment, railway_environment)
 
             total_users = User.query.count()
             active_users = User.query.filter_by(is_active=True).count()
             creators_count = User.query.filter_by(role='creator').count()
             testers_count = User.query.filter_by(role='tester').count()
+
+            sandbox_summary = None
+            sandbox_error = None
+            sandbox_base_url, _ = _sandbox_remote_config()
+            if is_production and sandbox_base_url:
+                try:
+                    resp = _sandbox_remote_request('GET', '/internal/sandbox-admin/summary')
+                    if resp.status_code == 200:
+                        sandbox_summary = resp.json()
+                    else:
+                        sandbox_error = f"Sandbox API error: {resp.status_code}"
+                except Exception as e:
+                    sandbox_error = str(e)
+
             return render_template('admin_panel.html',
                                  total_users=total_users,
                                  active_users=active_users,
@@ -95,7 +173,10 @@ def admin_panel():
                                  total_logs=0,
                                  today_logs=0,
                                  environment=environment,
-                                 is_production=is_production)
+                                 is_production=is_production,
+                                 sandbox_base_url=sandbox_base_url,
+                                 sandbox_summary=sandbox_summary,
+                                 sandbox_error=sandbox_error)
         except Exception as e2:
             logger.error(f"Error in fallback: {e2}", exc_info=True)
             flash('Критическая ошибка при загрузке данных', 'error')
@@ -181,6 +262,392 @@ def admin_testers_create():
         logger.error(f"Error creating tester user: {e}", exc_info=True)  # Логируем ошибку. # comment
         flash(f'Ошибка при создании тестировщика: {str(e)}', 'error')  # Показываем ошибку. # comment
         return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
+
+
+@admin_bp.route('/admin/sandbox/user-tester/create', methods=['POST'])
+@login_required
+def admin_sandbox_user_tester_create():
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    username = (request.form.get('username') or '').strip()
+    password = request.form.get('password') or ''
+    allow_update = request.form.get('allow_update') == 'on'
+
+    if not username or not password:
+        flash('Логин и пароль обязательны.', 'error')
+        return redirect(url_for('admin.admin_panel'))
+
+    try:
+        resp = _sandbox_remote_request('POST', '/internal/sandbox-admin/user-tester', {
+            'username': username,
+            'password': password,
+            'allow_update': allow_update,
+        })
+        data = resp.json() if resp.headers.get('Content-Type', '').startswith('application/json') else {}
+        if resp.status_code == 200 and data.get('success'):
+            flash(f'Sandbox: тестировщик "{username}" создан/обновлён.', 'success')
+        else:
+            flash(f"Sandbox: ошибка создания: {data.get('error') or resp.text}", 'error')
+    except Exception as e:
+        flash(f'Sandbox: ошибка запроса: {str(e)}', 'error')
+
+    return redirect(url_for('admin.admin_panel'))
+
+
+@admin_bp.route('/admin/sandbox/user/<int:user_id>/set-password', methods=['POST'])
+@login_required
+def admin_sandbox_user_set_password(user_id):
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    password = request.form.get('password') or ''
+    if not password:
+        flash('Пароль обязателен.', 'error')
+        return redirect(url_for('admin.admin_panel'))
+
+    try:
+        resp = _sandbox_remote_request('POST', f'/internal/sandbox-admin/user/{user_id}/set-password', {'password': password})
+        data = resp.json() if resp.headers.get('Content-Type', '').startswith('application/json') else {}
+        if resp.status_code == 200 and data.get('success'):
+            flash('Sandbox: пароль обновлён.', 'success')
+        else:
+            flash(f"Sandbox: ошибка обновления пароля: {data.get('error') or resp.text}", 'error')
+    except Exception as e:
+        flash(f'Sandbox: ошибка запроса: {str(e)}', 'error')
+
+    return redirect(url_for('admin.admin_panel'))
+
+
+@admin_bp.route('/admin/sandbox/user/<int:user_id>/toggle-active', methods=['POST'])
+@login_required
+def admin_sandbox_user_toggle_active(user_id):
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    try:
+        resp = _sandbox_remote_request('POST', f'/internal/sandbox-admin/user/{user_id}/toggle-active', {})
+        data = resp.json() if resp.headers.get('Content-Type', '').startswith('application/json') else {}
+        if resp.status_code == 200 and data.get('success'):
+            flash('Sandbox: статус обновлён.', 'success')
+        else:
+            flash(f"Sandbox: ошибка обновления статуса: {data.get('error') or resp.text}", 'error')
+    except Exception as e:
+        flash(f'Sandbox: ошибка запроса: {str(e)}', 'error')
+
+    return redirect(url_for('admin.admin_panel'))
+
+
+@admin_bp.route('/admin/sandbox/user/<int:user_id>/delete', methods=['POST'])
+@login_required
+def admin_sandbox_user_delete(user_id):
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    try:
+        resp = _sandbox_remote_request('POST', f'/internal/sandbox-admin/user/{user_id}/delete', {})
+        data = resp.json() if resp.headers.get('Content-Type', '').startswith('application/json') else {}
+        if resp.status_code == 200 and data.get('success'):
+            flash('Sandbox: пользователь удалён.', 'success')
+        else:
+            flash(f"Sandbox: ошибка удаления: {data.get('error') or resp.text}", 'error')
+    except Exception as e:
+        flash(f'Sandbox: ошибка запроса: {str(e)}', 'error')
+
+    return redirect(url_for('admin.admin_panel'))
+
+
+@admin_bp.route('/admin/sandbox/tester-entity/create', methods=['POST'])
+@login_required
+def admin_sandbox_tester_entity_create():
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    name = (request.form.get('name') or '').strip()
+    is_active = request.form.get('is_active') == 'on'
+    if not name:
+        flash('Имя обязательно.', 'error')
+        return redirect(url_for('admin.admin_panel'))
+
+    try:
+        resp = _sandbox_remote_request('POST', '/internal/sandbox-admin/tester-entity', {'name': name, 'is_active': is_active})
+        data = resp.json() if resp.headers.get('Content-Type', '').startswith('application/json') else {}
+        if resp.status_code == 200 and data.get('success'):
+            flash('Sandbox: tester entity создан.', 'success')
+        else:
+            flash(f"Sandbox: ошибка создания tester entity: {data.get('error') or resp.text}", 'error')
+    except Exception as e:
+        flash(f'Sandbox: ошибка запроса: {str(e)}', 'error')
+
+    return redirect(url_for('admin.admin_panel'))
+
+
+@admin_bp.route('/admin/sandbox/tester-entity/<tester_id>/toggle-active', methods=['POST'])
+@login_required
+def admin_sandbox_tester_entity_toggle_active(tester_id):
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    try:
+        resp = _sandbox_remote_request('POST', f'/internal/sandbox-admin/tester-entity/{tester_id}/toggle-active', {})
+        data = resp.json() if resp.headers.get('Content-Type', '').startswith('application/json') else {}
+        if resp.status_code == 200 and data.get('success'):
+            flash('Sandbox: tester entity обновлён.', 'success')
+        else:
+            flash(f"Sandbox: ошибка обновления tester entity: {data.get('error') or resp.text}", 'error')
+    except Exception as e:
+        flash(f'Sandbox: ошибка запроса: {str(e)}', 'error')
+
+    return redirect(url_for('admin.admin_panel'))
+
+
+@admin_bp.route('/admin/sandbox/tester-entity/<tester_id>/delete', methods=['POST'])
+@login_required
+def admin_sandbox_tester_entity_delete(tester_id):
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    try:
+        resp = _sandbox_remote_request('POST', f'/internal/sandbox-admin/tester-entity/{tester_id}/delete', {})
+        data = resp.json() if resp.headers.get('Content-Type', '').startswith('application/json') else {}
+        if resp.status_code == 200 and data.get('success'):
+            flash('Sandbox: tester entity удалён.', 'success')
+        else:
+            flash(f"Sandbox: ошибка удаления tester entity: {data.get('error') or resp.text}", 'error')
+    except Exception as e:
+        flash(f'Sandbox: ошибка запроса: {str(e)}', 'error')
+
+    return redirect(url_for('admin.admin_panel'))
+
+
+@admin_bp.route('/internal/sandbox-admin/summary', methods=['GET'])
+def sandbox_internal_summary():
+    if not _sandbox_internal_guard():
+        return jsonify({'success': False, 'error': 'not found'}), 404
+
+    users_rows = db.session.query(
+        User,
+        func.count(AuditLog.id).label('logs_count'),
+        func.max(AuditLog.timestamp).label('last_action')
+    ).outerjoin(
+        AuditLog, User.id == AuditLog.user_id
+    ).filter(
+        User.role == 'tester'
+    ).group_by(
+        User.id
+    ).order_by(
+        User.id.desc()
+    ).limit(300).all()
+
+    testers_rows = db.session.query(
+        Tester,
+        func.count(AuditLog.id).label('logs_count'),
+        func.max(AuditLog.timestamp).label('last_action')
+    ).outerjoin(
+        AuditLog, Tester.tester_id == AuditLog.tester_id
+    ).group_by(
+        Tester.tester_id
+    ).order_by(
+        Tester.last_seen.desc()
+    ).limit(300).all()
+
+    users = []
+    for user, logs_count, last_action in users_rows:
+        users.append({
+            'id': user.id,
+            'username': user.username,
+            'role': user.role,
+            'is_active': bool(user.is_active),
+            'created_at': user.created_at.isoformat() if user.created_at else None,
+            'last_login': user.last_login.isoformat() if user.last_login else None,
+            'logs_count': int(logs_count or 0),
+            'last_action': last_action.isoformat() if last_action else None,
+        })
+
+    tester_entities = []
+    for tester, logs_count, last_action in testers_rows:
+        tester_entities.append({
+            'tester_id': tester.tester_id,
+            'name': tester.name,
+            'is_active': bool(tester.is_active),
+            'first_seen': tester.first_seen.isoformat() if tester.first_seen else None,
+            'last_seen': tester.last_seen.isoformat() if tester.last_seen else None,
+            'logs_count': int(logs_count or 0),
+            'last_action': last_action.isoformat() if last_action else None,
+        })
+
+    return jsonify({'success': True, 'users': users, 'tester_entities': tester_entities}), 200
+
+
+@admin_bp.route('/internal/sandbox-admin/user-tester', methods=['POST'])
+def sandbox_internal_user_tester_create():
+    if not _sandbox_internal_guard():
+        return jsonify({'success': False, 'error': 'not found'}), 404
+
+    data = request.get_json(silent=True) or {}
+    username = (data.get('username') or '').strip()
+    password = data.get('password') or ''
+    allow_update = bool(data.get('allow_update'))
+
+    if not username or not password:
+        return jsonify({'success': False, 'error': 'username and password required'}), 400
+
+    user = User.query.filter_by(username=username).first()
+    if user and not allow_update:
+        return jsonify({'success': False, 'error': 'user exists'}), 409
+
+    try:
+        if user:
+            user.password_hash = generate_password_hash(password)
+            user.role = 'tester'
+            user.is_active = True
+            db.session.commit()
+            return jsonify({'success': True, 'updated': True, 'user_id': user.id}), 200
+
+        user = User(username=username, password_hash=generate_password_hash(password), role='tester', is_active=True, created_at=moscow_now())
+        db.session.add(user)
+        db.session.commit()
+        return jsonify({'success': True, 'created': True, 'user_id': user.id}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/sandbox-admin/user/<int:user_id>/set-password', methods=['POST'])
+def sandbox_internal_user_set_password(user_id):
+    if not _sandbox_internal_guard():
+        return jsonify({'success': False, 'error': 'not found'}), 404
+
+    data = request.get_json(silent=True) or {}
+    password = data.get('password') or ''
+    if not password:
+        return jsonify({'success': False, 'error': 'password required'}), 400
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'success': False, 'error': 'user not found'}), 404
+
+    if user.is_creator():
+        return jsonify({'success': False, 'error': 'cannot change creator password'}), 403
+
+    try:
+        user.password_hash = generate_password_hash(password)
+        db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/sandbox-admin/user/<int:user_id>/toggle-active', methods=['POST'])
+def sandbox_internal_user_toggle_active(user_id):
+    if not _sandbox_internal_guard():
+        return jsonify({'success': False, 'error': 'not found'}), 404
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'success': False, 'error': 'user not found'}), 404
+
+    if user.is_creator():
+        return jsonify({'success': False, 'error': 'cannot disable creator'}), 403
+
+    try:
+        user.is_active = not bool(user.is_active)
+        db.session.commit()
+        return jsonify({'success': True, 'is_active': bool(user.is_active)}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/sandbox-admin/user/<int:user_id>/delete', methods=['POST'])
+def sandbox_internal_user_delete(user_id):
+    if not _sandbox_internal_guard():
+        return jsonify({'success': False, 'error': 'not found'}), 404
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'success': False, 'error': 'user not found'}), 404
+
+    if user.is_creator():
+        return jsonify({'success': False, 'error': 'cannot delete creator'}), 403
+
+    try:
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/sandbox-admin/tester-entity', methods=['POST'])
+def sandbox_internal_tester_entity_create():
+    if not _sandbox_internal_guard():
+        return jsonify({'success': False, 'error': 'not found'}), 404
+
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    is_active = bool(data.get('is_active', True))
+    if not name:
+        return jsonify({'success': False, 'error': 'name required'}), 400
+
+    existing = Tester.query.filter_by(name=name).first()
+    if existing:
+        return jsonify({'success': False, 'error': 'tester entity exists'}), 409
+
+    import uuid
+    tester = Tester(tester_id=str(uuid.uuid4()), name=name, is_active=is_active)
+    try:
+        db.session.add(tester)
+        db.session.commit()
+        return jsonify({'success': True, 'tester_id': tester.tester_id}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/sandbox-admin/tester-entity/<tester_id>/toggle-active', methods=['POST'])
+def sandbox_internal_tester_entity_toggle_active(tester_id):
+    if not _sandbox_internal_guard():
+        return jsonify({'success': False, 'error': 'not found'}), 404
+
+    tester = Tester.query.get(tester_id)
+    if not tester:
+        return jsonify({'success': False, 'error': 'tester entity not found'}), 404
+
+    try:
+        tester.is_active = not bool(tester.is_active)
+        db.session.commit()
+        return jsonify({'success': True, 'is_active': bool(tester.is_active)}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/sandbox-admin/tester-entity/<tester_id>/delete', methods=['POST'])
+def sandbox_internal_tester_entity_delete(tester_id):
+    if not _sandbox_internal_guard():
+        return jsonify({'success': False, 'error': 'not found'}), 404
+
+    tester = Tester.query.get(tester_id)
+    if not tester:
+        return jsonify({'success': False, 'error': 'tester entity not found'}), 404
+
+    try:
+        db.session.delete(tester)
+        db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @admin_bp.route('/admin-audit')
 @login_required
