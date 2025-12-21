@@ -219,7 +219,8 @@ def _start_db_sync_job(prod_db_url: str, sandbox_db_url: str):
             with app.app_context():
                 from scripts.sync_to_sandbox import sync_databases
                 with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
-                    ok = bool(sync_databases(prod_url=prod_db_url, sandbox_url=sandbox_db_url))
+                    include_users = bool(getattr(app, 'config', {}).get('DB_SYNC_INCLUDE_USERS', False))
+                    ok = bool(sync_databases(prod_url=prod_db_url, sandbox_url=sandbox_db_url, include_users=include_users))
         except Exception as e:
             out.write(f"\nERROR: {e}\n")
             ok = False
@@ -264,6 +265,10 @@ def admin_sandbox_db_sync_run():
     if prod_db_url.replace('postgres://', 'postgresql://', 1).strip() == sandbox_db_url.replace('postgres://', 'postgresql://', 1).strip():
         flash('PROD и SANDBOX DB URL совпадают. Остановлено для безопасности.', 'danger')
         return redirect(url_for('admin.admin_panel'))
+
+    # Опция: синхронизировать Users (по умолчанию выключено, чтобы не сносить sandbox тестеров)
+    include_users = request.form.get('include_users') == 'on'
+    current_app.config['DB_SYNC_INCLUDE_USERS'] = include_users
 
     with _DB_SYNC_LOCK:
         if _DB_SYNC_STATE['running']:

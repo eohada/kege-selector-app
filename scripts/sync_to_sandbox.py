@@ -108,7 +108,7 @@ def sync_table(prod_conn, sandbox_conn, table_name, primary_key='id', exclude_co
         print(f"  ❌ Ошибка синхронизации {table_name}: {e}")
         return 0
 
-def sync_databases(prod_url=None, sandbox_url=None):
+def sync_databases(prod_url=None, sandbox_url=None, include_users=False):
     """Основная функция синхронизации"""
     print("🔄 Синхронизация Production → Sandbox")
     print("=" * 50)
@@ -146,13 +146,17 @@ def sync_databases(prod_url=None, sandbox_url=None):
         tables = [
             ('Tasks', 'task_id'),
             ('Students', 'student_id'),
-            ('Users', 'id'),
             ('Lessons', 'lesson_id'),
             ('LessonTasks', 'lesson_task_id'),
             ('UsageHistory', 'usage_id'),
             ('SkippedTasks', 'skipped_id'),
             ('BlacklistTasks', 'blacklist_id'),
         ]
+
+        # Users синкать опасно: это снесёт sandbox тестировщиков (логины/пароли) и оставит только продовых.
+        # Поэтому по умолчанию Users НЕ синхронизируем. Включается явно через include_users=True.
+        if include_users:
+            tables.insert(2, ('Users', 'id'))
         
         # Таблицы, которые НЕ синхронизируем (логи, временные данные)
         exclude_tables = ['AuditLog', 'Testers']  # Логи не синхронизируем

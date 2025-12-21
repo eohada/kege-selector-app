@@ -249,6 +249,10 @@
                 </div>
                 <form method="POST" action="{{ url_for('admin.admin_sandbox_db_sync_run') }}" style="margin:0;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label style="display:inline-flex; gap:0.5rem; align-items:center; color: var(--text-muted); margin-right: 0.75rem;">
+                        <input type="checkbox" name="include_users">
+                        синкать Users (снесёт sandbox тестеров)
+                    </label>
                     <button id="dbSyncBtn" type="submit" class="neo-button accent">Запустить</button>
                 </form>
             </div>
