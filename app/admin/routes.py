@@ -5,10 +5,12 @@ import logging
 import csv
 from io import StringIO
 from datetime import datetime, timedelta
+import os  # Окружение (ENVIRONMENT/RAILWAY_ENVIRONMENT) для безопасных ограничений. # comment
 from flask import render_template, request, redirect, url_for, flash, make_response, jsonify
 from flask_login import login_required, current_user
 from sqlalchemy import func, delete
 from sqlalchemy.exc import OperationalError, ProgrammingError
+from werkzeug.security import generate_password_hash  # Хешируем пароль как в scripts/create_tester_user.py. # comment
 
 from app.admin import admin_bp
 from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ, Tasks, Lesson, LessonTask
@@ -26,6 +28,10 @@ def admin_panel():
         return redirect(url_for('main.dashboard'))
     
     try:
+        environment = os.environ.get('ENVIRONMENT', 'local')  # Текущее окружение приложения. # comment
+        railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')  # Окружение Railway (если есть). # comment
+        is_production = environment == 'production' or ('production' in railway_environment.lower() and 'sandbox' not in railway_environment.lower())  # Признак production. # comment
+
         total_users = User.query.count()
         active_users = User.query.filter_by(is_active=True).count()
         creators_count = User.query.filter_by(role='creator').count()
@@ -66,11 +72,17 @@ def admin_panel():
                              total_logs=total_logs,
                              today_logs=today_logs,
                              maintenance_enabled=maintenance_status.is_enabled,
-                             maintenance_message=maintenance_status.message)
+                             maintenance_message=maintenance_status.message,
+                             environment=environment,
+                             is_production=is_production)
     except Exception as e:
         logger.error(f"Error in admin_panel route: {e}", exc_info=True)
         flash(f'Ошибка при загрузке статистики: {str(e)}', 'error')
         try:
+            environment = os.environ.get('ENVIRONMENT', 'local')  # Текущее окружение приложения. # comment
+            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')  # Окружение Railway (если есть). # comment
+            is_production = environment == 'production' or ('production' in railway_environment.lower() and 'sandbox' not in railway_environment.lower())  # Признак production. # comment
+
             total_users = User.query.count()
             active_users = User.query.filter_by(is_active=True).count()
             creators_count = User.query.filter_by(role='creator').count()
@@ -81,11 +93,94 @@ def admin_panel():
                                  creators_count=creators_count,
                                  testers_count=testers_count,
                                  total_logs=0,
-                                 today_logs=0)
+                                 today_logs=0,
+                                 environment=environment,
+                                 is_production=is_production)
         except Exception as e2:
             logger.error(f"Error in fallback: {e2}", exc_info=True)
             flash('Критическая ошибка при загрузке данных', 'error')
             return redirect(url_for('main.dashboard'))
+
+
+@admin_bp.route('/admin-testers/create', methods=['POST'])
+@login_required
+def admin_testers_create():
+    """Создание user-тестировщика (username + password) - только для создателя."""  # Докстринг маршрута. # comment
+    if not current_user.is_creator():  # Проверяем права доступа. # comment
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')  # Сообщаем об отказе. # comment
+        return redirect(url_for('main.dashboard'))  # Возвращаем в основной раздел. # comment
+
+    username = (request.form.get('username') or '').strip()  # Имя пользователя из формы. # comment
+    password = request.form.get('password') or ''  # Пароль из формы (сырой, только для хеширования). # comment
+    allow_update = request.form.get('allow_update') == 'on'  # Разрешение обновлять существующего пользователя. # comment
+    force_production = request.form.get('force_production') == 'on'  # Явное подтверждение для production. # comment
+
+    if not username:  # Валидация имени. # comment
+        flash('Имя пользователя обязательно.', 'error')  # Показываем ошибку. # comment
+        return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
+
+    if not password:  # Валидация пароля. # comment
+        flash('Пароль обязателен.', 'error')  # Показываем ошибку. # comment
+        return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
+
+    environment = os.environ.get('ENVIRONMENT', 'local')  # Текущее окружение приложения. # comment
+    railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')  # Окружение Railway (если есть). # comment
+    is_production = environment == 'production' or ('production' in railway_environment.lower() and 'sandbox' not in railway_environment.lower())  # Признак production. # comment
+
+    if is_production and not force_production:  # В production блокируем без явного подтверждения. # comment
+        flash('Тестировщиков нельзя создавать в production без подтверждения. Включите чекбокс "force production".', 'danger')  # Предупреждаем. # comment
+        return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
+
+    try:  # Основной блок создания/обновления. # comment
+        user = User.query.filter_by(username=username).first()  # Ищем пользователя по имени. # comment
+
+        if user and not allow_update:  # Если пользователь уже есть, но апдейт запрещён. # comment
+            flash('Пользователь с таким именем уже существует. Включите "обновить существующего", если хотите перезаписать пароль.', 'warning')  # Подсказка. # comment
+            return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
+
+        if user:  # Ветка обновления существующего пользователя. # comment
+            old_role = user.role  # Запоминаем старую роль для аудита. # comment
+            user.password_hash = generate_password_hash(password)  # Обновляем хеш пароля. # comment
+            user.role = 'tester'  # Проставляем роль тестировщика. # comment
+            user.is_active = True  # Активируем пользователя. # comment
+            db.session.commit()  # Фиксируем изменения. # comment
+
+            audit_logger.log(  # Пишем событие аудита. # comment
+                action='update_user_password',  # Тип действия. # comment
+                entity='User',  # Сущность. # comment
+                entity_id=user.id,  # Идентификатор сущности. # comment
+                status='success',  # Статус операции. # comment
+                metadata={'username': username, 'old_role': old_role, 'new_role': 'tester'}  # Метаданные. # comment
+            )  # Конец audit_logger.log. # comment
+
+            flash(f'Тестировщик "{username}" обновлён (пароль перезаписан).', 'success')  # Уведомляем об успехе. # comment
+            return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
+
+        user = User(  # Создаём нового пользователя. # comment
+            username=username,  # Имя пользователя. # comment
+            password_hash=generate_password_hash(password),  # Хеш пароля. # comment
+            role='tester',  # Роль тестировщика. # comment
+            is_active=True,  # Активный пользователь. # comment
+            created_at=moscow_now()  # Дата создания. # comment
+        )  # Конец инициализации User. # comment
+        db.session.add(user)  # Добавляем в сессию. # comment
+        db.session.commit()  # Сохраняем в БД. # comment
+
+        audit_logger.log(  # Пишем событие аудита. # comment
+            action='create_user',  # Тип действия. # comment
+            entity='User',  # Сущность. # comment
+            entity_id=user.id,  # Идентификатор сущности. # comment
+            status='success',  # Статус операции. # comment
+            metadata={'username': username, 'role': 'tester'}  # Метаданные. # comment
+        )  # Конец audit_logger.log. # comment
+
+        flash(f'Тестировщик "{username}" создан.', 'success')  # Уведомляем об успехе. # comment
+        return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
+    except Exception as e:  # Обрабатываем любые ошибки. # comment
+        db.session.rollback()  # Откатываем транзакцию. # comment
+        logger.error(f"Error creating tester user: {e}", exc_info=True)  # Логируем ошибку. # comment
+        flash(f'Ошибка при создании тестировщика: {str(e)}', 'error')  # Показываем ошибку. # comment
+        return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
 
 @admin_bp.route('/admin-audit')
 @login_required

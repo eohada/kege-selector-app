@@ -61,119 +61,115 @@
 
         {% include '_ux_enhancements.html' %}
 
-        <section class="glass-panel" style="margin-bottom: 2rem;">
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                <a href="{{ url_for('auth.user_profile') }}" class="neo-button ghost" style="text-decoration: none;">
-                    ← К профилю
-                </a>
+        <section class="dashboard-hero glass-panel">
+            <div>
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                    <a href="{{ url_for('auth.user_profile') }}" class="neo-button ghost" style="text-decoration: none;">
+                        ← К профилю
+                    </a>
+                </div>
+                <p class="hero-eyebrow">администрирование</p>
+                <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Админ" class="ui-icon ui-icon--md">Админ панель</h1>
+                <p class="hero-subtitle">Минималистичная панель управления системой и пользователями.</p>
+                <div class="hero-actions">
+                    <a href="{{ url_for('admin.admin_testers') }}" class="neo-button outline" style="text-decoration: none;">👥 Пользователи</a>
+                    <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button outline" style="text-decoration: none;">🧪 Tester entities</a>
+                    <a href="{{ url_for('admin.admin_audit') }}" class="neo-button outline" style="text-decoration: none;">📋 Аудит</a>
+                    <a href="{{ url_for('admin.diagnostics') }}" class="neo-button outline" style="text-decoration: none;">🔍 Диагностика</a>
+                </div>
             </div>
-            <p class="hero-eyebrow">администрирование</p>
-            <h1 class="hero-title">⚙️ Админ панель</h1>
-            <p class="hero-subtitle">Управление системой и пользователями</p>
-        </section>
-
-        <section class="glass-panel" style="margin-bottom: 2rem;">
-            <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Статистика пользователей</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
-                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
-                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Всего пользователей</div>
-                    <div style="font-size: 2em; font-weight: 700; color: var(--accent-1);">{{ total_users }}</div>
+            <div class="hero-pane">
+                <div class="hero-metric">
+                    <div class="hero-metric-label">окружение</div>
+                    <div class="hero-metric-value" style="font-size: 1.4rem;">{{ environment or 'local' }}</div>
                 </div>
-                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
-                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Активных пользователей</div>
-                    <div style="font-size: 2em; font-weight: 700; color: var(--accent-2);">{{ active_users }}</div>
-                </div>
-                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
-                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Создателей</div>
-                    <div style="font-size: 2em; font-weight: 700; color: #22c55e;">{{ creators_count }}</div>
-                </div>
-                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
-                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Тестировщиков</div>
-                    <div style="font-size: 2em; font-weight: 700; color: #eab308;">{{ testers_count }}</div>
+                <div class="hero-metric" style="border-left: 3px solid {% if is_production %}var(--danger){% else %}var(--success){% endif %};">
+                    <div class="hero-metric-label">режим</div>
+                    <div class="hero-metric-value" style="font-size: 1.4rem;">{% if is_production %}production{% else %}safe{% endif %}</div>
                 </div>
             </div>
         </section>
 
-        <section class="glass-panel" style="margin-bottom: 2rem;">
-            <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Статистика логов</h2>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
-                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
-                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Всего логов</div>
-                    <div style="font-size: 2em; font-weight: 700; color: var(--accent-1);">{{ total_logs }}</div>
-                </div>
-                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
-                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">Логов сегодня</div>
-                    <div style="font-size: 2em; font-weight: 700; color: var(--accent-2);">{{ today_logs }}</div>
-                </div>
-            </div>
+        <section class="stats-grid">
+            <article class="stat-card"><strong>{{ total_users }}</strong><span>ПОЛЬЗОВАТЕЛЕЙ</span></article>
+            <article class="stat-card"><strong>{{ active_users }}</strong><span>АКТИВНЫХ</span></article>
+            <article class="stat-card"><strong>{{ creators_count }}</strong><span>CREATOR</span></article>
+            <article class="stat-card"><strong>{{ testers_count }}</strong><span>TESTER</span></article>
+            <article class="stat-card"><strong>{{ total_logs }}</strong><span>ЛОГОВ</span></article>
+            <article class="stat-card"><strong>{{ today_logs }}</strong><span>СЕГОДНЯ</span></article>
         </section>
 
         <section class="glass-panel" style="margin-bottom: 2rem;">
-            <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Управление тех работами</h2>
-            <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1); margin-bottom: 1rem;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                    <div>
-                        <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">
-                            Режим технических работ
-                        </div>
-                        <div style="font-size: 0.9em; color: var(--text-muted);">
-                            {% if maintenance_enabled %}
-                                <span style="color: #ef4444;">● Включен</span> - все страницы в песочнице редиректят на страницу тех работ
-                            {% else %}
-                                <span style="color: #22c55e;">● Выключен</span> - приложение работает в штатном режиме
-                            {% endif %}
-                        </div>
-                    </div>
-                    <form method="POST" action="{{ url_for('admin.toggle_maintenance') }}" style="margin: 0;">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="neo-button {% if maintenance_enabled %}danger{% else %}accent{% endif %}" style="min-width: 150px;">
-                            {% if maintenance_enabled %}
-                                🔴 Выключить
-                            {% else %}
-                                🟢 Включить
-                            {% endif %}
-                        </button>
-                    </form>
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">создание пользователя</p>
+                    <h2>Создать тестировщика (User)</h2>
                 </div>
-                <form method="POST" action="{{ url_for('admin.update_maintenance_message') }}" style="margin-top: 1rem;">
+            </div>
+
+            {% if is_production %}
+            <div style="margin-bottom: 1rem; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid rgba(255, 108, 145, 0.35); background: rgba(255, 108, 145, 0.08);">
+                <strong style="display: block; margin-bottom: 0.35rem;">Внимание: production</strong>
+                <div style="color: var(--text-muted); font-size: 0.95rem;">Создание тестировщиков в production требует явного подтверждения.</div>
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('admin.admin_testers_create') }}" class="filters-grid" style="align-items: end;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="neo-field">
+                    <label class="neo-label" for="tester-username">Логин</label>
+                    <input id="tester-username" name="username" class="neo-input" placeholder="например: tester1" required>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="tester-password">Пароль</label>
+                    <input id="tester-password" name="password" type="password" class="neo-input" placeholder="введите пароль" required>
+                </div>
+                <div class="neo-field" style="align-items: flex-start;">
+                    <label class="neo-label">Опции</label>
+                    <label style="display:flex; gap:0.6rem; align-items:center; color: var(--text-primary);">
+                        <input type="checkbox" name="allow_update">
+                        <span style="color: var(--text-muted);">Обновить существующего</span>
+                    </label>
+                    <label style="display:flex; gap:0.6rem; align-items:center; color: var(--text-primary); margin-top: 0.35rem;">
+                        <input type="checkbox" name="force_production" {% if not is_production %}disabled{% endif %}>
+                        <span style="color: var(--text-muted);">Force production</span>
+                    </label>
+                </div>
+                <div class="filters-actions">
+                    <button type="submit" class="neo-button accent" style="min-width: 220px;">Создать</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">тех. работы</p>
+                    <h2>Maintenance</h2>
+                </div>
+                <form method="POST" action="{{ url_for('admin.toggle_maintenance') }}" style="margin: 0;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div style="margin-bottom: 0.5rem;">
-                        <label for="maintenance-message" style="display: block; font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">
-                            Сообщение на странице тех работ:
-                        </label>
-                        <textarea 
-                            id="maintenance-message" 
-                            name="message" 
-                            rows="3" 
-                            style="width: 100%; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); color: var(--text-primary); font-family: inherit; font-size: 0.95rem; resize: vertical;"
-                            placeholder="Ведутся технические работы. Пожалуйста, зайдите позже.">{{ maintenance_message or '' }}</textarea>
-                    </div>
-                    <button type="submit" class="neo-button outline" style="width: 100%;">
-                        💾 Сохранить сообщение
+                    <button type="submit" class="neo-button {% if maintenance_enabled %}danger{% else %}accent{% endif %}">
+                        {% if maintenance_enabled %}Выключить{% else %}Включить{% endif %}
                     </button>
                 </form>
             </div>
-        </section>
 
-        <section class="glass-panel">
-            <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">Быстрые действия</h2>
-            <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
-                <a href="{{ url_for('admin.admin_testers') }}" class="neo-button outline" style="text-decoration: none;">
-                    👥 Управление пользователями
-                </a>
-                <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button outline" style="text-decoration: none;">
-                    🧪 Управление тестировщиками
-                </a>
-                <a href="{{ url_for('admin.admin_audit') }}" class="neo-button outline" style="text-decoration: none;">
-                    📋 Журнал аудита
-                </a>
-                <a href="{{ url_for('admin.diagnostics') }}" class="neo-button outline" style="text-decoration: none;">
-                    🔍 Диагностика окружения
-                </a>
-                <a href="{{ url_for('admin.debug_export') }}" class="neo-button outline" style="text-decoration: none;">
-                    🔧 Отладка экспорта в Markdown
-                </a>
+            <div style="margin-bottom: 1rem; color: var(--text-muted);">
+                {% if maintenance_enabled %}● Включен — песочница редиректит на тех. работы{% else %}● Выключен — приложение работает{% endif %}
             </div>
+
+            <form method="POST" action="{{ url_for('admin.update_maintenance_message') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="neo-field">
+                    <label class="neo-label" for="maintenance-message">Сообщение</label>
+                    <textarea id="maintenance-message" name="message" rows="3" class="neo-input" placeholder="Ведутся технические работы. Пожалуйста, зайдите позже.">{{ maintenance_message or '' }}</textarea>
+                </div>
+                <div class="hero-actions">
+                    <button type="submit" class="neo-button outline"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm">Сохранить сообщение</button>
+                    <a href="{{ url_for('admin.debug_export') }}" class="neo-button ghost" style="text-decoration: none;">🔧 Debug export</a>
+                </div>
+            </form>
         </section>
     </div>
 
