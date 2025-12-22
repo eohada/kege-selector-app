@@ -204,9 +204,7 @@
       durationSlots * pxPerSlot - 4,
       pxPerSlot * 0.9
     );
-    const maxTop = (totalSlots * pxPerSlot) - height;
-    const clampedTop = Math.min(top + 2, maxTop);
-    el.style.top = `${clampedTop}px`;
+    el.style.top = `${top + 2}px`;
     el.style.height = `${height}px`;
 
     const meta = {
