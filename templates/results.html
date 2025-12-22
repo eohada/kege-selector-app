@@ -246,7 +246,7 @@
     
     {% if active_lesson %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        🎧 Урок идет: {{ active_student.name }}
+        <img src="{{ url_for('static', filename='icons/icons8-наушники-100.png') }}" alt="Урок" class="ui-icon ui-icon--sm"> Урок идет: {{ active_student.name }}
     </div>
     <div class="now-playing-panel" id="lessonMenu">
         <div class="hero-eyebrow">текущий урок</div>
@@ -260,7 +260,7 @@
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
                 <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
             </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
         </div>
     </div>
     <script>
@@ -282,52 +282,8 @@
     {% endif %}
 
     <div class="app-shell">
-        <header class="nav-primary">
-            <div class="nav-brand">
-                {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
-                    {{ current_user.username[0].upper() }}
-                </a>
-                {% endif %}
-                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
-                    <div class="brand-mark">LOGO</div>
-                    <div class="brand-caption">Слот под фирменный знак</div>
-                </a>
-            </div>
-            {% include '_mobile_menu.html' %}
-            <nav class="nav-links"> <!-- Верхняя панель -->
-                <a href="{{ url_for('main.dashboard') }}" class="nav-link"> <!-- Страница учеников -->
-                    <span class="nav-link-content"> <!-- Контейнер -->
-                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon"> <!-- Иконка -->
-                        <span class="nav-link-label">Ученики</span> <!-- Подпись -->
-                    </span>
-                </a>
-                <a href="{{ url_for('schedule.schedule') }}" class="nav-link"> <!-- Страница расписания -->
-                    <span class="nav-link-content"> <!-- Контейнер -->
-                        <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon"> <!-- Иконка -->
-                        <span class="nav-link-label">Расписание</span> <!-- Подпись -->
-                    </span>
-                </a>
-                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link active"> <!-- Страница генератора -->
-                    <span class="nav-link-content"> <!-- Контейнер -->
-                        <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon"> <!-- Иконка -->
-                        <span class="nav-link-label">Генератор</span> <!-- Подпись -->
-                    </span>
-                </a>
-                <a href="{{ url_for('main.update_plans') }}" class="nav-link"> <!-- Страница планов -->
-                    <span class="nav-link-content"> <!-- Контейнер -->
-                        <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Планы" class="nav-link-icon"> <!-- Иконка -->
-                        <span class="nav-link-label">Планы</span> <!-- Подпись -->
-                    </span>
-                </a>
-                <a href="{{ url_for('templates.templates_list') }}" class="nav-link"> <!-- Страница шаблонов -->
-                    <span class="nav-link-content"> <!-- Контейнер -->
-                        <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon"> <!-- Иконка -->
-                        <span class="nav-link-label">Шаблоны</span> <!-- Подпись -->
-                    </span>
-                </a>
-            </nav>
-        </header>
+        {% set active_page = 'generator' %}
+        {% include '_primary_nav.html' %}
 
         {# Flash messages будут показаны через toast #}
 
@@ -359,7 +315,13 @@
 
         {% if lesson and student %}
         <section class="mode-banner {{ mode_class }}">
-            <div class="mode-icon">{{ '📝' if is_homework else '🏫' }}</div>
+            <div class="mode-icon">
+                {% if is_homework %}
+                <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="ДЗ" style="width: 40px; height: 40px; object-fit: contain;">
+                {% else %}
+                <img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Классная работа" style="width: 40px; height: 40px; object-fit: contain;">
+                {% endif %}
+            </div>
             <div style="flex: 1;">
                 <div class="mode-title">Режим формирования {{ mode_label }}</div>
                 <div class="mode-details">
@@ -372,7 +334,7 @@
                     {% endif %}
                 </div>
                 <div class="mode-hint">
-                    {{ '💡 Нажми «Добавить в ДЗ», чтобы закрепить задания за учеником.' if is_homework else '💡 Выбирай «Добавить в работу», чтобы использовать задания прямо на уроке.' }}
+                    {{ 'Нажми «Добавить в ДЗ», чтобы закрепить задания за учеником.' if is_homework else 'Выбирай «Добавить в работу», чтобы использовать задания прямо на уроке.' }}
                 </div>
             </div>
             <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Профиль</a>
@@ -626,7 +588,7 @@
             
             if (TEMPLATE_ID) {
                 requestBody.template_id = TEMPLATE_ID;
-                console.log('✅ Добавляем template_id в запрос:', TEMPLATE_ID);
+                console.log('[DEBUG] Добавляем template_id в запрос:', TEMPLATE_ID);
             } else {
                 console.warn('⚠️ TEMPLATE_ID не определен:', TEMPLATE_ID, 'Тип:', typeof TEMPLATE_ID);
             }
@@ -840,7 +802,7 @@
                     } else if (window.toast) {
                         window.toast.success(message);
                     } else {
-                        console.log('✅ Успех:', message);
+                        console.log('[SUCCESS] Успех:', message);
                         if (typeof showTemporaryNotification === 'function') {
                             showTemporaryNotification(message, 'success');
                         }
@@ -852,7 +814,7 @@
                     } else if (window.toast) {
                         window.toast.error(errorMessage);
                     } else {
-                        console.error('❌ Ошибка:', errorMessage);
+                        console.error('[ERROR] Ошибка:', errorMessage);
                         if (typeof showTemporaryNotification === 'function') {
                             showTemporaryNotification(errorMessage, 'error');
                         }
@@ -915,7 +877,7 @@
                 } else if (window.toast) {
                     window.toast.error(errorMessage);
                 } else {
-                    console.error('❌ Ошибка:', errorMessage);
+                    console.error('[ERROR] Ошибка:', errorMessage);
                     if (typeof showTemporaryNotification === 'function') {
                         showTemporaryNotification(errorMessage, 'error');
                     } else {
@@ -1115,7 +1077,7 @@
                     } else if (window.toast) {
                         window.toast.success(message);
                     } else {
-                        console.log('✅ Успех:', message);
+                        console.log('[SUCCESS] Успех:', message);
                         if (typeof showTemporaryNotification === 'function') {
                             showTemporaryNotification(message, 'success');
                         }
@@ -1133,7 +1095,7 @@
                     } else if (window.toast) {
                         window.toast.error(errorMessage);
                     } else {
-                        console.error('❌ Ошибка:', errorMessage);
+                        console.error('[ERROR] Ошибка:', errorMessage);
                         if (typeof showTemporaryNotification === 'function') {
                             showTemporaryNotification(errorMessage, 'error');
                         }
@@ -1164,7 +1126,7 @@
                 } else if (window.toast) {
                     window.toast.error(errorMessage);
                 } else {
-                    console.error('❌ Ошибка:', errorMessage);
+                    console.error('[ERROR] Ошибка:', errorMessage);
                     if (typeof showTemporaryNotification === 'function') {
                         showTemporaryNotification(errorMessage, 'error');
                     } else {

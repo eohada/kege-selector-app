@@ -14,46 +14,8 @@
 </head>
 <body>
     <div class="app-shell">
-        <header class="nav-primary">
-        <div class="nav-brand">
-            {% if current_user and current_user.is_authenticated %}
-            <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
-                {{ current_user.username[0].upper() }}
-            </a>
-            {% endif %}
-            <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
-                <div class="brand-mark">LOGO</div>
-                <div class="brand-caption">Слот под фирменный знак</div>
-            </a>
-        </div>
-        {% include '_mobile_menu.html' %}
-        <nav class="nav-links">
-            <a href="{{ url_for('main.dashboard') }}" class="nav-link">
-                <span class="nav-link-content">
-                    <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon">
-                    <span class="nav-link-label">Ученики</span>
-                </span>
-            </a>
-            <a href="{{ url_for('schedule.schedule') }}" class="nav-link">
-                <span class="nav-link-content">
-                    <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon">
-                    <span class="nav-link-label">Расписание</span>
-                </span>
-            </a>
-            <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">
-                <span class="nav-link-content">
-                    <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon">
-                    <span class="nav-link-label">Генератор</span>
-                </span>
-            </a>
-            <a href="{{ url_for('templates.templates_list') }}" class="nav-link">
-                <span class="nav-link-content">
-                    <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon">
-                    <span class="nav-link-label">Шаблоны</span>
-                </span>
-            </a>
-        </nav>
-    </header>
+        {% set active_page = 'dashboard' %}
+        {% include '_primary_nav.html' %}
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
                 <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="text-decoration: none;">
@@ -61,7 +23,7 @@
                 </a>
             </div>
             <p class="hero-eyebrow">ручное создание</p>
-            <h1 class="hero-title">📝 Ручное создание заданий</h1>
+            <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Создание" class="ui-icon ui-icon--md"> Ручное создание заданий</h1>
             <p class="hero-subtitle">Добавление собственных заданий для ученика {{ lesson.student.name }}</p>
         </section>
 
@@ -79,7 +41,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div id="status-text" style="color: var(--text-muted);">Заданий: <span id="tasks-count">0</span></div>
                 <button onclick="saveTasks()" class="neo-button accent">
-                    💾 Сохранить и добавить в урок
+                    <img src="{{ url_for('static', filename='icons/icons8-сохранить-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm"> Сохранить и добавить в урок
                 </button>
             </div>
         </section>
