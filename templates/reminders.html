@@ -355,8 +355,8 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="neo-button ghost" onclick="closeCreateModal()">Отмена</button>
-                    <button type="submit" class="neo-button accent">
-                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Создать" class="ui-icon ui-icon--sm"> Создать
+                    <button type="submit" class="neo-button accent" id="submitReminderBtn">
+                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Создать" class="ui-icon ui-icon--sm"> <span id="submitReminderText">Создать</span>
                     </button>
                 </div>
             </form>
