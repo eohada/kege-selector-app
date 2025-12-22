@@ -70,14 +70,14 @@ def reminder_create():
         data = request.get_json() if request.is_json else {}
         
         if request.is_json:
-            title = data.get('title', '').strip()
-            message = data.get('message', '').strip()
-            reminder_time_str = data.get('reminder_time', '').strip()
+            title = (data.get('title') or '').strip()
+            message = (data.get('message') or '').strip()
+            reminder_time_str = (data.get('reminder_time') or '').strip()
             timezone_offset = data.get('timezone_offset', None)  # Смещение в минутах от UTC
         else:
-            title = request.form.get('title', '').strip()
-            message = request.form.get('message', '').strip()
-            reminder_time_str = request.form.get('reminder_time', '').strip()
+            title = (request.form.get('title') or '').strip()
+            message = (request.form.get('message') or '').strip()
+            reminder_time_str = (request.form.get('reminder_time') or '').strip()
             timezone_offset = request.form.get('timezone_offset', None)
         
         if not title:
@@ -241,11 +241,15 @@ def reminder_update(reminder_id):
             if timezone_offset is not None:
                 try:
                     offset_minutes = int(timezone_offset)
-                    from datetime import timedelta
-                    tz = ZoneInfo(f"Etc/GMT{-offset_minutes//60:+d}" if offset_minutes != 0 else "UTC")
+                    if offset_minutes == 0:
+                        tz = ZoneInfo("UTC")
+                    else:
+                        tz_name = f"Etc/GMT{-offset_minutes//60:+d}"
+                        tz = ZoneInfo(tz_name)
                     reminder_time = reminder_time_naive.replace(tzinfo=tz)
-                    reminder_time = reminder_time.astimezone(MOSCOW_TZ).replace(tzinfo=None)
-                except (ValueError, TypeError):
+                    reminder_time_moscow = reminder_time.astimezone(MOSCOW_TZ)
+                    reminder_time = reminder_time_moscow.replace(tzinfo=None)
+                except (ValueError, TypeError) as e:
                     reminder_time = reminder_time_naive
             else:
                 reminder_time = reminder_time_naive

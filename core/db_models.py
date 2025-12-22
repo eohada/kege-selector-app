@@ -266,7 +266,11 @@ class Reminder(db.Model):
         """Проверяет, просрочено ли напоминание"""
         if self.is_completed or not self.reminder_time:
             return False
-        return self.reminder_time < moscow_now()
+        # Сравниваем naive datetime с naive datetime
+        now = moscow_now()
+        now_naive = now.replace(tzinfo=None) if now.tzinfo else now
+        reminder_naive = self.reminder_time.replace(tzinfo=None) if self.reminder_time.tzinfo else self.reminder_time
+        return reminder_naive < now_naive
     
     def __repr__(self):
         return f'<Reminder {self.title} at {self.reminder_time}>'
