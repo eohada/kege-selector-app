@@ -317,6 +317,7 @@
                 <button class="modal-close" onclick="closeCreateModal()">&times;</button>
             </div>
             <form id="createReminderForm" onsubmit="submitReminder(event)">
+                <input type="hidden" id="create_reminder_id" name="reminder_id" value="">
                 <div class="modal-body">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     
