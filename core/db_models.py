@@ -247,6 +247,24 @@ class AuditLog(db.Model):
     def __repr__(self):
         return f'<AuditLog {self.action} {self.entity} by {self.tester_name} at {self.timestamp}>'
 
+class Reminder(db.Model):
+    """Модель напоминаний"""
+    __tablename__ = 'Reminders'
+    reminder_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=True)
+    reminder_time = db.Column(db.DateTime, nullable=False, index=True)
+    is_completed = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    is_sent = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+    
+    user = db.relationship('User', foreign_keys=[user_id])
+    
+    def __repr__(self):
+        return f'<Reminder {self.title} at {self.reminder_time}>'
+
 class TaskTemplate(db.Model):
     """Модель шаблона заданий для библиотеки шаблонов"""
     __tablename__ = 'TaskTemplates'

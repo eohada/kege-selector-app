@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Напоминания · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .reminders-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .reminder-card {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.25s ease;
+            position: relative;
+        }
+        
+        .reminder-card:hover {
+            border-color: rgba(0, 255, 213, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 255, 213, 0.1);
+        }
+        
+        .reminder-card.completed {
+            opacity: 0.6;
+        }
+        
+        .reminder-card.completed .reminder-title {
+            text-decoration: line-through;
+        }
+        
+        .reminder-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .reminder-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            flex: 1;
+        }
+        
+        .reminder-time {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+        
+        .reminder-time.past {
+            color: var(--danger);
+        }
+        
+        .reminder-time.upcoming {
+            color: var(--accent-1);
+        }
+        
+        .reminder-message {
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+        
+        .reminder-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .reminder-actions .neo-button {
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+        }
+        
+        .create-form {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-muted);
+        }
+        
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
+        .filter-toggle {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .filter-toggle .neo-button {
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'reminders' %}
+        {% include '_primary_nav.html' %}
+        
+        <main class="app-content">
+            <div class="reminders-container">
+                <section class="dashboard-hero" style="margin-bottom: 2rem;">
+                    <div class="hero-pane">
+                        <h1>Напоминания</h1>
+                        <p style="color: var(--text-muted); margin-top: 0.5rem;">Легкие заметки с указанием времени</p>
+                    </div>
+                </section>
+                
+                <div class="filter-toggle">
+                    <a href="{{ url_for('reminders.reminders_list', show_completed='false') }}" 
+                       class="neo-button {% if not show_completed %}accent{% else %}ghost{% endif %}">
+                        Активные
+                    </a>
+                    <a href="{{ url_for('reminders.reminders_list', show_completed='true') }}" 
+                       class="neo-button {% if show_completed %}accent{% else %}ghost{% endif %}">
+                        Все
+                    </a>
+                </div>
+                
+                <section class="create-form">
+                    <form method="POST" action="{{ url_for('reminders.reminder_create') }}" data-validate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="neo-field">
+                            <label class="neo-label" for="title">Заголовок</label>
+                            <input type="text" 
+                                   id="title" 
+                                   name="title" 
+                                   class="neo-input" 
+                                   placeholder="Что нужно напомнить?"
+                                   required>
+                        </div>
+                        
+                        <div class="neo-field">
+                            <label class="neo-label" for="message">Сообщение (необязательно)</label>
+                            <textarea id="message" 
+                                      name="message" 
+                                      class="neo-textarea" 
+                                      placeholder="Дополнительные детали..."
+                                      rows="3"></textarea>
+                        </div>
+                        
+                        <div class="neo-field">
+                            <label class="neo-label" for="reminder_time">Время напоминания</label>
+                            <input type="datetime-local" 
+                                   id="reminder_time" 
+                                   name="reminder_time" 
+                                   class="neo-input" 
+                                   required>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="neo-button accent">
+                                <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Создать" class="ui-icon ui-icon--sm"> Создать
+                            </button>
+                        </div>
+                    </form>
+                </section>
+                
+                {% if reminders %}
+                <section>
+                    {% for reminder in reminders %}
+                    <div class="reminder-card {% if reminder.is_completed %}completed{% endif %}">
+                        <div class="reminder-header">
+                            <div class="reminder-title">{{ reminder.title }}</div>
+                            <div class="reminder-time {% if reminder.reminder_time < now and not reminder.is_completed %}past{% elif reminder.reminder_time > now %}upcoming{% endif %}">
+                                {{ reminder.reminder_time.strftime('%d.%m.%Y %H:%M') }}
+                            </div>
+                        </div>
+                        
+                        {% if reminder.message %}
+                        <div class="reminder-message">{{ reminder.message }}</div>
+                        {% endif %}
+                        
+                        <div class="reminder-actions">
+                            <form method="POST" action="{{ url_for('reminders.reminder_toggle', reminder_id=reminder.reminder_id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="neo-button {% if reminder.is_completed %}ghost{% else %}outline{% endif %}">
+                                    <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Выполнено" class="ui-icon ui-icon--sm">
+                                    {% if reminder.is_completed %}Отметить активным{% else %}Выполнено{% endif %}
+                                </button>
+                            </form>
+                            
+                            <form method="POST" action="{{ url_for('reminders.reminder_delete', reminder_id=reminder.reminder_id) }}" 
+                                  class="confirm-delete-form" 
+                                  style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="neo-button danger">
+                                    <img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Удалить" class="ui-icon ui-icon--sm"> Удалить
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </section>
+                {% else %}
+                <section class="glass-panel">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" alt="Нет напоминаний" style="width: 64px; height: 64px; opacity: 0.5;">
+                        </div>
+                        <h3>Нет напоминаний</h3>
+                        <p>Создайте первое напоминание выше</p>
+                    </div>
+                </section>
+                {% endif %}
+            </div>
+        </main>
+    </div>
+    
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const confirmDeleteForms = document.querySelectorAll('.confirm-delete-form');
+            confirmDeleteForms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    if (!confirm('Удалить это напоминание?')) {
+                        e.preventDefault();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+

@@ -1,5 +1,5 @@
 {# Единая шапка/навигация для всего проекта (премиум-минимализм) #}
-{# Ожидаемые переменные: active_page (dashboard|schedule|generator|plans|templates|admin|None) #}
+{# Ожидаемые переменные: active_page (dashboard|schedule|generator|plans|reminders|templates|admin|None) #}
 <header class="nav-primary">
     <div class="nav-brand">
         {% if current_user and current_user.is_authenticated %}
@@ -43,6 +43,13 @@
             <span class="nav-link-content">
                 <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Планы" class="nav-link-icon">
                 <span class="nav-link-label">Планы</span>
+            </span>
+        </a>
+
+        <a href="{{ url_for('reminders.reminders_list') }}" class="nav-link {% if active_page == 'reminders' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" alt="Напоминания" class="nav-link-icon">
+                <span class="nav-link-label">Напоминания</span>
             </span>
         </a>
 

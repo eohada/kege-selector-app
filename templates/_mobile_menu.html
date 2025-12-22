@@ -34,6 +34,10 @@
             <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Планы" class="mobile-nav-link-icon">
             <span>Планы</span>
         </a>
+        <a href="{{ url_for('reminders.reminders_list') }}" class="mobile-nav-link {% if request.endpoint == 'reminders.reminders_list' %}active{% endif %}">
+            <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" alt="Напоминания" class="mobile-nav-link-icon">
+            <span>Напоминания</span>
+        </a>
         <a href="{{ url_for('templates.templates_list') }}" class="mobile-nav-link {% if request.endpoint == 'templates.templates_list' or request.endpoint == 'templates.template_view' or request.endpoint == 'templates.template_edit' or request.endpoint == 'templates.template_new' or request.endpoint == 'templates.template_form' %}active{% endif %}">
             <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="mobile-nav-link-icon">
             <span>Шаблоны</span>
