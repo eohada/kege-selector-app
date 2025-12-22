@@ -139,6 +139,7 @@
             grid-template-columns: 84px repeat(7, minmax(0, 1fr));
             max-height: 78vh;
             overflow: auto;
+            padding-bottom: 60px;
         }
 
         .time-col {
@@ -168,7 +169,8 @@
 
         .day-col__body {
             position: relative;
-            height: calc({{ total_slots }} * 28px);
+            height: calc({{ total_slots }} * 28px + 60px);
+            min-height: calc({{ total_slots }} * 28px + 60px);
             background-image: repeating-linear-gradient(
                 to bottom,
                 transparent 0,

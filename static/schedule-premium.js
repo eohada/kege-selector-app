@@ -28,6 +28,8 @@
 
   const slotMinutes = parseInt(scheduleRoot.dataset.slotMinutes || '30', 10);
   const startHour = parseInt(scheduleRoot.dataset.startHour || '0', 10);
+  const endHour = parseInt(scheduleRoot.dataset.endHour || '23', 10);
+  const totalSlots = parseInt(scheduleRoot.dataset.totalSlots || '48', 10);
   const pxPerSlot = parseFloat(scheduleRoot.dataset.pxPerSlot || '28');
 
   const tz = scheduleRoot.dataset.timezone || 'moscow';
@@ -197,11 +199,14 @@
     el.dataset.statusCode = ev.status_code || 'planned';
 
     const top = minutesToY(parseInt(ev.start_total || '0', 10));
+    const durationSlots = parseInt(ev.duration_minutes || '60', 10) / slotMinutes;
     const height = Math.max(
-      (parseInt(ev.duration_minutes || '60', 10) / slotMinutes) * pxPerSlot - 4,
+      durationSlots * pxPerSlot - 4,
       pxPerSlot * 0.9
     );
-    el.style.top = `${top + 2}px`;
+    const maxTop = (totalSlots * pxPerSlot) - height;
+    const clampedTop = Math.min(top + 2, maxTop);
+    el.style.top = `${clampedTop}px`;
     el.style.height = `${height}px`;
 
     const meta = {
