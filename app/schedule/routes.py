@@ -12,6 +12,41 @@ from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
 
+
+def _parse_local_datetime(date_str: str, time_str: str, timezone: str):
+    input_tz = TOMSK_TZ if timezone == 'tomsk' else MOSCOW_TZ
+    lesson_datetime_str = f"{date_str} {time_str}"
+    lesson_datetime_local = datetime.strptime(lesson_datetime_str, '%Y-%m-%d %H:%M')
+    lesson_datetime_local = lesson_datetime_local.replace(tzinfo=input_tz)
+    base_lesson_datetime = lesson_datetime_local.astimezone(MOSCOW_TZ).replace(tzinfo=None)
+    return base_lesson_datetime
+
+
+def _student_has_overlap(student_id: int, start_dt: datetime, duration_min: int, exclude_lesson_id: int | None = None) -> bool:
+    if not student_id or not start_dt or not duration_min:
+        return False
+    end_dt = start_dt + timedelta(minutes=duration_min)
+
+    day_start = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    day_end = day_start + timedelta(days=1)
+
+    q = Lesson.query.filter(
+        Lesson.student_id == student_id,
+        Lesson.lesson_date >= day_start,
+        Lesson.lesson_date < day_end
+    )
+    if exclude_lesson_id:
+        q = q.filter(Lesson.lesson_id != exclude_lesson_id)
+
+    candidates = q.all()
+    for l in candidates:
+        l_start = l.lesson_date
+        l_end = l.lesson_date + timedelta(minutes=int(l.duration or 60))
+        if (l_start < end_dt) and (start_dt < l_end):
+            return True
+
+    return False
+
 @schedule_bp.route('/schedule')
 @login_required
 def schedule():
@@ -20,6 +55,7 @@ def schedule():
     status_filter = request.args.get('status', '')
     category_filter = request.args.get('category', '')
     timezone = request.args.get('timezone', 'moscow')
+    student_filter = request.args.get('student_id', type=int)
 
     display_tz = TOMSK_TZ if timezone == 'tomsk' else MOSCOW_TZ
 
@@ -28,10 +64,19 @@ def schedule():
     week_days = [week_start + timedelta(days=i) for i in range(7)]
     week_end = week_days[-1]
 
-    slot_minutes = 60
-    day_start_hour = 0
-    day_end_hour = 23
-    total_slots = int((24 * 60) / slot_minutes)
+    # Премиум UX: по умолчанию рабочий диапазон, но можно расширить через query
+    slot_minutes = request.args.get('slot', 30, type=int)
+    slot_minutes = slot_minutes if slot_minutes in (15, 30, 60) else 30
+    day_start_hour = request.args.get('start', 7, type=int)
+    day_end_hour = request.args.get('end', 22, type=int)
+    if day_start_hour < 0:
+        day_start_hour = 0
+    if day_end_hour > 23:
+        day_end_hour = 23
+    if day_end_hour < day_start_hour:
+        day_start_hour, day_end_hour = 7, 22
+    total_minutes = (day_end_hour - day_start_hour + 1) * 60
+    total_slots = int(total_minutes / slot_minutes)
     time_labels = [f"{hour:02d}:00" for hour in range(day_start_hour, day_end_hour + 1)]
 
     # Создаем datetime для фильтрации (lesson_date в БД хранится как naive в московском времени)
@@ -51,6 +96,9 @@ def schedule():
 
     if category_filter:
         query = query.join(Student).filter(Student.category == category_filter)
+
+    if student_filter:
+        query = query.filter(Lesson.student_id == student_filter)
 
     lessons = query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date).all()
 
@@ -95,31 +143,17 @@ def schedule():
                 'lesson_type': lesson.lesson_type
             })
 
-    slot_height_px = 32
-    visual_slot_height_px = slot_height_px * 2
+    # Позиционирование отдаём фронтенду: сохраняем start_total/duration и колонку/ширину,
+    # а top/height вычисляются из slot_minutes и pxPerSlot в JS.
     day_events = {i: [] for i in range(7)}
     day_start_minutes = day_start_hour * 60
 
     for event in real_events:
-        start_minutes = (event['start'].hour * 60 + event['start'].minute) - day_start_minutes
-        start_minutes = max(start_minutes, 0)
         duration_minutes = ((event['end'].hour * 60 + event['end'].minute) - (event['start'].hour * 60 + event['start'].minute))
         duration_minutes = max(duration_minutes, slot_minutes)
-        offset_slots = start_minutes / slot_minutes
-        duration_slots = duration_minutes / slot_minutes
-        event['offset_slots'] = offset_slots
-        event['duration_slots'] = duration_slots
         event['start_total'] = event['start'].hour * 60 + event['start'].minute
         event['end_total'] = event['end'].hour * 60 + event['end'].minute
-        event['top_px'] = offset_slots * visual_slot_height_px
-        # Высота урока: минимум 48px (0.75 от 64px), но лучше использовать полную высоту слота для 60-минутных уроков
-        # Для уроков длительностью ровно 60 минут (1 слот) высота должна быть близка к visual_slot_height_px
-        if duration_slots >= 1.0:
-            # Для уроков >= 60 минут используем полную высоту с небольшим отступом
-            event['height_px'] = duration_slots * visual_slot_height_px - 4
-        else:
-            # Для уроков < 60 минут используем минимум 75% от высоты слота
-            event['height_px'] = max(duration_slots * visual_slot_height_px, visual_slot_height_px * 0.75)
+        event['duration_minutes'] = duration_minutes
         day_events[event['day_index']].append(event)
 
     for day_index, events in day_events.items():
@@ -156,8 +190,9 @@ def schedule():
                 'status_code': event['status_code'],
                 'start_time': event['start_time'],
                 'profile_url': event['profile_url'],
-                'top_px': event['top_px'],
-                'height_px': event['height_px'],
+                'lesson_url': url_for('lessons.lesson_view', lesson_id=event['lesson_id']),
+                'start_total': event['start_total'],
+                'duration_minutes': event.get('duration_minutes') or 60,
                 'left_percent': event['left_percent'],
                 'width_percent': event['width_percent']
             }
@@ -183,6 +218,7 @@ def schedule():
         status_filter=status_filter,
         category_filter=category_filter,
         timezone=timezone,
+        student_filter=student_filter,
         students=students,
         statuses=statuses,
         categories=categories
@@ -213,15 +249,7 @@ def schedule_create_lesson():
             flash(error_message, 'error')
             return redirect(url_for('schedule.schedule'))
 
-        input_tz = TOMSK_TZ if timezone == 'tomsk' else MOSCOW_TZ
-        lesson_datetime_str = f"{lesson_date_str} {lesson_time_str}"
-        lesson_datetime_local = datetime.strptime(lesson_datetime_str, '%Y-%m-%d %H:%M')
-        # Создаем timezone-aware datetime
-        lesson_datetime_local = lesson_datetime_local.replace(tzinfo=input_tz)
-        # Конвертируем в московское время для хранения в БД
-        base_lesson_datetime = lesson_datetime_local.astimezone(MOSCOW_TZ)
-        # Убираем timezone перед сохранением в БД (SQLAlchemy сохранит как naive)
-        base_lesson_datetime = base_lesson_datetime.replace(tzinfo=None)
+        base_lesson_datetime = _parse_local_datetime(lesson_date_str, lesson_time_str, timezone)
 
         student = Student.query.get_or_404(student_id)
 
@@ -234,19 +262,11 @@ def schedule_create_lesson():
         for week_offset in range(lessons_to_create):
             lesson_datetime = base_lesson_datetime + timedelta(weeks=week_offset)
             
-            # Проверяем, не существует ли уже урок с таким студентом в этот день
-            # Ищем уроки того же студента в тот же день (независимо от времени)
-            lesson_date_start = lesson_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
-            lesson_date_end = lesson_date_start + timedelta(days=1)
-            
-            existing_lesson = Lesson.query.filter(
-                Lesson.student_id == student_id,
-                Lesson.lesson_date >= lesson_date_start,
-                Lesson.lesson_date < lesson_date_end
-            ).first()
-            
-            if existing_lesson:
-                logger.warning(f"Урок уже существует для студента {student_id} в день {lesson_datetime.date()} (существующий: {existing_lesson.lesson_date}, новый: {lesson_datetime}), пропускаем")
+            if _student_has_overlap(student_id, lesson_datetime, duration):
+                logger.warning(
+                    f"Пересечение уроков: student_id={student_id}, "
+                    f"start={lesson_datetime}, duration={duration}. Пропускаем."
+                )
                 continue
             
             new_lesson = Lesson(
@@ -292,9 +312,27 @@ def schedule_create_lesson():
             logger.info(f'Created lesson {created_lessons[0].lesson_id} for student {student_id} at {base_lesson_datetime}')
 
         if is_ajax:
+            display_tz = TOMSK_TZ if timezone == 'tomsk' else MOSCOW_TZ
+            created_payload = []
+            for l in created_lessons:
+                dt = l.lesson_date.replace(tzinfo=MOSCOW_TZ)
+                dt_display = dt.astimezone(display_tz)
+                created_payload.append({
+                    'lesson_id': l.lesson_id,
+                    'student': student.name,
+                    'student_id': student.student_id,
+                    'status': 'Запланирован',
+                    'status_code': l.status,
+                    'start_time': dt_display.strftime('%H:%M'),
+                    'start_total': dt_display.hour * 60 + dt_display.minute,
+                    'duration_minutes': int(l.duration or 60),
+                    'profile_url': url_for('students.student_profile', student_id=student.student_id),
+                    'lesson_url': url_for('lessons.lesson_view', lesson_id=l.lesson_id),
+                })
             return jsonify({
                 'success': True,
-                'message': success_message
+                'message': success_message,
+                'created_lessons': created_payload,
             }), 200
 
         flash(success_message, 'success')
@@ -332,3 +370,91 @@ def schedule_create_lesson():
         params['category'] = category_filter
 
     return redirect(url_for('schedule.schedule', **params))
+
+
+@schedule_bp.route('/schedule/api/lesson/<int:lesson_id>/reschedule', methods=['POST'])
+@login_required
+def schedule_reschedule_lesson(lesson_id: int):
+    """Перенос урока на другое время (AJAX)."""
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Некорректный формат запроса'}), 400
+
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+
+    date_str = (data.get('lesson_date') or '').strip()
+    time_str = (data.get('lesson_time') or '').strip()
+    timezone = (data.get('timezone') or 'moscow').strip()
+
+    if not date_str or not time_str:
+        return jsonify({'success': False, 'error': 'lesson_date и lesson_time обязательны'}), 400
+
+    try:
+        new_dt = _parse_local_datetime(date_str, time_str, timezone)
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Ошибка формата даты/времени: {e}'}), 400
+
+    duration = int(lesson.duration or 60)
+    if _student_has_overlap(lesson.student_id, new_dt, duration, exclude_lesson_id=lesson.lesson_id):
+        return jsonify({'success': False, 'error': 'Есть пересечение по времени для этого ученика'}), 409
+
+    try:
+        old_dt = lesson.lesson_date
+        lesson.lesson_date = new_dt
+        db.session.commit()
+
+        audit_logger.log(
+            action='reschedule_lesson',
+            entity='Lesson',
+            entity_id=lesson.lesson_id,
+            status='success',
+            metadata={
+                'student_id': lesson.student_id,
+                'student_name': lesson.student.name if lesson.student else None,
+                'old_lesson_date': str(old_dt),
+                'new_lesson_date': str(new_dt),
+            }
+        )
+
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        db.session.rollback()
+        audit_logger.log_error(action='reschedule_lesson', entity='Lesson', error=str(e))
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@schedule_bp.route('/schedule/api/lesson/<int:lesson_id>/set-status', methods=['POST'])
+@login_required
+def schedule_set_status(lesson_id: int):
+    """Быстрое изменение статуса урока (AJAX)."""
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Некорректный формат запроса'}), 400
+
+    status = (data.get('status') or '').strip()
+    if status not in ('planned', 'in_progress', 'completed', 'cancelled'):
+        return jsonify({'success': False, 'error': 'Некорректный status'}), 400
+
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    try:
+        old_status = lesson.status
+        lesson.status = status
+        db.session.commit()
+
+        audit_logger.log(
+            action='set_lesson_status',
+            entity='Lesson',
+            entity_id=lesson.lesson_id,
+            status='success',
+            metadata={
+                'student_id': lesson.student_id,
+                'student_name': lesson.student.name if lesson.student else None,
+                'old_status': old_status,
+                'new_status': status,
+            }
+        )
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        db.session.rollback()
+        audit_logger.log_error(action='set_lesson_status', entity='Lesson', error=str(e))
+        return jsonify({'success': False, 'error': str(e)}), 500

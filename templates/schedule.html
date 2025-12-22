@@ -12,461 +12,312 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
     <style>
-        :root {
-            --slot-height: 32px;
-            --time-column-width: 80px;
-        }
-        
-        .schedule-hero {
-            margin-bottom: 2rem;
-        }
-        
+        .schedule-hero { margin-bottom: 2rem; }
+
         .schedule-controls {
             display: flex;
             flex-wrap: wrap;
             gap: 1rem;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.2rem;
         }
-        
+
         .week-range {
             font-size: 1.3rem;
-            font-weight: 700;
+            font-weight: 900;
             color: var(--text-primary);
         }
-        
-        .nav-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-        
+
+        .nav-buttons { display:flex; gap:0.6rem; }
+
         .round-btn {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
             border: 1px solid var(--stroke-1);
             background: var(--surface-2);
             color: var(--text-muted);
             cursor: pointer;
-            font-size: 1.3em;
-            transition: all 0.25s ease;
-            display: flex;
+            transition: all 0.22s ease;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
         }
-        
+
         .round-btn:hover {
             background: var(--surface-3);
             border-color: var(--accent-1);
             color: var(--accent-1);
-            transform: scale(1.05);
+            transform: translateY(-1px);
         }
-        
+
         .schedule-filters {
             display: flex;
-            gap: 0.8rem;
+            gap: 0.75rem;
             flex-wrap: wrap;
             align-items: center;
         }
-        
+
         .timezone-toggle {
             display: flex;
             gap: 0.4rem;
-            padding: 0.5rem;
+            padding: 0.4rem;
             background: var(--surface-2);
             border: 1px solid var(--stroke-1);
             border-radius: var(--radius-sm);
         }
-        
+
         .timezone-toggle button {
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
+            padding: 0.5rem 0.9rem;
+            border-radius: 0.6rem;
             border: none;
             background: transparent;
             color: var(--text-muted);
             cursor: pointer;
             transition: all 0.2s ease;
-            font-size: 0.9em;
-            font-weight: 600;
+            font-size: 0.9rem;
+            font-weight: 800;
         }
-        
+
         .timezone-toggle button.active {
             background: linear-gradient(120deg, var(--accent-1-strong), var(--accent-2-strong));
             color: #001b18;
         }
-        
-        .timezone-toggle button:hover:not(.active) {
-            background: var(--surface-3);
-            color: var(--text-primary);
+
+        .schedule-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(320px, 0.42fr);
+            gap: 1.25rem;
+            align-items: start;
         }
-        
-        .calendar-wrapper {
+
+        .schedule-grid-wrap {
             background: var(--surface-1);
             border: 1px solid var(--stroke-1);
             border-radius: var(--radius-lg);
-            overflow-x: hidden;
-            overflow-y: auto;
-            max-height: 78vh;
+            overflow: hidden;
             box-shadow: var(--shadow-soft);
         }
-        
-        .schedule-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-        }
-        
-        .schedule-table thead {
+
+        .schedule-grid-head {
+            display: grid;
+            grid-template-columns: 84px repeat(7, minmax(0, 1fr));
             background: var(--surface-2);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        
-        .schedule-table th {
-            padding: 1em 0.5em;
-            font-weight: 600;
-            text-align: center;
-            border-left: 1px solid var(--stroke-1);
-            font-size: 0.9em;
-            color: var(--text-primary);
-        }
-        
-        .schedule-table th:first-child {
-            width: var(--time-column-width);
-            border-left: none;
-        }
-        
-        .schedule-table th.day-header {
-            padding: 0.8em 0.5em;
-        }
-        
-        .schedule-table th.day-header.active {
-            background: linear-gradient(120deg, rgba(0, 198, 164, 0.15), rgba(23, 96, 216, 0.1));
-        }
-        
-        .schedule-table th.day-header .day-name {
-            font-size: 0.85em;
-            color: var(--text-muted);
-        }
-        
-        .schedule-table th.day-header .day-date {
-            font-size: 1em;
-            font-weight: 700;
-            margin-top: 0.2em;
-            color: var(--text-primary);
-        }
-        
-        .schedule-table td {
-            position: relative;
-            padding: 0;
-            border-left: 1px solid var(--stroke-1);
             border-bottom: 1px solid var(--stroke-1);
-            vertical-align: top;
         }
-        
-        .time-column-cell {
-            width: var(--time-column-width);
-            padding: 0;
-            border-left: none;
-            border-bottom: none;
+
+        .schedule-grid-head .time-head {
+            padding: 0.85rem 0.6rem;
+            color: var(--text-muted);
+            font-weight: 900;
+            font-size: 0.9rem;
+            text-align: right;
+        }
+
+        .day-head {
+            padding: 0.85rem 0.6rem;
+            border-left: 1px solid var(--stroke-1);
+            text-align: center;
+        }
+
+        .day-head .dn {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 800;
+        }
+
+        .day-head .dd {
+            color: var(--text-primary);
+            font-size: 1.05rem;
+            font-weight: 900;
+            margin-top: 0.2rem;
+        }
+
+        #scheduleGrid {
+            display: grid;
+            grid-template-columns: 84px repeat(7, minmax(0, 1fr));
+            max-height: 78vh;
+            overflow: auto;
+        }
+
+        .time-col {
             background: var(--surface-2);
-            vertical-align: top;
             position: sticky;
             left: 0;
-            z-index: 5;
-            overflow: visible;
+            z-index: 6;
+            border-right: 1px solid var(--stroke-1);
         }
-        
-        .time-column-inner {
-            display: flex;
-            flex-direction: column;
-            overflow: visible;
-        }
-        
-        .time-cell {
-            height: calc(var(--slot-height) * 2);
-            min-height: calc(var(--slot-height) * 2);
-            padding-right: 0.4em;
-            text-align: right;
-            font-size: 0.85em;
-            color: var(--text-muted);
-            border-bottom: 1px solid var(--stroke-1);
+
+        .time-label {
+            height: 56px;
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            flex-shrink: 0;
+            padding-right: 0.6rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--stroke-1);
             box-sizing: border-box;
         }
-        
-        .time-cell:last-child {
-            height: calc(var(--slot-height) * 2);
-            min-height: calc(var(--slot-height) * 2);
-            border-bottom: none;
-        }
-        
-        .day-cell {
+
+        .day-col {
             position: relative;
-            background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--slot-height) * 2 - 1px), var(--stroke-1) calc(var(--slot-height) * 2 - 1px), var(--stroke-1) calc(var(--slot-height) * 2));
+            border-left: 1px solid var(--stroke-1);
+        }
+
+        .day-col__body {
+            position: relative;
+            height: calc({{ total_slots }} * 28px);
+            background-image: repeating-linear-gradient(
+                to bottom,
+                transparent 0,
+                transparent calc(28px - 1px),
+                rgba(255,255,255,0.04) calc(28px - 1px),
+                rgba(255,255,255,0.04) 28px
+            );
+            cursor: pointer;
+        }
+
+        .lesson-chip {
+            position: absolute;
+            border-radius: var(--radius-md);
+            border: 1px solid rgba(0,0,0,0.1);
+            padding: 0.55rem 0.6rem;
+            cursor: grab;
+            user-select: none;
             overflow: hidden;
+            box-shadow: var(--shadow-soft);
+            transition: transform 160ms ease, box-shadow 160ms ease;
+            color: #001b18;
         }
-        
-        .day-cell .slot-clickable {
-            position: absolute;
-            width: 100%;
-            height: calc(var(--slot-height) * 2);
-            cursor: pointer;
-            z-index: 1;
-            transition: background 0.15s ease;
-        }
-        
-        .day-cell .slot-clickable:hover {
-            background: rgba(0, 198, 164, 0.1);
-        }
-        
-        .create-slot-btn {
-            position: absolute;
-            top: 4px;
-            left: 4px;
-            right: 4px;
-            padding: 0.3em 0.5em;
-            background: rgba(0, 198, 164, 0.08);
-            border: 1px dashed rgba(0, 198, 164, 0.4);
-            border-radius: 6px;
-            color: var(--accent-1);
-            font-size: 0.75em;
-            cursor: pointer;
-            z-index: 2;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            text-align: center;
-        }
-        
-        .day-cell:hover .create-slot-btn {
-            opacity: 1;
-        }
-        
-        .create-slot-btn:hover {
-            background: rgba(0, 198, 164, 0.15);
-            border-color: var(--accent-1);
-        }
-        
-        .lesson-button {
-            position: absolute;
-            padding: 0.4em 0.5em;
-            border-radius: var(--radius-sm);
-            border: none;
-            cursor: pointer;
+
+        .lesson-chip:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 26px rgba(0,0,0,0.28);
             z-index: 10;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            font-family: inherit;
+        }
+
+        .lesson-chip.is-dragging {
+            cursor: grabbing;
+            opacity: 0.92;
+            transform: scale(1.01);
+            z-index: 20;
+        }
+
+        .lesson-chip__time {
+            font-weight: 900;
+            font-size: 1rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .lesson-chip__student {
+            font-weight: 800;
+            font-size: 0.95rem;
+            margin-bottom: 0.15rem;
+        }
+
+        .lesson-chip__meta {
+            font-size: 0.8rem;
+            opacity: 0.85;
+        }
+
+        .lesson-chip.status-planned { background: linear-gradient(120deg, var(--accent-2-strong), var(--accent-1-strong)); }
+        .lesson-chip.status-in_progress { background: linear-gradient(120deg, var(--success), #00c6ad); }
+        .lesson-chip.status-completed { background: linear-gradient(120deg, var(--accent-2), var(--accent-2-strong)); }
+        .lesson-chip.status-cancelled { background: linear-gradient(120deg, var(--danger), #ff4d6d); }
+
+        .schedule-inspector {
+            position: sticky;
+            top: 1rem;
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            justify-content: flex-start;
-            gap: 0.08em;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-            box-sizing: border-box;
-            min-height: auto;
+            height: calc(78vh + 94px);
         }
-        
-        .lesson-button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+        .schedule-inspector .panel-head {
+            display:flex;
+            align-items:center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
         }
-        
-        .lesson-button .lesson-time {
-            font-weight: 700;
-            font-size: 0.95em;
-            color: #fff;
-            line-height: 1.1;
-            margin: 0;
-            padding: 0;
-            flex-shrink: 0;
-        }
-        
-        .lesson-button .lesson-student {
-            font-weight: 600;
-            font-size: 0.88em;
-            color: #fff;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            overflow: hidden;
-            line-height: 1.1;
-            margin: 0;
-            padding: 0;
-            flex-shrink: 0;
-            display: block;
-        }
-        
-        .lesson-button .lesson-subject {
-            font-size: 0.7em;
-            opacity: 0.95;
-            color: #fff;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            overflow: hidden;
-            line-height: 1.1;
-            margin: 0;
-            padding: 0;
-            flex-shrink: 0;
-            display: block;
-        }
-        
-        .lesson-button .lesson-status {
-            font-size: 0.55em;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            opacity: 0.9;
-            color: #fff;
-            font-weight: 600;
-            margin: 0;
-            padding: 0;
-            flex-shrink: 0;
-            display: block;
-        }
-        
-        .lesson-button.status-planned {
-            background: linear-gradient(120deg, var(--accent-2-strong), var(--accent-1-strong));
-        }
-        
-        .lesson-button.status-in_progress {
-            background: linear-gradient(120deg, var(--success), #00c6ad);
-        }
-        
-        .lesson-button.status-completed {
-            background: linear-gradient(120deg, var(--accent-2), var(--accent-2-strong));
-        }
-        
-        .lesson-button.status-cancelled {
-            background: linear-gradient(120deg, var(--danger), #ff4d6d);
-            opacity: 0.7;
-        }
-        
-        .legend {
-            margin-top: 1.5rem;
-            display: flex;
-            gap: 1.5rem;
-            flex-wrap: wrap;
-            font-size: 0.85em;
+
+        .schedule-inspector__body {
+            overflow: auto;
+            padding-right: 0.4rem;
             color: var(--text-muted);
         }
-        
-        .legend span {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5em;
-        }
-        
-        .legend i {
-            width: 14px;
-            height: 14px;
-            border-radius: 4px;
-            display: inline-block;
-        }
-        
+
         .modal {
-            display: none;
             position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.75);
-            z-index: 1000;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.82);
+            display: none;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(8px);
+            z-index: 999;
+            backdrop-filter: blur(10px);
         }
-        
-        .modal.active {
-            display: flex;
-        }
-        
+
+        .modal.active { display: flex; }
+
         .modal-content {
             background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
             border-radius: var(--radius-lg);
+            border: 1px solid var(--stroke-1);
             padding: 2rem;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: var(--shadow-soft);
+            width: 92%;
+            max-width: 520px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+            position: relative;
         }
-        
+
         .modal-header {
-            display: flex;
+            display:flex;
+            align-items:center;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
         }
-        
-        .modal-title {
-            font-size: 1.3em;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-        
+
+        .modal-title { font-size: 1.35rem; font-weight: 900; color: var(--text-primary); }
+
         .modal-close {
             background: none;
             border: none;
             color: var(--text-muted);
-            font-size: 1.5em;
+            font-size: 1.6rem;
             cursor: pointer;
-            padding: 0;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: var(--radius-sm);
-            transition: all 0.2s ease;
         }
-        
-        .modal-close:hover {
-            background: rgba(255, 108, 145, 0.2);
-            color: var(--danger);
-        }
-        
-        .form-group {
-            margin-bottom: 1.2em;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5em;
-            color: var(--text-primary);
-            font-weight: 600;
-        }
-        
-        .form-group input,
-        .form-group select {
+
+        .form-group { margin-bottom: 1.05rem; }
+        .form-group label { display:block; margin-bottom: 0.45rem; font-weight: 800; color: var(--text-primary); }
+        .form-group input, .form-group select {
             width: 100%;
-            padding: 0.8em;
+            padding: 0.8rem;
             border-radius: var(--radius-sm);
             border: 1px solid var(--stroke-1);
             background: var(--surface-2);
             color: var(--text-primary);
-            font-size: 1em;
-            transition: all 0.2s ease;
         }
-        
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: var(--accent-1);
-            box-shadow: 0 0 0 3px rgba(0, 198, 164, 0.15);
-        }
-        
-        .form-actions {
-            display: flex;
-            gap: 1em;
-            justify-content: flex-end;
-            margin-top: 1.5em;
+
+        .form-actions { display:flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
+
+        @media (max-width: 1024px) {
+            .schedule-layout { grid-template-columns: 1fr; }
+            .schedule-inspector { position: static; height: auto; }
         }
     </style>
 </head>
-<body class="{% if active_lesson %}lesson-active{% endif %}" data-schedule-url="{{ url_for('schedule.schedule') }}" data-week-offset="{{ week_offset }}" data-lesson-delete-url="{{ url_for('lessons.lesson_delete', lesson_id=0) }}" data-lesson-view-url="{{ url_for('lessons.lesson_view', lesson_id=0) }}" data-csrf-token="{{ csrf_token() if csrf_token else '' }}">
+<body class="{% if active_lesson %}lesson-active{% endif %}" data-csrf-token="{{ csrf_token() if csrf_token else '' }}">
     {% if active_lesson %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        🎧 Урок идет: {{ active_student.name }}
+        <img src="{{ url_for('static', filename='icons/comfort.png') }}" alt="Урок" class="ui-icon ui-icon--sm">Урок идет: {{ active_student.name }}
     </div>
     <div class="now-playing-panel" id="lessonMenu">
         <div class="hero-eyebrow">текущий урок</div>
@@ -480,15 +331,13 @@
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
                 <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
             </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
         </div>
     </div>
     <script>
         function toggleLessonMenu() {
             const menu = document.getElementById('lessonMenu');
-            if (menu) {
-                menu.classList.toggle('active');
-            }
+            if (menu) menu.classList.toggle('active');
         }
         document.addEventListener('click', (event) => {
             const menu = document.getElementById('lessonMenu');
@@ -515,35 +364,35 @@
                 </a>
             </div>
             {% include '_mobile_menu.html' %}
-            <nav class="nav-links"> <!-- Основной набор ссылок -->
-                <a href="{{ url_for('main.dashboard') }}" class="nav-link"> <!-- Ссылка на учеников -->
-                    <span class="nav-link-content"> <!-- Контейнер для иконки и текста -->
-                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon"> <!-- Иконка учеников -->
-                        <span class="nav-link-label">Ученики</span> <!-- Текст ссылки -->
+            <nav class="nav-links">
+                <a href="{{ url_for('main.dashboard') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="nav-link-icon">
+                        <span class="nav-link-label">Ученики</span>
                     </span>
                 </a>
-                <a href="{{ url_for('schedule.schedule') }}" class="nav-link active"> <!-- Ссылка на расписание -->
-                    <span class="nav-link-content"> <!-- Контейнер для активной ссылки -->
-                        <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon"> <!-- Иконка расписания -->
-                        <span class="nav-link-label">Расписание</span> <!-- Текст ссылки -->
+                <a href="{{ url_for('schedule.schedule') }}" class="nav-link active">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="nav-link-icon">
+                        <span class="nav-link-label">Расписание</span>
                     </span>
                 </a>
-                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link"> <!-- Ссылка на генератор -->
-                    <span class="nav-link-content"> <!-- Контейнер генератора -->
-                        <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon"> <!-- Иконка генератора -->
-                        <span class="nav-link-label">Генератор</span> <!-- Текст ссылки -->
+                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="nav-link-icon">
+                        <span class="nav-link-label">Генератор</span>
                     </span>
                 </a>
-                <a href="{{ url_for('main.update_plans') }}" class="nav-link"> <!-- Ссылка на планы -->
-                    <span class="nav-link-content"> <!-- Контейнер планов -->
-                        <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Планы" class="nav-link-icon"> <!-- Иконка планов -->
-                        <span class="nav-link-label">Планы</span> <!-- Текст ссылки -->
+                <a href="{{ url_for('main.update_plans') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Планы" class="nav-link-icon">
+                        <span class="nav-link-label">Планы</span>
                     </span>
                 </a>
-                <a href="{{ url_for('templates.templates_list') }}" class="nav-link"> <!-- Ссылка на шаблоны -->
-                    <span class="nav-link-content"> <!-- Контейнер шаблонов -->
-                        <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon"> <!-- Иконка шаблонов -->
-                        <span class="nav-link-label">Шаблоны</span> <!-- Текст ссылки -->
+                <a href="{{ url_for('templates.templates_list') }}" class="nav-link">
+                    <span class="nav-link-content">
+                        <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="nav-link-icon">
+                        <span class="nav-link-label">Шаблоны</span>
                     </span>
                 </a>
             </nav>
@@ -552,9 +401,9 @@
         <section class="glass-panel schedule-hero">
             <div>
                 <p class="hero-eyebrow">календарь занятий</p>
-                <h1 class="hero-title">Расписание уроков</h1>
+                <h1 class="hero-title">Расписание</h1>
                 <p class="hero-subtitle">
-                    Планируй занятия, отслеживай прогресс и управляй временем в едином календаре.
+                    Клик по сетке — создать урок. Перетащи урок — перенести. В инспекторе — быстрые статусы.
                 </p>
             </div>
         </section>
@@ -563,13 +412,17 @@
             <div class="schedule-controls">
                 <div class="week-range">{{ week_label }}</div>
                 <div class="nav-buttons">
-                    <button class="round-btn" data-week-offset="{{ week_offset - 1 }}" onclick="navigateWeek(this.dataset.weekOffset)" title="Предыдущая неделя">‹</button>
-                    <button class="round-btn" data-week-offset="{{ week_offset + 1 }}" onclick="navigateWeek(this.dataset.weekOffset)" title="Следующая неделя">›</button>
+                    <button class="round-btn" data-week-offset="{{ week_offset - 1 }}" onclick="navigateWeek(this.dataset.weekOffset)" title="Предыдущая неделя">
+                        <span style="font-weight:900;">‹</span>
+                    </button>
+                    <button class="round-btn" data-week-offset="{{ week_offset + 1 }}" onclick="navigateWeek(this.dataset.weekOffset)" title="Следующая неделя">
+                        <span style="font-weight:900;">›</span>
+                    </button>
                 </div>
                 <div class="schedule-filters">
                     <div class="timezone-toggle">
-                        <button class="{% if timezone == 'moscow' %}active{% endif %}" onclick="switchTimezone('moscow')">МСК (UTC+3)</button>
-                        <button class="{% if timezone == 'tomsk' %}active{% endif %}" onclick="switchTimezone('tomsk')">ТОМСК (UTC+7)</button>
+                        <button class="{% if timezone == 'moscow' %}active{% endif %}" onclick="switchTimezone('moscow')">МСК</button>
+                        <button class="{% if timezone == 'tomsk' %}active{% endif %}" onclick="switchTimezone('tomsk')">Томск</button>
                     </div>
                     <select id="statusFilter" class="neo-select" onchange="applyFilters()" style="min-width: 160px;">
                         <option value="">Все статусы</option>
@@ -585,59 +438,69 @@
                         <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>{{ category }}</option>
                         {% endfor %}
                     </select>
+                    <select id="studentFilter" class="neo-select" onchange="applyFilters()" style="min-width: 220px;">
+                        <option value="">Все ученики</option>
+                        {% for s in students %}
+                        <option value="{{ s.student_id }}" {% if student_filter and student_filter == s.student_id %}selected{% endif %}>{{ s.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
-            
-            <div class="calendar-wrapper">
-                <table class="schedule-table">
-                    <thead>
-                        <tr>
-                            <th>Время</th>
-                            {% for day in week_days %}
-                            <th class="day-header {% if day == week_days[1] %}active{% endif %}">
-                                <div class="day-name">{{ day.strftime('%a') }}</div>
-                                <div class="day-date">{{ day.strftime('%d') }}</div>
-                            </th>
+
+            <div class="schedule-layout" data-schedule-root
+                 data-slot-minutes="{{ slot_minutes }}"
+                 data-start-hour="{{ start_hour }}"
+                 data-px-per-slot="28"
+                 data-timezone="{{ timezone }}"
+                 data-reschedule-url-tpl="{{ url_for('schedule.schedule_reschedule_lesson', lesson_id=0) }}"
+                 data-set-status-url-tpl="{{ url_for('schedule.schedule_set_status', lesson_id=0) }}">
+
+                <div class="schedule-grid-wrap">
+                    <div class="schedule-grid-head">
+                        <div class="time-head">Время</div>
+                        {% for day in week_days %}
+                        <div class="day-head">
+                            <div class="dn">{{ day.strftime('%a') }}</div>
+                            <div class="dd">{{ day.strftime('%d') }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div id="scheduleGrid">
+                        <div class="time-col">
+                            {% for label in time_labels %}
+                            <div class="time-label">{{ label }}</div>
                             {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody data-total-slots="{{ total_slots }}">
-                        <tr>
-                            <td class="time-column-cell">
-                                <div class="time-column-inner">
-                                    {% for hour in range(start_hour, end_hour + 1) %}
-                                    <div class="time-cell">{{ "%02d:00"|format(hour) }}</div>
-                                    {% endfor %}
-                                </div>
-                            </td>
-                            {% for day_index in range(7) %}
-                            {% set day = week_days[day_index] %}
-                            <td class="day-cell" data-day="{{ day.isoformat() }}" data-day-index="{{ day_index }}" data-events='{{ day_events[day_index]|tojson }}' data-total-slots="{{ total_slots }}">
-                                {% for hour in range(start_hour, end_hour + 1) %}
-                                {% set slot_time = "%02d:00"|format(hour) %}
-                                <div class="slot-clickable" data-day="{{ day.isoformat() }}" data-time="{{ slot_time }}" onclick="openCreateModal('{{ day.isoformat() }}', '{{ slot_time }}')"></div>
-                                {% endfor %}
-                            </td>
-                            {% endfor %}
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <div class="legend">
-                <span><i style="background: linear-gradient(120deg, var(--accent-2-strong), var(--accent-1-strong));"></i>Запланирован</span>
-                <span><i style="background: linear-gradient(120deg, var(--success), #00c6ad);"></i>Идет сейчас</span>
-                <span><i style="background: linear-gradient(120deg, var(--accent-2), var(--accent-2-strong));"></i>Проведен</span>
-                <span><i style="background: linear-gradient(120deg, var(--danger), #ff4d6d);"></i>Отменен</span>
+                        </div>
+                        {% for day_index in range(7) %}
+                        {% set day = week_days[day_index] %}
+                        <div class="day-col" data-day="{{ day.isoformat() }}" data-day-index="{{ day_index }}" data-events='{{ day_events[day_index]|tojson }}'>
+                            <div class="day-col__body"></div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <aside class="glass-panel schedule-inspector" id="lessonInspector">
+                    <div class="panel-head">
+                        <div>
+                            <div class="hero-eyebrow">инспектор</div>
+                            <div style="font-size:1.15rem; font-weight:900;" id="lessonInspectorTitle">Выбери урок</div>
+                        </div>
+                        <button class="neo-button ghost" type="button" id="lessonInspectorClose">Закрыть</button>
+                    </div>
+                    <div class="schedule-inspector__body" id="lessonInspectorBody">
+                        Кликни по уроку, чтобы увидеть детали и быстрые действия. Перетаскивание работает прямо на сетке.
+                    </div>
+                </aside>
             </div>
         </section>
     </div>
-    
+
     <div class="modal" id="createLessonModal">
         <div class="modal-content">
             <div class="modal-header">
                 <div class="modal-title">Создать урок</div>
-                <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+                <button class="modal-close" type="button" data-modal-close="create">&times;</button>
             </div>
             <form id="createLessonForm" method="POST" action="{{ url_for('schedule.schedule_create_lesson') }}">
                 <input type="hidden" name="week_offset" value="{{ week_offset }}">
@@ -657,7 +520,7 @@
                 </div>
                 <div class="form-group">
                     <label for="modalDuration">Длительность (минуты)</label>
-                    <input type="number" name="duration" id="modalDuration" value="60" min="60" step="60" required>
+                    <input type="number" name="duration" id="modalDuration" value="60" min="30" step="30" required>
                 </div>
                 <div class="form-group">
                     <label for="modalLessonType">Тип урока</label>
@@ -682,257 +545,81 @@
                     </small>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="neo-button ghost" onclick="closeCreateModal()">Отмена</button>
+                    <button type="button" class="neo-button ghost" data-modal-close="create">Отмена</button>
                     <button type="submit" class="neo-button accent">Создать</button>
                 </div>
             </form>
         </div>
     </div>
-    
-    <div class="modal" id="lessonActionModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">Действия с уроком</div>
-                <button class="modal-close" onclick="closeLessonActionModal()">&times;</button>
-            </div>
-            <div id="lessonActionInfo" style="margin-bottom: 1.5em; color: var(--text-primary);">
-                
-            </div>
-            <div class="form-actions">
-                <form id="deleteLessonForm" method="POST" action="" style="display: inline;">
-                    <button type="submit" class="neo-button danger">🗑️ Отменить урок</button>
-                </form>
-                <a id="viewLessonLink" href="" style="text-decoration: none;">
-                    <button type="button" class="neo-button accent">ℹ️ Об уроке</button>
-                </a>
-                <button type="button" class="neo-button ghost" onclick="closeLessonActionModal()">Закрыть</button>
-            </div>
-        </div>
-    </div>
-    
+
     <script>
-        const scheduleUrl = document.body.dataset.scheduleUrl;
-        const currentWeekOffset = parseInt(document.body.dataset.weekOffset || '0');
         const currentTimezone = '{{ timezone }}';
-        
-        function navigateWeek(offset) {
-            const params = new URLSearchParams(window.location.search);
-            params.set('week', offset);
-            if (document.getElementById('statusFilter').value) {
-                params.set('status', document.getElementById('statusFilter').value);
-            }
-            if (document.getElementById('categoryFilter').value) {
-                params.set('category', document.getElementById('categoryFilter').value);
-            }
-            params.set('timezone', currentTimezone);
-            window.location.href = scheduleUrl + '?' + params.toString();
-        }
-        
+
         function applyFilters() {
             const params = new URLSearchParams();
-            params.set('week', currentWeekOffset);
+            params.set('week', {{ week_offset }});
             params.set('timezone', currentTimezone);
             const status = document.getElementById('statusFilter').value;
             const category = document.getElementById('categoryFilter').value;
+            const studentId = document.getElementById('studentFilter').value;
             if (status) params.set('status', status);
             if (category) params.set('category', category);
-            window.location.href = scheduleUrl + '?' + params.toString();
+            if (studentId) params.set('student_id', studentId);
+            window.location.href = '{{ url_for('schedule.schedule') }}' + '?' + params.toString();
         }
-        
+
+        function navigateWeek(offset) {
+            const params = new URLSearchParams(window.location.search);
+            params.set('week', offset);
+            params.set('timezone', currentTimezone);
+            const status = document.getElementById('statusFilter').value;
+            const category = document.getElementById('categoryFilter').value;
+            const studentId = document.getElementById('studentFilter').value;
+            if (status) params.set('status', status);
+            if (category) params.set('category', category);
+            if (studentId) params.set('student_id', studentId);
+            window.location.href = '{{ url_for('schedule.schedule') }}' + '?' + params.toString();
+        }
+
         function switchTimezone(tz) {
             const params = new URLSearchParams(window.location.search);
             params.set('timezone', tz);
-            params.set('week', currentWeekOffset);
-            if (document.getElementById('statusFilter').value) {
-                params.set('status', document.getElementById('statusFilter').value);
-            }
-            if (document.getElementById('categoryFilter').value) {
-                params.set('category', document.getElementById('categoryFilter').value);
-            }
-            window.location.href = scheduleUrl + '?' + params.toString();
+            params.set('week', {{ week_offset }});
+            const status = document.getElementById('statusFilter').value;
+            const category = document.getElementById('categoryFilter').value;
+            const studentId = document.getElementById('studentFilter').value;
+            if (status) params.set('status', status);
+            if (category) params.set('category', category);
+            if (studentId) params.set('student_id', studentId);
+            window.location.href = '{{ url_for('schedule.schedule') }}' + '?' + params.toString();
         }
-        
-        function openCreateModal(day, time) {
-            document.getElementById('modalLessonDate').value = day;
-            document.getElementById('modalLessonTime').value = time;
-            document.getElementById('createLessonModal').classList.add('active');
-        }
-        
-        function closeCreateModal() {
-            document.getElementById('createLessonModal').classList.remove('active');
-        }
-        
+
         function toggleRepeatCount() {
             const mode = document.getElementById('modalLessonMode').value;
             const repeatGroup = document.getElementById('repeatCountGroup');
-            if (mode === 'recurring') {
-                repeatGroup.style.display = 'block';
-            } else {
-                repeatGroup.style.display = 'none';
-            }
+            repeatGroup.style.display = (mode === 'recurring') ? 'block' : 'none';
         }
-        
-        function openLessonActionModal(lessonId, studentName, startTime, status) {
-            const modal = document.getElementById('lessonActionModal');
-            const infoDiv = document.getElementById('lessonActionInfo');
-            const deleteForm = document.getElementById('deleteLessonForm');
-            const viewLink = document.getElementById('viewLessonLink');
-            
-            infoDiv.innerHTML = `
-                <div style="margin-bottom: 0.5em;"><strong>Ученик:</strong> ${studentName}</div>
-                <div style="margin-bottom: 0.5em;"><strong>Время:</strong> ${startTime}</div>
-                <div><strong>Статус:</strong> ${status}</div>
-            `;
-            
-            const deleteUrlTemplate = document.body.dataset.lessonDeleteUrl;
-            deleteForm.action = deleteUrlTemplate.replace('0', lessonId);
-            
-            const viewUrlTemplate = document.body.dataset.lessonViewUrl;
-            viewLink.href = viewUrlTemplate.replace('0', lessonId);
-            
-            modal.classList.add('active');
-        }
-        
-        function closeLessonActionModal() {
-            document.getElementById('lessonActionModal').classList.remove('active');
-        }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            const totalSlots = parseInt(document.querySelector('tbody')?.dataset.totalSlots || '24');
-            const slotHeight = 32;
-            const totalHeight = totalSlots * slotHeight * 2;
-            
-            const timeColumnInner = document.querySelector('.time-column-inner');
-            if (timeColumnInner) {
-                timeColumnInner.style.height = `${totalHeight}px`;
-            }
-            
-            document.querySelectorAll('.day-cell').forEach(cell => {
-                const cellTotalSlots = parseInt(cell.dataset.totalSlots || totalSlots);
-                const cellHeight = cellTotalSlots * slotHeight * 2;
-                cell.style.height = `${cellHeight}px`;
-                
-                const eventsJson = cell.dataset.events;
-                if (eventsJson) {
-                    try {
-                        const events = JSON.parse(eventsJson);
-                        events.forEach(function(event) {
-                            const lessonBtn = document.createElement('button');
-                            lessonBtn.className = 'lesson-button status-' + event.status_code;
-                            lessonBtn.style.top = (event.top_px + 2) + 'px';
-                            lessonBtn.style.height = (event.height_px - 4) + 'px';
-                            lessonBtn.style.left = 'calc(' + event.left_percent + '% + 2px)';
-                            lessonBtn.style.width = 'calc(' + event.width_percent + '% - 4px)';
-                            lessonBtn.dataset.lessonId = event.lesson_id;
-                            lessonBtn.dataset.studentId = event.student_id;
-                            lessonBtn.dataset.studentName = event.student;
-                            lessonBtn.dataset.startTime = event.start_time;
-                            lessonBtn.dataset.status = event.status;
-                            lessonBtn.onclick = function() { 
-                                openLessonActionModal(
-                                    this.dataset.lessonId,
-                                    this.dataset.studentName,
-                                    this.dataset.startTime,
-                                    this.dataset.status
-                                );
-                            };
-                            lessonBtn.innerHTML = '<div class="lesson-time">' + event.start_time + '</div>' +
-                                '<div class="lesson-student">' + event.student + '</div>' +
-                                '<div class="lesson-subject">' + event.subject + ', ' + event.grade + '</div>' +
-                                '<div class="lesson-status">' + event.status.toUpperCase() + '</div>';
-                            cell.appendChild(lessonBtn);
-                        });
-                    } catch (e) {
-                        console.error('Error parsing events:', e);
-                    }
-                }
-                
-                const createBtn = document.createElement('button');
-                createBtn.className = 'create-slot-btn';
-                createBtn.textContent = 'Создать новый слот';
-                createBtn.onclick = function() {
-                    openCreateModal(cell.dataset.day, '00:00');
-                };
-                cell.appendChild(createBtn);
-            });
-            
-            document.querySelectorAll('.slot-clickable').forEach(slot => {
-                const time = slot.dataset.time;
-                const parts = time.split(':');
-                const h = parseInt(parts[0] || '0');
-                const m = parseInt(parts[1] || '0');
-                if (m === 0) {
-                    slot.style.top = (h * slotHeight * 2) + 'px';
-                } else {
-                    slot.style.display = 'none';
-                }
-            });
-            
-            document.getElementById('createLessonModal').addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeCreateModal();
-                }
-            });
-            
-            document.getElementById('lessonActionModal').addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeLessonActionModal();
-                }
-            });
-            
-            document.getElementById('deleteLessonForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                showConfirmModal({
-                    title: 'Отменить урок?',
-                    message: 'Вы уверены, что хотите отменить этот урок? Это действие нельзя отменить.',
-                    confirmText: 'Отменить',
-                    cancelText: 'Нет',
-                    confirmClass: 'danger',
-                    onConfirm: () => {
-                        e.target.submit();
-                    }
-                });
-            });
-        });
     </script>
-    
+
     <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
-    <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
-    <script src="{{ url_for('static', filename='schedule-ajax.js') }}"></script>
+    <script src="{{ url_for('static', filename='schedule-premium.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
     <script>
-        // Конвертируем flash-сообщения в toast-уведомления
         document.addEventListener('DOMContentLoaded', function() {
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
                         {% if category == 'error' or category == 'danger' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.error('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.error('{{ message|e }}');
-                            }
+                            if (window.toast) window.toast.error('{{ message|e }}');
                         {% elif category == 'warning' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.warning('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.warning('{{ message|e }}');
-                            }
+                            if (window.toast) window.toast.warning('{{ message|e }}');
                         {% elif category == 'info' %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.info('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.info('{{ message|e }}');
-                            }
+                            if (window.toast) window.toast.info('{{ message|e }}');
                         {% else %}
-                            if (typeof toast !== 'undefined' && toast) {
-                                toast.success('{{ message|e }}');
-                            } else if (window.toast) {
-                                window.toast.success('{{ message|e }}');
-                            }
+                            if (window.toast) window.toast.success('{{ message|e }}');
                         {% endif %}
                     {% endfor %}
                 {% endif %}
@@ -941,3 +628,5 @@
     </script>
 </body>
 </html>
+
+
