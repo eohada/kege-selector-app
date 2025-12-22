@@ -251,6 +251,28 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not update session_id column: {e}")
 
+            # Проверяем и обновляем таблицу Reminders
+            reminders_table = 'Reminders' if 'Reminders' in table_names else ('reminders' if 'reminders' in table_names else None)
+            if reminders_table:
+                reminders_columns = {col['name']: col for col in inspector.get_columns(reminders_table)}
+                
+                # Проверяем, является ли reminder_time nullable
+                if 'reminder_time' in reminders_columns:
+                    reminder_time_col = reminders_columns['reminder_time']
+                    # Проверяем, является ли колонка NOT NULL
+                    if not reminder_time_col.get('nullable', True):
+                        # Делаем колонку nullable
+                        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+                        if 'postgresql' in db_url or 'postgres' in db_url:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{reminders_table}" ALTER COLUMN reminder_time DROP NOT NULL'))
+                                logger.info(f"Made reminder_time nullable in {reminders_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not make reminder_time nullable: {e}")
+                        else:
+                            # SQLite не поддерживает ALTER COLUMN, но это не критично
+                            logger.warning("SQLite does not support ALTER COLUMN, reminder_time will remain NOT NULL")
+            
             _fix_postgres_sequences(app, inspector)  # После миграций синхронизируем sequences (чинит 500 duplicate key на SERIAL)
             db.session.commit()
     except Exception as e:
