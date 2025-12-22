@@ -40,6 +40,15 @@
             text-decoration: line-through;
         }
         
+        .reminder-card.overdue {
+            border-left: 3px solid var(--danger);
+        }
+        
+        .reminder-card.overdue .reminder-time {
+            color: var(--danger);
+            font-weight: 600;
+        }
+        
         .reminder-header {
             display: flex;
             justify-content: space-between;
@@ -69,6 +78,11 @@
             color: var(--accent-1);
         }
         
+        .reminder-time.no-time {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        
         .reminder-message {
             color: var(--text-muted);
             line-height: 1.6;
@@ -84,14 +98,6 @@
         .reminder-actions .neo-button {
             font-size: 0.9rem;
             padding: 0.5rem 1rem;
-        }
-        
-        .create-form {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 2rem;
         }
         
         .empty-state {
@@ -115,6 +121,87 @@
         .filter-toggle .neo-button {
             font-size: 0.9rem;
         }
+        
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        
+        .modal {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.5rem;
+            line-height: 1;
+            transition: color 0.2s ease;
+        }
+        
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+        
+        .modal-body {
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-footer {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        
+        .status-badge.overdue {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
     </style>
 </head>
 <body>
@@ -125,9 +212,14 @@
         <main class="app-content">
             <div class="reminders-container">
                 <section class="dashboard-hero" style="margin-bottom: 2rem;">
-                    <div class="hero-pane">
-                        <h1>Напоминания</h1>
-                        <p style="color: var(--text-muted); margin-top: 0.5rem;">Легкие заметки с указанием времени</p>
+                    <div class="hero-pane" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h1>Напоминания</h1>
+                            <p style="color: var(--text-muted); margin-top: 0.5rem;">Легкие заметки с указанием времени</p>
+                        </div>
+                        <button class="neo-button accent" onclick="openCreateModal()">
+                            <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Создать" class="ui-icon ui-icon--sm"> Создать
+                        </button>
                     </div>
                 </section>
                 
@@ -142,54 +234,23 @@
                     </a>
                 </div>
                 
-                <section class="create-form">
-                    <form method="POST" action="{{ url_for('reminders.reminder_create') }}" data-validate>
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        
-                        <div class="neo-field">
-                            <label class="neo-label" for="title">Заголовок</label>
-                            <input type="text" 
-                                   id="title" 
-                                   name="title" 
-                                   class="neo-input" 
-                                   placeholder="Что нужно напомнить?"
-                                   required>
-                        </div>
-                        
-                        <div class="neo-field">
-                            <label class="neo-label" for="message">Сообщение (необязательно)</label>
-                            <textarea id="message" 
-                                      name="message" 
-                                      class="neo-textarea" 
-                                      placeholder="Дополнительные детали..."
-                                      rows="3"></textarea>
-                        </div>
-                        
-                        <div class="neo-field">
-                            <label class="neo-label" for="reminder_time">Время напоминания</label>
-                            <input type="datetime-local" 
-                                   id="reminder_time" 
-                                   name="reminder_time" 
-                                   class="neo-input" 
-                                   required>
-                        </div>
-                        
-                        <div class="form-actions">
-                            <button type="submit" class="neo-button accent">
-                                <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Создать" class="ui-icon ui-icon--sm"> Создать
-                            </button>
-                        </div>
-                    </form>
-                </section>
-                
                 {% if reminders %}
                 <section>
                     {% for reminder in reminders %}
-                    <div class="reminder-card {% if reminder.is_completed %}completed{% endif %}">
+                    <div class="reminder-card {% if reminder.is_completed %}completed{% endif %} {% if reminder.is_overdue() %}overdue{% endif %}">
                         <div class="reminder-header">
-                            <div class="reminder-title">{{ reminder.title }}</div>
-                            <div class="reminder-time {% if reminder.reminder_time < now and not reminder.is_completed %}past{% elif reminder.reminder_time > now %}upcoming{% endif %}">
-                                {{ reminder.reminder_time.strftime('%d.%m.%Y %H:%M') }}
+                            <div class="reminder-title">
+                                {{ reminder.title }}
+                                {% if reminder.is_overdue() and not reminder.is_completed %}
+                                <span class="status-badge overdue">Просрочено</span>
+                                {% endif %}
+                            </div>
+                            <div class="reminder-time {% if reminder.reminder_time %}{% if reminder.reminder_time < now and not reminder.is_completed %}past{% elif reminder.reminder_time > now %}upcoming{% endif %}{% else %}no-time{% endif %}">
+                                {% if reminder.reminder_time %}
+                                    {{ reminder.reminder_time.strftime('%d.%m.%Y %H:%M') }}
+                                {% else %}
+                                    Без времени
+                                {% endif %}
                             </div>
                         </div>
                         
@@ -225,7 +286,7 @@
                             <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" alt="Нет напоминаний" style="width: 64px; height: 64px; opacity: 0.5;">
                         </div>
                         <h3>Нет напоминаний</h3>
-                        <p>Создайте первое напоминание выше</p>
+                        <p>Создайте первое напоминание</p>
                     </div>
                 </section>
                 {% endif %}
@@ -233,10 +294,137 @@
         </main>
     </div>
     
+    <!-- Modal для создания напоминания -->
+    <div class="modal-overlay" id="createModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Создать напоминание</h2>
+                <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+            </div>
+            <form id="createReminderForm" onsubmit="submitReminder(event)">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="neo-field">
+                        <label class="neo-label" for="modal_title">Заголовок *</label>
+                        <input type="text" 
+                               id="modal_title" 
+                               name="title" 
+                               class="neo-input" 
+                               placeholder="Что нужно напомнить?"
+                               required>
+                    </div>
+                    
+                    <div class="neo-field">
+                        <label class="neo-label" for="modal_message">Сообщение (необязательно)</label>
+                        <textarea id="modal_message" 
+                                  name="message" 
+                                  class="neo-textarea" 
+                                  placeholder="Дополнительные детали..."
+                                  rows="3"></textarea>
+                    </div>
+                    
+                    <div class="neo-field">
+                        <label class="neo-label" for="modal_reminder_time">
+                            Время напоминания
+                            <small style="display: block; color: var(--text-muted); font-weight: normal; margin-top: 0.25rem;">
+                                Оставьте пустым для напоминания без времени
+                            </small>
+                        </label>
+                        <input type="datetime-local" 
+                               id="modal_reminder_time" 
+                               name="reminder_time" 
+                               class="neo-input">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="neo-button ghost" onclick="closeCreateModal()">Отмена</button>
+                    <button type="submit" class="neo-button accent">
+                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Создать" class="ui-icon ui-icon--sm"> Создать
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
     <script>
+        function openCreateModal() {
+            document.getElementById('createModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeCreateModal() {
+            document.getElementById('createModal').classList.remove('active');
+            document.body.style.overflow = '';
+            document.getElementById('createReminderForm').reset();
+        }
+        
+        document.getElementById('createModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeCreateModal();
+            }
+        });
+        
+        function submitReminder(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = new FormData(form);
+            const title = formData.get('title').trim();
+            const message = formData.get('message').trim();
+            const reminderTime = formData.get('reminder_time');
+            
+            if (!title) {
+                if (typeof toast !== 'undefined' && toast) {
+                    toast.error('Заголовок обязателен');
+                }
+                return;
+            }
+            
+            const data = {
+                title: title,
+                message: message || null,
+                reminder_time: reminderTime || null,
+                timezone_offset: new Date().getTimezoneOffset() * -1
+            };
+            
+            const csrfToken = formData.get('csrf_token');
+            
+            fetch('{{ url_for("reminders.reminder_create") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    if (typeof toast !== 'undefined' && toast) {
+                        toast.success('Напоминание создано');
+                    }
+                    closeCreateModal();
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 500);
+                } else {
+                    if (typeof toast !== 'undefined' && toast) {
+                        toast.error(result.error || 'Ошибка при создании напоминания');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (typeof toast !== 'undefined' && toast) {
+                    toast.error('Ошибка при создании напоминания');
+                }
+            });
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
             const confirmDeleteForms = document.querySelectorAll('.confirm-delete-form');
             confirmDeleteForms.forEach(form => {
@@ -250,4 +438,3 @@
     </script>
 </body>
 </html>
-

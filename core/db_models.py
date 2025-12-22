@@ -254,13 +254,19 @@ class Reminder(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
     title = db.Column(db.String(200), nullable=False)
     message = db.Column(db.Text, nullable=True)
-    reminder_time = db.Column(db.DateTime, nullable=False, index=True)
+    reminder_time = db.Column(db.DateTime, nullable=True, index=True)  # Может быть None для напоминаний без времени
     is_completed = db.Column(db.Boolean, default=False, nullable=False, index=True)
     is_sent = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
     
     user = db.relationship('User', foreign_keys=[user_id])
+    
+    def is_overdue(self):
+        """Проверяет, просрочено ли напоминание"""
+        if self.is_completed or not self.reminder_time:
+            return False
+        return self.reminder_time < moscow_now()
     
     def __repr__(self):
         return f'<Reminder {self.title} at {self.reminder_time}>'

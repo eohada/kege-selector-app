@@ -5,6 +5,7 @@ from flask import render_template, request, jsonify, redirect, url_for, flash
 from flask_login import login_required, current_user
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import json
 
 from app.reminders import reminders_bp
 from app.models import db, Reminder, moscow_now, MOSCOW_TZ
@@ -21,11 +22,20 @@ def reminders_list():
     if not show_completed:
         query = query.filter_by(is_completed=False)
     
-    query = query.order_by(Reminder.reminder_time.asc())
+    # Сортируем: сначала с временем (по времени), потом без времени (по дате создания)
+    reminders = query.order_by(
+        Reminder.reminder_time.asc().nullslast(),
+        Reminder.created_at.desc()
+    ).all()
     
-    reminders = query.all()
-    
+    # Автоматически помечаем просроченные напоминания
     now = moscow_now()
+    updated = False
+    for reminder in reminders:
+        if not reminder.is_completed and reminder.reminder_time and reminder.reminder_time < now:
+            # Напоминание просрочено, но мы не меняем is_completed автоматически
+            # Это просто для отображения
+            pass
     
     return render_template('reminders.html', 
                          reminders=reminders,
@@ -37,25 +47,55 @@ def reminders_list():
 def reminder_create():
     """Создание нового напоминания"""
     try:
-        title = request.form.get('title', '').strip()
-        message = request.form.get('message', '').strip()
-        reminder_time_str = request.form.get('reminder_time', '').strip()
+        data = request.get_json() if request.is_json else {}
+        
+        if request.is_json:
+            title = data.get('title', '').strip()
+            message = data.get('message', '').strip()
+            reminder_time_str = data.get('reminder_time', '').strip()
+            timezone_offset = data.get('timezone_offset', None)  # Смещение в минутах от UTC
+        else:
+            title = request.form.get('title', '').strip()
+            message = request.form.get('message', '').strip()
+            reminder_time_str = request.form.get('reminder_time', '').strip()
+            timezone_offset = request.form.get('timezone_offset', None)
         
         if not title:
+            if request.is_json:
+                return jsonify({'success': False, 'error': 'Заголовок обязателен'}), 400
             flash('Заголовок обязателен', 'error')
             return redirect(url_for('reminders.reminders_list'))
         
-        if not reminder_time_str:
-            flash('Время напоминания обязательно', 'error')
-            return redirect(url_for('reminders.reminders_list'))
-        
-        try:
-            reminder_time = datetime.fromisoformat(reminder_time_str.replace('Z', '+00:00'))
-            if reminder_time.tzinfo is None:
-                reminder_time = reminder_time.replace(tzinfo=MOSCOW_TZ)
-        except ValueError:
-            flash('Неверный формат времени', 'error')
-            return redirect(url_for('reminders.reminders_list'))
+        reminder_time = None
+        if reminder_time_str:
+            try:
+                # datetime-local возвращает строку в формате YYYY-MM-DDTHH:MM
+                # Это локальное время устройства пользователя
+                reminder_time_naive = datetime.strptime(reminder_time_str, '%Y-%m-%dT%H:%M')
+                
+                # Если есть смещение часового пояса, используем его
+                if timezone_offset is not None:
+                    try:
+                        offset_minutes = int(timezone_offset)
+                        # Создаем timezone с учетом смещения
+                        from datetime import timedelta
+                        offset = timedelta(minutes=offset_minutes)
+                        tz = ZoneInfo(f"Etc/GMT{-offset_minutes//60:+d}" if offset_minutes != 0 else "UTC")
+                        reminder_time = reminder_time_naive.replace(tzinfo=tz)
+                        # Конвертируем в московское время для хранения
+                        reminder_time = reminder_time.astimezone(MOSCOW_TZ).replace(tzinfo=None)
+                    except (ValueError, TypeError):
+                        # Если не удалось обработать смещение, используем локальное время как московское
+                        reminder_time = reminder_time_naive
+                else:
+                    # Если смещения нет, считаем что это московское время
+                    reminder_time = reminder_time_naive
+                    
+            except ValueError as e:
+                if request.is_json:
+                    return jsonify({'success': False, 'error': f'Неверный формат времени: {str(e)}'}), 400
+                flash(f'Неверный формат времени: {str(e)}', 'error')
+                return redirect(url_for('reminders.reminders_list'))
         
         reminder = Reminder(
             user_id=current_user.id,
@@ -74,12 +114,28 @@ def reminder_create():
             status='success'
         )
         
+        if request.is_json:
+            return jsonify({
+                'success': True,
+                'reminder': {
+                    'id': reminder.reminder_id,
+                    'title': reminder.title,
+                    'message': reminder.message,
+                    'reminder_time': reminder.reminder_time.isoformat() if reminder.reminder_time else None,
+                    'is_completed': reminder.is_completed,
+                    'is_overdue': reminder.is_overdue()
+                }
+            })
+        
         flash('Напоминание создано', 'success')
         return redirect(url_for('reminders.reminders_list'))
         
     except Exception as e:
         db.session.rollback()
-        flash(f'Ошибка при создании напоминания: {str(e)}', 'error')
+        error_msg = f'Ошибка при создании напоминания: {str(e)}'
+        if request.is_json:
+            return jsonify({'success': False, 'error': error_msg}), 500
+        flash(error_msg, 'error')
         return redirect(url_for('reminders.reminders_list'))
 
 @reminders_bp.route('/reminders/<int:reminder_id>/toggle', methods=['POST'])
@@ -123,6 +179,9 @@ def reminder_delete(reminder_id):
         status='success'
     )
     
+    if request.is_json:
+        return jsonify({'success': True})
+    
     flash('Напоминание удалено', 'success')
     return redirect(url_for('reminders.reminders_list'))
 
@@ -135,25 +194,47 @@ def reminder_update(reminder_id):
         user_id=current_user.id
     ).first_or_404()
     
-    title = request.form.get('title', '').strip()
-    message = request.form.get('message', '').strip()
-    reminder_time_str = request.form.get('reminder_time', '').strip()
+    data = request.get_json() if request.is_json else {}
+    
+    if request.is_json:
+        title = data.get('title', '').strip()
+        message = data.get('message', '').strip()
+        reminder_time_str = data.get('reminder_time', '').strip()
+        timezone_offset = data.get('timezone_offset', None)
+    else:
+        title = request.form.get('title', '').strip()
+        message = request.form.get('message', '').strip()
+        reminder_time_str = request.form.get('reminder_time', '').strip()
+        timezone_offset = request.form.get('timezone_offset', None)
     
     if not title:
+        if request.is_json:
+            return jsonify({'success': False, 'error': 'Заголовок обязателен'}), 400
         flash('Заголовок обязателен', 'error')
         return redirect(url_for('reminders.reminders_list'))
     
-    if not reminder_time_str:
-        flash('Время напоминания обязательно', 'error')
-        return redirect(url_for('reminders.reminders_list'))
-    
-    try:
-        reminder_time = datetime.fromisoformat(reminder_time_str.replace('Z', '+00:00'))
-        if reminder_time.tzinfo is None:
-            reminder_time = reminder_time.replace(tzinfo=MOSCOW_TZ)
-    except ValueError:
-        flash('Неверный формат времени', 'error')
-        return redirect(url_for('reminders.reminders_list'))
+    reminder_time = None
+    if reminder_time_str:
+        try:
+            reminder_time_naive = datetime.strptime(reminder_time_str, '%Y-%m-%dT%H:%M')
+            
+            if timezone_offset is not None:
+                try:
+                    offset_minutes = int(timezone_offset)
+                    from datetime import timedelta
+                    tz = ZoneInfo(f"Etc/GMT{-offset_minutes//60:+d}" if offset_minutes != 0 else "UTC")
+                    reminder_time = reminder_time_naive.replace(tzinfo=tz)
+                    reminder_time = reminder_time.astimezone(MOSCOW_TZ).replace(tzinfo=None)
+                except (ValueError, TypeError):
+                    reminder_time = reminder_time_naive
+            else:
+                reminder_time = reminder_time_naive
+                
+        except ValueError as e:
+            if request.is_json:
+                return jsonify({'success': False, 'error': f'Неверный формат времени: {str(e)}'}), 400
+            flash(f'Неверный формат времени: {str(e)}', 'error')
+            return redirect(url_for('reminders.reminders_list'))
     
     reminder.title = title
     reminder.message = message if message else None
@@ -167,6 +248,18 @@ def reminder_update(reminder_id):
         status='success'
     )
     
+    if request.is_json:
+        return jsonify({
+            'success': True,
+            'reminder': {
+                'id': reminder.reminder_id,
+                'title': reminder.title,
+                'message': reminder.message,
+                'reminder_time': reminder.reminder_time.isoformat() if reminder.reminder_time else None,
+                'is_completed': reminder.is_completed,
+                'is_overdue': reminder.is_overdue()
+            }
+        })
+    
     flash('Напоминание обновлено', 'success')
     return redirect(url_for('reminders.reminders_list'))
-
