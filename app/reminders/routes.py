@@ -31,13 +31,16 @@ def reminders_list():
         
         # Сортируем: сначала с временем (по времени), потом без времени (по дате создания)
         try:
+            from sqlalchemy import asc, desc
             reminders = query.order_by(
                 case((Reminder.reminder_time.is_(None), 1), else_=0),
-                Reminder.reminder_time.asc(),
-                Reminder.created_at.desc()
+                asc(Reminder.reminder_time),
+                desc(Reminder.created_at)
             ).all()
         except Exception as e:
             # Если сортировка не работает, используем простую
+            import logging
+            logging.warning(f"Reminders sorting error: {e}, using simple sort")
             reminders = query.order_by(Reminder.created_at.desc()).all()
         
         # Получаем текущее время для сравнения
