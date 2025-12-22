@@ -26,15 +26,29 @@
             background: var(--surface-1);
             border: 1px solid var(--stroke-1);
             border-radius: var(--radius-lg);
-            padding: 2rem;
+            padding: 2.2rem;
             margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .homework-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-1), transparent);
+            opacity: 0.6;
         }
         
         .homework-header h1 {
-            font-size: 2em;
+            font-size: 2.2em;
             font-weight: 800;
             color: var(--text-primary);
-            margin-bottom: 1rem;
+            margin-bottom: 1.2rem;
+            letter-spacing: -0.02em;
         }
         
         .homework-info {
@@ -57,28 +71,6 @@
             font-weight: 600;
         }
         
-        .task-card {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            margin-bottom: 2rem;
-            transition: all 0.3s ease;
-        }
-        
-        .task-card:hover {
-            border-color: var(--accent-1);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-soft);
-        }
-        
-        .task-card.autocheck-correct {
-            border: 2px solid var(--success-color, #10b981);
-        }
-        
-        .task-card.autocheck-incorrect {
-            border: 2px solid var(--danger-color, #ef4444);
-        }
         
         /* Овальный переключатель с тремя положениями */
         .status-toggle {
