@@ -11,27 +11,8 @@
 </head>
 <body>
     <div class="app-shell">
-        <header class="nav-primary">
-            <div class="nav-brand">
-                {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
-                    {{ current_user.username[0].upper() }}
-                </a>
-                {% endif %}
-                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
-                    <div class="brand-mark">LOGO</div>
-                    <div class="brand-caption">Админ-панель</div>
-                </a>
-            </div>
-            <nav class="nav-links">
-                <a href="{{ url_for('main.dashboard') }}" class="nav-link">👥 Ученики</a>
-                <a href="{{ url_for('schedule.schedule') }}" class="nav-link">📅 Расписание</a>
-                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">💻 Генератор</a>
-                <a href="{{ url_for('admin.admin_audit') }}" class="nav-link">📊 Логи</a>
-                <a href="{{ url_for('admin.admin_testers') }}" class="nav-link active">👥 Тестировщики</a>
-                <a href="{{ url_for('templates.templates_list') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="ui-icon ui-icon--sm">Шаблоны</a>
-            </nav>
-        </header>
+        {% set active_page = 'admin' %}
+        {% include '_primary_nav.html' %}
 
         <section class="glass-panel" style="margin: 2rem auto; max-width: 800px;">
             <h1 style="margin-bottom: 1rem;">Редактировать тестировщика</h1>
@@ -71,7 +52,7 @@
                 </div>
 
                 <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                    <button type="submit" class="neo-button accent">💾 Сохранить</button>
+                    <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-сохранить-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm"> Сохранить</button>
                     <a href="{{ url_for('admin.admin_testers') }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Отмена" class="ui-icon ui-icon--sm">Отмена</a>
                 </div>
             </form>

@@ -12,52 +12,8 @@
 </head>
 <body>
     <div class="app-shell">
-        <header class="nav-primary">
-            <div class="nav-brand">
-                {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
-                    {{ current_user.username[0].upper() }}
-                </a>
-                {% endif %}
-                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
-                    <div class="brand-mark">LOGO</div>
-                    <div class="brand-caption">Чёрный неон</div>
-                </a>
-            </div>
-            {% include '_mobile_menu.html' %}
-            <nav class="nav-links">
-                <a href="{{ url_for('main.dashboard') }}" class="nav-link">
-                    <span class="nav-link-content">
-                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="nav-link-icon">
-                        <span class="nav-link-label">Ученики</span>
-                    </span>
-                </a>
-                <a href="{{ url_for('schedule.schedule') }}" class="nav-link">
-                    <span class="nav-link-content">
-                        <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="nav-link-icon">
-                        <span class="nav-link-label">Расписание</span>
-                    </span>
-                </a>
-                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">
-                    <span class="nav-link-content">
-                        <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="nav-link-icon">
-                        <span class="nav-link-label">Генератор</span>
-                    </span>
-                </a>
-                <a href="{{ url_for('main.update_plans') }}" class="nav-link">
-                    <span class="nav-link-content">
-                        <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Планы" class="nav-link-icon">
-                        <span class="nav-link-label">Планы</span>
-                    </span>
-                </a>
-                <a href="{{ url_for('templates.templates_list') }}" class="nav-link">
-                    <span class="nav-link-content">
-                        <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon">
-                        <span class="nav-link-label">Шаблоны</span>
-                    </span>
-                </a>
-            </nav>
-        </header>
+        {% set active_page = 'admin' %}
+        {% include '_primary_nav.html' %}
 
         {% include '_ux_enhancements.html' %}
 
@@ -68,7 +24,7 @@
                 </a>
             </div>
             <p class="hero-eyebrow">диагностика</p>
-            <h1 class="hero-title">🔍 Диагностика окружения</h1>
+            <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-лупа-100-2.png') }}" alt="Диагностика" class="ui-icon ui-icon--md"> Диагностика окружения</h1>
             <p class="hero-subtitle">Эта страница помогает выявить различия между production и sandbox окружениями</p>
         </section>
 
@@ -85,7 +41,7 @@
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
             <section class="glass-panel">
-                <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">🌍 Окружение</h2>
+                <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);"><img src="{{ url_for('static', filename='icons/icons8-планета-100.png') }}" alt="Окружение" class="ui-icon ui-icon--sm"> Окружение</h2>
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <div>
                         <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">ENVIRONMENT</div>
@@ -172,7 +128,7 @@
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
             <section class="glass-panel">
-                <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">📊 Данные в БД</h2>
+                <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Данные" class="ui-icon ui-icon--sm"> Данные в БД</h2>
                 {% if diagnostics_data.database.data_counts %}
                 <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
                     <div style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
@@ -239,7 +195,7 @@
         {% endif %}
 
         <section class="glass-panel" style="margin-bottom: 1.5rem;">
-            <h2 style="margin-bottom: 1rem; color: var(--text-primary);">💡 Как использовать эту информацию:</h2>
+            <h2 style="margin-bottom: 1rem; color: var(--text-primary);">Как использовать эту информацию:</h2>
             <ol style="margin: 0; padding-left: 1.5rem; line-height: 1.8;">
                 <li>Откройте эту страницу в <strong>production</strong> и скопируйте данные</li>
                 <li>Откройте эту страницу в <strong>sandbox</strong> и сравните</li>
@@ -256,7 +212,7 @@
 
         <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
             <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">← Назад к админ-панели</a>
-            <button onclick="location.reload()" class="neo-button accent">🔄 Обновить</button>
+            <button onclick="location.reload()" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-обновить-100.png') }}" alt="Обновить" class="ui-icon ui-icon--sm"> Обновить</button>
             <a href="{{ url_for('admin.diagnostics_api') }}" class="neo-button outline" target="_blank" style="text-decoration: none;">📄 JSON API</a>
         </div>
     </div>
