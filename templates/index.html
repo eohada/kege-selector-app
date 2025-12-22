@@ -14,52 +14,8 @@
 </head>
 <body>
     <div class="app-shell">
-        <header class="nav-primary">
-            <div class="nav-brand">
-                {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
-                    {{ current_user.username[0].upper() }}
-                </a>
-                {% endif %}
-                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem;">
-                    <div class="brand-mark">LOGO</div>
-                    <div class="brand-caption">Чёрный неон</div>
-                </a>
-            </div>
-            {% include '_mobile_menu.html' %}
-            <nav class="nav-links">
-                <a href="{{ url_for('main.dashboard') }}" class="nav-link">
-                    <span class="nav-link-content">
-                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon">
-                        <span class="nav-link-label">Ученики</span>
-                    </span>
-                </a>
-                <a href="{{ url_for('schedule.schedule') }}" class="nav-link">
-                    <span class="nav-link-content">
-                        <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon">
-                        <span class="nav-link-label">Расписание</span>
-                    </span>
-                </a>
-                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">
-                    <span class="nav-link-content">
-                        <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon">
-                        <span class="nav-link-label">Генератор</span>
-                    </span>
-                </a>
-                <a href="{{ url_for('main.update_plans') }}" class="nav-link">
-                    <span class="nav-link-content">
-                        <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Планы" class="nav-link-icon">
-                        <span class="nav-link-label">Планы</span>
-                    </span>
-                </a>
-                <a href="{{ url_for('templates.templates_list') }}" class="nav-link">
-                    <span class="nav-link-content">
-                        <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon">
-                        <span class="nav-link-label">Шаблоны</span>
-                    </span>
-                </a>
-            </nav>
-        </header>
+        {% set active_page = None %}
+        {% include '_primary_nav.html' %}
 
         <section class="dashboard-hero glass-panel">
             <div>
@@ -70,8 +26,8 @@
                     Все инструменты, необходимые преподавателю для эффективной работы с учениками, в едином пространстве.
                 </p>
                 <div class="hero-actions">
-                    <a href="{{ url_for('main.dashboard') }}" class="neo-button accent">🚀 Начать работу</a>
-                    <a href="{{ url_for('kege_generator.kege_generator') }}" class="neo-button outline">📚 Генератор заданий</a>
+                    <a href="{{ url_for('main.dashboard') }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/RAKET.png') }}" alt="Старт" class="ui-icon ui-icon--sm">Начать работу</a>
+                    <a href="{{ url_for('kege_generator.kege_generator') }}" class="neo-button outline"><img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--sm">Генератор</a>
                 </div>
             </div>
         </section>
@@ -80,42 +36,42 @@
             <h2 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.8rem; font-weight: 600;">Возможности для преподавателей</h2>
             <div style="display: grid; gap: 2rem;">
                 <div>
-                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-1);">👥 Управление учениками</h3>
+                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-1);"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="ui-icon ui-icon--sm">Управление учениками</h3>
                     <p style="margin: 0; line-height: 1.7; color: var(--text-muted);">
                         Создавайте профили учеников, отслеживайте их прогресс, храните информацию о целях и достижениях.
                         Ведите историю уроков, домашних заданий и результатов. Все данные в одном месте, с удобным поиском и фильтрацией.
                     </p>
                 </div>
                 <div>
-                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-2);">📅 Расписание и планирование</h3>
+                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-2);"><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="ui-icon ui-icon--sm">Расписание и планирование</h3>
                     <p style="margin: 0; line-height: 1.7; color: var(--text-muted);">
                         Удобное календарное расписание с поддержкой московского и томского времени. Массовое создание уроков,
                         автоматическое отслеживание активных занятий, планирование на недели и месяцы вперед.
                     </p>
                 </div>
                 <div>
-                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-3);">🎯 Генератор заданий КЕГЭ</h3>
+                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-3);"><img src="{{ url_for('static', filename='icons/icons8-мишень-100.png') }}" alt="КЕГЭ" class="ui-icon ui-icon--sm">Генератор заданий КЕГЭ</h3>
                     <p style="margin: 0; line-height: 1.7; color: var(--text-muted);">
                         Умный подбор заданий из обширной базы данных. Система автоматически исключает уже использованные задания,
                         учитывает пропущенные и заблокированные варианты. Поиск по уникальному ID, фильтрация по типам заданий.
                     </p>
                 </div>
                 <div>
-                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-1);">📝 Домашние задания и классные работы</h3>
+                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-1);"><img src="{{ url_for('static', filename='icons/dz.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm">Домашние задания и классные работы</h3>
                     <p style="margin: 0; line-height: 1.7; color: var(--text-muted);">
                         Формируйте домашние задания и классные работы прямо на уроке. Добавляйте задания из генератора,
                         отслеживайте статус выполнения, проверяйте результаты. Экспорт в Markdown для удобной работы.
                     </p>
                 </div>
                 <div>
-                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-2);">📊 Аналитика и отчетность</h3>
+                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-2);"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Аналитика" class="ui-icon ui-icon--sm">Аналитика и отчетность</h3>
                     <p style="margin: 0; line-height: 1.7; color: var(--text-muted);">
                         Детальное логирование всех действий, статистика по ученикам, отслеживание использования заданий.
                         Полная история изменений для прозрачности работы и анализа эффективности обучения.
                     </p>
                 </div>
                 <div>
-                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-3);">🔄 Интеграция и экспорт</h3>
+                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-3);"><img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" alt="Интеграция" class="ui-icon ui-icon--sm">Интеграция и экспорт</h3>
                     <p style="margin: 0; line-height: 1.7; color: var(--text-muted);">
                         Экспорт данных в JSON для резервного копирования и миграции. Импорт учеников и уроков из внешних систем.
                         Интеграция с платформами для синхронизации данных.
@@ -128,14 +84,14 @@
             <h2 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.8rem; font-weight: 600;">Преимущества платформы</h2>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
                 <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
-                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚡</div>
+                    <div style="margin-bottom: 0.5rem;"><img src="{{ url_for('static', filename='icons/FATS.png') }}" alt="Быстро" class="ui-icon ui-icon--md ui-icon--only"></div>
                     <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">Быстро</h4>
                     <p style="margin: 0; color: var(--text-muted); font-size: 0.9em; line-height: 1.6;">
                         Мгновенный подбор заданий, быстрая навигация, оптимизированный интерфейс
                     </p>
                 </div>
                 <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
-                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎨</div>
+                    <div style="margin-bottom: 0.5rem;"><img src="{{ url_for('static', filename='icons/comfort.png') }}" alt="Удобно" class="ui-icon ui-icon--md ui-icon--only"></div>
                     <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">Удобно</h4>
                     <p style="margin: 0; color: var(--text-muted); font-size: 0.9em; line-height: 1.6;">
                         Современный дизайн, интуитивная навигация, все инструменты под рукой

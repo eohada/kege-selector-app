@@ -18,24 +18,24 @@
         <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Закрыть меню">&times;</button>
     </div>
     <div class="mobile-nav-links">
-        <a href="{{ url_for('main.dashboard') }}" class="mobile-nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <a href="{{ url_for('main.dashboard') }}" class="mobile-nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
             <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="mobile-nav-link-icon">
             <span>Ученики</span>
         </a>
-        <a href="{{ url_for('schedule.schedule') }}" class="mobile-nav-link {% if request.endpoint == 'schedule' %}active{% endif %}">
+        <a href="{{ url_for('schedule.schedule') }}" class="mobile-nav-link {% if request.endpoint == 'schedule.schedule' %}active{% endif %}">
             <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="mobile-nav-link-icon">
             <span>Расписание</span>
         </a>
-        <a href="{{ url_for('kege_generator.kege_generator') }}" class="mobile-nav-link {% if request.endpoint == 'kege_generator' %}active{% endif %}">
+        <a href="{{ url_for('kege_generator.kege_generator') }}" class="mobile-nav-link {% if request.endpoint == 'kege_generator.kege_generator' %}active{% endif %}">
             <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="mobile-nav-link-icon">
             <span>Генератор</span>
         </a>
-        <a href="{{ url_for('main.update_plans') }}" class="mobile-nav-link {% if request.endpoint == 'update_plans' %}active{% endif %}">
+        <a href="{{ url_for('main.update_plans') }}" class="mobile-nav-link {% if request.endpoint == 'main.update_plans' %}active{% endif %}">
             <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Планы" class="mobile-nav-link-icon">
             <span>Планы</span>
         </a>
-        <a href="{{ url_for('templates.templates_list') }}" class="mobile-nav-link {% if request.endpoint == 'templates.templates_list' or request.endpoint == 'templates.template_view' or request.endpoint == 'templates.template_edit' or request.endpoint == 'templates.template_new' %}active{% endif %}">
-            <span style="font-size: 1.5rem;">📚</span>
+        <a href="{{ url_for('templates.templates_list') }}" class="mobile-nav-link {% if request.endpoint == 'templates.templates_list' or request.endpoint == 'templates.template_view' or request.endpoint == 'templates.template_edit' or request.endpoint == 'templates.template_new' or request.endpoint == 'templates.template_form' %}active{% endif %}">
+            <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="mobile-nav-link-icon">
             <span>Шаблоны</span>
         </a>
     </div>
