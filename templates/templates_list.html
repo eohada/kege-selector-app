@@ -32,7 +32,7 @@
             <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                 <div>
                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-muted);">Тип шаблона:</label>
-                    <select id="typeFilter" onchange="applyFilters()" style="padding: 0.5rem 1rem; border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); background: var(--surface-1); color: var(--text-primary);">
+                    <select id="typeFilter" class="filter-select" onchange="applyFilters()">
                         <option value="">Все типы</option>
                         <option value="homework" {% if current_type == 'homework' %}selected{% endif %}>Домашние задания</option>
                         <option value="classwork" {% if current_type == 'classwork' %}selected{% endif %}>Классные работы</option>
@@ -42,7 +42,7 @@
                 </div>
                 <div>
                     <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: var(--text-muted);">Категория:</label>
-                    <select id="categoryFilter" onchange="applyFilters()" style="padding: 0.5rem 1rem; border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); background: var(--surface-1); color: var(--text-primary);">
+                    <select id="categoryFilter" class="filter-select" onchange="applyFilters()">
                         <option value="">Все категории</option>
                         <option value="ЕГЭ" {% if current_category == 'ЕГЭ' %}selected{% endif %}>ЕГЭ</option>
                         <option value="ОГЭ" {% if current_category == 'ОГЭ' %}selected{% endif %}>ОГЭ</option>
@@ -80,38 +80,36 @@
             </div>
 
             {% if type_templates %}
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
                 {% for template in type_templates %}
-                <div class="template-card" style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem; transition: all 0.3s ease; overflow: hidden;">
+                <div class="template-card">
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
                         <div style="flex: 1;">
-                            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2em; font-weight: 700;">{{ template.name }}</h3>
+                            <h3>{{ template.name }}</h3>
                             {% if template.description %}
-                            <p style="margin: 0; color: var(--text-muted); font-size: 0.9em;">{{ template.description[:100] }}{% if template.description|length > 100 %}...{% endif %}</p>
+                            <p>{{ template.description[:100] }}{% if template.description|length > 100 %}...{% endif %}</p>
                             {% endif %}
                         </div>
                     </div>
                     
-                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                    <div class="template-badges">
                         {% if template.category %}
-                        <span style="padding: 0.25rem 0.75rem; background: var(--accent-1); color: white; border-radius: var(--radius-sm); font-size: 0.85em; font-weight: 600;">{{ template.category }}</span>
+                        <span class="template-badge template-badge--category">{{ template.category }}</span>
                         {% endif %}
-                        <span style="padding: 0.25rem 0.75rem; background: var(--surface-3); color: var(--text-muted); border-radius: var(--radius-sm); font-size: 0.85em;">
-                            {{ template.template_tasks|length }} заданий
-                        </span>
+                        <span class="template-badge template-badge--count">{{ template.template_tasks|length }} заданий</span>
                     </div>
 
-                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem; width: 100%;">
-                        <a href="{{ url_for('templates.template_view', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1 1 0%; min-width: 0; text-align: center; text-decoration: none; padding: 0.85rem 0.75rem; font-size: 0.9rem;"><img src="{{ url_for('static', filename='icons/icons8-спрятать-100.png') }}" alt="Просмотр" class="ui-icon ui-icon--sm">Просмотр</a>
-                        <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button ghost" style="flex: 1 1 0%; min-width: 0; text-align: center; text-decoration: none; padding: 0.85rem 0.75rem; font-size: 0.9rem;"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Изменить" class="ui-icon ui-icon--sm">Изменить</a>
-                        <button type="button" class="neo-button ghost danger" onclick="confirmDeleteTemplate({{ template.template_id }})" style="flex: 0 0 auto; padding: 0.85rem 0.75rem; font-size: 0.9rem;"><img src="{{ url_for('static', filename='icons/MUSORN.png') }}" alt="Удалить" class="ui-icon ui-icon--sm ui-icon--only"></button>
+                    <div class="template-actions">
+                        <a href="{{ url_for('templates.template_view', template_id=template.template_id) }}" class="neo-button ghost" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-спрятать-100.png') }}" alt="Просмотр" class="ui-icon ui-icon--sm">Просмотр</a>
+                        <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button ghost" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Изменить" class="ui-icon ui-icon--sm">Изменить</a>
+                        <button type="button" class="neo-button ghost danger" onclick="confirmDeleteTemplate({{ template.template_id }})" style="flex: 0 0 auto; padding: 0.9rem 0.8rem;"><img src="{{ url_for('static', filename='icons/MUSORN.png') }}" alt="Удалить" class="ui-icon ui-icon--sm ui-icon--only"></button>
                     </div>
                 </div>
                 {% endfor %}
             </div>
             {% else %}
             <div class="empty-state" style="padding: 3rem; text-align: center;">
-                <div style="font-size: 4rem; margin-bottom: 1rem;">📭</div>
+                <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.4;"><img src="{{ url_for('static', filename='icons/icons8-пустая-папка-100.png') }}" alt="Пусто" style="width: 64px; height: 64px; object-fit: contain;"></div>
                 <h3>Нет шаблонов</h3>
                 <p style="color: var(--text-muted);">Создайте первый шаблон для этого типа</p>
             </div>

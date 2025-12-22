@@ -958,6 +958,125 @@ body::after {
     box-shadow: var(--shadow-soft);
 }
 
+/* Template Cards - Premium Minimalism */
+.template-card {
+    background: linear-gradient(160deg, rgba(10, 10, 18, 0.98), rgba(20, 20, 32, 0.92));
+    border: 1px solid var(--stroke-1);
+    border-radius: var(--radius-lg);
+    padding: 1.8rem;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    position: relative;
+}
+
+.template-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0, 255, 213, 0.08), rgba(31, 123, 255, 0.05));
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+}
+
+.template-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(0, 255, 213, 0.6);
+    box-shadow: 0 20px 60px rgba(0, 255, 213, 0.25), 0 0 0 1px rgba(0, 255, 213, 0.1);
+}
+
+.template-card:hover::after {
+    opacity: 1;
+}
+
+.template-card h3 {
+    margin: 0 0 0.6rem 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    color: var(--text-primary);
+}
+
+.template-card p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9em;
+    line-height: 1.6;
+}
+
+.template-card .template-badges {
+    display: flex;
+    gap: 0.6rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+}
+
+.template-card .template-badge {
+    padding: 0.35rem 0.9rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.template-card .template-badge--category {
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-1-strong));
+    color: rgba(0, 0, 0, 0.9);
+    box-shadow: 0 4px 12px rgba(0, 255, 213, 0.3);
+}
+
+.template-card .template-badge--count {
+    background: var(--surface-3);
+    color: var(--text-muted);
+    border: 1px solid var(--stroke-1);
+}
+
+.template-card .template-actions {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 1.2rem;
+    width: 100%;
+}
+
+.template-card .template-actions .neo-button {
+    flex: 1 1 0%;
+    min-width: 0;
+    text-align: center;
+    padding: 0.9rem 0.8rem;
+    font-size: 0.9rem;
+    transition: all 0.25s ease;
+}
+
+.template-card .template-actions .neo-button:hover {
+    transform: translateY(-2px);
+}
+
+/* Filter Select - Premium Style */
+.filter-select {
+    padding: 0.9rem 1.1rem;
+    border: 1px solid var(--stroke-1);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    transition: all 0.25s ease;
+    cursor: pointer;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: rgba(0, 255, 213, 0.6);
+    box-shadow: 0 0 0 3px rgba(0, 255, 213, 0.25);
+    background: var(--surface-1);
+}
+
+.filter-select:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--surface-1);
+}
+
 .neo-checkbox {
     display: flex;
     align-items: center;
