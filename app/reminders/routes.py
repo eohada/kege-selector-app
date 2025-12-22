@@ -70,10 +70,11 @@ def reminders_list():
         error_msg = f"Ошибка в reminders_list: {str(e)}\n{traceback.format_exc()}"
         flash(f'Ошибка загрузки напоминаний: {str(e)}', 'error')
         # Возвращаем пустой список, чтобы страница хотя бы открылась
+        now_naive = moscow_now().replace(tzinfo=None) if moscow_now().tzinfo else moscow_now()
         return render_template('reminders.html', 
-                             reminders=[],
+                             reminders_data=[],
                              show_completed=False,
-                             now=moscow_now().replace(tzinfo=None) if moscow_now().tzinfo else moscow_now())
+                             now=now_naive)
 
 @reminders_bp.route('/reminders/create', methods=['POST'])
 @login_required
