@@ -8,9 +8,9 @@ from wtforms.validators import DataRequired, NumberRange
 class TaskSelectionForm(FlaskForm):
     """Форма выбора заданий для генерации"""
     task_type = SelectField('Номер задания', coerce=int, validators=[DataRequired()])
-    limit_count = IntegerField('Количество заданий', validators=[DataRequired(), NumberRange(min=1, max=20, message="От 1 до 20")])
-    use_skipped = BooleanField('Включить пропущенные задания', default=False)
-    submit = SubmitField('Сгенерировать Набор')
+    # Новый режим: выдаём задания по одному, пока пользователь не остановится.
+    # Оставляем только выбор номера задания и запуск процесса.
+    submit = SubmitField('Запустить генератор')
 
 class ResetForm(FlaskForm):
     """Форма сброса истории"""

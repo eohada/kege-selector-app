@@ -5,6 +5,7 @@ import logging
 import os
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required
+from sqlalchemy import or_
 
 from app.kege_generator import kege_generator_bp
 from app.kege_generator.forms import TaskSelectionForm, ResetForm, TaskSearchForm
@@ -13,7 +14,7 @@ from app.models import TaskTemplate, TemplateTask
 from core.selector_logic import (
     get_unique_tasks, record_usage, record_skipped, record_blacklist,
     reset_history, reset_skipped, reset_blacklist,
-    get_accepted_tasks, get_skipped_tasks
+    get_accepted_tasks, get_skipped_tasks, get_next_unique_task
 )
 from core.audit_logger import audit_logger
 
@@ -38,6 +39,8 @@ def kege_generator(lesson_id=None):
     assignment_type = request.args.get('assignment_type') or request.form.get('assignment_type') or 'homework'
     assignment_type = assignment_type if assignment_type in ['homework', 'classwork', 'exam'] else 'homework'
     template_id = request.args.get('template_id', type=int)  # Получаем template_id из запроса
+    seed_task_id = request.args.get('seed_task_id', type=int)
+    seed_task = None
     
     if not lesson_id and assignment_type == 'classwork':
         assignment_type = 'homework'
@@ -67,36 +70,18 @@ def kege_generator(lesson_id=None):
         selection_form.task_type.choices = choices
         reset_form.task_type_reset.choices = [('all', 'Всех заданий')] + choices
 
-    if selection_form.submit.data and selection_form.validate_on_submit():
-        task_type = selection_form.task_type.data
-        limit_count = selection_form.limit_count.data
-        use_skipped = selection_form.use_skipped.data
-        
-        audit_logger.log(
-            action='request_task_generation',
-            entity='Generator',
-            entity_id=lesson_id,
-            status='success',
-            metadata={
-                'task_type': task_type,
-                'limit_count': limit_count,
-                'use_skipped': use_skipped,
-                'assignment_type': assignment_type,
-                'student_id': lesson.student_id if lesson_id and lesson else None,
-                'student_name': lesson.student.name if lesson_id and lesson else None
-            }
-        )
+    if seed_task_id:
+        try:
+            seed_task = Tasks.query.filter_by(task_id=seed_task_id).first()
+            if seed_task:
+                # Предвыбираем номер задания в селекте
+                selection_form.task_type.data = seed_task.task_number
+        except Exception as e:
+            logger.warning(f"Не удалось загрузить seed_task_id={seed_task_id}: {e}")
+            seed_task = None
 
-        if lesson_id:
-            redirect_params = {'task_type': task_type, 'limit_count': limit_count, 'use_skipped': use_skipped, 'lesson_id': lesson_id, 'assignment_type': assignment_type}
-            if template_id:
-                redirect_params['template_id'] = template_id
-            return redirect(url_for('kege_generator.generate_results', **redirect_params))
-        else:
-            redirect_params = {'task_type': task_type, 'limit_count': limit_count, 'use_skipped': use_skipped, 'assignment_type': assignment_type}
-            if template_id:
-                redirect_params['template_id'] = template_id
-            return redirect(url_for('kege_generator.generate_results', **redirect_params))
+    # Новый UX: генератор работает в одном окне и выдаёт задания по одному через JSON API.
+    # Старый режим подборки оставлен в /results (можно использовать прямым URL).
 
     if reset_form.reset_submit.data and reset_form.validate_on_submit():
         task_type_to_reset = reset_form.task_type_reset.data
@@ -178,18 +163,16 @@ def kege_generator(lesson_id=None):
                     }
                 )
                 redirect_url_params = {
-                    'task_type': task.task_number,
-                    'limit_count': 1,
-                    'use_skipped': False,
                     'assignment_type': assignment_type,
-                    'search_task_id': task.task_id
+                    'seed_task_id': task.task_id,
                 }
                 if lesson_id:
                     redirect_url_params['lesson_id'] = lesson_id
                 if template_id:
                     redirect_url_params['template_id'] = template_id
-                
-                return redirect(url_for('kege_generator.generate_results', **redirect_url_params))
+
+                flash(f'Задание #{task.task_id} добавлено в поток. Дальше можно продолжать по номеру {task.task_number}.', 'success')
+                return redirect(url_for('kege_generator.kege_generator', **redirect_url_params))
             else:
                 flash(f'Задание с ID {task_id_str} не найдено в базе данных.', 'warning')
         except ValueError:
@@ -216,7 +199,216 @@ def kege_generator(lesson_id=None):
                            student=student,
                            lesson_id=lesson_id,
                            assignment_type=assignment_type,
-                           template_id=template_id)
+                           template_id=template_id,
+                           seed_task=seed_task,
+                           seed_task_payload=_task_to_payload(seed_task) if seed_task else None)
+
+
+def _lesson_tag(lesson_id: int, assignment_type: str) -> str:
+    return f"lesson:{lesson_id}:{assignment_type}"
+
+
+def _task_to_payload(task: Tasks):
+    if not task:
+        return None
+    return {
+        'task_id': task.task_id,
+        'task_number': task.task_number,
+        'site_task_id': task.site_task_id,
+        'source_url': task.source_url,
+        'content_html': task.content_html,
+        'answer': task.answer,
+        'attached_files': task.attached_files,
+    }
+
+
+@kege_generator_bp.route('/kege-generator/stream/start', methods=['POST'])
+@login_required
+def generator_stream_start():
+    """Старт нового 'по одному заданию' потока."""
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Некорректный формат запроса'}), 400
+
+    try:
+        task_type = int(data.get('task_type'))
+    except Exception:
+        return jsonify({'success': False, 'error': 'task_type обязателен'}), 400
+
+    lesson_id = data.get('lesson_id')
+    template_id = data.get('template_id')
+    assignment_type = (data.get('assignment_type') or 'homework').strip()
+    use_skipped = bool(data.get('use_skipped', False))
+
+    if assignment_type not in ['homework', 'classwork', 'exam']:
+        assignment_type = 'homework'
+
+    try:
+        lesson_id = int(lesson_id) if lesson_id not in (None, '', False) else None
+    except Exception:
+        lesson_id = None
+
+    try:
+        template_id = int(template_id) if template_id not in (None, '', False) else None
+    except Exception:
+        template_id = None
+
+    student_id = None
+    if lesson_id:
+        lesson = Lesson.query.options(db.joinedload(Lesson.student)).get(lesson_id)
+        student_id = lesson.student_id if lesson else None
+
+    tag = _lesson_tag(lesson_id, assignment_type) if lesson_id else None
+    task = get_next_unique_task(task_type, use_skipped=use_skipped, student_id=student_id, lesson_tag=tag)
+
+    audit_logger.log(
+        action='generator_stream_start',
+        entity='Generator',
+        entity_id=lesson_id,
+        status='success' if task else 'warning',
+        metadata={
+            'task_type': task_type,
+            'assignment_type': assignment_type,
+            'lesson_id': lesson_id,
+            'template_id': template_id,
+            'use_skipped': use_skipped,
+            'has_task': bool(task),
+        }
+    )
+
+    if not task:
+        return jsonify({'success': True, 'done': True, 'task': None}), 200
+
+    return jsonify({'success': True, 'done': False, 'task': _task_to_payload(task)}), 200
+
+
+@kege_generator_bp.route('/kege-generator/stream/act', methods=['POST'])
+@login_required
+def generator_stream_act():
+    """Совершить действие над текущим заданием и получить следующее."""
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Некорректный формат запроса'}), 400
+
+    action = (data.get('action') or '').strip()
+    if action not in ('accept', 'skip', 'blacklist'):
+        return jsonify({'success': False, 'error': 'Неизвестное действие'}), 400
+
+    try:
+        task_id = int(data.get('task_id'))
+        task_type = int(data.get('task_type'))
+    except Exception:
+        return jsonify({'success': False, 'error': 'task_id и task_type обязательны'}), 400
+
+    lesson_id = data.get('lesson_id')
+    template_id = data.get('template_id')
+    assignment_type = (data.get('assignment_type') or 'homework').strip()
+    use_skipped = bool(data.get('use_skipped', False))
+
+    if assignment_type not in ['homework', 'classwork', 'exam']:
+        assignment_type = 'homework'
+
+    try:
+        lesson_id = int(lesson_id) if lesson_id not in (None, '', False) else None
+    except Exception:
+        lesson_id = None
+
+    try:
+        template_id = int(template_id) if template_id not in (None, '', False) else None
+    except Exception:
+        template_id = None
+
+    # 1) Выполняем действие
+    message = None
+    try:
+        if action == 'accept':
+            # Сначала — в шаблон (если есть), как и в старом режиме
+            if template_id:
+                template = TaskTemplate.query.get(template_id)
+                if not template:
+                    return jsonify({'success': False, 'error': 'Шаблон не найден'}), 404
+                max_order = db.session.query(db.func.max(TemplateTask.order)).filter_by(template_id=template_id).scalar() or 0
+                existing = TemplateTask.query.filter_by(template_id=template_id, task_id=task_id).first()
+                if not existing:
+                    db.session.add(TemplateTask(template_id=template_id, task_id=task_id, order=max_order + 1))
+                    db.session.commit()
+
+            if lesson_id:
+                lesson = Lesson.query.get(lesson_id)
+                if not lesson:
+                    return jsonify({'success': False, 'error': 'Урок не найден'}), 404
+                existing = LessonTask.query.filter_by(lesson_id=lesson_id, task_id=task_id).first()
+                if not existing:
+                    db.session.add(LessonTask(lesson_id=lesson_id, task_id=task_id, assignment_type=assignment_type))
+                if assignment_type == 'homework':
+                    lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
+                    lesson.homework_result_percent = None
+                    lesson.homework_result_notes = None
+                db.session.commit()
+                message = 'Задание добавлено в урок.'
+            else:
+                record_usage([task_id])
+                message = 'Задание принято.'
+
+        elif action == 'skip':
+            if lesson_id:
+                record_skipped([task_id], session_tag=_lesson_tag(lesson_id, assignment_type))
+                message = 'Задание пропущено для этого урока.'
+            else:
+                record_skipped([task_id], session_tag=None)
+                message = 'Задание пропущено.'
+
+        elif action == 'blacklist':
+            reason = (data.get('reason') or 'Добавлено пользователем').strip()[:500]
+            record_blacklist([task_id], reason=reason)
+            message = 'Задание добавлено в чёрный список.'
+
+    except Exception as e:
+        db.session.rollback()
+        audit_logger.log_error(
+            action='generator_stream_act',
+            entity='Task',
+            error=str(e),
+            metadata={
+                'task_id': task_id,
+                'task_type': task_type,
+                'lesson_id': lesson_id,
+                'template_id': template_id,
+                'assignment_type': assignment_type,
+                'action_taken': action,
+            }
+        )
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+    audit_logger.log(
+        action=f'generator_stream_{action}',
+        entity='Task',
+        entity_id=task_id,
+        status='success',
+        metadata={
+            'task_type': task_type,
+            'lesson_id': lesson_id,
+            'template_id': template_id,
+            'assignment_type': assignment_type,
+            'use_skipped': use_skipped,
+        }
+    )
+
+    # 2) Выдаём следующее
+    student_id = None
+    if lesson_id:
+        lesson = Lesson.query.options(db.joinedload(Lesson.student)).get(lesson_id)
+        student_id = lesson.student_id if lesson else None
+
+    tag = _lesson_tag(lesson_id, assignment_type) if lesson_id else None
+    next_task = get_next_unique_task(task_type, use_skipped=use_skipped, student_id=student_id, lesson_tag=tag)
+
+    return jsonify({
+        'success': True,
+        'message': message,
+        'done': not bool(next_task),
+        'task': _task_to_payload(next_task),
+    }), 200
 
 @kege_generator_bp.route('/results')
 @login_required

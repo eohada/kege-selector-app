@@ -94,6 +94,59 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
     tasks = [tasks_dict[tid] for tid in task_ids if tid in tasks_dict]
     return tasks
 
+def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_tag=None):
+    """
+    Возвращает одно следующее уникальное задание по условиям (или None).
+
+    Важно: состояние между шагами хранится не в cookie-session, а в БД через record_usage/record_skipped/record_blacklist.
+    Для lesson-режима поддерживается "scoped skip" через session_tag (lesson_tag), чтобы пропуски не загрязняли общий skipped.
+    """
+    params = {'task_type': task_type}
+
+    skip_where = ""
+    if not use_skipped:
+        if lesson_tag:
+            skip_where = 'AND T.task_id NOT IN (SELECT task_fk FROM "SkippedTasks" WHERE session_tag IS NULL OR session_tag = :lesson_tag)'
+            params['lesson_tag'] = lesson_tag
+        else:
+            skip_where = 'AND T.task_id NOT IN (SELECT task_fk FROM "SkippedTasks" WHERE session_tag IS NULL)'
+
+    if student_id:
+        params['student_id'] = student_id
+        sql_query = text(f"""
+            SELECT T.task_id
+            FROM "Tasks" AS T
+            WHERE T.task_number = :task_type
+                AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
+                AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
+                {skip_where}
+                AND T.task_id NOT IN (
+                    SELECT LT.task_id
+                    FROM "LessonTasks" AS LT
+                    JOIN "Lessons" AS L ON LT.lesson_id = L.lesson_id
+                    WHERE L.student_id = :student_id
+                )
+            ORDER BY RANDOM()
+            LIMIT 1
+        """)
+    else:
+        sql_query = text(f"""
+            SELECT T.task_id
+            FROM "Tasks" AS T
+            WHERE T.task_number = :task_type
+                AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
+                AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
+                {skip_where}
+            ORDER BY RANDOM()
+            LIMIT 1
+        """)
+
+    row = db.session.execute(sql_query, params).fetchone()
+    if not row:
+        return None
+
+    return Tasks.query.filter_by(task_id=row.task_id).first()
+
 def record_usage(task_ids, session_tag=None, _retry=False):  # _retry нужен для одного безопасного повтора после фикса sequence
     if not task_ids:
         return
@@ -173,7 +226,9 @@ def get_accepted_tasks(task_type=None):
     return query.order_by(UsageHistory.date_issued.desc()).all()
 
 def get_skipped_tasks(task_type=None):
-    query = db.session.query(Tasks).join(SkippedTasks)
+    # По умолчанию показываем только "глобальные" пропуски (session_tag IS NULL),
+    # чтобы lesson-scoped пропуски не засоряли список.
+    query = db.session.query(Tasks).join(SkippedTasks).filter(SkippedTasks.session_tag.is_(None))
 
     if task_type:
         query = query.filter(Tasks.task_number == task_type)
