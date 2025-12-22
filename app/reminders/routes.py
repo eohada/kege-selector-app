@@ -1,15 +1,19 @@
 """
 Роуты для управления напоминаниями
 """
-from flask import render_template, request, jsonify, redirect, url_for, flash
+from flask import render_template, request, jsonify, redirect, url_for, flash, current_app
 from flask_login import login_required, current_user
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from sqlalchemy import inspect, text
 import json
+import logging
 
 from app.reminders import reminders_bp
 from app.models import db, Reminder, moscow_now, MOSCOW_TZ
 from core.audit_logger import audit_logger
+
+logger = logging.getLogger(__name__)
 
 @reminders_bp.route('/reminders')
 @login_required
@@ -28,7 +32,6 @@ def reminders_list():
         
         # Принудительно проверяем и применяем миграцию для reminder_time
         try:
-            from sqlalchemy import inspect, text
             inspector = inspect(db.engine)
             table_names = inspector.get_table_names()
             reminders_table = 'Reminders' if 'Reminders' in table_names else ('reminders' if 'reminders' in table_names else None)
@@ -50,8 +53,7 @@ def reminders_list():
                         logger.info(f"Made reminder_time nullable in {reminders_table}")
         except Exception as e:
             # Игнорируем ошибки миграции, чтобы не блокировать работу
-            import logging
-            logging.warning(f"Could not check/update reminder_time nullable: {e}")
+            logger.warning(f"Could not check/update reminder_time nullable: {e}")
             db.session.rollback()
         
         if not show_completed:
