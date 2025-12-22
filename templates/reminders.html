@@ -427,6 +427,91 @@
         }
         
         document.addEventListener('DOMContentLoaded', function() {
+            // Конвертируем время напоминаний в локальное время устройства
+            const timeDisplays = document.querySelectorAll('.reminder-time[data-utc-time]');
+            timeDisplays.forEach(element => {
+                const utcTimeStr = element.getAttribute('data-utc-time');
+                if (utcTimeStr) {
+                    try {
+                        // Парсим время как московское (naive datetime из БД)
+                        // Формат: YYYY-MM-DDTHH:MM:SS или YYYY-MM-DDTHH:MM:SS.ffffff
+                        const parts = utcTimeStr.split('T');
+                        if (parts.length === 2) {
+                            const datePart = parts[0];
+                            const timePart = parts[1].split('.')[0]; // Убираем микросекунды
+                            const [year, month, day] = datePart.split('-');
+                            const [hours, minutes] = timePart.split(':');
+                            
+                            // Создаем Date объект, считая что это московское время (UTC+3)
+                            const moscowDate = new Date(Date.UTC(
+                                parseInt(year),
+                                parseInt(month) - 1,
+                                parseInt(day),
+                                parseInt(hours),
+                                parseInt(minutes),
+                                0
+                            ));
+                            
+                            // Вычитаем 3 часа (московское время) и добавляем локальное смещение
+                            const localDate = new Date(moscowDate.getTime() - (3 * 60 * 60 * 1000));
+                            
+                            const timeDisplay = element.querySelector('.time-display');
+                            if (timeDisplay) {
+                                const day = String(localDate.getDate()).padStart(2, '0');
+                                const month = String(localDate.getMonth() + 1).padStart(2, '0');
+                                const year = localDate.getFullYear();
+                                const hours = String(localDate.getHours()).padStart(2, '0');
+                                const minutes = String(localDate.getMinutes()).padStart(2, '0');
+                                timeDisplay.textContent = `${day}.${month}.${year} ${hours}:${minutes}`;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error converting time:', e);
+                    }
+                }
+            });
+            
+            // Обработка toggle через AJAX
+            const toggleForms = document.querySelectorAll('form[action*="/toggle"]');
+            toggleForms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    const formData = new FormData(form);
+                    const csrfToken = formData.get('csrf_token');
+                    
+                    fetch(form.action, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': csrfToken,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) {
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success('Статус обновлен');
+                            }
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 300);
+                        } else {
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error(result.error || 'Ошибка при обновлении статуса');
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        if (typeof toast !== 'undefined' && toast) {
+                            toast.error('Ошибка при обновлении статуса');
+                        }
+                    });
+                });
+            });
+            
             const confirmDeleteForms = document.querySelectorAll('.confirm-delete-form');
             confirmDeleteForms.forEach(form => {
                 form.addEventListener('submit', function(e) {
