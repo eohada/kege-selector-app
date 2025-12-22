@@ -93,11 +93,15 @@
             display: flex;
             gap: 0.5rem;
             flex-wrap: wrap;
+            align-items: center;
         }
         
         .reminder-actions .neo-button {
             font-size: 0.9rem;
             padding: 0.5rem 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
         }
         
         .empty-state {
@@ -271,7 +275,7 @@
                         
                         <div class="reminder-actions">
                             <button type="button" class="neo-button ghost" onclick="openEditModal({{ reminder.reminder_id }}, '{{ reminder.title|e }}', '{{ reminder.message|e if reminder.message else '' }}', {% if item.time_iso %}'{{ item.time_iso }}'{% else %}null{% endif %})">
-                                <img src="{{ url_for('static', filename='icons/icons8-редактировать-100.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm"> Редактировать
+                                <img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm"> Редактировать
                             </button>
                             
                             <form method="POST" action="{{ url_for('reminders.reminder_toggle', reminder_id=reminder.reminder_id) }}" style="display: inline;">
