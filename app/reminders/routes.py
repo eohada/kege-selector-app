@@ -162,23 +162,36 @@ def reminder_create():
 @login_required
 def reminder_toggle(reminder_id):
     """Переключение статуса выполнения напоминания"""
-    reminder = Reminder.query.filter_by(
-        reminder_id=reminder_id,
-        user_id=current_user.id
-    ).first_or_404()
-    
-    reminder.is_completed = not reminder.is_completed
-    db.session.commit()
-    
-    audit_logger.log(
-        action='toggle',
-        entity='Reminder',
-        entity_id=reminder.reminder_id,
-        status='success',
-        meta_data={'is_completed': reminder.is_completed}
-    )
-    
-    return jsonify({'success': True, 'is_completed': reminder.is_completed})
+    try:
+        reminder = Reminder.query.filter_by(
+            reminder_id=reminder_id,
+            user_id=current_user.id
+        ).first_or_404()
+        
+        reminder.is_completed = not reminder.is_completed
+        db.session.commit()
+        
+        audit_logger.log(
+            action='toggle',
+            entity='Reminder',
+            entity_id=reminder.reminder_id,
+            status='success',
+            meta_data={'is_completed': reminder.is_completed}
+        )
+        
+        # Если это AJAX запрос, возвращаем JSON
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': True, 'is_completed': reminder.is_completed})
+        
+        # Иначе редиректим обратно
+        flash('Статус напоминания обновлен', 'success')
+        return redirect(url_for('reminders.reminders_list'))
+    except Exception as e:
+        db.session.rollback()
+        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'error': str(e)}), 500
+        flash(f'Ошибка при обновлении статуса: {str(e)}', 'error')
+        return redirect(url_for('reminders.reminders_list'))
 
 @reminders_bp.route('/reminders/<int:reminder_id>/delete', methods=['POST'])
 @login_required

@@ -245,9 +245,10 @@
                                 <span class="status-badge overdue">Просрочено</span>
                                 {% endif %}
                             </div>
-                            <div class="reminder-time {% if reminder.reminder_time %}{% if reminder.reminder_time < now and not reminder.is_completed %}past{% elif reminder.reminder_time > now %}upcoming{% endif %}{% else %}no-time{% endif %}">
+                            <div class="reminder-time {% if reminder.reminder_time %}{% if reminder.reminder_time < now and not reminder.is_completed %}past{% elif reminder.reminder_time > now %}upcoming{% endif %}{% else %}no-time{% endif %}" 
+                                 {% if reminder.reminder_time %}data-utc-time="{{ reminder.reminder_time.isoformat() }}"{% endif %}>
                                 {% if reminder.reminder_time %}
-                                    {{ reminder.reminder_time.strftime('%d.%m.%Y %H:%M') }}
+                                    <span class="time-display">{{ reminder.reminder_time.strftime('%d.%m.%Y %H:%M') }}</span>
                                 {% else %}
                                     Без времени
                                 {% endif %}
