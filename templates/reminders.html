@@ -245,9 +245,9 @@
                                 <span class="status-badge overdue">Просрочено</span>
                                 {% endif %}
                             </div>
-                            <div class="reminder-time {% if reminder.reminder_time %}{% if reminder.reminder_time.replace(tzinfo=None) < now.replace(tzinfo=None) and not reminder.is_completed %}past{% elif reminder.reminder_time.replace(tzinfo=None) > now.replace(tzinfo=None) %}upcoming{% endif %}{% else %}no-time{% endif %}">
+                            <div class="reminder-time {% if reminder.reminder_time %}{% if reminder.reminder_time < now and not reminder.is_completed %}past{% elif reminder.reminder_time > now %}upcoming{% endif %}{% else %}no-time{% endif %}">
                                 {% if reminder.reminder_time %}
-                                    {{ reminder.reminder_time.strftime('%d.%m.%Y %H:%M') if reminder.reminder_time else 'Без времени' }}
+                                    {{ reminder.reminder_time.strftime('%d.%m.%Y %H:%M') }}
                                 {% else %}
                                     Без времени
                                 {% endif %}
