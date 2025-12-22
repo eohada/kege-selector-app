@@ -27,9 +27,9 @@
             </div>
         </section>
 
-        <section class="glass-panel" style="margin-bottom: 2rem; border-left: 4px solid var(--accent-2);">
-            <div style="background: rgba(31, 123, 255, 0.1); border-left: 3px solid var(--accent-2); border-radius: var(--radius-sm); padding: 1rem; color: var(--accent-2);">
-                <strong style="display: block; margin-bottom: 0.5rem;">Инструкция:</strong>
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div class="info-box">
+                <strong>Инструкция:</strong>
                 <ol style="margin: 0.5em 0 0 1.5em; list-style: decimal;">
                     <li>Убедитесь, что все ученики созданы в системе с правильными platform_id</li>
                     <li>Вставьте данные уроков в формате JSON ниже</li>
@@ -61,13 +61,13 @@
     "status": "completed"
   }
 ]'
-                              style="min-height: 400px; font-family: 'MonaspaceNeon', 'Courier New', monospace; font-size: 0.9em;"
+                              style="min-height: 400px;"
                               required></textarea>
                 </div>
                 
-                <div class="glass-panel" style="background: var(--surface-2); padding: 1.5rem; margin-bottom: 1.5rem;">
-                    <strong style="color: var(--text-primary); display: block; margin-bottom: 0.5rem;">Формат данных:</strong>
-                    <pre style="color: var(--accent-1); font-family: 'MonaspaceNeon', 'Courier New', monospace; font-size: 0.85em; white-space: pre-wrap; word-break: break-word; margin: 0;">[
+                <div class="info-box" style="margin-bottom: 1.5rem;">
+                    <strong>Формат данных:</strong>
+                    <pre>[
   {
     "platform_id": "ID ученика на платформе (например: Иванов Иван 123)",
     "date": "YYYY-MM-DD (например: 2024-09-23)",

@@ -499,6 +499,114 @@ body::after {
     opacity: 0.6;
 }
 
+.neo-textarea {
+    width: 100%;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--stroke-1);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    padding: 1rem 1.2rem;
+    font-size: 1rem;
+    font-family: var(--font-base);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    resize: vertical;
+    min-height: 150px;
+    line-height: 1.6;
+}
+
+.neo-textarea:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--surface-1);
+}
+
+.neo-textarea:focus {
+    outline: none;
+    border-color: rgba(0, 255, 213, 0.7);
+    box-shadow: 0 0 0 4px rgba(0, 255, 213, 0.2);
+    background: var(--surface-1);
+}
+
+.neo-textarea::placeholder {
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+/* Upload Area - Premium Minimalism */
+.upload-area {
+    border: 2px dashed var(--stroke-1);
+    border-radius: var(--radius-lg);
+    padding: 3rem 2rem;
+    text-align: center;
+    background: var(--surface-2);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    border-color: rgba(0, 255, 213, 0.5);
+    background: var(--surface-1);
+}
+
+.upload-area.dragover {
+    border-color: var(--accent-1);
+    background: rgba(0, 255, 213, 0.1);
+}
+
+.upload-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.6;
+}
+
+.upload-text {
+    color: var(--text-primary);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.upload-hint {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Info Box - Premium Minimalism */
+.info-box {
+    background: rgba(31, 123, 255, 0.12);
+    border-left: 3px solid var(--accent-2);
+    border-radius: var(--radius-md);
+    padding: 1.4rem;
+    margin-bottom: 1.5rem;
+    color: var(--accent-2);
+    line-height: 1.7;
+}
+
+.info-box strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+.info-box code {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.2em 0.5em;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-base);
+    font-size: 0.9em;
+    color: var(--accent-2);
+}
+
+.info-box pre {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(31, 123, 255, 0.3);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    margin-top: 0.8rem;
+    overflow-x: auto;
+    font-size: 0.85em;
+    line-height: 1.6;
+}
+
 .filters-actions {
     display: flex;
     gap: 0.8rem;
