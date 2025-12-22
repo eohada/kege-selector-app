@@ -797,21 +797,73 @@ def admin_audit():
                                  entities=[],
                                  users=users)
 
+        # Backward compatibility: раньше фильтр был только по user_id
+        actor = request.args.get('actor', '')
         user_id = request.args.get('user_id', '')
+        tester_id = request.args.get('tester_id', '')
+
+        if not actor:
+            if user_id:
+                actor = f"u:{user_id}"
+            elif tester_id:
+                actor = f"t:{tester_id}"
+
+        source = request.args.get('source', 'testers')  # testers | tester_users | tester_entities | creators | all
+        include_creator = request.args.get('include_creator', '') in ('1', 'true', 'on', 'yes')
+
         action = request.args.get('action', '')
         entity = request.args.get('entity', '')
         status = request.args.get('status', '')
         date_from = request.args.get('date_from', '')
         date_to = request.args.get('date_to', '')
 
-        query = AuditLog.query.filter(AuditLog.user_id.isnot(None))
+        query = AuditLog.query
 
-        if user_id:
-            try:
-                user_id_int = int(user_id)
-                query = query.filter(AuditLog.user_id == user_id_int)
-            except:
+        # По умолчанию показываем ВСЕ действия тестеров: User(role=tester) + tester entities.
+        # При желании можно включить создателя или вообще всё.
+        if source == 'testers':
+            query = query.filter(or_(
+                AuditLog.user.has(User.role == 'tester'),
+                AuditLog.tester_id.isnot(None)
+            ))
+            if not include_creator:
+                # include_creator влияет только на user-часть (creator)
                 pass
+        elif source == 'tester_users':
+            query = query.filter(AuditLog.user.has(User.role == 'tester'))
+        elif source == 'tester_entities':
+            query = query.filter(AuditLog.tester_id.isnot(None))
+        elif source == 'creators':
+            query = query.filter(AuditLog.user.has(User.role == 'creator'))
+        elif source == 'all':
+            # Без ограничений
+            pass
+        else:
+            # неизвестное значение — фоллбэк на testers
+            query = query.filter(or_(
+                AuditLog.user.has(User.role == 'tester'),
+                AuditLog.tester_id.isnot(None)
+            ))
+
+        if include_creator and source in ('testers', ''):
+            # Добавляем creator-логи к "testers" режиму
+            query = query.filter(or_(
+                AuditLog.user.has(User.role.in_(['tester', 'creator'])),
+                AuditLog.tester_id.isnot(None)
+            ))
+
+        if actor:
+            if actor.startswith('u:'):
+                try:
+                    user_id_int = int(actor.split(':', 1)[1])
+                    query = query.filter(AuditLog.user_id == user_id_int)
+                except Exception:
+                    pass
+            elif actor.startswith('t:'):
+                tid = actor.split(':', 1)[1].strip()
+                if tid:
+                    query = query.filter(AuditLog.tester_id == tid)
+
         if action:
             query = query.filter(AuditLog.action == action)
         if entity:
@@ -832,16 +884,60 @@ def admin_audit():
                 pass
 
         try:
-            total_events = AuditLog.query.filter(AuditLog.user_id.isnot(None)).count()
+            total_events = query.count()
         except Exception as e:
             logger.warning(f"Error getting total_events: {e}")
             db.session.rollback()
             total_events = 0
         
-        total_testers = User.query.count()
+        # Считаем уникальных “исполнителей” в текущей выборке
+        try:
+            distinct_user_ids = db.session.query(AuditLog.user_id).filter(
+                AuditLog.user_id.isnot(None)
+            )
+            distinct_tester_ids = db.session.query(AuditLog.tester_id).filter(
+                AuditLog.tester_id.isnot(None)
+            )
+            # Применяем те же ограничения по source/include_creator (кроме фильтра actor/action/etc)
+            base_for_distinct = AuditLog.query
+            if source == 'testers':
+                base_for_distinct = base_for_distinct.filter(or_(
+                    AuditLog.user.has(User.role == 'tester'),
+                    AuditLog.tester_id.isnot(None)
+                ))
+                if include_creator:
+                    base_for_distinct = AuditLog.query.filter(or_(
+                        AuditLog.user.has(User.role.in_(['tester', 'creator'])),
+                        AuditLog.tester_id.isnot(None)
+                    ))
+            elif source == 'tester_users':
+                base_for_distinct = base_for_distinct.filter(AuditLog.user.has(User.role == 'tester'))
+            elif source == 'tester_entities':
+                base_for_distinct = base_for_distinct.filter(AuditLog.tester_id.isnot(None))
+            elif source == 'creators':
+                base_for_distinct = base_for_distinct.filter(AuditLog.user.has(User.role == 'creator'))
+            elif source == 'all':
+                pass
+
+            distinct_user_ids = db.session.query(AuditLog.user_id).select_from(AuditLog).filter(
+                AuditLog.user_id.isnot(None)
+            )
+            distinct_tester_ids = db.session.query(AuditLog.tester_id).select_from(AuditLog).filter(
+                AuditLog.tester_id.isnot(None)
+            )
+            # Применяем условия base_for_distinct через подзапрос
+            base_subq = base_for_distinct.with_entities(AuditLog.id).subquery()
+            distinct_user_ids = distinct_user_ids.filter(AuditLog.id.in_(base_subq))
+            distinct_tester_ids = distinct_tester_ids.filter(AuditLog.id.in_(base_subq))
+
+            total_testers = distinct_user_ids.distinct().count() + distinct_tester_ids.distinct().count()
+        except Exception as e:
+            logger.warning(f"Error getting total_testers: {e}")
+            db.session.rollback()
+            total_testers = 0
         
         try:
-            error_count = AuditLog.query.filter(AuditLog.status == 'error', AuditLog.user_id.isnot(None)).count()
+            error_count = query.filter(AuditLog.status == 'error').count()
         except Exception as e:
             logger.warning(f"Error getting error_count: {e}")
             db.session.rollback()
@@ -849,14 +945,14 @@ def admin_audit():
 
         today_start = datetime.now(MOSCOW_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
         try:
-            today_events = AuditLog.query.filter(AuditLog.timestamp >= today_start, AuditLog.user_id.isnot(None)).count()
+            today_events = query.filter(AuditLog.timestamp >= today_start).count()
         except Exception as e:
             logger.warning(f"Error getting today_events: {e}")
             db.session.rollback()
             today_events = 0
 
         try:
-            actions = db.session.query(AuditLog.action).filter(AuditLog.user_id.isnot(None)).distinct().order_by(AuditLog.action).all()
+            actions = db.session.query(AuditLog.action).select_from(AuditLog).filter(AuditLog.id.in_(query.with_entities(AuditLog.id).subquery())).distinct().order_by(AuditLog.action).all()
             actions = [a[0] for a in actions if a[0]]
         except Exception as e:
             logger.warning(f"Error getting actions: {e}")
@@ -864,14 +960,16 @@ def admin_audit():
             actions = []
         
         try:
-            entities = db.session.query(AuditLog.entity).filter(AuditLog.user_id.isnot(None)).distinct().order_by(AuditLog.entity).all()
+            entities = db.session.query(AuditLog.entity).select_from(AuditLog).filter(AuditLog.id.in_(query.with_entities(AuditLog.id).subquery())).distinct().order_by(AuditLog.entity).all()
             entities = [e[0] for e in entities if e[0]]
         except Exception as e:
             logger.warning(f"Error getting entities: {e}")
             db.session.rollback()
             entities = []
         
-        users = User.query.order_by(User.id).all()
+        user_testers = User.query.filter(User.role == 'tester').order_by(User.id).all()
+        creator_users = User.query.filter(User.role == 'creator').order_by(User.id).all()
+        tester_entities = Tester.query.order_by(Tester.last_seen.desc()).all()
 
         page = request.args.get('page', 1, type=int)
         per_page = 50
@@ -885,7 +983,9 @@ def admin_audit():
             pagination = None
 
         filters = {
-            'user_id': user_id,
+            'actor': actor,
+            'source': source,
+            'include_creator': '1' if include_creator else '',
             'action': action,
             'entity': entity,
             'status': status,
@@ -898,20 +998,24 @@ def admin_audit():
                              pagination=pagination,
                              stats={
                                  'total_events': total_events,
-                                 'total_testers': 0,
+                                 'total_testers': total_testers,
                                  'error_count': error_count,
                                  'today_events': today_events
                              },
                              filters=filters,
                              actions=actions,
                              entities=entities,
-                             users=users)
+                             user_testers=user_testers,
+                             creator_users=creator_users,
+                             tester_entities=tester_entities)
     except Exception as e:
         logger.error(f"Error in admin_audit route: {e}", exc_info=True)
         db.session.rollback()
         flash(f'Ошибка при загрузке журнала аудита: {str(e)}', 'error')
         try:
-            users = User.query.order_by(User.id).all()
+            user_testers = User.query.filter(User.role == 'tester').order_by(User.id).all()
+            creator_users = User.query.filter(User.role == 'creator').order_by(User.id).all()
+            tester_entities = Tester.query.order_by(Tester.last_seen.desc()).all()
             return render_template('admin_audit.html',
                                  logs=[],
                                  pagination=None,
@@ -924,7 +1028,9 @@ def admin_audit():
                                  filters={},
                                  actions=[],
                                  entities=[],
-                                 users=users)
+                                 user_testers=user_testers,
+                                 creator_users=creator_users,
+                                 tester_entities=tester_entities)
         except Exception as e2:
             logger.error(f"Error in fallback: {e2}", exc_info=True)
             db.session.rollback()
@@ -1166,17 +1272,54 @@ def admin_audit_export():
             return redirect(url_for('admin.admin_audit'))
         
         query = AuditLog.query
+
+        actor = request.args.get('actor', '')
         user_id = request.args.get('user_id', '')
+        tester_id = request.args.get('tester_id', '')
+        if not actor:
+            if user_id:
+                actor = f"u:{user_id}"
+            elif tester_id:
+                actor = f"t:{tester_id}"
+
+        source = request.args.get('source', 'testers')
+        include_creator = request.args.get('include_creator', '') in ('1', 'true', 'on', 'yes')
+
         action = request.args.get('action', '')
         entity = request.args.get('entity', '')
         status = request.args.get('status', '')
 
-        if user_id:
-            try:
-                user_id_int = int(user_id)
-                query = query.filter(AuditLog.user_id == user_id_int)
-            except:
-                pass
+        if source == 'testers':
+            query = query.filter(or_(
+                AuditLog.user.has(User.role == 'tester'),
+                AuditLog.tester_id.isnot(None)
+            ))
+            if include_creator:
+                query = AuditLog.query.filter(or_(
+                    AuditLog.user.has(User.role.in_(['tester', 'creator'])),
+                    AuditLog.tester_id.isnot(None)
+                ))
+        elif source == 'tester_users':
+            query = query.filter(AuditLog.user.has(User.role == 'tester'))
+        elif source == 'tester_entities':
+            query = query.filter(AuditLog.tester_id.isnot(None))
+        elif source == 'creators':
+            query = query.filter(AuditLog.user.has(User.role == 'creator'))
+        elif source == 'all':
+            pass
+
+        if actor:
+            if actor.startswith('u:'):
+                try:
+                    user_id_int = int(actor.split(':', 1)[1])
+                    query = query.filter(AuditLog.user_id == user_id_int)
+                except Exception:
+                    pass
+            elif actor.startswith('t:'):
+                tid = actor.split(':', 1)[1].strip()
+                if tid:
+                    query = query.filter(AuditLog.tester_id == tid)
+
         if action:
             query = query.filter(AuditLog.action == action)
         if entity:
@@ -1193,17 +1336,30 @@ def admin_audit_export():
 
     output = StringIO()
     writer = csv.writer(output)
-    writer.writerow(['Время', 'Пользователь', 'Действие', 'Сущность', 'ID сущности', 'Статус', 'URL', 'Метод', 'IP', 'Длительность (мс)', 'Метаданные'])
+    writer.writerow(['Время', 'Исполнитель', 'Источник', 'Действие', 'Сущность', 'ID сущности', 'Статус', 'URL', 'Метод', 'IP', 'Длительность (мс)', 'Метаданные'])
 
     for log in logs:
-        user_name = None
+        actor_label = None
+        actor_source = None
         if log.user_id:
             user = User.query.get(log.user_id)
-            user_name = user.username if user else f'User {log.user_id}'
+            if user:
+                actor_label = user.username
+                actor_source = f"user:{user.role}"
+            else:
+                actor_label = f'User {log.user_id}'
+                actor_source = 'user:unknown'
+        elif log.tester_id:
+            actor_label = log.tester_name or 'Anonymous'
+            actor_source = f"tester_entity:{log.tester_id}"
+        else:
+            actor_label = log.tester_name or 'Unknown'
+            actor_source = 'unknown'
         
         writer.writerow([
             log.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-            user_name or 'Anonymous',
+            actor_label,
+            actor_source,
             log.action,
             log.entity or '',
             log.entity_id or '',

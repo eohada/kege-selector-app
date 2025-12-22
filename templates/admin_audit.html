@@ -138,11 +138,11 @@
                 </a>
             </div>
             <nav class="nav-links">
-                <a href="{{ url_for('main.dashboard') }}" class="nav-link">👥 Ученики</a>
-                <a href="{{ url_for('schedule.schedule') }}" class="nav-link">📅 Расписание</a>
-                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">💻 Генератор</a>
-                <a href="{{ url_for('admin.admin_audit') }}" class="nav-link active">📊 Логи</a>
-                <a href="{{ url_for('admin.admin_testers') }}" class="nav-link">👥 Тестировщики</a>
+                <a href="{{ url_for('main.dashboard') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="ui-icon ui-icon--sm">Ученики</a>
+                <a href="{{ url_for('schedule.schedule') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="ui-icon ui-icon--sm">Расписание</a>
+                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--sm">Генератор</a>
+                <a href="{{ url_for('admin.admin_audit') }}" class="nav-link active"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Логи" class="ui-icon ui-icon--sm">Логи</a>
+                <a href="{{ url_for('admin.admin_testers') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" alt="Тестировщики" class="ui-icon ui-icon--sm">Тестировщики</a>
                 <a href="{{ url_for('templates.templates_list') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="ui-icon ui-icon--sm">Шаблоны</a>
             </nav>
         </header>
@@ -155,7 +155,10 @@
                     ← К админ панели
                 </a>
             </div>
-            <h1 style="margin-bottom: 1rem;">Логи действий тестировщиков</h1>
+            <h1 style="margin-bottom: 1rem;">Журнал аудита</h1>
+            <div style="color: var(--text-muted); margin-bottom: 1.25rem;">
+                По умолчанию показаны <strong>все действия тестеров</strong>: user-тестеры + tester entities.
+            </div>
 
             <div class="audit-stats">
                 <div class="stat-card">
@@ -178,14 +181,46 @@
 
             <form method="GET" class="audit-filters">
                 <div class="neo-field">
-                    <label class="neo-label">Тестировщик</label>
-                    <select name="user_id" class="neo-select">
+                    <label class="neo-label">Исполнитель</label>
+                    <select name="actor" class="neo-select">
                         <option value="">Все</option>
-                        {% for user in users %}
-                        <option value="{{ user.id }}" {% if filters.user_id == user.id|string %}selected{% endif %}>
-                            {{ user.username }} ({{ user.get_role_display() }})
-                        </option>
-                        {% endfor %}
+                        {% if user_testers %}
+                        <optgroup label="User testers">
+                            {% for user in user_testers %}
+                            <option value="u:{{ user.id }}" {% if filters.actor == ('u:' ~ user.id) %}selected{% endif %}>
+                                {{ user.username }} (id={{ user.id }})
+                            </option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                        {% if tester_entities %}
+                        <optgroup label="Tester entities">
+                            {% for t in tester_entities %}
+                            <option value="t:{{ t.tester_id }}" {% if filters.actor == ('t:' ~ t.tester_id) %}selected{% endif %}>
+                                {{ t.name }} ({{ t.tester_id[:8] }}…)
+                            </option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                        {% if creator_users %}
+                        <optgroup label="Creators">
+                            {% for user in creator_users %}
+                            <option value="u:{{ user.id }}" {% if filters.actor == ('u:' ~ user.id) %}selected{% endif %}>
+                                {{ user.username }} (creator, id={{ user.id }})
+                            </option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Источник</label>
+                    <select name="source" class="neo-select">
+                        <option value="testers" {% if filters.source == 'testers' or not filters.source %}selected{% endif %}>Все тестеры</option>
+                        <option value="tester_users" {% if filters.source == 'tester_users' %}selected{% endif %}>Только user testers</option>
+                        <option value="tester_entities" {% if filters.source == 'tester_entities' %}selected{% endif %}>Только tester entities</option>
+                        <option value="creators" {% if filters.source == 'creators' %}selected{% endif %}>Только creators</option>
+                        <option value="all" {% if filters.source == 'all' %}selected{% endif %}>Вообще всё</option>
                     </select>
                 </div>
                 <div class="neo-field">
@@ -224,6 +259,12 @@
                     <label class="neo-label">Дата до</label>
                     <input type="datetime-local" name="date_to" value="{{ filters.date_to }}" class="neo-input">
                 </div>
+                <div class="neo-field" style="display:flex; align-items:flex-end;">
+                    <label style="display:inline-flex; gap:0.5rem; align-items:center; color: var(--text-muted); margin-bottom: 0.75rem;">
+                        <input type="checkbox" name="include_creator" value="1" {% if filters.include_creator %}checked{% endif %}>
+                        включить creator в “Все тестеры”
+                    </label>
+                </div>
                 <div class="neo-field" style="display: flex; align-items: flex-end;">
                     <button type="submit" class="neo-button accent">Применить</button>
                     <a href="{{ url_for('admin.admin_audit') }}" class="neo-button ghost" style="margin-left: 0.5rem;">Сбросить</a>
@@ -235,7 +276,7 @@
                     <thead>
                         <tr>
                             <th>Время</th>
-                            <th>Тестировщик</th>
+                            <th>Исполнитель</th>
                             <th>Действие</th>
                             <th>Сущность</th>
                             <th>Статус</th>
@@ -247,7 +288,15 @@
                         {% for log in logs %}
                         <tr>
                             <td>{{ log.timestamp.strftime('%d.%m.%Y %H:%M:%S') }}</td>
-                            <td>{% if log.user %}{{ log.user.username }} ({{ log.user.get_role_display() }}){% else %}{{ log.tester_name or 'Неизвестно' }}{% endif %}</td>
+                            <td>
+                                {% if log.user %}
+                                    {{ log.user.username }} ({{ log.user.get_role_display() }}, id={{ log.user.id }})
+                                {% elif log.tester_id %}
+                                    {{ log.tester_name or 'Anonymous' }} (entity: {{ log.tester_id[:8] }}…)
+                                {% else %}
+                                    {{ log.tester_name or 'Неизвестно' }}
+                                {% endif %}
+                            </td>
                             <td>{{ log.action }}</td>
                             <td>{{ log.entity or '-' }}</td>
                             <td>
@@ -297,7 +346,7 @@
 
             <div style="margin-top: 2rem; text-align: center;">
                 <a href="{{ url_for('admin.admin_audit_export', **filters) }}" class="neo-button accent">
-                    📥 Экспорт в CSV
+                    <img src="{{ url_for('static', filename='icons/EKSPORT.png') }}" alt="Экспорт" class="ui-icon ui-icon--sm">Экспорт в CSV
                 </a>
             </div>
         </section>

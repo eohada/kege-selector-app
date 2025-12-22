@@ -4,6 +4,8 @@ import logging
 import threading
 import queue
 import time
+import base64
+import urllib.parse
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from flask import request, session, has_request_context
@@ -86,22 +88,37 @@ class AuditLogger:
         try:
             from core.db_models import AuditLog, User, Tester
             
-            # Логируем только для авторизованных пользователей
             user_id = log_data.get('user_id')
-            if not user_id:
-                logger.debug("Skipping audit log: user not authenticated")
+            tester_id = log_data.get('tester_id')
+            tester_name = log_data.get('tester_name')
+
+            # Не пишем мусор: нужен либо авторизованный user_id, либо tester_id (entity)
+            if not user_id and not tester_id:
+                logger.debug("Skipping audit log: no user_id and no tester_id")
                 return
-            
-            # Проверяем, существует ли пользователь в базе
-            user = User.query.get(user_id)
-            if not user:
-                logger.warning(f"User {user_id} not found in database, skipping audit log")
-                return
+
+            # Если пришёл user_id — проверяем, что пользователь существует
+            if user_id:
+                user = User.query.get(user_id)
+                if not user:
+                    logger.warning(f"User {user_id} not found in database, skipping audit log")
+                    return
+
+            # Если пришёл tester_id — гарантируем, что entity существует/обновлена
+            if tester_id:
+                self._ensure_tester_exists(
+                    tester_id=tester_id,
+                    tester_name=tester_name,
+                    ip_address=log_data.get('ip_address'),
+                    user_agent=log_data.get('user_agent'),
+                    session_id=log_data.get('session_id'),
+                )
             
             audit_log = AuditLog()
             audit_log.timestamp = log_data.get('timestamp', moscow_now())
             audit_log.user_id = user_id
-            audit_log.tester_name = log_data.get('user_name')  # Имя авторизованного пользователя
+            audit_log.tester_id = tester_id
+            audit_log.tester_name = log_data.get('user_name') if user_id else tester_name
             audit_log.action = log_data.get('action', 'unknown')
             audit_log.entity = log_data.get('entity')
             audit_log.entity_id = log_data.get('entity_id')
@@ -120,7 +137,10 @@ class AuditLogger:
 
             db.session.add(audit_log)
             db.session.commit()
-            logger.debug(f"Audit log written: {audit_log.action} by {audit_log.tester_name} (user_id: {user_id})")
+            logger.debug(
+                f"Audit log written: {audit_log.action} by {audit_log.tester_name} "
+                f"(user_id: {user_id}, tester_id: {tester_id})"
+            )
         except (OperationalError, ProgrammingError) as e:
             # Ошибка структуры БД - возможно, таблица не обновлена
             db.session.rollback()
@@ -161,14 +181,22 @@ class AuditLogger:
                 user_id = current_user.id
                 user_name = current_user.username
             else:
-                # Для неавторизованных пользователей не логируем
-                return {
-                    'user_id': None,
-                    'user_name': None,
-                    'tester_id': None,
-                    'tester_name': None,
-                    'session_id': None
-                }
+                # Для неавторизованных разрешаем логирование только если пришёл tester UUID
+                tester_id = request.headers.get('X-Tester-UUID')
+
+                raw_name = request.headers.get('X-Tester-Name')
+                if raw_name:
+                    if request.headers.get('X-Tester-Name-Encoded') == 'base64':
+                        try:
+                            decoded = base64.b64decode(raw_name).decode('utf-8', errors='replace')
+                            tester_name = urllib.parse.unquote(decoded)
+                        except Exception:
+                            tester_name = None
+                    else:
+                        tester_name = raw_name
+
+                if not tester_name:
+                    tester_name = 'Anonymous'
             
             session_id = session.get('_id', request.cookies.get('session'))
 
@@ -180,11 +208,39 @@ class AuditLogger:
             'session_id': session_id
         }
 
-    def _ensure_tester_exists(self, tester_id: str, tester_name: Optional[str]):
-        """Устаревший метод - больше не используется, так как логируем только авторизованных пользователей"""
-        # Метод оставлен для обратной совместимости, но не выполняет никаких действий
-        # Логирование теперь происходит только для авторизованных пользователей через Flask-Login
-        pass
+    def _ensure_tester_exists(
+        self,
+        tester_id: str,
+        tester_name: Optional[str],
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        session_id: Optional[str] = None,
+    ):
+        """Создаёт/обновляет tester entity (для логов без авторизации)."""
+        try:
+            tester = Tester.query.get(tester_id)
+            if not tester:
+                tester = Tester(tester_id=tester_id, name=(tester_name or 'Anonymous'))
+                db.session.add(tester)
+            else:
+                # Обновляем имя, если пришло более “сильное” чем Anonymous
+                if tester_name and tester_name != 'Anonymous' and tester.name != tester_name:
+                    tester.name = tester_name
+
+            tester.last_seen = moscow_now()
+            if not tester.first_seen:
+                tester.first_seen = moscow_now()
+            if ip_address:
+                tester.ip_address = ip_address
+            if user_agent:
+                tester.user_agent = user_agent
+            if session_id:
+                tester.session_id = session_id[:100] if len(session_id) > 100 else session_id
+
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.warning(f"Failed to ensure tester exists ({tester_id}): {e}")
 
     def _get_request_info(self) -> Dict[str, Any]:
 
@@ -203,10 +259,8 @@ class AuditLogger:
             status: str = 'success', metadata: Optional[Dict[str, Any]] = None,
             duration_ms: Optional[int] = None):
 
-        # Логируем только для авторизованных пользователей
-        from flask_login import current_user
-        if not has_request_context() or not current_user.is_authenticated:
-            logger.debug(f"Skipping audit log for action '{action}': user not authenticated")
+        if not has_request_context():
+            logger.debug(f"Skipping audit log for action '{action}': no request context")
             return
 
         # Ленивая инициализация worker thread при первом вызове
@@ -220,9 +274,9 @@ class AuditLogger:
             user_info = self._get_tester_info()
             request_info = self._get_request_info()
 
-            # Проверяем, что есть user_id (пользователь авторизован)
-            if not user_info.get('user_id'):
-                logger.debug(f"Skipping audit log for action '{action}': no user_id")
+            # Пишем только если есть user_id (авторизован) или tester_id (tester entity)
+            if not user_info.get('user_id') and not user_info.get('tester_id'):
+                logger.debug(f"Skipping audit log for action '{action}': no user_id and no tester_id")
                 return
 
             full_metadata = metadata or {}
@@ -233,8 +287,8 @@ class AuditLogger:
                 'timestamp': moscow_now(),
                 'user_id': user_info.get('user_id'),
                 'user_name': user_info.get('user_name'),
-                'tester_id': user_info.get('tester_id'),  # Оставляем для обратной совместимости
-                'tester_name': user_info.get('user_name'),  # Используем имя пользователя
+                'tester_id': user_info.get('tester_id'),
+                'tester_name': user_info.get('tester_name') or user_info.get('user_name'),
                 'action': action,
                 'entity': entity,
                 'entity_id': entity_id,
@@ -249,7 +303,10 @@ class AuditLogger:
             }
 
             self.log_queue.put(log_data)
-            logger.debug(f"Audit log queued: {action} by {user_info.get('user_name', 'Unknown')}")
+            logger.debug(
+                f"Audit log queued: {action} by "
+                f"{user_info.get('user_name') or user_info.get('tester_name') or 'Unknown'}"
+            )
         except Exception as e:
             logger.error(f"Error queuing audit log: {e}", exc_info=True)
 
