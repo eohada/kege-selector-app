@@ -349,13 +349,18 @@
 
   const onPointerUp = async (e) => {
     if (!drag) return;
-    const { el, dayCol } = drag;
+
+    // Важно: сразу обрываем drag-состояние, чтобы карточка НЕ ехала за мышью во время await.
+    const d = drag;
+    drag = null;
+
+    const { el, dayCol } = d;
     el.classList.remove('is-dragging');
+    try { el.releasePointerCapture?.(e.pointerId); } catch (_) {}
 
     // If it was a click (no move) — open inspector
-    if (!drag.moved) {
+    if (!d.moved) {
       openInspector(el);
-      drag = null;
       return;
     }
 
@@ -378,14 +383,22 @@
       if (window.toast) window.toast.error(err.message || 'Ошибка переноса');
       // rollback by reloading is safer for now
       setTimeout(() => window.location.reload(), 600);
-    } finally {
-      drag = null;
     }
+  };
+
+  const onPointerCancel = (e) => {
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    const { el } = d;
+    el.classList.remove('is-dragging');
+    try { el.releasePointerCapture?.(e.pointerId); } catch (_) {}
   };
 
   document.addEventListener('pointerdown', onPointerDown, true);
   document.addEventListener('pointermove', onPointerMove, true);
   document.addEventListener('pointerup', onPointerUp, true);
+  document.addEventListener('pointercancel', onPointerCancel, true);
 
   // Линия текущего времени + автоскролл
   const tzName = tz === 'tomsk' ? 'Asia/Tomsk' : 'Europe/Moscow';
