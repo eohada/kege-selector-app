@@ -516,21 +516,21 @@
     {% set is_exam = assignment_type == 'exam' %}
     {% if is_homework %}
         {% set assignment_title = 'Домашнее задание' %}
-        {% set assignment_icon = '📝' %}
+        {% set assignment_icon = url_for('static', filename='icons/dz.png') %}
         {% set assignment_hint = 'Задания, собранные здесь, попадут в домашнее задание и сохранятся для проверки.' %}
     {% elif is_exam %}
         {% set assignment_title = 'Проверочная работа' %}
-        {% set assignment_icon = '📊' %}
+        {% set assignment_icon = url_for('static', filename='icons/icons8-bar-chart-100.png') %}
         {% set assignment_hint = 'Проверочная работа влияет на статистику в два раза сильнее.' %}
     {% else %}
         {% set assignment_title = 'Классная работа' %}
-        {% set assignment_icon = '🏫' %}
+        {% set assignment_icon = url_for('static', filename='icons/klassrab.png') %}
         {% set assignment_hint = 'Эти задания используются прямо на уроке и также исключаются из будущего ДЗ.' %}
     {% endif %}
     
     {% if active_lesson %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        🎧 Урок идет: {{ active_student.name }}
+        <img src="{{ url_for('static', filename='icons/comfort.png') }}" alt="Урок" class="ui-icon ui-icon--sm">Урок идет: {{ active_student.name }}
     </div>
     <div class="now-playing-panel" id="lessonMenu">
         <div class="hero-eyebrow">текущий урок</div>
@@ -544,7 +544,7 @@
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
                 <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
             </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
         </div>
     </div>
     <script>
@@ -566,52 +566,8 @@
     {% endif %}
 
     <div class="app-shell">
-        <header class="nav-primary">
-            <div class="nav-brand">
-                {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
-                    {{ current_user.username[0].upper() }}
-                </a>
-                {% endif %}
-                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
-                    <div class="brand-mark">LOGO</div>
-                    <div class="brand-caption">Слот под фирменный знак</div>
-                </a>
-            </div>
-            {% include '_mobile_menu.html' %}
-            <nav class="nav-links"> <!-- Панель ссылок -->
-                <a href="{{ url_for('main.dashboard') }}" class="nav-link"> <!-- Переход к ученикам -->
-                    <span class="nav-link-content"> <!-- Контейнер -->
-                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon"> <!-- Иконка -->
-                        <span class="nav-link-label">Ученики</span> <!-- Подпись -->
-                    </span>
-                </a>
-                <a href="{{ url_for('schedule.schedule') }}" class="nav-link"> <!-- Переход к расписанию -->
-                    <span class="nav-link-content"> <!-- Контейнер -->
-                        <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon"> <!-- Иконка -->
-                        <span class="nav-link-label">Расписание</span> <!-- Подпись -->
-                    </span>
-                </a>
-                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link"> <!-- Переход к генератору -->
-                    <span class="nav-link-content"> <!-- Контейнер -->
-                        <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon"> <!-- Иконка -->
-                        <span class="nav-link-label">Генератор</span> <!-- Подпись -->
-                    </span>
-                </a>
-                <a href="{{ url_for('main.update_plans') }}" class="nav-link"> <!-- Переход к планам -->
-                    <span class="nav-link-content"> <!-- Контейнер -->
-                        <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Планы" class="nav-link-icon"> <!-- Иконка -->
-                        <span class="nav-link-label">Планы</span> <!-- Подпись -->
-                    </span>
-                </a>
-                <a href="{{ url_for('templates.templates_list') }}" class="nav-link"> <!-- Переход к шаблонам -->
-                    <span class="nav-link-content"> <!-- Контейнер -->
-                        <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon"> <!-- Иконка -->
-                        <span class="nav-link-label">Шаблоны</span> <!-- Подпись -->
-                    </span>
-                </a>
-            </nav>
-        </header>
+        {% set active_page = 'dashboard' %}
+        {% include '_primary_nav.html' %}
 
         {# Flash messages будут показаны через toast #}
 
@@ -623,7 +579,7 @@
                     </a>
                 </div>
                 <p class="hero-eyebrow">{{ assignment_title.lower() }}</p>
-                <h1 class="hero-title">{{ assignment_icon }} {{ assignment_title }}</h1>
+                <h1 class="hero-title"><img src="{{ assignment_icon }}" alt="{{ assignment_title }}" class="ui-icon ui-icon--md"> {{ assignment_title }}</h1>
                 <p class="hero-subtitle">{{ student.name }}</p>
             </div>
         </section>
@@ -770,7 +726,7 @@
             
             {% if is_homework %}
             <section class="result-panel">
-                <h3>📊 Результат выполнения ДЗ</h3>
+                <h3><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Результат" class="ui-icon ui-icon--sm">Результат выполнения ДЗ</h3>
                 <div class="result-grid">
                     <div class="result-field">
                         <label for="homework_result_percent">Процент выполнения (%)</label>
@@ -1395,7 +1351,7 @@
                                 🎲 Сгенерировать новые задания
                             </button>
                             <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost" style="text-decoration: none; width: 100%; max-width: 300px; text-align: center;">
-                                📚 Перейти в библиотеку
+                                <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="ui-icon ui-icon--sm">Перейти в библиотеку
                             </a>
                         </div>
                     </div>
@@ -1432,7 +1388,7 @@
                     margin-bottom: 1rem;
                 " onmouseover="this.style.borderColor='var(--accent-1)'; this.style.background='var(--surface-2)'; this.style.transform='scale(1.02)'" 
                    onmouseout="this.style.borderColor='var(--text-primary)'; this.style.background='var(--surface-1)'; this.style.transform='scale(1)'">
-                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">📝</div>
+                    <div style="margin-bottom: 0.5rem;"><img src="{{ url_for('static', filename='icons/dz.png') }}" alt="ДЗ" class="ui-icon ui-icon--md ui-icon--only"></div>
                     <h3 style="margin: 0; font-size: 1.1em; font-weight: 700; color: var(--text-primary);">Создать вручную</h3>
                     <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9em;">Конструктор для ручного добавления заданий</p>
                 </div>
@@ -1603,7 +1559,7 @@
             
             <div style="margin-bottom: 1.5rem;">
                 <a href="#" id="manualCreateBtn" class="neo-button outline" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem; width: 100%;">
-                    <span style="font-size: 1.2em;">📝</span>
+                    <span><img src="{{ url_for('static', filename='icons/dz.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm ui-icon--only"></span>
                     <span style="font-weight: 600;">Создать задания вручную</span>
                 </a>
             </div>
@@ -1611,7 +1567,7 @@
             <div id="templatesList"></div>
             
             <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--stroke-1); text-align: center;">
-                <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost" style="text-decoration: none;">📚 Управление шаблонами</a>
+                <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="ui-icon ui-icon--sm">Управление шаблонами</a>
             </div>
         </div>
     </div>

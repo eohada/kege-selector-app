@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎓 Режим урока: {{ student.name }}</title>
+    <title>Режим урока: {{ student.name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
@@ -22,7 +22,7 @@
         }
         
         .lesson-mode-header::before {
-            content: '🎓 РЕЖИМ УРОКА';
+            content: 'РЕЖИМ УРОКА';
             position: absolute;
             top: 1rem;
             right: 1rem;
@@ -107,7 +107,6 @@
         }
         
         .quick-action-icon {
-            font-size: 2.5em;
             margin-bottom: 0.5em;
         }
         
@@ -149,7 +148,7 @@
         }
         
         .current-lesson-banner::before {
-            content: '🎓 УРОК ИДЕТ';
+            content: 'УРОК ИДЕТ';
             position: absolute;
             top: 1rem;
             right: 1rem;
@@ -195,7 +194,7 @@
     {% include '_active_lesson_banner.html' %}
     
     <div class="exit-lesson-mode">
-        <a href="{{ url_for('main.dashboard') }}" class="neo-button danger">✕ Выйти из режима урока</a>
+        <a href="{{ url_for('main.dashboard') }}" class="neo-button danger"><img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Выйти" class="ui-icon ui-icon--sm">Выйти из режима урока</a>
     </div>
     
     <div class="app-shell">
@@ -211,16 +210,16 @@
                     {% endif %}
                     <div class="student-stats">
                         {% if student.target_score %}
-                        <div>🎯 Цель: <span style="color: var(--accent-1); font-weight: 600;">{{ student.target_score }}</span> баллов</div>
+                        <div><img src="{{ url_for('static', filename='icons/icons8-мишень-100.png') }}" alt="Цель" class="ui-icon ui-icon--sm"> Цель: <span style="color: var(--accent-1); font-weight: 600;">{{ student.target_score }}</span> баллов</div>
                         {% endif %}
                         {% if student.deadline %}
-                        <div>⏰ Срок: <span style="color: var(--accent-1); font-weight: 600;">{{ student.deadline }}</span></div>
+                        <div><img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Срок" class="ui-icon ui-icon--sm"> Срок: <span style="color: var(--accent-1); font-weight: 600;">{{ student.deadline }}</span></div>
                         {% endif %}
                         {% if student.diagnostic_level %}
-                        <div>📊 Диагностика: <span style="color: var(--accent-1); font-weight: 600;">{{ student.diagnostic_level }}</span></div>
+                        <div><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Диагностика" class="ui-icon ui-icon--sm"> Диагностика: <span style="color: var(--accent-1); font-weight: 600;">{{ student.diagnostic_level }}</span></div>
                         {% endif %}
                         {% if student.overall_rating %}
-                        <div>⭐ Оценка: <span style="color: var(--accent-1); font-weight: 600;">{{ student.overall_rating }}</span></div>
+                        <div><img src="{{ url_for('static', filename='icons/STAR.png') }}" alt="Оценка" class="ui-icon ui-icon--sm"> Оценка: <span style="color: var(--accent-1); font-weight: 600;">{{ student.overall_rating }}</span></div>
                         {% endif %}
                     </div>
                 </div>
@@ -236,9 +235,9 @@
             {% if current_lesson.lesson_type == 'exam' %}
             <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проверочный" class="ui-icon ui-icon--sm">Проверочный урок</div>
             {% elif current_lesson.lesson_type == 'introductory' %}
-            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> 👋 Вводный урок</div>
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" alt="Вводный" class="ui-icon ui-icon--sm">Вводный урок</div>
             {% else %}
-            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> 📚 Обычный урок</div>
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Обычный" class="ui-icon ui-icon--sm">Обычный урок</div>
             {% endif %}
             {% if current_lesson.topic %}
             <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тема:</strong> {{ current_lesson.topic }}</div>
@@ -257,14 +256,14 @@
         
         {% if upcoming_lesson and not current_lesson %}
         <section class="upcoming-lesson-banner">
-            <h3>📅 Ближайший запланированный урок</h3>
+            <h3><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="План" class="ui-icon ui-icon--sm">Ближайший запланированный урок</h3>
             <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Дата:</strong> {{ upcoming_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
             {% if upcoming_lesson.lesson_type == 'exam' %}
             <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проверочный" class="ui-icon ui-icon--sm">Проверочный урок</div>
             {% elif upcoming_lesson.lesson_type == 'introductory' %}
-            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> 👋 Вводный урок</div>
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" alt="Вводный" class="ui-icon ui-icon--sm">Вводный урок</div>
             {% else %}
-            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> 📚 Обычный урок</div>
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Обычный" class="ui-icon ui-icon--sm">Обычный урок</div>
             {% endif %}
             {% if upcoming_lesson.topic %}
             <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тема:</strong> {{ upcoming_lesson.topic }}</div>
@@ -273,14 +272,14 @@
             <div style="margin-top: 0.5em; color: var(--text-primary);"><strong>Домашнее задание:</strong> {{ upcoming_lesson.homework }}</div>
             {% endif %}
             <form method="POST" action="{{ url_for('lessons.lesson_start', lesson_id=upcoming_lesson.lesson_id) }}" style="margin-top: 1rem;">
-                <button type="submit" class="neo-button accent">🎓 Начать урок</button>
+                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Начать" class="ui-icon ui-icon--sm">Начать урок</button>
             </form>
         </section>
         {% endif %}
         
         <section class="quick-actions">
             <a href="{{ url_for('kege_generator.kege_generator') }}" class="quick-action-card">
-                <div class="quick-action-icon">💻</div>
+                <div class="quick-action-icon"><img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--md ui-icon--only"></div>
                 <div class="quick-action-title">Генератор КЕГЭ</div>
                 <div class="quick-action-desc">Подобрать задания для практики</div>
             </a>
@@ -292,7 +291,7 @@
             </a>
             
             <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="quick-action-card">
-                <div class="quick-action-icon">👤</div>
+                <div class="quick-action-icon"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Профиль" class="ui-icon ui-icon--md ui-icon--only"></div>
                 <div class="quick-action-title">Профиль</div>
                 <div class="quick-action-desc">Открыть полный профиль ученика</div>
             </a>
@@ -316,17 +315,17 @@
                                 {% if lesson.topic %} - {{ lesson.topic }}{% endif %}
                             </div>
                             <div style="color: var(--text-muted); font-size: 0.9em;">
-                                ⏱️ {{ lesson.duration }} минут | 
+                                <img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Время" class="ui-icon ui-icon--sm"> {{ lesson.duration }} минут | 
                                 {% if lesson.status == 'completed' %}<img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проведен" class="ui-icon ui-icon--sm">Проведен
-                                {% elif lesson.status == 'planned' %}📅 Запланирован
+                                {% elif lesson.status == 'planned' %}<img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="План" class="ui-icon ui-icon--sm">Запланирован
                                 {% elif lesson.status == 'cancelled' %}<img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Отменен" class="ui-icon ui-icon--sm">Отменен
-                                {% else %}🔄 {{ lesson.status }}{% endif %}
+                                {% else %}<img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" alt="Статус" class="ui-icon ui-icon--sm"> {{ lesson.status }}{% endif %}
                             </div>
                         </div>
                         <div style="display: flex; gap: 0.5em; flex-wrap: wrap;">
                             <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.9em; padding: 0.5em 1em;"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm">Редактировать</a>
                             {% if lesson.homework_tasks %}
-                            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline" style="font-size: 0.9em; padding: 0.5em 1em;">📝 ДЗ</a>
+                            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline" style="font-size: 0.9em; padding: 0.5em 1em;"><img src="{{ url_for('static', filename='icons/dz.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm">ДЗ</a>
                             {% endif %}
                         </div>
                     </div>
