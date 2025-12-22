@@ -48,8 +48,21 @@ def reminders_list():
         # Убираем timezone для сравнения в шаблоне
         now_naive = now.replace(tzinfo=None) if now.tzinfo else now
         
+        # Подготавливаем данные для отображения времени в локальном часовом поясе
+        reminders_data = []
+        for reminder in reminders:
+            reminder_dict = {
+                'reminder': reminder,
+                'time_iso': None
+            }
+            if reminder.reminder_time:
+                # Создаем ISO строку с московским timezone для правильной конвертации на клиенте
+                reminder_time_moscow = reminder.reminder_time.replace(tzinfo=MOSCOW_TZ) if not reminder.reminder_time.tzinfo else reminder.reminder_time
+                reminder_dict['time_iso'] = reminder_time_moscow.isoformat()
+            reminders_data.append(reminder_dict)
+        
         return render_template('reminders.html', 
-                             reminders=reminders,
+                             reminders_data=reminders_data,
                              show_completed=show_completed,
                              now=now_naive)
     except Exception as e:
