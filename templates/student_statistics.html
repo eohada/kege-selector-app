@@ -105,7 +105,7 @@
             <div style="margin-top: 2rem;">
                 <div id="statisticsEditor" style="display: grid; gap: 1rem;">
                     {% for item in chart_data %}
-                    <div class="stat-edit-item" data-task-number="{{ item.task_number }}" style="display: grid; grid-template-columns: 120px 1fr 1fr auto; gap: 1rem; align-items: center; padding: 1rem; background: var(--bg-2); border-radius: 8px;">
+                    <div class="stat-edit-item" data-task-number="{{ item.task_number }}">
                         <div>
                             <strong>Задание {{ item.task_number }}</strong>
                             <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 0.25rem;">
@@ -119,10 +119,9 @@
                             <input type="number" 
                                    min="0" 
                                    step="1"
-                                   class="stat-input-correct" 
+                                   class="stat-input-correct neo-input" 
                                    value="0"
-                                   placeholder="Сколько добавить"
-                                   style="width: 100%; padding: 0.5rem; border: 1px solid var(--stroke-1); border-radius: 4px; background: var(--bg-1); color: var(--text-primary);">
+                                   placeholder="Сколько добавить">
                             {% if item.manual_correct > 0 %}
                             <small style="display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.85em;">
                                 Уже добавлено: {{ item.manual_correct }}
@@ -136,10 +135,9 @@
                             <input type="number" 
                                    min="0" 
                                    step="1"
-                                   class="stat-input-incorrect" 
+                                   class="stat-input-incorrect neo-input" 
                                    value="0"
-                                   placeholder="Сколько добавить"
-                                   style="width: 100%; padding: 0.5rem; border: 1px solid var(--stroke-1); border-radius: 4px; background: var(--bg-1); color: var(--text-primary);">
+                                   placeholder="Сколько добавить">
                             {% if item.manual_incorrect > 0 %}
                             <small style="display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.85em;">
                                 Уже добавлено: {{ item.manual_incorrect }}
@@ -149,9 +147,8 @@
                         <div>
                             <button type="button" 
                                     class="neo-button accent stat-save-btn" 
-                                    data-task-number="{{ item.task_number }}"
-                                    style="white-space: nowrap;">
-                                💾 Сохранить
+                                    data-task-number="{{ item.task_number }}">
+                                <img src="{{ url_for('static', filename='icons/icons8-сохранить-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm"> Сохранить
                             </button>
                         </div>
                     </div>
