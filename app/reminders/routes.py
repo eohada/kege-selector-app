@@ -110,6 +110,29 @@ def reminders_list():
 @login_required
 def reminder_create():
     """Создание нового напоминания"""
+    # Принудительно проверяем и применяем миграцию для reminder_time перед созданием
+    try:
+        inspector = inspect(db.engine)
+        table_names = inspector.get_table_names()
+        reminders_table = 'Reminders' if 'Reminders' in table_names else ('reminders' if 'reminders' in table_names else None)
+        
+        if reminders_table:
+            db_url = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
+            if 'postgresql' in db_url or 'postgres' in db_url:
+                result = db.session.execute(text("""
+                    SELECT is_nullable 
+                    FROM information_schema.columns 
+                    WHERE table_name = :table_name AND column_name = 'reminder_time'
+                """), {'table_name': reminders_table})
+                row = result.fetchone()
+                if row and row[0] == 'NO':
+                    db.session.execute(text(f'ALTER TABLE "{reminders_table}" ALTER COLUMN reminder_time DROP NOT NULL'))
+                    db.session.commit()
+                    logger.info(f"Made reminder_time nullable in {reminders_table} before create")
+    except Exception as e:
+        logger.warning(f"Could not check/update reminder_time nullable before create: {e}")
+        db.session.rollback()
+    
     try:
         data = request.get_json() if request.is_json else {}
         
