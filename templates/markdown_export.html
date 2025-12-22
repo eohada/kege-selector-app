@@ -54,27 +54,8 @@
     {% include '_active_lesson_banner.html' %}
     
     <div class="app-shell">
-        <header class="nav-primary">
-            <div class="nav-brand">
-                {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
-                    {{ current_user.username[0].upper() }}
-                </a>
-                {% endif %}
-                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
-                    <div class="brand-mark">LOGO</div>
-                    <div class="brand-caption">Слот под фирменный знак</div>
-                </a>
-            </div>
-            {% include '_mobile_menu.html' %}
-            <nav class="nav-links">
-                <a href="{{ url_for('main.dashboard') }}" class="nav-link">👥 Ученики</a>
-                <a href="{{ url_for('schedule.schedule') }}" class="nav-link">📅 Расписание</a>
-                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">💻 Генератор</a>
-                <a href="{{ url_for('main.update_plans') }}" class="nav-link">📝 Планы</a>
-                <a href="{{ url_for('templates.templates_list') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="ui-icon ui-icon--sm">Шаблоны</a>
-            </nav>
-        </header>
+        {% set active_page = 'dashboard' %}
+        {% include '_primary_nav.html' %}
 
         {% include '_ux_enhancements.html' %}
 
@@ -82,18 +63,18 @@
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <div>
                     <p class="hero-eyebrow">экспорт в markdown</p>
-                    <h1 class="hero-title">📄 Экспорт в Markdown (Obsidian)</h1>
+                    <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Экспорт" class="ui-icon ui-icon--md"> Экспорт в Markdown (Obsidian)</h1>
                 </div>
                 <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">← Назад к ДЗ</a>
             </div>
         </section>
         
         <div class="info-box">
-            💡 Скопируй текст ниже и вставь в Obsidian. Блоки <code style="background: var(--surface-2); padding: 0.2em 0.4em; border-radius: 4px; font-family: 'MonaspaceNeon', 'Courier New', monospace;">spoiler-block</code> будут работать как скрытые спойлеры.
+            Скопируй текст ниже и вставь в Obsidian. Блоки <code style="background: var(--surface-2); padding: 0.2em 0.4em; border-radius: 4px; font-family: 'MonaspaceNeon', 'Courier New', monospace;">spoiler-block</code> будут работать как скрытые спойлеры.
         </div>
         
         <section class="markdown-container">
-            <button class="neo-button accent copy-btn" onclick="copyToClipboard()" id="copyBtn">📋 Копировать</button>
+            <button class="neo-button accent copy-btn" onclick="copyToClipboard()" id="copyBtn"><img src="{{ url_for('static', filename='icons/icons8-копировать-100.png') }}" alt="Копировать" class="ui-icon ui-icon--sm"> Копировать</button>
             <div class="markdown-text" id="markdownText">{{ markdown_content }}</div>
         </section>
     </div>
@@ -109,7 +90,7 @@
                 button.classList.add('ghost');
                 
                 setTimeout(() => {
-                    button.textContent = '📋 Копировать';
+                    button.innerHTML = '<img src="{{ url_for(\'static\', filename=\'icons/icons8-копировать-100.png\') }}" alt="Копировать" class="ui-icon ui-icon--sm"> Копировать';
                     button.classList.remove('ghost');
                     button.classList.add('accent');
                 }, 2000);
