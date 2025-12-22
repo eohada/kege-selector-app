@@ -67,8 +67,9 @@ def schedule():
     # Премиум UX: по умолчанию рабочий диапазон, но можно расширить через query
     slot_minutes = request.args.get('slot', 30, type=int)
     slot_minutes = slot_minutes if slot_minutes in (15, 30, 60) else 30
-    day_start_hour = request.args.get('start', 7, type=int)
-    day_end_hour = request.args.get('end', 22, type=int)
+    # По умолчанию: полные сутки, как ты просил. Пользователь может сузить диапазон через query.
+    day_start_hour = request.args.get('start', 0, type=int)
+    day_end_hour = request.args.get('end', 23, type=int)
     if day_start_hour < 0:
         day_start_hour = 0
     if day_end_hour > 23:
@@ -188,6 +189,8 @@ def schedule():
                 'grade': event['grade'],
                 'status': event['status'],
                 'status_code': event['status_code'],
+                'lesson_type': event.get('lesson_type'),
+                'topic': event.get('topic'),
                 'start_time': event['start_time'],
                 'profile_url': event['profile_url'],
                 'lesson_url': url_for('lessons.lesson_view', lesson_id=event['lesson_id']),
@@ -323,6 +326,8 @@ def schedule_create_lesson():
                     'student_id': student.student_id,
                     'status': 'Запланирован',
                     'status_code': l.status,
+                    'lesson_type': l.lesson_type,
+                    'topic': l.topic,
                     'start_time': dt_display.strftime('%H:%M'),
                     'start_total': dt_display.hour * 60 + dt_display.minute,
                     'duration_minutes': int(l.duration or 60),
@@ -457,4 +462,92 @@ def schedule_set_status(lesson_id: int):
     except Exception as e:
         db.session.rollback()
         audit_logger.log_error(action='set_lesson_status', entity='Lesson', error=str(e))
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@schedule_bp.route('/schedule/api/lesson/<int:lesson_id>/update', methods=['POST'])
+@login_required
+def schedule_update_lesson(lesson_id: int):
+    """Инлайн-редактирование ключевых полей урока (AJAX)."""
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Некорректный формат запроса'}), 400
+
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+
+    duration = data.get('duration')
+    lesson_type = data.get('lesson_type')
+    topic = data.get('topic')
+
+    # duration
+    if duration is not None:
+        try:
+            duration = int(duration)
+        except Exception:
+            return jsonify({'success': False, 'error': 'duration должен быть числом'}), 400
+        if duration < 30 or duration > 240 or (duration % 30) != 0:
+            return jsonify({'success': False, 'error': 'duration: 30..240 с шагом 30'}), 400
+
+    # lesson_type
+    if lesson_type is not None:
+        lesson_type = str(lesson_type).strip()
+        if lesson_type not in ('regular', 'exam', 'introductory'):
+            return jsonify({'success': False, 'error': 'Некорректный lesson_type'}), 400
+
+    # topic
+    if topic is not None:
+        topic = str(topic).strip()
+        if len(topic) > 300:
+            return jsonify({'success': False, 'error': 'topic слишком длинная'}), 400
+
+    # Пересечение по времени учитываем только если меняется duration
+    if duration is not None:
+        if _student_has_overlap(lesson.student_id, lesson.lesson_date, duration, exclude_lesson_id=lesson.lesson_id):
+            return jsonify({'success': False, 'error': 'Есть пересечение по времени для этого ученика'}), 409
+
+    try:
+        old = {
+            'duration': lesson.duration,
+            'lesson_type': lesson.lesson_type,
+            'topic': lesson.topic,
+        }
+
+        if duration is not None:
+            lesson.duration = duration
+        if lesson_type is not None:
+            lesson.lesson_type = lesson_type
+        if topic is not None:
+            lesson.topic = topic
+
+        db.session.commit()
+
+        audit_logger.log(
+            action='update_lesson_inline',
+            entity='Lesson',
+            entity_id=lesson.lesson_id,
+            status='success',
+            metadata={
+                'student_id': lesson.student_id,
+                'student_name': lesson.student.name if lesson.student else None,
+                'old': old,
+                'new': {
+                    'duration': lesson.duration,
+                    'lesson_type': lesson.lesson_type,
+                    'topic': lesson.topic,
+                }
+            }
+        )
+
+        return jsonify({
+            'success': True,
+            'lesson': {
+                'lesson_id': lesson.lesson_id,
+                'duration_minutes': int(lesson.duration or 60),
+                'lesson_type': lesson.lesson_type,
+                'topic': lesson.topic,
+            }
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        audit_logger.log_error(action='update_lesson_inline', entity='Lesson', error=str(e))
         return jsonify({'success': False, 'error': str(e)}), 500

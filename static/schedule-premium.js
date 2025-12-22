@@ -27,12 +27,18 @@
   if (!scheduleRoot) return;
 
   const slotMinutes = parseInt(scheduleRoot.dataset.slotMinutes || '30', 10);
-  const startHour = parseInt(scheduleRoot.dataset.startHour || '7', 10);
+  const startHour = parseInt(scheduleRoot.dataset.startHour || '0', 10);
   const pxPerSlot = parseFloat(scheduleRoot.dataset.pxPerSlot || '28');
 
   const tz = scheduleRoot.dataset.timezone || 'moscow';
   const rescheduleUrlTpl = scheduleRoot.dataset.rescheduleUrlTpl || '';
   const setStatusUrlTpl = scheduleRoot.dataset.setStatusUrlTpl || '';
+  const updateUrlTpl = scheduleRoot.dataset.updateUrlTpl || '';
+  const weekOffset = parseInt(scheduleRoot.dataset.weekOffset || '0', 10);
+
+  const iconRegular = scheduleRoot.dataset.iconRegular || '';
+  const iconExam = scheduleRoot.dataset.iconExam || '';
+  const iconIntro = scheduleRoot.dataset.iconIntro || '';
 
   const deck = qs('#scheduleGrid');
   const inspector = qs('#lessonInspector');
@@ -72,39 +78,103 @@
       cancelled: 'Отменён',
     };
 
+    const lt = meta.lesson_type || 'regular';
     inspectorBody.innerHTML = `
-      <div style="display:grid; gap:0.6rem;">
-        <div><strong>Время:</strong> ${meta.start_time || ''}</div>
-        <div><strong>Статус:</strong> ${statusMap[meta.status_code] || meta.status || ''}</div>
-        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.4rem;">
+      <div style="display:grid; gap:0.85rem;">
+        <div style="display:grid; gap:0.4rem;">
+          <div style="color:var(--text-muted); font-size:0.9rem;">Время</div>
+          <div style="font-weight:900; font-size:1.1rem; color:var(--text-primary);">${meta.start_time || ''}</div>
+        </div>
+
+        <div class="neo-field">
+          <label class="neo-label">Статус</label>
+          <select class="neo-select" id="inspectorStatus">
+            <option value="planned" ${meta.status_code === 'planned' ? 'selected' : ''}>Запланирован</option>
+            <option value="in_progress" ${meta.status_code === 'in_progress' ? 'selected' : ''}>Идёт сейчас</option>
+            <option value="completed" ${meta.status_code === 'completed' ? 'selected' : ''}>Проведён</option>
+            <option value="cancelled" ${meta.status_code === 'cancelled' ? 'selected' : ''}>Отменён</option>
+          </select>
+        </div>
+
+        <div class="neo-field">
+          <label class="neo-label">Длительность (мин)</label>
+          <input class="neo-input" id="inspectorDuration" type="number" min="30" max="240" step="30" value="${meta.duration_minutes || 60}">
+        </div>
+
+        <div class="neo-field">
+          <label class="neo-label">Тип урока</label>
+          <select class="neo-select" id="inspectorLessonType">
+            <option value="regular" ${lt === 'regular' ? 'selected' : ''}>Обычный</option>
+            <option value="exam" ${lt === 'exam' ? 'selected' : ''}>Проверочный</option>
+            <option value="introductory" ${lt === 'introductory' ? 'selected' : ''}>Вводный</option>
+          </select>
+        </div>
+
+        <div class="neo-field">
+          <label class="neo-label">Тема</label>
+          <input class="neo-input" id="inspectorTopic" type="text" value="${meta.topic ? String(meta.topic).replace(/"/g, '&quot;') : ''}" placeholder="Опционально">
+        </div>
+
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
           <a class="neo-button ghost" href="${meta.profile_url || '#'}" style="text-decoration:none;">Профиль</a>
           <a class="neo-button accent" href="${meta.lesson_url || '#'}" style="text-decoration:none;">Открыть урок</a>
-          <button class="neo-button ghost" type="button" data-set-status="planned">План</button>
-          <button class="neo-button ghost" type="button" data-set-status="completed">Проведён</button>
-          <button class="neo-button danger" type="button" data-set-status="cancelled">Отменить</button>
+          <button class="neo-button ghost" type="button" id="inspectorSave">Сохранить</button>
         </div>
-        <div style="color:var(--text-muted); font-size:0.9rem; margin-top:0.4rem;">
-          Перенос: просто перетащи карточку в другой слот.
+
+        <div style="color:var(--text-muted); font-size:0.9rem;">
+          Перенос: перетащи карточку. Линия “сейчас” показывает текущее время.
         </div>
       </div>
     `;
 
-    qsa('[data-set-status]', inspectorBody).forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const newStatus = btn.dataset.setStatus;
-        const url = setStatusUrlTpl.replace('0', String(meta.lesson_id));
-        try {
-          await postJSON(url, { status: newStatus });
-          meta.status_code = newStatus;
-          lessonEl.dataset.meta = JSON.stringify(meta);
-          lessonEl.dataset.statusCode = newStatus;
+    const statusSel = qs('#inspectorStatus', inspectorBody);
+    const durationInput = qs('#inspectorDuration', inspectorBody);
+    const lessonTypeSel = qs('#inspectorLessonType', inspectorBody);
+    const topicInput = qs('#inspectorTopic', inspectorBody);
+    const saveBtn = qs('#inspectorSave', inspectorBody);
+
+    saveBtn?.addEventListener('click', async () => {
+      const nextStatus = statusSel?.value || meta.status_code;
+      const nextDuration = durationInput?.value ? parseInt(durationInput.value, 10) : meta.duration_minutes;
+      const nextType = lessonTypeSel?.value || meta.lesson_type || 'regular';
+      const nextTopic = topicInput?.value ?? '';
+
+      try {
+        // status
+        if (nextStatus && nextStatus !== meta.status_code) {
+          const url = setStatusUrlTpl.replace('0', String(meta.lesson_id));
+          await postJSON(url, { status: nextStatus });
+          meta.status_code = nextStatus;
           lessonEl.classList.remove('status-planned', 'status-in_progress', 'status-completed', 'status-cancelled');
-          lessonEl.classList.add(`status-${newStatus}`);
-          if (window.toast) window.toast.success('Статус обновлён');
-        } catch (e) {
-          if (window.toast) window.toast.error(e.message || 'Ошибка обновления статуса');
+          lessonEl.classList.add(`status-${nextStatus}`);
         }
-      });
+
+        // other fields
+        if (updateUrlTpl) {
+          const url = updateUrlTpl.replace('0', String(meta.lesson_id));
+          const resp = await postJSON(url, {
+            duration: nextDuration,
+            lesson_type: nextType,
+            topic: nextTopic,
+          });
+          meta.duration_minutes = resp?.lesson?.duration_minutes ?? nextDuration;
+          meta.lesson_type = resp?.lesson?.lesson_type ?? nextType;
+          meta.topic = resp?.lesson?.topic ?? nextTopic;
+        } else {
+          meta.duration_minutes = nextDuration;
+          meta.lesson_type = nextType;
+          meta.topic = nextTopic;
+        }
+
+        // resize card
+        const height = Math.max((parseInt(meta.duration_minutes || '60', 10) / slotMinutes) * pxPerSlot - 4, pxPerSlot * 0.9);
+        lessonEl.style.height = `${height}px`;
+
+        lessonEl.dataset.meta = JSON.stringify(meta);
+        if (window.toast) window.toast.success('Сохранено');
+      } catch (e) {
+        if (window.toast) window.toast.error(e.message || 'Ошибка сохранения');
+      }
     });
 
     inspector.classList.add('is-open');
@@ -112,6 +182,12 @@
 
   const closeInspector = () => inspector?.classList.remove('is-open');
   inspectorClose?.addEventListener('click', closeInspector);
+
+  const iconForLessonType = (lt) => {
+    if (lt === 'exam') return iconExam;
+    if (lt === 'introductory') return iconIntro;
+    return iconRegular;
+  };
 
   const renderLessonChip = (dayCol, ev) => {
     const el = document.createElement('div');
@@ -135,15 +211,25 @@
       status: ev.status,
       status_code: ev.status_code,
       start_time: ev.start_time,
+      duration_minutes: ev.duration_minutes,
+      lesson_type: ev.lesson_type,
+      topic: ev.topic,
       profile_url: ev.profile_url,
       lesson_url: ev.lesson_url,
     };
     el.dataset.meta = JSON.stringify(meta);
 
+    const lt = ev.lesson_type || 'regular';
+    const icon = iconForLessonType(lt);
+    const topic = ev.topic ? String(ev.topic) : '';
+
     el.innerHTML = `
-      <div class="lesson-chip__time" data-role="time">${ev.start_time || ''}</div>
+      <div class="lesson-chip__top">
+        <div class="lesson-chip__time" data-role="time">${ev.start_time || ''}</div>
+        ${icon ? `<img class="lesson-chip__icon" src="${icon}" alt="">` : ''}
+      </div>
       <div class="lesson-chip__student">${ev.student || ''}</div>
-      <div class="lesson-chip__meta">${(ev.subject || 'Информатика')}${ev.grade ? ` · ${ev.grade}` : ''}</div>
+      <div class="lesson-chip__meta">${topic ? topic : `${(ev.subject || 'Информатика')}${ev.grade ? ` · ${ev.grade}` : ''}`}</div>
     `;
 
     dayCol.querySelector('.day-col__body')?.appendChild(el);
@@ -172,7 +258,7 @@
   };
 
   const closeCreateModal = () => createModal?.classList.remove('active');
-  qs('[data-modal-close="create"]')?.addEventListener('click', closeCreateModal);
+  qsa('[data-modal-close="create"]').forEach((b) => b.addEventListener('click', closeCreateModal));
   createModal?.addEventListener('click', (e) => {
     if (e.target === createModal) closeCreateModal();
   });
@@ -300,6 +386,65 @@
   document.addEventListener('pointerdown', onPointerDown, true);
   document.addEventListener('pointermove', onPointerMove, true);
   document.addEventListener('pointerup', onPointerUp, true);
+
+  // Линия текущего времени + автоскролл
+  const tzName = tz === 'tomsk' ? 'Asia/Tomsk' : 'Europe/Moscow';
+
+  const getNowInTz = () => {
+    try {
+      const parts = new Intl.DateTimeFormat('ru-RU', {
+        timeZone: tzName,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(new Date());
+
+      const map = {};
+      parts.forEach((p) => { map[p.type] = p.value; });
+      const y = map.year;
+      const m = map.month;
+      const d = map.day;
+      const hh = parseInt(map.hour || '0', 10);
+      const mm = parseInt(map.minute || '0', 10);
+      return {
+        iso: `${y}-${m}-${d}`,
+        minutes: hh * 60 + mm,
+      };
+    } catch (_) {
+      const now = new Date();
+      return { iso: '', minutes: now.getHours() * 60 + now.getMinutes() };
+    }
+  };
+
+  const placeNowLine = () => {
+    const now = getNowInTz();
+    if (!now.iso) return;
+    const dayCol = qs(`.day-col[data-day="${now.iso}"]`);
+    if (!dayCol) return;
+    const body = qs('.day-col__body', dayCol);
+    if (!body) return;
+
+    let line = qs('.now-line', body);
+    if (!line) {
+      line = document.createElement('div');
+      line.className = 'now-line';
+      line.innerHTML = `<div class="now-dot"></div>`;
+      body.appendChild(line);
+    }
+    line.style.top = `${minutesToY(now.minutes)}px`;
+
+    // автоскролл к "сейчас" только на текущей неделе
+    if (weekOffset === 0 && deck) {
+      const targetTop = Math.max(minutesToY(now.minutes) - 220, 0);
+      deck.scrollTo({ top: targetTop, behavior: 'smooth' });
+    }
+  };
+
+  placeNowLine();
+  setInterval(placeNowLine, 30_000);
 })();
 
 

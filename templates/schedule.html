@@ -182,14 +182,25 @@
         .lesson-chip {
             position: absolute;
             border-radius: var(--radius-md);
-            border: 1px solid rgba(0,0,0,0.1);
-            padding: 0.55rem 0.6rem;
+            border: 1px solid var(--stroke-1);
+            padding: 0.55rem 0.65rem;
             cursor: grab;
             user-select: none;
             overflow: hidden;
             box-shadow: var(--shadow-soft);
-            transition: transform 160ms ease, box-shadow 160ms ease;
-            color: #001b18;
+            transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+            color: var(--text-primary);
+            background: var(--surface-2);
+        }
+
+        .lesson-chip::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: rgba(255,255,255,0.12);
         }
 
         .lesson-chip:hover {
@@ -205,10 +216,25 @@
             z-index: 20;
         }
 
+        .lesson-chip__top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
         .lesson-chip__time {
             font-weight: 900;
             font-size: 1rem;
-            margin-bottom: 0.2rem;
+        }
+
+        .lesson-chip__icon {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+            opacity: 0.95;
+            flex-shrink: 0;
         }
 
         .lesson-chip__student {
@@ -222,10 +248,40 @@
             opacity: 0.85;
         }
 
-        .lesson-chip.status-planned { background: linear-gradient(120deg, var(--accent-2-strong), var(--accent-1-strong)); }
-        .lesson-chip.status-in_progress { background: linear-gradient(120deg, var(--success), #00c6ad); }
-        .lesson-chip.status-completed { background: linear-gradient(120deg, var(--accent-2), var(--accent-2-strong)); }
-        .lesson-chip.status-cancelled { background: linear-gradient(120deg, var(--danger), #ff4d6d); }
+        /* Сильно различимые статусы (план ≠ проведён) */
+        .lesson-chip.status-planned { border-color: rgba(23, 96, 216, 0.55); background: rgba(23, 96, 216, 0.12); }
+        .lesson-chip.status-planned::before { background: rgba(23, 96, 216, 0.95); }
+
+        .lesson-chip.status-in_progress { border-color: rgba(0, 198, 164, 0.6); background: rgba(0, 198, 164, 0.12); }
+        .lesson-chip.status-in_progress::before { background: rgba(0, 198, 164, 0.95); }
+
+        .lesson-chip.status-completed { border-color: rgba(170, 120, 255, 0.6); background: rgba(170, 120, 255, 0.12); }
+        .lesson-chip.status-completed::before { background: rgba(170, 120, 255, 0.95); }
+
+        .lesson-chip.status-cancelled { border-color: rgba(255, 77, 109, 0.65); background: rgba(255, 77, 109, 0.12); }
+        .lesson-chip.status-cancelled::before { background: rgba(255, 77, 109, 0.95); }
+
+        .now-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: rgba(255, 212, 92, 0.95);
+            box-shadow: 0 0 0 4px rgba(255, 212, 92, 0.12);
+            z-index: 9;
+            pointer-events: none;
+        }
+
+        .now-dot {
+            position: absolute;
+            left: -6px;
+            top: -5px;
+            width: 12px;
+            height: 12px;
+            border-radius: 999px;
+            background: rgba(255, 212, 92, 0.98);
+            box-shadow: 0 0 0 6px rgba(255, 212, 92, 0.14);
+        }
 
         .schedule-inspector {
             position: sticky;
@@ -452,8 +508,13 @@
                  data-start-hour="{{ start_hour }}"
                  data-px-per-slot="28"
                  data-timezone="{{ timezone }}"
+                 data-week-offset="{{ week_offset }}"
                  data-reschedule-url-tpl="{{ url_for('schedule.schedule_reschedule_lesson', lesson_id=0) }}"
-                 data-set-status-url-tpl="{{ url_for('schedule.schedule_set_status', lesson_id=0) }}">
+                 data-set-status-url-tpl="{{ url_for('schedule.schedule_set_status', lesson_id=0) }}"
+                 data-update-url-tpl="{{ url_for('schedule.schedule_update_lesson', lesson_id=0) }}"
+                 data-icon-regular="{{ url_for('static', filename='icons/icons8-урок-100.png') }}"
+                 data-icon-exam="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}"
+                 data-icon-intro="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}">
 
                 <div class="schedule-grid-wrap">
                     <div class="schedule-grid-head">
