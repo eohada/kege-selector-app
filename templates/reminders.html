@@ -369,6 +369,38 @@
     <script>
         function openCreateModal() {
             document.getElementById('createModal').classList.add('active');
+            document.getElementById('createModal').querySelector('.modal-title').textContent = 'Создать напоминание';
+            document.getElementById('create_reminder_id').value = '';
+            const submitText = document.getElementById('submitReminderText');
+            if (submitText) submitText.textContent = 'Создать';
+            document.getElementById('createReminderForm').reset();
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function openEditModal(reminderId, title, message, timeIso) {
+            document.getElementById('createModal').classList.add('active');
+            document.getElementById('createModal').querySelector('.modal-title').textContent = 'Редактировать напоминание';
+            document.getElementById('create_reminder_id').value = reminderId;
+            const submitText = document.getElementById('submitReminderText');
+            if (submitText) submitText.textContent = 'Сохранить';
+            document.getElementById('modal_title').value = title;
+            document.getElementById('modal_message').value = message || '';
+            
+            // Устанавливаем время в datetime-local input
+            const timeInput = document.getElementById('modal_reminder_time');
+            if (timeIso && timeIso !== 'null') {
+                // Конвертируем ISO строку с timezone в формат для datetime-local
+                const date = new Date(timeIso);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                timeInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+            } else {
+                timeInput.value = '';
+            }
+            
             document.body.style.overflow = 'hidden';
         }
         
@@ -376,6 +408,7 @@
             document.getElementById('createModal').classList.remove('active');
             document.body.style.overflow = '';
             document.getElementById('createReminderForm').reset();
+            document.getElementById('create_reminder_id').value = '';
         }
         
         document.getElementById('createModal').addEventListener('click', function(e) {
