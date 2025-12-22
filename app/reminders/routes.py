@@ -15,33 +15,49 @@ from core.audit_logger import audit_logger
 @login_required
 def reminders_list():
     """Страница со списком напоминаний"""
-    show_completed = request.args.get('show_completed', 'false').lower() == 'true'
-    
-    query = Reminder.query.filter_by(user_id=current_user.id)
-    
-    if not show_completed:
-        query = query.filter_by(is_completed=False)
-    
-    # Сортируем: сначала с временем (по времени), потом без времени (по дате создания)
-    reminders = query.order_by(
-        case((Reminder.reminder_time.is_(None), 1), else_=0),
-        Reminder.reminder_time.asc(),
-        Reminder.created_at.desc()
-    ).all()
-    
-    # Автоматически помечаем просроченные напоминания
-    now = moscow_now()
-    updated = False
-    for reminder in reminders:
-        if not reminder.is_completed and reminder.reminder_time and reminder.reminder_time < now:
-            # Напоминание просрочено, но мы не меняем is_completed автоматически
-            # Это просто для отображения
-            pass
-    
-    return render_template('reminders.html', 
-                         reminders=reminders,
-                         show_completed=show_completed,
-                         now=now)
+    try:
+        show_completed = request.args.get('show_completed', 'false').lower() == 'true'
+        
+        # Убеждаемся, что таблица существует
+        try:
+            query = Reminder.query.filter_by(user_id=current_user.id)
+        except Exception as e:
+            # Если таблицы нет, создаем её
+            db.create_all()
+            query = Reminder.query.filter_by(user_id=current_user.id)
+        
+        if not show_completed:
+            query = query.filter_by(is_completed=False)
+        
+        # Сортируем: сначала с временем (по времени), потом без времени (по дате создания)
+        try:
+            reminders = query.order_by(
+                case((Reminder.reminder_time.is_(None), 1), else_=0),
+                Reminder.reminder_time.asc(),
+                Reminder.created_at.desc()
+            ).all()
+        except Exception as e:
+            # Если сортировка не работает, используем простую
+            reminders = query.order_by(Reminder.created_at.desc()).all()
+        
+        # Получаем текущее время для сравнения
+        now = moscow_now()
+        # Убираем timezone для сравнения в шаблоне
+        now_naive = now.replace(tzinfo=None) if now.tzinfo else now
+        
+        return render_template('reminders.html', 
+                             reminders=reminders,
+                             show_completed=show_completed,
+                             now=now_naive)
+    except Exception as e:
+        import traceback
+        error_msg = f"Ошибка в reminders_list: {str(e)}\n{traceback.format_exc()}"
+        flash(f'Ошибка загрузки напоминаний: {str(e)}', 'error')
+        # Возвращаем пустой список, чтобы страница хотя бы открылась
+        return render_template('reminders.html', 
+                             reminders=[],
+                             show_completed=False,
+                             now=moscow_now().replace(tzinfo=None) if moscow_now().tzinfo else moscow_now())
 
 @reminders_bp.route('/reminders/create', methods=['POST'])
 @login_required
