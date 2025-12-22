@@ -11,54 +11,6 @@
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
-    <style>
-        .form-hero {
-            margin-bottom: 2rem;
-        }
-        
-        .form-section {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            margin-bottom: 2rem;
-        }
-        
-        .form-section-title {
-            font-size: 1.3em;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 1.5rem;
-            padding-bottom: 0.8rem;
-            border-bottom: 1px solid var(--stroke-1);
-        }
-        
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            align-items: start;
-        }
-
-        .form-grid.form-grid-compact {
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        }
-        
-        .form-grid .neo-field {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .form-grid.form-grid-compact .neo-label {
-            min-height: 2.8em;
-            display: flex;
-            align-items: flex-start;
-        }
-        
-        .form-grid-full {
-            grid-column: 1 / -1;
-        }
-    </style>
 </head>
 <body class="{% if active_lesson %}lesson-active{% endif %}">
     {% if active_lesson %}
@@ -224,7 +176,7 @@
             </section>
             
             <section class="form-section">
-                <div class="form-actions" style="display: flex; gap: 1em; justify-content: flex-end; margin-top: 0;">
+                <div class="form-actions">
                     {{ form.submit(class='neo-button accent') }}
                     <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost">Отмена</a>
                 </div>

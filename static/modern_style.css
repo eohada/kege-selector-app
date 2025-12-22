@@ -450,19 +450,20 @@ body::after {
 .neo-field {
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
+    gap: 0.6rem;
     align-items: flex-start;
 }
 
 .neo-label {
-    font-size: 0.86rem;
+    font-size: 0.82rem;
     text-transform: uppercase;
-    letter-spacing: 0.28em;
+    letter-spacing: 0.3em;
     color: var(--text-muted);
     margin: 0;
-    line-height: 1.4;
+    line-height: 1.5;
     display: block;
     width: 100%;
+    font-weight: 600;
 }
 
 .neo-input,
@@ -470,18 +471,32 @@ body::after {
     width: 100%;
     border-radius: var(--radius-sm);
     border: 1px solid var(--stroke-1);
-    background: var(--surface-3);
+    background: var(--surface-2);
     color: var(--text-primary);
-    padding: 0.85rem 1rem;
+    padding: 1rem 1.2rem;
     font-size: 1rem;
-    transition: border 0.25s ease, box-shadow 0.25s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: var(--font-base);
+}
+
+.neo-input:hover,
+.neo-select:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: var(--surface-1);
 }
 
 .neo-input:focus,
 .neo-select:focus {
     outline: none;
-    border-color: rgba(0, 255, 213, 0.6);
-    box-shadow: 0 0 0 3px rgba(0, 255, 213, 0.25);
+    border-color: rgba(0, 255, 213, 0.7);
+    box-shadow: 0 0 0 4px rgba(0, 255, 213, 0.2);
+    background: var(--surface-1);
+}
+
+.neo-input::placeholder,
+.neo-select::placeholder {
+    color: var(--text-muted);
+    opacity: 0.6;
 }
 
 .filters-actions {
@@ -1075,6 +1090,87 @@ body::after {
 .filter-select:hover {
     border-color: rgba(255, 255, 255, 0.15);
     background: var(--surface-1);
+}
+
+/* Form Sections - Premium Minimalism */
+.form-section {
+    background: var(--surface-1);
+    border: 1px solid var(--stroke-1);
+    border-radius: var(--radius-lg);
+    padding: 2.2rem;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.form-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-1), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.form-section:hover::before {
+    opacity: 0.5;
+}
+
+.form-section-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 1.8rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--stroke-1);
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.8rem;
+    align-items: start;
+}
+
+.form-grid.form-grid-compact {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+}
+
+.form-grid .neo-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-grid.form-grid-compact .neo-label {
+    min-height: 2.8em;
+    display: flex;
+    align-items: flex-start;
+}
+
+.form-grid-full {
+    grid-column: 1 / -1;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--stroke-1);
+}
+
+.form-actions .neo-button {
+    min-width: 120px;
 }
 
 .neo-checkbox {
