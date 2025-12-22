@@ -18,68 +18,6 @@
             gap: 1rem;
             margin-bottom: 2rem;
         }
-        .stat-card {
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-md);
-            padding: 1rem;
-        }
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--accent-1);
-        }
-        .stat-label {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            margin-top: 0.5rem;
-        }
-        .audit-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: var(--surface-2);
-            border-radius: var(--radius-md);
-            overflow: hidden;
-        }
-        .audit-table th {
-            background: var(--surface-3);
-            padding: 1rem;
-            text-align: left;
-            font-weight: 600;
-            color: var(--text-primary);
-            border-bottom: 1px solid var(--stroke-2);
-        }
-        .audit-table td {
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--stroke-1);
-            color: var(--text-primary);
-        }
-        .audit-table tr:hover {
-            background: var(--surface-3);
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-        .status-success {
-            background: rgba(0, 254, 202, 0.2);
-            color: var(--success);
-        }
-        .status-error {
-            background: rgba(255, 108, 145, 0.2);
-            color: var(--danger);
-        }
-        .status-warning {
-            background: rgba(255, 212, 92, 0.2);
-            color: var(--warning);
-        }
-        .status-info {
-            background: rgba(31, 123, 255, 0.2);
-            color: var(--accent-2);
-        }
         .metadata-toggle {
             cursor: pointer;
             color: var(--accent-1);
@@ -125,27 +63,8 @@
 </head>
 <body>
     <div class="app-shell">
-        <header class="nav-primary">
-            <div class="nav-brand">
-                {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
-                    {{ current_user.username[0].upper() }}
-                </a>
-                {% endif %}
-                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
-                    <div class="brand-mark">LOGO</div>
-                    <div class="brand-caption">Админ-панель</div>
-                </a>
-            </div>
-            <nav class="nav-links">
-                <a href="{{ url_for('main.dashboard') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="ui-icon ui-icon--sm">Ученики</a>
-                <a href="{{ url_for('schedule.schedule') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="ui-icon ui-icon--sm">Расписание</a>
-                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--sm">Генератор</a>
-                <a href="{{ url_for('admin.admin_audit') }}" class="nav-link active"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Логи" class="ui-icon ui-icon--sm">Логи</a>
-                <a href="{{ url_for('admin.admin_testers') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" alt="Тестировщики" class="ui-icon ui-icon--sm">Тестировщики</a>
-                <a href="{{ url_for('templates.templates_list') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="ui-icon ui-icon--sm">Шаблоны</a>
-            </nav>
-        </header>
+        {% set active_page = 'admin' %}
+        {% include '_primary_nav.html' %}
 
         {% include '_ux_enhancements.html' %}
 
@@ -161,21 +80,21 @@
             </div>
 
             <div class="audit-stats">
-                <div class="stat-card">
-                    <div class="stat-value">{{ stats.total_events }}</div>
-                    <div class="stat-label">Всего событий</div>
+                <div class="audit-stat-card">
+                    <div class="audit-stat-value">{{ stats.total_events }}</div>
+                    <div class="audit-stat-label">Всего событий</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ stats.total_testers }}</div>
-                    <div class="stat-label">Активных тестеров</div>
+                <div class="audit-stat-card">
+                    <div class="audit-stat-value">{{ stats.total_testers }}</div>
+                    <div class="audit-stat-label">Активных тестеров</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ stats.error_count }}</div>
-                    <div class="stat-label">Ошибок</div>
+                <div class="audit-stat-card">
+                    <div class="audit-stat-value">{{ stats.error_count }}</div>
+                    <div class="audit-stat-label">Ошибок</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value">{{ stats.today_events }}</div>
-                    <div class="stat-label">Событий сегодня</div>
+                <div class="audit-stat-card">
+                    <div class="audit-stat-value">{{ stats.today_events }}</div>
+                    <div class="audit-stat-label">Событий сегодня</div>
                 </div>
             </div>
 
