@@ -24,7 +24,8 @@ def reminders_list():
     
     # Сортируем: сначала с временем (по времени), потом без времени (по дате создания)
     reminders = query.order_by(
-        Reminder.reminder_time.asc().nullslast(),
+        case((Reminder.reminder_time.is_(None), 1), else_=0),
+        Reminder.reminder_time.asc(),
         Reminder.created_at.desc()
     ).all()
     
