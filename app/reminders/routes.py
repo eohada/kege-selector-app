@@ -217,14 +217,14 @@ def reminder_update(reminder_id):
     data = request.get_json() if request.is_json else {}
     
     if request.is_json:
-        title = data.get('title', '').strip()
-        message = data.get('message', '').strip()
-        reminder_time_str = data.get('reminder_time', '').strip()
+        title = (data.get('title') or '').strip()
+        message = (data.get('message') or '').strip()
+        reminder_time_str = (data.get('reminder_time') or '').strip()
         timezone_offset = data.get('timezone_offset', None)
     else:
-        title = request.form.get('title', '').strip()
-        message = request.form.get('message', '').strip()
-        reminder_time_str = request.form.get('reminder_time', '').strip()
+        title = (request.form.get('title') or '').strip()
+        message = (request.form.get('message') or '').strip()
+        reminder_time_str = (request.form.get('reminder_time') or '').strip()
         timezone_offset = request.form.get('timezone_offset', None)
     
     if not title:
