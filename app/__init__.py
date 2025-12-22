@@ -109,6 +109,8 @@ def create_app(config_name=None):
         # Проверяем подключение к БД
         try:
             with app.app_context():
+                # Импортируем все модели, чтобы они были зарегистрированы в SQLAlchemy
+                from app.models import Reminder  # Явный импорт для создания таблицы
                 db.create_all()
                 # Проверяем, что можем подключиться
                 db.session.execute(text("SELECT 1"))
