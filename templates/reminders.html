@@ -242,6 +242,15 @@
                         <div class="reminder-header">
                             <div class="reminder-title">
                                 {{ reminder.title }}
+                                {% if reminder.reminder_time %}
+                                <span class="status-badge time-badge" title="С временем напоминания">
+                                    <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" alt="Время" class="ui-icon ui-icon--sm" style="width: 14px; height: 14px; margin-right: 0.25rem;">С временем
+                                </span>
+                                {% else %}
+                                <span class="status-badge no-time-badge" title="Без времени напоминания">
+                                    <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" alt="Без времени" class="ui-icon ui-icon--sm" style="width: 14px; height: 14px; margin-right: 0.25rem;">Без времени
+                                </span>
+                                {% endif %}
                                 {% if reminder.is_overdue() and not reminder.is_completed %}
                                 <span class="status-badge overdue">Просрочено</span>
                                 {% endif %}
@@ -261,6 +270,10 @@
                         {% endif %}
                         
                         <div class="reminder-actions">
+                            <button type="button" class="neo-button ghost" onclick="openEditModal({{ reminder.reminder_id }}, '{{ reminder.title|e }}', '{{ reminder.message|e if reminder.message else '' }}', {% if item.time_iso %}'{{ item.time_iso }}'{% else %}null{% endif %})">
+                                <img src="{{ url_for('static', filename='icons/icons8-редактировать-100.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm"> Редактировать
+                            </button>
+                            
                             <form method="POST" action="{{ url_for('reminders.reminder_toggle', reminder_id=reminder.reminder_id) }}" style="display: inline;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="neo-button {% if reminder.is_completed %}ghost{% else %}outline{% endif %}">
@@ -375,6 +388,7 @@
             
             const form = event.target;
             const formData = new FormData(form);
+            const reminderId = formData.get('reminder_id');
             const title = formData.get('title').trim();
             const message = formData.get('message').trim();
             const reminderTime = formData.get('reminder_time');
@@ -394,8 +408,11 @@
             };
             
             const csrfToken = formData.get('csrf_token');
+            const url = reminderId ? 
+                '{{ url_for("reminders.reminder_update", reminder_id=0) }}'.replace('/0/', '/' + reminderId + '/') :
+                '{{ url_for("reminders.reminder_create") }}';
             
-            fetch('{{ url_for("reminders.reminder_create") }}', {
+            fetch(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -407,7 +424,7 @@
             .then(result => {
                 if (result.success) {
                     if (typeof toast !== 'undefined' && toast) {
-                        toast.success('Напоминание создано');
+                        toast.success(reminderId ? 'Напоминание обновлено' : 'Напоминание создано');
                     }
                     closeCreateModal();
                     setTimeout(() => {
@@ -415,14 +432,14 @@
                     }, 500);
                 } else {
                     if (typeof toast !== 'undefined' && toast) {
-                        toast.error(result.error || 'Ошибка при создании напоминания');
+                        toast.error(result.error || (reminderId ? 'Ошибка при обновлении напоминания' : 'Ошибка при создании напоминания'));
                     }
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 if (typeof toast !== 'undefined' && toast) {
-                    toast.error('Ошибка при создании напоминания');
+                    toast.error(reminderId ? 'Ошибка при обновлении напоминания' : 'Ошибка при создании напоминания');
                 }
             });
         }
