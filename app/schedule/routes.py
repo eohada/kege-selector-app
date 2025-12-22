@@ -123,7 +123,9 @@ def schedule():
         # Проверяем, что урок действительно попадает в нужный день недели
         if 0 <= day_index < 7:
             start_time = lesson_date_display.time()
-            end_time = (lesson_date_display + timedelta(minutes=lesson.duration)).time()
+            # Вычисляем время окончания, но сохраняем исходную длительность из БД
+            end_datetime = lesson_date_display + timedelta(minutes=lesson.duration)
+            end_time = end_datetime.time()
             status_text = {'planned': 'Запланирован', 'in_progress': 'Идет сейчас', 'completed': 'Проведен', 'cancelled': 'Отменен'}.get(lesson.status, lesson.status)
             if not lesson.student:
                 continue  # Пропускаем уроки без студента
@@ -142,7 +144,8 @@ def schedule():
                 'start_time': start_time.strftime('%H:%M'),
                 'profile_url': profile_url,
                 'topic': lesson.topic,
-                'lesson_type': lesson.lesson_type
+                'lesson_type': lesson.lesson_type,
+                'duration_minutes': int(lesson.duration or 60)  # Сохраняем исходную длительность из БД
             })
 
     # Позиционирование отдаём фронтенду: сохраняем start_total/duration и колонку/ширину,
@@ -151,10 +154,20 @@ def schedule():
     day_start_minutes = day_start_hour * 60
 
     for event in real_events:
-        duration_minutes = ((event['end'].hour * 60 + event['end'].minute) - (event['start'].hour * 60 + event['start'].minute))
+        # Используем исходную длительность из БД, а не пересчитываем из времени начала/окончания
+        # Это важно, так как при переходе через полночь (например, 23:00 -> 00:00) пересчет даст неправильный результат
+        duration_minutes = event.get('duration_minutes', 60)
         duration_minutes = max(duration_minutes, slot_minutes)
         event['start_total'] = event['start'].hour * 60 + event['start'].minute
-        event['end_total'] = event['end'].hour * 60 + event['end'].minute
+        # Вычисляем end_total с учетом возможного перехода через полночь
+        end_hour = event['end'].hour
+        end_minute = event['end'].minute
+        # Если end_time меньше start_time, значит урок перешел через полночь
+        if end_hour * 60 + end_minute < event['start_total']:
+            # Урок перешел через полночь, end_total = 24:00 (1440 минут)
+            event['end_total'] = 1440
+        else:
+            event['end_total'] = end_hour * 60 + end_minute
         event['duration_minutes'] = duration_minutes
         day_events[event['day_index']].append(event)
 
