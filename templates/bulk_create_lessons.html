@@ -15,40 +15,21 @@
     {% include '_active_lesson_banner.html' %}
     
     <div class="app-shell">
-        <header class="nav-primary">
-            <div class="nav-brand">
-                {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
-                    {{ current_user.username[0].upper() }}
-                </a>
-                {% endif %}
-                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
-                    <div class="brand-mark">LOGO</div>
-                    <div class="brand-caption">Слот под фирменный знак</div>
-                </a>
-            </div>
-            {% include '_mobile_menu.html' %}
-            <nav class="nav-links">
-                <a href="{{ url_for('main.dashboard') }}" class="nav-link">👥 Ученики</a>
-                <a href="{{ url_for('schedule.schedule') }}" class="nav-link">📅 Расписание</a>
-                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link">💻 Генератор</a>
-                <a href="{{ url_for('main.update_plans') }}" class="nav-link">📝 Планы</a>
-                <a href="{{ url_for('templates.templates_list') }}" class="nav-link"><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="ui-icon ui-icon--sm">Шаблоны</a>
-            </nav>
-        </header>
+        {% set active_page = 'schedule' %}
+        {% include '_primary_nav.html' %}
 
         {% include '_ux_enhancements.html' %}
 
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div>
                 <p class="hero-eyebrow">массовое создание</p>
-                <h1 class="hero-title">📅 Массовое создание уроков</h1>
+                <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Создание" class="ui-icon ui-icon--md"> Массовое создание уроков</h1>
             </div>
         </section>
 
         <section class="glass-panel" style="margin-bottom: 2rem; border-left: 4px solid var(--accent-2);">
             <div style="background: rgba(31, 123, 255, 0.1); border-left: 3px solid var(--accent-2); border-radius: var(--radius-sm); padding: 1rem; color: var(--accent-2);">
-                <strong style="display: block; margin-bottom: 0.5rem;">💡 Инструкция:</strong>
+                <strong style="display: block; margin-bottom: 0.5rem;">Инструкция:</strong>
                 <ol style="margin: 0.5em 0 0 1.5em; list-style: decimal;">
                     <li>Убедитесь, что все ученики созданы в системе с правильными platform_id</li>
                     <li>Вставьте данные уроков в формате JSON ниже</li>
@@ -98,7 +79,7 @@
                 </div>
                 
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                    <button type="submit" class="neo-button accent">📅 Создать уроки</button>
+                    <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Создать" class="ui-icon ui-icon--sm"> Создать уроки</button>
                     <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost">← Назад</a>
                 </div>
             </form>

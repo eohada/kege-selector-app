@@ -185,7 +185,7 @@
 <body class="{% if active_lesson %}lesson-active{% endif %}">
     {% if active_lesson %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        🎧 Урок идет: {{ active_student.name }}
+        <img src="{{ url_for('static', filename='icons/icons8-наушники-100.png') }}" alt="Урок" class="ui-icon ui-icon--sm"> Урок идет: {{ active_student.name }}
     </div>
     <div class="now-playing-panel" id="lessonMenu">
         <div class="hero-eyebrow">текущий урок</div>
@@ -199,7 +199,7 @@
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
                 <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
             </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">👤 Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
         </div>
     </div>
     <script>
@@ -221,52 +221,8 @@
     {% endif %}
 
     <div class="app-shell">
-        <header class="nav-primary">
-            <div class="nav-brand">
-                {% if current_user and current_user.is_authenticated %}
-                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
-                    {{ current_user.username[0].upper() }}
-                </a>
-                {% endif %}
-                <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
-                    <div class="brand-mark">LOGO</div>
-                    <div class="brand-caption">Слот под фирменный знак</div>
-                </a>
-            </div>
-            {% include '_mobile_menu.html' %}
-            <nav class="nav-links"> <!-- Навигационные ссылки -->
-                <a href="{{ url_for('main.dashboard') }}" class="nav-link"> <!-- Переход к ученикам -->
-                    <span class="nav-link-content"> <!-- Контент ссылки учеников -->
-                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Ученики" class="nav-link-icon"> <!-- Иконка учеников -->
-                        <span class="nav-link-label">Ученики</span> <!-- Подпись раздела -->
-                    </span>
-                </a>
-                <a href="{{ url_for('schedule.schedule') }}" class="nav-link"> <!-- Переход к расписанию -->
-                    <span class="nav-link-content"> <!-- Контент ссылки расписания -->
-                        <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Иконка раздела Расписание" class="nav-link-icon"> <!-- Иконка расписания -->
-                        <span class="nav-link-label">Расписание</span> <!-- Подпись раздела -->
-                    </span>
-                </a>
-                <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link"> <!-- Переход к генератору -->
-                    <span class="nav-link-content"> <!-- Контент ссылки генератора -->
-                        <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Генератор" class="nav-link-icon"> <!-- Иконка генератора -->
-                        <span class="nav-link-label">Генератор</span> <!-- Подпись раздела -->
-                    </span>
-                </a>
-                <a href="{{ url_for('main.update_plans') }}" class="nav-link active"> <!-- Переход к планам -->
-                    <span class="nav-link-content"> <!-- Контент активной ссылки -->
-                        <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Иконка раздела Планы" class="nav-link-icon"> <!-- Иконка планов -->
-                        <span class="nav-link-label">Планы</span> <!-- Подпись раздела -->
-                    </span>
-                </a>
-                <a href="{{ url_for('templates.templates_list') }}" class="nav-link"> <!-- Переход к шаблонам -->
-                    <span class="nav-link-content"> <!-- Контент ссылки -->
-                        <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Иконка раздела Шаблоны" class="nav-link-icon"> <!-- Иконка шаблонов -->
-                        <span class="nav-link-label">Шаблоны</span> <!-- Подпись раздела -->
-                    </span>
-                </a>
-            </nav>
-        </header>
+        {% set active_page = 'plans' %}
+        {% include '_primary_nav.html' %}
 
         <section class="glass-panel">
             <div>
