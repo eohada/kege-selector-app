@@ -190,7 +190,7 @@ def reminder_toggle(reminder_id):
             entity='Reminder',
             entity_id=reminder.reminder_id,
             status='success',
-            meta_data={'is_completed': reminder.is_completed}
+            metadata={'is_completed': reminder.is_completed}
         )
         
         # Если это AJAX запрос, возвращаем JSON
