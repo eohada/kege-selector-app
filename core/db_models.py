@@ -159,6 +159,13 @@ class User(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=moscow_now)
     last_login = db.Column(db.DateTime, nullable=True)
+
+    # Поля профиля
+    avatar_url = db.Column(db.String(500), nullable=True)
+    about_me = db.Column(db.Text, nullable=True)
+    custom_status = db.Column(db.String(100), nullable=True)
+    telegram_link = db.Column(db.String(200), nullable=True)
+    github_link = db.Column(db.String(200), nullable=True)
     
     # Flask-Login методы
     def get_id(self):

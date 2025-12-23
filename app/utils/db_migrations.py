@@ -274,6 +274,23 @@ def ensure_schema_columns(app):
                     # SQLite не поддерживает ALTER COLUMN, но это не критично
                     logger.warning("SQLite does not support ALTER COLUMN, reminder_time will remain NOT NULL")
             
+            # Проверяем и обновляем таблицу Users
+            users_table = 'Users' if 'Users' in table_names else ('users' if 'users' in table_names else None)
+            if users_table:
+                users_columns = {col['name'] for col in inspector.get_columns(users_table)}
+                
+                # Поля профиля
+                if 'avatar_url' not in users_columns:
+                    db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN avatar_url VARCHAR(500)'))
+                if 'about_me' not in users_columns:
+                    db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN about_me TEXT'))
+                if 'custom_status' not in users_columns:
+                    db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN custom_status VARCHAR(100)'))
+                if 'telegram_link' not in users_columns:
+                    db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN telegram_link VARCHAR(200)'))
+                if 'github_link' not in users_columns:
+                    db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN github_link VARCHAR(200)'))
+
             _fix_postgres_sequences(app, inspector)  # После миграций синхронизируем sequences (чинит 500 duplicate key на SERIAL)
             db.session.commit()
     except Exception as e:

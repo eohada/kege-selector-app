@@ -14,82 +14,232 @@
     <div class="app-shell">
         {% set active_page = None %}
         {% include '_primary_nav.html' %}
-
         {% include '_ux_enhancements.html' %}
 
-        <section class="glass-panel" style="margin-bottom: 2rem;">
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
-                    ← Назад
-                </a>
-            </div>
-            <p class="hero-eyebrow">профиль пользователя</p>
-            <h1 class="hero-title">Профиль: {% if current_user %}{{ current_user.username }}{% else %}Неизвестный пользователь{% endif %}</h1>
-        </section>
+        <main class="profile-container {% if current_user and current_user.is_creator() %}theme-creator{% else %}theme-student{% endif %}">
+            {% if current_user %}
+                <div class="profile-card">
+                    <!-- Обложка -->
+                    <div class="profile-cover"></div>
 
-        {% if current_user %}
-        <section class="glass-panel">
-            <div style="display: grid; gap: 2rem;">
-                <div>
-                    <h2 style="margin-bottom: 1rem; color: var(--text-primary);">Информация о пользователе</h2>
-                    <div style="display: grid; gap: 1rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
-                            <span style="color: var(--text-muted);">Логин:</span>
-                            <strong style="color: var(--text-primary);">{{ current_user.username }}</strong>
+                    <!-- Шапка с аватаром -->
+                    <div class="profile-header">
+                        <div class="profile-identity">
+                            <div class="profile-avatar-wrapper">
+                                <div class="profile-avatar-big">
+                                    {% if current_user.avatar_url %}
+                                    <img src="{{ current_user.avatar_url }}" alt="Avatar">
+                                    {% else %}
+                                    {{ current_user.username[0].upper() }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="profile-info">
+                                <div class="profile-role-badge">
+                                    {{ current_user.get_role_display() }}
+                                </div>
+                                <h1>{{ current_user.username }}</h1>
+                                {% if current_user.custom_status %}
+                                <div class="profile-status" style="color: var(--text-muted); font-size: 1.1rem; margin-top: 0.5rem; font-style: italic;">
+                                    "{{ current_user.custom_status }}"
+                                </div>
+                                {% endif %}
+                                <button class="neo-button outline" style="margin-top: 1rem;" onclick="openEditProfileModal()">
+                                    <img src="{{ url_for('static', filename='icons/redaktirovat.png') }}" class="ui-icon ui-icon--sm">
+                                    Редактировать
+                                </button>
+                            </div>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
-                            <span style="color: var(--text-muted);">Роль:</span>
-                            <strong style="color: var(--accent-1);">{{ current_user.get_role_display() }}</strong>
-                        </div>
-                        {% if current_user.created_at %}
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
-                            <span style="color: var(--text-muted);">Дата регистрации:</span>
-                            <span style="color: var(--text-primary);">{{ current_user.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
-                        </div>
-                        {% endif %}
-                        {% if current_user.last_login %}
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
-                            <span style="color: var(--text-muted);">Последний вход:</span>
-                            <span style="color: var(--text-primary);">{{ current_user.last_login.strftime('%d.%m.%Y %H:%M') }}</span>
-                        </div>
-                        {% endif %}
                     </div>
-                </div>
 
-                {% if current_user.is_creator() %}
-                <div>
-                    <h2 style="margin-bottom: 1rem; color: var(--text-primary);">Администрирование</h2>
-                    <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
-                        <a href="{{ url_for('admin.admin_panel') }}" class="neo-button accent" style="text-decoration: none;">
-                            ⚙️ Админ панель
-                        </a>
+                    <!-- Сетка контента -->
+                    <div style="padding: 0 2.5rem 2.5rem;">
+                        <div class="profile-content-grid">
+                            <!-- Левая колонка: Данные -->
+                            <div class="profile-section">
+                                <h3>
+                                    Учетная запись
+                                </h3>
+                                
+                                {% if current_user.about_me %}
+                                <div class="profile-bio" style="margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--stroke-1);">
+                                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">О себе</div>
+                                    <div style="white-space: pre-wrap; color: var(--text-primary); line-height: 1.6;">{{ current_user.about_me }}</div>
+                                </div>
+                                {% endif %}
+
+                                <div class="data-row">
+                                    <span class="data-label">Идентификатор</span>
+                                    <span class="data-value" style="font-family: 'MonaspaceNeon', monospace; letter-spacing: 1px; color: var(--accent-color);">#777</span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="data-label">Email / Логин</span>
+                                    <span class="data-value">{{ current_user.username }}</span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="data-label">Роль в системе</span>
+                                    <span class="data-value" style="color: var(--accent-color);">{{ current_user.get_role_display() }}</span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="data-label">Дата регистрации</span>
+                                    <span class="data-value">{{ current_user.created_at.strftime('%d.%m.%Y') if current_user.created_at else '—' }}</span>
+                                </div>
+                                <div class="data-row">
+                                    <span class="data-label">Последняя активность</span>
+                                    <span class="data-value local-time" data-timestamp="{{ current_user.last_login.isoformat() if current_user.last_login else '' }}">
+                                        {{ current_user.last_login.strftime('%d.%m.%Y %H:%M') if current_user.last_login else '—' }}
+                                    </span>
+                                </div>
+                                
+                                {% if current_user.telegram_link %}
+                                <div class="data-row">
+                                    <span class="data-label">Telegram</span>
+                                    <a href="{{ current_user.telegram_link }}" target="_blank" class="data-value" style="text-decoration: none; color: var(--text-primary);">
+                                        {{ current_user.telegram_link.replace('https://t.me/', '@').replace('http://t.me/', '@') }}
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Правая колонка: Действия -->
+                            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                                {% if current_user.is_creator() %}
+                                <div class="profile-section" style="background: rgba(255, 46, 46, 0.05); border-color: rgba(255, 46, 46, 0.3);">
+                                    <h3>
+                                        <img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" style="width: 20px; opacity: 0.8; filter: drop-shadow(0 0 5px red);">
+                                        Доступ Создателя
+                                    </h3>
+                                    <p style="font-size: 0.9rem; margin-bottom: 1.5rem; opacity: 0.8;">
+                                        Вам доступны расширенные права управления платформой.
+                                    </p>
+                                    <a href="{{ url_for('admin.admin_panel') }}" class="neo-button danger" style="width: 100%; justify-content: center; background: rgba(255, 46, 46, 0.15); border-color: #ff2e2e; color: #ff2e2e;">
+                                        Перейти в админку
+                                    </a>
+                                </div>
+                                {% endif %}
+
+                                <form method="POST" action="{{ url_for('auth.logout') }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="neo-button outline" style="width: 100%; justify-content: center; opacity: 0.7;">
+                                        <img src="{{ url_for('static', filename='icons/icons8-выход-100.png') }}" style="width: 18px; filter: brightness(0) invert(1);">
+                                        Выйти из аккаунта
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                {% endif %}
-                
-                <div>
-                    <h2 style="margin-bottom: 1rem; color: var(--text-primary);">Действия</h2>
-                    <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
-                        <form method="POST" action="{{ url_for('auth.logout') }}" style="display: inline;">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                            <button type="submit" class="neo-button outline" style="cursor: pointer; border-color: var(--danger); color: var(--danger);" onmouseover="this.style.background='rgba(255, 108, 145, 0.1)'" onmouseout="this.style.background='transparent'">
-                                🚪 Выход из системы
-                            </button>
-                        </form>
-                    </div>
+            {% else %}
+                <div class="glass-panel" style="text-align: center; padding: 4rem;">
+                    <h1 class="hero-title">Доступ ограничен</h1>
+                    <p style="color: var(--text-muted); margin-bottom: 2rem;">Пожалуйста, войдите в систему, чтобы просмотреть профиль.</p>
+                    <a href="{{ url_for('auth.login') }}" class="neo-button accent">Войти</a>
                 </div>
-            </div>
-        </section>
-        {% else %}
-        <section class="glass-panel">
-            <div style="padding: 2rem; text-align: center; color: var(--text-muted);">
-                <p>Ошибка: пользователь не найден. Пожалуйста, войдите в систему.</p>
-                <a href="{{ url_for('auth.login') }}" class="neo-button accent" style="margin-top: 1rem; text-decoration: none; display: inline-block;">Войти</a>
-            </div>
-        </section>
-        {% endif %}
+            {% endif %}
+        </main>
+
+        </main>
     </div>
 
+    <!-- Модальное окно редактирования профиля (вынесено из app-shell) -->
+    {% if current_user %}
+    <div class="modal-overlay" id="editProfileModal" style="z-index: 9999;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Редактировать профиль</h2>
+                <button class="modal-close" onclick="closeEditProfileModal()">&times;</button>
+            </div>
+            <form id="editProfileForm" onsubmit="submitProfileEdit(event)" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="neo-field">
+                        <label class="neo-label" for="avatar_file">Аватарка</label>
+                        <input type="file" id="avatar_file" name="avatar_file" class="neo-input" accept="image/*">
+                        <small style="color: var(--text-muted); font-size: 0.8rem;">Загрузите изображение (JPG, PNG, GIF)</small>
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="custom_status">Статус</label>
+                        <input type="text" id="custom_status" name="custom_status" class="neo-input" 
+                               value="{{ current_user.custom_status or '' }}" placeholder="Ваш статус...">
+                    </div>
+                    
+                    <div class="neo-field">
+                        <label class="neo-label" for="about_me">О себе</label>
+                        <textarea id="about_me" name="about_me" class="neo-textarea" 
+                                  placeholder="Расскажите немного о себе...">{{ current_user.about_me or '' }}</textarea>
+                    </div>
+                    
+                    <div class="neo-field">
+                        <label class="neo-label" for="telegram_link">Telegram</label>
+                        <input type="text" id="telegram_link" name="telegram_link" class="neo-input" 
+                               value="{{ current_user.telegram_link or '' }}" placeholder="https://t.me/...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="neo-button ghost" onclick="closeEditProfileModal()">Отмена</button>
+                    <button type="submit" class="neo-button accent">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openEditProfileModal() {
+            document.getElementById('editProfileModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeEditProfileModal() {
+            document.getElementById('editProfileModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        async function submitProfileEdit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+            
+            // Отправляем как FormData (не JSON), чтобы передать файл
+            try {
+                const response = await fetch("{{ url_for('auth.profile_update') }}", {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': "{{ csrf_token() }}"
+                    },
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    if (window.toast) window.toast.success('Профиль обновлен');
+                    setTimeout(() => window.location.reload(), 500);
+                } else {
+                    if (window.toast) window.toast.error(result.error || 'Ошибка обновления');
+                }
+            } catch (e) {
+                console.error(e);
+                if (window.toast) window.toast.error('Ошибка сети');
+            }
+        }
+    </script>
+    {% endif %}
+
+    <script>
+        // Конвертация времени
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.local-time').forEach(el => {
+                const timestamp = el.dataset.timestamp;
+                if (timestamp) {
+                    const date = new Date(timestamp);
+                    el.textContent = date.toLocaleString('ru-RU', {
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                }
+            });
+        });
+    </script>
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <script type="application/json" id="flash-messages">
@@ -113,15 +263,12 @@
                         var toastFunc = window.toast || (typeof toast !== 'undefined' ? toast : null);
                         if (!toastFunc) return;
                         
-                        if (msg.category === 'error' || msg.category === 'danger') {
-                            toastFunc.error(msg.message);
-                        } else if (msg.category === 'warning') {
-                            toastFunc.warning(msg.message);
-                        } else if (msg.category === 'info') {
-                            toastFunc.info(msg.message);
-                        } else {
-                            toastFunc.success(msg.message);
-                        }
+                        var type = 'success';
+                        if (msg.category === 'error' || msg.category === 'danger') type = 'error';
+                        else if (msg.category === 'warning') type = 'warning';
+                        else if (msg.category === 'info') type = 'info';
+                        
+                        toastFunc[type](msg.message);
                     });
                 } catch (e) {
                     console.error('Error parsing flash messages:', e);

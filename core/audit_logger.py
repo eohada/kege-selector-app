@@ -96,9 +96,10 @@ class AuditLogger:
             if not user_id and not tester_id:
                 logger.debug("Skipping audit log: no user_id and no tester_id")
                 return
-
+            
             # Если пришёл user_id — проверяем, что пользователь существует
             if user_id:
+                from app.models import User
                 user = User.query.get(user_id)
                 if not user:
                     logger.warning(f"User {user_id} not found in database, skipping audit log")

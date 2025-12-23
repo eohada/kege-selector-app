@@ -3,12 +3,36 @@
 <header class="nav-primary">
     <div class="nav-brand">
         {% if current_user and current_user.is_authenticated %}
-        <a href="{{ url_for('auth.user_profile') }}"
-           class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}"
-           title="{{ current_user.username }} ({{ current_user.get_role_display() }})">
-            {{ current_user.username[0].upper() }}
-        </a>
+        <div class="nav-user-actions">
+            <div class="profile-dropdown">
+                <div class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}">
+                    {{ current_user.username[0].upper() }}
+                </div>
+                
+                <div class="profile-dropdown-content">
+                    <a href="{{ url_for('auth.user_profile') }}" class="profile-item">
+                        <img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Profile">
+                        <span>Профиль</span>
+                    </a>
+                    
+                    {% if current_user.is_creator() %}
+                    <a href="{{ url_for('admin.admin_panel') }}" class="profile-item {% if active_page == 'admin' %}active{% endif %}">
+                        <img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" alt="Admin">
+                        <span>Админка</span>
+                    </a>
+                    {% endif %}
+                    
+                    <div style="border-top: 1px solid var(--stroke-1); margin: 0.4rem 0;"></div>
+                    
+                    <a href="{{ url_for('auth.logout') }}" class="profile-item" style="color: var(--danger);">
+                        <img src="{{ url_for('static', filename='icons/icons8-выход-100.png') }}" alt="Logout" style="filter: hue-rotate(-150deg);">
+                        <span>Выход</span>
+                    </a>
+                </div>
+            </div>
+        </div>
         {% endif %}
+        
         <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
             <div class="brand-mark">LOGO</div>
             <div class="brand-caption">Слот под фирменный знак</div>
@@ -32,20 +56,6 @@
             </span>
         </a>
 
-        <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link {% if active_page == 'generator' %}active{% endif %}">
-            <span class="nav-link-content">
-                <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="nav-link-icon">
-                <span class="nav-link-label">Генератор</span>
-            </span>
-        </a>
-
-        <a href="{{ url_for('main.update_plans') }}" class="nav-link {% if active_page == 'plans' %}active{% endif %}">
-            <span class="nav-link-content">
-                <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Планы" class="nav-link-icon">
-                <span class="nav-link-label">Планы</span>
-            </span>
-        </a>
-
         <a href="{{ url_for('reminders.reminders_list') }}" class="nav-link {% if active_page == 'reminders' %}active{% endif %}">
             <span class="nav-link-content">
                 <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" alt="Напоминания" class="nav-link-icon">
@@ -53,21 +63,29 @@
             </span>
         </a>
 
-        <a href="{{ url_for('templates.templates_list') }}" class="nav-link {% if active_page == 'templates' %}active{% endif %}">
-            <span class="nav-link-content">
-                <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="nav-link-icon">
-                <span class="nav-link-label">Шаблоны</span>
-            </span>
-        </a>
-
-        {% if current_user and current_user.is_authenticated and current_user.is_creator() %}
-        <a href="{{ url_for('admin.admin_panel') }}" class="nav-link {% if active_page == 'admin' %}active{% endif %}">
-            <span class="nav-link-content">
-                <img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" alt="Админ" class="nav-link-icon">
-                <span class="nav-link-label">Админ</span>
-            </span>
-        </a>
-        {% endif %}
+        {# Выпадающее меню для инструментов #}
+        <div class="nav-dropdown">
+            <div class="nav-link nav-dropdown-trigger {% if active_page in ['generator', 'plans', 'templates'] %}active{% endif %}">
+                <span class="nav-link-content">
+                    <img src="{{ url_for('static', filename='icons/icons8-меню-100.png') }}" alt="Инструменты" class="nav-link-icon">
+                    <span class="nav-link-label">Инструменты</span>
+                </span>
+            </div>
+            <div class="nav-dropdown-content">
+                <a href="{{ url_for('kege_generator.kege_generator') }}" class="dropdown-item {% if active_page == 'generator' %}active{% endif %}">
+                    <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" class="nav-link-icon">
+                    <span>Генератор</span>
+                </a>
+                <a href="{{ url_for('main.update_plans') }}" class="dropdown-item {% if active_page == 'plans' %}active{% endif %}">
+                    <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" class="nav-link-icon">
+                    <span>Планы</span>
+                </a>
+                <a href="{{ url_for('templates.templates_list') }}" class="dropdown-item {% if active_page == 'templates' %}active{% endif %}">
+                    <img src="{{ url_for('static', filename='icons/SHABL.png') }}" class="nav-link-icon">
+                    <span>Шаблоны</span>
+                </a>
+            </div>
+        </div>
     </nav>
 </header>
 
