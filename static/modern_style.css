@@ -1063,6 +1063,22 @@ body::after {
     gap: 1.5rem;
 }
 
+/* Гарантируем правильное отображение на десктопе */
+@media (min-width: 769px) {
+    .students-grid {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
+        gap: 1.5rem !important;
+    }
+}
+
+/* Убеждаемся, что красная тема не влияет на grid учеников */
+body.creator-theme-active .students-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
+    gap: 1.5rem !important;
+}
+
 .student-card {
     border-radius: var(--radius-lg);
     border: 1px solid var(--stroke-1);

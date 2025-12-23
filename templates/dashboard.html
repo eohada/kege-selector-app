@@ -326,5 +326,14 @@
     <script src="{{ url_for('static', filename='filter-storage.js') }}"></script>
     <script src="{{ url_for('static', filename='filter-state-manager.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script>
+        // Убеждаемся, что класс creator-theme-active не применяется на других страницах
+        document.addEventListener('DOMContentLoaded', () => {
+            const profileContainer = document.querySelector('.profile-container.theme-creator');
+            if (!profileContainer) {
+                document.body.classList.remove('creator-theme-active');
+            }
+        });
+    </script>
 </body>
 </html>
