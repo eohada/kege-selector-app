@@ -77,8 +77,7 @@ def schedule():
     if day_end_hour < day_start_hour:
         day_start_hour, day_end_hour = 7, 22
     total_minutes = (day_end_hour - day_start_hour + 1) * 60
-    # Добавляем один дополнительный слот для уроков, которые могут выходить за пределы дня (например, урок в 23:00 длительностью 60 минут)
-    total_slots = int(total_minutes / slot_minutes) + 1
+    total_slots = int(total_minutes / slot_minutes)
     time_labels = [f"{hour:02d}:00" for hour in range(day_start_hour, day_end_hour + 1)]
 
     # Создаем datetime для фильтрации (lesson_date в БД хранится как naive в московском времени)
