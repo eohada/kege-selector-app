@@ -149,13 +149,24 @@
                 <h2 class="modal-title">Редактировать профиль</h2>
                 <button class="modal-close" onclick="closeEditProfileModal()">&times;</button>
             </div>
-            <form id="editProfileForm" onsubmit="submitProfileEdit(event)" enctype="multipart/form-data">
-                <div class="modal-body">
-                    <div class="neo-field">
-                        <label class="neo-label" for="avatar_file">Аватарка</label>
-                        <input type="file" id="avatar_file" name="avatar_file" class="neo-input" accept="image/*">
-                        <small style="color: var(--text-muted); font-size: 0.8rem;">Загрузите изображение (JPG, PNG, GIF)</small>
-                    </div>
+                <form id="editProfileForm" onsubmit="submitProfileEdit(event)" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <div class="neo-field">
+                            <label class="neo-label" for="avatar_file">Аватарка</label>
+                            {% if current_user.avatar_url %}
+                            <div style="margin-bottom: 1rem; text-align: center;">
+                                <img id="avatar_preview" src="{{ current_user.avatar_url }}" alt="Текущая аватарка" 
+                                     style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 2px solid var(--stroke-1);">
+                            </div>
+                            {% else %}
+                            <div style="margin-bottom: 1rem; text-align: center;">
+                                <img id="avatar_preview" src="" alt="Превью" 
+                                     style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 2px solid var(--stroke-1); display: none;">
+                            </div>
+                            {% endif %}
+                            <input type="file" id="avatar_file" name="avatar_file" class="neo-input" accept="image/*">
+                            <small style="color: var(--text-muted); font-size: 0.8rem;">Загрузите изображение (JPG, PNG, GIF, WEBP, макс. 5MB)</small>
+                        </div>
 
                     <div class="neo-field">
                         <label class="neo-label" for="custom_status">Статус</label>
@@ -194,32 +205,84 @@
             document.body.style.overflow = '';
         }
 
+        // Превью аватарки при выборе файла
+        document.addEventListener('DOMContentLoaded', () => {
+            const avatarInput = document.getElementById('avatar_file');
+            if (avatarInput) {
+                avatarInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            // Обновляем превью в модальном окне
+                            const preview = document.getElementById('avatar_preview');
+                            if (preview) {
+                                preview.src = e.target.result;
+                                preview.style.display = 'block';
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+        });
+
         async function submitProfileEdit(event) {
             event.preventDefault();
             const form = event.target;
             const formData = new FormData(form);
             
+            // Добавляем CSRF токен в FormData (Flask-WTF требует его в форме)
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            if (csrfToken) {
+                formData.append('csrf_token', csrfToken.getAttribute('content'));
+            } else {
+                console.error('CSRF token not found');
+                if (window.toast) window.toast.error('Ошибка безопасности. Обновите страницу.');
+                return;
+            }
+            
             // Отправляем как FormData (не JSON), чтобы передать файл
             try {
                 const response = await fetch("{{ url_for('auth.profile_update') }}", {
                     method: 'POST',
-                    headers: {
-                        'X-CSRFToken': "{{ csrf_token() }}"
-                    },
                     body: formData
                 });
 
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Server error:', response.status, errorText);
+                    if (window.toast) window.toast.error(`Ошибка сервера (${response.status})`);
+                    return;
+                }
+
                 const result = await response.json();
+                console.log('Server response:', result);
 
                 if (result.success) {
+                    // Обновляем аватарку сразу, без перезагрузки
+                    if (result.avatar_url) {
+                        const avatarImg = document.querySelector('.profile-avatar-big img');
+                        if (avatarImg) {
+                            avatarImg.src = result.avatar_url + '?t=' + Date.now();
+                        } else {
+                            // Если аватарки не было, создаем img
+                            const avatarDiv = document.querySelector('.profile-avatar-big');
+                            if (avatarDiv) {
+                                avatarDiv.innerHTML = `<img src="${result.avatar_url}?t=${Date.now()}" alt="Avatar">`;
+                            }
+                        }
+                    }
+                    
                     if (window.toast) window.toast.success('Профиль обновлен');
-                    setTimeout(() => window.location.reload(), 500);
+                    setTimeout(() => window.location.reload(), 1000);
                 } else {
+                    console.error('Update failed:', result.error);
                     if (window.toast) window.toast.error(result.error || 'Ошибка обновления');
                 }
             } catch (e) {
-                console.error(e);
-                if (window.toast) window.toast.error('Ошибка сети');
+                console.error('Network error:', e);
+                if (window.toast) window.toast.error('Ошибка сети: ' + e.message);
             }
         }
     </script>

@@ -2,9 +2,13 @@
 Маршруты аутентификации
 """
 import os
+import logging
 from werkzeug.utils import secure_filename
 from flask import render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_user, logout_user, login_required, current_user
+from flask_wtf.csrf import validate_csrf, CSRFError
+
+logger = logging.getLogger(__name__)
 from werkzeug.security import check_password_hash
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
@@ -108,6 +112,15 @@ def user_profile():
 @login_required
 def profile_update():
     """Обновление данных профиля (AJAX)"""
+    from werkzeug.exceptions import RequestEntityTooLarge
+    
+    # Проверка CSRF токена
+    try:
+        validate_csrf(request.form.get('csrf_token') or request.headers.get('X-CSRFToken'))
+    except CSRFError as e:
+        logger.warning(f"CSRF validation failed: {e}")
+        return jsonify({'success': False, 'error': 'Ошибка безопасности. Обновите страницу.'}), 403
+    
     # Поддерживаем и JSON, и FormData
     if request.is_json:
         data = request.get_json()
@@ -119,21 +132,51 @@ def profile_update():
         if 'avatar_file' in request.files:
             file = request.files['avatar_file']
             if file and file.filename:
+                # Проверка типа файла
+                allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
                 filename = secure_filename(file.filename)
+                ext = os.path.splitext(filename)[1].lower()
+                
+                if ext not in allowed_extensions:
+                    return jsonify({'success': False, 'error': 'Недопустимый формат файла. Используйте JPG, PNG, GIF или WEBP'}), 400
+                
+                # Проверка размера (макс 5MB)
+                file.seek(0, os.SEEK_END)
+                file_size = file.tell()
+                file.seek(0)
+                if file_size > 5 * 1024 * 1024:
+                    return jsonify({'success': False, 'error': 'Файл слишком большой. Максимум 5MB'}), 400
+                
                 # Генерируем уникальное имя: avatar_USERID.ext
-                ext = os.path.splitext(filename)[1]
                 unique_filename = f"avatar_{current_user.id}{ext}"
                 
-                # Путь: app/static/uploads/avatars
+                # Путь: static/uploads/avatars (на уровне app/)
                 # current_app.root_path указывает на папку app/
-                upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'avatars')
+                # static находится на том же уровне, что и app
+                app_root = os.path.dirname(current_app.root_path)
+                upload_folder = os.path.join(app_root, 'static', 'uploads', 'avatars')
+                upload_folder = os.path.abspath(upload_folder)
+                
+                logger.info(f"Upload folder path: {upload_folder}")
                 os.makedirs(upload_folder, exist_ok=True)
                 
+                if not os.path.exists(upload_folder):
+                    logger.error(f"Failed to create upload folder: {upload_folder}")
+                    return jsonify({'success': False, 'error': 'Не удалось создать папку для загрузки'}), 500
+                
                 file_path = os.path.join(upload_folder, unique_filename)
+                logger.info(f"Saving file to: {file_path}")
                 file.save(file_path)
                 
+                if not os.path.exists(file_path):
+                    logger.error(f"File was not saved: {file_path}")
+                    return jsonify({'success': False, 'error': 'Не удалось сохранить файл'}), 500
+                
                 # Сохраняем URL (важно использовать прямые слеши для URL)
-                current_user.avatar_url = f"/static/uploads/avatars/{unique_filename}"
+                avatar_url = f"/static/uploads/avatars/{unique_filename}"
+                current_user.avatar_url = avatar_url
+                
+                logger.info(f"Avatar uploaded for user {current_user.id}: {avatar_url}")
 
         # Обновляем текстовые поля
         if 'custom_status' in data:
@@ -155,10 +198,11 @@ def profile_update():
             metadata={'updated_fields': list(data.keys())}
         )
         
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'avatar_url': current_user.avatar_url})
         
     except Exception as e:
         db.session.rollback()
+        logger.error(f"Error updating profile: {e}", exc_info=True)
         audit_logger.log(
             action='profile_update_failed',
             entity='User',
@@ -166,5 +210,5 @@ def profile_update():
             status='error',
             metadata={'error': str(e)}
         )
-        return jsonify({'success': False, 'error': 'Ошибка сохранения'}), 500
+        return jsonify({'success': False, 'error': f'Ошибка сохранения: {str(e)}'}), 500
 
