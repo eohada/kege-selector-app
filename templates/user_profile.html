@@ -291,6 +291,12 @@
     <script>
         // Конвертация времени
         document.addEventListener('DOMContentLoaded', () => {
+            // Активируем красную тему только на странице профиля Creator
+            const profileContainer = document.querySelector('.profile-container.theme-creator');
+            if (profileContainer) {
+                document.body.classList.add('creator-theme-active');
+            }
+
             document.querySelectorAll('.local-time').forEach(el => {
                 const timestamp = el.dataset.timestamp;
                 if (timestamp) {

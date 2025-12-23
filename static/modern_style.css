@@ -3634,8 +3634,9 @@ body::after {
 .modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
 .modal-footer { padding: 1.5rem; border-top: 1px solid var(--stroke-1); display: flex; justify-content: flex-end; gap: 1rem; background: var(--surface-2); border-bottom-left-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg); }
 
-/* GLOBAL CREATOR THEME OVERRIDE */
-body:has(.theme-creator) {
+/* GLOBAL CREATOR THEME OVERRIDE - применяется через JS на странице профиля */
+/* Используем класс на body, который добавляется через JS, чтобы не влиять на другие страницы */
+body.creator-theme-active {
     --page-bg: #0a0000;
     --surface-1: rgba(20, 0, 0, 0.95);
     --surface-2: rgba(30, 0, 0, 0.9);
@@ -3649,7 +3650,7 @@ body:has(.theme-creator) {
     --page-gradient: radial-gradient(circle at 50% 0%, rgba(255, 0, 0, 0.2), transparent 70%);
 }
 
-body:has(.theme-creator) .nav-primary {
+body.creator-theme-active .nav-primary {
     background: rgba(30, 0, 0, 0.9);
     border-color: rgba(255, 0, 0, 0.3);
     box-shadow: 0 10px 40px rgba(255, 0, 0, 0.1);
