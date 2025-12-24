@@ -5,9 +5,9 @@
         {% if current_user and current_user.is_authenticated %}
         <div class="nav-user-actions">
             <div class="profile-dropdown">
-                <div class="user-profile-avatar {% if current_user.is_creator() %}creator{% endif %}">
-                    {{ current_user.username[0].upper() }}
-                </div>
+                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar nav-dropdown-trigger {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }}">
+                    {% if current_user.avatar_url %}<img src="{{ current_user.avatar_url }}" alt="Avatar">{% else %}{{ current_user.username[0].upper() }}{% endif %}
+                </a>
                 
                 <div class="profile-dropdown-content">
                     <a href="{{ url_for('auth.user_profile') }}" class="profile-item">

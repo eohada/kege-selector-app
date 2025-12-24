@@ -275,26 +275,77 @@ def ensure_schema_columns(app):
                     logger.warning("SQLite does not support ALTER COLUMN, reminder_time will remain NOT NULL")
             
             # Проверяем и обновляем таблицу Users
-            users_table = 'Users' if 'Users' in table_names else ('users' if 'users' in table_names else None)
+            users_table = _resolve_table_name(table_names, 'Users')
             if users_table:
-                users_columns = {col['name'] for col in inspector.get_columns(users_table)}
-                
-                # Поля профиля
-                if 'avatar_url' not in users_columns:
-                    db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN avatar_url VARCHAR(500)'))
-                if 'about_me' not in users_columns:
-                    db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN about_me TEXT'))
-                if 'custom_status' not in users_columns:
-                    db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN custom_status VARCHAR(100)'))
-                if 'telegram_link' not in users_columns:
-                    db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN telegram_link VARCHAR(200)'))
-                if 'github_link' not in users_columns:
-                    db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN github_link VARCHAR(200)'))
+                try:
+                    users_columns = {col['name'] for col in inspector.get_columns(users_table)}
+                    
+                    # Поля профиля - добавляем только если их нет, с обработкой ошибок
+                    db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+                    is_postgres = 'postgresql' in db_url or 'postgres' in db_url
+                    
+                    if 'avatar_url' not in users_columns:
+                        try:
+                            if is_postgres:
+                                db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN avatar_url VARCHAR(500)'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN avatar_url VARCHAR(500)'))
+                            logger.info(f"Added column avatar_url to {users_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add avatar_url column (may already exist): {e}")
+                    
+                    if 'about_me' not in users_columns:
+                        try:
+                            if is_postgres:
+                                db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN about_me TEXT'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN about_me TEXT'))
+                            logger.info(f"Added column about_me to {users_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add about_me column (may already exist): {e}")
+                    
+                    if 'custom_status' not in users_columns:
+                        try:
+                            if is_postgres:
+                                db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN custom_status VARCHAR(100)'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN custom_status VARCHAR(100)'))
+                            logger.info(f"Added column custom_status to {users_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add custom_status column (may already exist): {e}")
+                    
+                    if 'telegram_link' not in users_columns:
+                        try:
+                            if is_postgres:
+                                db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN telegram_link VARCHAR(200)'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN telegram_link VARCHAR(200)'))
+                            logger.info(f"Added column telegram_link to {users_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add telegram_link column (may already exist): {e}")
+                    
+                    if 'github_link' not in users_columns:
+                        try:
+                            if is_postgres:
+                                db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN github_link VARCHAR(200)'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN github_link VARCHAR(200)'))
+                            logger.info(f"Added column github_link to {users_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add github_link column (may already exist): {e}")
+                except Exception as e:
+                    logger.warning(f"Error checking/updating Users table columns: {e}")
+                    # Не пробрасываем ошибку дальше, чтобы не блокировать запуск приложения
 
             _fix_postgres_sequences(app, inspector)  # После миграций синхронизируем sequences (чинит 500 duplicate key на SERIAL)
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as commit_error:
+                db.session.rollback()
+                logger.warning(f"Error committing migrations: {commit_error}, but continuing...")
     except Exception as e:
         db.session.rollback()
         logger.error(f"Ошибка при миграции схемы БД: {e}", exc_info=True)
-        raise  # Пробрасываем ошибку дальше
+        # НЕ пробрасываем ошибку дальше, чтобы не блокировать запуск приложения
+        # Миграции могут быть применены вручную позже
 
