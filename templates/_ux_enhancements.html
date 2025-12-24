@@ -7,4 +7,68 @@
 <script src="{{ url_for('static', filename='form-toast-handler.js') }}"></script>
 <script src="{{ url_for('static', filename='ux-utils.js') }}"></script>
 
+{# КРИТИЧЕСКИ ВАЖНО: Принудительная установка базового размера шрифта для консистентности между окружениями #}
+<script>
+(function() {
+    'use strict';
+    // Принудительно устанавливаем базовый размер шрифта при загрузке страницы
+    // Это гарантирует одинаковый размер в песочнице и проде
+    function enforceBaseFontSize() {
+        const html = document.documentElement;
+        const body = document.body;
+        
+        // Устанавливаем размер в пикселях напрямую
+        html.style.fontSize = '16px';
+        html.style.setProperty('font-size', '16px', 'important');
+        
+        body.style.fontSize = '16px';
+        body.style.setProperty('font-size', '16px', 'important');
+        
+        // Отключаем авто-масштабирование текста
+        html.style.setProperty('-webkit-text-size-adjust', '100%', 'important');
+        html.style.setProperty('-moz-text-size-adjust', '100%', 'important');
+        html.style.setProperty('text-size-adjust', '100%', 'important');
+    }
+    
+    // Выполняем сразу при загрузке скрипта
+    enforceBaseFontSize();
+    
+    // Повторяем после полной загрузки DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enforceBaseFontSize);
+    } else {
+        enforceBaseFontSize();
+    }
+    
+    // Также выполняем после полной загрузки страницы
+    window.addEventListener('load', enforceBaseFontSize);
+    
+    // Защита от изменения размера через CSS (если кто-то попытается переопределить)
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                const html = document.documentElement;
+                const body = document.body;
+                
+                // Проверяем, что размер не изменился
+                const htmlFontSize = window.getComputedStyle(html).fontSize;
+                const bodyFontSize = window.getComputedStyle(body).fontSize;
+                
+                if (htmlFontSize !== '16px') {
+                    html.style.setProperty('font-size', '16px', 'important');
+                }
+                
+                if (bodyFontSize !== '16px') {
+                    body.style.setProperty('font-size', '16px', 'important');
+                }
+            }
+        });
+    });
+    
+    // Наблюдаем за изменениями в html и body
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+    observer.observe(document.body, { attributes: true, attributeFilter: ['style'] });
+})();
+</script>
+
 {# Примечание: UX скрипты были удалены, но breadcrumbs container оставлен для совместимости #}
