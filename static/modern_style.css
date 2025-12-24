@@ -2428,7 +2428,8 @@ body.creator-theme-active .students-grid {
     /* Базовые отступы и размеры */
     .app-shell,
     .container {
-        width: calc(100% - 2rem);
+        width: calc(100% - 2rem) !important;
+        max-width: 1380px !important; /* КРИТИЧЕСКИ ВАЖНО: фиксируем максимальную ширину даже на мобильных */
         padding-top: 1.5rem;
     }
 
