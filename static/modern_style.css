@@ -171,10 +171,13 @@ body::after {
 .app-shell,
 .container {
     width: min(1380px, calc(100% - 4rem));
+    max-width: 1380px !important; /* КРИТИЧЕСКИ ВАЖНО: фиксируем максимальную ширину для консистентности */
     margin: 0 auto;
     padding-top: 3.5rem;
     position: relative;
     z-index: 1;
+    /* Гарантируем одинаковую ширину независимо от размера окна */
+    box-sizing: border-box;
 }
 
 .glass-panel {

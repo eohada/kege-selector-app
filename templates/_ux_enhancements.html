@@ -43,6 +43,47 @@
     // Также выполняем после полной загрузки страницы
     window.addEventListener('load', enforceBaseFontSize);
     
+    // Функция для принудительной установки максимальной ширины контейнеров
+    function enforceMaxWidth() {
+        const containers = document.querySelectorAll('.app-shell, .container');
+        containers.forEach(function(container) {
+            const computedStyle = window.getComputedStyle(container);
+            const currentWidth = computedStyle.width;
+            const currentMaxWidth = computedStyle.maxWidth;
+            
+            // Устанавливаем максимальную ширину в пикселях
+            container.style.setProperty('max-width', '1380px', 'important');
+            
+            // Если текущая ширина больше 1380px, ограничиваем её
+            const widthValue = parseFloat(currentWidth);
+            if (!isNaN(widthValue) && widthValue > 1380) {
+                container.style.setProperty('width', '1380px', 'important');
+            }
+        });
+    }
+    
+    // Выполняем принудительную установку ширины
+    enforceMaxWidth();
+    
+    // Повторяем после загрузки DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enforceMaxWidth);
+    } else {
+        enforceMaxWidth();
+    }
+    
+    // Также выполняем после полной загрузки страницы
+    window.addEventListener('load', enforceMaxWidth);
+    
+    // Отслеживаем изменения размера окна
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            enforceMaxWidth();
+        }, 100);
+    });
+    
     // Защита от изменения размера через CSS (если кто-то попытается переопределить)
     const observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
