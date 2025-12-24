@@ -36,7 +36,7 @@ def _fix_postgres_sequences(app, inspector):  # Выравниваем sequences
             'UsageHistory': 'usage_id',  # PK истории принятия
             'SkippedTasks': 'skipped_id',  # PK пропусков
             'BlacklistTasks': 'blacklist_id',  # PK черного списка
-            'Testers': 'tester_id',  # PK тестировщиков
+            # 'Testers': 'tester_id',  # PK тестировщиков - ПРОПУСКАЕМ, т.к. может быть text тип
             'AuditLog': 'id',  # PK логов
             'MaintenanceMode': 'id',  # PK режима техработ
             'StudentTaskStatistics': 'stat_id',  # PK ручной статистики
@@ -45,6 +45,7 @@ def _fix_postgres_sequences(app, inspector):  # Выравниваем sequences
             'Users': 'id',  # PK пользователей
         }  # Конец mapping
 
+        # Исправляем sequences в отдельных транзакциях, чтобы ошибка одной не влияла на другие
         for preferred_table, pk_column in sequences_map.items():  # Проходим по всем таблицам, где есть SERIAL/IDENTITY
             real_table = _resolve_table_name(table_names, preferred_table)  # Определяем реальное имя таблицы
             if not real_table:  # Если таблицы нет — пропускаем
@@ -54,6 +55,7 @@ def _fix_postgres_sequences(app, inspector):  # Выравниваем sequences
                 if pk_column not in cols:  # Если PK колонки нет — пропускаем
                     continue  # Переходим к следующей
                 # Важно: используем pg_get_serial_sequence, чтобы не гадать имя sequence
+                # Каждая попытка в отдельной транзакции
                 db.session.execute(  # Выполняем SQL-команду setval
                     text(  # Оборачиваем в text()
                         f"SELECT setval("  # Начинаем setval
@@ -63,14 +65,11 @@ def _fix_postgres_sequences(app, inspector):  # Выравниваем sequences
                         f")"  # Закрываем setval
                     )  # Конец SQL
                 )  # Конец execute
-            except Exception as e:  # Если не удалось (например, таблица без sequence)
+                db.session.commit()  # Коммитим каждую sequence отдельно
+            except Exception as e:  # Если не удалось (например, таблица без sequence или неправильный тип)
+                db.session.rollback()  # Откатываем только эту попытку
                 logger.warning(f"Could not fix sequence for {real_table}.{pk_column}: {e}")  # Логируем и продолжаем
-        try:  # Коммитим изменения setval одной транзакцией
-            db.session.commit()  # Фиксируем обновления sequences
-            logger.info("PostgreSQL sequences synchronized successfully")  # Пишем в лог об успехе
-        except Exception as e:  # Если коммит не прошёл
-            db.session.rollback()  # Откатываем
-            logger.warning(f"Could not commit sequence synchronization: {e}")  # Логируем проблему
+        logger.info("PostgreSQL sequences synchronization completed")  # Пишем в лог об успехе
     except Exception as e:  # Если общий процесс упал
         db.session.rollback()  # Откатываем на всякий случай
         logger.warning(f"Sequence synchronization skipped due to error: {e}")  # Не блокируем запуск приложения
@@ -82,8 +81,13 @@ def ensure_schema_columns(app):
     """
     try:
         with app.app_context():
+            # Создаем таблицы, если их нет
             db.create_all()
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as e:
+                logger.warning(f"Error committing db.create_all(): {e}")
+                db.session.rollback()
 
             inspector = inspect(db.engine)
             
@@ -337,12 +341,35 @@ def ensure_schema_columns(app):
                     logger.warning(f"Error checking/updating Users table columns: {e}")
                     # Не пробрасываем ошибку дальше, чтобы не блокировать запуск приложения
 
-            _fix_postgres_sequences(app, inspector)  # После миграций синхронизируем sequences (чинит 500 duplicate key на SERIAL)
+            # КРИТИЧЕСКИ ВАЖНО: коммитим миграции ДО исправления sequences
+            # Иначе ошибки в sequences могут откатить все миграции
             try:
                 db.session.commit()
+                logger.info("Database migrations committed successfully")
+                
+                # Проверяем, что миграции действительно применились
+                # Перечитываем колонки Users после коммита
+                if users_table:
+                    try:
+                        users_columns_after = {col['name'] for col in inspector.get_columns(users_table)}
+                        missing_columns = []
+                        for col_name in ['avatar_url', 'about_me', 'custom_status', 'telegram_link', 'github_link']:
+                            if col_name not in users_columns_after:
+                                missing_columns.append(col_name)
+                        if missing_columns:
+                            logger.warning(f"After commit, these columns are still missing from Users: {missing_columns}")
+                        else:
+                            logger.info("All User profile columns verified after commit")
+                    except Exception as verify_error:
+                        logger.warning(f"Could not verify migrations: {verify_error}")
             except Exception as commit_error:
                 db.session.rollback()
-                logger.warning(f"Error committing migrations: {commit_error}, but continuing...")
+                logger.error(f"Error committing migrations: {commit_error}", exc_info=True)
+                # Не пробрасываем ошибку дальше, но логируем как ошибку
+            
+            # Исправляем sequences ПОСЛЕ коммита миграций
+            # Это не критично, если не получится - просто будет warning
+            _fix_postgres_sequences(app, inspector)  # После миграций синхронизируем sequences (чинит 500 duplicate key на SERIAL)
     except Exception as e:
         db.session.rollback()
         logger.error(f"Ошибка при миграции схемы БД: {e}", exc_info=True)
