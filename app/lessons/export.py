@@ -3,12 +3,18 @@
 """
 import json
 import re
+import logging
 from html import unescape
 from importlib import import_module
 from app.models import Lesson
-from bs4 import BeautifulSoup
 
-BeautifulSoup = None
+logger = logging.getLogger(__name__)
+
+# Импортируем BeautifulSoup только при необходимости
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
 
 def html_to_text(html_content):
     """
@@ -48,12 +54,15 @@ def html_to_text(html_content):
         re.compile(r'Прикрепленн[а-я]+ файл', re.I),
         re.compile(r'Файл к заданию', re.I)
     ]
-    for text_node in soup.find_all(string=trash_phrases):
-        # Заменяем фразу на пустоту, оставляя остальной текст (если он был в том же узле)
-        clean_node = text_node
-        for p in trash_phrases:
-            clean_node = re.sub(p, '', clean_node)
-        text_node.replace_with(clean_node)
+    # Ищем все текстовые узлы и проверяем их на наличие мусорных фраз
+    for text_node in soup.find_all(string=True):
+        if text_node.parent and text_node.parent.name not in ['script', 'style']:
+            # Заменяем фразу на пустоту, оставляя остальной текст (если он был в том же узле)
+            clean_text = text_node
+            for p in trash_phrases:
+                clean_text = re.sub(p, '', clean_text)
+            if clean_text != text_node:
+                text_node.replace_with(clean_text)
 
     # 3. ИСПРАВЛЕНИЕ ФОРМУЛ (KaTeX)
     for math_span in soup.find_all('span', class_='katex'):
@@ -150,25 +159,42 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
     Универсальная функция экспорта заданий в Markdown
     assignment_type: 'homework', 'classwork', 'exam'
     """
-    from flask import render_template
+    from flask import render_template, abort
     from app.models import db
     
-    lesson = Lesson.query.get_or_404(lesson_id)
-    student = lesson.student
+    try:
+        lesson = Lesson.query.get_or_404(lesson_id)
+        
+        # Проверяем наличие студента
+        if not lesson.student:
+            logger.error(f"Lesson {lesson_id} has no associated student")
+            abort(500, description="Урок не связан со студентом")
+        
+        student = lesson.student
 
-    # Получаем задания по типу
-    if assignment_type == 'homework':
-        tasks = sorted(lesson.homework_assignments, key=lambda ht: (ht.task.task_number if ht.task and ht.task.task_number is not None else ht.lesson_task_id))
-        title = "Домашнее задание"
-    elif assignment_type == 'classwork':
-        tasks = sorted(lesson.classwork_assignments, key=lambda ht: (ht.task.task_number if ht.task and ht.task.task_number is not None else ht.lesson_task_id))
-        title = "Классная работа"
-    elif assignment_type == 'exam':
-        tasks = sorted(lesson.exam_assignments, key=lambda ht: (ht.task.task_number if ht.task and ht.task.task_number is not None else ht.lesson_task_id))
-        title = "Проверочная работа"
-    else:
-        tasks = sorted(lesson.homework_assignments, key=lambda ht: (ht.task.task_number if ht.task and ht.task.task_number is not None else ht.lesson_task_id))
-        title = "Задания"
+        # Получаем задания по типу с безопасной сортировкой
+        def safe_sort_key(ht):
+            """Безопасная функция для сортировки заданий"""
+            if not ht or not ht.task:
+                return (999999, ht.lesson_task_id if ht else 0)
+            task_number = ht.task.task_number if ht.task.task_number is not None else 999999
+            return (task_number, ht.lesson_task_id)
+        
+        if assignment_type == 'homework':
+            tasks = sorted(lesson.homework_assignments, key=safe_sort_key) if lesson.homework_assignments else []
+            title = "Домашнее задание"
+        elif assignment_type == 'classwork':
+            tasks = sorted(lesson.classwork_assignments, key=safe_sort_key) if lesson.classwork_assignments else []
+            title = "Классная работа"
+        elif assignment_type == 'exam':
+            tasks = sorted(lesson.exam_assignments, key=safe_sort_key) if lesson.exam_assignments else []
+            title = "Проверочная работа"
+        else:
+            tasks = sorted(lesson.homework_assignments, key=safe_sort_key) if lesson.homework_assignments else []
+            title = "Задания"
+    except Exception as e:
+        logger.error(f"Error getting lesson {lesson_id} for export: {str(e)}", exc_info=True)
+        abort(500, description=f"Ошибка при получении данных урока: {str(e)}")
 
     ordinal_names = {
         1: "Первое", 2: "Второе", 3: "Третье", 4: "Четвертое", 5: "Пятое",
@@ -179,37 +205,60 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
         25: "Двадцать пятое", 26: "Двадцать шестое", 27: "Двадцать седьмое"
     }
 
-    markdown_content = f"# {title}\n\n"
-    markdown_content += f"**Ученик:** {student.name}\n"
-    if lesson.lesson_date:
-        markdown_content += f"**Дата урока:** {lesson.lesson_date.strftime('%d.%m.%Y')}\n"
-    if lesson.topic:
-        markdown_content += f"**Тема:** {lesson.topic}\n"
-    markdown_content += f"\n---\n\n"
+    try:
+        markdown_content = f"# {title}\n\n"
+        # Безопасное получение имени студента
+        student_name = student.name if student and student.name else "Неизвестный ученик"
+        markdown_content += f"**Ученик:** {student_name}\n"
+        
+        if lesson.lesson_date:
+            markdown_content += f"**Дата урока:** {lesson.lesson_date.strftime('%d.%m.%Y')}\n"
+        if lesson.topic:
+            markdown_content += f"**Тема:** {lesson.topic}\n"
+        markdown_content += f"\n---\n\n"
 
-    for idx, hw_task in enumerate(tasks):
-        order_number = idx + 1
-        task_name = ordinal_names.get(order_number, f"{order_number}-е")
+        for idx, hw_task in enumerate(tasks):
+            if not hw_task:
+                continue
+                
+            order_number = idx + 1
+            task_name = ordinal_names.get(order_number, f"{order_number}-е")
 
-        markdown_content += f"## {task_name} задание\n\n"
+            markdown_content += f"## {task_name} задание\n\n"
 
-        if not hw_task.task:
-            markdown_content += "*Задание не найдено*\n\n"
-            continue
+            if not hw_task.task:
+                markdown_content += "*Задание не найдено*\n\n"
+                continue
 
-        # Используем глобальную функцию html_to_text
-        task_text = html_to_text(hw_task.task.content_html) if hw_task.task.content_html else ""
-        markdown_content += f"{task_text}\n\n"
+            # Используем глобальную функцию html_to_text с обработкой ошибок
+            try:
+                task_text = html_to_text(hw_task.task.content_html) if hw_task.task.content_html else ""
+                markdown_content += f"{task_text}\n\n"
+            except Exception as e:
+                logger.error(f"Error converting HTML to text for task {hw_task.lesson_task_id}: {str(e)}", exc_info=True)
+                markdown_content += "*Ошибка при обработке текста задания*\n\n"
 
-        if hw_task.task.attached_files:
-            files = json.loads(hw_task.task.attached_files)
-            if files:
-                markdown_content += "**Прикрепленные файлы:**\n"
-                for file in files:
-                    markdown_content += f"- [{file['name']}]({file['url']})\n"
-                markdown_content += "\n"
-        if idx < len(tasks) - 1:
-            markdown_content += "---\n\n"
+            # Безопасная обработка прикрепленных файлов
+            if hw_task.task.attached_files:
+                try:
+                    files = json.loads(hw_task.task.attached_files)
+                    if files and isinstance(files, list):
+                        markdown_content += "**Прикрепленные файлы:**\n"
+                        for file in files:
+                            if isinstance(file, dict):
+                                file_name = file.get('name', 'Неизвестный файл')
+                                file_url = file.get('url', '#')
+                                markdown_content += f"- [{file_name}]({file_url})\n"
+                        markdown_content += "\n"
+                except (json.JSONDecodeError, TypeError, AttributeError) as e:
+                    logger.warning(f"Error parsing attached_files for task {hw_task.lesson_task_id}: {str(e)}")
+                    # Продолжаем без файлов, не прерывая экспорт
+                    
+            if idx < len(tasks) - 1:
+                markdown_content += "---\n\n"
 
-    return render_template('markdown_export.html', markdown_content=markdown_content, lesson=lesson, student=student)
+        return render_template('markdown_export.html', markdown_content=markdown_content, lesson=lesson, student=student)
+    except Exception as e:
+        logger.error(f"Error generating markdown content for lesson {lesson_id}: {str(e)}", exc_info=True)
+        abort(500, description=f"Ошибка при генерации Markdown: {str(e)}")
 
