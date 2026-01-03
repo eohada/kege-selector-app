@@ -155,21 +155,17 @@ def html_to_text(html_content):
     return text
 
 def safe_markdown_escape(text):
-    """Безопасное экранирование текста для Markdown"""
+    """Безопасное экранирование текста для Markdown (только для метаданных, не для контента)"""
     if not text:
         return ""
     text = str(text)
-    # Экранируем специальные символы Markdown
-    text = text.replace('\\', '\\\\')  # Сначала экранируем все обратные слеши
+    # Экранируем только специальные символы Markdown, НЕ трогая обратные слеши
+    # (обратные слеши нужны для LaTeX формул)
     text = text.replace('*', '\\*')
     text = text.replace('_', '\\_')
     text = text.replace('#', '\\#')
-    text = text.replace('[', '\\[')
-    text = text.replace(']', '\\]')
-    text = text.replace('`', '\\`')
-    # Убираем null-байты и другие проблемные символы
+    # Убираем null-байты
     text = text.replace('\x00', '')
-    text = text.replace('\r\n', '\n').replace('\r', '\n')
     return text
 
 def safe_markdown_add(parts):
@@ -287,45 +283,52 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
                     markdown_content = markdown_content + "*Ошибка при обработке текста задания*\n\n"
 
             # Безопасная обработка прикрепленных файлов
-            if hw_task.task.attached_files:
-                try:
-                    # Безопасный парсинг JSON с предварительной очисткой
+            # ВАЖНО: оборачиваем в отдельный try-except, чтобы ошибка не прерывала весь экспорт
+            try:
+                if hw_task.task.attached_files:
                     attached_files_str = str(hw_task.task.attached_files).strip()
-                    # Пытаемся исправить распространенные проблемы с JSON
-                    if attached_files_str:
+                    if not attached_files_str or attached_files_str == 'None' or attached_files_str == 'null':
+                        # Пропускаем пустые значения
+                        pass
+                    else:
                         files = None
-                        # Если строка уже является валидным JSON, парсим напрямую
+                        # Пробуем парсить как JSON БЕЗ ЛЮБЫХ ИЗМЕНЕНИЙ
                         try:
                             files = json.loads(attached_files_str)
-                        except json.JSONDecodeError:
-                            # Пытаемся исправить: убираем лишние экранирования
+                        except (json.JSONDecodeError, ValueError, TypeError) as json_err:
+                            # Если JSON невалидный, пробуем ast.literal_eval как запасной вариант
                             try:
-                                cleaned = attached_files_str.replace('\\\\', '\\').replace('\\"', '"')
-                                files = json.loads(cleaned)
-                            except json.JSONDecodeError:
-                                # Если все еще не работает, пытаемся как строку Python
-                                try:
-                                    import ast
-                                    files = ast.literal_eval(attached_files_str)
-                                except (ValueError, SyntaxError):
-                                    logger.warning("Could not parse attached_files for task %s, skipping", hw_task.lesson_task_id)
-                                    files = None
+                                import ast
+                                files = ast.literal_eval(attached_files_str)
+                            except (ValueError, SyntaxError, TypeError):
+                                # Если и это не сработало, просто логируем и пропускаем
+                                logger.debug("Could not parse attached_files for task %s: %s. Raw: %s", 
+                                           hw_task.lesson_task_id, str(json_err), attached_files_str[:100])
+                                files = None
                         
+                        # Добавляем файлы в markdown только если успешно распарсили
                         if files and isinstance(files, list):
                             markdown_content = markdown_content + "**Прикрепленные файлы:**\n"
                             for file in files:
                                 if isinstance(file, dict):
-                                    file_name = str(file.get('name', 'Неизвестный файл')).strip()
-                                    file_url = str(file.get('url', '#')).strip()
-                                    # Экранируем специальные символы Markdown в имени файла
-                                    file_name = file_name.replace('[', '\\[').replace(']', '\\]').replace('\x00', '')
-                                    file_url = file_url.replace('\x00', '')
-                                    file_line = "- [" + file_name + "](" + file_url + ")\n"
-                                    markdown_content = markdown_content + file_line
+                                    try:
+                                        file_name = str(file.get('name', 'Неизвестный файл')).strip()
+                                        file_url = str(file.get('url', '#')).strip()
+                                        # Экранируем только квадратные скобки для Markdown ссылок
+                                        file_name = file_name.replace('[', '\\[').replace(']', '\\]')
+                                        # Убираем null-байты
+                                        file_name = file_name.replace('\x00', '')
+                                        file_url = file_url.replace('\x00', '')
+                                        file_line = "- [" + file_name + "](" + file_url + ")\n"
+                                        markdown_content = markdown_content + file_line
+                                    except Exception as file_err:
+                                        logger.debug("Error processing file entry: %s", str(file_err))
+                                        continue
                             markdown_content = markdown_content + "\n"
-                except Exception as e:
-                    logger.warning("Error parsing attached_files for task %s: %s", hw_task.lesson_task_id, str(e), exc_info=True)
-                    # Продолжаем без файлов, не прерывая экспорт
+            except Exception as e:
+                # Логируем, но НЕ прерываем экспорт
+                logger.warning("Error processing attached_files for task %s: %s", hw_task.lesson_task_id, str(e), exc_info=True)
+                # Продолжаем без файлов
                     
             if idx < len(tasks) - 1:
                 markdown_content = markdown_content + "---\n\n"
@@ -333,10 +336,14 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
         # Финальная проверка и очистка markdown_content перед отправкой
         # Убираем потенциально проблемные последовательности
         markdown_content = markdown_content.replace('\x00', '')  # Убираем null-байты
-        # Убираем недопустимые управляющие символы (кроме \n, \t)
-        import string
-        printable = set(string.printable)
-        markdown_content = ''.join(c if c in printable or ord(c) > 127 else '' for c in markdown_content)
+        # Убираем только недопустимые управляющие символы (кроме \n, \t, \r)
+        # Сохраняем все печатные символы, включая кириллицу
+        cleaned_content = []
+        for c in markdown_content:
+            # Разрешаем: печатные символы, переносы строк, табуляцию, и все символы с кодом > 127 (кириллица, эмодзи и т.д.)
+            if ord(c) >= 32 or c in '\n\t\r' or ord(c) > 127:
+                cleaned_content.append(c)
+        markdown_content = ''.join(cleaned_content)
         
         return render_template('markdown_export.html', markdown_content=markdown_content, lesson=lesson, student=student)
     except Exception as e:
