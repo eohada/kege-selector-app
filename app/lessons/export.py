@@ -341,3 +341,4 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
         safe_error = error_msg[:200].replace('\x00', '').replace('\\', '/')
         abort(500, description="Ошибка при генерации Markdown: " + safe_error)
 
+
