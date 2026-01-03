@@ -90,7 +90,7 @@
                 button.classList.add('ghost');
                 
                 setTimeout(() => {
-                    button.innerHTML = '<img src="{{ url_for(\'static\', filename=\'icons/icons8-копировать-100.png\') }}" alt="Копировать" class="ui-icon ui-icon--sm"> Копировать';
+                    button.innerHTML = '<img src="{{ url_for("static", filename="icons/icons8-копировать-100.png") }}" alt="Копировать" class="ui-icon ui-icon--sm"> Копировать';
                     button.classList.remove('ghost');
                     button.classList.add('accent');
                 }, 2000);
