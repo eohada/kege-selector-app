@@ -154,6 +154,33 @@ def html_to_text(html_content):
 
     return text
 
+def safe_markdown_escape(text):
+    """Безопасное экранирование текста для Markdown"""
+    if not text:
+        return ""
+    text = str(text)
+    # Экранируем специальные символы Markdown
+    text = text.replace('\\', '\\\\')  # Сначала экранируем все обратные слеши
+    text = text.replace('*', '\\*')
+    text = text.replace('_', '\\_')
+    text = text.replace('#', '\\#')
+    text = text.replace('[', '\\[')
+    text = text.replace(']', '\\]')
+    text = text.replace('`', '\\`')
+    # Убираем null-байты и другие проблемные символы
+    text = text.replace('\x00', '')
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    return text
+
+def safe_markdown_add(parts):
+    """Безопасное добавление частей в markdown через конкатенацию"""
+    result = []
+    for part in parts:
+        if part is None:
+            continue
+        result.append(str(part))
+    return ''.join(result)
+
 def lesson_export_md(lesson_id, assignment_type='homework'):
     """
     Универсальная функция экспорта заданий в Markdown
@@ -167,7 +194,7 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
         
         # Проверяем наличие студента
         if not lesson.student:
-            logger.error(f"Lesson {lesson_id} has no associated student")
+            logger.error("Lesson %s has no associated student", lesson_id)
             abort(500, description="Урок не связан со студентом")
         
         student = lesson.student
@@ -193,8 +220,8 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
             tasks = sorted(lesson.homework_assignments, key=safe_sort_key) if lesson.homework_assignments else []
             title = "Задания"
     except Exception as e:
-        logger.error(f"Error getting lesson {lesson_id} for export: {str(e)}", exc_info=True)
-        abort(500, description=f"Ошибка при получении данных урока: {str(e)}")
+        logger.error("Error getting lesson %s for export: %s", lesson_id, str(e), exc_info=True)
+        abort(500, description="Ошибка при получении данных урока: " + str(e)[:200])
 
     ordinal_names = {
         1: "Первое", 2: "Второе", 3: "Третье", 4: "Четвертое", 5: "Пятое",
@@ -206,32 +233,33 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
     }
 
     try:
-        markdown_content = f"# {title}\n\n"
-        # Безопасное получение имени студента с экранированием
+        # Используем безопасную конкатенацию вместо f-строк
+        markdown_content = "# " + str(title) + "\n\n"
+        
+        # Безопасное получение имени студента
         student_name = str(student.name if student and student.name else "Неизвестный ученик").strip()
-        # Экранируем специальные символы Markdown в имени
-        student_name = student_name.replace('*', '\\*').replace('_', '\\_').replace('#', '\\#')
-        markdown_content += f"**Ученик:** {student_name}\n"
+        student_name = safe_markdown_escape(student_name)
+        markdown_content = markdown_content + "**Ученик:** " + student_name + "\n"
         
         if lesson.lesson_date:
-            markdown_content += f"**Дата урока:** {lesson.lesson_date.strftime('%d.%m.%Y')}\n"
+            date_str = lesson.lesson_date.strftime('%d.%m.%Y')
+            markdown_content = markdown_content + "**Дата урока:** " + date_str + "\n"
         if lesson.topic:
-            # Экранируем тему тоже
-            topic_safe = str(lesson.topic).strip().replace('*', '\\*').replace('_', '\\_').replace('#', '\\#')
-            markdown_content += f"**Тема:** {topic_safe}\n"
-        markdown_content += f"\n---\n\n"
+            topic_safe = safe_markdown_escape(str(lesson.topic).strip())
+            markdown_content = markdown_content + "**Тема:** " + topic_safe + "\n"
+        markdown_content = markdown_content + "\n---\n\n"
 
         for idx, hw_task in enumerate(tasks):
             if not hw_task:
                 continue
                 
             order_number = idx + 1
-            task_name = ordinal_names.get(order_number, f"{order_number}-е")
-
-            markdown_content += f"## {task_name} задание\n\n"
+            task_name = ordinal_names.get(order_number, str(order_number) + "-е")
+            task_header = "## " + task_name + " задание\n\n"
+            markdown_content = markdown_content + task_header
 
             if not hw_task.task:
-                markdown_content += "*Задание не найдено*\n\n"
+                markdown_content = markdown_content + "*Задание не найдено*\n\n"
                 continue
 
             # Используем глобальную функцию html_to_text с обработкой ошибок
@@ -239,22 +267,24 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
                 if hw_task.task.content_html:
                     task_text = html_to_text(hw_task.task.content_html)
                     # Безопасное добавление текста в markdown
-                    # Используем конкатенацию вместо f-строки для избежания проблем с экранированием
                     if task_text:
-                        # Просто добавляем текст как есть - html_to_text уже обработал его
+                        # Очищаем текст от проблемных символов
+                        task_text = task_text.replace('\x00', '')  # Убираем null-байты
+                        # Добавляем через конкатенацию
                         markdown_content = markdown_content + task_text + "\n\n"
                     else:
-                        markdown_content += "*Текст задания пуст*\n\n"
+                        markdown_content = markdown_content + "*Текст задания пуст*\n\n"
                 else:
-                    markdown_content += "*Текст задания отсутствует*\n\n"
+                    markdown_content = markdown_content + "*Текст задания отсутствует*\n\n"
             except Exception as e:
-                logger.error(f"Error converting HTML to text for task {hw_task.lesson_task_id}: {str(e)}", exc_info=True)
-                # Пытаемся получить хотя бы часть информации
+                logger.error("Error converting HTML to text for task %s: %s", hw_task.lesson_task_id, str(e), exc_info=True)
+                # Безопасное сообщение об ошибке
                 try:
-                    error_msg = str(e)[:100].replace('\\', '/')  # Заменяем обратные слеши для безопасности
-                    markdown_content += f"*Ошибка при обработке текста задания: {error_msg}*\n\n"
+                    error_msg = str(e)[:100].replace('\\', '/').replace('\x00', '')
+                    error_text = "*Ошибка при обработке текста задания: " + error_msg + "*\n\n"
+                    markdown_content = markdown_content + error_text
                 except:
-                    markdown_content += "*Ошибка при обработке текста задания*\n\n"
+                    markdown_content = markdown_content + "*Ошибка при обработке текста задания*\n\n"
 
             # Безопасная обработка прикрепленных файлов
             if hw_task.task.attached_files:
@@ -263,14 +293,14 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
                     attached_files_str = str(hw_task.task.attached_files).strip()
                     # Пытаемся исправить распространенные проблемы с JSON
                     if attached_files_str:
+                        files = None
                         # Если строка уже является валидным JSON, парсим напрямую
                         try:
                             files = json.loads(attached_files_str)
                         except json.JSONDecodeError:
                             # Пытаемся исправить: убираем лишние экранирования
-                            # Заменяем двойные обратные слеши на одинарные (если это не экранированные символы)
-                            cleaned = attached_files_str.replace('\\\\', '\\').replace('\\"', '"')
                             try:
+                                cleaned = attached_files_str.replace('\\\\', '\\').replace('\\"', '"')
                                 files = json.loads(cleaned)
                             except json.JSONDecodeError:
                                 # Если все еще не работает, пытаемся как строку Python
@@ -278,37 +308,41 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
                                     import ast
                                     files = ast.literal_eval(attached_files_str)
                                 except (ValueError, SyntaxError):
-                                    logger.warning(f"Could not parse attached_files for task {hw_task.lesson_task_id}, skipping")
+                                    logger.warning("Could not parse attached_files for task %s, skipping", hw_task.lesson_task_id)
                                     files = None
                         
                         if files and isinstance(files, list):
-                            markdown_content += "**Прикрепленные файлы:**\n"
+                            markdown_content = markdown_content + "**Прикрепленные файлы:**\n"
                             for file in files:
                                 if isinstance(file, dict):
                                     file_name = str(file.get('name', 'Неизвестный файл')).strip()
                                     file_url = str(file.get('url', '#')).strip()
                                     # Экранируем специальные символы Markdown в имени файла
-                                    file_name = file_name.replace('[', '\\[').replace(']', '\\]')
-                                    markdown_content += f"- [{file_name}]({file_url})\n"
-                            markdown_content += "\n"
+                                    file_name = file_name.replace('[', '\\[').replace(']', '\\]').replace('\x00', '')
+                                    file_url = file_url.replace('\x00', '')
+                                    file_line = "- [" + file_name + "](" + file_url + ")\n"
+                                    markdown_content = markdown_content + file_line
+                            markdown_content = markdown_content + "\n"
                 except Exception as e:
-                    logger.warning(f"Error parsing attached_files for task {hw_task.lesson_task_id}: {str(e)}", exc_info=True)
+                    logger.warning("Error parsing attached_files for task %s: %s", hw_task.lesson_task_id, str(e), exc_info=True)
                     # Продолжаем без файлов, не прерывая экспорт
                     
             if idx < len(tasks) - 1:
-                markdown_content += "---\n\n"
+                markdown_content = markdown_content + "---\n\n"
 
         # Финальная проверка и очистка markdown_content перед отправкой
         # Убираем потенциально проблемные последовательности
         markdown_content = markdown_content.replace('\x00', '')  # Убираем null-байты
+        # Убираем недопустимые управляющие символы (кроме \n, \t)
+        import string
+        printable = set(string.printable)
+        markdown_content = ''.join(c if c in printable or ord(c) > 127 else '' for c in markdown_content)
         
         return render_template('markdown_export.html', markdown_content=markdown_content, lesson=lesson, student=student)
     except Exception as e:
         error_msg = str(e)
-        logger.error(f"Error generating markdown content for lesson {lesson_id}: {error_msg}", exc_info=True)
-        # Более информативное сообщение об ошибке
-        if 'unexpected char' in error_msg.lower() or 'json' in error_msg.lower():
-            abort(500, description=f"Ошибка при генерации Markdown: проблема с форматированием данных (позиция {error_msg.split('at')[-1] if 'at' in error_msg else 'неизвестна'})")
-        else:
-            abort(500, description=f"Ошибка при генерации Markdown: {error_msg[:200]}")
+        logger.error("Error generating markdown content for lesson %s: %s", lesson_id, error_msg, exc_info=True)
+        # Безопасное сообщение об ошибке
+        safe_error = error_msg[:200].replace('\x00', '').replace('\\', '/')
+        abort(500, description="Ошибка при генерации Markdown: " + safe_error)
 
