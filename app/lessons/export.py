@@ -17,138 +17,128 @@ except ImportError:
     BeautifulSoup = None
 
 def html_to_text(html_content):
-    """
-    Исправленная версия экспорта для Obsidian.
-    Фиксы:
-    - Удаление фамилий авторов в начале (А. Кужей).
-    - Удаление блока 'Файлы к заданию' и ссылок.
-    - Умное форматирование (без пустых звездочек ** **).
-    - Удаление 'Ответ: ...' в конце.
-    - Корректные формулы и таблицы.
-    """
     if not html_content:
         return ""
 
-    # Импорт внутри функции, чтобы не ломать структуру файла, если вверху нет
+    # Импорты внутри, чтобы ничего не сломать
+    import re
+    import unicodedata
     global BeautifulSoup
     if BeautifulSoup is None:
         try:
             from bs4 import BeautifulSoup
         except ImportError as exc:
-            raise RuntimeError("BeautifulSoup is required. Install 'beautifulsoup4'") from exc
+            raise RuntimeError("BeautifulSoup is required.") from exc
 
+    # --- ШАГ 1: Подготовка Soup ---
     soup = BeautifulSoup(html_content, 'html.parser')
 
-    # 1. ЧИСТКА ОТ МУСОРА (Скрипты, стили)
+    # Удаляем скрипты и стили
     for tag in soup(['script', 'style', 'meta', 'link']):
         tag.decompose()
 
-    # 2. УДАЛЕНИЕ ФАЙЛОВ И ССЫЛОК НА СКАЧИВАНИЕ
-    # Удаляем любые ссылки, ведущие на файлы или имеющие атрибут download
+    # --- ШАГ 2: Агрессивное удаление блоков с файлами ---
+    # Если в блоке (p или div) есть ссылка на скачивание ИЛИ слова про файлы -> удаляем блок целиком
+    # Это решит проблему с остатками текста "Файлы к заданию:"
+    for block in soup.find_all(['p', 'div']):
+        block_text = block.get_text(" ", strip=True).lower()
+        # Ищем ключевые слова
+        if 'файлы к заданию' in block_text or 'прикрепленные файлы' in block_text:
+             block.decompose()
+             continue
+        
+        # Если внутри есть ссылка на файл (.xls, .doc и т.д.)
+        if block.find('a', href=re.compile(r'\.(xls|xlsx|doc|docx|txt|csv|pdf)$', re.I)):
+             # Проверяем, что это именно блок с файлами, а не просто ссылка в тексте
+             if len(block_text) < 100: # Если текст короткий, скорее всего это блок скачивания
+                 block.decompose()
+
+    # Удаляем оставшиеся одиночные ссылки-файлы
     for a in soup.find_all('a'):
-        href = a.get('href', '').lower()
-        if a.has_attr('download') or href.endswith(('.txt', '.xls', '.xlsx', '.doc', '.docx', '.csv', '.pdf')):
+        if a.has_attr('download') or str(a.get('href')).lower().endswith(('.xls', '.xlsx', '.doc', '.docx', '.txt')):
             a.decompose()
 
-    # Удаляем фразы-паразиты "Файлы к заданию" и т.д.
-    # Мы делаем это заменой текста внутри узлов
-    trash_patterns = [
-        re.compile(r'Файлы? к задани[юcY]', re.I),
-        re.compile(r'Прикрепленн[а-я]+ файл', re.I),
-        re.compile(r'Скачать файл', re.I)
-    ]
-    for text_node in soup.find_all(string=True):
-        for pattern in trash_patterns:
-            if pattern.search(text_node):
-                # Если нашли фразу, заменяем её на пустоту
-                new_text = re.sub(pattern, '', text_node)
-                text_node.replace_with(new_text)
-
-    # 3. МАТЕМАТИКА (KaTeX -> LaTeX)
+    # --- ШАГ 3: Формулы (KaTeX) ---
     for math_span in soup.find_all('span', class_='katex'):
         tex_annotation = math_span.find('annotation', attrs={'encoding': 'application/x-tex'})
         if tex_annotation:
             tex = tex_annotation.get_text().strip()
-            # Проверяем, это display (отдельная строка) или inline
             if 'katex-display' in math_span.get('class', []):
                 math_span.replace_with(f"\n$${tex}$$\n")
             else:
                 math_span.replace_with(f" ${tex}$ ")
 
-    # 4. ТАБЛИЦЫ (HTML -> Markdown)
+    # --- ШАГ 4: Таблицы ---
     for table in soup.find_all('table'):
         rows = table.find_all('tr')
         if not rows: continue
         
-        # Вычисляем макс кол-во колонок
-        max_cols = 0
-        for r in rows:
-            cols_in_row = len(r.find_all(['td', 'th']))
-            if cols_in_row > max_cols: max_cols = cols_in_row
-
+        # Считаем колонки
+        cols_lens = [len(r.find_all(['td', 'th'])) for r in rows]
+        max_cols = max(cols_lens) if cols_lens else 0
+        
         md_rows = []
         for i, row in enumerate(rows):
             cells = row.find_all(['th', 'td'])
-            cell_texts = [c.get_text(strip=True).replace('\n', ' ') for c in cells]
-            
-            # Добиваем пустыми, если ряд короткий
-            if len(cell_texts) < max_cols:
-                cell_texts += [""] * (max_cols - len(cell_texts))
+            # Заменяем переносы внутри ячейки на пробелы
+            cell_texts = [c.get_text(separator=" ", strip=True).replace('\n', ' ') for c in cells]
+            # Добиваем пустые
+            cell_texts += [""] * (max_cols - len(cell_texts))
             
             md_rows.append("| " + " | ".join(cell_texts) + " |")
-            
-            # Добавляем разделитель заголовка после первой строки
             if i == 0:
                 md_rows.append("| " + " | ".join(["---"] * max_cols) + " |")
-
+        
         table.replace_with("\n" + "\n".join(md_rows) + "\n")
 
-    # 5. КАРТИНКИ
+    # --- ШАГ 5: Картинки ---
     for img in soup.find_all('img'):
-        src = img.get('src')
-        if src:
+        src = img.get('src', '')
+        if src and not any(x in src for x in ['icon', 'file']):
             if src.startswith('/'): src = "https://kompege.ru" + src
-            # Игнорируем иконки файлов
-            if 'file' not in src and 'icon' not in src:
-                img.replace_with(f"\n![Иллюстрация]({src})\n")
-            else:
-                img.decompose()
-
-    # 6. ФОРМАТИРОВАНИЕ (Жирный/Курсив) + ЛЕЧЕНИЕ ЗВЕЗДОЧЕК
-    for tag in soup.find_all(['b', 'strong']):
-        text_content = tag.get_text(strip=True)
-        if text_content: # Ставим звездочки ТОЛЬКО если есть текст
-            tag.replace_with(f"**{tag.get_text()}**")
+            img.replace_with(f"\n![Иллюстрация]({src})\n")
         else:
-            tag.unwrap() # Если пусто - просто убираем тег
+            img.decompose()
 
-    for tag in soup.find_all(['i', 'em']):
-        text_content = tag.get_text(strip=True)
-        if text_content:
-            tag.replace_with(f"*{tag.get_text()}*")
-        else:
-            tag.unwrap()
+    # --- ШАГ 6: Жирный текст (подготовка) ---
+    for tag in soup.find_all(['b', 'strong']): 
+        # Оборачиваем, но пустые удалим позже регуляркой
+        tag.replace_with(f"**{tag.get_text()}**")
+    for tag in soup.find_all(['i', 'em']): 
+        tag.replace_with(f"*{tag.get_text()}*")
 
-    # Сохранение структуры (абзацы)
+    # Сохраняем переносы строк
     for tag in soup.find_all(['p', 'div', 'br']):
         if tag.name == 'br': tag.replace_with("\n")
         else: tag.insert_after("\n")
 
-    # 7. СБОРКА ТЕКСТА
+    # --- ШАГ 7: ПОЛУЧЕНИЕ ТЕКСТА ---
     text = soup.get_text(separator=' ')
 
-    # 8. ФИНАЛЬНАЯ ЧИСТКА REGEX-ом
+    # === ЯДЕРНАЯ ЗАЧИСТКА (REGEX) ===
+    
+    # 1. Нормализация (превращает неразрывные пробелы \xa0 в обычные)
+    # Это КРИТИЧНО для работы регулярок
+    text = unicodedata.normalize("NFKC", text)
 
-    # A. Удаляем фамилию автора в начале строки (например: "(А. Кужей) Текст...")
-    # Ищем скобки в начале, внутри которых от 2 до 30 символов (чтобы не убить формулы)
-    text = re.sub(r'^\s*\([А-Яа-яA-Za-z\s\.]+\)\s*', '', text)
+    # 2. Удаляем пустые жирные выделения (****, ** **, **.**)
+    # Удаляет: ** **, ** **, **.**
+    text = re.sub(r'\*\*\s*[\.]?\s*\*\*', '', text)
 
-    # B. Удаляем "Ответ:" и всё, что после него (в конце задания)
-    text = re.sub(r'\n\s*(?:Ответ|Answer)[:\.]?\s*.*$', '', text, flags=re.IGNORECASE | re.DOTALL)
+    # 3. Удаляем фамилии авторов в начале (А. Кужей)
+    # ^ - начало строки, \( - скобка.
+    text = re.sub(r'^\s*\([А-Яа-яA-Za-z\.\s\-]{2,40}\)', '', text)
 
-    # C. Чистка пробелов
-    text = re.sub(r'[ \t]+', ' ', text)     # Схлопываем пробелы
-    text = re.sub(r'\n\s*\n', '\n\n', text) # Максимум одна пустая строка
+    # 4. Удаляем "Ответ:" в конце
+    # Ищет слово Ответ, двоеточие/тире и всё до конца текста
+    text = re.sub(r'\n\s*(?:Ответ|Answer)\s*[:\-].*$', '', text, flags=re.IGNORECASE | re.DOTALL)
+    
+    # 5. Удаляем мусорные фразы, если они выжили после удаления блоков
+    text = re.sub(r'Файлы?\s*к\s*задани[юcY].*', '', text, flags=re.IGNORECASE)
+
+    # 6. Финальная косметика
+    text = re.sub(r'[ \t]+', ' ', text)       # Убираем двойные пробелы
+    text = re.sub(r'\n\s*\n', '\n\n', text)   # Максимум 1 пустая строка
     
     return text.strip()
 
