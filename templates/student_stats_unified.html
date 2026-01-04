@@ -124,13 +124,59 @@
         }
         
         /* Heatmap посещаемости */
-        .heatmap-container {
+        .heatmap-wrapper {
             overflow-x: auto;
             margin-top: 1rem;
+            padding: 1rem 0;
         }
         
-        .heatmap {
-            display: inline-flex;
+        .heatmap-container {
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+        
+        .heatmap-months {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-top: 20px; /* Выравнивание с днями недели */
+        }
+        
+        .heatmap-month-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            height: 11px;
+            display: flex;
+            align-items: center;
+            padding-left: 4px;
+        }
+        
+        .heatmap-days {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .heatmap-days-row {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 2px;
+        }
+        
+        .heatmap-day-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            width: 20px;
+            text-align: right;
+            padding-right: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+        
+        .heatmap-grid {
+            display: flex;
             flex-direction: column;
             gap: 2px;
         }
@@ -146,6 +192,14 @@
             border-radius: 2px;
             background: var(--surface-3);
             border: 1px solid var(--stroke-1);
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+        
+        .heatmap-day:hover {
+            transform: scale(1.3);
+            z-index: 10;
+            position: relative;
         }
         
         .heatmap-day.level-0 {
@@ -153,28 +207,44 @@
         }
         
         .heatmap-day.level-1 {
-            background: rgba(0, 255, 213, 0.2);
+            background: rgba(0, 255, 213, 0.3);
         }
         
         .heatmap-day.level-2 {
-            background: rgba(0, 255, 213, 0.4);
+            background: rgba(0, 255, 213, 0.5);
         }
         
         .heatmap-day.level-3 {
-            background: rgba(0, 255, 213, 0.6);
+            background: rgba(0, 255, 213, 0.8);
         }
         
         .heatmap-day.level-negative {
-            background: rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.6);
         }
         
         .heatmap-legend {
             display: flex;
             align-items: center;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: var(--surface-2);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--stroke-1);
+            flex-wrap: wrap;
+        }
+        
+        .heatmap-legend-item {
+            display: flex;
+            align-items: center;
             gap: 0.5rem;
-            margin-top: 1rem;
             font-size: 0.85rem;
             color: var(--text-muted);
+        }
+        
+        .heatmap-legend-label {
+            font-weight: 500;
+            color: var(--text-primary);
         }
         
         /* Пунктуальность */
@@ -324,9 +394,24 @@
                         <h2>Процент выполнения по номерам</h2>
                     </div>
                 </div>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem;">
+                    Показаны только задания, по которым есть выполненные работы (всего: {{ chart_data|length }})
+                </p>
                 <div style="margin-top: 2rem;">
                     <canvas id="statisticsChart" style="max-height: 400px;"></canvas>
                 </div>
+            </section>
+            {% else %}
+            <section class="glass-panel" style="margin-bottom: 2rem;">
+                <div class="panel-head">
+                    <div>
+                        <p class="eyebrow">выполнение заданий</p>
+                        <h2>Процент выполнения по номерам</h2>
+                    </div>
+                </div>
+                <p style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                    Нет данных для отображения. Выполните задания, чтобы увидеть статистику.
+                </p>
             </section>
             {% endif %}
             
@@ -388,18 +473,62 @@
                         <h2>Календарь активности</h2>
                     </div>
                 </div>
-                <div class="heatmap-container">
-                    <div id="attendanceHeatmap" class="heatmap"></div>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                    Интенсивность активности по дням за последний год. Наведите курсор на день для подробностей.
+                </p>
+                <div class="heatmap-wrapper">
+                    <div class="heatmap-container">
+                        <div class="heatmap-days">
+                            <div class="heatmap-days-row">
+                                <div class="heatmap-day-label"></div>
+                            </div>
+                            <div class="heatmap-days-row">
+                                <div class="heatmap-day-label">Пн</div>
+                            </div>
+                            <div class="heatmap-days-row">
+                                <div class="heatmap-day-label"></div>
+                            </div>
+                            <div class="heatmap-days-row">
+                                <div class="heatmap-day-label">Ср</div>
+                            </div>
+                            <div class="heatmap-days-row">
+                                <div class="heatmap-day-label"></div>
+                            </div>
+                            <div class="heatmap-days-row">
+                                <div class="heatmap-day-label">Пт</div>
+                            </div>
+                            <div class="heatmap-days-row">
+                                <div class="heatmap-day-label"></div>
+                            </div>
+                        </div>
+                        <div id="attendanceHeatmap" class="heatmap-grid"></div>
+                        <div id="heatmapMonths" class="heatmap-months"></div>
+                    </div>
                 </div>
                 <div class="heatmap-legend">
-                    <span>Меньше</span>
-                    <div class="heatmap-day level-0"></div>
-                    <div class="heatmap-day level-1"></div>
-                    <div class="heatmap-day level-2"></div>
-                    <div class="heatmap-day level-3"></div>
-                    <span>Больше</span>
-                    <span style="margin-left: 1rem;">Пропуски:</span>
-                    <div class="heatmap-day level-negative"></div>
+                    <div class="heatmap-legend-item">
+                        <span class="heatmap-legend-label">Интенсивность активности:</span>
+                    </div>
+                    <div class="heatmap-legend-item">
+                        <div class="heatmap-day level-0"></div>
+                        <span>Нет активности</span>
+                    </div>
+                    <div class="heatmap-legend-item">
+                        <div class="heatmap-day level-1"></div>
+                        <span>Низкая</span>
+                    </div>
+                    <div class="heatmap-legend-item">
+                        <div class="heatmap-day level-2"></div>
+                        <span>Средняя</span>
+                    </div>
+                    <div class="heatmap-legend-item">
+                        <div class="heatmap-day level-3"></div>
+                        <span>Высокая</span>
+                    </div>
+                    <div class="heatmap-legend-item" style="margin-left: 1rem;">
+                        <div class="heatmap-day level-negative"></div>
+                        <span>Пропуски уроков</span>
+                    </div>
                 </div>
             </section>
             
@@ -494,17 +623,37 @@
                             borderColor: accent1,
                             backgroundColor: accentRgba,
                             tension: 0.4,
-                            fill: true
+                            fill: {
+                                target: 'origin',
+                                above: accentRgba
+                            },
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: accent1,
+                            pointBorderColor: textPrimary,
+                            pointBorderWidth: 2
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        layout: {
+                            padding: {
+                                top: 10,
+                                right: 10,
+                                bottom: 10,
+                                left: 10
+                            }
+                        },
                         plugins: {
                             legend: {
                                 display: true,
                                 position: 'top',
-                                labels: { color: textPrimary }
+                                labels: { 
+                                    color: textPrimary,
+                                    padding: 15,
+                                    usePointStyle: true
+                                }
                             }
                         },
                         scales: {
@@ -513,15 +662,25 @@
                                 max: 100,
                                 ticks: {
                                     color: textMuted,
+                                    padding: 8,
                                     callback: function(value) {
                                         return value + '%';
                                     }
                                 },
-                                grid: { color: stroke1 }
+                                grid: { 
+                                    color: stroke1,
+                                    drawBorder: false
+                                }
                             },
                             x: {
-                                ticks: { color: textMuted },
-                                grid: { color: stroke1 }
+                                ticks: { 
+                                    color: textMuted,
+                                    padding: 8
+                                },
+                                grid: { 
+                                    color: stroke1,
+                                    drawBorder: false
+                                }
                             }
                         }
                     }
@@ -696,25 +855,48 @@
             
             // Heatmap посещаемости
             const heatmapContainer = document.getElementById('attendanceHeatmap');
-            if (heatmapContainer) {
+            const heatmapMonthsContainer = document.getElementById('heatmapMonths');
+            if (heatmapContainer && heatmapMonthsContainer) {
                 const dates = {{ charts.heatmap_dates | safe }};
                 const values = {{ charts.heatmap_values | safe }};
                 const maxValue = {{ charts.heatmap_max }};
+                
+                // Функция форматирования даты
+                function formatDate(dateStr) {
+                    const date = new Date(dateStr);
+                    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+                }
                 
                 // Группируем по неделям (7 дней)
                 const weeks = [];
                 for (let i = 0; i < dates.length; i += 7) {
                     const week = dates.slice(i, i + 7).map((date, idx) => ({
                         date: date,
-                        value: values[i + idx] || 0
+                        value: values[i + idx] || 0,
+                        dayOfWeek: new Date(date).getDay() // 0 = воскресенье, 1 = понедельник
                     }));
                     if (week.length > 0) {
                         weeks.push(week);
                     }
                 }
                 
+                // Определяем месяцы для подписей
+                const monthLabels = [];
+                let currentMonth = '';
+                weeks.forEach((week, weekIdx) => {
+                    const firstDay = week[0];
+                    if (firstDay) {
+                        const date = new Date(firstDay.date);
+                        const month = date.toLocaleDateString('ru-RU', { month: 'short' });
+                        if (month !== currentMonth) {
+                            monthLabels.push({ weekIdx: weekIdx, month: month });
+                            currentMonth = month;
+                        }
+                    }
+                });
+                
                 // Создаем heatmap
-                weeks.forEach(week => {
+                weeks.forEach((week, weekIdx) => {
                     const weekDiv = document.createElement('div');
                     weekDiv.className = 'heatmap-week';
                     
@@ -734,11 +916,29 @@
                             dayDiv.classList.add('level-3');
                         }
                         
-                        dayDiv.title = `${day.date}: ${day.value}`;
+                        // Форматируем подсказку
+                        const dateFormatted = formatDate(day.date);
+                        let tooltipText = `${dateFormatted}`;
+                        if (day.value < 0) {
+                            tooltipText += `\nПропуск урока`;
+                        } else if (day.value === 0) {
+                            tooltipText += `\nНет активности`;
+                        } else {
+                            tooltipText += `\nАктивность: ${day.value}`;
+                        }
+                        dayDiv.title = tooltipText;
                         weekDiv.appendChild(dayDiv);
                     });
                     
                     heatmapContainer.appendChild(weekDiv);
+                });
+                
+                // Добавляем подписи месяцев
+                monthLabels.forEach(({ weekIdx, month }) => {
+                    const monthLabel = document.createElement('div');
+                    monthLabel.className = 'heatmap-month-label';
+                    monthLabel.textContent = month;
+                    heatmapMonthsContainer.appendChild(monthLabel);
                 });
             }
         });
