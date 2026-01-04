@@ -144,12 +144,12 @@
         }
         
         .heatmap-month-label {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             color: var(--text-muted);
-            height: 11px;
+            height: 14px;
             display: flex;
             align-items: center;
-            padding-left: 4px;
+            padding-left: 6px;
         }
         
         .heatmap-days {
@@ -162,14 +162,16 @@
             display: flex;
             gap: 2px;
             margin-bottom: 2px;
+            height: 14px;
+            align-items: center;
         }
         
         .heatmap-day-label {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             color: var(--text-muted);
-            width: 20px;
+            width: 24px;
             text-align: right;
-            padding-right: 4px;
+            padding-right: 6px;
             display: flex;
             align-items: center;
             justify-content: flex-end;
@@ -187,39 +189,36 @@
         }
         
         .heatmap-day {
-            width: 11px;
-            height: 11px;
-            border-radius: 2px;
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
             background: var(--surface-3);
             border: 1px solid var(--stroke-1);
             cursor: pointer;
-            transition: transform 0.1s ease;
+            transition: transform 0.1s ease, border-color 0.1s ease;
         }
         
         .heatmap-day:hover {
-            transform: scale(1.3);
+            transform: scale(1.4);
             z-index: 10;
             position: relative;
+            border-color: var(--accent-1);
         }
         
-        .heatmap-day.level-0 {
+        .heatmap-day.status-none {
             background: var(--surface-3);
         }
         
-        .heatmap-day.level-1 {
-            background: rgba(0, 255, 213, 0.3);
+        .heatmap-day.status-completed {
+            background: rgba(0, 255, 213, 0.7);
         }
         
-        .heatmap-day.level-2 {
-            background: rgba(0, 255, 213, 0.5);
+        .heatmap-day.status-canceled-student {
+            background: rgba(239, 68, 68, 0.7);
         }
         
-        .heatmap-day.level-3 {
-            background: rgba(0, 255, 213, 0.8);
-        }
-        
-        .heatmap-day.level-negative {
-            background: rgba(239, 68, 68, 0.6);
+        .heatmap-day.status-canceled-teacher {
+            background: rgba(234, 179, 8, 0.7);
         }
         
         .heatmap-legend {
@@ -507,27 +506,19 @@
                 </div>
                 <div class="heatmap-legend">
                     <div class="heatmap-legend-item">
-                        <span class="heatmap-legend-label">Интенсивность активности:</span>
+                        <span class="heatmap-legend-label">Статусы уроков:</span>
                     </div>
                     <div class="heatmap-legend-item">
-                        <div class="heatmap-day level-0"></div>
-                        <span>Нет активности</span>
+                        <div class="heatmap-day status-completed"></div>
+                        <span>Проведен</span>
                     </div>
                     <div class="heatmap-legend-item">
-                        <div class="heatmap-day level-1"></div>
-                        <span>Низкая</span>
+                        <div class="heatmap-day status-canceled-teacher"></div>
+                        <span>Отменен учителем</span>
                     </div>
                     <div class="heatmap-legend-item">
-                        <div class="heatmap-day level-2"></div>
-                        <span>Средняя</span>
-                    </div>
-                    <div class="heatmap-legend-item">
-                        <div class="heatmap-day level-3"></div>
-                        <span>Высокая</span>
-                    </div>
-                    <div class="heatmap-legend-item" style="margin-left: 1rem;">
-                        <div class="heatmap-day level-negative"></div>
-                        <span>Пропуски уроков</span>
+                        <div class="heatmap-day status-canceled-student"></div>
+                        <span>Отменен учеником</span>
                     </div>
                 </div>
             </section>
@@ -858,8 +849,7 @@
             const heatmapMonthsContainer = document.getElementById('heatmapMonths');
             if (heatmapContainer && heatmapMonthsContainer) {
                 const dates = {{ charts.heatmap_dates | safe }};
-                const values = {{ charts.heatmap_values | safe }};
-                const maxValue = {{ charts.heatmap_max }};
+                const statuses = {{ charts.heatmap_statuses | safe }};
                 
                 // Функция форматирования даты
                 function formatDate(dateStr) {
@@ -867,24 +857,38 @@
                     return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
                 }
                 
-                // Группируем по неделям (7 дней)
+                // Группируем по неделям (7 дней), начиная с понедельника
                 const weeks = [];
-                for (let i = 0; i < dates.length; i += 7) {
-                    const week = dates.slice(i, i + 7).map((date, idx) => ({
-                        date: date,
-                        value: values[i + idx] || 0,
-                        dayOfWeek: new Date(date).getDay() // 0 = воскресенье, 1 = понедельник
-                    }));
-                    if (week.length > 0) {
-                        weeks.push(week);
+                let currentWeek = [];
+                
+                dates.forEach((date, idx) => {
+                    const dateObj = new Date(date);
+                    const dayOfWeek = dateObj.getDay(); // 0 = воскресенье, 1 = понедельник
+                    const status = statuses[idx];
+                    
+                    // Если это понедельник и есть накопленная неделя, сохраняем её
+                    if (dayOfWeek === 1 && currentWeek.length > 0) {
+                        weeks.push(currentWeek);
+                        currentWeek = [];
                     }
+                    
+                    currentWeek.push({
+                        date: date,
+                        status: status,
+                        dayOfWeek: dayOfWeek
+                    });
+                });
+                
+                // Добавляем последнюю неделю
+                if (currentWeek.length > 0) {
+                    weeks.push(currentWeek);
                 }
                 
-                // Определяем месяцы для подписей
+                // Определяем месяцы для подписей (по первой неделе месяца)
                 const monthLabels = [];
                 let currentMonth = '';
                 weeks.forEach((week, weekIdx) => {
-                    const firstDay = week[0];
+                    const firstDay = week.find(d => d !== null);
                     if (firstDay) {
                         const date = new Date(firstDay.date);
                         const month = date.toLocaleDateString('ru-RU', { month: 'short' });
@@ -900,35 +904,40 @@
                     const weekDiv = document.createElement('div');
                     weekDiv.className = 'heatmap-week';
                     
-                    week.forEach(day => {
+                    // Заполняем неделю (7 дней)
+                    for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+                        const day = week[dayIdx];
                         const dayDiv = document.createElement('div');
                         dayDiv.className = 'heatmap-day';
                         
-                        if (day.value < 0) {
-                            dayDiv.classList.add('level-negative');
-                        } else if (day.value === 0) {
-                            dayDiv.classList.add('level-0');
-                        } else if (day.value <= maxValue / 3) {
-                            dayDiv.classList.add('level-1');
-                        } else if (day.value <= (maxValue * 2) / 3) {
-                            dayDiv.classList.add('level-2');
+                        if (day && day.status) {
+                            if (day.status === 'completed') {
+                                dayDiv.classList.add('status-completed');
+                            } else if (day.status === 'canceled_student') {
+                                dayDiv.classList.add('status-canceled-student');
+                            } else if (day.status === 'canceled_teacher') {
+                                dayDiv.classList.add('status-canceled-teacher');
+                            } else {
+                                dayDiv.classList.add('status-none');
+                            }
+                            
+                            // Форматируем подсказку
+                            const dateFormatted = formatDate(day.date);
+                            let tooltipText = `${dateFormatted}`;
+                            if (day.status === 'completed') {
+                                tooltipText += `\nПроведен`;
+                            } else if (day.status === 'canceled_student') {
+                                tooltipText += `\nОтменен учеником`;
+                            } else if (day.status === 'canceled_teacher') {
+                                tooltipText += `\nОтменен учителем`;
+                            }
+                            dayDiv.title = tooltipText;
                         } else {
-                            dayDiv.classList.add('level-3');
+                            dayDiv.classList.add('status-none');
                         }
                         
-                        // Форматируем подсказку
-                        const dateFormatted = formatDate(day.date);
-                        let tooltipText = `${dateFormatted}`;
-                        if (day.value < 0) {
-                            tooltipText += `\nПропуск урока`;
-                        } else if (day.value === 0) {
-                            tooltipText += `\nНет активности`;
-                        } else {
-                            tooltipText += `\nАктивность: ${day.value}`;
-                        }
-                        dayDiv.title = tooltipText;
                         weekDiv.appendChild(dayDiv);
-                    });
+                    }
                     
                     heatmapContainer.appendChild(weekDiv);
                 });

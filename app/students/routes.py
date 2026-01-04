@@ -395,10 +395,14 @@ def student_analytics(student_id):
                         'total': 0
                     }
                 
+                # Учитываем все задания, даже без проверки
+                # Если есть проверка - учитываем результат
                 if lt.submission_correct is not None:
                     task_stats[task_num]['auto_total'] += weight
                     if lt.submission_correct:
                         task_stats[task_num]['auto_correct'] += weight
+                # Если проверки нет, но задание есть - считаем как невыполненное для статистики
+                # Но не добавляем в auto_total, чтобы не искажать процент
     
     # Загружаем ручные изменения статистики
     manual_stats = StudentTaskStatistics.query.filter_by(student_id=student_id).all()
@@ -418,11 +422,21 @@ def student_analytics(student_id):
                 'total': (ms.manual_correct or 0) + (ms.manual_incorrect or 0)
             }
     
+    # Показываем все задания, по которым есть данные (с проверкой или ручными изменениями)
     chart_data = []
     for task_num in sorted(task_stats.keys()):
         stats_data = task_stats[task_num]
-        if stats_data['total'] > 0:
-            percent = round((stats_data['correct'] / stats_data['total']) * 100, 1)
+        # Учитываем задания с проверкой (auto_total > 0) или с ручными изменениями
+        if stats_data['auto_total'] > 0 or stats_data.get('manual_correct', 0) > 0 or stats_data.get('manual_incorrect', 0) > 0:
+            # Вычисляем итоговые значения
+            total = stats_data['auto_total'] + stats_data.get('manual_correct', 0) + stats_data.get('manual_incorrect', 0)
+            correct = stats_data['auto_correct'] + stats_data.get('manual_correct', 0) - stats_data.get('manual_incorrect', 0)
+            
+            if total > 0:
+                percent = round((correct / total) * 100, 1)
+            else:
+                percent = 0
+            
             if percent < 40:
                 color = '#ef4444'
             elif percent < 80:
@@ -433,8 +447,8 @@ def student_analytics(student_id):
             chart_data.append({
                 'task_number': task_num,
                 'percent': percent,
-                'correct': stats_data['correct'],
-                'total': stats_data['total'],
+                'correct': correct,
+                'total': total,
                 'color': color,
                 'manual_correct': stats_data.get('manual_correct', 0),
                 'manual_incorrect': stats_data.get('manual_incorrect', 0)
@@ -450,7 +464,7 @@ def student_analytics(student_id):
         'attendance_values': json.dumps(attendance_data['values']),
         'heatmap_dates': json.dumps(attendance_heatmap['dates'], ensure_ascii=False),
         'heatmap_values': json.dumps(attendance_heatmap['values']),
-        'heatmap_max': attendance_heatmap['max_count']
+        'heatmap_statuses': json.dumps(attendance_heatmap['statuses'], ensure_ascii=False)
     }
     
     return render_template('student_stats_unified.html',

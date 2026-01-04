@@ -236,15 +236,16 @@ class StatsService:
     def get_attendance_heatmap(self, weeks=52):
         """
         Получить данные для heatmap посещаемости (как на GitHub)
-        Возвращает: {'dates': [...], 'values': [...], 'max_count': N}
-        Формат: список дат и количество уроков в этот день
+        Возвращает: {'dates': [...], 'values': [...], 'statuses': [...]}
+        Формат: список дат и статусы уроков в этот день
+        Статусы: 'completed' (проведен), 'canceled_teacher' (отменен учителем), 'canceled_student' (отменен учеником)
         """
         lessons = self._get_lessons()
         now = moscow_now()
         start_date = now - timedelta(weeks=weeks)
         
         # Группируем уроки по датам
-        date_counts = {}
+        date_statuses = {}  # {date: 'completed' | 'canceled_teacher' | 'canceled_student' | None}
         
         for lesson in lessons:
             if not lesson.lesson_date:
@@ -260,31 +261,31 @@ class StatsService:
             # Используем дату без времени как ключ
             date_key = lesson_date.date().isoformat()
             
-            # Определяем "интенсивность" дня на основе статуса
-            # completed = 3, planned = 1, missed = -2, canceled = 0
-            intensity_map = {
-                'completed': 3,
-                'in_progress': 2,
-                'planned': 1,
-                'rescheduled': 0,
-                'canceled_student': 0,
-                'cancelled': 0,
-                'missed': -2
-            }
-            
+            # Определяем статус урока
             status = lesson.status or 'planned'
             if status == 'cancelled':
                 status = 'canceled_student'
             
-            intensity = intensity_map.get(status, 0)
+            # Маппинг статусов на три состояния
+            status_map = {
+                'completed': 'completed',  # Проведен
+                'in_progress': 'completed',  # В процессе считаем как проведен
+                'missed': 'canceled_student',  # Пропуск считаем как отменен учеником
+                'canceled_student': 'canceled_student',  # Отменен учеником
+                'rescheduled': None,  # Перенесенные не показываем
+                'planned': None  # Запланированные не показываем
+            }
             
-            if date_key not in date_counts:
-                date_counts[date_key] = 0
-            date_counts[date_key] += intensity
+            mapped_status = status_map.get(status)
+            
+            # Если для этой даты уже есть статус, приоритет: completed > canceled_student > canceled_teacher
+            if date_key not in date_statuses or mapped_status == 'completed':
+                date_statuses[date_key] = mapped_status
         
         # Формируем список дат и значений
         dates = []
-        values = []
+        values = []  # Для совместимости, но не используется
+        statuses = []  # Реальные статусы
         
         current_date = start_date.date()
         end_date = now.date()
@@ -292,15 +293,16 @@ class StatsService:
         while current_date <= end_date:
             date_key = current_date.isoformat()
             dates.append(date_key)
-            values.append(date_counts.get(date_key, 0))
+            status = date_statuses.get(date_key)
+            statuses.append(status)
+            # Для совместимости со старым кодом
+            values.append(1 if status == 'completed' else (-1 if status == 'canceled_student' else 0))
             current_date += timedelta(days=1)
-        
-        max_count = max(values) if values else 0
         
         return {
             'dates': dates,
             'values': values,
-            'max_count': max_count
+            'statuses': statuses
         }
     
     def get_submission_punctuality(self):
