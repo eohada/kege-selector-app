@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from sqlalchemy import JSON, Index, Table, Column, Integer, ForeignKey
+from sqlalchemy import JSON, Index, Table, Column, Integer, ForeignKey, DateTime
 import json
 
 db = SQLAlchemy()
@@ -13,10 +13,12 @@ def moscow_now():
     return datetime.now(MOSCOW_TZ)
 
 # Связующая таблица для связи Заданий и Тем (many-to-many)
+# Используем правильный синтаксис для SQLAlchemy Table
 task_topics = Table('task_topics',
-    db.Column('task_id', db.Integer, db.ForeignKey('Tasks.task_id'), primary_key=True),
-    db.Column('topic_id', db.Integer, db.ForeignKey('Topics.topic_id'), primary_key=True),
-    db.Column('created_at', db.DateTime, default=moscow_now)
+    db.metadata,
+    Column('task_id', Integer, ForeignKey('Tasks.task_id'), primary_key=True),
+    Column('topic_id', Integer, ForeignKey('Topics.topic_id'), primary_key=True),
+    Column('created_at', DateTime, default=moscow_now)
 )
 
 class Tasks(db.Model):
