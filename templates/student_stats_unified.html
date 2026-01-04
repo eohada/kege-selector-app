@@ -132,6 +132,27 @@
         
         .heatmap-container {
             display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .heatmap-days-header {
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-end;
+            margin-left: 60px; /* Отступ для меток месяцев */
+        }
+        
+        .heatmap-day-header-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            width: 20px;
+            text-align: center;
+            font-weight: 500;
+        }
+        
+        .heatmap-main {
+            display: flex;
             gap: 0.5rem;
             align-items: flex-start;
         }
@@ -140,41 +161,23 @@
             display: flex;
             flex-direction: column;
             gap: 2px;
-            margin-top: 20px; /* Выравнивание с днями недели */
+            min-width: 60px;
         }
         
         .heatmap-month-label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            height: 14px;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            font-weight: 600;
+            height: 20px;
             display: flex;
             align-items: center;
-            padding-left: 6px;
-        }
-        
-        .heatmap-days {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-        
-        .heatmap-days-row {
-            display: flex;
-            gap: 2px;
+            padding-left: 8px;
+            border-left: 3px solid var(--accent-1);
             margin-bottom: 2px;
-            height: 14px;
-            align-items: center;
         }
         
-        .heatmap-day-label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            width: 24px;
-            text-align: right;
-            padding-right: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
+        .heatmap-month-spacer {
+            height: 20px;
         }
         
         .heatmap-grid {
@@ -189,9 +192,9 @@
         }
         
         .heatmap-day {
-            width: 14px;
-            height: 14px;
-            border-radius: 3px;
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
             background: var(--surface-3);
             border: 1px solid var(--stroke-1);
             cursor: pointer;
@@ -199,7 +202,7 @@
         }
         
         .heatmap-day:hover {
-            transform: scale(1.4);
+            transform: scale(1.3);
             z-index: 10;
             position: relative;
             border-color: var(--accent-1);
@@ -473,35 +476,25 @@
                     </div>
                 </div>
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
-                    Интенсивность активности по дням за последний год. Наведите курсор на день для подробностей.
+                    Статусы уроков по дням за последний год. Наведите курсор на день для подробностей.
                 </p>
                 <div class="heatmap-wrapper">
                     <div class="heatmap-container">
-                        <div class="heatmap-days">
-                            <div class="heatmap-days-row">
-                                <div class="heatmap-day-label"></div>
-                            </div>
-                            <div class="heatmap-days-row">
-                                <div class="heatmap-day-label">Пн</div>
-                            </div>
-                            <div class="heatmap-days-row">
-                                <div class="heatmap-day-label"></div>
-                            </div>
-                            <div class="heatmap-days-row">
-                                <div class="heatmap-day-label">Ср</div>
-                            </div>
-                            <div class="heatmap-days-row">
-                                <div class="heatmap-day-label"></div>
-                            </div>
-                            <div class="heatmap-days-row">
-                                <div class="heatmap-day-label">Пт</div>
-                            </div>
-                            <div class="heatmap-days-row">
-                                <div class="heatmap-day-label"></div>
-                            </div>
+                        <!-- Заголовок дней недели -->
+                        <div class="heatmap-days-header">
+                            <div class="heatmap-day-header-label">Пн</div>
+                            <div class="heatmap-day-header-label">Вт</div>
+                            <div class="heatmap-day-header-label">Ср</div>
+                            <div class="heatmap-day-header-label">Чт</div>
+                            <div class="heatmap-day-header-label">Пт</div>
+                            <div class="heatmap-day-header-label">Сб</div>
+                            <div class="heatmap-day-header-label">Вс</div>
                         </div>
-                        <div id="attendanceHeatmap" class="heatmap-grid"></div>
-                        <div id="heatmapMonths" class="heatmap-months"></div>
+                        <!-- Основная часть с месяцами и сеткой -->
+                        <div class="heatmap-main">
+                            <div id="heatmapMonths" class="heatmap-months"></div>
+                            <div id="attendanceHeatmap" class="heatmap-grid"></div>
+                        </div>
                     </div>
                 </div>
                 <div class="heatmap-legend">
@@ -861,43 +854,82 @@
                 const weeks = [];
                 let currentWeek = [];
                 
-                dates.forEach((date, idx) => {
-                    const dateObj = new Date(date);
+                // Находим первый понедельник
+                let firstMondayIdx = 0;
+                for (let i = 0; i < dates.length; i++) {
+                    const dateObj = new Date(dates[i]);
                     const dayOfWeek = dateObj.getDay(); // 0 = воскресенье, 1 = понедельник
-                    const status = statuses[idx];
-                    
-                    // Если это понедельник и есть накопленная неделя, сохраняем её
-                    if (dayOfWeek === 1 && currentWeek.length > 0) {
-                        weeks.push(currentWeek);
-                        currentWeek = [];
+                    if (dayOfWeek === 1) { // Понедельник
+                        firstMondayIdx = i;
+                        break;
                     }
+                }
+                
+                // Заполняем первую неделю до понедельника пустыми днями
+                for (let i = 0; i < firstMondayIdx; i++) {
+                    currentWeek.push(null);
+                }
+                
+                // Группируем остальные дни по неделям
+                for (let i = firstMondayIdx; i < dates.length; i++) {
+                    const date = dates[i];
+                    const status = statuses[i];
+                    const dateObj = new Date(date);
+                    const dayOfWeek = dateObj.getDay();
                     
                     currentWeek.push({
                         date: date,
                         status: status,
                         dayOfWeek: dayOfWeek
                     });
-                });
-                
-                // Добавляем последнюю неделю
-                if (currentWeek.length > 0) {
-                    weeks.push(currentWeek);
+                    
+                    // Если неделя заполнена (7 дней) или это последний день
+                    if (currentWeek.length === 7 || i === dates.length - 1) {
+                        // Дополняем последнюю неделю пустыми днями если нужно
+                        while (currentWeek.length < 7) {
+                            currentWeek.push(null);
+                        }
+                        weeks.push(currentWeek);
+                        currentWeek = [];
+                    }
                 }
                 
-                // Определяем месяцы для подписей (по первой неделе месяца)
+                // Определяем месяцы для подписей (группируем недели по месяцам)
                 const monthLabels = [];
                 let currentMonth = '';
+                let currentMonthWeeks = 0;
+                
                 weeks.forEach((week, weekIdx) => {
                     const firstDay = week.find(d => d !== null);
                     if (firstDay) {
                         const date = new Date(firstDay.date);
                         const month = date.toLocaleDateString('ru-RU', { month: 'short' });
+                        
                         if (month !== currentMonth) {
-                            monthLabels.push({ weekIdx: weekIdx, month: month });
+                            // Если сменился месяц, добавляем метку для предыдущего месяца
+                            if (currentMonth && currentMonthWeeks > 0) {
+                                monthLabels.push({ 
+                                    weekIdx: weekIdx - currentMonthWeeks, 
+                                    month: currentMonth,
+                                    weeks: currentMonthWeeks
+                                });
+                            }
                             currentMonth = month;
+                            currentMonthWeeks = 1;
+                        } else {
+                            currentMonthWeeks++;
                         }
                     }
                 });
+                
+                // Добавляем последний месяц
+                if (currentMonth && currentMonthWeeks > 0) {
+                    monthLabels.push({ 
+                        weekIdx: weeks.length - currentMonthWeeks, 
+                        month: currentMonth,
+                        weeks: currentMonthWeeks
+                    });
+                }
                 
                 // Создаем heatmap
                 weeks.forEach((week, weekIdx) => {
@@ -942,13 +974,33 @@
                     heatmapContainer.appendChild(weekDiv);
                 });
                 
-                // Добавляем подписи месяцев
-                monthLabels.forEach(({ weekIdx, month }) => {
+                // Добавляем подписи месяцев с правильным распределением
+                let currentWeekIdx = 0;
+                monthLabels.forEach(({ weekIdx, month, weeks: monthWeeks }) => {
+                    // Добавляем отступы до нужной недели
+                    while (currentWeekIdx < weekIdx) {
+                        const spacer = document.createElement('div');
+                        spacer.className = 'heatmap-month-spacer';
+                        heatmapMonthsContainer.appendChild(spacer);
+                        currentWeekIdx++;
+                    }
+                    
+                    // Добавляем метку месяца
                     const monthLabel = document.createElement('div');
                     monthLabel.className = 'heatmap-month-label';
                     monthLabel.textContent = month;
+                    monthLabel.style.height = (monthWeeks * 22) + 'px'; // 20px высота недели + 2px gap
                     heatmapMonthsContainer.appendChild(monthLabel);
+                    currentWeekIdx += monthWeeks;
                 });
+                
+                // Добавляем отступы до конца если нужно
+                while (currentWeekIdx < weeks.length) {
+                    const spacer = document.createElement('div');
+                    spacer.className = 'heatmap-month-spacer';
+                    heatmapMonthsContainer.appendChild(spacer);
+                    currentWeekIdx++;
+                }
             }
         });
     </script>
