@@ -1,6 +1,7 @@
 """
 Маршруты для управления студентами
 """
+import json
 import logging  # Логирование для отладки и прод-логов
 from flask import render_template, request, redirect, url_for, flash, jsonify, current_app  # current_app нужен для определения типа БД (Postgres)
 from flask_login import login_required
@@ -9,6 +10,7 @@ from sqlalchemy import text  # text нужен для выполнения SQL s
 from app.students import students_bp
 from app.students.forms import StudentForm, normalize_school_class
 from app.students.utils import get_sorted_assignments
+from app.students.stats_service import StatsService
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.models import Student, StudentTaskStatistics, Lesson, LessonTask, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from core.audit_logger import audit_logger
@@ -344,6 +346,38 @@ def update_statistics(student_id):
             error=str(e)
         )
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@students_bp.route('/student/<int:student_id>/analytics')
+@login_required
+def student_analytics(student_id):
+    """Расширенная аналитика ученика: GPA, динамика, навыки, посещаемость"""
+    student = Student.query.get_or_404(student_id)
+    
+    # Инициализируем сервис статистики
+    stats = StatsService(student_id)
+    
+    # Собираем данные для графиков
+    gpa_data = stats.get_gpa_trend(period_days=90)
+    skill_data = stats.get_skills_map()
+    attendance_data = stats.get_attendance_pie()
+    metrics = stats.get_summary_metrics()
+    problem_topics = stats.get_problem_topics(threshold=60)
+    
+    # Сериализуем данные для передачи в JavaScript через Jinja
+    charts_context = {
+        'trend_dates': json.dumps(gpa_data['dates'], ensure_ascii=False),
+        'trend_scores': json.dumps(gpa_data['scores']),
+        'skill_labels': json.dumps(skill_data['labels'], ensure_ascii=False),
+        'skill_values': json.dumps(skill_data['values']),
+        'attendance_labels': json.dumps(attendance_data['labels'], ensure_ascii=False),
+        'attendance_values': json.dumps(attendance_data['values'])
+    }
+    
+    return render_template('student_analytics.html',
+                         student=student,
+                         charts=charts_context,
+                         metrics=metrics,
+                         problem_topics=problem_topics)
 
 @students_bp.route('/student/<int:student_id>/edit', methods=['GET', 'POST'])
 @login_required

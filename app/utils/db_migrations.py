@@ -43,6 +43,7 @@ def _fix_postgres_sequences(app, inspector):  # Выравниваем sequences
             'TaskTemplate': 'template_id',  # PK шаблонов
             'TemplateTask': 'id',  # PK связки шаблон-задание (если есть)
             'Users': 'id',  # PK пользователей
+            'Topics': 'topic_id',  # PK тем/навыков
         }  # Конец mapping
 
         # Исправляем sequences в отдельных транзакциях, чтобы ошибка одной не влияла на другие
@@ -169,6 +170,64 @@ def ensure_schema_columns(app):
                     db.session.execute(text(f'ALTER TABLE "{stats_table}" ADD COLUMN manual_correct INTEGER DEFAULT 0 NOT NULL'))
                 if 'manual_incorrect' not in stats_columns:
                     db.session.execute(text(f'ALTER TABLE "{stats_table}" ADD COLUMN manual_incorrect INTEGER DEFAULT 0 NOT NULL'))
+            
+            # Проверяем и создаем таблицу Topics (темы/навыки)
+            topics_table = 'Topics' if 'Topics' in table_names else ('topics' if 'topics' in table_names else None)
+            if not topics_table:
+                if _is_postgres(app):
+                    db.session.execute(text("""
+                        CREATE TABLE IF NOT EXISTS "Topics" (
+                            topic_id SERIAL PRIMARY KEY,
+                            name VARCHAR(100) NOT NULL UNIQUE,
+                            description TEXT,
+                            subject_id INTEGER,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """))
+                    db.session.execute(text("""
+                        CREATE INDEX IF NOT EXISTS ix_topics_name ON "Topics"(name)
+                    """))
+                else:
+                    # SQLite синтаксис
+                    db.session.execute(text("""
+                        CREATE TABLE IF NOT EXISTS Topics (
+                            topic_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name VARCHAR(100) NOT NULL UNIQUE,
+                            description TEXT,
+                            subject_id INTEGER,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """))
+                    db.session.execute(text("""
+                        CREATE INDEX IF NOT EXISTS ix_topics_name ON Topics(name)
+                    """))
+                logger.info("Created Topics table")
+            
+            # Проверяем и создаем связующую таблицу task_topics
+            task_topics_table = 'task_topics' if 'task_topics' in table_names else ('TaskTopics' if 'TaskTopics' in table_names else None)
+            if not task_topics_table:
+                if _is_postgres(app):
+                    db.session.execute(text("""
+                        CREATE TABLE IF NOT EXISTS task_topics (
+                            task_id INTEGER NOT NULL REFERENCES "Tasks"(task_id) ON DELETE CASCADE,
+                            topic_id INTEGER NOT NULL REFERENCES "Topics"(topic_id) ON DELETE CASCADE,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            PRIMARY KEY (task_id, topic_id)
+                        )
+                    """))
+                else:
+                    # SQLite синтаксис
+                    db.session.execute(text("""
+                        CREATE TABLE IF NOT EXISTS task_topics (
+                            task_id INTEGER NOT NULL REFERENCES Tasks(task_id) ON DELETE CASCADE,
+                            topic_id INTEGER NOT NULL REFERENCES Topics(topic_id) ON DELETE CASCADE,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            PRIMARY KEY (task_id, topic_id)
+                        )
+                    """))
+                logger.info("Created task_topics table")
             
             # Проверяем и создаем таблицу MaintenanceMode
             maintenance_table = 'MaintenanceMode' if 'MaintenanceMode' in table_names else ('maintenancemode' if 'maintenancemode' in table_names else None)

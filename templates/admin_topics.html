@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление темами · Админ-панель</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'admin' %}
+        {% include '_primary_nav.html' %}
+        
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">
+                    ← К админ-панели
+                </a>
+            </div>
+            <p class="hero-eyebrow">управление темами</p>
+            <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Темы" class="ui-icon ui-icon--md">Темы заданий</h1>
+            <p class="hero-subtitle">Управление темами для аналитики навыков учеников</p>
+        </section>
+        
+        <!-- Форма создания темы -->
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">создание</p>
+                    <h2>Создать новую тему</h2>
+                </div>
+            </div>
+            <form id="createTopicForm" style="margin-top: 1.5rem;">
+                <div class="neo-field">
+                    <label class="neo-label" for="topic-name">Название темы *</label>
+                    <input id="topic-name" name="name" class="neo-input" placeholder="Например: Логарифмы, Дроби, Пунктуация" required>
+                    <small style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">Название должно быть уникальным</small>
+                </div>
+                <div class="neo-field" style="margin-top: 1rem;">
+                    <label class="neo-label" for="topic-description">Описание (необязательно)</label>
+                    <textarea id="topic-description" name="description" class="neo-input" rows="3" placeholder="Краткое описание темы"></textarea>
+                </div>
+                <div style="margin-top: 1.5rem;">
+                    <button type="submit" class="neo-button accent">Создать тему</button>
+                </div>
+            </form>
+        </section>
+        
+        <!-- Список тем -->
+        <section class="glass-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">список</p>
+                    <h2>Все темы ({{ total_topics }})</h2>
+                </div>
+            </div>
+            
+            {% if topics_stats %}
+            <div style="margin-top: 1.5rem;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid var(--stroke-2);">
+                            <th style="padding: 1rem; text-align: left; font-weight: 600;">Название</th>
+                            <th style="padding: 1rem; text-align: left; font-weight: 600;">Описание</th>
+                            <th style="padding: 1rem; text-align: center; font-weight: 600;">Заданий</th>
+                            <th style="padding: 1rem; text-align: right; font-weight: 600;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in topics_stats %}
+                        <tr style="border-bottom: 1px solid var(--stroke-1);">
+                            <td style="padding: 1rem;">
+                                <strong>{{ item.topic.name }}</strong>
+                            </td>
+                            <td style="padding: 1rem; color: var(--text-muted);">
+                                {{ item.topic.description or '-' }}
+                            </td>
+                            <td style="padding: 1rem; text-align: center;">
+                                <span style="background: var(--surface-3); padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.9rem;">
+                                    {{ item.tasks_count }}
+                                </span>
+                            </td>
+                            <td style="padding: 1rem; text-align: right;">
+                                <button onclick="deleteTopic({{ item.topic.topic_id }}, '{{ item.topic.name }}')" class="neo-button danger" style="padding: 0.5rem 1rem;">
+                                    Удалить
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 3rem 2rem; color: var(--text-muted);">
+                <p>Темы еще не созданы. Создайте первую тему выше.</p>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+    
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script>
+        // Получаем CSRF токен
+        function getCSRFToken() {
+            const meta = document.querySelector('meta[name="csrf-token"]');
+            return meta ? meta.getAttribute('content') : '';
+        }
+        
+        // Создание темы
+        document.getElementById('createTopicForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('topic-name').value.trim(),
+                description: document.getElementById('topic-description').value.trim()
+            };
+            
+            if (!formData.name) {
+                showTemporaryNotification('Название темы обязательно', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('{{ url_for("admin.admin_topic_create") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showTemporaryNotification('Тема успешно создана', 'success');
+                    // Перезагружаем страницу через секунду
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    showTemporaryNotification('Ошибка: ' + (data.error || 'Неизвестная ошибка'), 'error');
+                }
+            } catch (error) {
+                console.error('Error creating topic:', error);
+                showTemporaryNotification('Ошибка при создании темы', 'error');
+            }
+        });
+        
+        // Удаление темы
+        async function deleteTopic(topicId, topicName) {
+            if (!confirm(`Вы уверены, что хотите удалить тему "${topicName}"?\n\nЭто действие нельзя отменить. Все связи с заданиями будут удалены.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`{{ url_for('admin.admin_topic_delete', topic_id=0) }}`.replace('0', topicId), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showTemporaryNotification('Тема успешно удалена', 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    showTemporaryNotification('Ошибка: ' + (data.error || 'Неизвестная ошибка'), 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting topic:', error);
+                showTemporaryNotification('Ошибка при удалении темы', 'error');
+            }
+        }
+    </script>
+</body>
+</html>

@@ -19,8 +19,8 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from werkzeug.security import generate_password_hash  # Хешируем пароль как в scripts/create_tester_user.py. # comment
 
 from app.admin import admin_bp
-from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ, Tasks, Lesson, LessonTask
-from core.db_models import Tester
+from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ, Tasks, Lesson, LessonTask, Topic
+from core.db_models import Tester, task_topics
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
@@ -1789,3 +1789,144 @@ def admin_tester_entities_delete_anonymous():
         flash('Ошибка при удалении записей Anonymous.', 'error')
     
     return redirect(url_for('admin.admin_tester_entities'))
+
+@admin_bp.route('/admin/topics')
+@login_required
+def admin_topics():
+    """Управление темами (только для создателя)"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    topics = Topic.query.order_by(Topic.name).all()
+    total_topics = len(topics)
+    
+    # Статистика по использованию тем
+    topics_stats = []
+    for topic in topics:
+        tasks_count = len(topic.tasks) if topic.tasks else 0
+        topics_stats.append({
+            'topic': topic,
+            'tasks_count': tasks_count
+        })
+    
+    return render_template('admin_topics.html', 
+                         topics_stats=topics_stats,
+                         total_topics=total_topics)
+
+@admin_bp.route('/admin/topics/create', methods=['POST'])
+@login_required
+def admin_topic_create():
+    """Создание новой темы"""
+    if not current_user.is_creator():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    
+    try:
+        data = request.get_json()
+        name = (data.get('name') or '').strip()
+        description = (data.get('description') or '').strip() or None
+        
+        if not name:
+            return jsonify({'success': False, 'error': 'Название темы обязательно'}), 400
+        
+        # Проверяем, нет ли уже такой темы
+        existing = Topic.query.filter_by(name=name).first()
+        if existing:
+            return jsonify({'success': False, 'error': 'Тема с таким названием уже существует'}), 400
+        
+        topic = Topic(name=name, description=description)
+        db.session.add(topic)
+        db.session.commit()
+        
+        audit_logger.log(
+            action='create_topic',
+            entity='Topic',
+            entity_id=topic.topic_id,
+            status='success',
+            metadata={'name': name}
+        )
+        
+        return jsonify({'success': True, 'topic_id': topic.topic_id, 'name': topic.name})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating topic: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/admin/topics/<int:topic_id>/delete', methods=['POST'])
+@login_required
+def admin_topic_delete(topic_id):
+    """Удаление темы"""
+    if not current_user.is_creator():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    
+    try:
+        topic = Topic.query.get_or_404(topic_id)
+        name = topic.name
+        db.session.delete(topic)
+        db.session.commit()
+        
+        audit_logger.log(
+            action='delete_topic',
+            entity='Topic',
+            entity_id=topic_id,
+            status='success',
+            metadata={'name': name}
+        )
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting topic: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_bp.route('/admin/tasks/<int:task_id>/topics', methods=['GET', 'POST'])
+@login_required
+def admin_task_topics(task_id):
+    """Управление темами для конкретного задания"""
+    if not current_user.is_creator():
+        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    task = Tasks.query.get_or_404(task_id)
+    
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            topic_ids = data.get('topic_ids', [])
+            
+            # Удаляем все текущие связи
+            db.session.execute(
+                task_topics.delete().where(task_topics.c.task_id == task_id)
+            )
+            
+            # Добавляем новые связи
+            for topic_id in topic_ids:
+                db.session.execute(
+                    task_topics.insert().values(task_id=task_id, topic_id=topic_id)
+                )
+            
+            db.session.commit()
+            
+            audit_logger.log(
+                action='update_task_topics',
+                entity='Tasks',
+                entity_id=task_id,
+                status='success',
+                metadata={'topic_ids': topic_ids}
+            )
+            
+            return jsonify({'success': True})
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error updating task topics: {e}", exc_info=True)
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    # GET - возвращаем список всех тем и текущие связи
+    all_topics = Topic.query.order_by(Topic.name).all()
+    current_topic_ids = {t.topic_id for t in task.topics} if task.topics else set()
+    
+    return jsonify({
+        'success': True,
+        'all_topics': [{'id': t.topic_id, 'name': t.name} for t in all_topics],
+        'current_topic_ids': list(current_topic_ids)
+    })

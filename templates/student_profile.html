@@ -1653,6 +1653,7 @@
                         <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Начать урок" class="ui-icon ui-icon--sm">Начать урок</button>
                     </form>
                     <a href="{{ url_for('students.student_statistics', student_id=student.student_id) }}" class="neo-button outline"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Статистика" class="ui-icon ui-icon--sm">Статистика</a>
+                    <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button outline"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Аналитика" class="ui-icon ui-icon--sm">Аналитика</a>
                     <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm ui-icon--only"></a>
                     <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" style="margin: 0;">
                         <button type="submit" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/ARHIV.png') }}" alt="Архив" class="ui-icon ui-icon--sm ui-icon--only"></button>

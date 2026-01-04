@@ -19,6 +19,8 @@ from core.db_models import (
     AuditLog,
     MaintenanceMode,
     Reminder,
+    Topic,
+    task_topics,
     moscow_now,
     MOSCOW_TZ,
     TOMSK_TZ
@@ -41,6 +43,8 @@ __all__ = [
     'AuditLog',
     'MaintenanceMode',
     'Reminder',
+    'Topic',
+    'task_topics',
     'moscow_now',
     'MOSCOW_TZ',
     'TOMSK_TZ'

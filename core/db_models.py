@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from sqlalchemy import JSON, Index
+from sqlalchemy import JSON, Index, Table, Column, Integer, ForeignKey
 import json
 
 db = SQLAlchemy()
@@ -11,6 +11,13 @@ TOMSK_TZ = ZoneInfo("Asia/Tomsk")
 
 def moscow_now():
     return datetime.now(MOSCOW_TZ)
+
+# Связующая таблица для связи Заданий и Тем (many-to-many)
+task_topics = Table('task_topics',
+    db.Column('task_id', db.Integer, db.ForeignKey('Tasks.task_id'), primary_key=True),
+    db.Column('topic_id', db.Integer, db.ForeignKey('Topics.topic_id'), primary_key=True),
+    db.Column('created_at', db.DateTime, default=moscow_now)
+)
 
 class Tasks(db.Model):
     __tablename__ = 'Tasks'
@@ -26,6 +33,20 @@ class Tasks(db.Model):
     usage_history = db.relationship('UsageHistory', back_populates='task', lazy=True)
     skipped_tasks = db.relationship('SkippedTasks', back_populates='task', lazy=True)
     blacklist_tasks = db.relationship('BlacklistTasks', back_populates='task', lazy=True)
+    topics = db.relationship('Topic', secondary=task_topics, backref='tasks', lazy=True)
+
+class Topic(db.Model):
+    """Модель тем (навыков) для тегирования заданий"""
+    __tablename__ = 'Topics'
+    topic_id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False, unique=True, index=True)  # Пример: "Логарифмы", "Пунктуация", "Дроби"
+    description = db.Column(db.Text, nullable=True)  # Описание темы
+    subject_id = db.Column(db.Integer, nullable=True)  # ID предмета (если нужна категоризация)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    
+    def __repr__(self):
+        return f'<Topic {self.name}>'
 
 class UsageHistory(db.Model):
     __tablename__ = 'UsageHistory'
