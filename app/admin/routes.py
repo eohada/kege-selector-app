@@ -22,6 +22,7 @@ from app.admin import admin_bp
 from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ, Tasks, Lesson, LessonTask, Topic
 from core.db_models import Tester, task_topics
 from core.audit_logger import audit_logger
+from app import csrf
 
 logger = logging.getLogger(__name__)
 
@@ -1816,13 +1817,14 @@ def admin_topics():
 
 @admin_bp.route('/admin/topics/create', methods=['POST'])
 @login_required
+@csrf.exempt  # Исключаем из CSRF для AJAX запросов
 def admin_topic_create():
     """Создание новой темы"""
     if not current_user.is_creator():
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         name = (data.get('name') or '').strip()
         description = (data.get('description') or '').strip() or None
         
@@ -1854,6 +1856,7 @@ def admin_topic_create():
 
 @admin_bp.route('/admin/topics/<int:topic_id>/delete', methods=['POST'])
 @login_required
+@csrf.exempt  # Исключаем из CSRF для AJAX запросов
 def admin_topic_delete(topic_id):
     """Удаление темы"""
     if not current_user.is_creator():

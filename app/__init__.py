@@ -156,6 +156,12 @@ def create_app(config_name=None):
     from app.admin.routes import maintenance_status_api
     csrf.exempt(maintenance_status_api)
 
+    # Добавляем csrf_token в контекст всех шаблонов
+    @app.context_processor
+    def inject_csrf_token():
+        from flask_wtf.csrf import generate_csrf
+        return dict(csrf_token=generate_csrf)
+    
     # Исключаем внутренний sandbox-admin API из CSRF (server-to-server по токену)
     from app.admin.routes import (
         sandbox_internal_summary,

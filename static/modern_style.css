@@ -3602,6 +3602,17 @@ body.creator-theme-active .students-grid {
     }
 }
 
+/* ===== Стили для графиков аналитики ===== */
+#skillsChart {
+    max-height: 500px !important;
+    width: 100% !important;
+}
+
+/* Улучшаем читаемость подписей на радар-чарте */
+.glass-panel canvas {
+    filter: contrast(1.05);
+}
+
 /* ===== Кнопка "Наверх" (Scroll to Top) ===== */
 .scroll-to-top {
     position: fixed;

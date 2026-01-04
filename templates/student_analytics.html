@@ -133,8 +133,8 @@
                         <h2>Уровень владения темами</h2>
                     </div>
                 </div>
-                <div style="margin-top: 2rem;">
-                    <canvas id="skillsChart" style="max-height: 300px;"></canvas>
+                <div style="margin-top: 2rem; position: relative; min-height: 450px;">
+                    <canvas id="skillsChart"></canvas>
                 </div>
             </section>
         </div>
@@ -239,41 +239,139 @@
             // --- График Навыков (Radar) ---
             const ctxSkills = document.getElementById('skillsChart');
             if (ctxSkills && {{ charts.skill_labels | safe }}.length > 0) {
+                // Получаем цвета из CSS переменных
+                const accent1 = getComputedStyle(document.documentElement).getPropertyValue('--accent-1').trim();
+                const accent1Strong = getComputedStyle(document.documentElement).getPropertyValue('--accent-1-strong').trim();
+                const textPrimary = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim();
+                const textMuted = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
+                const stroke1 = getComputedStyle(document.documentElement).getPropertyValue('--stroke-1').trim();
+                
+                // Конвертируем hex в rgb для rgba
+                function hexToRgb(hex) {
+                    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                    return result ? {
+                        r: parseInt(result[1], 16),
+                        g: parseInt(result[2], 16),
+                        b: parseInt(result[3], 16)
+                    } : null;
+                }
+                
+                const accentRgb = hexToRgb(accent1);
+                const accentRgba = accentRgb ? `rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.25)` : 'rgba(0, 255, 213, 0.25)';
+                const accentRgbaHover = accentRgb ? `rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.4)` : 'rgba(0, 255, 213, 0.4)';
+                
                 const skillsChart = new Chart(ctxSkills.getContext('2d'), {
                     type: 'radar',
                     data: {
                         labels: {{ charts.skill_labels | safe }},
                         datasets: [{
-                            label: 'Уровень владения (%)',
+                            label: 'Уровень владения',
                             data: {{ charts.skill_values | safe }},
-                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                            borderColor: 'rgb(54, 162, 235)',
-                            pointBackgroundColor: 'rgb(54, 162, 235)',
-                            pointBorderColor: '#fff',
-                            pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: 'rgb(54, 162, 235)'
+                            backgroundColor: accentRgba,
+                            borderColor: accent1,
+                            borderWidth: 3,
+                            pointBackgroundColor: accent1,
+                            pointBorderColor: textPrimary,
+                            pointBorderWidth: 2,
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
+                            pointHoverBackgroundColor: accent1Strong,
+                            pointHoverBorderColor: textPrimary,
+                            pointHoverBorderWidth: 3
                         }]
                     },
                     options: {
                         responsive: true,
-                        maintainAspectRatio: true,
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: {
+                                top: 20,
+                                bottom: 20,
+                                left: 20,
+                                right: 20
+                            }
+                        },
                         scales: {
                             r: {
                                 beginAtZero: true,
+                                min: 0,
                                 max: 100,
                                 ticks: {
                                     stepSize: 20,
+                                    color: textMuted,
+                                    font: {
+                                        size: 11,
+                                        family: 'MonaspaceNeon, monospace'
+                                    },
+                                    backdropColor: 'transparent',
+                                    showLabelBackdrop: false,
                                     callback: function(value) {
                                         return value + '%';
                                     }
+                                },
+                                grid: {
+                                    color: stroke1,
+                                    lineWidth: 1
+                                },
+                                angleLines: {
+                                    color: stroke1,
+                                    lineWidth: 1
+                                },
+                                pointLabels: {
+                                    color: textPrimary,
+                                    font: {
+                                        size: 11,
+                                        family: 'MonaspaceNeon, monospace',
+                                        weight: '500'
+                                    },
+                                    padding: 12,
+                                    backdropColor: 'transparent',
+                                    backdropPadding: 4
                                 }
                             }
                         },
                         plugins: {
                             legend: {
                                 display: true,
-                                position: 'top'
+                                position: 'top',
+                                labels: {
+                                    color: textPrimary,
+                                    font: {
+                                        size: 12,
+                                        family: 'MonaspaceNeon, monospace'
+                                    },
+                                    padding: 15,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(8, 10, 18, 0.95)',
+                                titleColor: accent1,
+                                bodyColor: textPrimary,
+                                borderColor: accent1,
+                                borderWidth: 1,
+                                padding: 12,
+                                titleFont: {
+                                    size: 13,
+                                    family: 'MonaspaceNeon, monospace',
+                                    weight: '600'
+                                },
+                                bodyFont: {
+                                    size: 12,
+                                    family: 'MonaspaceNeon, monospace'
+                                },
+                                displayColors: true,
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.dataset.label + ': ' + context.parsed.r + '%';
+                                    }
+                                }
                             }
+                        },
+                        animation: {
+                            duration: 1000,
+                            easing: 'easeOutQuart'
                         }
                     }
                 });
