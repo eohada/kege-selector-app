@@ -147,8 +147,8 @@ def student_profile(student_id):
 @students_bp.route('/student/<int:student_id>/statistics')
 @login_required
 def student_statistics(student_id):
-    """Страница статистики выполнения заданий по номерам"""
-    student = Student.query.get_or_404(student_id)
+    """Редирект на единую страницу статистики"""
+    return redirect(url_for('students.student_analytics', student_id=student_id))
     
     # Загружаем все уроки с заданиями
     lessons = Lesson.query.filter_by(student_id=student_id).options(
@@ -350,18 +350,95 @@ def update_statistics(student_id):
 @students_bp.route('/student/<int:student_id>/analytics')
 @login_required
 def student_analytics(student_id):
-    """Расширенная аналитика ученика: GPA, динамика, навыки, посещаемость"""
+    """Единая страница статистики и аналитики ученика с табами"""
     student = Student.query.get_or_404(student_id)
     
     # Инициализируем сервис статистики
     stats = StatsService(student_id)
     
-    # Собираем данные для графиков
+    # Собираем данные для графиков (Навыки)
     gpa_data = stats.get_gpa_trend(period_days=90)
     skill_data = stats.get_skills_map()
-    attendance_data = stats.get_attendance_pie()
     metrics = stats.get_summary_metrics()
     problem_topics = stats.get_problem_topics(threshold=60)
+    gpa_by_type = stats.get_gpa_by_type()
+    
+    # Собираем данные для графиков (Дисциплина)
+    attendance_data = stats.get_attendance_pie()
+    attendance_heatmap = stats.get_attendance_heatmap(weeks=52)
+    punctuality = stats.get_submission_punctuality()
+    
+    # Загружаем статистику по заданиям для вкладки "Навыки"
+    lessons = Lesson.query.filter_by(student_id=student_id).options(
+        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
+    ).all()
+    
+    task_stats = {}
+    for lesson in lessons:
+        for assignment_type in ['homework', 'classwork', 'exam']:
+            assignments = get_sorted_assignments(lesson, assignment_type)
+            weight = 2 if assignment_type == 'exam' else 1
+            
+            for lt in assignments:
+                if not lt.task or not lt.task.task_number:
+                    continue
+                
+                task_num = lt.task.task_number
+                
+                if task_num not in task_stats:
+                    task_stats[task_num] = {
+                        'auto_correct': 0, 
+                        'auto_total': 0,
+                        'manual_correct': 0, 
+                        'manual_incorrect': 0,
+                        'correct': 0,
+                        'total': 0
+                    }
+                
+                if lt.submission_correct is not None:
+                    task_stats[task_num]['auto_total'] += weight
+                    if lt.submission_correct:
+                        task_stats[task_num]['auto_correct'] += weight
+    
+    # Загружаем ручные изменения статистики
+    manual_stats = StudentTaskStatistics.query.filter_by(student_id=student_id).all()
+    for ms in manual_stats:
+        if ms.task_number in task_stats:
+            task_stats[ms.task_number]['manual_correct'] = ms.manual_correct or 0
+            task_stats[ms.task_number]['manual_incorrect'] = ms.manual_incorrect or 0
+            task_stats[ms.task_number]['correct'] = task_stats[ms.task_number]['auto_correct'] + ms.manual_correct - (ms.manual_incorrect or 0)
+            task_stats[ms.task_number]['total'] = task_stats[ms.task_number]['auto_total'] + ms.manual_correct + (ms.manual_incorrect or 0)
+        else:
+            task_stats[ms.task_number] = {
+                'auto_correct': 0,
+                'auto_total': 0,
+                'manual_correct': ms.manual_correct or 0,
+                'manual_incorrect': ms.manual_incorrect or 0,
+                'correct': ms.manual_correct - (ms.manual_incorrect or 0),
+                'total': (ms.manual_correct or 0) + (ms.manual_incorrect or 0)
+            }
+    
+    chart_data = []
+    for task_num in sorted(task_stats.keys()):
+        stats_data = task_stats[task_num]
+        if stats_data['total'] > 0:
+            percent = round((stats_data['correct'] / stats_data['total']) * 100, 1)
+            if percent < 40:
+                color = '#ef4444'
+            elif percent < 80:
+                color = '#eab308'
+            else:
+                color = '#22c55e'
+            
+            chart_data.append({
+                'task_number': task_num,
+                'percent': percent,
+                'correct': stats_data['correct'],
+                'total': stats_data['total'],
+                'color': color,
+                'manual_correct': stats_data.get('manual_correct', 0),
+                'manual_incorrect': stats_data.get('manual_incorrect', 0)
+            })
     
     # Сериализуем данные для передачи в JavaScript через Jinja
     charts_context = {
@@ -370,14 +447,20 @@ def student_analytics(student_id):
         'skill_labels': json.dumps(skill_data['labels'], ensure_ascii=False),
         'skill_values': json.dumps(skill_data['values']),
         'attendance_labels': json.dumps(attendance_data['labels'], ensure_ascii=False),
-        'attendance_values': json.dumps(attendance_data['values'])
+        'attendance_values': json.dumps(attendance_data['values']),
+        'heatmap_dates': json.dumps(attendance_heatmap['dates'], ensure_ascii=False),
+        'heatmap_values': json.dumps(attendance_heatmap['values']),
+        'heatmap_max': attendance_heatmap['max_count']
     }
     
-    return render_template('student_analytics.html',
+    return render_template('student_stats_unified.html',
                          student=student,
                          charts=charts_context,
                          metrics=metrics,
-                         problem_topics=problem_topics)
+                         gpa_by_type=gpa_by_type,
+                         problem_topics=problem_topics,
+                         chart_data=chart_data,
+                         punctuality=punctuality)
 
 @students_bp.route('/student/<int:student_id>/edit', methods=['GET', 'POST'])
 @login_required

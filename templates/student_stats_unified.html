@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статистика - {{ student.name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        /* Табы */
+        .stats-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--stroke-1);
+            padding-bottom: 0;
+        }
+        
+        .stats-tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            font-family: var(--font-base);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            top: 1px;
+        }
+        
+        .stats-tab:hover {
+            color: var(--text-primary);
+        }
+        
+        .stats-tab.active {
+            color: var(--accent-1);
+            border-bottom-color: var(--accent-1);
+        }
+        
+        .stats-tab-content {
+            display: none;
+        }
+        
+        .stats-tab-content.active {
+            display: block;
+        }
+        
+        /* Выравнивание графиков */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            align-items: start; /* Выравнивание по верху */
+        }
+        
+        .chart-container {
+            display: flex;
+            flex-direction: column;
+            height: 400px; /* Фиксированная высота для выравнивания */
+        }
+        
+        .chart-container canvas {
+            flex: 1;
+            max-height: 100%;
+        }
+        
+        /* Метрики в стиле премиум минимализма */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .metric-card {
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            transition: all 0.2s ease;
+        }
+        
+        .metric-card:hover {
+            border-color: var(--accent-1);
+            transform: translateY(-2px);
+        }
+        
+        .metric-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-1);
+            line-height: 1.2;
+        }
+        
+        .metric-delta {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+        
+        .metric-delta.positive {
+            color: #22c55e;
+        }
+        
+        .metric-delta.negative {
+            color: #ef4444;
+        }
+        
+        /* Heatmap посещаемости */
+        .heatmap-container {
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+        
+        .heatmap {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .heatmap-week {
+            display: flex;
+            gap: 2px;
+        }
+        
+        .heatmap-day {
+            width: 11px;
+            height: 11px;
+            border-radius: 2px;
+            background: var(--surface-3);
+            border: 1px solid var(--stroke-1);
+        }
+        
+        .heatmap-day.level-0 {
+            background: var(--surface-3);
+        }
+        
+        .heatmap-day.level-1 {
+            background: rgba(0, 255, 213, 0.2);
+        }
+        
+        .heatmap-day.level-2 {
+            background: rgba(0, 255, 213, 0.4);
+        }
+        
+        .heatmap-day.level-3 {
+            background: rgba(0, 255, 213, 0.6);
+        }
+        
+        .heatmap-day.level-negative {
+            background: rgba(239, 68, 68, 0.4);
+        }
+        
+        .heatmap-legend {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        
+        /* Пунктуальность */
+        .punctuality-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .punctuality-item {
+            text-align: center;
+            padding: 1rem;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-md);
+        }
+        
+        .punctuality-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-1);
+        }
+        
+        .punctuality-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
+    {% if active_lesson and active_student %}
+    <div class="now-playing-pill" onclick="toggleLessonMenu()">
+        <img src="{{ url_for('static', filename='icons/icons8-наушники-100.png') }}" alt="Урок" class="ui-icon ui-icon--sm"> Урок идет: {{ active_student.name }}
+    </div>
+    <div class="now-playing-panel" id="lessonMenu">
+        <div class="hero-eyebrow">текущий урок</div>
+        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
+        {% if active_lesson.topic %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
+        {% endif %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
+        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
+        <div class="hero-actions" style="margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
+            </form>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
+        </div>
+    </div>
+    <script>
+        function toggleLessonMenu() {
+            const menu = document.getElementById('lessonMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        }
+    </script>
+    {% endif %}
+    
+    <div class="app-shell">
+        {% set active_page = 'dashboard' %}
+        {% include '_primary_nav.html' %}
+        
+        <!-- Заголовок страницы -->
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost" style="text-decoration: none;">
+                    ← К профилю
+                </a>
+            </div>
+            <p class="hero-eyebrow">статистика и аналитика</p>
+            <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Статистика" class="ui-icon ui-icon--md"> {{ student.name }}</h1>
+        </section>
+        
+        <!-- Табы -->
+        <div class="stats-tabs">
+            <button class="stats-tab active" onclick="switchTab('skills')">Навыки</button>
+            <button class="stats-tab" onclick="switchTab('discipline')">Дисциплина</button>
+        </div>
+        
+        <!-- Вкладка: Навыки -->
+        <div id="tab-skills" class="stats-tab-content active">
+            <!-- Метрики -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Процент выполнения работ</div>
+                    <div class="metric-value">{{ metrics.current_gpa }}%</div>
+                    {% if metrics.delta != 0 %}
+                    <div class="metric-delta {% if metrics.delta > 0 %}positive{% else %}negative{% endif %}">
+                        {% if metrics.delta > 0 %}+{% endif %}{{ metrics.delta }}% за месяц
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-label">GPA по ДЗ</div>
+                    <div class="metric-value">{{ gpa_by_type.homework }}%</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-label">GPA по контрольным</div>
+                    <div class="metric-value">{{ gpa_by_type.exam }}%</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-label">Проведено уроков</div>
+                    <div class="metric-value">{{ metrics.completed_lessons }}</div>
+                    <div class="metric-delta">из {{ metrics.total_lessons }}</div>
+                </div>
+            </div>
+            
+            <!-- Графики -->
+            <div class="charts-grid">
+                <!-- График динамики GPA -->
+                <section class="glass-panel">
+                    <div class="panel-head">
+                        <div>
+                            <p class="eyebrow">динамика успеваемости</p>
+                            <h2>Изменение процента выполнения</h2>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </section>
+                
+                <!-- График навыков (радар) -->
+                <section class="glass-panel">
+                    <div class="panel-head">
+                        <div>
+                            <p class="eyebrow">карта навыков</p>
+                            <h2>Уровень владения темами</h2>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="skillsChart"></canvas>
+                    </div>
+                </section>
+            </div>
+            
+            <!-- Статистика по заданиям -->
+            {% if chart_data %}
+            <section class="glass-panel" style="margin-bottom: 2rem;">
+                <div class="panel-head">
+                    <div>
+                        <p class="eyebrow">выполнение заданий</p>
+                        <h2>Процент выполнения по номерам</h2>
+                    </div>
+                </div>
+                <div style="margin-top: 2rem;">
+                    <canvas id="statisticsChart" style="max-height: 400px;"></canvas>
+                </div>
+            </section>
+            {% endif %}
+            
+            <!-- Проблемные темы -->
+            {% if problem_topics %}
+            <section class="glass-panel" style="margin-bottom: 2rem;">
+                <div class="panel-head">
+                    <div>
+                        <p class="eyebrow">требует внимания</p>
+                        <h2>Проблемные темы</h2>
+                    </div>
+                </div>
+                <div style="margin-top: 1.5rem;">
+                    <div style="display: grid; gap: 1rem;">
+                        {% for topic in problem_topics %}
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1);">
+                            <div>
+                                <span style="font-weight: 500;">{{ topic.name }}</span>
+                                <span style="color: var(--text-muted); margin-left: 1rem;">{{ topic.avg_score }}%</span>
+                            </div>
+                            <a href="{{ url_for('kege_generator.kege_generator') }}?student_id={{ student.student_id }}" class="neo-button accent" style="text-decoration: none;">
+                                Создать отработку
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
+            {% endif %}
+        </div>
+        
+        <!-- Вкладка: Дисциплина -->
+        <div id="tab-discipline" class="stats-tab-content">
+            <!-- Метрики дисциплины -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Rate выполнения ДЗ</div>
+                    <div class="metric-value">{{ metrics.hw_submit_rate }}%</div>
+                    <div class="metric-delta">{{ punctuality.total }} заданий</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-label">Проведено</div>
+                    <div class="metric-value">{{ metrics.completed_lessons }}</div>
+                    <div class="metric-delta">из {{ metrics.total_lessons }}</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div class="metric-label">Пропущено</div>
+                    <div class="metric-value">{{ metrics.missed_lessons }}</div>
+                </div>
+            </div>
+            
+            <!-- Heatmap посещаемости -->
+            <section class="glass-panel" style="margin-bottom: 2rem;">
+                <div class="panel-head">
+                    <div>
+                        <p class="eyebrow">посещаемость</p>
+                        <h2>Календарь активности</h2>
+                    </div>
+                </div>
+                <div class="heatmap-container">
+                    <div id="attendanceHeatmap" class="heatmap"></div>
+                </div>
+                <div class="heatmap-legend">
+                    <span>Меньше</span>
+                    <div class="heatmap-day level-0"></div>
+                    <div class="heatmap-day level-1"></div>
+                    <div class="heatmap-day level-2"></div>
+                    <div class="heatmap-day level-3"></div>
+                    <span>Больше</span>
+                    <span style="margin-left: 1rem;">Пропуски:</span>
+                    <div class="heatmap-day level-negative"></div>
+                </div>
+            </section>
+            
+            <!-- График посещаемости (pie) -->
+            <section class="glass-panel" style="margin-bottom: 2rem;">
+                <div class="panel-head">
+                    <div>
+                        <p class="eyebrow">статусы уроков</p>
+                        <h2>Распределение посещаемости</h2>
+                    </div>
+                </div>
+                <div style="margin-top: 2rem; max-width: 400px; margin-left: auto; margin-right: auto;">
+                    <canvas id="attendanceChart" style="max-height: 300px;"></canvas>
+                </div>
+            </section>
+            
+            <!-- Пунктуальность сдачи -->
+            <section class="glass-panel" style="margin-bottom: 2rem;">
+                <div class="panel-head">
+                    <div>
+                        <p class="eyebrow">пунктуальность</p>
+                        <h2>Время сдачи ДЗ</h2>
+                    </div>
+                </div>
+                <div class="punctuality-stats">
+                    <div class="punctuality-item">
+                        <div class="punctuality-value">{{ punctuality.early }}</div>
+                        <div class="punctuality-label">Сдано заранее</div>
+                    </div>
+                    <div class="punctuality-item">
+                        <div class="punctuality-value">{{ punctuality.on_time }}</div>
+                        <div class="punctuality-label">Вовремя</div>
+                    </div>
+                    <div class="punctuality-item">
+                        <div class="punctuality-value">{{ punctuality.late }}</div>
+                        <div class="punctuality-label">С опозданием</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+    
+    <script>
+        // Переключение табов
+        function switchTab(tabName) {
+            // Скрываем все вкладки
+            document.querySelectorAll('.stats-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Убираем активный класс у всех табов
+            document.querySelectorAll('.stats-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Показываем выбранную вкладку
+            document.getElementById('tab-' + tabName).classList.add('active');
+            
+            // Активируем соответствующий таб
+            event.target.classList.add('active');
+        }
+        
+        // Инициализация графиков
+        document.addEventListener("DOMContentLoaded", function() {
+            const accent1 = getComputedStyle(document.documentElement).getPropertyValue('--accent-1').trim();
+            const textPrimary = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim();
+            const textMuted = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
+            const stroke1 = getComputedStyle(document.documentElement).getPropertyValue('--stroke-1').trim();
+            
+            function hexToRgb(hex) {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : null;
+            }
+            
+            const accentRgb = hexToRgb(accent1);
+            const accentRgba = accentRgb ? `rgba(${accentRgb.r}, ${accentRgb.g}, ${accentRgb.b}, 0.25)` : 'rgba(0, 255, 213, 0.25)';
+            
+            // График динамики GPA
+            const ctxTrend = document.getElementById('trendChart');
+            if (ctxTrend) {
+                new Chart(ctxTrend.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: {{ charts.trend_dates | safe }},
+                        datasets: [{
+                            label: 'Процент выполнения (%)',
+                            data: {{ charts.trend_scores | safe }},
+                            borderColor: accent1,
+                            backgroundColor: accentRgba,
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: { color: textPrimary }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    color: textMuted,
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                },
+                                grid: { color: stroke1 }
+                            },
+                            x: {
+                                ticks: { color: textMuted },
+                                grid: { color: stroke1 }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // График навыков (Radar)
+            const ctxSkills = document.getElementById('skillsChart');
+            if (ctxSkills && {{ charts.skill_labels | safe }}.length > 0) {
+                new Chart(ctxSkills.getContext('2d'), {
+                    type: 'radar',
+                    data: {
+                        labels: {{ charts.skill_labels | safe }},
+                        datasets: [{
+                            label: 'Уровень владения',
+                            data: {{ charts.skill_values | safe }},
+                            backgroundColor: accentRgba,
+                            borderColor: accent1,
+                            borderWidth: 3,
+                            pointBackgroundColor: accent1,
+                            pointBorderColor: textPrimary,
+                            pointBorderWidth: 2,
+                            pointRadius: 5,
+                            pointHoverRadius: 7
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: { top: 20, bottom: 20, left: 20, right: 20 }
+                        },
+                        scales: {
+                            r: {
+                                beginAtZero: true,
+                                min: 0,
+                                max: 100,
+                                ticks: {
+                                    stepSize: 20,
+                                    color: textMuted,
+                                    font: { size: 11, family: 'MonaspaceNeon, monospace' },
+                                    backdropColor: 'transparent',
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                },
+                                grid: { color: stroke1, lineWidth: 1 },
+                                angleLines: { color: stroke1, lineWidth: 1 },
+                                pointLabels: {
+                                    color: textPrimary,
+                                    font: { size: 10, family: 'MonaspaceNeon, monospace', weight: '500' },
+                                    padding: 10
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: { color: textPrimary }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(8, 10, 18, 0.95)',
+                                titleColor: accent1,
+                                bodyColor: textPrimary,
+                                borderColor: accent1,
+                                borderWidth: 1,
+                                padding: 12,
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.dataset.label + ': ' + context.parsed.r + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // График статистики по заданиям
+            const ctxStats = document.getElementById('statisticsChart');
+            if (ctxStats && {{ chart_data | tojson | safe }}.length > 0) {
+                const statsData = {{ chart_data | tojson | safe }};
+                new Chart(ctxStats.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: statsData.map(d => '№' + d.task_number),
+                        datasets: [{
+                            label: 'Процент выполнения',
+                            data: statsData.map(d => d.percent),
+                            backgroundColor: statsData.map(d => d.color),
+                            borderColor: statsData.map(d => d.color),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const data = statsData[context.dataIndex];
+                                        return `Выполнено: ${data.correct}/${data.total} (${data.percent}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    color: textMuted,
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                },
+                                grid: { color: stroke1 }
+                            },
+                            x: {
+                                ticks: { color: textMuted },
+                                grid: { color: stroke1 }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // График посещаемости (Pie)
+            const ctxAttendance = document.getElementById('attendanceChart');
+            if (ctxAttendance && {{ charts.attendance_labels | safe }}.length > 0) {
+                new Chart(ctxAttendance.getContext('2d'), {
+                    type: 'pie',
+                    data: {
+                        labels: {{ charts.attendance_labels | safe }},
+                        datasets: [{
+                            data: {{ charts.attendance_values | safe }},
+                            backgroundColor: [
+                                'rgba(34, 197, 94, 0.8)',
+                                'rgba(234, 179, 8, 0.8)',
+                                'rgba(239, 68, 68, 0.8)',
+                                'rgba(147, 51, 234, 0.8)',
+                                'rgba(59, 130, 246, 0.8)',
+                                'rgba(168, 85, 247, 0.8)'
+                            ],
+                            borderColor: [
+                                'rgb(34, 197, 94)',
+                                'rgb(234, 179, 8)',
+                                'rgb(239, 68, 68)',
+                                'rgb(147, 51, 234)',
+                                'rgb(59, 130, 246)',
+                                'rgb(168, 85, 247)'
+                            ],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'right',
+                                labels: { color: textPrimary }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Heatmap посещаемости
+            const heatmapContainer = document.getElementById('attendanceHeatmap');
+            if (heatmapContainer) {
+                const dates = {{ charts.heatmap_dates | safe }};
+                const values = {{ charts.heatmap_values | safe }};
+                const maxValue = {{ charts.heatmap_max }};
+                
+                // Группируем по неделям (7 дней)
+                const weeks = [];
+                for (let i = 0; i < dates.length; i += 7) {
+                    const week = dates.slice(i, i + 7).map((date, idx) => ({
+                        date: date,
+                        value: values[i + idx] || 0
+                    }));
+                    if (week.length > 0) {
+                        weeks.push(week);
+                    }
+                }
+                
+                // Создаем heatmap
+                weeks.forEach(week => {
+                    const weekDiv = document.createElement('div');
+                    weekDiv.className = 'heatmap-week';
+                    
+                    week.forEach(day => {
+                        const dayDiv = document.createElement('div');
+                        dayDiv.className = 'heatmap-day';
+                        
+                        if (day.value < 0) {
+                            dayDiv.classList.add('level-negative');
+                        } else if (day.value === 0) {
+                            dayDiv.classList.add('level-0');
+                        } else if (day.value <= maxValue / 3) {
+                            dayDiv.classList.add('level-1');
+                        } else if (day.value <= (maxValue * 2) / 3) {
+                            dayDiv.classList.add('level-2');
+                        } else {
+                            dayDiv.classList.add('level-3');
+                        }
+                        
+                        dayDiv.title = `${day.date}: ${day.value}`;
+                        weekDiv.appendChild(dayDiv);
+                    });
+                    
+                    heatmapContainer.appendChild(weekDiv);
+                });
+            }
+        });
+    </script>
+    
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>

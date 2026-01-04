@@ -188,6 +188,177 @@ class StatsService:
         
         return {'labels': labels, 'values': values}
     
+    def get_gpa_by_type(self):
+        """
+        Получить GPA отдельно по типам работ (ДЗ vs Контрольные)
+        Возвращает: {'homework': %, 'exam': %, 'overall': %}
+        """
+        lessons = self._get_lessons()
+        
+        hw_score = 0
+        hw_weight = 0
+        exam_score = 0
+        exam_weight = 0
+        total_score = 0
+        total_weight = 0
+        
+        for lesson in lessons:
+            # Домашние задания
+            hw_assignments = get_sorted_assignments(lesson, 'homework')
+            for lt in hw_assignments:
+                if lt.submission_correct is not None:
+                    hw_weight += 1
+                    total_weight += 1
+                    if lt.submission_correct:
+                        hw_score += 1
+                        total_score += 1
+            
+            # Контрольные работы
+            exam_assignments = get_sorted_assignments(lesson, 'exam')
+            for lt in exam_assignments:
+                if lt.submission_correct is not None:
+                    exam_weight += 2  # Контрольные с весом 2
+                    total_weight += 2
+                    if lt.submission_correct:
+                        exam_score += 2
+                        total_score += 2
+        
+        hw_gpa = round((hw_score / hw_weight * 100), 1) if hw_weight > 0 else 0
+        exam_gpa = round((exam_score / exam_weight * 100), 1) if exam_weight > 0 else 0
+        overall_gpa = round((total_score / total_weight * 100), 1) if total_weight > 0 else 0
+        
+        return {
+            'homework': hw_gpa,
+            'exam': exam_gpa,
+            'overall': overall_gpa
+        }
+    
+    def get_attendance_heatmap(self, weeks=52):
+        """
+        Получить данные для heatmap посещаемости (как на GitHub)
+        Возвращает: {'dates': [...], 'values': [...], 'max_count': N}
+        Формат: список дат и количество уроков в этот день
+        """
+        lessons = self._get_lessons()
+        now = moscow_now()
+        start_date = now - timedelta(weeks=weeks)
+        
+        # Группируем уроки по датам
+        date_counts = {}
+        
+        for lesson in lessons:
+            if not lesson.lesson_date:
+                continue
+            
+            lesson_date = lesson.lesson_date
+            if lesson_date.tzinfo:
+                lesson_date = lesson_date.replace(tzinfo=None)
+            
+            if lesson_date < start_date.replace(tzinfo=None):
+                continue
+            
+            # Используем дату без времени как ключ
+            date_key = lesson_date.date().isoformat()
+            
+            # Определяем "интенсивность" дня на основе статуса
+            # completed = 3, planned = 1, missed = -2, canceled = 0
+            intensity_map = {
+                'completed': 3,
+                'in_progress': 2,
+                'planned': 1,
+                'rescheduled': 0,
+                'canceled_student': 0,
+                'cancelled': 0,
+                'missed': -2
+            }
+            
+            status = lesson.status or 'planned'
+            if status == 'cancelled':
+                status = 'canceled_student'
+            
+            intensity = intensity_map.get(status, 0)
+            
+            if date_key not in date_counts:
+                date_counts[date_key] = 0
+            date_counts[date_key] += intensity
+        
+        # Формируем список дат и значений
+        dates = []
+        values = []
+        
+        current_date = start_date.date()
+        end_date = now.date()
+        
+        while current_date <= end_date:
+            date_key = current_date.isoformat()
+            dates.append(date_key)
+            values.append(date_counts.get(date_key, 0))
+            current_date += timedelta(days=1)
+        
+        max_count = max(values) if values else 0
+        
+        return {
+            'dates': dates,
+            'values': values,
+            'max_count': max_count
+        }
+    
+    def get_submission_punctuality(self):
+        """
+        Получить данные о пунктуальности сдачи ДЗ
+        Анализ времени загрузки ДЗ относительно дедлайна
+        Возвращает: {'early': N, 'on_time': N, 'late': N, 'total': N}
+        """
+        lessons = self._get_lessons()
+        
+        early_count = 0
+        on_time_count = 0
+        late_count = 0
+        total_count = 0
+        
+        for lesson in lessons:
+            hw_assignments = get_sorted_assignments(lesson, 'homework')
+            
+            for lt in hw_assignments:
+                # Проверяем только задания с загруженными ответами
+                if lt.submission_correct is None:
+                    continue
+                
+                total_count += 1
+                
+                # Если есть дата загрузки, сравниваем с датой урока
+                if lesson.lesson_date and hasattr(lt, 'submitted_at') and lt.submitted_at:
+                    lesson_date = lesson.lesson_date
+                    if lesson_date.tzinfo:
+                        lesson_date = lesson_date.replace(tzinfo=None)
+                    
+                    submitted_at = lt.submitted_at
+                    if submitted_at.tzinfo:
+                        submitted_at = submitted_at.replace(tzinfo=None)
+                    
+                    # Считаем разницу в днях
+                    days_diff = (submitted_at.date() - lesson_date.date()).days
+                    
+                    if days_diff < 0:
+                        # Сдано заранее (до урока)
+                        early_count += 1
+                    elif days_diff <= 1:
+                        # Сдано вовремя (в день урока или на следующий день)
+                        on_time_count += 1
+                    else:
+                        # Сдано с опозданием
+                        late_count += 1
+                else:
+                    # Если нет данных о времени загрузки, считаем "вовремя"
+                    on_time_count += 1
+        
+        return {
+            'early': early_count,
+            'on_time': on_time_count,
+            'late': late_count,
+            'total': total_count
+        }
+    
     def get_summary_metrics(self):
         """
         Получить сводные метрики для карточек
@@ -195,7 +366,7 @@ class StatsService:
         """
         lessons = self._get_lessons()
         
-        # Общий GPA (средний балл)
+        # Общий GPA (процент выполнения работ)
         total_score = 0
         total_weight = 0
         
@@ -254,12 +425,18 @@ class StatsService:
         old_avg = sum(old_scores) / len(old_scores) * 100 if old_scores else 0
         delta = round(recent_avg - old_avg, 1)
         
+        # GPA по типам работ
+        gpa_by_type = self.get_gpa_by_type()
+        
         return {
             'current_gpa': current_gpa,
+            'gpa_homework': gpa_by_type['homework'],
+            'gpa_exam': gpa_by_type['exam'],
             'hw_submit_rate': hw_submit_rate,
             'delta': delta,
             'total_lessons': len(lessons),
-            'completed_lessons': sum(1 for l in lessons if l.status == 'completed')
+            'completed_lessons': sum(1 for l in lessons if l.status == 'completed'),
+            'missed_lessons': sum(1 for l in lessons if l.status == 'missed')
         }
     
     def get_problem_topics(self, threshold=60):
