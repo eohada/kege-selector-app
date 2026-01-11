@@ -517,7 +517,7 @@
         </section>
     </div>
 
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    {# toast.js уже подключен в _ux_enhancements.html #}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             {% with messages = get_flashed_messages(with_categories=true) %}
