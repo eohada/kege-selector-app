@@ -96,6 +96,7 @@ def admin_panel():
     try:
         environment, railway_environment = _get_environment()
         is_production = _is_production(environment, railway_environment)
+        is_sandbox = _is_sandbox(environment, railway_environment)
 
         total_users = User.query.count()
         active_users = User.query.filter_by(is_active=True).count()
@@ -158,6 +159,7 @@ def admin_panel():
                              maintenance_message=maintenance_status.message,
                              environment=environment,
                              is_production=is_production,
+                             is_sandbox=is_sandbox,
                              sandbox_base_url=sandbox_base_url,
                              sandbox_summary=sandbox_summary,
                              sandbox_error=sandbox_error,
@@ -168,6 +170,7 @@ def admin_panel():
         try:
             environment, railway_environment = _get_environment()
             is_production = _is_production(environment, railway_environment)
+            is_sandbox = _is_sandbox(environment, railway_environment)
 
             total_users = User.query.count()
             active_users = User.query.filter_by(is_active=True).count()
@@ -201,6 +204,7 @@ def admin_panel():
                                  today_logs=0,
                                  environment=environment,
                                  is_production=is_production,
+                                 is_sandbox=is_sandbox,
                                  sandbox_base_url=sandbox_base_url,
                                  sandbox_summary=sandbox_summary,
                                  sandbox_error=sandbox_error,
@@ -324,8 +328,10 @@ def admin_testers_create():
     environment = os.environ.get('ENVIRONMENT', 'local')  # Текущее окружение приложения. # comment
     railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')  # Окружение Railway (если есть). # comment
     is_production = environment == 'production' or ('production' in railway_environment.lower() and 'sandbox' not in railway_environment.lower())  # Признак production. # comment
+    is_sandbox = environment == 'sandbox' or 'sandbox' in railway_environment.lower()  # Признак sandbox. # comment
 
-    if is_production and not force_production:  # В production блокируем без явного подтверждения. # comment
+    # В production блокируем без явного подтверждения, в sandbox разрешаем без подтверждения
+    if is_production and not is_sandbox and not force_production:  # В production блокируем без явного подтверждения. # comment
         flash('Тестировщиков нельзя создавать в production без подтверждения. Включите чекбокс "force production".', 'danger')  # Предупреждаем. # comment
         return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
 
@@ -1578,6 +1584,7 @@ def admin_tester_entities():
     try:
         environment, railway_environment = _get_environment()
         is_production = _is_production(environment, railway_environment)
+        is_sandbox = _is_sandbox(environment, railway_environment)
         sandbox_base_url, _ = _sandbox_remote_config()
 
         # Получаем всех тестировщиков с количеством логов
