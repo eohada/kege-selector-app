@@ -2409,6 +2409,8 @@ def admin_user_edit(user_id):
             
             # Перезагружаем пользователя из базы для получения актуальных данных
             user_id = user.id
+            # Используем session.expire_all() чтобы сбросить кэш и загрузить свежие данные
+            db.session.expire_all()
             user = User.query.get(user_id)
             if user:
                 # Загружаем профиль отдельно, если он есть
