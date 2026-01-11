@@ -2089,8 +2089,10 @@ def admin_family_tie_delete(tie_id):
         parent_id = tie.parent_id
         student_id = tie.student_id
         
+        logger.info(f"Deleting family tie {tie_id}: parent_id={parent_id}, student_id={student_id}")
         db.session.delete(tie)
         db.session.commit()
+        logger.info(f"Family tie {tie_id} successfully deleted")
         
         audit_logger.log(
             action='family_tie_deleted',
@@ -2105,10 +2107,10 @@ def admin_family_tie_delete(tie_id):
         )
         
         flash('Семейная связь удалена.', 'success')
-        logger.info(f"Family tie {tie_id} deleted by user {current_user.id}")
+        logger.info(f"Redirecting to admin_user_edit for user {user_id}")
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Error deleting family tie: {e}", exc_info=True)
+        logger.error(f"Error deleting family tie {tie_id}: {e}", exc_info=True)
         flash(f'Ошибка при удалении связи: {str(e)}', 'error')
     
     return redirect(url_for('admin.admin_user_edit', user_id=user_id))
@@ -2130,8 +2132,10 @@ def admin_enrollment_delete(enrollment_id):
         tutor_id = enrollment.tutor_id
         subject = enrollment.subject
         
+        logger.info(f"Deleting enrollment {enrollment_id}: student_id={student_id}, tutor_id={tutor_id}, subject={subject}")
         db.session.delete(enrollment)
         db.session.commit()
+        logger.info(f"Enrollment {enrollment_id} successfully deleted")
         
         audit_logger.log(
             action='enrollment_deleted',
@@ -2147,10 +2151,10 @@ def admin_enrollment_delete(enrollment_id):
         )
         
         flash('Учебный контракт удален.', 'success')
-        logger.info(f"Enrollment {enrollment_id} deleted by user {current_user.id}")
+        logger.info(f"Redirecting to admin_user_edit for user {user_id}")
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Error deleting enrollment: {e}", exc_info=True)
+        logger.error(f"Error deleting enrollment {enrollment_id}: {e}", exc_info=True)
         flash(f'Ошибка при удалении контракта: {str(e)}', 'error')
     
     return redirect(url_for('admin.admin_user_edit', user_id=user_id))
@@ -2347,6 +2351,11 @@ def admin_user_edit(user_id):
                 logger.error(f"Error committing changes for user {user.id}: {commit_error}", exc_info=True)
                 raise commit_error
             
+            # Обновляем данные для отображения после сохранения
+            db.session.refresh(user)
+            if user.profile:
+                db.session.refresh(user.profile)
+            
             audit_logger.log(
                 action='user_updated',
                 entity='User',
@@ -2356,7 +2365,9 @@ def admin_user_edit(user_id):
             )
             
             flash(f'Пользователь "{username}" обновлен.', 'success')
-            return redirect(url_for('admin.admin_users'))
+            logger.info(f"Redirecting to admin_user_edit for user {user.id}")
+            # Редиректим обратно на страницу редактирования, чтобы видеть изменения
+            return redirect(url_for('admin.admin_user_edit', user_id=user.id))
             
         except Exception as e:
             db.session.rollback()
