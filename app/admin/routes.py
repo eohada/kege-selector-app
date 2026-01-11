@@ -2314,35 +2314,46 @@ def admin_user_edit(user_id):
                     logger.info(f"Updated existing Student record {student_record.student_id} for user {user.id}")
 
             # Обрабатываем добавление новых связей
-            if user.is_student():
+            logger.debug(f"POST: Processing new relations for user {user.id} (role: {user.role}). Form data keys: {list(request.form.keys())}")
+            if role == 'student':
                 # Добавляем нового родителя, если указан
-                new_parent_id = request.form.get('new_parent_id', type=int)
-                if new_parent_id:
-                    existing = FamilyTie.query.filter_by(parent_id=new_parent_id, student_id=user.id).first()
-                    if not existing:
-                        access_level = request.form.get('new_parent_access_level', 'full')
-                        is_confirmed = request.form.get('new_parent_confirmed') == 'on'
-                        family_tie = FamilyTie(parent_id=new_parent_id, student_id=user.id, access_level=access_level, is_confirmed=is_confirmed)
-                        db.session.add(family_tie)
-                        logger.info(f"Added family tie: parent_id={new_parent_id}, student_id={user.id}")
-                    else:
-                        logger.warning(f"Family tie already exists: parent_id={new_parent_id}, student_id={user.id}")
+                new_parent_id_str = request.form.get('new_parent_id', '').strip()
+                logger.debug(f"POST: new_parent_id from form: '{new_parent_id_str}'")
+                if new_parent_id_str:
+                    try:
+                        new_parent_id = int(new_parent_id_str)
+                        existing = FamilyTie.query.filter_by(parent_id=new_parent_id, student_id=user.id).first()
+                        if not existing:
+                            access_level = request.form.get('new_parent_access_level', 'full')
+                            is_confirmed = request.form.get('new_parent_confirmed') == 'on'
+                            family_tie = FamilyTie(parent_id=new_parent_id, student_id=user.id, access_level=access_level, is_confirmed=is_confirmed)
+                            db.session.add(family_tie)
+                            logger.info(f"POST: Added family tie: parent_id={new_parent_id}, student_id={user.id}, access_level={access_level}, is_confirmed={is_confirmed}")
+                        else:
+                            logger.warning(f"POST: Family tie already exists: parent_id={new_parent_id}, student_id={user.id}")
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"POST: Invalid new_parent_id value: '{new_parent_id_str}': {e}")
                 
                 # Добавляем нового преподавателя, если указан
-                new_tutor_id = request.form.get('new_tutor_id', type=int)
+                new_tutor_id_str = request.form.get('new_tutor_id', '').strip()
                 new_tutor_subject = request.form.get('new_tutor_subject', '').strip()
-                if new_tutor_id and new_tutor_subject:
-                    # Проверяем, нет ли уже такого контракта
-                    existing = Enrollment.query.filter_by(student_id=user.id, tutor_id=new_tutor_id, subject=new_tutor_subject).first()
-                    if not existing:
-                        status = request.form.get('new_tutor_status', 'active')
-                        enrollment = Enrollment(student_id=user.id, tutor_id=new_tutor_id, subject=new_tutor_subject, status=status)
-                        db.session.add(enrollment)
-                        logger.info(f"Added enrollment: student_id={user.id}, tutor_id={new_tutor_id}, subject={new_tutor_subject}")
-                    else:
-                        logger.warning(f"Enrollment already exists: student_id={user.id}, tutor_id={new_tutor_id}, subject={new_tutor_subject}")
+                logger.debug(f"POST: new_tutor_id from form: '{new_tutor_id_str}', new_tutor_subject: '{new_tutor_subject}'")
+                if new_tutor_id_str and new_tutor_subject:
+                    try:
+                        new_tutor_id = int(new_tutor_id_str)
+                        # Проверяем, нет ли уже такого контракта
+                        existing = Enrollment.query.filter_by(student_id=user.id, tutor_id=new_tutor_id, subject=new_tutor_subject).first()
+                        if not existing:
+                            status = request.form.get('new_tutor_status', 'active')
+                            enrollment = Enrollment(student_id=user.id, tutor_id=new_tutor_id, subject=new_tutor_subject, status=status)
+                            db.session.add(enrollment)
+                            logger.info(f"POST: Added enrollment: student_id={user.id}, tutor_id={new_tutor_id}, subject={new_tutor_subject}, status={status}")
+                        else:
+                            logger.warning(f"POST: Enrollment already exists: student_id={user.id}, tutor_id={new_tutor_id}, subject={new_tutor_subject}")
+                    except (ValueError, TypeError) as e:
+                        logger.warning(f"POST: Invalid new_tutor_id value: '{new_tutor_id_str}': {e}")
                 else:
-                    logger.debug(f"Enrollment not added for student: tutor_id={new_tutor_id}, subject={new_tutor_subject}")
+                    logger.debug(f"POST: Enrollment not added for student: tutor_id={new_tutor_id_str}, subject={new_tutor_subject}")
             
             elif user.is_parent():
                 # Добавляем нового ученика, если указан
