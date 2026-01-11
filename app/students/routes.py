@@ -13,7 +13,9 @@ from app.students.utils import get_sorted_assignments
 from app.students.stats_service import StatsService
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.models import Student, StudentTaskStatistics, Lesson, LessonTask, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import User, FamilyTie
 from core.audit_logger import audit_logger
+from flask_login import current_user
 
 logger = logging.getLogger(__name__)
 
@@ -136,13 +138,39 @@ def student_profile(student_id):
     # Все уроки отображаются в общем списке (ключевые дублируются сверху для удобства)
     other_lessons = all_lessons
     
+    # Загружаем информацию о родителях (для тьюторов)
+    parents_info = []
+    if current_user.is_authenticated and (current_user.is_tutor() or current_user.is_admin()):
+        # Находим User ученика по email
+        student_user = None
+        if student.email:
+            student_user = User.query.filter_by(email=student.email, role='student').first()
+        
+        if student_user:
+            # Получаем всех родителей этого ученика
+            family_ties = FamilyTie.query.filter_by(
+                student_id=student_user.id,
+                is_confirmed=True
+            ).all()
+            
+            for tie in family_ties:
+                parent_user = User.query.get(tie.parent_id)
+                if parent_user and parent_user.profile:
+                    parents_info.append({
+                        'name': f"{parent_user.profile.first_name or ''} {parent_user.profile.last_name or ''}".strip() or parent_user.username,
+                        'phone': parent_user.profile.phone,
+                        'telegram_id': parent_user.profile.telegram_id,
+                        'access_level': tie.access_level
+                    })
+    
     return render_template('student_profile.html', 
                            student=student, 
                            lessons=all_lessons,
                            last_completed=last_completed,
                            upcoming_lessons=upcoming_lessons,
                            in_progress_lesson=in_progress_lesson,
-                           other_lessons=other_lessons)
+                           other_lessons=other_lessons,
+                           parents_info=parents_info)
 
 @students_bp.route('/student/<int:student_id>/statistics')
 @login_required

@@ -44,6 +44,9 @@ def _fix_postgres_sequences(app, inspector):  # Выравниваем sequences
             'TemplateTask': 'id',  # PK связки шаблон-задание (если есть)
             'Users': 'id',  # PK пользователей
             'Topics': 'topic_id',  # PK тем/навыков
+            'UserProfiles': 'profile_id',  # PK профилей пользователей
+            'FamilyTies': 'tie_id',  # PK семейных связей
+            'Enrollments': 'enrollment_id',  # PK учебных контрактов
         }  # Конец mapping
 
         # Исправляем sequences в отдельных транзакциях, чтобы ошибка одной не влияла на другие
@@ -425,6 +428,56 @@ def ensure_schema_columns(app):
                 db.session.rollback()
                 logger.error(f"Error committing migrations: {commit_error}", exc_info=True)
                 # Не пробрасываем ошибку дальше, но логируем как ошибку
+            
+            # ========================================================================
+            # МИГРАЦИИ ДЛЯ НОВОЙ СИСТЕМЫ АВТОРИЗАЦИИ (RBAC)
+            # ========================================================================
+            
+            # 1. Добавляем email в Users (если его нет)
+            if users_table:
+                users_columns = {col['name'] for col in inspector.get_columns(users_table)}
+                if 'email' not in users_columns:
+                    try:
+                        db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN email VARCHAR(200)'))
+                        logger.info("Added email column to Users table")
+                    except Exception as e:
+                        logger.warning(f"Could not add email to Users: {e}")
+                        db.session.rollback()
+            
+            # 2. Создаем таблицу UserProfiles (если её нет)
+            profiles_table = _resolve_table_name(table_names, 'UserProfiles')
+            if not profiles_table:
+                try:
+                    db.create_all()  # Создаст таблицу UserProfiles если её нет
+                    logger.info("Created UserProfiles table")
+                except Exception as e:
+                    logger.warning(f"Could not create UserProfiles table: {e}")
+            
+            # 3. Создаем таблицу FamilyTies (если её нет)
+            family_ties_table = _resolve_table_name(table_names, 'FamilyTies')
+            if not family_ties_table:
+                try:
+                    db.create_all()  # Создаст таблицу FamilyTies если её нет
+                    logger.info("Created FamilyTies table")
+                except Exception as e:
+                    logger.warning(f"Could not create FamilyTies table: {e}")
+            
+            # 4. Создаем таблицу Enrollments (если её нет)
+            enrollments_table = _resolve_table_name(table_names, 'Enrollments')
+            if not enrollments_table:
+                try:
+                    db.create_all()  # Создаст таблицу Enrollments если её нет
+                    logger.info("Created Enrollments table")
+                except Exception as e:
+                    logger.warning(f"Could not create Enrollments table: {e}")
+            
+            # Коммитим миграции RBAC
+            try:
+                db.session.commit()
+                logger.info("RBAC migrations committed successfully")
+            except Exception as e:
+                db.session.rollback()
+                logger.warning(f"Error committing RBAC migrations: {e}")
             
             # Исправляем sequences ПОСЛЕ коммита миграций
             # Это не критично, если не получится - просто будет warning

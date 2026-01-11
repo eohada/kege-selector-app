@@ -20,9 +20,11 @@ from werkzeug.security import generate_password_hash  # Хешируем пар�
 
 from app.admin import admin_bp
 from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ, Tasks, Lesson, LessonTask, Topic
+from app.models import UserProfile, FamilyTie, Enrollment
 from core.db_models import Tester, task_topics
 from core.audit_logger import audit_logger
 from app import csrf
+from app.auth.rbac_utils import require_admin
 
 logger = logging.getLogger(__name__)
 

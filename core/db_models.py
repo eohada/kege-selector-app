@@ -1,8 +1,10 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from sqlalchemy import JSON, Index, Table, Column, Integer, ForeignKey, DateTime
+from sqlalchemy import JSON, Index, Table, Column, Integer, ForeignKey, DateTime, String, Boolean, Enum as SQLEnum, Text
+from sqlalchemy.dialects.postgresql import UUID
 import json
+import uuid
 
 db = SQLAlchemy()
 
@@ -173,17 +175,20 @@ class LessonTask(db.Model):
     task = db.relationship('Tasks')
 
 class User(db.Model):
-    """Модель пользователя для авторизации"""
+    """Модель пользователя для авторизации (расширенная для RBAC)"""
     __tablename__ = 'Users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(200), unique=True, nullable=True)  # Email для входа (новое поле)
     password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(50), default='tester', nullable=False)  # 'tester' или 'creator'
+    
+    # Роли: 'admin', 'tutor', 'student', 'parent', 'tester', 'creator' (старые роли для обратной совместимости)
+    role = db.Column(db.String(50), default='tester', nullable=False)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=moscow_now)
     last_login = db.Column(db.DateTime, nullable=True)
 
-    # Поля профиля
+    # Старые поля профиля (оставляем для обратной совместимости)
     avatar_url = db.Column(db.String(500), nullable=True)
     about_me = db.Column(db.Text, nullable=True)
     custom_status = db.Column(db.String(100), nullable=True)
@@ -200,6 +205,24 @@ class User(db.Model):
     def is_anonymous(self):
         return False
     
+    # Проверки ролей (новые)
+    def is_admin(self):
+        """Проверка, является ли пользователь администратором"""
+        return self.role == 'admin'
+    
+    def is_tutor(self):
+        """Проверка, является ли пользователь тьютором"""
+        return self.role == 'tutor'
+    
+    def is_student(self):
+        """Проверка, является ли пользователь учеником"""
+        return self.role == 'student'
+    
+    def is_parent(self):
+        """Проверка, является ли пользователь родителем"""
+        return self.role == 'parent'
+    
+    # Старые методы (для обратной совместимости)
     def is_creator(self):
         """Проверка, является ли пользователь создателем"""
         return self.role == 'creator'
@@ -207,6 +230,10 @@ class User(db.Model):
     def get_role_display(self):
         """Возвращает отображаемое название роли"""
         role_map = {
+            'admin': 'Администратор',
+            'tutor': 'Преподаватель',
+            'student': 'Ученик',
+            'parent': 'Родитель',
             'tester': 'Тестировщик',
             'creator': 'Создатель'
         }
@@ -371,3 +398,88 @@ class MaintenanceMode(db.Model):
         """Проверить, включен ли режим тех работ"""
         status = cls.get_status()
         return status.is_enabled
+
+
+# ============================================================================
+# НОВАЯ СИСТЕМА АВТОРИЗАЦИИ И РОЛЕЙ (RBAC)
+# ============================================================================
+
+class UserProfile(db.Model):
+    """Расширенный профиль пользователя (1-to-1 с User)"""
+    __tablename__ = 'UserProfiles'
+    profile_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), unique=True, nullable=False)
+    
+    first_name = db.Column(db.String(100), nullable=True)
+    last_name = db.Column(db.String(100), nullable=True)
+    middle_name = db.Column(db.String(100), nullable=True)
+    phone = db.Column(db.String(50), nullable=True)  # Для SMS уведомлений
+    telegram_id = db.Column(db.String(100), nullable=True)  # Для бота уведомлений
+    timezone = db.Column(db.String(50), default='Europe/Moscow', nullable=False)
+    avatar_url = db.Column(db.String(500), nullable=True)
+    
+    # Приватные заметки (видны только админу и тьютору)
+    internal_notes = db.Column(db.Text, nullable=True)
+    
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    
+    # Связь с User
+    user = db.relationship('User', backref='profile', uselist=False)
+    
+    def __repr__(self):
+        return f'<UserProfile {self.user_id}: {self.first_name} {self.last_name}>'
+
+
+class FamilyTie(db.Model):
+    """Связь между Родителем и Учеником (Many-to-Many)"""
+    __tablename__ = 'FamilyTies'
+    tie_id = db.Column(db.Integer, primary_key=True)
+    
+    parent_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    
+    # Уровень доступа: 'full', 'financial_only', 'schedule_only'
+    access_level = db.Column(db.String(50), default='full', nullable=False)
+    is_confirmed = db.Column(db.Boolean, default=False, nullable=False)  # Подтверждение связи
+    
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    
+    # Связи
+    parent = db.relationship('User', foreign_keys=[parent_id], backref='parent_children')
+    student = db.relationship('User', foreign_keys=[student_id], backref='student_parents')
+    
+    # Уникальный индекс для защиты от дублей
+    __table_args__ = (Index('ix_family_tie_unique', 'parent_id', 'student_id', unique=True),)
+    
+    def __repr__(self):
+        return f'<FamilyTie parent:{self.parent_id} -> student:{self.student_id}>'
+
+
+class Enrollment(db.Model):
+    """Учебный контракт: связь Ученик - Тьютор - Предмет"""
+    __tablename__ = 'Enrollments'
+    enrollment_id = db.Column(db.Integer, primary_key=True)
+    
+    student_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    tutor_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    
+    # Предмет (например, "INFORMATICS_EGE_2025", "MATH_EGE_2025")
+    subject = db.Column(db.String(100), nullable=False)
+    
+    # Статус: 'active', 'paused', 'archived'
+    status = db.Column(db.String(50), default='active', nullable=False)
+    
+    # Индивидуальные настройки (JSON)
+    settings = db.Column(JSON, nullable=True)  # Например, цена часа, особые условия
+    
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    
+    # Связи
+    student = db.relationship('User', foreign_keys=[student_id], backref='student_enrollments')
+    tutor = db.relationship('User', foreign_keys=[tutor_id], backref='tutor_enrollments')
+    
+    def __repr__(self):
+        return f'<Enrollment student:{self.student_id} - tutor:{self.tutor_id} ({self.subject})>'

@@ -1813,6 +1813,51 @@
         </div>
         {% endif %}
         
+        <!-- Представители (для тьюторов) -->
+        {% if parents_info and (current_user.is_tutor() or current_user.is_admin()) %}
+        <section class="glass-panel no-panel-hover" style="margin-bottom: 2rem;">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">контакты</p>
+                    <h2>👨‍👩‍👧 Представители</h2>
+                </div>
+            </div>
+            
+            <div style="display: grid; gap: 1rem; margin-top: 1.5rem;">
+                {% for parent in parents_info %}
+                <div style="padding: 1rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1);">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary);">
+                        {{ parent.name }}
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9em;">
+                        {% if parent.phone %}
+                        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted);">
+                            <span>📞 Телефон:</span>
+                            <span style="color: var(--text-primary);">{{ parent.phone|mask_contact }}</span>
+                        </div>
+                        {% endif %}
+                        {% if parent.telegram_id %}
+                        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted);">
+                            <span>💬 Telegram:</span>
+                            <span style="color: var(--text-primary);">{{ parent.telegram_id|mask_contact }}</span>
+                        </div>
+                        {% endif %}
+                        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted);">
+                            <span>🔐 Уровень доступа:</span>
+                            <span style="color: var(--text-primary);">
+                                {% if parent.access_level == 'full' %}Полный
+                                {% elif parent.access_level == 'financial_only' %}Только финансы
+                                {% elif parent.access_level == 'view_only' %}Только просмотр
+                                {% else %}{{ parent.access_level }}{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+        
         <!-- Актуальные уроки -->
         {% if in_progress_lesson or last_completed or upcoming_lessons %}
         <section class="glass-panel no-panel-hover" style="margin-bottom: 2rem;">

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дашборд родителя</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .child-selector {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .child-selector-btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: var(--font-base);
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .child-selector-btn:hover {
+            background: var(--surface-3);
+            border-color: var(--accent-1);
+        }
+        
+        .child-selector-btn.active {
+            background: var(--accent-1);
+            border-color: var(--accent-1);
+            color: white;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .metric-card {
+            padding: 1.5rem;
+            background: var(--surface-2);
+            border-radius: 8px;
+            border: 1px solid var(--stroke-1);
+        }
+        
+        .metric-label {
+            font-size: 0.85em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+        
+        .metric-delta {
+            font-size: 0.85em;
+            color: var(--text-muted);
+        }
+        
+        .ai-summary {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 100%);
+            border-radius: 8px;
+            color: white;
+            margin-bottom: 2rem;
+        }
+        
+        .ai-summary h3 {
+            margin: 0 0 1rem 0;
+            font-size: 1.2rem;
+        }
+        
+        .ai-summary p {
+            margin: 0.5rem 0;
+            line-height: 1.6;
+        }
+        
+        .lessons-list {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .lesson-item {
+            padding: 1rem;
+            background: var(--surface-2);
+            border-radius: 8px;
+            border: 1px solid var(--stroke-1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .lesson-date {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        .lesson-status {
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        
+        .lesson-status.completed {
+            background: #22c55e;
+            color: white;
+        }
+        
+        .lesson-status.planned {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .lesson-status.cancelled {
+            background: #ef4444;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'parent_dashboard' %}
+        {% include '_primary_nav.html' %}
+        
+        <main class="main-content">
+            <div class="content-container">
+                <section class="glass-panel" style="margin-bottom: 2rem;">
+                    <div class="panel-head">
+                        <div>
+                            <p class="eyebrow">дашборд родителя</p>
+                            <h1>Мои дети</h1>
+                        </div>
+                    </div>
+                    
+                    {% if children %}
+                    <!-- Селектор детей -->
+                    <div class="child-selector">
+                        {% for child in children %}
+                        <a href="{{ url_for('parents.parent_dashboard', student_id=child.user_id) }}" 
+                           class="child-selector-btn {% if child.is_selected %}active{% endif %}">
+                            {{ child.student_name }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                    
+                    {% if selected_child %}
+                    <!-- Информация о выбранном ребенке -->
+                    <div style="margin-top: 2rem;">
+                        <h2 style="margin-bottom: 1rem;">{{ selected_child.name }}</h2>
+                        
+                        <!-- Блок финансов -->
+                        {% if financial_data.can_topup %}
+                        <section class="glass-panel" style="margin-bottom: 2rem;">
+                            <div class="panel-head">
+                                <div>
+                                    <p class="eyebrow">финансы</p>
+                                    <h2>Баланс уроков</h2>
+                                </div>
+                            </div>
+                            <div class="metrics-grid">
+                                <div class="metric-card">
+                                    <div class="metric-label">Остаток уроков</div>
+                                    <div class="metric-value">{{ financial_data.lessons_remaining }}</div>
+                                    <div class="metric-delta">Оплачено: {{ financial_data.total_paid }}</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <button class="neo-button accent">Пополнить баланс</button>
+                            </div>
+                        </section>
+                        {% endif %}
+                        
+                        <!-- Блок успеваемости (AI Summary) -->
+                        {% if child_stats and child_stats.ai_summary %}
+                        <section class="ai-summary" style="margin-bottom: 2rem;">
+                            <h3>📊 Успеваемость за неделю</h3>
+                            <p>
+                                За эту неделю <strong>{{ selected_child_name }}</strong> решил(а) 
+                                <strong>{{ child_stats.ai_summary.tasks_solved_week }}</strong> задач.
+                            </p>
+                            {% if child_stats.ai_summary.problem_topic %}
+                            <p>
+                                Проблемная тема: <strong>{{ child_stats.ai_summary.problem_topic }}</strong>
+                            </p>
+                            {% endif %}
+                            {% if child_stats.ai_summary.gpa_forecast %}
+                            <p>
+                                Прогноз балла ЕГЭ: <strong>{{ child_stats.ai_summary.gpa_forecast }}</strong>
+                            </p>
+                            {% endif %}
+                        </section>
+                        {% endif %}
+                        
+                        <!-- Метрики -->
+                        {% if child_stats and child_stats.metrics %}
+                        <section class="glass-panel" style="margin-bottom: 2rem;">
+                            <div class="panel-head">
+                                <div>
+                                    <p class="eyebrow">статистика</p>
+                                    <h2>Основные показатели</h2>
+                                </div>
+                            </div>
+                            <div class="metrics-grid">
+                                <div class="metric-card">
+                                    <div class="metric-label">Средний балл (ДЗ)</div>
+                                    <div class="metric-value">{{ child_stats.metrics.hw_gpa|round(1) if child_stats.metrics.hw_gpa else 'N/A' }}</div>
+                                    <div class="metric-delta">Домашние задания</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Средний балл (Экзамены)</div>
+                                    <div class="metric-value">{{ child_stats.metrics.exam_gpa|round(1) if child_stats.metrics.exam_gpa else 'N/A' }}</div>
+                                    <div class="metric-delta">Экзамены</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Проведено уроков</div>
+                                    <div class="metric-value">{{ child_stats.metrics.completed_lessons }}</div>
+                                    <div class="metric-delta">из {{ child_stats.metrics.total_lessons }}</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Пропущено</div>
+                                    <div class="metric-value">{{ child_stats.metrics.missed_lessons }}</div>
+                                </div>
+                            </div>
+                        </section>
+                        {% endif %}
+                        
+                        <!-- Предстоящие уроки -->
+                        {% if upcoming_lessons %}
+                        <section class="glass-panel" style="margin-bottom: 2rem;">
+                            <div class="panel-head">
+                                <div>
+                                    <p class="eyebrow">расписание</p>
+                                    <h2>Предстоящие уроки</h2>
+                                </div>
+                            </div>
+                            <div class="lessons-list">
+                                {% for lesson in upcoming_lessons %}
+                                <div class="lesson-item">
+                                    <div>
+                                        <div class="lesson-date">
+                                            {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else 'Дата не указана' }}
+                                        </div>
+                                        {% if lesson.topic %}
+                                        <div style="font-size: 0.9em; color: var(--text-muted); margin-top: 0.25rem;">
+                                            {{ lesson.topic }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="lesson-status planned">Запланирован</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </section>
+                        {% endif %}
+                        
+                        <!-- Последние уроки -->
+                        {% if recent_lessons %}
+                        <section class="glass-panel" style="margin-bottom: 2rem;">
+                            <div class="panel-head">
+                                <div>
+                                    <p class="eyebrow">история</p>
+                                    <h2>Последние уроки</h2>
+                                </div>
+                            </div>
+                            <div class="lessons-list">
+                                {% for lesson in recent_lessons %}
+                                <div class="lesson-item">
+                                    <div>
+                                        <div class="lesson-date">
+                                            {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else 'Дата не указана' }}
+                                        </div>
+                                        {% if lesson.topic %}
+                                        <div style="font-size: 0.9em; color: var(--text-muted); margin-top: 0.25rem;">
+                                            {{ lesson.topic }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="lesson-status {% if lesson.status == 'completed' %}completed{% elif lesson.status == 'cancelled' %}cancelled{% else %}planned{% endif %}">
+                                        {% if lesson.status == 'completed' %}
+                                            Проведен
+                                        {% elif lesson.status == 'cancelled' %}
+                                            Отменен
+                                        {% else %}
+                                            {{ lesson.status }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </section>
+                        {% endif %}
+                        
+                        <!-- Проблемные темы -->
+                        {% if child_stats and child_stats.problem_topics %}
+                        <section class="glass-panel" style="margin-bottom: 2rem;">
+                            <div class="panel-head">
+                                <div>
+                                    <p class="eyebrow">требует внимания</p>
+                                    <h2>Проблемные темы</h2>
+                                </div>
+                            </div>
+                            <div style="margin-top: 1.5rem;">
+                                <div style="display: grid; gap: 1rem;">
+                                    {% for topic in child_stats.problem_topics %}
+                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1);">
+                                        <div>
+                                            <span style="font-weight: 500;">{{ topic.name }}</span>
+                                            <span style="color: var(--text-muted); margin-left: 1rem;">{{ topic.avg_score }}%</span>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </section>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <p style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                        Выберите ребенка из списка выше
+                    </p>
+                    {% endif %}
+                    
+                    {% else %}
+                    <div style="text-align: center; padding: 3rem;">
+                        <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                            У вас пока нет привязанных детей
+                        </p>
+                        <p style="color: var(--text-muted); font-size: 0.9em;">
+                            Обратитесь к администратору для привязки аккаунта вашего ребенка
+                        </p>
+                    </div>
+                    {% endif %}
+                </section>
+            </div>
+        </main>
+    </div>
+    
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
