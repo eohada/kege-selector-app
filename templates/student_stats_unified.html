@@ -403,6 +403,76 @@
                     <canvas id="statisticsChart" style="max-height: 400px;"></canvas>
                 </div>
             </section>
+            
+            <!-- Редактор статистики -->
+            <section class="glass-panel" style="margin-bottom: 2rem;">
+                <div class="panel-head">
+                    <div>
+                        <p class="eyebrow">ручное редактирование</p>
+                        <h2>Изменить статистику</h2>
+                    </div>
+                </div>
+                <p style="margin-top: 1rem; color: var(--text-muted); font-size: 0.9em;">
+                    Вы можете вручную добавить количество правильно или неправильно решенных заданий для каждого номера. 
+                    Эти значения будут добавлены к автоматической статистике и сохранятся при дальнейших обновлениях.
+                </p>
+                
+                <div style="margin-top: 2rem;">
+                    <div id="statisticsEditor" style="display: grid; gap: 1rem;">
+                        {% for item in chart_data %}
+                        <div class="stat-edit-item" data-task-number="{{ item.task_number }}" style="display: grid; grid-template-columns: auto 1fr 1fr auto; gap: 1rem; align-items: center; padding: 1rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1);">
+                            <div>
+                                <strong>Задание {{ item.task_number }}</strong>
+                                <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 0.25rem;">
+                                    {{ item.correct }}/{{ item.total }} ({{ item.percent }}%)
+                                </div>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.9em; margin-bottom: 0.25rem; color: var(--text-muted);">
+                                    <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Правильно" class="ui-icon ui-icon--sm" style="width: 16px; height: 16px; vertical-align: middle;">Правильно (добавить):
+                                </label>
+                                <input type="number" 
+                                       min="0" 
+                                       step="1"
+                                       class="stat-input-correct neo-input" 
+                                       value="0"
+                                       placeholder="Сколько добавить"
+                                       style="width: 100%;">
+                                {% if item.manual_correct > 0 %}
+                                <small style="display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.85em;">
+                                    Уже добавлено: {{ item.manual_correct }}
+                                </small>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.9em; margin-bottom: 0.25rem; color: var(--text-muted);">
+                                    <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Неправильно" class="ui-icon ui-icon--sm" style="width: 16px; height: 16px; vertical-align: middle;">Неправильно (добавить):
+                                </label>
+                                <input type="number" 
+                                       min="0" 
+                                       step="1"
+                                       class="stat-input-incorrect neo-input" 
+                                       value="0"
+                                       placeholder="Сколько добавить"
+                                       style="width: 100%;">
+                                {% if item.manual_incorrect > 0 %}
+                                <small style="display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.85em;">
+                                    Уже добавлено: {{ item.manual_incorrect }}
+                                </small>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <button type="button" 
+                                        class="neo-button accent stat-save-btn" 
+                                        data-task-number="{{ item.task_number }}">
+                                    <img src="{{ url_for('static', filename='icons/icons8-сохранить-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm" style="width: 16px; height: 16px; vertical-align: middle;"> Сохранить
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </section>
             {% else %}
             <section class="glass-panel" style="margin-bottom: 2rem;">
                 <div class="panel-head">
@@ -1002,6 +1072,117 @@
                     currentWeekIdx++;
                 }
             }
+        });
+        
+        // Обработка сохранения статистики
+        document.addEventListener('DOMContentLoaded', function() {
+            const saveButtons = document.querySelectorAll('.stat-save-btn');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            
+            if (!csrfToken) {
+                console.warn('CSRF токен не найден');
+            }
+            
+            // Функция для временного уведомления
+            function showTemporaryNotification(message, type) {
+                if (typeof toast !== 'undefined' && toast && typeof toast.show === 'function') {
+                    toast.show(message, type);
+                    return;
+                }
+                if (window.toast && typeof window.toast.show === 'function') {
+                    window.toast.show(message, type);
+                    return;
+                }
+                
+                // Fallback: создаем уведомление вручную
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 1rem 1.5rem;
+                    background: ${type === 'success' ? '#22c55e' : '#ef4444'};
+                    color: white;
+                    border-radius: 8px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    z-index: 10000;
+                    font-size: 14px;
+                    max-width: 300px;
+                `;
+                notification.textContent = message;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+            }
+            
+            saveButtons.forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const taskNumber = parseInt(this.dataset.taskNumber);
+                    const item = this.closest('.stat-edit-item');
+                    const correctInput = item.querySelector('.stat-input-correct');
+                    const incorrectInput = item.querySelector('.stat-input-incorrect');
+                    
+                    const manualCorrect = parseInt(correctInput.value) || 0;
+                    const manualIncorrect = parseInt(incorrectInput.value) || 0;
+                    
+                    // Валидация
+                    if (manualCorrect < 0 || manualIncorrect < 0) {
+                        showTemporaryNotification('Значения должны быть неотрицательными', 'error');
+                        return;
+                    }
+                    
+                    // Показываем индикатор загрузки
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '⏳ Сохранение...';
+                    this.disabled = true;
+                    
+                    try {
+                        const url = `{{ url_for('students.update_statistics', student_id=student.student_id) }}`;
+                        
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken || ''
+                            },
+                            body: JSON.stringify({
+                                task_number: taskNumber,
+                                manual_correct: manualCorrect,
+                                manual_incorrect: manualIncorrect
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`HTTP ${response.status}: ${errorText}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data && data.success) {
+                            showTemporaryNotification('Статистика успешно обновлена', 'success');
+                            // Перезагружаем страницу с принудительным обновлением кеша
+                            setTimeout(() => {
+                                const url = new URL(window.location.href);
+                                url.searchParams.set('_t', Date.now());
+                                window.location.href = url.toString();
+                            }, 1000);
+                        } else {
+                            const errorMsg = data?.error || 'Ошибка при сохранении';
+                            showTemporaryNotification(errorMsg, 'error');
+                            this.innerHTML = originalText;
+                            this.disabled = false;
+                        }
+                    } catch (error) {
+                        console.error('Ошибка при сохранении статистики:', error);
+                        showTemporaryNotification('Ошибка при сохранении: ' + error.message, 'error');
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }
+                });
+            });
         });
     </script>
     
