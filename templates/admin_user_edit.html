@@ -116,6 +116,7 @@
 
                 {# Связанные данные (интегрированы в основную форму) #}
                 {% if user %}
+                {# Семейные связи #}
                 {% if user.is_student() or user.is_parent() %}
                 <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
                     <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Семейные связи</h2>
