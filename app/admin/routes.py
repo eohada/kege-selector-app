@@ -2263,6 +2263,28 @@ def admin_user_edit(user_id):
             db.session.rollback()
             logger.error(f"Error updating user: {e}", exc_info=True)
             flash(f'Ошибка при обновлении пользователя: {str(e)}', 'error')
+            # Перезагружаем пользователя из базы данных
+            db.session.refresh(user)
+            # Перезагружаем данные для отображения формы с ошибкой
+            family_ties = []
+            enrollments = []
+            if user.is_student():
+                family_ties = FamilyTie.query.filter_by(student_id=user.id).all()
+                enrollments = Enrollment.query.filter_by(student_id=user.id).all()
+            elif user.is_parent():
+                family_ties = FamilyTie.query.filter_by(parent_id=user.id).all()
+            elif user.is_tutor():
+                enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
+            all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
+            all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
+            all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
+            return render_template('admin_user_edit.html',
+                                 user=user,
+                                 family_ties=family_ties,
+                                 enrollments=enrollments,
+                                 all_parents=all_parents,
+                                 all_students=all_students,
+                                 all_tutors=all_tutors)
     
     # Получаем связанные данные
     family_ties = []
