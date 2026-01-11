@@ -1931,6 +1931,154 @@ def admin_users():
         return redirect(url_for('admin.admin_panel'))
 
 
+@admin_bp.route('/admin/users/<int:user_id>/family-tie/add', methods=['POST'])
+@login_required
+def admin_user_family_tie_add(user_id):
+    """Добавление семейной связи для пользователя"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('admin.admin_users'))
+    
+    user = User.query.get_or_404(user_id)
+    
+    try:
+        if user.is_student():
+            parent_id = request.form.get('parent_id', type=int)
+            if not parent_id:
+                flash('Выберите родителя.', 'error')
+                return redirect(url_for('admin.admin_user_edit', user_id=user_id))
+            
+            access_level = request.form.get('access_level', 'full')
+            is_confirmed = request.form.get('is_confirmed') == 'on'
+            
+            existing = FamilyTie.query.filter_by(parent_id=parent_id, student_id=user.id).first()
+            if existing:
+                flash('Связь уже существует.', 'warning')
+                return redirect(url_for('admin.admin_user_edit', user_id=user_id))
+            
+            family_tie = FamilyTie(parent_id=parent_id, student_id=user.id, access_level=access_level, is_confirmed=is_confirmed)
+            db.session.add(family_tie)
+            db.session.commit()
+            flash('Семейная связь добавлена.', 'success')
+        elif user.is_parent():
+            student_id = request.form.get('student_id', type=int)
+            if not student_id:
+                flash('Выберите ученика.', 'error')
+                return redirect(url_for('admin.admin_user_edit', user_id=user_id))
+            
+            access_level = request.form.get('access_level', 'full')
+            is_confirmed = request.form.get('is_confirmed') == 'on'
+            
+            existing = FamilyTie.query.filter_by(parent_id=user.id, student_id=student_id).first()
+            if existing:
+                flash('Связь уже существует.', 'warning')
+                return redirect(url_for('admin.admin_user_edit', user_id=user_id))
+            
+            family_tie = FamilyTie(parent_id=user.id, student_id=student_id, access_level=access_level, is_confirmed=is_confirmed)
+            db.session.add(family_tie)
+            db.session.commit()
+            flash('Семейная связь добавлена.', 'success')
+        else:
+            flash('Семейные связи доступны только для учеников и родителей.', 'error')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error adding family tie: {e}", exc_info=True)
+        flash(f'Ошибка при добавлении связи: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.admin_user_edit', user_id=user_id))
+
+
+@admin_bp.route('/admin/users/<int:user_id>/enrollment/add', methods=['POST'])
+@login_required
+def admin_user_enrollment_add(user_id):
+    """Добавление учебного контракта для пользователя"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('admin.admin_users'))
+    
+    user = User.query.get_or_404(user_id)
+    
+    try:
+        if user.is_student():
+            tutor_id = request.form.get('tutor_id', type=int)
+            subject = request.form.get('subject', '').strip()
+            if not tutor_id or not subject:
+                flash('Заполните все поля.', 'error')
+                return redirect(url_for('admin.admin_user_edit', user_id=user_id))
+            
+            status = request.form.get('status', 'active')
+            enrollment = Enrollment(student_id=user.id, tutor_id=tutor_id, subject=subject, status=status, is_active=(status == 'active'))
+            db.session.add(enrollment)
+            db.session.commit()
+            flash('Учебный контракт добавлен.', 'success')
+        elif user.is_tutor():
+            student_id = request.form.get('student_id', type=int)
+            subject = request.form.get('subject', '').strip()
+            if not student_id or not subject:
+                flash('Заполните все поля.', 'error')
+                return redirect(url_for('admin.admin_user_edit', user_id=user_id))
+            
+            status = request.form.get('status', 'active')
+            enrollment = Enrollment(student_id=student_id, tutor_id=user.id, subject=subject, status=status, is_active=(status == 'active'))
+            db.session.add(enrollment)
+            db.session.commit()
+            flash('Учебный контракт добавлен.', 'success')
+        else:
+            flash('Учебные контракты доступны только для учеников и преподавателей.', 'error')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error adding enrollment: {e}", exc_info=True)
+        flash(f'Ошибка при добавлении контракта: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.admin_user_edit', user_id=user_id))
+
+
+@admin_bp.route('/admin/family-tie/<int:tie_id>/delete', methods=['POST'])
+@login_required
+def admin_family_tie_delete(tie_id):
+    """Удаление семейной связи"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('admin.admin_users'))
+    
+    tie = FamilyTie.query.get_or_404(tie_id)
+    user_id = tie.student_id if tie.student_id else tie.parent_id
+    
+    try:
+        db.session.delete(tie)
+        db.session.commit()
+        flash('Семейная связь удалена.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting family tie: {e}", exc_info=True)
+        flash(f'Ошибка при удалении связи: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.admin_user_edit', user_id=user_id))
+
+
+@admin_bp.route('/admin/enrollment/<int:enrollment_id>/delete', methods=['POST'])
+@login_required
+def admin_enrollment_delete(enrollment_id):
+    """Удаление учебного контракта"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('admin.admin_users'))
+    
+    enrollment = Enrollment.query.get_or_404(enrollment_id)
+    user_id = enrollment.student_id if enrollment.student_id else enrollment.tutor_id
+    
+    try:
+        db.session.delete(enrollment)
+        db.session.commit()
+        flash('Учебный контракт удален.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error deleting enrollment: {e}", exc_info=True)
+        flash(f'Ошибка при удалении контракта: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.admin_user_edit', user_id=user_id))
+
+
 @admin_bp.route('/admin/users/<int:user_id>/edit', methods=['GET', 'POST'])
 @login_required
 def admin_user_edit(user_id):
@@ -2023,10 +2171,18 @@ def admin_user_edit(user_id):
     elif user.is_tutor():
         enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
     
+    # Получаем списки пользователей для выпадающих списков
+    all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
+    all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
+    all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
+    
     return render_template('admin_user_edit.html',
                          user=user,
                          family_ties=family_ties,
-                         enrollments=enrollments)
+                         enrollments=enrollments,
+                         all_parents=all_parents,
+                         all_students=all_students,
+                         all_tutors=all_tutors)
 
 
 @admin_bp.route('/admin/users/new', methods=['GET', 'POST'])
