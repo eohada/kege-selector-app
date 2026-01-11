@@ -43,11 +43,16 @@ def get_user_scope(user):
     
     elif user.is_tutor():
         # Тьютор видит только своих учеников (через Enrollment)
-        enrollments = Enrollment.query.filter_by(
-            tutor_id=user.id,
-            status='active'
+        # Включаем все статусы, кроме 'archived', чтобы видеть активных и приостановленных
+        enrollments = Enrollment.query.filter(
+            Enrollment.tutor_id == user.id,
+            Enrollment.status != 'archived'
         ).all()
         scope['student_ids'] = [e.student_id for e in enrollments]
+        # Логируем для отладки
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"Tutor {user.id} ({user.username}) has {len(enrollments)} enrollments, student_ids: {scope['student_ids']}")
         return scope
     
     elif user.is_parent():

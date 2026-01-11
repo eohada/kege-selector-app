@@ -67,17 +67,23 @@ def dashboard():
         student_users = User.query.filter(User.id.in_(scope['student_ids'])).all()
         student_emails = [u.email for u in student_users if u.email]
         
+        # Логируем для отладки
+        logger.debug(f"Dashboard: scope student_ids={scope['student_ids']}, found {len(student_users)} users, emails={student_emails}")
+        
         if student_emails:
             # Находим Student записи по email
             accessible_students = Student.query.filter(Student.email.in_(student_emails)).all()
+            logger.debug(f"Dashboard: found {len(accessible_students)} Student records for emails {student_emails}")
             if accessible_students:
                 accessible_student_ids = [s.student_id for s in accessible_students]
                 query = query.filter(Student.student_id.in_(accessible_student_ids))
             else:
-                # Если Student записи не найдены, показываем пустой список
+                # Если Student записи не найдены, логируем и показываем пустой список
+                logger.warning(f"Dashboard: No Student records found for emails {student_emails}, user_ids={scope['student_ids']}")
                 query = query.filter(False)
         else:
-            # Если у пользователей нет email, показываем пустой список
+            # Если у пользователей нет email, логируем и показываем пустой список
+            logger.warning(f"Dashboard: Users {scope['student_ids']} have no email addresses")
             query = query.filter(False)
     elif not scope['can_see_all'] and not scope['student_ids']:
         # Нет доступа ни к каким ученикам
