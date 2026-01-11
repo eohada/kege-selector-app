@@ -2217,14 +2217,25 @@ def admin_user_edit(user_id):
                         is_confirmed = request.form.get('new_parent_confirmed') == 'on'
                         family_tie = FamilyTie(parent_id=new_parent_id, student_id=user.id, access_level=access_level, is_confirmed=is_confirmed)
                         db.session.add(family_tie)
+                        logger.info(f"Added family tie: parent_id={new_parent_id}, student_id={user.id}")
+                    else:
+                        logger.warning(f"Family tie already exists: parent_id={new_parent_id}, student_id={user.id}")
                 
                 # Добавляем нового преподавателя, если указан
                 new_tutor_id = request.form.get('new_tutor_id', type=int)
                 new_tutor_subject = request.form.get('new_tutor_subject', '').strip()
                 if new_tutor_id and new_tutor_subject:
-                    status = request.form.get('new_tutor_status', 'active')
-                    enrollment = Enrollment(student_id=user.id, tutor_id=new_tutor_id, subject=new_tutor_subject, status=status)
-                    db.session.add(enrollment)
+                    # Проверяем, нет ли уже такого контракта
+                    existing = Enrollment.query.filter_by(student_id=user.id, tutor_id=new_tutor_id, subject=new_tutor_subject).first()
+                    if not existing:
+                        status = request.form.get('new_tutor_status', 'active')
+                        enrollment = Enrollment(student_id=user.id, tutor_id=new_tutor_id, subject=new_tutor_subject, status=status)
+                        db.session.add(enrollment)
+                        logger.info(f"Added enrollment: student_id={user.id}, tutor_id={new_tutor_id}, subject={new_tutor_subject}")
+                    else:
+                        logger.warning(f"Enrollment already exists: student_id={user.id}, tutor_id={new_tutor_id}, subject={new_tutor_subject}")
+                else:
+                    logger.debug(f"Enrollment not added for student: tutor_id={new_tutor_id}, subject={new_tutor_subject}")
             
             elif user.is_parent():
                 # Добавляем нового ученика, если указан
@@ -2236,15 +2247,28 @@ def admin_user_edit(user_id):
                         is_confirmed = request.form.get('new_student_confirmed') == 'on'
                         family_tie = FamilyTie(parent_id=user.id, student_id=new_student_id, access_level=access_level, is_confirmed=is_confirmed)
                         db.session.add(family_tie)
+                        logger.info(f"Added family tie: parent_id={user.id}, student_id={new_student_id}")
+                    else:
+                        logger.warning(f"Family tie already exists: parent_id={user.id}, student_id={new_student_id}")
+                else:
+                    logger.debug(f"Family tie not added: student_id={new_student_id}")
             
             elif user.is_tutor():
                 # Добавляем нового ученика, если указан
                 new_enrollment_student_id = request.form.get('new_enrollment_student_id', type=int)
                 new_enrollment_subject = request.form.get('new_enrollment_subject', '').strip()
                 if new_enrollment_student_id and new_enrollment_subject:
-                    status = request.form.get('new_enrollment_status', 'active')
-                    enrollment = Enrollment(student_id=new_enrollment_student_id, tutor_id=user.id, subject=new_enrollment_subject, status=status)
-                    db.session.add(enrollment)
+                    # Проверяем, нет ли уже такого контракта
+                    existing = Enrollment.query.filter_by(student_id=new_enrollment_student_id, tutor_id=user.id, subject=new_enrollment_subject).first()
+                    if not existing:
+                        status = request.form.get('new_enrollment_status', 'active')
+                        enrollment = Enrollment(student_id=new_enrollment_student_id, tutor_id=user.id, subject=new_enrollment_subject, status=status)
+                        db.session.add(enrollment)
+                        logger.info(f"Added enrollment: student_id={new_enrollment_student_id}, tutor_id={user.id}, subject={new_enrollment_subject}")
+                    else:
+                        logger.warning(f"Enrollment already exists: student_id={new_enrollment_student_id}, tutor_id={user.id}, subject={new_enrollment_subject}")
+                else:
+                    logger.debug(f"Enrollment not added: student_id={new_enrollment_student_id}, subject={new_enrollment_subject}")
             
             db.session.commit()
             
