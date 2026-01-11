@@ -20,7 +20,7 @@ from werkzeug.security import generate_password_hash  # Хешируем пар�
 
 from app.admin import admin_bp
 from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ, Tasks, Lesson, LessonTask, Topic
-from app.models import UserProfile, FamilyTie, Enrollment
+from app.models import UserProfile, FamilyTie, Enrollment, Student
 from core.db_models import Tester, task_topics
 from core.audit_logger import audit_logger
 from app import csrf
