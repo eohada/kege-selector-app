@@ -84,6 +84,7 @@ function showConfirmModal(options) {
 
 // Функция для отправки POST запроса через создание формы (для кнопок вне форм или замены вложенных форм)
 function submitPostRequest(url, csrfToken) {
+    console.log('submitPostRequest called with URL:', url);
     const hiddenForm = document.createElement('form');
     hiddenForm.method = 'POST';
     hiddenForm.action = url;
@@ -91,15 +92,19 @@ function submitPostRequest(url, csrfToken) {
     
     // Добавляем CSRF токен
     const token = csrfToken || document.querySelector('input[name="csrf_token"]')?.value || document.querySelector('meta[name="csrf-token"]')?.content;
+    console.log('CSRF token found:', token ? 'yes' : 'no');
     if (token) {
         const csrfInput = document.createElement('input');
         csrfInput.type = 'hidden';
         csrfInput.name = 'csrf_token';
         csrfInput.value = token;
         hiddenForm.appendChild(csrfInput);
+    } else {
+        console.error('CSRF token not found!');
     }
     
     document.body.appendChild(hiddenForm);
+    console.log('Submitting form to:', url);
     hiddenForm.submit();
 }
 
