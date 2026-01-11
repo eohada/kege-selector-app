@@ -2408,17 +2408,14 @@ def admin_user_edit(user_id):
                 raise commit_error
             
             # Перезагружаем пользователя из базы для получения актуальных данных
-            user_id = user.id
-            # Используем session.expire_all() чтобы сбросить кэш и загрузить свежие данные
-            db.session.expire_all()
-            user = User.query.get(user_id)
+            user = User.query.get(user.id)
             if user:
-                # Загружаем профиль отдельно, если он есть
-                profile = UserProfile.query.filter_by(user_id=user_id).first()
+                # Принудительно загружаем профиль (теперь это скаляр)
+                profile = user.profile
                 if profile:
                     logger.info(f"POST: After reload - profile data: first_name={profile.first_name}, last_name={profile.last_name}, phone={profile.phone}, telegram_id={profile.telegram_id}")
                 else:
-                    logger.warning(f"POST: After reload - no profile found for user {user_id}")
+                    logger.warning(f"POST: After reload - no profile found for user {user.id}")
             
             audit_logger.log(
                 action='user_updated',

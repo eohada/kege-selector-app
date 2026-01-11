@@ -425,7 +425,7 @@ class UserProfile(db.Model):
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     
     # Связь с User
-    user = db.relationship('User', backref='profile', uselist=False)
+    user = db.relationship('User', backref=db.backref('profile', uselist=False), uselist=False)
     
     def __repr__(self):
         return f'<UserProfile {self.user_id}: {self.first_name} {self.last_name}>'
