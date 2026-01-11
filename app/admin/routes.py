@@ -2113,14 +2113,52 @@ def admin_user_edit(user_id):
             existing_user = User.query.filter_by(username=username).first()
             if existing_user and existing_user.id != user.id:
                 flash('Пользователь с таким именем уже существует.', 'error')
-                return render_template('admin_user_edit.html', user=user)
+                # Перезагружаем данные для отображения формы
+                family_ties = []
+                enrollments = []
+                if user.is_student():
+                    family_ties = FamilyTie.query.filter_by(student_id=user.id).all()
+                    enrollments = Enrollment.query.filter_by(student_id=user.id).all()
+                elif user.is_parent():
+                    family_ties = FamilyTie.query.filter_by(parent_id=user.id).all()
+                elif user.is_tutor():
+                    enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
+                all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
+                all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
+                all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
+                return render_template('admin_user_edit.html',
+                                     user=user,
+                                     family_ties=family_ties,
+                                     enrollments=enrollments,
+                                     all_parents=all_parents,
+                                     all_students=all_students,
+                                     all_tutors=all_tutors)
             
             # Проверка уникальности email
             if email:
                 existing_email = User.query.filter_by(email=email).first()
                 if existing_email and existing_email.id != user.id:
                     flash('Пользователь с таким email уже существует.', 'error')
-                    return render_template('admin_user_edit.html', user=user)
+                    # Перезагружаем данные для отображения формы
+                    family_ties = []
+                    enrollments = []
+                    if user.is_student():
+                        family_ties = FamilyTie.query.filter_by(student_id=user.id).all()
+                        enrollments = Enrollment.query.filter_by(student_id=user.id).all()
+                    elif user.is_parent():
+                        family_ties = FamilyTie.query.filter_by(parent_id=user.id).all()
+                    elif user.is_tutor():
+                        enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
+                    all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
+                    all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
+                    all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
+                    return render_template('admin_user_edit.html',
+                                         user=user,
+                                         family_ties=family_ties,
+                                         enrollments=enrollments,
+                                         all_parents=all_parents,
+                                         all_students=all_students,
+                                         all_tutors=all_tutors)
             
             # Обновляем пароль, если указан
             new_password = request.form.get('password', '').strip()
@@ -2166,7 +2204,7 @@ def admin_user_edit(user_id):
                 new_tutor_subject = request.form.get('new_tutor_subject', '').strip()
                 if new_tutor_id and new_tutor_subject:
                     status = request.form.get('new_tutor_status', 'active')
-                    enrollment = Enrollment(student_id=user.id, tutor_id=new_tutor_id, subject=new_tutor_subject, status=status, is_active=(status == 'active'))
+                    enrollment = Enrollment(student_id=user.id, tutor_id=new_tutor_id, subject=new_tutor_subject, status=status)
                     db.session.add(enrollment)
             
             elif user.is_parent():
@@ -2186,7 +2224,7 @@ def admin_user_edit(user_id):
                 new_enrollment_subject = request.form.get('new_enrollment_subject', '').strip()
                 if new_enrollment_student_id and new_enrollment_subject:
                     status = request.form.get('new_enrollment_status', 'active')
-                    enrollment = Enrollment(student_id=new_enrollment_student_id, tutor_id=user.id, subject=new_enrollment_subject, status=status, is_active=(status == 'active'))
+                    enrollment = Enrollment(student_id=new_enrollment_student_id, tutor_id=user.id, subject=new_enrollment_subject, status=status)
                     db.session.add(enrollment)
             
             db.session.commit()
