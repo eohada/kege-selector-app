@@ -84,12 +84,33 @@ function showConfirmModal(options) {
 
 // Функция для подтверждения формы
 function confirmFormSubmit(form, options) {
-    form.addEventListener('submit', (e) => {
+    // Удаляем предыдущие обработчики, если есть
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    
+    newForm.addEventListener('submit', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         showConfirmModal({
             ...options,
             onConfirm: () => {
-                form.submit();
+                // Создаем скрытую форму для отправки с правильным CSRF токеном
+                const hiddenForm = document.createElement('form');
+                hiddenForm.method = 'POST';
+                hiddenForm.action = newForm.action;
+                
+                // Копируем все скрытые поля (включая CSRF токен)
+                const inputs = newForm.querySelectorAll('input[type="hidden"]');
+                inputs.forEach(input => {
+                    const newInput = document.createElement('input');
+                    newInput.type = 'hidden';
+                    newInput.name = input.name;
+                    newInput.value = input.value;
+                    hiddenForm.appendChild(newInput);
+                });
+                
+                document.body.appendChild(hiddenForm);
+                hiddenForm.submit();
             }
         });
     });
