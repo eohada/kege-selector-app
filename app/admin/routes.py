@@ -2263,8 +2263,11 @@ def admin_user_edit(user_id):
             db.session.rollback()
             logger.error(f"Error updating user: {e}", exc_info=True)
             flash(f'Ошибка при обновлении пользователя: {str(e)}', 'error')
-            # Перезагружаем пользователя из базы данных
-            db.session.refresh(user)
+            # Перезагружаем пользователя из базы данных заново
+            user = User.query.get(user_id)
+            if not user:
+                flash('Пользователь не найден.', 'error')
+                return redirect(url_for('admin.admin_users'))
             # Перезагружаем данные для отображения формы с ошибкой
             family_ties = []
             enrollments = []
