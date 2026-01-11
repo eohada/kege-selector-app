@@ -114,31 +114,19 @@
                     </div>
                 </div>
 
-                {# Кнопки действий основной формы #}
-                <div class="hero-actions">
-                    <button type="submit" class="neo-button accent">
-                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm">
-                        {% if user %}Сохранить изменения{% else %}Создать пользователя{% endif %}
-                    </button>
-                    <a href="{{ url_for('admin.admin_users') }}" class="neo-button ghost">Отмена</a>
-                </div>
-            </form>
-
-            {# Связанные данные (для создания и редактирования) - ОТДЕЛЬНЫЕ ФОРМЫ #}
-            {% if user %}
-            {% if user.is_student() or user.is_parent() %}
+                {# Связанные данные (интегрированы в основную форму) #}
+                {% if user %}
+                {% if user.is_student() or user.is_parent() %}
                 <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
                     <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Семейные связи</h2>
                     
-                    {# Форма добавления связи - для редактирования (отдельная форма) #}
-                    {% if user %}
+                    {# Форма добавления связи - интегрирована в основную форму #}
                     {% if user.is_student() and all_parents %}
-                    <form method="POST" action="{{ url_for('admin.admin_user_family_tie_add', user_id=user.id) }}" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--surface-3); border-radius: var(--radius-sm);">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr auto; gap: 1rem; align-items: end;">
+                    <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--surface-3); border-radius: var(--radius-sm);">
+                        <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr; gap: 1rem; align-items: end;">
                             <div class="neo-field">
-                                <label class="neo-label" for="parent_id">Родитель</label>
-                                <select id="parent_id" name="parent_id" class="neo-input" required>
+                                <label class="neo-label" for="new_parent_id">Добавить родителя</label>
+                                <select id="new_parent_id" name="new_parent_id" class="neo-input">
                                     <option value="">Выберите родителя</option>
                                     {% for parent in all_parents %}
                                     <option value="{{ parent.id }}">{{ parent.username }}{% if parent.profile and (parent.profile.first_name or parent.profile.last_name) %} ({{ parent.profile.first_name or '' }} {{ parent.profile.last_name or '' }}){% endif %}</option>
@@ -146,8 +134,8 @@
                                 </select>
                             </div>
                             <div class="neo-field">
-                                <label class="neo-label" for="access_level">Уровень доступа</label>
-                                <select id="access_level" name="access_level" class="neo-input">
+                                <label class="neo-label" for="new_parent_access_level">Уровень доступа</label>
+                                <select id="new_parent_access_level" name="new_parent_access_level" class="neo-input">
                                     <option value="full">Полный доступ</option>
                                     <option value="financial_only">Только финансы</option>
                                     <option value="schedule_only">Только расписание</option>
@@ -156,20 +144,18 @@
                             <div class="neo-field" style="align-items: flex-start;">
                                 <label class="neo-label">Статус</label>
                                 <label style="display:flex; gap:0.6rem; align-items:center; color: var(--text-primary);">
-                                    <input type="checkbox" name="is_confirmed" checked>
+                                    <input type="checkbox" name="new_parent_confirmed" checked>
                                     <span style="color: var(--text-muted); font-size: 0.9rem;">Подтверждено</span>
                                 </label>
                             </div>
-                            <button type="submit" class="neo-button accent">Добавить</button>
                         </div>
-                    </form>
+                    </div>
                     {% elif user.is_parent() and all_students %}
-                    <form method="POST" action="{{ url_for('admin.admin_user_family_tie_add', user_id=user.id) }}" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--surface-3); border-radius: var(--radius-sm);">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr auto; gap: 1rem; align-items: end;">
+                    <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--surface-3); border-radius: var(--radius-sm);">
+                        <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr; gap: 1rem; align-items: end;">
                             <div class="neo-field">
-                                <label class="neo-label" for="student_id">Ученик</label>
-                                <select id="student_id" name="student_id" class="neo-input" required>
+                                <label class="neo-label" for="new_student_id">Добавить ученика</label>
+                                <select id="new_student_id" name="new_student_id" class="neo-input">
                                     <option value="">Выберите ученика</option>
                                     {% for student in all_students %}
                                     <option value="{{ student.id }}">{{ student.username }}{% if student.profile and (student.profile.first_name or student.profile.last_name) %} ({{ student.profile.first_name or '' }} {{ student.profile.last_name or '' }}){% endif %}</option>
@@ -177,8 +163,8 @@
                                 </select>
                             </div>
                             <div class="neo-field">
-                                <label class="neo-label" for="access_level">Уровень доступа</label>
-                                <select id="access_level" name="access_level" class="neo-input">
+                                <label class="neo-label" for="new_student_access_level">Уровень доступа</label>
+                                <select id="new_student_access_level" name="new_student_access_level" class="neo-input">
                                     <option value="full">Полный доступ</option>
                                     <option value="financial_only">Только финансы</option>
                                     <option value="schedule_only">Только расписание</option>
@@ -187,15 +173,143 @@
                             <div class="neo-field" style="align-items: flex-start;">
                                 <label class="neo-label">Статус</label>
                                 <label style="display:flex; gap:0.6rem; align-items:center; color: var(--text-primary);">
-                                    <input type="checkbox" name="is_confirmed" checked>
+                                    <input type="checkbox" name="new_student_confirmed" checked>
                                     <span style="color: var(--text-muted); font-size: 0.9rem;">Подтверждено</span>
                                 </label>
                             </div>
-                            <button type="submit" class="neo-button accent">Добавить</button>
                         </div>
-                    </form>
+                    </div>
                     {% endif %}
+                    
+                    {# Список существующих связей #}
+                    {% if family_ties %}
+                    <div style="display: grid; gap: 0.75rem; margin-bottom: 1rem;">
+                        {% for tie in family_ties %}
+                        <div style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 600;">
+                                    {% if user.is_student() %}
+                                        Родитель: {{ tie.parent.username if tie.parent else 'N/A' }}
+                                    {% else %}
+                                        Ученик: {{ tie.student.username if tie.student else 'N/A' }}
+                                    {% endif %}
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem;">
+                                    Уровень доступа: {{ tie.access_level }} · 
+                                    {% if tie.is_confirmed %}
+                                    <span style="color: #28a745;">Подтверждено</span>
+                                    {% else %}
+                                    <span style="color: var(--text-muted);">Не подтверждено</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <form method="POST" action="{{ url_for('admin.admin_family_tie_delete', tie_id=tie.tie_id) }}" class="confirm-delete-form" style="margin: 0;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="neo-button danger" style="padding: 0.5rem 0.75rem;" title="Удалить">
+                                    <img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Удалить" class="ui-icon ui-icon--sm">
+                                </button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
                     {% else %}
+                    <p style="color: var(--text-muted); margin-bottom: 1rem;">Нет семейных связей</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if user.is_student() or user.is_tutor() %}
+                <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
+                    <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Учебные контракты</h2>
+                    
+                    {# Форма добавления контракта - интегрирована в основную форму #}
+                    {% if user.is_student() and all_tutors %}
+                    <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--surface-3); border-radius: var(--radius-sm);">
+                        <div style="display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 1rem; align-items: end;">
+                            <div class="neo-field">
+                                <label class="neo-label" for="new_tutor_id">Добавить преподавателя</label>
+                                <select id="new_tutor_id" name="new_tutor_id" class="neo-input">
+                                    <option value="">Выберите преподавателя</option>
+                                    {% for tutor in all_tutors %}
+                                    <option value="{{ tutor.id }}">{{ tutor.username }}{% if tutor.profile and (tutor.profile.first_name or tutor.profile.last_name) %} ({{ tutor.profile.first_name or '' }} {{ tutor.profile.last_name or '' }}){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="neo-field">
+                                <label class="neo-label" for="new_tutor_subject">Предмет</label>
+                                <input type="text" id="new_tutor_subject" name="new_tutor_subject" class="neo-input" placeholder="например: Математика">
+                            </div>
+                            <div class="neo-field">
+                                <label class="neo-label" for="new_tutor_status">Статус</label>
+                                <select id="new_tutor_status" name="new_tutor_status" class="neo-input">
+                                    <option value="active">Активен</option>
+                                    <option value="paused">Приостановлен</option>
+                                    <option value="archived">Архив</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    {% elif user.is_tutor() and all_students %}
+                    <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--surface-3); border-radius: var(--radius-sm);">
+                        <div style="display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 1rem; align-items: end;">
+                            <div class="neo-field">
+                                <label class="neo-label" for="new_enrollment_student_id">Добавить ученика</label>
+                                <select id="new_enrollment_student_id" name="new_enrollment_student_id" class="neo-input">
+                                    <option value="">Выберите ученика</option>
+                                    {% for student in all_students %}
+                                    <option value="{{ student.id }}">{{ student.username }}{% if student.profile and (student.profile.first_name or student.profile.last_name) %} ({{ student.profile.first_name or '' }} {{ student.profile.last_name or '' }}){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="neo-field">
+                                <label class="neo-label" for="new_enrollment_subject">Предмет</label>
+                                <input type="text" id="new_enrollment_subject" name="new_enrollment_subject" class="neo-input" placeholder="например: Математика">
+                            </div>
+                            <div class="neo-field">
+                                <label class="neo-label" for="new_enrollment_status">Статус</label>
+                                <select id="new_enrollment_status" name="new_enrollment_status" class="neo-input">
+                                    <option value="active">Активен</option>
+                                    <option value="paused">Приостановлен</option>
+                                    <option value="archived">Архив</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {# Список существующих контрактов #}
+                    {% if enrollments %}
+                    <div style="display: grid; gap: 0.75rem; margin-bottom: 1rem;">
+                        {% for enrollment in enrollments %}
+                        <div style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 600;">
+                                    {% if user.is_student() %}
+                                        Преподаватель: {{ enrollment.tutor.username if enrollment.tutor else 'N/A' }}
+                                    {% else %}
+                                        Ученик: {{ enrollment.student.username if enrollment.student else 'N/A' }}
+                                    {% endif %}
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem;">
+                                    Предмет: {{ enrollment.subject }} · 
+                                    Статус: {{ enrollment.status }}
+                                </div>
+                            </div>
+                            <form method="POST" action="{{ url_for('admin.admin_enrollment_delete', enrollment_id=enrollment.enrollment_id) }}" class="confirm-delete-form" style="margin: 0;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="neo-button danger" style="padding: 0.5rem 0.75rem;" title="Удалить">
+                                    <img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Удалить" class="ui-icon ui-icon--sm">
+                                </button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p style="color: var(--text-muted); margin-bottom: 1rem;">Нет учебных контрактов</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% else %}
                     {# При создании - множественный выбор в основной форме #}
                     <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--surface-3); border-radius: var(--radius-sm);">
                         <p style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.9rem;">Выберите связи, которые нужно создать вместе с пользователем (можно выбрать несколько):</p>
@@ -353,68 +467,9 @@
                 </div>
                 {% endif %}
 
-                {% if (user and (user.is_student() or user.is_tutor())) or (not user) %}
+                {% if user.is_student() or user.is_tutor() %}
                 <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
                     <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Учебные контракты</h2>
-                    
-                    {# Форма добавления контракта #}
-                    {% if (user and user.is_student() and all_tutors) or (not user and all_tutors) %}
-                    <form method="POST" action="{{ url_for('admin.admin_user_enrollment_add', user_id=user.id) }}" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--surface-3); border-radius: var(--radius-sm);">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div style="display: grid; grid-template-columns: 2fr 2fr 1fr auto; gap: 1rem; align-items: end;">
-                            <div class="neo-field">
-                                <label class="neo-label" for="tutor_id">Преподаватель</label>
-                                <select id="tutor_id" name="tutor_id" class="neo-input" required>
-                                    <option value="">Выберите преподавателя</option>
-                                    {% for tutor in all_tutors %}
-                                    <option value="{{ tutor.id }}">{{ tutor.username }}{% if tutor.profile and (tutor.profile.first_name or tutor.profile.last_name) %} ({{ tutor.profile.first_name or '' }} {{ tutor.profile.last_name or '' }}){% endif %}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="neo-field">
-                                <label class="neo-label" for="subject">Предмет</label>
-                                <input type="text" id="subject" name="subject" class="neo-input" placeholder="например: Математика" required>
-                            </div>
-                            <div class="neo-field">
-                                <label class="neo-label" for="status">Статус</label>
-                                <select id="status" name="status" class="neo-input">
-                                    <option value="active">Активен</option>
-                                    <option value="paused">Приостановлен</option>
-                                    <option value="archived">Архив</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="neo-button accent">Добавить</button>
-                        </div>
-                    </form>
-                    {% elif (user and user.is_tutor() and all_students) or (not user and all_students) %}
-                    <form method="POST" action="{{ url_for('admin.admin_user_enrollment_add', user_id=user.id) }}" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--surface-3); border-radius: var(--radius-sm);">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div style="display: grid; grid-template-columns: 2fr 2fr 1fr auto; gap: 1rem; align-items: end;">
-                            <div class="neo-field">
-                                <label class="neo-label" for="student_id">Ученик</label>
-                                <select id="student_id" name="student_id" class="neo-input" required>
-                                    <option value="">Выберите ученика</option>
-                                    {% for student in all_students %}
-                                    <option value="{{ student.id }}">{{ student.username }}{% if student.profile and (student.profile.first_name or student.profile.last_name) %} ({{ student.profile.first_name or '' }} {{ student.profile.last_name or '' }}){% endif %}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="neo-field">
-                                <label class="neo-label" for="subject">Предмет</label>
-                                <input type="text" id="subject" name="subject" class="neo-input" placeholder="например: Математика" required>
-                            </div>
-                            <div class="neo-field">
-                                <label class="neo-label" for="status">Статус</label>
-                                <select id="status" name="status" class="neo-input">
-                                    <option value="active">Активен</option>
-                                    <option value="paused">Приостановлен</option>
-                                    <option value="archived">Архив</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="neo-button accent">Добавить</button>
-                        </div>
-                    </form>
-                    {% endif %}
                     
                     {# Список существующих контрактов #}
                     {% if enrollments %}

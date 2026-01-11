@@ -2149,6 +2149,46 @@ def admin_user_edit(user_id):
                 for key, value in profile_data.items():
                     setattr(user.profile, key, value)
             
+            # Обрабатываем добавление новых связей
+            if user.is_student():
+                # Добавляем нового родителя, если указан
+                new_parent_id = request.form.get('new_parent_id', type=int)
+                if new_parent_id:
+                    existing = FamilyTie.query.filter_by(parent_id=new_parent_id, student_id=user.id).first()
+                    if not existing:
+                        access_level = request.form.get('new_parent_access_level', 'full')
+                        is_confirmed = request.form.get('new_parent_confirmed') == 'on'
+                        family_tie = FamilyTie(parent_id=new_parent_id, student_id=user.id, access_level=access_level, is_confirmed=is_confirmed)
+                        db.session.add(family_tie)
+                
+                # Добавляем нового преподавателя, если указан
+                new_tutor_id = request.form.get('new_tutor_id', type=int)
+                new_tutor_subject = request.form.get('new_tutor_subject', '').strip()
+                if new_tutor_id and new_tutor_subject:
+                    status = request.form.get('new_tutor_status', 'active')
+                    enrollment = Enrollment(student_id=user.id, tutor_id=new_tutor_id, subject=new_tutor_subject, status=status, is_active=(status == 'active'))
+                    db.session.add(enrollment)
+            
+            elif user.is_parent():
+                # Добавляем нового ученика, если указан
+                new_student_id = request.form.get('new_student_id', type=int)
+                if new_student_id:
+                    existing = FamilyTie.query.filter_by(parent_id=user.id, student_id=new_student_id).first()
+                    if not existing:
+                        access_level = request.form.get('new_student_access_level', 'full')
+                        is_confirmed = request.form.get('new_student_confirmed') == 'on'
+                        family_tie = FamilyTie(parent_id=user.id, student_id=new_student_id, access_level=access_level, is_confirmed=is_confirmed)
+                        db.session.add(family_tie)
+            
+            elif user.is_tutor():
+                # Добавляем нового ученика, если указан
+                new_enrollment_student_id = request.form.get('new_enrollment_student_id', type=int)
+                new_enrollment_subject = request.form.get('new_enrollment_subject', '').strip()
+                if new_enrollment_student_id and new_enrollment_subject:
+                    status = request.form.get('new_enrollment_status', 'active')
+                    enrollment = Enrollment(student_id=new_enrollment_student_id, tutor_id=user.id, subject=new_enrollment_subject, status=status, is_active=(status == 'active'))
+                    db.session.add(enrollment)
+            
             db.session.commit()
             
             audit_logger.log(
