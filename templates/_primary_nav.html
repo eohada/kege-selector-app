@@ -15,7 +15,7 @@
                         <span>Профиль</span>
                     </a>
                     
-                    {% if current_user.is_creator() %}
+                    {% if current_user.is_admin() or current_user.is_creator() %}
                     <a href="{{ url_for('admin.admin_panel') }}" class="profile-item {% if active_page == 'admin' %}active{% endif %}">
                         <img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" alt="Admin">
                         <span>Админка</span>
@@ -42,6 +42,32 @@
     {% include '_mobile_menu.html' %}
 
     <nav class="nav-links">
+        {% if current_user.is_parent() %}
+        {# Навигация для родителя #}
+        <a href="{{ url_for('parents.parent_dashboard') }}" class="nav-link {% if active_page == 'parent_dashboard' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Мои дети" class="nav-link-icon">
+                <span class="nav-link-label">Мои дети</span>
+            </span>
+        </a>
+        {% elif current_user.is_student() %}
+        {# Навигация для ученика #}
+        {% if current_student %}
+        <a href="{{ url_for('students.student_profile', student_id=current_student.student_id) }}" class="nav-link {% if active_page == 'student_profile' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Мой профиль" class="nav-link-icon">
+                <span class="nav-link-label">Мой профиль</span>
+            </span>
+        </a>
+        <a href="{{ url_for('students.student_analytics', student_id=current_student.student_id) if current_student else '#' }}" class="nav-link {% if active_page == 'student_analytics' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Статистика" class="nav-link-icon">
+                <span class="nav-link-label">Статистика</span>
+            </span>
+        </a>
+        {% endif %}
+        {% else %}
+        {# Навигация для админа, тьютора и остальных #}
         <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
             <span class="nav-link-content">
                 <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="nav-link-icon">
@@ -62,8 +88,10 @@
                 <span class="nav-link-label">Напоминания</span>
             </span>
         </a>
+        {% endif %}
 
-        {# Выпадающее меню для инструментов #}
+        {% if not current_user.is_parent() and not current_user.is_student() %}
+        {# Выпадающее меню для инструментов (только для админа, тьютора и старых ролей) #}
         <div class="nav-dropdown">
             <div class="nav-link nav-dropdown-trigger {% if active_page in ['generator', 'plans', 'templates'] %}active{% endif %}">
                 <span class="nav-link-content">
@@ -86,6 +114,7 @@
                 </a>
             </div>
         </div>
+        {% endif %}
     </nav>
 </header>
 

@@ -164,6 +164,19 @@ def create_app(config_name=None):
         from flask_wtf.csrf import generate_csrf
         return dict(csrf_token=generate_csrf)
     
+    # Добавляем данные пользователя в контекст для навигации
+    @app.context_processor
+    def inject_user_data():
+        from flask_login import current_user
+        from app.models import Student
+        student_data = None
+        if current_user.is_authenticated and current_user.is_student():
+            if current_user.email:
+                student = Student.query.filter_by(email=current_user.email).first()
+                if student:
+                    student_data = {'student_id': student.student_id}
+        return dict(current_student=student_data)
+    
     # Исключаем внутренний sandbox-admin API из CSRF (server-to-server по токену)
     from app.admin.routes import (
         sandbox_internal_summary,
