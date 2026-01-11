@@ -2402,21 +2402,21 @@ def admin_user_edit(user_id):
             try:
                 db.session.commit()
                 logger.info(f"Successfully committed changes for user {user.id} and related data")
-                
-                # Проверяем, что данные действительно сохранились
-                db.session.refresh(user)
-                if user.profile:
-                    db.session.refresh(user.profile)
-                    logger.info(f"POST: After commit - profile data: first_name={user.profile.first_name}, last_name={user.profile.last_name}, phone={user.profile.phone}, telegram_id={user.profile.telegram_id}")
             except Exception as commit_error:
                 db.session.rollback()
                 logger.error(f"Error committing changes for user {user.id}: {commit_error}", exc_info=True)
                 raise commit_error
             
             # Перезагружаем пользователя из базы для получения актуальных данных
-            user = User.query.get(user.id)
-            if user and user.profile:
-                logger.info(f"POST: After reload - profile data: first_name={user.profile.first_name}, last_name={user.profile.last_name}, phone={user.profile.phone}, telegram_id={user.profile.telegram_id}")
+            user_id = user.id
+            user = User.query.get(user_id)
+            if user:
+                # Загружаем профиль отдельно, если он есть
+                profile = UserProfile.query.filter_by(user_id=user_id).first()
+                if profile:
+                    logger.info(f"POST: After reload - profile data: first_name={profile.first_name}, last_name={profile.last_name}, phone={profile.phone}, telegram_id={profile.telegram_id}")
+                else:
+                    logger.warning(f"POST: After reload - no profile found for user {user_id}")
             
             audit_logger.log(
                 action='user_updated',
