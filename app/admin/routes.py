@@ -2270,7 +2270,13 @@ def admin_user_edit(user_id):
                 else:
                     logger.debug(f"Enrollment not added: student_id={new_enrollment_student_id}, subject={new_enrollment_subject}")
             
-            db.session.commit()
+            try:
+                db.session.commit()
+                logger.info(f"Successfully updated user {user.id} and related data")
+            except Exception as commit_error:
+                db.session.rollback()
+                logger.error(f"Error committing changes for user {user.id}: {commit_error}", exc_info=True)
+                raise commit_error
             
             audit_logger.log(
                 action='user_updated',
@@ -2285,7 +2291,8 @@ def admin_user_edit(user_id):
             
         except Exception as e:
             db.session.rollback()
-            logger.error(f"Error updating user: {e}", exc_info=True)
+            logger.error(f"Error updating user {user.id}: {e}", exc_info=True)
+            logger.error(f"Form data: {dict(request.form)}")
             flash(f'Ошибка при обновлении пользователя: {str(e)}', 'error')
             # Перезагружаем пользователя из базы данных заново
             user = User.query.get(user_id)
