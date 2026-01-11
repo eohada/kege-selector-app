@@ -2385,10 +2385,8 @@ def admin_user_edit(user_id):
                 logger.error(f"Error committing changes for user {user.id}: {commit_error}", exc_info=True)
                 raise commit_error
             
-            # Обновляем данные для отображения после сохранения
-            db.session.refresh(user)
-            if user.profile:
-                db.session.refresh(user.profile)
+            # Перезагружаем пользователя из базы для получения актуальных данных
+            user = User.query.get(user.id)
             
             audit_logger.log(
                 action='user_updated',
