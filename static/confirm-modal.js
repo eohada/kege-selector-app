@@ -174,6 +174,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Обработка форм с классом confirm-delete-form
     const confirmDeleteForms = document.querySelectorAll('form.confirm-delete-form');
     confirmDeleteForms.forEach(form => {
+        // Пропускаем формы с data-no-confirm
+        if (form.hasAttribute('data-no-confirm')) {
+            return;
+        }
+        
         // Определяем тип действия по action формы
         const action = form.getAttribute('action') || '';
         let title = 'Подтверждение';
@@ -188,6 +193,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (action.includes('/tester/') && action.includes('/delete')) {
             title = 'Удалить тестировщика?';
             message = 'Удалить тестировщика и все его логи? Это действие нельзя отменить.';
+            confirmText = 'Удалить';
+        } else if (action.includes('family-tie') && action.includes('delete')) {
+            title = 'Удалить семейную связь?';
+            message = 'Связь между родителем и учеником будет удалена. Это действие нельзя отменить.';
+            confirmText = 'Удалить';
+        } else if (action.includes('enrollment') && action.includes('delete')) {
+            title = 'Удалить учебный контракт?';
+            message = 'Контракт между преподавателем и учеником будет удален. Это действие нельзя отменить.';
             confirmText = 'Удалить';
         }
 
