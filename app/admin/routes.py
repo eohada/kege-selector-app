@@ -2041,6 +2041,39 @@ def admin_user_enrollment_add(user_id):
     return redirect(url_for('admin.admin_user_edit', user_id=user_id))
 
 
+@admin_bp.route('/admin/family-tie/<int:tie_id>/confirm', methods=['POST'])
+@login_required
+def admin_family_tie_confirm(tie_id):
+    """Подтверждение семейной связи"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('admin.admin_users'))
+    
+    tie = FamilyTie.query.get_or_404(tie_id)
+    user_id = tie.student_id if tie.student_id else tie.parent_id
+    
+    try:
+        tie.is_confirmed = True
+        db.session.commit()
+        
+        audit_logger.log(
+            action='family_tie_confirmed',
+            entity='FamilyTie',
+            entity_id=tie_id,
+            status='success',
+            metadata={'confirmed_by': current_user.id}
+        )
+        
+        flash('Семейная связь подтверждена.', 'success')
+        logger.info(f"Family tie {tie_id} confirmed by user {current_user.id}")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error confirming family tie: {e}", exc_info=True)
+        flash(f'Ошибка при подтверждении связи: {str(e)}', 'error')
+    
+    return redirect(url_for('admin.admin_user_edit', user_id=user_id))
+
+
 @admin_bp.route('/admin/family-tie/<int:tie_id>/delete', methods=['POST'])
 @login_required
 def admin_family_tie_delete(tie_id):
@@ -2053,9 +2086,26 @@ def admin_family_tie_delete(tie_id):
     user_id = tie.student_id if tie.student_id else tie.parent_id
     
     try:
+        parent_id = tie.parent_id
+        student_id = tie.student_id
+        
         db.session.delete(tie)
         db.session.commit()
+        
+        audit_logger.log(
+            action='family_tie_deleted',
+            entity='FamilyTie',
+            entity_id=tie_id,
+            status='success',
+            metadata={
+                'parent_id': parent_id,
+                'student_id': student_id,
+                'deleted_by': current_user.id
+            }
+        )
+        
         flash('Семейная связь удалена.', 'success')
+        logger.info(f"Family tie {tie_id} deleted by user {current_user.id}")
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error deleting family tie: {e}", exc_info=True)
@@ -2076,9 +2126,28 @@ def admin_enrollment_delete(enrollment_id):
     user_id = enrollment.student_id if enrollment.student_id else enrollment.tutor_id
     
     try:
+        student_id = enrollment.student_id
+        tutor_id = enrollment.tutor_id
+        subject = enrollment.subject
+        
         db.session.delete(enrollment)
         db.session.commit()
+        
+        audit_logger.log(
+            action='enrollment_deleted',
+            entity='Enrollment',
+            entity_id=enrollment_id,
+            status='success',
+            metadata={
+                'student_id': student_id,
+                'tutor_id': tutor_id,
+                'subject': subject,
+                'deleted_by': current_user.id
+            }
+        )
+        
         flash('Учебный контракт удален.', 'success')
+        logger.info(f"Enrollment {enrollment_id} deleted by user {current_user.id}")
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error deleting enrollment: {e}", exc_info=True)
