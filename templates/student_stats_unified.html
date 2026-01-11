@@ -496,6 +496,62 @@
                     </div>
                 </div>
                 
+                <!-- Форма добавления нового задания -->
+                <div style="margin-top: 2rem; padding: 1rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1); border-style: dashed;">
+                    <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <label style="display: block; font-size: 0.9em; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 500;">
+                                Добавить новое задание:
+                            </label>
+                            <input type="number" 
+                                   min="1" 
+                                   max="27" 
+                                   step="1"
+                                   id="newTaskNumber" 
+                                   class="neo-input" 
+                                   placeholder="Номер задания (1-27)"
+                                   style="width: 100%;">
+                        </div>
+                        <div style="flex: 1; min-width: 150px;">
+                            <label style="display: block; font-size: 0.9em; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 500;">
+                                Правильно:
+                            </label>
+                            <input type="number" 
+                                   min="0" 
+                                   step="1"
+                                   id="newTaskCorrect" 
+                                   class="neo-input" 
+                                   value="0"
+                                   placeholder="0"
+                                   style="width: 100%;">
+                        </div>
+                        <div style="flex: 1; min-width: 150px;">
+                            <label style="display: block; font-size: 0.9em; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 500;">
+                                Неправильно:
+                            </label>
+                            <input type="number" 
+                                   min="0" 
+                                   step="1"
+                                   id="newTaskIncorrect" 
+                                   class="neo-input" 
+                                   value="0"
+                                   placeholder="0"
+                                   style="width: 100%;">
+                        </div>
+                        <div style="display: flex; align-items: end;">
+                            <button type="button" 
+                                    id="addNewTaskBtn" 
+                                    class="neo-button accent"
+                                    style="white-space: nowrap;">
+                                <img src="{{ url_for('static', filename='icons/icons8-плюс-100.png') }}" alt="Добавить" class="ui-icon ui-icon--sm" style="width: 16px; height: 16px; vertical-align: middle;"> Добавить задание
+                            </button>
+                        </div>
+                    </div>
+                    <small style="display: block; margin-top: 0.75rem; color: var(--text-muted); font-size: 0.85em;">
+                        Добавьте статистику для задания, которого еще нет в списке. После добавления оно появится в списке ниже, и к нему будут добавляться результаты автопроверки.
+                    </small>
+                </div>
+                
                 <div style="margin-top: 2rem;">
                     <div id="statisticsEditor" style="display: grid; gap: 1rem;">
                         {% for item in chart_data %}
@@ -1382,6 +1438,105 @@
                     }
                 });
             });
+            
+            // Обработка добавления нового задания
+            const addNewTaskBtn = document.getElementById('addNewTaskBtn');
+            if (addNewTaskBtn) {
+                addNewTaskBtn.addEventListener('click', async function() {
+                    const taskNumberInput = document.getElementById('newTaskNumber');
+                    const correctInput = document.getElementById('newTaskCorrect');
+                    const incorrectInput = document.getElementById('newTaskIncorrect');
+                    
+                    const taskNumber = parseInt(taskNumberInput.value);
+                    const manualCorrect = parseInt(correctInput.value) || 0;
+                    const manualIncorrect = parseInt(incorrectInput.value) || 0;
+                    
+                    // Валидация
+                    if (!taskNumber || taskNumber < 1 || taskNumber > 27) {
+                        showTemporaryNotification('Введите корректный номер задания (1-27)', 'error');
+                        taskNumberInput.focus();
+                        return;
+                    }
+                    
+                    if (manualCorrect < 0 || manualIncorrect < 0) {
+                        showTemporaryNotification('Значения должны быть неотрицательными', 'error');
+                        return;
+                    }
+                    
+                    // Проверяем, не существует ли уже это задание в списке
+                    const existingItem = document.querySelector(`.stat-edit-item[data-task-number="${taskNumber}"]`);
+                    if (existingItem) {
+                        showTemporaryNotification(`Задание ${taskNumber} уже есть в списке. Используйте редактирование выше.`, 'error');
+                        taskNumberInput.focus();
+                        return;
+                    }
+                    
+                    // Показываем индикатор загрузки
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '⏳ Добавление...';
+                    this.disabled = true;
+                    
+                    try {
+                        const url = `{{ url_for('students.update_statistics', student_id=student.student_id) }}`;
+                        
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken || ''
+                            },
+                            body: JSON.stringify({
+                                task_number: taskNumber,
+                                mode: 'set', // Устанавливаем абсолютное значение для нового задания
+                                manual_correct: manualCorrect,
+                                manual_incorrect: manualIncorrect
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`HTTP ${response.status}: ${errorText}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data && data.success) {
+                            showTemporaryNotification(`Задание ${taskNumber} успешно добавлено`, 'success');
+                            // Очищаем поля ввода
+                            taskNumberInput.value = '';
+                            correctInput.value = '0';
+                            incorrectInput.value = '0';
+                            // Перезагружаем страницу с принудительным обновлением кеша
+                            setTimeout(() => {
+                                const url = new URL(window.location.href);
+                                url.searchParams.set('_t', Date.now());
+                                window.location.href = url.toString();
+                            }, 1000);
+                        } else {
+                            const errorMsg = data?.error || 'Ошибка при добавлении задания';
+                            showTemporaryNotification(errorMsg, 'error');
+                            this.innerHTML = originalText;
+                            this.disabled = false;
+                        }
+                    } catch (error) {
+                        console.error('Ошибка при добавлении задания:', error);
+                        showTemporaryNotification('Ошибка при добавлении: ' + error.message, 'error');
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }
+                });
+                
+                // Разрешаем добавление по Enter в поле номера задания
+                const taskNumberInput = document.getElementById('newTaskNumber');
+                if (taskNumberInput) {
+                    taskNumberInput.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addNewTaskBtn.click();
+                        }
+                    });
+                }
+            }
             
             // Обработка массового редактирования
             const bulkApplyBtn = document.getElementById('bulkApplyBtn');

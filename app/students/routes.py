@@ -501,6 +501,9 @@ def student_analytics(student_id):
             
             if total > 0:
                 percent = round((correct / total) * 100, 1)
+                # Ограничиваем процент снизу нулем для корректного отображения
+                if percent < 0:
+                    percent = 0
             else:
                 percent = 0
             
