@@ -15,7 +15,7 @@ from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
 
 from app.auth import auth_bp
-from app.models import db, User, moscow_now
+from app.models import db, User, moscow_now, Student
 from core.audit_logger import audit_logger
 
 class LoginForm(FlaskForm):
@@ -61,9 +61,30 @@ def login():
                     metadata={'username': user.username, 'role': user.role}
                 )
                 
+                # Редирект в зависимости от роли
                 next_page = request.args.get('next')
-                if not next_page or not next_page.startswith('/'):
+                if next_page and next_page.startswith('/'):
+                    # Если есть next параметр, используем его
+                    pass
+                elif user.is_parent():
+                    # Родитель идет на свой дашборд
+                    next_page = url_for('parents.parent_dashboard')
+                elif user.is_student():
+                    # Ученик идет на свой профиль
+                    student = None
+                    if user.email:
+                        student = Student.query.filter_by(email=user.email).first()
+                    if student:
+                        next_page = url_for('students.student_profile', student_id=student.student_id)
+                    else:
+                        next_page = url_for('main.dashboard')
+                elif user.is_admin():
+                    # Админ может выбрать dashboard или админку
                     next_page = url_for('main.dashboard')
+                else:
+                    # Тьютор и остальные - на dashboard
+                    next_page = url_for('main.dashboard')
+                
                 flash('Вход выполнен успешно!', 'success')
                 return redirect(next_page)
             else:

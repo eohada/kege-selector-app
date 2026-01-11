@@ -11,10 +11,13 @@ from datetime import datetime
 
 from app.main import main_bp
 from app.models import Student, Lesson, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, db, moscow_now
+from app.models import User, Enrollment, FamilyTie
 from app.students.forms import normalize_school_class
+from app.auth.rbac_utils import get_user_scope, apply_data_scope
 from sqlalchemy import func, or_
 from datetime import timedelta
 from core.audit_logger import audit_logger
+from flask_login import current_user
 
 # Базовая директория проекта
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -31,6 +34,20 @@ def index():
 @login_required
 def dashboard():
     """Главная страница (dashboard) со списком студентов"""
+    # Редирект для родителя на его дашборд
+    if current_user.is_parent():
+        return redirect(url_for('parents.parent_dashboard'))
+    
+    # Редирект для ученика на его профиль
+    if current_user.is_student():
+        # Находим связанного Student по email
+        student = None
+        if current_user.email:
+            student = Student.query.filter_by(email=current_user.email).first()
+        if student:
+            return redirect(url_for('students.student_profile', student_id=student.student_id))
+        # Если Student не найден, показываем пустой dashboard
+    
     search_query = request.args.get('search', '').strip()
     category_filter = request.args.get('category', '')
     show_archive = request.args.get('show_archive', 'false').lower() == 'true'  # Параметр для просмотра архива
@@ -40,6 +57,24 @@ def dashboard():
         query = Student.query.filter_by(is_active=False)
     else:
         query = Student.query.filter_by(is_active=True)
+    
+    # Применяем data scoping (фильтрация по ролям)
+    # Для админа и старых ролей - видит всех
+    scope = get_user_scope(current_user)
+    if not scope['can_see_all'] and scope['student_ids']:
+        # Нужно найти Student записи по user_id из Enrollment/FamilyTie
+        # Enrollment и FamilyTie содержат user_id, а не student_id
+        # Находим Student по email пользователей
+        student_users = User.query.filter(User.id.in_(scope['student_ids'])).all()
+        student_emails = [u.email for u in student_users if u.email]
+        if student_emails:
+            query = query.filter(Student.email.in_(student_emails))
+        else:
+            # Если нет email, показываем пустой список
+            query = query.filter(False)
+    elif not scope['can_see_all'] and not scope['student_ids']:
+        # Нет доступа ни к каким ученикам
+        query = query.filter(False)
 
     if search_query:
         search_pattern = f'%{search_query}%'
