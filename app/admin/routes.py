@@ -1891,6 +1891,221 @@ def admin_topic_delete(topic_id):
         logger.error(f"Error deleting topic: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@admin_bp.route('/admin/users')
+@login_required
+def admin_users():
+    """Управление пользователями (RBAC) - список всех пользователей"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен. Требуется роль "Администратор" или "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    try:
+        # Параметры фильтрации
+        role_filter = request.args.get('role')
+        is_active_filter = request.args.get('is_active')
+        
+        query = User.query
+        
+        # Применяем фильтры
+        if role_filter:
+            query = query.filter(User.role == role_filter)
+        if is_active_filter is not None:
+            is_active = is_active_filter.lower() == 'true'
+            query = query.filter(User.is_active == is_active)
+        
+        users = query.order_by(User.created_at.desc()).all()
+        
+        # Статистика по ролям
+        role_stats = {}
+        for role in ['admin', 'tutor', 'student', 'parent', 'tester', 'creator']:
+            role_stats[role] = User.query.filter_by(role=role).count()
+        
+        return render_template('admin_users.html',
+                             users=users,
+                             role_filter=role_filter,
+                             is_active_filter=is_active_filter,
+                             role_stats=role_stats)
+    except Exception as e:
+        logger.error(f"Error in admin_users: {e}", exc_info=True)
+        flash(f'Ошибка при загрузке пользователей: {str(e)}', 'error')
+        return redirect(url_for('admin.admin_panel'))
+
+
+@admin_bp.route('/admin/users/<int:user_id>/edit', methods=['GET', 'POST'])
+@login_required
+def admin_user_edit(user_id):
+    """Редактирование пользователя"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен. Требуется роль "Администратор" или "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    user = User.query.get_or_404(user_id)
+    
+    if request.method == 'POST':
+        try:
+            # Обновляем основные поля
+            username = request.form.get('username', '').strip()
+            email = request.form.get('email', '').strip() or None
+            role = request.form.get('role', '').strip()
+            is_active = request.form.get('is_active') == 'on'
+            
+            if not username:
+                flash('Имя пользователя обязательно.', 'error')
+                return render_template('admin_user_edit.html', user=user)
+            
+            # Проверка уникальности username
+            existing_user = User.query.filter_by(username=username).first()
+            if existing_user and existing_user.id != user.id:
+                flash('Пользователь с таким именем уже существует.', 'error')
+                return render_template('admin_user_edit.html', user=user)
+            
+            # Проверка уникальности email
+            if email:
+                existing_email = User.query.filter_by(email=email).first()
+                if existing_email and existing_email.id != user.id:
+                    flash('Пользователь с таким email уже существует.', 'error')
+                    return render_template('admin_user_edit.html', user=user)
+            
+            # Обновляем пароль, если указан
+            new_password = request.form.get('password', '').strip()
+            if new_password:
+                user.password_hash = generate_password_hash(new_password)
+            
+            user.username = username
+            user.email = email
+            user.role = role
+            user.is_active = is_active
+            
+            # Обновляем профиль
+            profile_data = {
+                'first_name': request.form.get('first_name', '').strip() or None,
+                'last_name': request.form.get('last_name', '').strip() or None,
+                'middle_name': request.form.get('middle_name', '').strip() or None,
+                'phone': request.form.get('phone', '').strip() or None,
+                'telegram_id': request.form.get('telegram_id', '').strip() or None,
+                'timezone': request.form.get('timezone', 'Europe/Moscow').strip(),
+            }
+            
+            if not user.profile:
+                profile = UserProfile(user_id=user.id, **profile_data)
+                db.session.add(profile)
+            else:
+                for key, value in profile_data.items():
+                    setattr(user.profile, key, value)
+            
+            db.session.commit()
+            
+            audit_logger.log(
+                action='user_updated',
+                entity='User',
+                entity_id=user.id,
+                status='success',
+                metadata={'updated_by': current_user.id}
+            )
+            
+            flash(f'Пользователь "{username}" обновлен.', 'success')
+            return redirect(url_for('admin.admin_users'))
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error updating user: {e}", exc_info=True)
+            flash(f'Ошибка при обновлении пользователя: {str(e)}', 'error')
+    
+    # Получаем связанные данные
+    family_ties = []
+    enrollments = []
+    
+    if user.is_student():
+        family_ties = FamilyTie.query.filter_by(student_id=user.id).all()
+        enrollments = Enrollment.query.filter_by(student_id=user.id).all()
+    elif user.is_parent():
+        family_ties = FamilyTie.query.filter_by(parent_id=user.id).all()
+    elif user.is_tutor():
+        enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
+    
+    return render_template('admin_user_edit.html',
+                         user=user,
+                         family_ties=family_ties,
+                         enrollments=enrollments)
+
+
+@admin_bp.route('/admin/users/new', methods=['GET', 'POST'])
+@login_required
+def admin_user_new():
+    """Создание нового пользователя"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен. Требуется роль "Администратор" или "Создатель".', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    if request.method == 'POST':
+        try:
+            username = request.form.get('username', '').strip()
+            email = request.form.get('email', '').strip() or None
+            password = request.form.get('password', '').strip()
+            role = request.form.get('role', 'student').strip()
+            is_active = request.form.get('is_active') == 'on'
+            
+            if not username:
+                flash('Имя пользователя обязательно.', 'error')
+                return render_template('admin_user_edit.html', user=None)
+            
+            if not password:
+                flash('Пароль обязателен.', 'error')
+                return render_template('admin_user_edit.html', user=None)
+            
+            # Проверка уникальности
+            if User.query.filter_by(username=username).first():
+                flash('Пользователь с таким именем уже существует.', 'error')
+                return render_template('admin_user_edit.html', user=None)
+            
+            if email and User.query.filter_by(email=email).first():
+                flash('Пользователь с таким email уже существует.', 'error')
+                return render_template('admin_user_edit.html', user=None)
+            
+            # Создаем пользователя
+            user = User(
+                username=username,
+                email=email,
+                password_hash=generate_password_hash(password),
+                role=role,
+                is_active=is_active
+            )
+            db.session.add(user)
+            db.session.flush()
+            
+            # Создаем профиль
+            profile_data = {
+                'first_name': request.form.get('first_name', '').strip() or None,
+                'last_name': request.form.get('last_name', '').strip() or None,
+                'middle_name': request.form.get('middle_name', '').strip() or None,
+                'phone': request.form.get('phone', '').strip() or None,
+                'telegram_id': request.form.get('telegram_id', '').strip() or None,
+                'timezone': request.form.get('timezone', 'Europe/Moscow').strip(),
+            }
+            
+            profile = UserProfile(user_id=user.id, **profile_data)
+            db.session.add(profile)
+            db.session.commit()
+            
+            audit_logger.log(
+                action='user_created',
+                entity='User',
+                entity_id=user.id,
+                status='success',
+                metadata={'created_by': current_user.id, 'role': role}
+            )
+            
+            flash(f'Пользователь "{username}" создан.', 'success')
+            return redirect(url_for('admin.admin_users'))
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error creating user: {e}", exc_info=True)
+            flash(f'Ошибка при создании пользователя: {str(e)}', 'error')
+    
+    return render_template('admin_user_edit.html', user=None)
+
+
 @admin_bp.route('/admin/tasks/<int:task_id>/topics', methods=['GET', 'POST'])
 @login_required
 def admin_task_topics(task_id):

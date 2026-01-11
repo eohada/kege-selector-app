@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if user %}Редактирование пользователя{% else %}Создание пользователя{% endif %} · Админ-панель</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'admin' %}
+        {% include '_primary_nav.html' %}
+
+        {% include '_ux_enhancements.html' %}
+
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 900px;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                <a href="{{ url_for('admin.admin_users') }}" class="neo-button ghost" style="text-decoration: none;">
+                    ← К списку пользователей
+                </a>
+                <h1>{% if user %}Редактирование пользователя{% else %}Создание пользователя{% endif %}</h1>
+            </div>
+
+            <form method="POST" class="neo-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                {# Основная информация #}
+                <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
+                    <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Основная информация</h2>
+                    
+                    <div class="neo-field">
+                        <label class="neo-label" for="username">Имя пользователя *</label>
+                        <input type="text" id="username" name="username" class="neo-input" 
+                               value="{{ user.username if user else '' }}" required>
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="email">Email</label>
+                        <input type="email" id="email" name="email" class="neo-input" 
+                               value="{{ user.email if user else '' }}">
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="role">Роль *</label>
+                        <select id="role" name="role" class="neo-input" required>
+                            <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>Администратор</option>
+                            <option value="tutor" {% if user and user.role == 'tutor' %}selected{% endif %}>Преподаватель</option>
+                            <option value="student" {% if user and user.role == 'student' %}selected{% endif %}>Ученик</option>
+                            <option value="parent" {% if user and user.role == 'parent' %}selected{% endif %}>Родитель</option>
+                            <option value="tester" {% if user and user.role == 'tester' %}selected{% endif %}>Тестировщик</option>
+                            <option value="creator" {% if user and user.role == 'creator' %}selected{% endif %}>Создатель</option>
+                        </select>
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="password">Пароль {% if user %}(оставьте пустым, чтобы не менять){% else %}*{% endif %}</label>
+                        <input type="password" id="password" name="password" class="neo-input" 
+                               {% if not user %}required{% endif %}>
+                    </div>
+
+                    <div class="neo-field" style="align-items: flex-start;">
+                        <label class="neo-label">Статус</label>
+                        <label style="display:flex; gap:0.6rem; align-items:center; color: var(--text-primary);">
+                            <input type="checkbox" name="is_active" {% if not user or user.is_active %}checked{% endif %}>
+                            <span style="color: var(--text-muted);">Активен</span>
+                        </label>
+                    </div>
+                </div>
+
+                {# Профиль #}
+                <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
+                    <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Профиль</h2>
+                    
+                    <div class="neo-field">
+                        <label class="neo-label" for="first_name">Имя</label>
+                        <input type="text" id="first_name" name="first_name" class="neo-input" 
+                               value="{{ user.profile.first_name if user and user.profile else '' }}">
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="last_name">Фамилия</label>
+                        <input type="text" id="last_name" name="last_name" class="neo-input" 
+                               value="{{ user.profile.last_name if user and user.profile else '' }}">
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="middle_name">Отчество</label>
+                        <input type="text" id="middle_name" name="middle_name" class="neo-input" 
+                               value="{{ user.profile.middle_name if user and user.profile else '' }}">
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="phone">Телефон</label>
+                        <input type="tel" id="phone" name="phone" class="neo-input" 
+                               value="{{ user.profile.phone if user and user.profile else '' }}">
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="telegram_id">Telegram ID</label>
+                        <input type="text" id="telegram_id" name="telegram_id" class="neo-input" 
+                               value="{{ user.profile.telegram_id if user and user.profile else '' }}">
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="timezone">Часовой пояс</label>
+                        <select id="timezone" name="timezone" class="neo-input">
+                            <option value="Europe/Moscow" {% if user and user.profile and user.profile.timezone == 'Europe/Moscow' %}selected{% endif %}>Москва (Europe/Moscow)</option>
+                            <option value="Asia/Tomsk" {% if user and user.profile and user.profile.timezone == 'Asia/Tomsk' %}selected{% endif %}>Томск (Asia/Tomsk)</option>
+                        </select>
+                    </div>
+                </div>
+
+                {# Связанные данные (только для редактирования) #}
+                {% if user %}
+                {% if user.is_student() or user.is_parent() %}
+                <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
+                    <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Семейные связи</h2>
+                    {% if family_ties %}
+                    <div style="display: grid; gap: 0.75rem;">
+                        {% for tie in family_ties %}
+                        <div style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--stroke-1);">
+                            <div style="font-weight: 600;">
+                                {% if user.is_student() %}
+                                    Родитель: {{ tie.parent.username if tie.parent else 'N/A' }}
+                                {% else %}
+                                    Ученик: {{ tie.student.username if tie.student else 'N/A' }}
+                                {% endif %}
+                            </div>
+                            <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem;">
+                                Уровень доступа: {{ tie.access_level }} · 
+                                {% if tie.is_confirmed %}
+                                <span style="color: #28a745;">Подтверждено</span>
+                                {% else %}
+                                <span style="color: var(--text-muted);">Не подтверждено</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p style="color: var(--text-muted);">Нет семейных связей</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if user.is_student() or user.is_tutor() %}
+                <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
+                    <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Учебные контракты</h2>
+                    {% if enrollments %}
+                    <div style="display: grid; gap: 0.75rem;">
+                        {% for enrollment in enrollments %}
+                        <div style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--stroke-1);">
+                            <div style="font-weight: 600;">
+                                {% if user.is_student() %}
+                                    Преподаватель: {{ enrollment.tutor.username if enrollment.tutor else 'N/A' }}
+                                {% else %}
+                                    Ученик: {{ enrollment.student.username if enrollment.student else 'N/A' }}
+                                {% endif %}
+                            </div>
+                            <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem;">
+                                Предмет: {{ enrollment.subject }} · 
+                                Статус: {{ enrollment.status }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p style="color: var(--text-muted);">Нет учебных контрактов</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% endif %}
+
+                {# Кнопки действий #}
+                <div class="hero-actions">
+                    <button type="submit" class="neo-button accent">
+                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm">
+                        {% if user %}Сохранить изменения{% else %}Создать пользователя{% endif %}
+                    </button>
+                    <a href="{{ url_for('admin.admin_users') }}" class="neo-button ghost">Отмена</a>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                try {
+                    var msg = {{ message|tojson }};
+                    var cat = '{{ category }}';
+                    var toastFunc = window.toast || toast;
+                    if (toastFunc) {
+                        if (cat === 'error' || cat === 'danger') {
+                            toastFunc.error(msg);
+                        } else if (cat === 'warning') {
+                            toastFunc.warning(msg);
+                        } else if (cat === 'info') {
+                            toastFunc.info(msg);
+                        } else {
+                            toastFunc.success(msg);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Ошибка при отображении flash сообщения:', e);
+                }
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+        });
+    </script>
+</body>
+</html>

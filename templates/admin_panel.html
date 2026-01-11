@@ -28,7 +28,8 @@
                 <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Админ" class="ui-icon ui-icon--md">Админ панель</h1>
                 <p class="hero-subtitle">Минималистичная панель управления системой и пользователями.</p>
                 <div class="hero-actions">
-                    <a href="{{ url_for('admin.admin_testers') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Пользователи" class="ui-icon ui-icon--sm"> Пользователи</a>
+                    <a href="{{ url_for('admin.admin_users') }}" class="neo-button accent" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Пользователи" class="ui-icon ui-icon--sm"> Управление пользователями</a>
+                    <a href="{{ url_for('admin.admin_testers') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Тестировщики" class="ui-icon ui-icon--sm"> Тестировщики</a>
                     <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Tester entities" class="ui-icon ui-icon--sm"> Tester entities</a>
                     <a href="{{ url_for('admin.admin_topics') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Темы" class="ui-icon ui-icon--sm"> Темы</a>
                     <a href="{{ url_for('admin.admin_audit') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Аудит" class="ui-icon ui-icon--sm"> Аудит</a>
