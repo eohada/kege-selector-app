@@ -206,21 +206,15 @@
                             </div>
                             <div style="display: flex; gap: 0.5rem; align-items: center;">
                                 {% if not tie.is_confirmed %}
-                                <form method="POST" action="{{ url_for('admin.admin_family_tie_confirm', tie_id=tie.tie_id) }}" class="family-tie-confirm-form" style="margin: 0;" data-no-confirm>
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="neo-button" style="padding: 0.5rem 0.75rem; background: var(--success);" title="Подтвердить">
-                                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Подтвердить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
-                                        <span style="display: none;">✓</span>
-                                    </button>
-                                </form>
+                                <button type="button" class="neo-button action-confirm-btn" style="padding: 0.5rem 0.75rem; background: var(--success);" title="Подтвердить" data-url="{{ url_for('admin.admin_family_tie_confirm', tie_id=tie.tie_id) }}">
+                                    <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Подтвердить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                    <span style="display: none;">✓</span>
+                                </button>
                                 {% endif %}
-                                <form method="POST" action="{{ url_for('admin.admin_family_tie_delete', tie_id=tie.tie_id) }}" class="confirm-delete-form" style="margin: 0;">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="neo-button danger" style="padding: 0.5rem 0.75rem;" title="Удалить">
-                                        <img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Удалить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
-                                        <span style="display: none;">✕</span>
-                                    </button>
-                                </form>
+                                <button type="button" class="neo-button danger action-delete-btn" style="padding: 0.5rem 0.75rem;" title="Удалить" data-url="{{ url_for('admin.admin_family_tie_delete', tie_id=tie.tie_id) }}" data-confirm-message="Вы уверены, что хотите удалить эту семейную связь? Это действие нельзя отменить.">
+                                    <img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Удалить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                    <span style="display: none;">✕</span>
+                                </button>
                             </div>
                         </div>
                         {% endfor %}
@@ -308,13 +302,10 @@
                                     Статус: {{ enrollment.status }}
                                 </div>
                             </div>
-                            <form method="POST" action="{{ url_for('admin.admin_enrollment_delete', enrollment_id=enrollment.enrollment_id) }}" class="confirm-delete-form" style="margin: 0;">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="neo-button danger" style="padding: 0.5rem 0.75rem;" title="Удалить">
-                                    <img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Удалить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
-                                    <span style="display: none;">✕</span>
-                                </button>
-                            </form>
+                            <button type="button" class="neo-button danger action-delete-btn" style="padding: 0.5rem 0.75rem;" title="Удалить" data-url="{{ url_for('admin.admin_enrollment_delete', enrollment_id=enrollment.enrollment_id) }}" data-confirm-message="Вы уверены, что хотите удалить этот учебный контракт? Это действие нельзя отменить.">
+                                <img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Удалить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                <span style="display: none;">✕</span>
+                            </button>
                         </div>
                         {% endfor %}
                     </div>

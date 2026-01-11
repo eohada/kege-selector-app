@@ -82,6 +82,27 @@ function showConfirmModal(options) {
     modal.classList.add('active');
 }
 
+// Функция для отправки POST запроса через создание формы (для кнопок вне форм или замены вложенных форм)
+function submitPostRequest(url, csrfToken) {
+    const hiddenForm = document.createElement('form');
+    hiddenForm.method = 'POST';
+    hiddenForm.action = url;
+    hiddenForm.style.display = 'none';
+    
+    // Добавляем CSRF токен
+    const token = csrfToken || document.querySelector('input[name="csrf_token"]')?.value || document.querySelector('meta[name="csrf-token"]')?.content;
+    if (token) {
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = token;
+        hiddenForm.appendChild(csrfInput);
+    }
+    
+    document.body.appendChild(hiddenForm);
+    hiddenForm.submit();
+}
+
 // Функция для подтверждения формы
 function confirmFormSubmit(form, options) {
     // Проверяем, не добавлен ли уже обработчик
