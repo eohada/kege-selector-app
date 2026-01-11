@@ -2279,6 +2279,40 @@ def admin_user_edit(user_id):
                 for key, value in profile_data.items():
                     setattr(user.profile, key, value)
             
+            # Если роль - ученик, обеспечиваем наличие записи в таблице Student
+            if role == 'student':
+                # Ищем по email, если он есть
+                student_record = None
+                if email:
+                    student_record = Student.query.filter_by(email=email).first()
+                
+                # Если не найден по email, пробуем найти по имени (как фолбэк, но осторожно)
+                # Лучше создать нового, если нет email
+                
+                profile_name = f"{profile_data.get('first_name', '')} {profile_data.get('last_name', '')}".strip()
+                if not profile_name:
+                    profile_name = username
+                
+                if not student_record:
+                    # Создаем новую запись Student
+                    student_record = Student(
+                        name=profile_name,
+                        email=email,
+                        phone=profile_data.get('phone'),
+                        telegram=profile_data.get('telegram_id'),
+                        is_active=is_active
+                    )
+                    db.session.add(student_record)
+                    logger.info(f"Created new Student record for user {user.id}")
+                else:
+                    # Обновляем существующую
+                    student_record.name = profile_name
+                    student_record.email = email
+                    student_record.phone = profile_data.get('phone')
+                    student_record.telegram = profile_data.get('telegram_id')
+                    student_record.is_active = is_active
+                    logger.info(f"Updated existing Student record {student_record.student_id} for user {user.id}")
+
             # Обрабатываем добавление новых связей
             if user.is_student():
                 # Добавляем нового родителя, если указан
