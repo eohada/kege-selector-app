@@ -2271,13 +2271,19 @@ def admin_user_edit(user_id):
                 'telegram_id': request.form.get('telegram_id', '').strip() or None,
                 'timezone': request.form.get('timezone', 'Europe/Moscow').strip(),
             }
+            logger.debug(f"POST: Profile data from form: {profile_data}")
             
             if not user.profile:
                 profile = UserProfile(user_id=user.id, **profile_data)
                 db.session.add(profile)
+                logger.info(f"POST: Created new profile for user {user.id}")
             else:
                 for key, value in profile_data.items():
+                    old_value = getattr(user.profile, key, None)
                     setattr(user.profile, key, value)
+                    if old_value != value:
+                        logger.debug(f"POST: Updated profile field {key} for user {user.id}: '{old_value}' -> '{value}'")
+                logger.info(f"POST: Updated existing profile for user {user.id}")
             
             # Если роль - ученик, обеспечиваем наличие записи в таблице Student
             if role == 'student':
