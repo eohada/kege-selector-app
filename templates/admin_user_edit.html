@@ -114,9 +114,19 @@
                     </div>
                 </div>
 
-                {# Связанные данные (для создания и редактирования) #}
-                {% if user or not user %}
-                {% if user.is_student() or user.is_parent() %}
+                {# Кнопки действий основной формы #}
+                <div class="hero-actions">
+                    <button type="submit" class="neo-button accent">
+                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm">
+                        {% if user %}Сохранить изменения{% else %}Создать пользователя{% endif %}
+                    </button>
+                    <a href="{{ url_for('admin.admin_users') }}" class="neo-button ghost">Отмена</a>
+                </div>
+            </form>
+
+            {# Связанные данные (для создания и редактирования) - ОТДЕЛЬНЫЕ ФОРМЫ #}
+            {% if user %}
+            {% if user.is_student() or user.is_parent() %}
                 <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
                     <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Семейные связи</h2>
                     

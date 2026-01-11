@@ -1942,6 +1942,8 @@ def admin_user_family_tie_add(user_id):
     user = User.query.get_or_404(user_id)
     
     try:
+        logger.info(f"Adding family tie for user {user_id}, role: {user.role}, form data: {dict(request.form)}")
+        
         if user.is_student():
             parent_id = request.form.get('parent_id', type=int)
             if not parent_id:
@@ -1959,6 +1961,7 @@ def admin_user_family_tie_add(user_id):
             family_tie = FamilyTie(parent_id=parent_id, student_id=user.id, access_level=access_level, is_confirmed=is_confirmed)
             db.session.add(family_tie)
             db.session.commit()
+            logger.info(f"Family tie created: parent_id={parent_id}, student_id={user.id}")
             flash('Семейная связь добавлена.', 'success')
         elif user.is_parent():
             student_id = request.form.get('student_id', type=int)
@@ -1977,6 +1980,7 @@ def admin_user_family_tie_add(user_id):
             family_tie = FamilyTie(parent_id=user.id, student_id=student_id, access_level=access_level, is_confirmed=is_confirmed)
             db.session.add(family_tie)
             db.session.commit()
+            logger.info(f"Family tie created: parent_id={user.id}, student_id={student_id}")
             flash('Семейная связь добавлена.', 'success')
         else:
             flash('Семейные связи доступны только для учеников и родителей.', 'error')
@@ -1999,6 +2003,8 @@ def admin_user_enrollment_add(user_id):
     user = User.query.get_or_404(user_id)
     
     try:
+        logger.info(f"Adding enrollment for user {user_id}, role: {user.role}, form data: {dict(request.form)}")
+        
         if user.is_student():
             tutor_id = request.form.get('tutor_id', type=int)
             subject = request.form.get('subject', '').strip()
@@ -2010,6 +2016,7 @@ def admin_user_enrollment_add(user_id):
             enrollment = Enrollment(student_id=user.id, tutor_id=tutor_id, subject=subject, status=status, is_active=(status == 'active'))
             db.session.add(enrollment)
             db.session.commit()
+            logger.info(f"Enrollment created: student_id={user.id}, tutor_id={tutor_id}, subject={subject}")
             flash('Учебный контракт добавлен.', 'success')
         elif user.is_tutor():
             student_id = request.form.get('student_id', type=int)
@@ -2022,6 +2029,7 @@ def admin_user_enrollment_add(user_id):
             enrollment = Enrollment(student_id=student_id, tutor_id=user.id, subject=subject, status=status, is_active=(status == 'active'))
             db.session.add(enrollment)
             db.session.commit()
+            logger.info(f"Enrollment created: student_id={student_id}, tutor_id={user.id}, subject={subject}")
             flash('Учебный контракт добавлен.', 'success')
         else:
             flash('Учебные контракты доступны только для учеников и преподавателей.', 'error')
