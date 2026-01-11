@@ -96,24 +96,10 @@ function confirmFormSubmit(form, options) {
         showConfirmModal({
             ...options,
             onConfirm: () => {
-                // Создаем скрытую форму для отправки с правильным CSRF токеном
-                const hiddenForm = document.createElement('form');
-                hiddenForm.method = 'POST';
-                hiddenForm.action = form.action;
-                hiddenForm.style.display = 'none'; // Скрываем форму визуально
-                
-                // Копируем все скрытые поля (включая CSRF токен)
-                const inputs = form.querySelectorAll('input[type="hidden"]');
-                inputs.forEach(input => {
-                    const newInput = document.createElement('input');
-                    newInput.type = 'hidden';
-                    newInput.name = input.name;
-                    newInput.value = input.value;
-                    hiddenForm.appendChild(newInput);
-                });
-                
-                document.body.appendChild(hiddenForm);
-                hiddenForm.submit();
+                // Удаляем обработчик, чтобы форма могла отправиться обычным способом
+                form.dataset.confirmAttached = 'false';
+                // Отправляем форму напрямую
+                form.submit();
             }
         });
     });

@@ -88,6 +88,16 @@
                 return;
             }
             
+            // Пропускаем формы редактирования пользователей (админка) - они должны отправляться обычным способом
+            if (form.action && (form.action.includes('/admin/users/') || form.action.includes('/admin/user'))) {
+                return;
+            }
+            
+            // Пропускаем формы с атрибутом data-no-ajax
+            if (form.hasAttribute('data-no-ajax')) {
+                return;
+            }
+            
             // Проверяем, что форма содержит CSRF токен (значит это форма приложения)
             const csrfToken = form.querySelector('input[name="csrf_token"]');
             if (!csrfToken) {
