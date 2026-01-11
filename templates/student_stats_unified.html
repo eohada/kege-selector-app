@@ -411,57 +411,160 @@
                         <p class="eyebrow">ручное редактирование</p>
                         <h2>Изменить статистику</h2>
                     </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button type="button" id="resetAllStats" class="neo-button" style="font-size: 0.85em; padding: 0.5rem 1rem;">
+                            Сбросить все
+                        </button>
+                    </div>
                 </div>
                 <p style="margin-top: 1rem; color: var(--text-muted); font-size: 0.9em;">
-                    Вы можете вручную добавить количество правильно или неправильно решенных заданий для каждого номера. 
-                    Эти значения будут добавлены к автоматической статистике и сохранятся при дальнейших обновлениях.
+                    Гибкая система редактирования статистики. Выберите режим редактирования и введите значения для каждого задания.
                 </p>
+                
+                <!-- Глобальный выбор режима редактирования и массовое редактирование -->
+                <div style="margin-top: 1.5rem; padding: 1rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1);">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <!-- Режим редактирования -->
+                        <div>
+                            <label style="display: block; font-size: 0.9em; margin-bottom: 0.75rem; color: var(--text-muted); font-weight: 500;">
+                                Режим редактирования:
+                            </label>
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                    <input type="radio" name="editMode" value="add" checked style="cursor: pointer;">
+                                    <span>Добавить</span>
+                                    <small style="color: var(--text-muted); font-size: 0.85em;">(прибавить к текущему)</small>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                    <input type="radio" name="editMode" value="set" style="cursor: pointer;">
+                                    <span>Установить</span>
+                                    <small style="color: var(--text-muted); font-size: 0.85em;">(абсолютное значение)</small>
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                                    <input type="radio" name="editMode" value="subtract" style="cursor: pointer;">
+                                    <span>Вычесть</span>
+                                    <small style="color: var(--text-muted); font-size: 0.85em;">(отнять от текущего)</small>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Массовое редактирование -->
+                        <div>
+                            <label style="display: block; font-size: 0.9em; margin-bottom: 0.75rem; color: var(--text-muted); font-weight: 500;">
+                                Массовое редактирование:
+                            </label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.5rem; align-items: end;">
+                                <div>
+                                    <label style="display: block; font-size: 0.85em; margin-bottom: 0.25rem; color: var(--text-muted);">
+                                        Правильно:
+                                    </label>
+                                    <input type="number" 
+                                           min="0" 
+                                           step="1"
+                                           id="bulkCorrect" 
+                                           class="neo-input" 
+                                           value="0"
+                                           placeholder="0"
+                                           style="width: 100%;">
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 0.85em; margin-bottom: 0.25rem; color: var(--text-muted);">
+                                        Неправильно:
+                                    </label>
+                                    <input type="number" 
+                                           min="0" 
+                                           step="1"
+                                           id="bulkIncorrect" 
+                                           class="neo-input" 
+                                           value="0"
+                                           placeholder="0"
+                                           style="width: 100%;">
+                                </div>
+                                <div>
+                                    <button type="button" 
+                                            id="bulkApplyBtn" 
+                                            class="neo-button accent"
+                                            style="white-space: nowrap;">
+                                        Применить ко всем
+                                    </button>
+                                </div>
+                            </div>
+                            <small style="display: block; margin-top: 0.5rem; color: var(--text-muted); font-size: 0.85em;">
+                                Значения будут применены ко всем заданиям с выбранным режимом
+                            </small>
+                        </div>
+                    </div>
+                </div>
                 
                 <div style="margin-top: 2rem;">
                     <div id="statisticsEditor" style="display: grid; gap: 1rem;">
                         {% for item in chart_data %}
-                        <div class="stat-edit-item" data-task-number="{{ item.task_number }}" style="display: grid; grid-template-columns: auto 1fr 1fr auto; gap: 1rem; align-items: center; padding: 1rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1);">
-                            <div>
-                                <strong>Задание {{ item.task_number }}</strong>
-                                <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 0.25rem;">
-                                    {{ item.correct }}/{{ item.total }} ({{ item.percent }}%)
+                        <div class="stat-edit-item" data-task-number="{{ item.task_number }}" style="padding: 1.25rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1);">
+                            <!-- Заголовок с информацией -->
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--stroke-1);">
+                                <div>
+                                    <strong style="font-size: 1.1em;">Задание {{ item.task_number }}</strong>
+                                    <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 0.5rem;">
+                                        <div>Итого: <strong>{{ item.correct }}/{{ item.total }}</strong> ({{ item.percent }}%)</div>
+                                        <div style="margin-top: 0.25rem;">
+                                            Авто: {{ item.auto_correct }}/{{ item.auto_total }}
+                                            {% if item.manual_correct > 0 or item.manual_incorrect > 0 %}
+                                            | Ручное: +{{ item.manual_correct }}/-{{ item.manual_incorrect }}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                {% if item.manual_correct > 0 or item.manual_incorrect > 0 %}
+                                <button type="button" 
+                                        class="stat-reset-btn neo-button" 
+                                        data-task-number="{{ item.task_number }}"
+                                        style="font-size: 0.85em; padding: 0.4rem 0.8rem;"
+                                        title="Сбросить ручные изменения">
+                                    Сбросить
+                                </button>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Поля редактирования -->
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div>
+                                    <label style="display: block; font-size: 0.9em; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 500;">
+                                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Правильно" class="ui-icon ui-icon--sm" style="width: 16px; height: 16px; vertical-align: middle;"> Правильно:
+                                    </label>
+                                    <input type="number" 
+                                           min="0" 
+                                           step="1"
+                                           class="stat-input-correct neo-input" 
+                                           value="0"
+                                           placeholder="0"
+                                           style="width: 100%;">
+                                    {% if item.manual_correct > 0 %}
+                                    <small style="display: block; margin-top: 0.5rem; color: var(--text-muted); font-size: 0.85em;">
+                                        Текущее ручное значение: {{ item.manual_correct }}
+                                    </small>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 0.9em; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 500;">
+                                        <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Неправильно" class="ui-icon ui-icon--sm" style="width: 16px; height: 16px; vertical-align: middle;"> Неправильно:
+                                    </label>
+                                    <input type="number" 
+                                           min="0" 
+                                           step="1"
+                                           class="stat-input-incorrect neo-input" 
+                                           value="0"
+                                           placeholder="0"
+                                           style="width: 100%;">
+                                    {% if item.manual_incorrect > 0 %}
+                                    <small style="display: block; margin-top: 0.5rem; color: var(--text-muted); font-size: 0.85em;">
+                                        Текущее ручное значение: {{ item.manual_incorrect }}
+                                    </small>
+                                    {% endif %}
                                 </div>
                             </div>
-                            <div>
-                                <label style="display: block; font-size: 0.9em; margin-bottom: 0.25rem; color: var(--text-muted);">
-                                    <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Правильно" class="ui-icon ui-icon--sm" style="width: 16px; height: 16px; vertical-align: middle;">Правильно (добавить):
-                                </label>
-                                <input type="number" 
-                                       min="0" 
-                                       step="1"
-                                       class="stat-input-correct neo-input" 
-                                       value="0"
-                                       placeholder="Сколько добавить"
-                                       style="width: 100%;">
-                                {% if item.manual_correct > 0 %}
-                                <small style="display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.85em;">
-                                    Уже добавлено: {{ item.manual_correct }}
-                                </small>
-                                {% endif %}
-                            </div>
-                            <div>
-                                <label style="display: block; font-size: 0.9em; margin-bottom: 0.25rem; color: var(--text-muted);">
-                                    <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Неправильно" class="ui-icon ui-icon--sm" style="width: 16px; height: 16px; vertical-align: middle;">Неправильно (добавить):
-                                </label>
-                                <input type="number" 
-                                       min="0" 
-                                       step="1"
-                                       class="stat-input-incorrect neo-input" 
-                                       value="0"
-                                       placeholder="Сколько добавить"
-                                       style="width: 100%;">
-                                {% if item.manual_incorrect > 0 %}
-                                <small style="display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.85em;">
-                                    Уже добавлено: {{ item.manual_incorrect }}
-                                </small>
-                                {% endif %}
-                            </div>
-                            <div>
+                            
+                            <!-- Кнопка сохранения -->
+                            <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
                                 <button type="button" 
                                         class="neo-button accent stat-save-btn" 
                                         data-task-number="{{ item.task_number }}">
@@ -1077,6 +1180,8 @@
         // Обработка сохранения статистики
         document.addEventListener('DOMContentLoaded', function() {
             const saveButtons = document.querySelectorAll('.stat-save-btn');
+            const resetButtons = document.querySelectorAll('.stat-reset-btn');
+            const resetAllBtn = document.getElementById('resetAllStats');
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
             
             if (!csrfToken) {
@@ -1117,6 +1222,39 @@
                 }, 3000);
             }
             
+            // Функция для получения выбранного режима редактирования
+            function getEditMode() {
+                const selectedMode = document.querySelector('input[name="editMode"]:checked');
+                return selectedMode ? selectedMode.value : 'add';
+            }
+            
+            // Функция для обновления плейсхолдеров в зависимости от режима
+            function updatePlaceholders() {
+                const mode = getEditMode();
+                const items = document.querySelectorAll('.stat-edit-item');
+                items.forEach(item => {
+                    const correctInput = item.querySelector('.stat-input-correct');
+                    const incorrectInput = item.querySelector('.stat-input-incorrect');
+                    
+                    if (mode === 'add') {
+                        correctInput.placeholder = 'Добавить';
+                        incorrectInput.placeholder = 'Добавить';
+                    } else if (mode === 'set') {
+                        correctInput.placeholder = 'Установить значение';
+                        incorrectInput.placeholder = 'Установить значение';
+                    } else if (mode === 'subtract') {
+                        correctInput.placeholder = 'Вычесть';
+                        incorrectInput.placeholder = 'Вычесть';
+                    }
+                });
+            }
+            
+            // Обновляем плейсхолдеры при изменении режима
+            document.querySelectorAll('input[name="editMode"]').forEach(radio => {
+                radio.addEventListener('change', updatePlaceholders);
+            });
+            
+            // Обработка сохранения статистики
             saveButtons.forEach(btn => {
                 btn.addEventListener('click', async function() {
                     const taskNumber = parseInt(this.dataset.taskNumber);
@@ -1126,9 +1264,10 @@
                     
                     const manualCorrect = parseInt(correctInput.value) || 0;
                     const manualIncorrect = parseInt(incorrectInput.value) || 0;
+                    const editMode = getEditMode();
                     
-                    // Валидация
-                    if (manualCorrect < 0 || manualIncorrect < 0) {
+                    // Валидация для режимов add и subtract
+                    if (editMode !== 'set' && (manualCorrect < 0 || manualIncorrect < 0)) {
                         showTemporaryNotification('Значения должны быть неотрицательными', 'error');
                         return;
                     }
@@ -1149,6 +1288,7 @@
                             },
                             body: JSON.stringify({
                                 task_number: taskNumber,
+                                mode: editMode,
                                 manual_correct: manualCorrect,
                                 manual_incorrect: manualIncorrect
                             })
@@ -1163,6 +1303,9 @@
                         
                         if (data && data.success) {
                             showTemporaryNotification('Статистика успешно обновлена', 'success');
+                            // Очищаем поля ввода
+                            correctInput.value = '0';
+                            incorrectInput.value = '0';
                             // Перезагружаем страницу с принудительным обновлением кеша
                             setTimeout(() => {
                                 const url = new URL(window.location.href);
@@ -1183,6 +1326,200 @@
                     }
                 });
             });
+            
+            // Обработка сброса для отдельного задания
+            resetButtons.forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const taskNumber = parseInt(this.dataset.taskNumber);
+                    
+                    if (!confirm(`Вы уверены, что хотите сбросить ручные изменения для задания ${taskNumber}?`)) {
+                        return;
+                    }
+                    
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '⏳ Сброс...';
+                    this.disabled = true;
+                    
+                    try {
+                        const url = `{{ url_for('students.reset_statistics', student_id=student.student_id) }}`;
+                        
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken || ''
+                            },
+                            body: JSON.stringify({
+                                task_number: taskNumber
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`HTTP ${response.status}: ${errorText}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data && data.success) {
+                            showTemporaryNotification('Ручные изменения сброшены', 'success');
+                            setTimeout(() => {
+                                const url = new URL(window.location.href);
+                                url.searchParams.set('_t', Date.now());
+                                window.location.href = url.toString();
+                            }, 1000);
+                        } else {
+                            const errorMsg = data?.error || 'Ошибка при сбросе';
+                            showTemporaryNotification(errorMsg, 'error');
+                            this.innerHTML = originalText;
+                            this.disabled = false;
+                        }
+                    } catch (error) {
+                        console.error('Ошибка при сбросе статистики:', error);
+                        showTemporaryNotification('Ошибка при сбросе: ' + error.message, 'error');
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }
+                });
+            });
+            
+            // Обработка массового редактирования
+            const bulkApplyBtn = document.getElementById('bulkApplyBtn');
+            if (bulkApplyBtn) {
+                bulkApplyBtn.addEventListener('click', async function() {
+                    const bulkCorrect = parseInt(document.getElementById('bulkCorrect').value) || 0;
+                    const bulkIncorrect = parseInt(document.getElementById('bulkIncorrect').value) || 0;
+                    const editMode = getEditMode();
+                    
+                    if (bulkCorrect === 0 && bulkIncorrect === 0) {
+                        showTemporaryNotification('Введите значения для массового редактирования', 'error');
+                        return;
+                    }
+                    
+                    if (editMode !== 'set' && (bulkCorrect < 0 || bulkIncorrect < 0)) {
+                        showTemporaryNotification('Значения должны быть неотрицательными', 'error');
+                        return;
+                    }
+                    
+                    if (!confirm(`Применить значения (${bulkCorrect} правильно, ${bulkIncorrect} неправильно) ко всем заданиям в режиме "${editMode === 'add' ? 'Добавить' : editMode === 'set' ? 'Установить' : 'Вычесть'}"?`)) {
+                        return;
+                    }
+                    
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '⏳ Применение...';
+                    this.disabled = true;
+                    
+                    const items = document.querySelectorAll('.stat-edit-item');
+                    let successCount = 0;
+                    let errorCount = 0;
+                    
+                    for (const item of items) {
+                        const taskNumber = parseInt(item.dataset.taskNumber);
+                        
+                        try {
+                            const url = `{{ url_for('students.update_statistics', student_id=student.student_id) }}`;
+                            
+                            const response = await fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': csrfToken || ''
+                                },
+                                body: JSON.stringify({
+                                    task_number: taskNumber,
+                                    mode: editMode,
+                                    manual_correct: bulkCorrect,
+                                    manual_incorrect: bulkIncorrect
+                                })
+                            });
+                            
+                            if (response.ok) {
+                                const data = await response.json();
+                                if (data && data.success) {
+                                    successCount++;
+                                } else {
+                                    errorCount++;
+                                }
+                            } else {
+                                errorCount++;
+                            }
+                        } catch (error) {
+                            console.error(`Ошибка при обновлении задания ${taskNumber}:`, error);
+                            errorCount++;
+                        }
+                    }
+                    
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                    
+                    // Очищаем поля массового редактирования
+                    document.getElementById('bulkCorrect').value = '0';
+                    document.getElementById('bulkIncorrect').value = '0';
+                    
+                    if (errorCount === 0) {
+                        showTemporaryNotification(`Успешно применено к ${successCount} заданиям`, 'success');
+                        setTimeout(() => {
+                            const url = new URL(window.location.href);
+                            url.searchParams.set('_t', Date.now());
+                            window.location.href = url.toString();
+                        }, 1000);
+                    } else {
+                        showTemporaryNotification(`Применено к ${successCount} заданиям, ошибок: ${errorCount}`, 'error');
+                    }
+                });
+            }
+            
+            // Обработка сброса всех изменений
+            if (resetAllBtn) {
+                resetAllBtn.addEventListener('click', async function() {
+                    if (!confirm('Вы уверены, что хотите сбросить ВСЕ ручные изменения статистики? Это действие нельзя отменить.')) {
+                        return;
+                    }
+                    
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '⏳ Сброс...';
+                    this.disabled = true;
+                    
+                    try {
+                        const url = `{{ url_for('students.reset_statistics', student_id=student.student_id) }}`;
+                        
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken || ''
+                            },
+                            body: JSON.stringify({})
+                        });
+                        
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`HTTP ${response.status}: ${errorText}`);
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data && data.success) {
+                            showTemporaryNotification(data.message || 'Все ручные изменения сброшены', 'success');
+                            setTimeout(() => {
+                                const url = new URL(window.location.href);
+                                url.searchParams.set('_t', Date.now());
+                                window.location.href = url.toString();
+                            }, 1000);
+                        } else {
+                            const errorMsg = data?.error || 'Ошибка при сбросе';
+                            showTemporaryNotification(errorMsg, 'error');
+                            this.innerHTML = originalText;
+                            this.disabled = false;
+                        }
+                    } catch (error) {
+                        console.error('Ошибка при сбросе статистики:', error);
+                        showTemporaryNotification('Ошибка при сбросе: ' + error.message, 'error');
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }
+                });
+            }
         });
     </script>
     

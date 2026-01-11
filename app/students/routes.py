@@ -252,7 +252,7 @@ def student_statistics(student_id):
 @students_bp.route('/student/<int:student_id>/statistics/update', methods=['POST'])
 @login_required
 def update_statistics(student_id):
-    """API endpoint для обновления ручной статистики"""
+    """API endpoint для обновления ручной статистики с поддержкой разных режимов редактирования"""
     try:
         logger.info(f"Получен запрос на обновление статистики для ученика {student_id}")
         
@@ -266,13 +266,20 @@ def update_statistics(student_id):
             return jsonify({'success': False, 'error': 'Не указан номер задания'}), 400
         
         task_number = int(data['task_number'])
-        # Получаем значения как приращения (сколько добавить)
-        manual_correct_delta = int(data.get('manual_correct', 0))
-        manual_incorrect_delta = int(data.get('manual_incorrect', 0))
+        # Режим редактирования: 'add' (добавить), 'set' (установить), 'subtract' (вычесть)
+        edit_mode = data.get('mode', 'add').lower()
         
-        # Проверяем, что значения неотрицательные
-        if manual_correct_delta < 0 or manual_incorrect_delta < 0:
-            return jsonify({'success': False, 'error': 'Значения должны быть неотрицательными'}), 400
+        if edit_mode not in ['add', 'set', 'subtract']:
+            return jsonify({'success': False, 'error': 'Некорректный режим редактирования. Используйте: add, set или subtract'}), 400
+        
+        # Получаем значения
+        manual_correct_value = int(data.get('manual_correct', 0))
+        manual_incorrect_value = int(data.get('manual_incorrect', 0))
+        
+        # Проверяем, что значения неотрицательные (для режимов add и subtract)
+        if edit_mode in ['add', 'subtract']:
+            if manual_correct_value < 0 or manual_incorrect_value < 0:
+                return jsonify({'success': False, 'error': 'Значения должны быть неотрицательными'}), 400
         
         # Ищем существующую запись или создаем новую
         stat = StudentTaskStatistics.query.filter_by(
@@ -280,30 +287,48 @@ def update_statistics(student_id):
             task_number=task_number
         ).first()
         
+        old_correct = stat.manual_correct if stat else 0
+        old_incorrect = stat.manual_incorrect if stat else 0
+        
         if stat:
-            # Добавляем приращения к существующим значениям
-            stat.manual_correct += manual_correct_delta
-            stat.manual_incorrect += manual_incorrect_delta
+            # Применяем изменения в зависимости от режима
+            if edit_mode == 'add':
+                stat.manual_correct += manual_correct_value
+                stat.manual_incorrect += manual_incorrect_value
+            elif edit_mode == 'set':
+                stat.manual_correct = manual_correct_value
+                stat.manual_incorrect = manual_incorrect_value
+            elif edit_mode == 'subtract':
+                stat.manual_correct = max(0, stat.manual_correct - manual_correct_value)
+                stat.manual_incorrect = max(0, stat.manual_incorrect - manual_incorrect_value)
+            
             stat.updated_at = moscow_now()
-            logger.info(f"Добавлено к существующей записи: manual_correct_delta={manual_correct_delta}, manual_incorrect_delta={manual_incorrect_delta}, новое значение: manual_correct={stat.manual_correct}, manual_incorrect={stat.manual_incorrect}")
+            logger.info(f"Обновлена запись (режим {edit_mode}): task_number={task_number}, было: correct={old_correct}, incorrect={old_incorrect}, стало: correct={stat.manual_correct}, incorrect={stat.manual_incorrect}")
         else:
-            # Создаем новую запись с приращениями как начальными значениями
-            stat = StudentTaskStatistics(
-                student_id=student_id,
-                task_number=task_number,
-                manual_correct=manual_correct_delta,
-                manual_incorrect=manual_incorrect_delta
-            )
+            # Создаем новую запись
+            if edit_mode == 'set':
+                stat = StudentTaskStatistics(
+                    student_id=student_id,
+                    task_number=task_number,
+                    manual_correct=manual_correct_value,
+                    manual_incorrect=manual_incorrect_value
+                )
+            else:  # add или subtract
+                stat = StudentTaskStatistics(
+                    student_id=student_id,
+                    task_number=task_number,
+                    manual_correct=max(0, manual_correct_value if edit_mode == 'add' else -manual_correct_value),
+                    manual_incorrect=max(0, manual_incorrect_value if edit_mode == 'add' else -manual_incorrect_value)
+                )
             db.session.add(stat)
-            logger.info(f"Создана новая запись: manual_correct={manual_correct_delta}, manual_incorrect={manual_incorrect_delta}")
+            logger.info(f"Создана новая запись (режим {edit_mode}): task_number={task_number}, correct={stat.manual_correct}, incorrect={stat.manual_incorrect}")
         
         db.session.commit()
         
         # Принудительно обновляем объект из базы данных для проверки
         db.session.refresh(stat)
         
-        logger.info(f"Статистика успешно обновлена: student_id={student_id}, task_number={task_number}, добавлено: manual_correct_delta={manual_correct_delta}, manual_incorrect_delta={manual_incorrect_delta}")
-        logger.info(f"Проверка сохраненных данных: stat_id={stat.stat_id}, итоговое значение: manual_correct={stat.manual_correct}, manual_incorrect={stat.manual_incorrect}")
+        logger.info(f"Статистика успешно обновлена: student_id={student_id}, task_number={task_number}, режим={edit_mode}")
         
         # Логируем изменение
         try:
@@ -316,10 +341,11 @@ def update_statistics(student_id):
                     'student_id': student_id,
                     'student_name': student.name,
                     'task_number': task_number,
-                    'manual_correct_delta': manual_correct_delta,
-                    'manual_incorrect_delta': manual_incorrect_delta,
-                    'manual_correct_total': stat.manual_correct,
-                    'manual_incorrect_total': stat.manual_incorrect
+                    'edit_mode': edit_mode,
+                    'manual_correct_old': old_correct,
+                    'manual_incorrect_old': old_incorrect,
+                    'manual_correct_new': stat.manual_correct,
+                    'manual_incorrect_new': stat.manual_incorrect
                 }
             )
         except Exception as log_err:
@@ -328,7 +354,9 @@ def update_statistics(student_id):
         response_data = {
             'success': True,
             'message': 'Статистика обновлена',
-            'stat_id': stat.stat_id
+            'stat_id': stat.stat_id,
+            'manual_correct': stat.manual_correct,
+            'manual_incorrect': stat.manual_incorrect
         }
         
         logger.info(f"Отправка ответа: {response_data}")
@@ -345,6 +373,45 @@ def update_statistics(student_id):
             entity='StudentTaskStatistics',
             error=str(e)
         )
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@students_bp.route('/student/<int:student_id>/statistics/reset', methods=['POST'])
+@login_required
+def reset_statistics(student_id):
+    """API endpoint для сброса ручных изменений статистики"""
+    try:
+        student = Student.query.get_or_404(student_id)
+        data = request.get_json()
+        
+        task_number = data.get('task_number')
+        
+        if task_number:
+            # Сброс для конкретного задания
+            stat = StudentTaskStatistics.query.filter_by(
+                student_id=student_id,
+                task_number=task_number
+            ).first()
+            
+            if stat:
+                db.session.delete(stat)
+                db.session.commit()
+                logger.info(f"Сброшена статистика для задания {task_number} ученика {student_id}")
+                return jsonify({'success': True, 'message': 'Статистика сброшена'}), 200
+            else:
+                return jsonify({'success': False, 'error': 'Запись не найдена'}), 404
+        else:
+            # Сброс всех ручных изменений для ученика
+            stats = StudentTaskStatistics.query.filter_by(student_id=student_id).all()
+            count = len(stats)
+            for stat in stats:
+                db.session.delete(stat)
+            db.session.commit()
+            logger.info(f"Сброшена вся статистика для ученика {student_id} ({count} записей)")
+            return jsonify({'success': True, 'message': f'Сброшено {count} записей статистики'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при сбросе статистики: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @students_bp.route('/student/<int:student_id>/analytics')
@@ -450,6 +517,8 @@ def student_analytics(student_id):
                 'correct': correct,
                 'total': total,
                 'color': color,
+                'auto_correct': stats_data.get('auto_correct', 0),
+                'auto_total': stats_data.get('auto_total', 0),
                 'manual_correct': stats_data.get('manual_correct', 0),
                 'manual_incorrect': stats_data.get('manual_incorrect', 0)
             })
