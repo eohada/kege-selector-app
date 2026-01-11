@@ -281,4 +281,44 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmClass: confirmClass
         });
     });
+
+    // Обработка кнопок удаления (замена вложенных форм)
+    const deleteButtons = document.querySelectorAll('button.action-delete-btn');
+    console.log(`Found ${deleteButtons.length} delete buttons`);
+    deleteButtons.forEach((btn, index) => {
+        console.log(`Setting up delete button ${index}:`, btn.dataset.url);
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const url = btn.dataset.url;
+            const message = btn.dataset.confirmMessage || 'Вы уверены? Это действие нельзя отменить.';
+            console.log('Delete button clicked, URL:', url);
+            
+            showConfirmModal({
+                title: 'Подтверждение удаления',
+                message: message,
+                confirmText: 'Удалить',
+                cancelText: 'Отмена',
+                confirmClass: 'danger',
+                onConfirm: () => {
+                    console.log('Confirming deletion, submitting to:', url);
+                    submitPostRequest(url);
+                }
+            });
+        });
+    });
+
+    // Обработка кнопок подтверждения (замена вложенных форм)
+    const confirmButtons = document.querySelectorAll('button.action-confirm-btn');
+    console.log(`Found ${confirmButtons.length} confirm buttons`);
+    confirmButtons.forEach((btn, index) => {
+        console.log(`Setting up confirm button ${index}:`, btn.dataset.url);
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const url = btn.dataset.url;
+            console.log('Confirm button clicked, URL:', url);
+            submitPostRequest(url);
+        });
+    });
 });
