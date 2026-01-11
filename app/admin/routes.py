@@ -2241,6 +2241,75 @@ def admin_user_new():
             
             profile = UserProfile(user_id=user.id, **profile_data)
             db.session.add(profile)
+            db.session.flush()  # Получаем ID профиля
+            
+            # Создаем связи, если они указаны в форме
+            if role == 'student':
+                # Семейные связи (родители)
+                parent_ids = request.form.getlist('parent_ids')  # Множественный выбор
+                for parent_id_str in parent_ids:
+                    if parent_id_str:
+                        try:
+                            parent_id = int(parent_id_str)
+                            access_level = request.form.get(f'parent_access_level_{parent_id}', 'full')
+                            is_confirmed = request.form.get(f'parent_confirmed_{parent_id}') == 'on'
+                            
+                            # Проверяем существование связи
+                            existing = FamilyTie.query.filter_by(parent_id=parent_id, student_id=user.id).first()
+                            if not existing:
+                                family_tie = FamilyTie(parent_id=parent_id, student_id=user.id, access_level=access_level, is_confirmed=is_confirmed)
+                                db.session.add(family_tie)
+                        except (ValueError, TypeError):
+                            continue
+                
+                # Учебные контракты (тьюторы) - из селектов с предметами
+                tutor_ids = request.form.getlist('tutor_ids')
+                for idx, tutor_id_str in enumerate(tutor_ids):
+                    if tutor_id_str:
+                        try:
+                            tutor_id = int(tutor_id_str)
+                            # Пробуем разные варианты имен полей (с индексом и без)
+                            subject = request.form.get(f'tutor_subject_{idx}', '').strip() or request.form.get(f'tutor_subject_{tutor_id}', '').strip()
+                            if subject:
+                                status = request.form.get(f'tutor_status_{idx}', 'active') or request.form.get(f'tutor_status_{tutor_id}', 'active')
+                                enrollment = Enrollment(student_id=user.id, tutor_id=tutor_id, subject=subject, status=status, is_active=(status == 'active'))
+                                db.session.add(enrollment)
+                        except (ValueError, TypeError):
+                            continue
+            
+            elif role == 'parent':
+                # Семейные связи (дети)
+                student_ids = request.form.getlist('student_ids')
+                for student_id_str in student_ids:
+                    if student_id_str:
+                        try:
+                            student_id = int(student_id_str)
+                            access_level = request.form.get(f'student_access_level_{student_id}', 'full')
+                            is_confirmed = request.form.get(f'student_confirmed_{student_id}') == 'on'
+                            
+                            existing = FamilyTie.query.filter_by(parent_id=user.id, student_id=student_id).first()
+                            if not existing:
+                                family_tie = FamilyTie(parent_id=user.id, student_id=student_id, access_level=access_level, is_confirmed=is_confirmed)
+                                db.session.add(family_tie)
+                        except (ValueError, TypeError):
+                            continue
+            
+            elif role == 'tutor':
+                # Учебные контракты (ученики) - из селектов с предметами
+                student_ids = request.form.getlist('student_ids')
+                for idx, student_id_str in enumerate(student_ids):
+                    if student_id_str:
+                        try:
+                            student_id = int(student_id_str)
+                            # Пробуем разные варианты имен полей (с индексом и без)
+                            subject = request.form.get(f'student_subject_{idx}', '').strip() or request.form.get(f'student_subject_{student_id}', '').strip()
+                            if subject:
+                                status = request.form.get(f'student_status_{idx}', 'active') or request.form.get(f'student_status_{student_id}', 'active')
+                                enrollment = Enrollment(student_id=student_id, tutor_id=user.id, subject=subject, status=status, is_active=(status == 'active'))
+                                db.session.add(enrollment)
+                        except (ValueError, TypeError):
+                            continue
+            
             db.session.commit()
             
             audit_logger.log(
