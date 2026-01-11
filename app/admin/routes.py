@@ -2523,6 +2523,36 @@ def admin_user_new():
             db.session.add(profile)
             db.session.flush()  # Получаем ID профиля
             
+            # Если роль - ученик, создаем запись в таблице Student
+            if role == 'student':
+                # Проверяем, нет ли уже такого студента (по email)
+                student_record = None
+                if email:
+                    student_record = Student.query.filter_by(email=email).first()
+                
+                profile_name = f"{profile_data.get('first_name', '')} {profile_data.get('last_name', '')}".strip()
+                if not profile_name:
+                    profile_name = username
+                
+                if not student_record:
+                    student_record = Student(
+                        name=profile_name,
+                        email=email,
+                        phone=profile_data.get('phone'),
+                        telegram=profile_data.get('telegram_id'),
+                        is_active=is_active
+                    )
+                    db.session.add(student_record)
+                    logger.info(f"Created new Student record for new user {user.id}")
+                else:
+                    # Если студент уже был (например, пересоздаем пользователя), обновляем связь
+                    student_record.name = profile_name
+                    # email уже совпадает
+                    student_record.phone = profile_data.get('phone')
+                    student_record.telegram = profile_data.get('telegram_id')
+                    student_record.is_active = is_active
+                    logger.info(f"Linked existing Student record {student_record.student_id} to new user {user.id}")
+            
             # Создаем связи, если они указаны в форме
             if role == 'student':
                 # Семейные связи (родители)
