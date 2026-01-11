@@ -88,9 +88,9 @@ def _sandbox_internal_guard():
 @admin_bp.route('/admin')
 @login_required
 def admin_panel():
-    """Админ панель (только для создателя)"""
-    if not current_user.is_creator():
-        flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
+    """Админ панель (для администратора и создателя)"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен. Требуется роль "Администратор" или "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
     try:
@@ -246,7 +246,7 @@ def _start_db_sync_job(prod_db_url: str, sandbox_db_url: str):
 @admin_bp.route('/admin/sandbox/db-sync/run', methods=['POST'])
 @login_required
 def admin_sandbox_db_sync_run():
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -291,7 +291,7 @@ def admin_sandbox_db_sync_run():
 @admin_bp.route('/admin/sandbox/db-sync/status', methods=['GET'])
 @login_required
 def admin_sandbox_db_sync_status():
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         return jsonify({'success': False, 'error': 'forbidden'}), 403
 
     with _DB_SYNC_LOCK:
@@ -304,7 +304,7 @@ def admin_sandbox_db_sync_status():
 @login_required
 def admin_testers_create():
     """Создание user-тестировщика (username + password) - только для создателя."""  # Докстринг маршрута. # comment
-    if not current_user.is_creator():  # Проверяем права доступа. # comment
+    if not (current_user.is_admin() or current_user.is_creator()):  # Проверяем права доступа. # comment
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')  # Сообщаем об отказе. # comment
         return redirect(url_for('main.dashboard'))  # Возвращаем в основной раздел. # comment
 
@@ -384,7 +384,7 @@ def admin_testers_create():
 @admin_bp.route('/admin/sandbox/user-tester/create', methods=['POST'])
 @login_required
 def admin_sandbox_user_tester_create():
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -416,7 +416,7 @@ def admin_sandbox_user_tester_create():
 @admin_bp.route('/admin/sandbox/user/<int:user_id>/set-password', methods=['POST'])
 @login_required
 def admin_sandbox_user_set_password(user_id):
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -441,7 +441,7 @@ def admin_sandbox_user_set_password(user_id):
 @admin_bp.route('/admin/sandbox/user/<int:user_id>/toggle-active', methods=['POST'])
 @login_required
 def admin_sandbox_user_toggle_active(user_id):
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -461,7 +461,7 @@ def admin_sandbox_user_toggle_active(user_id):
 @admin_bp.route('/admin/sandbox/user/<int:user_id>/delete', methods=['POST'])
 @login_required
 def admin_sandbox_user_delete(user_id):
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -481,7 +481,7 @@ def admin_sandbox_user_delete(user_id):
 @admin_bp.route('/admin/sandbox/tester-entity/create', methods=['POST'])
 @login_required
 def admin_sandbox_tester_entity_create():
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -507,7 +507,7 @@ def admin_sandbox_tester_entity_create():
 @admin_bp.route('/admin/sandbox/tester-entity/<tester_id>/toggle-active', methods=['POST'])
 @login_required
 def admin_sandbox_tester_entity_toggle_active(tester_id):
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -527,7 +527,7 @@ def admin_sandbox_tester_entity_toggle_active(tester_id):
 @admin_bp.route('/admin/sandbox/tester-entity/<tester_id>/delete', methods=['POST'])
 @login_required
 def admin_sandbox_tester_entity_delete(tester_id):
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -770,7 +770,7 @@ def sandbox_internal_tester_entity_delete(tester_id):
 @login_required
 def admin_audit():
     """Журнал аудита (только для создателя)"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -1046,7 +1046,7 @@ def admin_testers():
     """Управление пользователями (только для создателя)"""
     logger.info(f"admin_testers route called by user: {current_user.username if current_user.is_authenticated else 'anonymous'}")
     
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         logger.warning(f"Access denied to admin_testers for user: {current_user.username if current_user.is_authenticated else 'anonymous'}")
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
@@ -1104,7 +1104,7 @@ def admin_testers():
 @login_required
 def admin_testers_edit(user_id):
     """Редактирование пользователя (только для создателя)"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -1155,7 +1155,7 @@ def admin_testers_edit(user_id):
 @login_required
 def admin_testers_delete(user_id):
     """Удаление пользователя (только для создателя)"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -1207,7 +1207,7 @@ def admin_testers_delete(user_id):
 @login_required
 def admin_testers_clear_all():
     """Очистить все логи пользователей (только для создателя)"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -1255,7 +1255,7 @@ def admin_testers_clear_all():
 @login_required
 def admin_audit_export():
     """Экспорт журнала аудита в CSV"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
@@ -1417,7 +1417,7 @@ def maintenance_status_api():
 @login_required
 def toggle_maintenance():
     """Переключение режима технических работ (только для создателя)"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -1469,7 +1469,7 @@ def toggle_maintenance():
 @login_required
 def update_maintenance_message():
     """Обновление сообщения на странице тех работ (только для создателя)"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -1504,7 +1504,7 @@ def update_maintenance_message():
 @login_required
 def debug_export():
     """Отладочный инструмент для проверки экспорта заданий в Markdown"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -1571,7 +1571,7 @@ def debug_export():
 @login_required
 def admin_tester_entities():
     """Управление тестировщиками (модель Tester) - только для создателя"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -1617,7 +1617,7 @@ def admin_tester_entities():
 @login_required
 def admin_tester_entities_create():
     """Создание нового тестировщика - только для создателя"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -1671,7 +1671,7 @@ def admin_tester_entities_create():
 @login_required
 def admin_tester_entities_edit(tester_id):
     """Редактирование тестировщика - только для создателя"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -1723,7 +1723,7 @@ def admin_tester_entities_edit(tester_id):
 @login_required
 def admin_tester_entities_delete(tester_id):
     """Удаление тестировщика - только для создателя"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -1758,7 +1758,7 @@ def admin_tester_entities_delete(tester_id):
 @login_required
 def admin_tester_entities_delete_anonymous():
     """Массовое удаление всех записей Anonymous - только для создателя"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -1797,7 +1797,7 @@ def admin_tester_entities_delete_anonymous():
 @login_required
 def admin_topics():
     """Управление темами (только для создателя)"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
@@ -1822,7 +1822,7 @@ def admin_topics():
 @csrf.exempt  # Исключаем из CSRF для AJAX запросов
 def admin_topic_create():
     """Создание новой темы"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
     try:
@@ -1861,7 +1861,7 @@ def admin_topic_create():
 @csrf.exempt  # Исключаем из CSRF для AJAX запросов
 def admin_topic_delete(topic_id):
     """Удаление темы"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
     try:
@@ -1888,7 +1888,7 @@ def admin_topic_delete(topic_id):
 @login_required
 def admin_task_topics(task_id):
     """Управление темами для конкретного задания"""
-    if not current_user.is_creator():
+    if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
