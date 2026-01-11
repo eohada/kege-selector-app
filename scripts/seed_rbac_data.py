@@ -41,6 +41,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from app import create_app, db
 from core.db_models import User, UserProfile, FamilyTie, Enrollment, moscow_now
+from app.models import Student
 from werkzeug.security import generate_password_hash
 
 # Создаем приложение (будет пересоздано в seed_database если нужно)
@@ -258,6 +259,36 @@ def create_users():
             )
             db.session.add(profile)
             print(f"    📝 Профиль создан для {username}")
+        
+        # Для учеников создаем соответствующую запись Student
+        if user_data['role'] == 'student' and user.email:
+            student = Student.query.filter_by(email=user.email).first()
+            if not student:
+                # Создаем Student запись для ученика
+                profile_name = f"{profile_data.get('first_name', '')} {profile_data.get('last_name', '')}".strip()
+                if not profile_name:
+                    profile_name = user.username
+                
+                student = Student(
+                    name=profile_name,
+                    email=user.email,
+                    phone=profile_data.get('phone'),
+                    telegram=profile_data.get('telegram_id'),
+                    is_active=True
+                )
+                db.session.add(student)
+                print(f"    👨‍🎓 Student запись создана для {username}")
+            else:
+                # Обновляем существующую запись
+                profile_name = f"{profile_data.get('first_name', '')} {profile_data.get('last_name', '')}".strip()
+                if profile_name:
+                    student.name = profile_name
+                if profile_data.get('phone'):
+                    student.phone = profile_data.get('phone')
+                if profile_data.get('telegram_id'):
+                    student.telegram = profile_data.get('telegram_id')
+                student.is_active = True
+                print(f"    👨‍🎓 Student запись обновлена для {username}")
         
         users_dict[username] = user
     

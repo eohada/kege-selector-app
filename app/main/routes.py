@@ -62,15 +62,22 @@ def dashboard():
     # Для админа и старых ролей - видит всех
     scope = get_user_scope(current_user)
     if not scope['can_see_all'] and scope['student_ids']:
-        # Нужно найти Student записи по user_id из Enrollment/FamilyTie
-        # Enrollment и FamilyTie содержат user_id, а не student_id
-        # Находим Student по email пользователей
+        # Enrollment и FamilyTie содержат user_id (User.id), а не student_id (Student.student_id)
+        # Нужно найти Student записи по email пользователей
         student_users = User.query.filter(User.id.in_(scope['student_ids'])).all()
         student_emails = [u.email for u in student_users if u.email]
+        
         if student_emails:
-            query = query.filter(Student.email.in_(student_emails))
+            # Находим Student записи по email
+            accessible_students = Student.query.filter(Student.email.in_(student_emails)).all()
+            if accessible_students:
+                accessible_student_ids = [s.student_id for s in accessible_students]
+                query = query.filter(Student.student_id.in_(accessible_student_ids))
+            else:
+                # Если Student записи не найдены, показываем пустой список
+                query = query.filter(False)
         else:
-            # Если нет email, показываем пустой список
+            # Если у пользователей нет email, показываем пустой список
             query = query.filter(False)
     elif not scope['can_see_all'] and not scope['student_ids']:
         # Нет доступа ни к каким ученикам
@@ -134,7 +141,12 @@ def dashboard():
             student_users = User.query.filter(User.id.in_(scope['student_ids'])).all()
             student_emails = [u.email for u in student_users if u.email]
             if student_emails:
-                category_stats_query = category_stats_query.filter(Student.email.in_(student_emails))
+                accessible_students = Student.query.filter(Student.email.in_(student_emails)).all()
+                if accessible_students:
+                    accessible_student_ids = [s.student_id for s in accessible_students]
+                    category_stats_query = category_stats_query.filter(Student.student_id.in_(accessible_student_ids))
+                else:
+                    category_stats_query = category_stats_query.filter(False)
             else:
                 category_stats_query = category_stats_query.filter(False)
         elif not scope['can_see_all']:

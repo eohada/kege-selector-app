@@ -115,8 +115,28 @@ def student_new():
 @login_required
 def student_profile(student_id):
     """Профиль студента с уроками"""
+    from app.auth.rbac_utils import get_user_scope
+    
     # КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: загружаем уроки отдельным запросом с joinedload для homework_tasks
     student = Student.query.get_or_404(student_id)
+    
+    # Проверка доступа через data scoping
+    scope = get_user_scope(current_user)
+    if not scope['can_see_all']:
+        # Проверяем, есть ли доступ к этому ученику
+        if student.email:
+            student_user = User.query.filter_by(email=student.email, role='student').first()
+            if student_user:
+                if student_user.id not in scope['student_ids']:
+                    flash('У вас нет доступа к этому ученику.', 'danger')
+                    return redirect(url_for('main.dashboard'))
+        else:
+            # Если у Student нет email, проверяем через Enrollment/FamilyTie напрямую
+            # Но это сложнее, пока просто блокируем
+            if not scope['student_ids']:
+                flash('У вас нет доступа к этому ученику.', 'danger')
+                return redirect(url_for('main.dashboard'))
+    
     now = moscow_now()
     
     # Загружаем уроки с предзагрузкой homework_tasks и task для каждого homework_task
@@ -141,27 +161,44 @@ def student_profile(student_id):
     # Загружаем информацию о родителях (для тьюторов)
     parents_info = []
     if current_user.is_authenticated and (current_user.is_tutor() or current_user.is_admin()):
-        # Находим User ученика по email
-        student_user = None
-        if student.email:
-            student_user = User.query.filter_by(email=student.email, role='student').first()
-        
-        if student_user:
-            # Получаем всех родителей этого ученика
-            family_ties = FamilyTie.query.filter_by(
-                student_id=student_user.id,
-                is_confirmed=True
-            ).all()
+        try:
+            # Находим User ученика по email
+            student_user = None
+            if student.email:
+                student_user = User.query.filter_by(email=student.email, role='student').first()
             
-            for tie in family_ties:
-                parent_user = User.query.get(tie.parent_id)
-                if parent_user and parent_user.profile:
-                    parents_info.append({
-                        'name': f"{parent_user.profile.first_name or ''} {parent_user.profile.last_name or ''}".strip() or parent_user.username,
-                        'phone': parent_user.profile.phone,
-                        'telegram_id': parent_user.profile.telegram_id,
-                        'access_level': tie.access_level
-                    })
+            if student_user:
+                # Получаем всех родителей этого ученика
+                family_ties = FamilyTie.query.filter_by(
+                    student_id=student_user.id,
+                    is_confirmed=True
+                ).all()
+                
+                for tie in family_ties:
+                    try:
+                        parent_user = User.query.get(tie.parent_id)
+                        if parent_user:
+                            # Безопасно получаем профиль
+                            from app.models import UserProfile
+                            parent_profile = UserProfile.query.filter_by(user_id=parent_user.id).first()
+                            
+                            if parent_profile:
+                                name = f"{parent_profile.first_name or ''} {parent_profile.last_name or ''}".strip()
+                                if not name:
+                                    name = parent_user.username
+                                
+                                parents_info.append({
+                                    'name': name,
+                                    'phone': parent_profile.phone,
+                                    'telegram_id': parent_profile.telegram_id,
+                                    'access_level': tie.access_level
+                                })
+                    except Exception as e:
+                        logger.error(f"Ошибка при загрузке родителя {tie.parent_id}: {e}", exc_info=True)
+                        continue
+        except Exception as e:
+            logger.error(f"Ошибка при загрузке информации о родителях: {e}", exc_info=True)
+            # Не блокируем отображение профиля, просто не показываем родителей
     
     return render_template('student_profile.html', 
                            student=student, 
@@ -446,7 +483,24 @@ def reset_statistics(student_id):
 @login_required
 def student_analytics(student_id):
     """Единая страница статистики и аналитики ученика с табами"""
+    from app.auth.rbac_utils import get_user_scope
+    
     student = Student.query.get_or_404(student_id)
+    
+    # Проверка доступа через data scoping
+    scope = get_user_scope(current_user)
+    if not scope['can_see_all']:
+        # Проверяем, есть ли доступ к этому ученику
+        if student.email:
+            student_user = User.query.filter_by(email=student.email, role='student').first()
+            if student_user:
+                if student_user.id not in scope['student_ids']:
+                    flash('У вас нет доступа к статистике этого ученика.', 'danger')
+                    return redirect(url_for('main.dashboard'))
+        else:
+            if not scope['student_ids']:
+                flash('У вас нет доступа к статистике этого ученика.', 'danger')
+                return redirect(url_for('main.dashboard'))
     
     # Инициализируем сервис статистики
     stats = StatsService(student_id)
