@@ -475,18 +475,17 @@ def ensure_schema_columns(app):
             role_perms_table = _resolve_table_name(table_names, 'RolePermissions')
             if not role_perms_table:
                 try:
+                    # Импортируем модель ДО создания таблиц, чтобы SQLAlchemy знала о ней
+                    from app.models import RolePermission
+                    from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
+                    
                     db.create_all()  # Создаст таблицу RolePermissions
                     logger.info("Created RolePermissions table")
                     
                     # Заполняем дефолтные права
-                    from app.models import RolePermission
-                    from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
-                    
                     count = 0
                     for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
                         for perm_name in perms:
-                            # Проверяем через SQL, чтобы избежать проблем с сессией при создании таблиц
-                            # Но через ORM проще, если create_all сработал
                             rp = RolePermission(role=role, permission_name=perm_name, is_enabled=True)
                             db.session.add(rp)
                             count += 1
