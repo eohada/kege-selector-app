@@ -3,41 +3,79 @@
 Обеспечивает автоматическую фильтрацию данных в зависимости от роли пользователя
 """
 from functools import wraps
-from flask import abort
+from flask import abort, flash, redirect, url_for
 from flask_login import login_required, current_user
 from sqlalchemy import and_, or_
-from app.models import db, User, Enrollment, FamilyTie
+from app.models import db, User, Enrollment, FamilyTie, RolePermission
+from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
+import logging
 
+logger = logging.getLogger(__name__)
+
+def has_permission(user, permission_name):
+    """
+    Проверяет наличие права у пользователя.
+    1. Индивидуальные права (custom_permissions)
+    2. Права роли (RolePermission)
+    3. Дефолтные права (DEFAULT_ROLE_PERMISSIONS)
+    """
+    if not user or not user.is_authenticated:
+        return False
+        
+    if user.is_creator():
+        return True
+        
+    # 1. Индивидуальные права (User override)
+    if user.custom_permissions and permission_name in user.custom_permissions:
+        return user.custom_permissions[permission_name]
+        
+    # 2. Права роли из базы
+    try:
+        role_perm = RolePermission.query.filter_by(
+            role=user.role, 
+            permission_name=permission_name
+        ).first()
+        
+        if role_perm:
+            return role_perm.is_enabled
+    except Exception as e:
+        logger.error(f"Error checking DB permissions: {e}")
+        
+    # 3. Дефолтные настройки (если в базе нет записи)
+    return permission_name in DEFAULT_ROLE_PERMISSIONS.get(user.role, [])
+
+def check_access(permission_name):
+    """Декоратор для проверки наличия конкретного права"""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not has_permission(current_user, permission_name):
+                logger.warning(f"Access denied: User {current_user.id} ({current_user.role}) tried to access protected route requiring '{permission_name}'")
+                flash('У вас недостаточно прав для выполнения этого действия.', 'danger')
+                return redirect(url_for('main.dashboard'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 def get_user_scope(user):
     """
-    Получает scope (область видимости) для пользователя в зависимости от роли.
-    Возвращает словарь с фильтрами для запросов.
-    
-    Args:
-        user: Объект User
-        
-    Returns:
-        dict: Словарь с ключами:
-            - 'student_ids': список ID учеников, которых видит пользователь
-            - 'can_see_all': bool, может ли видеть всех
-            - 'role': роль пользователя
+    Возвращает область видимости данных для пользователя.
+    Возвращает словарь:
+    {
+        'can_see_all': bool,  # Видит ли всех пользователей
+        'student_ids': list   # Список ID доступных студентов (если can_see_all=False)
+    }
     """
-    if not user or not user.is_authenticated:
-        return {
-            'student_ids': [],
-            'can_see_all': False,
-            'role': None
-        }
-    
     scope = {
-        'role': user.role,
+        'role': user.role if user and user.is_authenticated else None,
         'can_see_all': False,
         'student_ids': []
     }
+
+    if not user or not user.is_authenticated:
+         return scope
     
-    if user.is_admin():
-        # Администратор видит всех
+    if user.is_creator() or user.is_admin() or user.is_chief_tester():
         scope['can_see_all'] = True
         return scope
     
@@ -49,10 +87,6 @@ def get_user_scope(user):
             Enrollment.status != 'archived'
         ).all()
         scope['student_ids'] = [e.student_id for e in enrollments]
-        # Логируем для отладки
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.debug(f"Tutor {user.id} ({user.username}) has {len(enrollments)} enrollments, student_ids: {scope['student_ids']}")
         return scope
     
     elif user.is_parent():
@@ -69,8 +103,9 @@ def get_user_scope(user):
         scope['student_ids'] = [user.id]
         return scope
     
-    # Для старых ролей (tester, creator) - без ограничений (для обратной совместимости)
-    scope['can_see_all'] = True
+    # Для новых ролей по умолчанию (designer, tester)
+    # Если им нужен доступ к данным студентов, добавить условия выше
+    
     return scope
 
 

@@ -26,7 +26,8 @@ from core.db_models import (
     task_topics,
     moscow_now,
     MOSCOW_TZ,
-    TOMSK_TZ
+    TOMSK_TZ,
+    RolePermission
 )
 
 __all__ = [
@@ -53,6 +54,6 @@ __all__ = [
     'task_topics',
     'moscow_now',
     'MOSCOW_TZ',
-    'TOMSK_TZ'
+    'TOMSK_TZ',
+    'RolePermission'
 ]
-

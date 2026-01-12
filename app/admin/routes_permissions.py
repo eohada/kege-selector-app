@@ -1,3 +1,13 @@
+from flask import render_template, request, flash, redirect, url_for
+from flask_login import login_required, current_user
+from app import db
+from app.models import RolePermission
+from app.admin import admin_bp
+from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES
+import logging
+
+logger = logging.getLogger(__name__)
+
 @admin_bp.route('/admin/permissions', methods=['GET', 'POST'])
 @login_required
 def admin_permissions():
