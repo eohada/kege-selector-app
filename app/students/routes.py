@@ -115,34 +115,57 @@ def student_new():
 @login_required
 def student_profile(student_id):
     """Профиль студента с уроками"""
-    from app.auth.rbac_utils import get_user_scope
-    
-    # КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: загружаем уроки отдельным запросом с joinedload для homework_tasks
-    student = Student.query.get_or_404(student_id)
-    
-    # Проверка доступа через data scoping
-    scope = get_user_scope(current_user)
-    if not scope['can_see_all']:
-        # Проверяем, есть ли доступ к этому ученику
-        if student.email:
-            student_user = User.query.filter_by(email=student.email, role='student').first()
-            if student_user:
-                if student_user.id not in scope['student_ids']:
-                    flash('У вас нет доступа к этому ученику.', 'danger')
-                    return redirect(url_for('main.dashboard'))
-        else:
-            # Если у Student нет email, проверяем через Enrollment/FamilyTie напрямую
-            # Но это сложнее, пока просто блокируем
-            if not scope['student_ids']:
-                flash('У вас нет доступа к этому ученику.', 'danger')
-                return redirect(url_for('main.dashboard'))
-    
-    now = moscow_now()
-    
-    # Загружаем уроки с предзагрузкой homework_tasks и task для каждого homework_task
-    all_lessons = Lesson.query.filter_by(student_id=student_id).options(
-        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
-    ).order_by(Lesson.lesson_date.desc()).all()
+    try:
+        from app.auth.rbac_utils import get_user_scope
+        
+        # КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: загружаем уроки отдельным запросом с joinedload для homework_tasks
+        try:
+            student = Student.query.get_or_404(student_id)
+        except Exception as e:
+            logger.error(f"Error loading student {student_id}: {e}", exc_info=True)
+            flash('Ошибка при загрузке профиля ученика.', 'danger')
+            return redirect(url_for('main.dashboard'))
+        
+        # Проверка доступа через data scoping
+        try:
+            scope = get_user_scope(current_user)
+            if not scope['can_see_all']:
+                # Проверяем, есть ли доступ к этому ученику
+                if student.email:
+                    try:
+                        student_user = User.query.filter_by(email=student.email, role='student').first()
+                        if student_user:
+                            if student_user.id not in scope['student_ids']:
+                                flash('У вас нет доступа к этому ученику.', 'danger')
+                                return redirect(url_for('main.dashboard'))
+                    except Exception as e:
+                        logger.warning(f"Error checking student access via email: {e}")
+                        # Если не можем проверить через email, проверяем через scope
+                        if not scope['student_ids']:
+                            flash('У вас нет доступа к этому ученику.', 'danger')
+                            return redirect(url_for('main.dashboard'))
+                else:
+                    # Если у Student нет email, проверяем через Enrollment/FamilyTie напрямую
+                    # Но это сложнее, пока просто блокируем
+                    if not scope['student_ids']:
+                        flash('У вас нет доступа к этому ученику.', 'danger')
+                        return redirect(url_for('main.dashboard'))
+        except Exception as e:
+            logger.error(f"Error checking access scope: {e}", exc_info=True)
+            # Если не можем проверить доступ, блокируем
+            flash('Ошибка при проверке доступа.', 'danger')
+            return redirect(url_for('main.dashboard'))
+        
+        now = moscow_now()
+        
+        # Загружаем уроки с предзагрузкой homework_tasks и task для каждого homework_task
+        try:
+            all_lessons = Lesson.query.filter_by(student_id=student_id).options(
+                db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
+            ).order_by(Lesson.lesson_date.desc()).all()
+        except Exception as e:
+            logger.error(f"Error loading lessons for student {student_id}: {e}", exc_info=True)
+            all_lessons = []
     
     # Разделяем уроки на категории для "Актуальные уроки"
     completed_lessons = [l for l in all_lessons if l.status == 'completed']
@@ -160,8 +183,9 @@ def student_profile(student_id):
     
     # Загружаем информацию о родителях (для тьюторов)
     parents_info = []
-    if current_user.is_authenticated and (current_user.is_tutor() or current_user.is_admin()):
-        try:
+    try:
+        if current_user.is_authenticated and (hasattr(current_user, 'is_tutor') and current_user.is_tutor()) or (hasattr(current_user, 'is_admin') and current_user.is_admin()) or (hasattr(current_user, 'is_creator') and current_user.is_creator()):
+            try:
             # Находим User ученика по email
             student_user = None
             if student.email:
