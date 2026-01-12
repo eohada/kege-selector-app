@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Работы - Управление заданиями</title>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+</head>
+<body>
+    {% include '_primary_nav.html' %}
+    
+    <main class="container" style="max-width: 1400px; margin: 2rem auto; padding: 0 1.5rem;">
+        <div class="page-header" style="margin-bottom: 2rem;">
+            <h1 style="font-size: 2.5em; font-weight: 800; margin-bottom: 0.5rem;">Работы</h1>
+            <p style="color: var(--text-muted); font-size: 1.1em;">Управление домашними заданиями, контрольными и проверочными работами</p>
+        </div>
+        
+        <div style="margin-bottom: 2rem;">
+            <a href="{{ url_for('kege_generator.kege_generator') }}" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                <span>➕</span>
+                <span>Создать новую работу</span>
+            </a>
+        </div>
+        
+        {% if assignments_data %}
+        <div class="assignments-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;">
+            {% for item in assignments_data %}
+            <div class="assignment-card" style="background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem; transition: transform 0.2s, box-shadow 0.2s;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div>
+                        <h3 style="font-size: 1.3em; font-weight: 700; margin-bottom: 0.5rem;">
+                            <a href="{{ url_for('assignments.assignment_view', assignment_id=item.assignment.assignment_id) }}" style="color: var(--text-primary); text-decoration: none;">
+                                {{ item.assignment.title }}
+                            </a>
+                        </h3>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                            <span class="badge" style="padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85em; font-weight: 600;">
+                                {% if item.assignment.assignment_type == 'homework' %}ДЗ
+                                {% elif item.assignment.assignment_type == 'classwork' %}КР
+                                {% elif item.assignment.assignment_type == 'exam' %}Проверочная
+                                {% else %}{{ item.assignment.assignment_type }}{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="color: var(--text-muted); font-size: 0.9em; margin-bottom: 1rem;">
+                    <div>📅 Дедлайн: <strong>{{ item.assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</strong></div>
+                    <div style="margin-top: 0.5rem;">👥 Учеников: <strong>{{ item.total_students }}</strong></div>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
+                    <div style="flex: 1;">
+                        <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.25rem;">Сдано</div>
+                        <div style="font-weight: 700; color: var(--accent-1);">{{ item.submitted }}/{{ item.total_students }}</div>
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.25rem;">Проверено</div>
+                        <div style="font-weight: 700; color: var(--accent-2);">{{ item.graded }}/{{ item.total_students }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 4rem 2rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg);">
+            <div style="font-size: 4em; margin-bottom: 1rem;">📝</div>
+            <h2 style="font-size: 1.5em; margin-bottom: 0.5rem;">Работ пока нет</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Создайте первую работу, используя генератор заданий</p>
+            <a href="{{ url_for('kege_generator.kege_generator') }}" class="btn-primary">Создать работу</a>
+        </div>
+        {% endif %}
+    </main>
+</body>
+</html>

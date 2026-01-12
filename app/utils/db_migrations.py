@@ -499,13 +499,22 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create Enrollments table: {e}")
             
-            # Коммитим миграции RBAC
+            # 5. Создаем таблицы системы заданий (Assignments, AssignmentTasks, Submissions, Answers)
+            assignments_table = _resolve_table_name(table_names, 'Assignments')
+            if not assignments_table:
+                try:
+                    db.create_all()  # Создаст все таблицы системы заданий если их нет
+                    logger.info("Created Assignments system tables (Assignments, AssignmentTasks, Submissions, Answers)")
+                except Exception as e:
+                    logger.warning(f"Could not create Assignments system tables: {e}")
+            
+            # Коммитим миграции RBAC и Assignments
             try:
                 db.session.commit()
-                logger.info("RBAC migrations committed successfully")
+                logger.info("RBAC and Assignments migrations committed successfully")
             except Exception as e:
                 db.session.rollback()
-                logger.warning(f"Error committing RBAC migrations: {e}")
+                logger.warning(f"Error committing RBAC/Assignments migrations: {e}")
             
             # Исправляем sequences ПОСЛЕ коммита миграций
             # Это не критично, если не получится - просто будет warning

@@ -141,6 +141,7 @@ class Lesson(db.Model):
     homework_status = db.Column(db.String(50), default='not_assigned')
     homework_result_percent = db.Column(db.Integer, nullable=True)
     homework_result_notes = db.Column(db.Text, nullable=True)
+    published_at = db.Column(db.DateTime, nullable=True) # Дата отправки урока/ДЗ ученику
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
 
@@ -170,6 +171,11 @@ class LessonTask(db.Model):
     assignment_type = db.Column(db.String(20), default='homework')
     student_submission = db.Column(db.Text, nullable=True)
     submission_correct = db.Column(db.Boolean, nullable=True)
+    
+    # Новые поля для полноценной системы сдачи
+    status = db.Column(db.String(20), default='pending') # pending, submitted, graded, returned
+    submission_files = db.Column(db.JSON, nullable=True) # Список путей к файлам
+    teacher_comment = db.Column(db.Text, nullable=True) # Комментарий преподавателя к задаче
 
     lesson = db.relationship('Lesson', back_populates='homework_tasks')
     task = db.relationship('Tasks')
@@ -506,3 +512,159 @@ class Enrollment(db.Model):
     
     def __repr__(self):
         return f'<Enrollment student:{self.student_id} - tutor:{self.tutor_id} ({self.subject})>'
+
+
+# ============================================================================
+# СИСТЕМА ЗАДАНИЙ И СДАЧИ РАБОТ (ASSIGNMENT/SUBMISSION)
+# ============================================================================
+
+class Assignment(db.Model):
+    """
+    Модель работы (ДЗ/КР/проверочная)
+    Создается учителем и распределяется среди учеников
+    """
+    __tablename__ = 'Assignments'
+    
+    assignment_id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(500), nullable=False)  # Название работы
+    description = db.Column(db.Text, nullable=True)  # Описание/инструкции
+    assignment_type = db.Column(db.String(50), nullable=False)  # 'homework', 'classwork', 'exam', 'test'
+    
+    # Временные рамки
+    deadline = db.Column(db.DateTime, nullable=False)  # Дедлайн сдачи
+    hard_deadline = db.Column(db.Boolean, default=False)  # Если True - нельзя сдать после дедлайна
+    time_limit_minutes = db.Column(db.Integer, nullable=True)  # Ограничение времени выполнения (для exam/test)
+    
+    # Создатель и связь с уроком (опционально)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)  # Учитель, создавший работу
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=True)  # Связь с уроком (если есть)
+    
+    # Метаданные
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)  # Можно ли еще работать с этой работой
+    
+    # Связи
+    created_by = db.relationship('User', foreign_keys=[created_by_id], backref='created_assignments')
+    lesson = db.relationship('Lesson', backref='assignments')
+    tasks = db.relationship('AssignmentTask', back_populates='assignment', lazy=True, cascade='all, delete-orphan')
+    submissions = db.relationship('Submission', back_populates='assignment', lazy=True, cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<Assignment {self.assignment_id}: {self.title} ({self.assignment_type})>'
+
+
+class AssignmentTask(db.Model):
+    """
+    Модель задачи в работе
+    Связывает Assignment с конкретной задачей из базы Tasks
+    """
+    __tablename__ = 'AssignmentTasks'
+    
+    assignment_task_id = db.Column(db.Integer, primary_key=True)
+    assignment_id = db.Column(db.Integer, db.ForeignKey('Assignments.assignment_id'), nullable=False)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False)
+    
+    # Порядок задачи в работе
+    order_index = db.Column(db.Integer, nullable=False, default=0)  # Порядок отображения
+    
+    # Оценка задачи
+    max_score = db.Column(db.Integer, nullable=False, default=1)  # Максимальный балл за задачу
+    
+    # Тип проверки
+    requires_manual_grading = db.Column(db.Boolean, default=False, nullable=False)  # Требует ли ручной проверки
+    
+    # Метаданные
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    
+    # Связи
+    assignment = db.relationship('Assignment', back_populates='tasks')
+    task = db.relationship('Tasks', backref='assignment_tasks')
+    answers = db.relationship('Answer', back_populates='assignment_task', lazy=True, cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<AssignmentTask {self.assignment_task_id}: task {self.task_id} in assignment {self.assignment_id}>'
+
+
+class Submission(db.Model):
+    """
+    Модель сдачи работы учеником
+    Создается автоматически при распределении работы (статус ASSIGNED)
+    """
+    __tablename__ = 'Submissions'
+    
+    submission_id = db.Column(db.Integer, primary_key=True)
+    assignment_id = db.Column(db.Integer, db.ForeignKey('Assignments.assignment_id'), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False)
+    
+    # Статус сдачи
+    status = db.Column(db.String(50), nullable=False, default='ASSIGNED')  
+    # Возможные статусы: ASSIGNED, IN_PROGRESS, SUBMITTED, GRADED, RETURNED, LATE
+    
+    # Временные метки
+    assigned_at = db.Column(db.DateTime, default=moscow_now, nullable=False)  # Когда назначено
+    started_at = db.Column(db.DateTime, nullable=True)  # Когда ученик начал выполнение
+    submitted_at = db.Column(db.DateTime, nullable=True)  # Когда сдано
+    graded_at = db.Column(db.DateTime, nullable=True)  # Когда проверено
+    
+    # Флаги
+    is_late = db.Column(db.Boolean, default=False, nullable=False)  # Сдано с опозданием
+    
+    # Оценка
+    total_score = db.Column(db.Integer, nullable=True)  # Общий балл
+    max_score = db.Column(db.Integer, nullable=True)  # Максимальный возможный балл
+    percentage = db.Column(db.Float, nullable=True)  # Процент выполнения
+    
+    # Комментарий учителя
+    teacher_feedback = db.Column(db.Text, nullable=True)
+    
+    # Метаданные
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+    
+    # Связи
+    assignment = db.relationship('Assignment', back_populates='submissions')
+    student = db.relationship('Student', backref='submissions')
+    answers = db.relationship('Answer', back_populates='submission', lazy=True, cascade='all, delete-orphan')
+    
+    def __repr__(self):
+        return f'<Submission {self.submission_id}: student {self.student_id}, assignment {self.assignment_id}, status {self.status}>'
+
+
+class Answer(db.Model):
+    """
+    Модель ответа ученика на конкретную задачу
+    """
+    __tablename__ = 'Answers'
+    
+    answer_id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id'), nullable=False)
+    assignment_task_id = db.Column(db.Integer, db.ForeignKey('AssignmentTasks.assignment_task_id'), nullable=False)
+    
+    # Ответ ученика
+    value = db.Column(db.Text, nullable=True)  # Текст ответа или JSON для сложных ответов
+    files = db.Column(JSON, nullable=True)  # Массив путей к прикрепленным файлам
+    
+    # Результат проверки
+    is_correct = db.Column(db.Boolean, nullable=True)  # Правильность ответа (для авто-проверки)
+    score = db.Column(db.Integer, nullable=True)  # Балл за ответ
+    max_score = db.Column(db.Integer, nullable=True)  # Максимальный балл (копия из AssignmentTask)
+    
+    # Комментарий учителя к конкретному ответу
+    teacher_comment = db.Column(db.Text, nullable=True)
+    
+    # Метаданные
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+    
+    # Связи
+    submission = db.relationship('Submission', back_populates='answers')
+    assignment_task = db.relationship('AssignmentTask', back_populates='answers')
+    
+    # Уникальность: один ответ на задачу в одной сдаче
+    __table_args__ = (
+        db.UniqueConstraint('submission_id', 'assignment_task_id', name='uq_submission_task'),
+    )
+    
+    def __repr__(self):
+        return f'<Answer {self.answer_id}: submission {self.submission_id}, task {self.assignment_task_id}, score {self.score}>'

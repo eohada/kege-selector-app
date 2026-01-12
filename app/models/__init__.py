@@ -27,7 +27,11 @@ from core.db_models import (
     moscow_now,
     MOSCOW_TZ,
     TOMSK_TZ,
-    RolePermission
+    RolePermission,
+    Assignment,
+    AssignmentTask,
+    Submission,
+    Answer
 )
 
 __all__ = [
@@ -55,5 +59,9 @@ __all__ = [
     'moscow_now',
     'MOSCOW_TZ',
     'TOMSK_TZ',
-    'RolePermission'
+    'RolePermission',
+    'Assignment',
+    'AssignmentTask',
+    'Submission',
+    'Answer'
 ]

@@ -137,6 +137,8 @@ def create_app(config_name=None):
     from app.templates_manager import templates_bp
     from app.reminders import reminders_bp
     from app.parents import parents_bp
+    from app.designer import designer_bp
+    from app.assignments import assignments_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -149,6 +151,8 @@ def create_app(config_name=None):
     app.register_blueprint(templates_bp)
     app.register_blueprint(reminders_bp)
     app.register_blueprint(parents_bp)
+    app.register_blueprint(designer_bp)
+    app.register_blueprint(assignments_bp)
     
     # Исключаем logout из CSRF защиты
     from app.auth.routes import logout

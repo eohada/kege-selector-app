@@ -27,6 +27,9 @@ ALL_PERMISSIONS = {
     'lesson.edit': {'name': 'Редактирование уроков', 'category': 'content'},
     'lesson.delete': {'name': 'Удаление уроков', 'category': 'content'},
     'task.manage': {'name': 'Управление банком заданий', 'category': 'content'},
+    'assignment.create': {'name': 'Создание и распределение работ', 'category': 'content'},
+    'assignment.grade': {'name': 'Проверка работ', 'category': 'content'},
+    'assignment.view': {'name': 'Просмотр работ', 'category': 'content'},
     
     # Финансы
     'finance.view_stats': {'name': 'Просмотр общей статистики', 'category': 'finance'},
@@ -49,8 +52,8 @@ DEFAULT_ROLE_PERMISSIONS = {
     'admin': list(ALL_PERMISSIONS.keys()),   # Все права
     'chief_tester': ['tools.testers', 'task.manage', 'user.view_list'],
     'designer': ['assets.manage'],
-    'tutor': ['lesson.create', 'lesson.edit', 'user.view_list', 'tools.schedule', 'task.manage'],
-    'student': [],
-    'parent': [],
+    'tutor': ['lesson.create', 'lesson.edit', 'user.view_list', 'tools.schedule', 'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view'],
+    'student': ['assignment.view'],
+    'parent': ['assignment.view'],
     'tester': []
 }
