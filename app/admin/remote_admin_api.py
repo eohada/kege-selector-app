@@ -258,3 +258,145 @@ def remote_admin_api_stats():
     except Exception as e:
         logger.error(f"Error in remote_admin_api_stats: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/audit-logs', methods=['GET'])
+def remote_admin_api_audit_logs():
+    """API: Список логов действий"""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 50))
+        action_filter = request.args.get('action')
+        user_id_filter = request.args.get('user_id')
+        
+        query = AuditLog.query
+        
+        if action_filter:
+            query = query.filter(AuditLog.action == action_filter)
+        if user_id_filter:
+            query = query.filter(AuditLog.user_id == int(user_id_filter))
+        
+        logs = query.order_by(AuditLog.timestamp.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        return jsonify({
+            'success': True,
+            'logs': [{
+                'id': log.id,
+                'action': log.action,
+                'entity': log.entity,
+                'entity_id': log.entity_id,
+                'user_id': log.user_id,
+                'timestamp': log.timestamp.isoformat() if log.timestamp else None,
+                'status': log.status,
+                'metadata': log.metadata
+            } for log in logs.items],
+            'pagination': {
+                'page': logs.page,
+                'pages': logs.pages,
+                'per_page': logs.per_page,
+                'total': logs.total
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error in remote_admin_api_audit_logs: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/maintenance', methods=['GET', 'POST'])
+def remote_admin_api_maintenance():
+    """API: Управление техническими работами"""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    
+    try:
+        if request.method == 'GET':
+            status = MaintenanceMode.get_status()
+            return jsonify({
+                'success': True,
+                'enabled': status.is_enabled,
+                'message': status.message or ''
+            })
+        
+        elif request.method == 'POST':
+            data = request.get_json() or {}
+            action = data.get('action')
+            
+            status = MaintenanceMode.get_status()
+            
+            if action == 'toggle':
+                status.is_enabled = not status.is_enabled
+            elif action == 'update_message':
+                status.message = data.get('message', '')
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'enabled': status.is_enabled,
+                'message': status.message or ''
+            })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in remote_admin_api_maintenance: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/permissions', methods=['GET', 'POST'])
+def remote_admin_api_permissions():
+    """API: Управление правами доступа"""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    
+    try:
+        from app.models import RolePermission
+        from app.auth.permissions import ALL_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS
+        
+        if request.method == 'GET':
+            roles = ['creator', 'admin', 'chief_tester', 'tutor', 'designer', 'tester', 'student', 'parent']
+            permissions_data = {}
+            
+            for role in roles:
+                permissions_data[role] = {}
+                for perm_key in ALL_PERMISSIONS.keys():
+                    perm_record = RolePermission.query.filter_by(role=role, permission_name=perm_key).first()
+                    if perm_record:
+                        permissions_data[role][perm_key] = perm_record.is_enabled
+                    else:
+                        # Используем значение по умолчанию
+                        permissions_data[role][perm_key] = perm_key in DEFAULT_ROLE_PERMISSIONS.get(role, [])
+            
+            return jsonify({
+                'success': True,
+                'permissions': permissions_data
+            })
+        
+        elif request.method == 'POST':
+            data = request.get_json() or {}
+            role = data.get('role')
+            permission = data.get('permission')
+            enabled = data.get('enabled', False)
+            
+            if not role or not permission:
+                return jsonify({'error': 'role and permission required'}), 400
+            
+            perm_record = RolePermission.query.filter_by(role=role, permission_name=permission).first()
+            if not perm_record:
+                perm_record = RolePermission(role=role, permission_name=permission, is_enabled=enabled)
+                db.session.add(perm_record)
+            else:
+                perm_record.is_enabled = enabled
+            
+            db.session.commit()
+            
+            return jsonify({'success': True})
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in remote_admin_api_permissions: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500

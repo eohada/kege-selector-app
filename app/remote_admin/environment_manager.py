@@ -81,10 +81,6 @@ def get_environments() -> Dict:
     return _load_environments()
 
 
-# Для обратной совместимости
-ENVIRONMENTS = property(lambda self: get_environments())
-
-
 def get_current_environment() -> str:
     """Получить текущее выбранное окружение из сессии"""
     envs = get_environments()
