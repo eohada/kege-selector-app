@@ -2513,7 +2513,9 @@ def admin_user_edit(user_id):
                              enrollments=enrollments,
                              all_parents=all_parents,
                              all_students=all_students,
-                             all_tutors=all_tutors)
+                             all_tutors=all_tutors,
+                             all_permissions=ALL_PERMISSIONS,
+                             permission_categories=PERMISSION_CATEGORIES)
     except Exception as e:
         logger.error(f"Error in admin_user_edit GET request for user {user_id}: {e}", exc_info=True)
         flash(f'Ошибка при загрузке данных пользователя: {str(e)}', 'error')
