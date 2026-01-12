@@ -48,6 +48,15 @@ def dashboard():
             return redirect(url_for('students.student_profile', student_id=student.student_id))
         # Если Student не найден, показываем пустой dashboard
     
+    # Для ролей designer и tester - редирект на соответствующие страницы или пустой dashboard
+    if current_user.is_designer():
+        # Дизайнер может быть перенаправлен на страницу управления ассетами
+        # Или показать пустой dashboard с сообщением
+        pass  # Продолжаем выполнение, покажем пустой dashboard
+    elif current_user.is_tester() and not current_user.is_chief_tester():
+        # Обычный тестировщик - показываем пустой dashboard
+        pass  # Продолжаем выполнение, покажем пустой dashboard
+    
     search_query = request.args.get('search', '').strip()
     category_filter = request.args.get('category', '')
     show_archive = request.args.get('show_archive', 'false').lower() == 'true'  # Параметр для просмотра архива
