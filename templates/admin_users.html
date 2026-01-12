@@ -209,10 +209,27 @@
                             </div>
                         </td>
                         <td>
-                            <div class="action-buttons">
+                            <div class="action-buttons" style="display: flex; gap: 0.5rem;">
                                 <a href="{{ url_for('admin.admin_user_edit', user_id=user.id) }}" class="neo-button ghost" style="padding:0.5rem 0.75rem;" title="Редактировать">
                                     <img src="{{ url_for('static', filename='icons/icons8-редактировать-100.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm">
                                 </a>
+                                {% if not user.is_creator() %}
+                                    {% if is_sandbox %}
+                                        <button type="button" class="neo-button danger action-delete-btn" style="padding:0.5rem 0.75rem;" title="Удалить" 
+                                                data-url="{{ url_for('admin.admin_sandbox_user_delete', user_id=user.id) }}" 
+                                                data-confirm-message="Вы уверены, что хотите удалить пользователя '{{ user.username }}'? Это действие нельзя отменить.">
+                                            <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Удалить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                            <span style="display:none;">✕</span>
+                                        </button>
+                                    {% else %}
+                                        <button type="button" class="neo-button danger action-delete-btn" style="padding:0.5rem 0.75rem;" title="Удалить" 
+                                                data-url="{{ url_for('admin.admin_testers_delete', user_id=user.id) }}" 
+                                                data-confirm-message="Вы уверены, что хотите удалить пользователя '{{ user.username }}'? Это действие нельзя отменить.">
+                                            <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Удалить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                            <span style="display:none;">✕</span>
+                                        </button>
+                                    {% endif %}
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -229,6 +246,8 @@
     </div>
 
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             {% with messages = get_flashed_messages(with_categories=true) %}

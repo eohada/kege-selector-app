@@ -446,6 +446,26 @@
                         {% if user %}Сохранить изменения{% else %}Создать пользователя{% endif %}
                     </button>
                     <a href="{{ url_for('admin.admin_users') }}" class="neo-button ghost">Отмена</a>
+                    {% if user and not user.is_creator() %}
+                        {% set is_sandbox = 'sandbox' in (request.environ.get('RAILWAY_ENVIRONMENT', '') or request.environ.get('ENVIRONMENT', '')).lower() %}
+                        {% if is_sandbox %}
+                            <button type="button" class="neo-button danger action-delete-btn" 
+                                    data-url="{{ url_for('admin.admin_sandbox_user_delete', user_id=user.id) }}" 
+                                    data-confirm-message="Вы уверены, что хотите удалить пользователя '{{ user.username }}'? Это действие нельзя отменить.">
+                                <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Удалить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                <span style="display:none;">✕</span>
+                                Удалить пользователя
+                            </button>
+                        {% else %}
+                            <button type="button" class="neo-button danger action-delete-btn" 
+                                    data-url="{{ url_for('admin.admin_testers_delete', user_id=user.id) }}" 
+                                    data-confirm-message="Вы уверены, что хотите удалить пользователя '{{ user.username }}'? Это действие нельзя отменить.">
+                                <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Удалить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                <span style="display:none;">✕</span>
+                                Удалить пользователя
+                            </button>
+                        {% endif %}
+                    {% endif %}
                 </div>
             </form>
         </section>

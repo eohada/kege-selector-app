@@ -1921,11 +1921,17 @@ def admin_users():
         for role in ['admin', 'tutor', 'student', 'parent', 'tester', 'creator']:
             role_stats[role] = User.query.filter_by(role=role).count()
         
+        # Определяем, находимся ли мы в песочнице
+        environment = os.environ.get('ENVIRONMENT', 'local')
+        railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+        is_sandbox = _is_sandbox(environment, railway_environment)
+        
         return render_template('admin_users.html',
                              users=users,
                              role_filter=role_filter,
                              is_active_filter=is_active_filter,
-                             role_stats=role_stats)
+                             role_stats=role_stats,
+                             is_sandbox=is_sandbox)
     except Exception as e:
         logger.error(f"Error in admin_users: {e}", exc_info=True)
         flash(f'Ошибка при загрузке пользователей: {str(e)}', 'error')
