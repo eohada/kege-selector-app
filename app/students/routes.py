@@ -166,72 +166,98 @@ def student_profile(student_id):
         except Exception as e:
             logger.error(f"Error loading lessons for student {student_id}: {e}", exc_info=True)
             all_lessons = []
-    
-    # Разделяем уроки на категории для "Актуальные уроки"
-    completed_lessons = [l for l in all_lessons if l.status == 'completed']
-    planned_lessons = [l for l in all_lessons if l.status == 'planned']
-    in_progress_lesson = next((l for l in all_lessons if l.status == 'in_progress'), None)
-    
-    # Последний проведённый урок (самый недавний completed)
-    last_completed = completed_lessons[0] if completed_lessons else None
-    
-    # Два ближайших запланированных урока (самые ранние по дате)
-    upcoming_lessons = sorted(planned_lessons, key=lambda x: x.lesson_date if x.lesson_date else now)[:2]
-    
-    # Все уроки отображаются в общем списке (ключевые дублируются сверху для удобства)
-    other_lessons = all_lessons
-    
-    # Загружаем информацию о родителях (для тьюторов)
-    parents_info = []
-    try:
-        if current_user.is_authenticated and (hasattr(current_user, 'is_tutor') and current_user.is_tutor()) or (hasattr(current_user, 'is_admin') and current_user.is_admin()) or (hasattr(current_user, 'is_creator') and current_user.is_creator()):
-            try:
-            # Находим User ученика по email
-            student_user = None
-            if student.email:
-                student_user = User.query.filter_by(email=student.email, role='student').first()
+        
+        # Разделяем уроки на категории для "Актуальные уроки"
+        try:
+            completed_lessons = [l for l in all_lessons if l.status == 'completed']
+            planned_lessons = [l for l in all_lessons if l.status == 'planned']
+            in_progress_lesson = next((l for l in all_lessons if l.status == 'in_progress'), None)
             
-            if student_user:
-                # Получаем всех родителей этого ученика
-                family_ties = FamilyTie.query.filter_by(
-                    student_id=student_user.id,
-                    is_confirmed=True
-                ).all()
-                
-                for tie in family_ties:
-                    try:
-                        parent_user = User.query.get(tie.parent_id)
-                        if parent_user:
-                            # Безопасно получаем профиль
-                            from app.models import UserProfile
-                            parent_profile = UserProfile.query.filter_by(user_id=parent_user.id).first()
-                            
-                            if parent_profile:
-                                name = f"{parent_profile.first_name or ''} {parent_profile.last_name or ''}".strip()
-                                if not name:
-                                    name = parent_user.username
-                                
-                                parents_info.append({
-                                    'name': name,
-                                    'phone': parent_profile.phone,
-                                    'telegram_id': parent_profile.telegram_id,
-                                    'access_level': tie.access_level
-                                })
-                    except Exception as e:
-                        logger.error(f"Ошибка при загрузке родителя {tie.parent_id}: {e}", exc_info=True)
-                        continue
+            # Последний проведённый урок (самый недавний completed)
+            last_completed = completed_lessons[0] if completed_lessons else None
+            
+            # Два ближайших запланированных урока (самые ранние по дате)
+            try:
+                upcoming_lessons = sorted(planned_lessons, key=lambda x: x.lesson_date if x.lesson_date else now)[:2]
+            except Exception as e:
+                logger.warning(f"Error sorting planned lessons: {e}")
+                upcoming_lessons = planned_lessons[:2] if planned_lessons else []
+            
+            # Все уроки отображаются в общем списке (ключевые дублируются сверху для удобства)
+            other_lessons = all_lessons
         except Exception as e:
-            logger.error(f"Ошибка при загрузке информации о родителях: {e}", exc_info=True)
-            # Не блокируем отображение профиля, просто не показываем родителей
-    
-    return render_template('student_profile.html', 
-                           student=student, 
-                           lessons=all_lessons,
-                           last_completed=last_completed,
-                           upcoming_lessons=upcoming_lessons,
-                           in_progress_lesson=in_progress_lesson,
-                           other_lessons=other_lessons,
-                           parents_info=parents_info)
+            logger.error(f"Error processing lessons: {e}", exc_info=True)
+            completed_lessons = []
+            planned_lessons = []
+            in_progress_lesson = None
+            last_completed = None
+            upcoming_lessons = []
+            other_lessons = all_lessons
+        
+        # Загружаем информацию о родителях (для тьюторов)
+        parents_info = []
+        try:
+            # Безопасная проверка ролей с использованием hasattr
+            can_see_parents = False
+            if current_user.is_authenticated:
+                if hasattr(current_user, 'is_tutor') and current_user.is_tutor():
+                    can_see_parents = True
+                elif hasattr(current_user, 'is_admin') and current_user.is_admin():
+                    can_see_parents = True
+                elif hasattr(current_user, 'is_creator') and current_user.is_creator():
+                    can_see_parents = True
+            
+            if can_see_parents:
+                try:
+                    # Находим User ученика по email
+                    student_user = None
+                    if student.email:
+                        student_user = User.query.filter_by(email=student.email, role='student').first()
+                    
+                    if student_user:
+                        # Получаем всех родителей этого ученика
+                        family_ties = FamilyTie.query.filter_by(
+                            student_id=student_user.id,
+                            is_confirmed=True
+                        ).all()
+                        
+                        for tie in family_ties:
+                            try:
+                                parent_user = User.query.get(tie.parent_id)
+                                if parent_user:
+                                    # Безопасно получаем профиль
+                                    from app.models import UserProfile
+                                    parent_profile = UserProfile.query.filter_by(user_id=parent_user.id).first()
+                                    
+                                    if parent_profile:
+                                        name = f"{parent_profile.first_name or ''} {parent_profile.last_name or ''}".strip()
+                                        if not name:
+                                            name = parent_user.username
+                                        
+                                        parents_info.append({
+                                            'name': name,
+                                            'phone': parent_profile.phone,
+                                            'telegram_id': parent_profile.telegram_id,
+                                            'access_level': tie.access_level
+                                        })
+                            except Exception as e:
+                                logger.error(f"Ошибка при загрузке родителя {tie.parent_id}: {e}", exc_info=True)
+                                continue
+                except Exception as e:
+                    logger.error(f"Ошибка при загрузке информации о родителях: {e}", exc_info=True)
+                    # Не блокируем отображение профиля, просто не показываем родителей
+        except Exception as e:
+            logger.error(f"Ошибка при проверке доступа к информации о родителях: {e}", exc_info=True)
+            # Продолжаем без информации о родителях
+        
+        return render_template('student_profile.html', 
+                               student=student, 
+                               lessons=all_lessons,
+                               last_completed=last_completed,
+                               upcoming_lessons=upcoming_lessons,
+                               in_progress_lesson=in_progress_lesson,
+                               other_lessons=other_lessons,
+                               parents_info=parents_info)
 
 @students_bp.route('/student/<int:student_id>/statistics')
 @login_required
