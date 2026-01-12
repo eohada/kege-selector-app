@@ -144,36 +144,47 @@ def dashboard():
         elif not scope['can_see_all']:
             count_query = count_query.filter(False)
         
-        total_students = count_query.count()
+        try:
+            total_students = count_query.count()
+        except Exception as e:
+            logger.warning(f"Error counting total students: {e}")
+            total_students = 0
         
         # Статистика по категориям с учетом data scoping
-        category_stats_query = db.session.query(
-            Student.category,
-            func.count(Student.student_id).label('count')
-        ).filter_by(is_active=base_is_active)
-        
-        if not scope['can_see_all'] and scope['student_ids']:
-            student_users = User.query.filter(User.id.in_(scope['student_ids'])).all()
-            student_emails = [u.email for u in student_users if u.email]
-            if student_emails:
-                accessible_students = Student.query.filter(Student.email.in_(student_emails)).all()
-                if accessible_students:
-                    accessible_student_ids = [s.student_id for s in accessible_students]
-                    category_stats_query = category_stats_query.filter(Student.student_id.in_(accessible_student_ids))
+        try:
+            category_stats_query = db.session.query(
+                Student.category,
+                func.count(Student.student_id).label('count')
+            ).filter_by(is_active=base_is_active)
+            
+            if not scope['can_see_all'] and scope['student_ids']:
+                student_users = User.query.filter(User.id.in_(scope['student_ids'])).all()
+                student_emails = [u.email for u in student_users if u.email]
+                if student_emails:
+                    accessible_students = Student.query.filter(Student.email.in_(student_emails)).all()
+                    if accessible_students:
+                        accessible_student_ids = [s.student_id for s in accessible_students]
+                        category_stats_query = category_stats_query.filter(Student.student_id.in_(accessible_student_ids))
+                    else:
+                        category_stats_query = category_stats_query.filter(False)
                 else:
                     category_stats_query = category_stats_query.filter(False)
-            else:
+            elif not scope['can_see_all']:
                 category_stats_query = category_stats_query.filter(False)
-        elif not scope['can_see_all']:
-            category_stats_query = category_stats_query.filter(False)
-        
-        category_stats = category_stats_query.group_by(Student.category).all()
-        
-        category_dict = {cat[0]: cat[1] for cat in category_stats if cat[0]}
-        ege_students = category_dict.get('ЕГЭ', 0)
-        oge_students = category_dict.get('ОГЭ', 0)
-        levelup_students = category_dict.get('ЛЕВЕЛАП', 0)
-        programming_students = category_dict.get('ПРОГРАММИРОВАНИЕ', 0)
+            
+            category_stats = category_stats_query.group_by(Student.category).all()
+            
+            category_dict = {cat[0]: cat[1] for cat in category_stats if cat[0]}
+            ege_students = category_dict.get('ЕГЭ', 0)
+            oge_students = category_dict.get('ОГЭ', 0)
+            levelup_students = category_dict.get('ЛЕВЕЛАП', 0)
+            programming_students = category_dict.get('ПРОГРАММИРОВАНИЕ', 0)
+        except Exception as e:
+            logger.warning(f"Error getting category statistics: {e}")
+            ege_students = 0
+            oge_students = 0
+            levelup_students = 0
+            programming_students = 0
     
     # Оптимизация: объединяем запросы статистики где возможно
     # Статистика по урокам - один запрос с группировкой
