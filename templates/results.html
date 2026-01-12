@@ -302,6 +302,11 @@
                     <button class="neo-button accent" data-bulk-action="accept" data-tooltip="Принять все выбранные задания">{% if lesson %}{{ add_action_text }}{% else %}Принять выбранные{% endif %}</button>
                     <button class="neo-button outline" data-bulk-action="skip" data-tooltip="Пропустить все выбранные задания (можно вернуть позже)">Пропустить выбранные</button>
                     <button class="neo-button danger" data-bulk-action="blacklist" data-tooltip="Добавить все выбранные задания в черный список (необратимо)">В черный список</button>
+                    {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
+                    <button class="neo-button" id="create-assignment-btn" data-tooltip="Создать работу из выбранных заданий" style="background: var(--accent-1); color: white; border: none;">
+                        📝 Создать работу
+                    </button>
+                    {% endif %}
                 </div>
             </div>
         </section>
@@ -466,6 +471,23 @@
                     bulkAction(action);
                 });
             });
+            
+            // Обработчик создания работы
+            const createAssignmentBtn = document.getElementById('create-assignment-btn');
+            if (createAssignmentBtn) {
+                createAssignmentBtn.addEventListener('click', function() {
+                    const selectedTasks = Array.from(document.querySelectorAll('.task-checkbox:checked')).map(cb => parseInt(cb.value));
+                    if (selectedTasks.length === 0) {
+                        if (typeof toast !== 'undefined' && toast) {
+                            toast.warning('Выберите хотя бы одно задание');
+                        } else {
+                            alert('Выберите хотя бы одно задание');
+                        }
+                        return;
+                    }
+                    showCreateAssignmentModal(selectedTasks);
+                });
+            }
         });
         
         function taskAction(taskId, action) {

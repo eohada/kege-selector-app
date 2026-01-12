@@ -7,8 +7,10 @@ from flask_login import login_required
 from sqlalchemy import or_
 
 from app.api import api_bp
-from app.models import Student, Lesson, Tasks, db
+from app.models import Student, Lesson, Tasks, db, User, Enrollment
 from app.students.forms import normalize_school_class
+from app.auth.rbac_utils import get_user_scope
+from flask_login import current_user
 from core.audit_logger import audit_logger
 from datetime import datetime
 
