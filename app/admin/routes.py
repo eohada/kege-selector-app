@@ -2201,12 +2201,13 @@ def admin_user_edit(user_id):
                 all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
                 all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
                 # Определяем, находимся ли мы в песочнице
-            environment = os.environ.get('ENVIRONMENT', 'local')
-            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-            is_sandbox = _is_sandbox(environment, railway_environment)
-            
-            return render_template('admin_user_edit.html',
+                environment = os.environ.get('ENVIRONMENT', 'local')
+                railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+                is_sandbox = _is_sandbox(environment, railway_environment)
+                
+                return render_template('admin_user_edit.html',
                                      user=user,
+                                     is_sandbox=is_sandbox,
                                      family_ties=family_ties,
                                      enrollments=enrollments,
                                      all_parents=all_parents,
@@ -2231,12 +2232,13 @@ def admin_user_edit(user_id):
                 all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
                 all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
                 # Определяем, находимся ли мы в песочнице
-            environment = os.environ.get('ENVIRONMENT', 'local')
-            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-            is_sandbox = _is_sandbox(environment, railway_environment)
-            
-            return render_template('admin_user_edit.html',
+                environment = os.environ.get('ENVIRONMENT', 'local')
+                railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+                is_sandbox = _is_sandbox(environment, railway_environment)
+                
+                return render_template('admin_user_edit.html',
                                      user=user,
+                                     is_sandbox=is_sandbox,
                                      family_ties=family_ties,
                                      enrollments=enrollments,
                                      all_parents=all_parents,
