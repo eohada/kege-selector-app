@@ -258,6 +258,10 @@ def student_profile(student_id):
                                in_progress_lesson=in_progress_lesson,
                                other_lessons=other_lessons,
                                parents_info=parents_info)
+    except Exception as e:
+        logger.error(f"Critical error in student_profile: {e}", exc_info=True)
+        flash('Произошла ошибка при загрузке профиля ученика.', 'danger')
+        return redirect(url_for('main.dashboard'))
 
 @students_bp.route('/student/<int:student_id>/statistics')
 @login_required
