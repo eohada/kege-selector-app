@@ -2744,12 +2744,12 @@ def admin_user_new():
             logger.error(f"Error creating user: {e}", exc_info=True)
             flash(f'Ошибка при создании пользователя: {str(e)}', 'error')
     
-                # Определяем, находимся ли мы в песочнице
-                environment = os.environ.get('ENVIRONMENT', 'local')
-                railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-                is_sandbox = _is_sandbox(environment, railway_environment)
-                
-                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox)
+    # Определяем, находимся ли мы в песочнице
+    environment = os.environ.get('ENVIRONMENT', 'local')
+    railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+    is_sandbox = _is_sandbox(environment, railway_environment)
+    
+    return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox)
 
 
 @admin_bp.route('/admin/tasks/<int:task_id>/topics', methods=['GET', 'POST'])
