@@ -2567,11 +2567,6 @@ def admin_user_new():
             if not username:
                 flash('Имя пользователя обязательно.', 'error')
                 # Определяем, находимся ли мы в песочнице
-            environment = os.environ.get('ENVIRONMENT', 'local')
-            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-            is_sandbox = _is_sandbox(environment, railway_environment)
-            
-                # Определяем, находимся ли мы в песочнице
                 environment = os.environ.get('ENVIRONMENT', 'local')
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
                 is_sandbox = _is_sandbox(environment, railway_environment)
@@ -2580,11 +2575,6 @@ def admin_user_new():
             
             if not password:
                 flash('Пароль обязателен.', 'error')
-                # Определяем, находимся ли мы в песочнице
-            environment = os.environ.get('ENVIRONMENT', 'local')
-            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-            is_sandbox = _is_sandbox(environment, railway_environment)
-            
                 # Определяем, находимся ли мы в песочнице
                 environment = os.environ.get('ENVIRONMENT', 'local')
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
@@ -2596,11 +2586,6 @@ def admin_user_new():
             if User.query.filter_by(username=username).first():
                 flash('Пользователь с таким именем уже существует.', 'error')
                 # Определяем, находимся ли мы в песочнице
-            environment = os.environ.get('ENVIRONMENT', 'local')
-            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-            is_sandbox = _is_sandbox(environment, railway_environment)
-            
-                # Определяем, находимся ли мы в песочнице
                 environment = os.environ.get('ENVIRONMENT', 'local')
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
                 is_sandbox = _is_sandbox(environment, railway_environment)
@@ -2609,11 +2594,6 @@ def admin_user_new():
             
             if email and User.query.filter_by(email=email).first():
                 flash('Пользователь с таким email уже существует.', 'error')
-                # Определяем, находимся ли мы в песочнице
-            environment = os.environ.get('ENVIRONMENT', 'local')
-            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-            is_sandbox = _is_sandbox(environment, railway_environment)
-            
                 # Определяем, находимся ли мы в песочнице
                 environment = os.environ.get('ENVIRONMENT', 'local')
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
