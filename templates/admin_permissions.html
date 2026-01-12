@@ -10,54 +10,239 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
     <style>
-        .tab-content.hidden { display: none; }
-        .tab-btn.active { border-bottom: 2px solid var(--accent-primary); color: var(--accent-primary); background: var(--surface-2); }
+        /* Role Cards Grid */
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .role-card {
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 0.8rem;
+        }
+
+        .role-card:hover {
+            transform: translateY(-4px);
+            background: var(--surface-1);
+        }
+
+        .role-card.active {
+            background: var(--surface-1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .role-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--role-color);
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+
+        .role-card:hover::before,
+        .role-card.active::before {
+            opacity: 1;
+        }
+
+        .role-card.active {
+            border-color: var(--role-color);
+        }
+
+        .role-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--role-color);
+            filter: drop-shadow(0 0 10px rgba(0,0,0,0.3));
+        }
+
+        .role-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .role-key {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: monospace;
+            background: rgba(0,0,0,0.2);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        /* Role Colors */
+        .role-creator { --role-color: #ff2e2e; }
+        .role-admin { --role-color: #ff6b2e; }
+        .role-chief_tester { --role-color: #ffb32e; }
+        .role-tutor { --role-color: #2e7dff; }
+        .role-designer { --role-color: #d62eff; }
+        .role-tester { --role-color: #2effd5; }
+        .role-student { --role-color: #2eff7d; }
+        .role-parent { --role-color: #ffe02e; }
+
+        /* Permissions Section */
+        .permissions-section {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
         
-        /* Switch styles */
-        .switch {
-          position: relative;
-          display: inline-block;
-          width: 50px;
-          height: 24px;
+        .permissions-section.active {
+            display: block;
         }
-        .switch input { 
-          opacity: 0;
-          width: 0;
-          height: 0;
+
+        .permission-category {
+            margin-bottom: 2rem;
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
         }
+
+        .category-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid var(--stroke-1);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .perms-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        /* Neo Toggle Switch */
+        .perm-item {
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .perm-item:hover {
+            border-color: rgba(255,255,255,0.1);
+            transform: translateY(-1px);
+        }
+
+        .perm-info {
+            padding-right: 1rem;
+        }
+
+        .perm-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.2rem;
+            color: var(--text-primary);
+        }
+
+        .perm-key {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: monospace;
+        }
+
+        /* Custom Toggle */
+        .neo-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+            flex-shrink: 0;
+        }
+
+        .neo-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
         .slider {
-          position: absolute;
-          cursor: pointer;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: var(--surface-3);
-          transition: .4s;
-          border: 1px solid var(--stroke-1);
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--surface-3);
+            transition: .3s;
+            border: 1px solid var(--stroke-2);
+            border-radius: 4px; /* Boxy look */
         }
+
         .slider:before {
-          position: absolute;
-          content: "";
-          height: 16px;
-          width: 16px;
-          left: 3px;
-          bottom: 3px;
-          background-color: var(--text-muted);
-          transition: .4s;
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: var(--text-muted);
+            transition: .3s;
+            border-radius: 2px; /* Boxy look */
         }
+
         input:checked + .slider {
-          background-color: var(--accent-primary);
+            background-color: rgba(0, 255, 213, 0.15);
+            border-color: var(--accent-1);
         }
+
         input:checked + .slider:before {
-          transform: translateX(26px);
-          background-color: white;
+            transform: translateX(22px);
+            background-color: var(--accent-1);
+            box-shadow: 0 0 10px var(--accent-1);
         }
-        .slider.round {
-          border-radius: 24px;
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px var(--accent-1);
         }
-        .slider.round:before {
-          border-radius: 50%;
+        
+        /* Creator special */
+        .role-creator-perms input:checked + .slider {
+            background-color: rgba(255, 46, 46, 0.15);
+            border-color: #ff2e2e;
+        }
+        .role-creator-perms input:checked + .slider:before {
+            background-color: #ff2e2e;
+            box-shadow: 0 0 10px #ff2e2e;
+        }
+
+        /* Disabled state */
+        input:disabled + .slider {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
@@ -81,51 +266,75 @@
                 </div>
             </div>
 
-            <form method="POST" class="neo-form">
+            <form method="POST" class="neo-form" id="permissionsForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 
-                <div class="tabs-container">
-                    <div class="tabs-header" style="display: flex; gap: 1rem; border-bottom: 1px solid var(--stroke-1); margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 0.5rem;">
-                        {% for role in roles %}
-                        <button type="button" class="tab-btn neo-button ghost {% if loop.first %}active{% endif %}" onclick="openTab(event, 'role-{{ role }}')" style="white-space: nowrap;">
-                            {{ role|upper }}
-                        </button>
-                        {% endfor %}
-                    </div>
-
+                <!-- Role Selection Grid -->
+                <div class="role-grid">
                     {% for role in roles %}
-                    <div id="role-{{ role }}" class="tab-content {% if not loop.first %}hidden{% endif %}">
-                        <div style="display: grid; gap: 2rem;">
-                            {% for cat_key, cat_name in categories.items() %}
-                            <div class="permission-category">
-                                <h3 style="margin-bottom: 1rem; color: var(--accent-primary); border-bottom: 1px solid var(--stroke-1); padding-bottom: 0.5rem;">{{ cat_name }}</h3>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
-                                    {% for perm_key, perm_data in permissions.items() %}
-                                        {% if perm_data.category == cat_key %}
-                                        <div class="permission-item" style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); display: flex; justify-content: space-between; align-items: center;">
-                                            <div>
-                                                <div style="font-weight: 600;">{{ perm_data.name }}</div>
-                                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ perm_key }}</div>
-                                            </div>
-                                            <label class="switch">
-                                                <input type="checkbox" name="{{ role }}_{{ perm_key }}" {% if role_permissions[role].get(perm_key) %}checked{% endif %}>
-                                                <span class="slider round"></span>
-                                            </label>
-                                        </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% endfor %}
+                    <div class="role-card role-{{ role }}" onclick="selectRole('{{ role }}')">
+                        <div class="role-icon">
+                            {% if role == 'creator' %}👑{% endif %}
+                            {% if role == 'admin' %}🛡️{% endif %}
+                            {% if role == 'chief_tester' %}🐞{% endif %}
+                            {% if role == 'tutor' %}🎓{% endif %}
+                            {% if role == 'designer' %}🎨{% endif %}
+                            {% if role == 'tester' %}🧪{% endif %}
+                            {% if role == 'student' %}📚{% endif %}
+                            {% if role == 'parent' %}👨‍👩‍👧{% endif %}
                         </div>
+                        <div class="role-name">{{ role|upper }}</div>
+                        <div class="role-key">{{ role }}</div>
                     </div>
                     {% endfor %}
                 </div>
 
-                <div class="hero-actions" style="margin-top: 2rem; border-top: 1px solid var(--stroke-1); padding-top: 1.5rem;">
-                    <button type="submit" class="neo-button accent">
+                <!-- Permissions Editors (One per role, hidden/shown via JS) -->
+                <div id="permissionsContainer">
+                    {% for role in roles %}
+                    <div id="perms-{{ role }}" class="permissions-section {% if role == 'creator' %}role-creator-perms{% endif %}">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <h2 style="margin:0; border-left: 4px solid var(--role-color, var(--accent-1)); padding-left: 1rem;">
+                                Настройка прав: <span style="color: var(--text-primary);">{{ role|upper }}</span>
+                            </h2>
+                            {% if role == 'creator' %}
+                            <div class="neo-badge" style="background: rgba(255,46,46,0.1); color: #ff2e2e; padding: 0.5rem 1rem; border-radius: 4px; border: 1px solid rgba(255,46,46,0.3);">
+                                ⚠️ Полный доступ (системный)
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        {% for cat_key, cat_name in categories.items() %}
+                        <div class="permission-category">
+                            <div class="category-title">{{ cat_name }}</div>
+                            <div class="perms-grid">
+                                {% for perm_key, perm_data in permissions.items() %}
+                                    {% if perm_data.category == cat_key %}
+                                    <div class="perm-item">
+                                        <div class="perm-info">
+                                            <div class="perm-name">{{ perm_data.name }}</div>
+                                            <div class="perm-key">{{ perm_key }}</div>
+                                        </div>
+                                        <label class="neo-switch">
+                                            <input type="checkbox" name="{{ role }}_{{ perm_key }}" 
+                                                {% if role_permissions[role].get(perm_key) %}checked{% endif %}
+                                                {% if role == 'creator' %}disabled{% endif %}>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="hero-actions" style="margin-top: 2rem; border-top: 1px solid var(--stroke-1); padding-top: 1.5rem; justify-content: center; display: none;" id="saveActions">
+                    <button type="submit" class="neo-button accent" style="min-width: 250px;">
                         <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" class="ui-icon ui-icon--sm">
-                        Сохранить настройки прав
+                        Сохранить изменения
                     </button>
                 </div>
             </form>
@@ -134,18 +343,31 @@
 
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script>
-    function openTab(evt, roleName) {
-        var i, tabcontent, tablinks;
-        tabcontent = document.getElementsByClassName("tab-content");
-        for (i = 0; i < tabcontent.length; i++) {
-            tabcontent[i].style.display = "none";
+    function selectRole(roleName) {
+        // Update cards UI
+        document.querySelectorAll('.role-card').forEach(card => {
+            card.classList.remove('active');
+            if (card.classList.contains('role-' + roleName)) {
+                card.classList.add('active');
+            }
+        });
+
+        // Hide all permission sections
+        document.querySelectorAll('.permissions-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
+        // Show selected permission section
+        const selectedSection = document.getElementById('perms-' + roleName);
+        if (selectedSection) {
+            selectedSection.classList.add('active');
+            
+            // Scroll to section smoothly
+            selectedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            // Show save button
+            document.getElementById('saveActions').style.display = 'flex';
         }
-        tablinks = document.getElementsByClassName("tab-btn");
-        for (i = 0; i < tablinks.length; i++) {
-            tablinks[i].className = tablinks[i].className.replace(" active", "");
-        }
-        document.getElementById(roleName).style.display = "block";
-        evt.currentTarget.className += " active";
     }
     
     document.addEventListener("DOMContentLoaded", function() {
@@ -174,11 +396,6 @@
             {% endfor %}
         {% endif %}
         {% endwith %}
-        
-        // Open first tab by default if not already open
-        if (document.getElementsByClassName("tab-btn").length > 0 && document.querySelector(".tab-btn.active") === null) {
-             document.getElementsByClassName("tab-btn")[0].click();
-        }
     });
     </script>
 </body>

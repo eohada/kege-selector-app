@@ -19,7 +19,8 @@ def admin_permissions():
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('admin.admin_panel'))
         
-    roles = ['admin', 'chief_tester', 'tutor', 'designer', 'tester', 'student', 'parent']
+    # Order of influence: Creator -> Admin -> Chief Tester -> Tutor -> Designer -> Tester -> Student -> Parent
+    roles = ['creator', 'admin', 'chief_tester', 'tutor', 'designer', 'tester', 'student', 'parent']
     
     # Self-healing check using the centralized utility from flask app context
     try:
@@ -32,10 +33,14 @@ def admin_permissions():
     if request.method == 'POST':
         try:
             # Очищаем старые права (или обновляем)
-            # Для простоты: проходим по всем возможным правам из формы
             changes_count = 0
+            # Note: We iterate over roles except creator for saving, unless we decide creator is editable.
+            # Usually creator has all permissions hardcoded in is_creator(), so DB values are irrelevant.
+            # But let's save them anyway for consistency if the user toggles them (though we might disable UI for creator).
+            
             for role in roles:
                 for perm_key in ALL_PERMISSIONS.keys():
+                    # For checkboxes, if not checked, it's missing from form data
                     is_enabled = request.form.get(f"{role}_{perm_key}") == 'on'
                     
                     # Ищем существующую запись или создаем новую
@@ -43,7 +48,12 @@ def admin_permissions():
                     if not perm_record:
                         perm_record = RolePermission(role=role, permission_name=perm_key)
                         db.session.add(perm_record)
-                        if is_enabled: changes_count += 1
+                        # Count only enabled new ones as "changes" effectively, or just any add
+                        if is_enabled: 
+                            perm_record.is_enabled = True
+                            changes_count += 1
+                        else:
+                            perm_record.is_enabled = False
                     else:
                         if perm_record.is_enabled != is_enabled:
                             perm_record.is_enabled = is_enabled
@@ -75,7 +85,6 @@ def admin_permissions():
                 role_permissions[role][perm.permission_name] = perm.is_enabled
         
         # Если в БД нет записи, берем дефолтное значение (для отображения)
-        # Но сохраняться будет то, что в форме
         defaults = DEFAULT_ROLE_PERMISSIONS.get(role, [])
         for perm_key in ALL_PERMISSIONS.keys():
             if perm_key not in role_permissions[role]:
