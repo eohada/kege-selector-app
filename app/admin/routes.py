@@ -1242,6 +1242,17 @@ def admin_testers_delete(user_id):
             db.session.rollback()
             deleted_logs = 0
         
+        # Удаляем профиль пользователя перед удалением пользователя
+        try:
+            from app.models import UserProfile
+            user_profile = UserProfile.query.filter_by(user_id=user_id).first()
+            if user_profile:
+                db.session.delete(user_profile)
+                logger.info(f"Deleted UserProfile for user {user_id}")
+        except Exception as e:
+            logger.warning(f"Error deleting user profile: {e}")
+            # Продолжаем удаление пользователя даже если профиль не найден
+        
         db.session.delete(user)
         try:
             db.session.commit()
