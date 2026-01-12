@@ -1,0 +1,260 @@
+"""
+Внутренние API endpoints для удаленной админки
+Доступны из production и sandbox окружений для управления через remote_admin
+"""
+import logging
+import hmac
+import os
+from flask import request, jsonify
+from sqlalchemy import func, delete
+from sqlalchemy.exc import OperationalError, ProgrammingError
+
+from app.admin import admin_bp
+from app.models import User, AuditLog, MaintenanceMode, db, UserProfile
+from app.models import FamilyTie, Enrollment, Student, Lesson
+from core.audit_logger import audit_logger
+
+logger = logging.getLogger(__name__)
+
+
+def _remote_admin_guard() -> bool:
+    """Проверка токена для удаленной админки"""
+    provided = request.headers.get('X-Admin-Token', '')
+    
+    # Проверяем токен из переменных окружения
+    expected_prod = (os.environ.get('PRODUCTION_ADMIN_TOKEN') or '').strip()
+    expected_sandbox = (os.environ.get('SANDBOX_ADMIN_TOKEN') or '').strip()
+    
+    if not provided:
+        return False
+    
+    # Проверяем оба токена (production или sandbox)
+    return (expected_prod and hmac.compare_digest(provided, expected_prod)) or \
+           (expected_sandbox and hmac.compare_digest(provided, expected_sandbox))
+
+
+@admin_bp.route('/internal/remote-admin/status', methods=['GET'])
+def remote_admin_status():
+    """Статус окружения для удаленной админки"""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    
+    try:
+        total_users = User.query.count()
+        active_users = User.query.filter_by(is_active=True).count()
+        
+        # Статистика по логам
+        try:
+            total_logs = AuditLog.query.count()
+            today_logs = AuditLog.query.filter(
+                func.date(AuditLog.timestamp) == func.current_date()
+            ).count()
+        except Exception:
+            total_logs = 0
+            today_logs = 0
+        
+        # Статус тех работ
+        maintenance_status = MaintenanceMode.get_status()
+        
+        return jsonify({
+            'status': 'ok',
+            'stats': {
+                'total_users': total_users,
+                'active_users': active_users,
+                'total_logs': total_logs,
+                'today_logs': today_logs,
+                'maintenance_enabled': maintenance_status.enabled
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error in remote_admin_status: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/users', methods=['GET'])
+def remote_admin_api_users():
+    """API: Список пользователей"""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    
+    try:
+        role_filter = request.args.get('role')
+        is_active_filter = request.args.get('is_active')
+        
+        query = User.query
+        
+        if role_filter:
+            query = query.filter(User.role == role_filter)
+        if is_active_filter is not None:
+            is_active = is_active_filter.lower() == 'true'
+            query = query.filter(User.is_active == is_active)
+        
+        users = query.order_by(User.created_at.desc()).all()
+        
+        return jsonify({
+            'success': True,
+            'users': [{
+                'id': u.id,
+                'username': u.username,
+                'email': u.email,
+                'role': u.role,
+                'is_active': u.is_active,
+                'created_at': u.created_at.isoformat() if u.created_at else None,
+                'last_login': u.last_login.isoformat() if u.last_login else None
+            } for u in users]
+        })
+    except Exception as e:
+        logger.error(f"Error in remote_admin_api_users: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/users/<int:user_id>', methods=['GET', 'POST', 'DELETE'])
+def remote_admin_api_user(user_id):
+    """API: Управление пользователем"""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    
+    try:
+        if request.method == 'GET':
+            user = User.query.get(user_id)
+            if not user:
+                return jsonify({'error': 'user not found'}), 404
+            
+            # Получаем профиль
+            profile = UserProfile.query.filter_by(user_id=user_id).first()
+            
+            return jsonify({
+                'success': True,
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'role': user.role,
+                    'is_active': user.is_active,
+                    'created_at': user.created_at.isoformat() if user.created_at else None,
+                    'last_login': user.last_login.isoformat() if user.last_login else None,
+                    'profile': {
+                        'first_name': profile.first_name if profile else None,
+                        'last_name': profile.last_name if profile else None,
+                        'phone': profile.phone if profile else None,
+                    } if profile else None
+                }
+            })
+        
+        elif request.method == 'POST':
+            data = request.get_json() or {}
+            user = User.query.get(user_id)
+            if not user:
+                return jsonify({'error': 'user not found'}), 404
+            
+            if user.is_creator():
+                return jsonify({'error': 'cannot modify creator'}), 403
+            
+            # Обновляем поля
+            if 'username' in data:
+                user.username = data['username']
+            if 'email' in data:
+                user.email = data['email'] or None
+            if 'role' in data:
+                user.role = data['role']
+            if 'is_active' in data:
+                user.is_active = bool(data['is_active'])
+            
+            db.session.commit()
+            
+            return jsonify({'success': True, 'user_id': user_id})
+        
+        elif request.method == 'DELETE':
+            user = User.query.get(user_id)
+            if not user:
+                return jsonify({'error': 'user not found'}), 404
+            
+            if user.is_creator():
+                return jsonify({'error': 'cannot delete creator'}), 403
+            
+            username = user.username
+            
+            # Удаляем логи
+            try:
+                deleted_logs = db.session.execute(
+                    delete(AuditLog).where(AuditLog.user_id == user_id)
+                ).rowcount
+            except Exception as e:
+                logger.warning(f"Error deleting user logs: {e}")
+                db.session.rollback()
+                deleted_logs = 0
+            
+            # Удаляем профиль
+            try:
+                profile = UserProfile.query.filter_by(user_id=user_id).first()
+                if profile:
+                    db.session.delete(profile)
+            except Exception as e:
+                logger.warning(f"Error deleting user profile: {e}")
+            
+            db.session.delete(user)
+            db.session.commit()
+            
+            audit_logger.log(
+                action='delete_user',
+                entity='User',
+                entity_id=user_id,
+                status='success',
+                metadata={
+                    'username': username,
+                    'deleted_logs': deleted_logs,
+                    'deleted_by_remote_admin': True
+                }
+            )
+            
+            return jsonify({'success': True, 'deleted_logs': deleted_logs})
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in remote_admin_api_user: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/stats', methods=['GET'])
+def remote_admin_api_stats():
+    """API: Статистика окружения"""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    
+    try:
+        stats = {
+            'users': {
+                'total': User.query.count(),
+                'active': User.query.filter_by(is_active=True).count(),
+                'by_role': {}
+            },
+            'students': {
+                'total': Student.query.filter_by(is_active=True).count(),
+                'archived': Student.query.filter_by(is_active=False).count()
+            },
+            'lessons': {
+                'total': Lesson.query.count(),
+                'completed': Lesson.query.filter_by(status='completed').count(),
+                'planned': Lesson.query.filter_by(status='planned').count()
+            }
+        }
+        
+        # Статистика по ролям
+        for role in ['admin', 'tutor', 'student', 'parent', 'tester', 'creator', 'chief_tester', 'designer']:
+            stats['users']['by_role'][role] = User.query.filter_by(role=role).count()
+        
+        # Статистика по логам
+        try:
+            stats['audit_logs'] = {
+                'total': AuditLog.query.count(),
+                'today': AuditLog.query.filter(
+                    func.date(AuditLog.timestamp) == func.current_date()
+                ).count()
+            }
+        except Exception:
+            stats['audit_logs'] = {'total': 0, 'today': 0}
+        
+        return jsonify({'success': True, 'stats': stats})
+    except Exception as e:
+        logger.error(f"Error in remote_admin_api_stats: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
