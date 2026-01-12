@@ -88,6 +88,15 @@
                 <span class="nav-link-label">Напоминания</span>
             </span>
         </a>
+
+        {% if current_user.is_authenticated and has_permission(current_user, 'assets.manage') %}
+        <a href="{{ url_for('designer.assets_manager') }}" class="nav-link {% if active_page == 'assets' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/icons8-image-100.png') }}" alt="Ассеты" class="nav-link-icon">
+                <span class="nav-link-label">Ассеты</span>
+            </span>
+        </a>
+        {% endif %}
         {% endif %}
 
         {% if not current_user.is_parent() and not current_user.is_student() %}
