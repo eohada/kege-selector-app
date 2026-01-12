@@ -471,6 +471,50 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create Enrollments table: {e}")
             
+            # 5. Создаем таблицу RolePermissions (если её нет) и заполняем дефолты
+            role_perms_table = _resolve_table_name(table_names, 'RolePermissions')
+            if not role_perms_table:
+                try:
+                    db.create_all()  # Создаст таблицу RolePermissions
+                    logger.info("Created RolePermissions table")
+                    
+                    # Заполняем дефолтные права
+                    from app.models import RolePermission
+                    from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
+                    
+                    count = 0
+                    for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
+                        for perm_name in perms:
+                            # Проверяем через SQL, чтобы избежать проблем с сессией при создании таблиц
+                            # Но через ORM проще, если create_all сработал
+                            rp = RolePermission(role=role, permission_name=perm_name, is_enabled=True)
+                            db.session.add(rp)
+                            count += 1
+                    
+                    db.session.commit()
+                    logger.info(f"Filled default permissions ({count} records)")
+                except Exception as e:
+                    logger.warning(f"Could not create/fill RolePermissions table: {e}")
+                    db.session.rollback()
+
+            # 6. Добавляем custom_permissions в Users (если его нет)
+            if users_table:
+                users_columns = {col['name'] for col in inspector.get_columns(users_table)}
+                if 'custom_permissions' not in users_columns:
+                    try:
+                        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+                        if 'postgresql' in db_url or 'postgres' in db_url:
+                            db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN custom_permissions JSON'))
+                        else:
+                            # SQLite
+                            db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN custom_permissions JSON'))
+                        
+                        db.session.commit()
+                        logger.info("Added custom_permissions column to Users table")
+                    except Exception as e:
+                        logger.warning(f"Could not add custom_permissions to Users: {e}")
+                        db.session.rollback()
+
             # Коммитим миграции RBAC
             try:
                 db.session.commit()
