@@ -22,7 +22,7 @@
   python scripts/seed_rbac_data.py --sandbox --reset --yes
 
 Создает:
-  - Пользователей с ролями: admin, tutor, student, parent
+  - Пользователей с ролями: admin, chief_tester, designer, tutor, student, parent
   - UserProfile для каждого пользователя
   - FamilyTie связи (родитель-ученик)
   - Enrollment связи (ученик-тьютор)
@@ -61,6 +61,32 @@ TEST_USERS = [
             'last_name': 'Системы',
             'phone': '+7 900 000 00 01',
             'telegram_id': '@admin_support'
+        }
+    },
+    # Главный тестировщик
+    {
+        'username': 'chief_tester',
+        'email': 'chief_tester@example.com',
+        'password': 'tester123',
+        'role': 'chief_tester',
+        'profile': {
+            'first_name': 'Главный',
+            'last_name': 'Тестировщик',
+            'phone': '+7 900 000 00 09',
+            'telegram_id': '@chief_tester'
+        }
+    },
+    # Графический дизайнер
+    {
+        'username': 'designer',
+        'email': 'designer@example.com',
+        'password': 'designer123',
+        'role': 'designer',
+        'profile': {
+            'first_name': 'Графический',
+            'last_name': 'Дизайнер',
+            'phone': '+7 900 000 00 10',
+            'telegram_id': '@designer'
         }
     },
     # Тьюторы
@@ -408,7 +434,7 @@ def print_summary(users_dict):
     print("="*60)
     
     print("\n👥 Пользователи:")
-    for role in ['admin', 'tutor', 'student', 'parent']:
+    for role in ['admin', 'chief_tester', 'designer', 'tutor', 'student', 'parent']:
         users_by_role = [u for u in users_dict.values() if u.role == role]
         if users_by_role:
             print(f"  {role.upper()}: {len(users_by_role)}")
