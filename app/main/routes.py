@@ -233,9 +233,6 @@ def dashboard():
     except Exception as e:
         logger.warning(f"Error counting archived students: {e}")
         archived_students_count = 0
-    except Exception as e:
-        logger.warning(f"Error counting archived students: {e}")
-        archived_students_count = 0
     
     # Статистика по заданиям - используем подзапросы для оптимизации
     # Ученик и родитель не видят общую статистику по задачам
