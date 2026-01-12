@@ -2276,12 +2276,6 @@ def admin_user_edit(user_id):
                                      all_students=all_students,
                                      all_tutors=all_tutors,
                                      is_sandbox=is_sandbox)
-                                         user=user,
-                                         family_ties=family_ties,
-                                         enrollments=enrollments,
-                                         all_parents=all_parents,
-                                         all_students=all_students,
-                                         all_tutors=all_tutors)
             
             # Обновляем пароль, если указан
             new_password = request.form.get('password', '').strip()
