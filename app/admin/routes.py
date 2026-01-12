@@ -487,7 +487,8 @@ def admin_sandbox_user_delete(user_id):
         except Exception as e:
             flash(f'Ошибка запроса: {str(e)}', 'error')
     else:
-        # Если удаленный API не настроен, удаляем локально
+        # Если удаленный API не настроен, используем внутренний маршрут напрямую
+        # Вызываем функцию sandbox_internal_user_delete напрямую
         try:
             user = User.query.get(user_id)
             if not user:
