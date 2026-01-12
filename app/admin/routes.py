@@ -2263,6 +2263,33 @@ def admin_user_edit(user_id):
             user.role = role
             user.is_active = is_active
             
+            # Обработка custom_permissions (только для Creator)
+            if current_user.is_creator():
+                custom_perms = {}
+                # Собираем права из формы
+                for perm_key in ALL_PERMISSIONS.keys():
+                    # Три состояния: on (true), off (false), или default (удалить ключ)
+                    # Но в HTML чекбоксы передают значение только если отмечены.
+                    # Поэтому лучше использовать hidden input для "default" или просто checkbox для вкл/выкл.
+                    # Реализуем простую логику: если чекбокс отмечен -> True, иначе -> False (если это переопределение)
+                    
+                    # Однако, нам нужно знать, переопределено право или нет.
+                    # Сделаем так:
+                    # perm_{key}_override = on/off (чекбокс "Переопределить")
+                    # perm_{key}_value = on/off (чекбокс "Значение")
+                    
+                    override = request.form.get(f"perm_override_{perm_key}") == 'on'
+                    if override:
+                        value = request.form.get(f"perm_value_{perm_key}") == 'on'
+                        custom_perms[perm_key] = value
+                
+                if custom_perms:
+                    user.custom_permissions = custom_perms
+                else:
+                    user.custom_permissions = None # Сброс на дефолт
+                
+                logger.info(f"Updated custom permissions for user {user.id}: {user.custom_permissions}")
+
             # Обновляем профиль
             profile_data = {
                 'first_name': request.form.get('first_name', '').strip() or None,
