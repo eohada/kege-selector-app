@@ -447,7 +447,6 @@
                     </button>
                     <a href="{{ url_for('admin.admin_users') }}" class="neo-button ghost">Отмена</a>
                     {% if user and not user.is_creator() %}
-                        {% set is_sandbox = 'sandbox' in (request.environ.get('RAILWAY_ENVIRONMENT', '') or request.environ.get('ENVIRONMENT', '')).lower() %}
                         {% if is_sandbox %}
                             <button type="button" class="neo-button danger action-delete-btn" 
                                     data-url="{{ url_for('admin.admin_sandbox_user_delete', user_id=user.id) }}" 

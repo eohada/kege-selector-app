@@ -476,13 +476,13 @@ def admin_sandbox_user_delete(user_id):
         resp = _sandbox_remote_request('POST', f'/internal/sandbox-admin/user/{user_id}/delete', {})
         data = resp.json() if resp.headers.get('Content-Type', '').startswith('application/json') else {}
         if resp.status_code == 200 and data.get('success'):
-            flash('Sandbox: пользователь удалён.', 'success')
+            flash('Пользователь удалён.', 'success')
         else:
-            flash(f"Sandbox: ошибка удаления: {data.get('error') or resp.text}", 'error')
+            flash(f"Ошибка удаления: {data.get('error') or resp.text}", 'error')
     except Exception as e:
-        flash(f'Sandbox: ошибка запроса: {str(e)}', 'error')
+        flash(f'Ошибка запроса: {str(e)}', 'error')
 
-    return redirect(url_for('admin.admin_panel'))
+    return redirect(url_for('admin.admin_users'))
 
 
 @admin_bp.route('/admin/sandbox/tester-entity/create', methods=['POST'])
@@ -2200,7 +2200,12 @@ def admin_user_edit(user_id):
                 all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
                 all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
                 all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
-                return render_template('admin_user_edit.html',
+                # Определяем, находимся ли мы в песочнице
+            environment = os.environ.get('ENVIRONMENT', 'local')
+            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+            is_sandbox = _is_sandbox(environment, railway_environment)
+            
+            return render_template('admin_user_edit.html',
                                      user=user,
                                      family_ties=family_ties,
                                      enrollments=enrollments,
@@ -2225,7 +2230,12 @@ def admin_user_edit(user_id):
                 all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
                 all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
                 all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
-                return render_template('admin_user_edit.html',
+                # Определяем, находимся ли мы в песочнице
+            environment = os.environ.get('ENVIRONMENT', 'local')
+            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+            is_sandbox = _is_sandbox(environment, railway_environment)
+            
+            return render_template('admin_user_edit.html',
                                      user=user,
                                      family_ties=family_ties,
                                      enrollments=enrollments,
@@ -2251,7 +2261,12 @@ def admin_user_edit(user_id):
                     all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
                     all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
                     all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
-                    return render_template('admin_user_edit.html',
+                    # Определяем, находимся ли мы в песочнице
+            environment = os.environ.get('ENVIRONMENT', 'local')
+            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+            is_sandbox = _is_sandbox(environment, railway_environment)
+            
+            return render_template('admin_user_edit.html',
                                          user=user,
                                          family_ties=family_ties,
                                          enrollments=enrollments,
@@ -2487,6 +2502,11 @@ def admin_user_edit(user_id):
             all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
             all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
             all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
+            # Определяем, находимся ли мы в песочнице
+            environment = os.environ.get('ENVIRONMENT', 'local')
+            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+            is_sandbox = _is_sandbox(environment, railway_environment)
+            
             return render_template('admin_user_edit.html',
                                  user=user,
                                  family_ties=family_ties,
@@ -2546,20 +2566,60 @@ def admin_user_new():
             
             if not username:
                 flash('Имя пользователя обязательно.', 'error')
-                return render_template('admin_user_edit.html', user=None)
+                # Определяем, находимся ли мы в песочнице
+            environment = os.environ.get('ENVIRONMENT', 'local')
+            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+            is_sandbox = _is_sandbox(environment, railway_environment)
+            
+                # Определяем, находимся ли мы в песочнице
+                environment = os.environ.get('ENVIRONMENT', 'local')
+                railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+                is_sandbox = _is_sandbox(environment, railway_environment)
+                
+                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox)
             
             if not password:
                 flash('Пароль обязателен.', 'error')
-                return render_template('admin_user_edit.html', user=None)
+                # Определяем, находимся ли мы в песочнице
+            environment = os.environ.get('ENVIRONMENT', 'local')
+            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+            is_sandbox = _is_sandbox(environment, railway_environment)
+            
+                # Определяем, находимся ли мы в песочнице
+                environment = os.environ.get('ENVIRONMENT', 'local')
+                railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+                is_sandbox = _is_sandbox(environment, railway_environment)
+                
+                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox)
             
             # Проверка уникальности
             if User.query.filter_by(username=username).first():
                 flash('Пользователь с таким именем уже существует.', 'error')
-                return render_template('admin_user_edit.html', user=None)
+                # Определяем, находимся ли мы в песочнице
+            environment = os.environ.get('ENVIRONMENT', 'local')
+            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+            is_sandbox = _is_sandbox(environment, railway_environment)
+            
+                # Определяем, находимся ли мы в песочнице
+                environment = os.environ.get('ENVIRONMENT', 'local')
+                railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+                is_sandbox = _is_sandbox(environment, railway_environment)
+                
+                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox)
             
             if email and User.query.filter_by(email=email).first():
                 flash('Пользователь с таким email уже существует.', 'error')
-                return render_template('admin_user_edit.html', user=None)
+                # Определяем, находимся ли мы в песочнице
+            environment = os.environ.get('ENVIRONMENT', 'local')
+            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+            is_sandbox = _is_sandbox(environment, railway_environment)
+            
+                # Определяем, находимся ли мы в песочнице
+                environment = os.environ.get('ENVIRONMENT', 'local')
+                railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+                is_sandbox = _is_sandbox(environment, railway_environment)
+                
+                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox)
             
             # Создаем пользователя
             user = User(
@@ -2701,7 +2761,12 @@ def admin_user_new():
             logger.error(f"Error creating user: {e}", exc_info=True)
             flash(f'Ошибка при создании пользователя: {str(e)}', 'error')
     
-    return render_template('admin_user_edit.html', user=None)
+                # Определяем, находимся ли мы в песочнице
+                environment = os.environ.get('ENVIRONMENT', 'local')
+                railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
+                is_sandbox = _is_sandbox(environment, railway_environment)
+                
+                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox)
 
 
 @admin_bp.route('/admin/tasks/<int:task_id>/topics', methods=['GET', 'POST'])
