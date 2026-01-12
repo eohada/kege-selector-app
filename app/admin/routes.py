@@ -472,15 +472,61 @@ def admin_sandbox_user_delete(user_id):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
-    try:
-        resp = _sandbox_remote_request('POST', f'/internal/sandbox-admin/user/{user_id}/delete', {})
-        data = resp.json() if resp.headers.get('Content-Type', '').startswith('application/json') else {}
-        if resp.status_code == 200 and data.get('success'):
-            flash('Пользователь удалён.', 'success')
-        else:
-            flash(f"Ошибка удаления: {data.get('error') or resp.text}", 'error')
-    except Exception as e:
-        flash(f'Ошибка запроса: {str(e)}', 'error')
+    # Проверяем, настроен ли удаленный API
+    base_url, token = _sandbox_remote_config()
+    
+    if base_url and token:
+        # Если удаленный API настроен, используем его
+        try:
+            resp = _sandbox_remote_request('POST', f'/internal/sandbox-admin/user/{user_id}/delete', {})
+            data = resp.json() if resp.headers.get('Content-Type', '').startswith('application/json') else {}
+            if resp.status_code == 200 and data.get('success'):
+                flash('Пользователь удалён.', 'success')
+            else:
+                flash(f"Ошибка удаления: {data.get('error') or resp.text}", 'error')
+        except Exception as e:
+            flash(f'Ошибка запроса: {str(e)}', 'error')
+    else:
+        # Если удаленный API не настроен, удаляем локально
+        try:
+            user = User.query.get(user_id)
+            if not user:
+                flash('Пользователь не найден.', 'error')
+            elif user.is_creator():
+                flash('Нельзя удалить создателя', 'error')
+            else:
+                username = user.username
+                try:
+                    # Удаляем логи пользователя
+                    from sqlalchemy import delete
+                    from app.models import AuditLog
+                    deleted_logs = db.session.execute(
+                        delete(AuditLog).where(AuditLog.user_id == user_id)
+                    ).rowcount
+                except Exception as e:
+                    logger.warning(f"Error deleting user logs: {e}")
+                    db.session.rollback()
+                    deleted_logs = 0
+                
+                db.session.delete(user)
+                db.session.commit()
+                
+                audit_logger.log(
+                    action='delete_user',
+                    entity='User',
+                    entity_id=user_id,
+                    status='success',
+                    metadata={
+                        'username': username,
+                        'deleted_logs': deleted_logs
+                    }
+                )
+                
+                flash(f'Пользователь "{username}" и {deleted_logs} его логов удалены', 'success')
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f'Ошибка при удалении пользователя: {e}', exc_info=True)
+            flash(f'Ошибка при удалении: {str(e)}', 'error')
 
     return redirect(url_for('admin.admin_users'))
 
