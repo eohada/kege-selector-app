@@ -767,6 +767,10 @@ def student_archive(student_id):
 @login_required
 def lesson_new(student_id):
     """Создание нового урока для студента"""
+    if current_user.is_student():
+        flash('Ученики не могут создавать уроки.', 'danger')
+        return redirect(url_for('students.student_profile', student_id=student_id))
+    
     student = Student.query.get_or_404(student_id)
     form = LessonForm()
 

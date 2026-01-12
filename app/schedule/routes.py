@@ -244,6 +244,10 @@ def schedule():
 @login_required
 def schedule_create_lesson():
     """Создание урока из расписания"""
+    if current_user.is_student():
+        flash('Ученики не могут создавать уроки.', 'danger')
+        return redirect(url_for('schedule.schedule'))
+        
     try:
         student_id = request.form.get('student_id', type=int)
         lesson_date_str = request.form.get('lesson_date')

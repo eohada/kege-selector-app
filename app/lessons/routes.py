@@ -698,6 +698,10 @@ def lesson_exam_export_md(lesson_id):
 @login_required
 def lesson_manual_create(lesson_id):
     """Ручное создание заданий"""
+    if current_user.is_student():
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+        
     lesson = Lesson.query.get_or_404(lesson_id)
     assignment_type = request.args.get('type', 'homework')
     

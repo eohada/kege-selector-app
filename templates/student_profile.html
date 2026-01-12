@@ -1941,7 +1941,9 @@
                     <h2><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Все уроки" class="ui-icon ui-icon--md">Все уроки</h2>
                 </div>
                 <div class="hero-actions">
+                    {% if current_user.is_admin() or current_user.is_tutor() %}
                     <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить урок" class="ui-icon ui-icon--sm">Добавить урок</a>
+                    {% endif %}
                 </div>
             </div>
             

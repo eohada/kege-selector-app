@@ -272,6 +272,9 @@ def api_global_search():
 @login_required
 def api_lesson_create():
     """API для создания урока"""
+    if current_user.is_student():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+        
     try:
         data = request.get_json() if request.is_json else request.form.to_dict()
 
