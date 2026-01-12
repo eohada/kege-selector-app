@@ -234,6 +234,10 @@ class User(db.Model):
     def is_designer(self):
         return self.role == 'designer'
     
+    def is_tester(self):
+        """Проверка, является ли пользователь тестировщиком (обычным)"""
+        return self.role == 'tester'
+    
     # Старые методы (для обратной совместимости)
     def is_creator(self):
         """Проверка, является ли пользователь создателем"""

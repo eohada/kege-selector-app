@@ -53,7 +53,7 @@ def dashboard():
         # Дизайнер может быть перенаправлен на страницу управления ассетами
         # Или показать пустой dashboard с сообщением
         pass  # Продолжаем выполнение, покажем пустой dashboard
-    elif current_user.is_tester() and not current_user.is_chief_tester():
+    elif current_user.role == 'tester' and not current_user.is_chief_tester():
         # Обычный тестировщик - показываем пустой dashboard
         pass  # Продолжаем выполнение, покажем пустой dashboard
     
