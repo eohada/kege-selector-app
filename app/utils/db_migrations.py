@@ -4,79 +4,122 @@
 import logging
 from sqlalchemy import inspect, text
 from app.models import db
-from core.db_models import Tester, AuditLog
+from core.db_models import Tester, AuditLog, RolePermission, User
+from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
 
 logger = logging.getLogger(__name__)
 
-def _is_postgres(app):  # Проверяем, что подключена PostgreSQL (в ней есть sequences/serial)
-    try:  # Пытаемся безопасно прочитать строку подключения
-        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')  # Берём URI из конфига Flask
-        return ('postgresql' in db_url) or ('postgres' in db_url)  # True, если похоже на Postgres
-    except Exception:  # На всякий случай не ломаем миграции
-        return False  # Если не удалось определить — считаем, что не Postgres
+def _is_postgres(app):
+    try:
+        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+        return ('postgresql' in db_url) or ('postgres' in db_url)
+    except Exception:
+        return False
 
-def _resolve_table_name(table_names, preferred):  # Находим реальное имя таблицы (учитываем возможный lower-case)
-    if preferred in table_names:  # Если таблица есть в точном регистре
-        return preferred  # Возвращаем её как есть
-    lower = preferred.lower()  # Готовим lower-case вариант имени
-    if lower in table_names:  # Если таблица есть в нижнем регистре
-        return lower  # Возвращаем lower-case имя
-    return None  # Таблица не найдена
+def _resolve_table_name(table_names, preferred):
+    if preferred in table_names:
+        return preferred
+    lower = preferred.lower()
+    if lower in table_names:
+        return lower
+    return None
 
-def _fix_postgres_sequences(app, inspector):  # Выравниваем sequences, чтобы nextval() не выдавал занятые PK после импорта
-    if not _is_postgres(app):  # Если это не Postgres — выходим (SQLite не нуждается)
-        return  # Ничего не делаем
-    try:  # Защищаемся от падений при попытке setval
-        table_names = inspector.get_table_names()  # Список таблиц в БД
-        sequences_map = {  # Таблица -> pk-колонка (как в scripts/fix_sequences.py)
-            'Students': 'student_id',  # PK учеников
-            'Lessons': 'lesson_id',  # PK уроков
-            'LessonTasks': 'lesson_task_id',  # PK связки урок-задание
-            'Tasks': 'task_id',  # PK задач (важно для ручного создания)
-            'UsageHistory': 'usage_id',  # PK истории принятия
-            'SkippedTasks': 'skipped_id',  # PK пропусков
-            'BlacklistTasks': 'blacklist_id',  # PK черного списка
-            # 'Testers': 'tester_id',  # PK тестировщиков - ПРОПУСКАЕМ, т.к. может быть text тип
-            'AuditLog': 'id',  # PK логов
-            'MaintenanceMode': 'id',  # PK режима техработ
-            'StudentTaskStatistics': 'stat_id',  # PK ручной статистики
-            'TaskTemplate': 'template_id',  # PK шаблонов
-            'TemplateTask': 'id',  # PK связки шаблон-задание (если есть)
-            'Users': 'id',  # PK пользователей
-            'Topics': 'topic_id',  # PK тем/навыков
-            'UserProfiles': 'profile_id',  # PK профилей пользователей
-            'FamilyTies': 'tie_id',  # PK семейных связей
-            'Enrollments': 'enrollment_id',  # PK учебных контрактов
-        }  # Конец mapping
+def _fix_postgres_sequences(app, inspector):
+    if not _is_postgres(app):
+        return
+    try:
+        table_names = inspector.get_table_names()
+        sequences_map = {
+            'Students': 'student_id',
+            'Lessons': 'lesson_id',
+            'LessonTasks': 'lesson_task_id',
+            'Tasks': 'task_id',
+            'UsageHistory': 'usage_id',
+            'SkippedTasks': 'skipped_id',
+            'BlacklistTasks': 'blacklist_id',
+            'AuditLog': 'id',
+            'MaintenanceMode': 'id',
+            'StudentTaskStatistics': 'stat_id',
+            'TaskTemplate': 'template_id',
+            'TemplateTask': 'id',
+            'Users': 'id',
+            'Topics': 'topic_id',
+            'UserProfiles': 'profile_id',
+            'FamilyTies': 'tie_id',
+            'Enrollments': 'enrollment_id',
+            'RolePermissions': 'id',
+        }
 
-        # Исправляем sequences в отдельных транзакциях, чтобы ошибка одной не влияла на другие
-        for preferred_table, pk_column in sequences_map.items():  # Проходим по всем таблицам, где есть SERIAL/IDENTITY
-            real_table = _resolve_table_name(table_names, preferred_table)  # Определяем реальное имя таблицы
-            if not real_table:  # Если таблицы нет — пропускаем
-                continue  # Переходим к следующей
-            try:  # Пытаемся починить sequence для конкретной таблицы
-                cols = {col['name'] for col in inspector.get_columns(real_table)}  # Список колонок таблицы
-                if pk_column not in cols:  # Если PK колонки нет — пропускаем
-                    continue  # Переходим к следующей
-                # Важно: используем pg_get_serial_sequence, чтобы не гадать имя sequence
-                # Каждая попытка в отдельной транзакции
-                db.session.execute(  # Выполняем SQL-команду setval
-                    text(  # Оборачиваем в text()
-                        f"SELECT setval("  # Начинаем setval
-                        f"pg_get_serial_sequence('\"{real_table}\"', '{pk_column}'), "  # Получаем имя sequence по таблице+PK
-                        f"COALESCE((SELECT MAX(\"{pk_column}\") FROM \"{real_table}\"), 0), "  # Берём текущий max(pk)
-                        f"true"  # is_called=true => следующий nextval будет max+1
-                        f")"  # Закрываем setval
-                    )  # Конец SQL
-                )  # Конец execute
-                db.session.commit()  # Коммитим каждую sequence отдельно
-            except Exception as e:  # Если не удалось (например, таблица без sequence или неправильный тип)
-                db.session.rollback()  # Откатываем только эту попытку
-                logger.warning(f"Could not fix sequence for {real_table}.{pk_column}: {e}")  # Логируем и продолжаем
-        logger.info("PostgreSQL sequences synchronization completed")  # Пишем в лог об успехе
-    except Exception as e:  # Если общий процесс упал
-        db.session.rollback()  # Откатываем на всякий случай
-        logger.warning(f"Sequence synchronization skipped due to error: {e}")  # Не блокируем запуск приложения
+        for preferred_table, pk_column in sequences_map.items():
+            real_table = _resolve_table_name(table_names, preferred_table)
+            if not real_table:
+                continue
+            try:
+                cols = {col['name'] for col in inspector.get_columns(real_table)}
+                if pk_column not in cols:
+                    continue
+                db.session.execute(
+                    text(
+                        f"SELECT setval("
+                        f"pg_get_serial_sequence('\"{real_table}\"', '{pk_column}'), "
+                        f"COALESCE((SELECT MAX(\"{pk_column}\") FROM \"{real_table}\"), 0), "
+                        f"true"
+                        f")"
+                    )
+                )
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                logger.warning(f"Could not fix sequence for {real_table}.{pk_column}: {e}")
+        logger.info("PostgreSQL sequences synchronization completed")
+    except Exception as e:
+        db.session.rollback()
+        logger.warning(f"Sequence synchronization skipped due to error: {e}")
+
+def check_and_fix_rbac_schema(app):
+    """
+    Check and fix RBAC related schema issues.
+    This function is designed to be safe to run on every request or startup.
+    """
+    try:
+        with app.app_context():
+            inspector = inspect(db.engine)
+            table_names = inspector.get_table_names()
+            
+            # 1. Ensure RolePermissions table exists
+            role_perms_table = _resolve_table_name(table_names, 'RolePermissions')
+            if not role_perms_table:
+                logger.info("RolePermissions table missing. Creating...")
+                RolePermission.__table__.create(db.engine)
+                logger.info("RolePermissions table created.")
+                
+                # Fill defaults immediately
+                count = 0
+                for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
+                    for perm_name in perms:
+                        rp = RolePermission(role=role, permission_name=perm_name, is_enabled=True)
+                        db.session.add(rp)
+                        count += 1
+                db.session.commit()
+                logger.info(f"Filled default permissions ({count} records)")
+            
+            # 2. Ensure custom_permissions column in Users
+            users_table = _resolve_table_name(table_names, 'Users')
+            if users_table:
+                cols = {col['name'] for col in inspector.get_columns(users_table)}
+                if 'custom_permissions' not in cols:
+                    logger.info("Adding custom_permissions column to Users...")
+                    db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+                    if 'postgresql' in db_url or 'postgres' in db_url:
+                        db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN custom_permissions JSON'))
+                    else:
+                        db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN custom_permissions JSON'))
+                    db.session.commit()
+                    logger.info("custom_permissions column added.")
+
+    except Exception as e:
+        logger.error(f"Error in check_and_fix_rbac_schema: {e}")
+        db.session.rollback()
 
 def ensure_schema_columns(app):
     """
@@ -92,6 +135,9 @@ def ensure_schema_columns(app):
             except Exception as e:
                 logger.warning(f"Error committing db.create_all(): {e}")
                 db.session.rollback()
+
+            # Run targeted RBAC fix
+            check_and_fix_rbac_schema(app)
 
             inspector = inspect(db.engine)
             
@@ -404,33 +450,15 @@ def ensure_schema_columns(app):
                     # Не пробрасываем ошибку дальше, чтобы не блокировать запуск приложения
 
             # КРИТИЧЕСКИ ВАЖНО: коммитим миграции ДО исправления sequences
-            # Иначе ошибки в sequences могут откатить все миграции
             try:
                 db.session.commit()
                 logger.info("Database migrations committed successfully")
-                
-                # Проверяем, что миграции действительно применились
-                # Перечитываем колонки Users после коммита
-                if users_table:
-                    try:
-                        users_columns_after = {col['name'] for col in inspector.get_columns(users_table)}
-                        missing_columns = []
-                        for col_name in ['avatar_url', 'about_me', 'custom_status', 'telegram_link', 'github_link']:
-                            if col_name not in users_columns_after:
-                                missing_columns.append(col_name)
-                        if missing_columns:
-                            logger.warning(f"After commit, these columns are still missing from Users: {missing_columns}")
-                        else:
-                            logger.info("All User profile columns verified after commit")
-                    except Exception as verify_error:
-                        logger.warning(f"Could not verify migrations: {verify_error}")
             except Exception as commit_error:
                 db.session.rollback()
                 logger.error(f"Error committing migrations: {commit_error}", exc_info=True)
-                # Не пробрасываем ошибку дальше, но логируем как ошибку
             
             # ========================================================================
-            # МИГРАЦИИ ДЛЯ НОВОЙ СИСТЕМЫ АВТОРИЗАЦИИ (RBAC)
+            # МИГРАЦИИ ДЛЯ НОВОЙ СИСТЕМЫ АВТОРИЗАЦИИ (RBAC) - ОСТАЛЬНЫЕ ТАБЛИЦЫ
             # ========================================================================
             
             # 1. Добавляем email в Users (если его нет)
@@ -471,49 +499,6 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create Enrollments table: {e}")
             
-            # 5. Создаем таблицу RolePermissions (если её нет) и заполняем дефолты
-            role_perms_table = _resolve_table_name(table_names, 'RolePermissions')
-            if not role_perms_table:
-                try:
-                    # Импортируем модель ДО создания таблиц, чтобы SQLAlchemy знала о ней
-                    from app.models import RolePermission
-                    from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
-                    
-                    db.create_all()  # Создаст таблицу RolePermissions
-                    logger.info("Created RolePermissions table")
-                    
-                    # Заполняем дефолтные права
-                    count = 0
-                    for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
-                        for perm_name in perms:
-                            rp = RolePermission(role=role, permission_name=perm_name, is_enabled=True)
-                            db.session.add(rp)
-                            count += 1
-                    
-                    db.session.commit()
-                    logger.info(f"Filled default permissions ({count} records)")
-                except Exception as e:
-                    logger.warning(f"Could not create/fill RolePermissions table: {e}")
-                    db.session.rollback()
-
-            # 6. Добавляем custom_permissions в Users (если его нет)
-            if users_table:
-                users_columns = {col['name'] for col in inspector.get_columns(users_table)}
-                if 'custom_permissions' not in users_columns:
-                    try:
-                        db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-                        if 'postgresql' in db_url or 'postgres' in db_url:
-                            db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN custom_permissions JSON'))
-                        else:
-                            # SQLite
-                            db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN custom_permissions JSON'))
-                        
-                        db.session.commit()
-                        logger.info("Added custom_permissions column to Users table")
-                    except Exception as e:
-                        logger.warning(f"Could not add custom_permissions to Users: {e}")
-                        db.session.rollback()
-
             # Коммитим миграции RBAC
             try:
                 db.session.commit()
@@ -529,5 +514,3 @@ def ensure_schema_columns(app):
         db.session.rollback()
         logger.error(f"Ошибка при миграции схемы БД: {e}", exc_info=True)
         # НЕ пробрасываем ошибку дальше, чтобы не блокировать запуск приложения
-        # Миграции могут быть применены вручную позже
-

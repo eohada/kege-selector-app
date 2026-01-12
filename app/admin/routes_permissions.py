@@ -5,41 +5,10 @@ from app import db
 from app.models import RolePermission
 from app.admin import admin_bp
 from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES, DEFAULT_ROLE_PERMISSIONS
+from app.utils.db_migrations import check_and_fix_rbac_schema
 import logging
 
 logger = logging.getLogger(__name__)
-
-def ensure_role_permissions_table():
-    """
-    Self-healing function to ensure RolePermissions table exists and is populated.
-    Returns True if table was created/populated, False if it already existed good.
-    """
-    try:
-        # Пытаемся сделать простой запрос
-        RolePermission.query.first()
-        return False
-    except (ProgrammingError, OperationalError):
-        db.session.rollback()
-        logger.warning("RolePermission table missing or corrupt. Attempting to recreate...")
-        try:
-            # Создаем таблицу
-            RolePermission.__table__.create(db.session.bind)
-            
-            # Заполняем дефолтами
-            count = 0
-            for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
-                for perm_name in perms:
-                    rp = RolePermission(role=role, permission_name=perm_name, is_enabled=True)
-                    db.session.add(rp)
-                    count += 1
-            
-            db.session.commit()
-            logger.info(f"RolePermission table created and seeded with {count} records.")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to self-heal RolePermission table: {e}")
-            db.session.rollback()
-            return False
 
 @admin_bp.route('/admin/permissions', methods=['GET', 'POST'])
 @login_required
@@ -52,8 +21,13 @@ def admin_permissions():
         
     roles = ['admin', 'chief_tester', 'tutor', 'designer', 'tester', 'student', 'parent']
     
-    # Self-healing check before any operation
-    ensure_role_permissions_table()
+    # Self-healing check using the centralized utility from flask app context
+    try:
+        from flask import current_app
+        check_and_fix_rbac_schema(current_app)
+    except Exception as e:
+        logger.error(f"Critical error during RBAC schema check: {e}")
+        # Continue execution, hoping the table exists or error was non-fatal
     
     if request.method == 'POST':
         try:
@@ -82,14 +56,15 @@ def admin_permissions():
             flash(f'Ошибка: {e}', 'error')
             logger.error(f"Error saving permissions: {e}", exc_info=True)
             
-    # Загружаем текущие настройки
+    # Загружаем текущие настройки с защитой от ошибок
     role_permissions = {}
     try:
         current_perms = RolePermission.query.all()
     except Exception as e:
         logger.error(f"Error loading permissions: {e}")
+        # If still failing, try one more desperate fix or just empty list
         current_perms = []
-        flash("Ошибка загрузки прав. Попробуйте обновить страницу.", "error")
+        flash("Не удалось загрузить текущие права. Попробуйте обновить страницу.", "error")
     
     # Заполняем структуру: role -> permission -> enabled
     for role in roles:
