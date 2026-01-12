@@ -22,6 +22,13 @@
                     </a>
                     {% endif %}
                     
+                    {% if current_user.is_creator() %}
+                    <a href="{{ url_for('remote_admin.dashboard') }}" class="profile-item {% if active_page == 'remote_admin' %}active{% endif %}">
+                        <img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" alt="Remote Admin">
+                        <span>Удаленная админка</span>
+                    </a>
+                    {% endif %}
+                    
                     <div style="border-top: 1px solid var(--stroke-1); margin: 0.4rem 0;"></div>
                     
                     <a href="{{ url_for('auth.logout') }}" class="profile-item" style="color: var(--danger);">
