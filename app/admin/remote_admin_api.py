@@ -21,16 +21,33 @@ def _remote_admin_guard() -> bool:
     """Проверка токена для удаленной админки"""
     provided = request.headers.get('X-Admin-Token', '')
     
-    # Проверяем токен из переменных окружения
-    expected_prod = (os.environ.get('PRODUCTION_ADMIN_TOKEN') or '').strip()
-    expected_sandbox = (os.environ.get('SANDBOX_ADMIN_TOKEN') or '').strip()
-    
     if not provided:
         return False
     
-    # Проверяем оба токена (production или sandbox)
-    return (expected_prod and hmac.compare_digest(provided, expected_prod)) or \
-           (expected_sandbox and hmac.compare_digest(provided, expected_sandbox))
+    # Проверяем все возможные токены из переменных окружения
+    # Production
+    expected_prod = (os.environ.get('PRODUCTION_ADMIN_TOKEN') or '').strip()
+    if expected_prod and hmac.compare_digest(provided, expected_prod):
+        return True
+    
+    # Sandbox
+    expected_sandbox = (os.environ.get('SANDBOX_ADMIN_TOKEN') or '').strip()
+    if expected_sandbox and hmac.compare_digest(provided, expected_sandbox):
+        return True
+    
+    # Admin
+    expected_admin = (os.environ.get('ADMIN_ADMIN_TOKEN') or '').strip()
+    if expected_admin and hmac.compare_digest(provided, expected_admin):
+        return True
+    
+    # Произвольные окружения (ENV_<NAME>_TOKEN)
+    for key, value in os.environ.items():
+        if key.startswith('ENV_') and key.endswith('_TOKEN'):
+            token = value.strip()
+            if token and hmac.compare_digest(provided, token):
+                return True
+    
+    return False
 
 
 @admin_bp.route('/internal/remote-admin/status', methods=['GET'])
