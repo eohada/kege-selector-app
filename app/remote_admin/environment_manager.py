@@ -10,31 +10,92 @@ from flask import session, current_app
 
 logger = logging.getLogger(__name__)
 
-# Конфигурация окружений
-ENVIRONMENTS = {
-    'production': {
-        'name': 'Production',
-        'url': os.environ.get('PRODUCTION_URL', ''),
-        'token': os.environ.get('PRODUCTION_ADMIN_TOKEN', ''),
-        'description': 'Основное рабочее окружение'
-    },
-    'sandbox': {
-        'name': 'Sandbox',
-        'url': os.environ.get('SANDBOX_URL', ''),
-        'token': os.environ.get('SANDBOX_ADMIN_TOKEN', ''),
-        'description': 'Тестовое окружение'
-    }
-}
+# Конфигурация окружений - динамически загружается из переменных окружения
+def _load_environments() -> Dict:
+    """Загрузить конфигурацию окружений из переменных окружения"""
+    envs = {}
+    
+    # Production окружение
+    prod_url = os.environ.get('PRODUCTION_URL', '').strip()
+    prod_token = os.environ.get('PRODUCTION_ADMIN_TOKEN', '').strip()
+    if prod_url or prod_token:
+        envs['production'] = {
+            'name': 'Production',
+            'url': prod_url,
+            'token': prod_token,
+            'description': 'Основное рабочее окружение'
+        }
+    
+    # Sandbox окружение
+    sandbox_url = os.environ.get('SANDBOX_URL', '').strip()
+    sandbox_token = os.environ.get('SANDBOX_ADMIN_TOKEN', '').strip()
+    if sandbox_url or sandbox_token:
+        envs['sandbox'] = {
+            'name': 'Sandbox',
+            'url': sandbox_url,
+            'token': sandbox_token,
+            'description': 'Тестовое окружение'
+        }
+    
+    # Admin окружение (новое отдельное окружение для удаленной админки)
+    admin_url = os.environ.get('ADMIN_URL', '').strip()
+    admin_token = os.environ.get('ADMIN_ADMIN_TOKEN', '').strip()
+    if admin_url or admin_token:
+        envs['admin'] = {
+            'name': 'Admin',
+            'url': admin_url,
+            'token': admin_token,
+            'description': 'Окружение удаленной админки'
+        }
+    
+    # Поддержка произвольных окружений через переменные вида ENV_<NAME>_URL и ENV_<NAME>_TOKEN
+    # Например: ENV_STAGING_URL и ENV_STAGING_TOKEN создадут окружение 'staging'
+    env_vars = {}
+    for key, value in os.environ.items():
+        if key.startswith('ENV_') and key.endswith('_URL'):
+            env_name = key[4:-4].lower()  # ENV_STAGING_URL -> staging
+            if env_name not in envs:
+                env_vars[env_name] = {'url': value.strip()}
+        elif key.startswith('ENV_') and key.endswith('_TOKEN'):
+            env_name = key[4:-6].lower()  # ENV_STAGING_TOKEN -> staging
+            if env_name not in env_vars:
+                env_vars[env_name] = {}
+            env_vars[env_name]['token'] = value.strip()
+    
+    # Добавляем произвольные окружения
+    for env_name, config in env_vars.items():
+        if config.get('url') or config.get('token'):
+            envs[env_name] = {
+                'name': env_name.capitalize(),
+                'url': config.get('url', ''),
+                'token': config.get('token', ''),
+                'description': f'Окружение {env_name}'
+            }
+    
+    return envs
+
+
+# Глобальный словарь окружений (обновляется при каждом обращении)
+def get_environments() -> Dict:
+    """Получить актуальный список окружений"""
+    return _load_environments()
+
+
+# Для обратной совместимости
+ENVIRONMENTS = property(lambda self: get_environments())
 
 
 def get_current_environment() -> str:
     """Получить текущее выбранное окружение из сессии"""
-    return session.get('remote_admin_environment', 'production')
+    envs = get_environments()
+    default_env = 'admin' if 'admin' in envs else (list(envs.keys())[0] if envs else 'production')
+    return session.get('remote_admin_environment', default_env)
 
 
 def set_current_environment(env: str) -> bool:
     """Установить текущее окружение в сессию"""
-    if env in ENVIRONMENTS:
+    envs = get_environments()
+    if env in envs:
         session['remote_admin_environment'] = env
         session.permanent = True
         return True
@@ -46,7 +107,8 @@ def get_environment_config(env: Optional[str] = None) -> Dict:
     if env is None:
         env = get_current_environment()
     
-    return ENVIRONMENTS.get(env, {})
+    envs = get_environments()
+    return envs.get(env, {})
 
 
 def is_environment_configured(env: Optional[str] = None) -> bool:
@@ -133,7 +195,8 @@ def get_environment_status(env: str) -> Dict:
 
 def get_all_environments_status() -> Dict[str, Dict]:
     """Получить статус всех окружений"""
+    envs = get_environments()
     return {
         env: get_environment_status(env)
-        for env in ENVIRONMENTS.keys()
+        for env in envs.keys()
     }

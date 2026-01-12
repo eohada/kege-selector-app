@@ -9,7 +9,8 @@ from app.remote_admin import remote_admin_bp
 from app.remote_admin.environment_manager import (
     get_current_environment, set_current_environment, 
     get_environment_config, is_environment_configured,
-    get_all_environments_status, ENVIRONMENTS
+    get_all_environments_status, get_environments,
+    make_remote_request
 )
 
 logger = logging.getLogger(__name__)
@@ -26,10 +27,11 @@ def dashboard():
     
     current_env = get_current_environment()
     env_statuses = get_all_environments_status()
+    environments = get_environments()
     
     return render_template('remote_admin/dashboard.html',
                          current_environment=current_env,
-                         environments=ENVIRONMENTS,
+                         environments=environments,
                          env_statuses=env_statuses)
 
 
@@ -42,17 +44,18 @@ def select_environment():
         return redirect(url_for('main.dashboard'))
     
     env = request.form.get('environment', '').strip()
+    environments = get_environments()
     
-    if not env or env not in ENVIRONMENTS:
+    if not env or env not in environments:
         flash('Неверное окружение', 'error')
         return redirect(url_for('remote_admin.dashboard'))
     
     if not is_environment_configured(env):
-        flash(f'Окружение {ENVIRONMENTS[env]["name"]} не настроено. Проверьте переменные окружения.', 'warning')
+        flash(f'Окружение {environments[env]["name"]} не настроено. Проверьте переменные окружения.', 'warning')
         return redirect(url_for('remote_admin.dashboard'))
     
     if set_current_environment(env):
-        flash(f'Окружение изменено на {ENVIRONMENTS[env]["name"]}', 'success')
+        flash(f'Окружение изменено на {environments[env]["name"]}', 'success')
     else:
         flash('Ошибка при изменении окружения', 'error')
     
@@ -82,9 +85,10 @@ def users_list():
         return redirect(url_for('main.dashboard'))
     
     current_env = get_current_environment()
+    environments = get_environments()
     
     if not is_environment_configured(current_env):
-        flash(f'Окружение {ENVIRONMENTS[current_env]["name"]} не настроено', 'error')
+        flash(f'Окружение {environments.get(current_env, {}).get("name", current_env)} не настроено', 'error')
         return redirect(url_for('remote_admin.dashboard'))
     
     try:
@@ -103,7 +107,7 @@ def users_list():
     return render_template('remote_admin/users_list.html',
                          users=users,
                          current_environment=current_env,
-                         environment_name=ENVIRONMENTS[current_env]['name'])
+                         environment_name=environments.get(current_env, {}).get('name', current_env))
 
 
 @remote_admin_bp.route('/permissions')

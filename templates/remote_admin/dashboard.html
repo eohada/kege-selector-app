@@ -90,35 +90,48 @@
             </p>
 
             {# Выбор окружения #}
-            <div class="environment-selector">
-                {% for env_key, env_config in environments.items() %}
-                {% set env_status = env_statuses.get(env_key, {}) %}
-                <form method="POST" action="{{ url_for('remote_admin.select_environment') }}" style="flex: 1;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="environment" value="{{ env_key }}">
-                    <div class="env-card {% if env_key == current_environment %}active{% endif %} {% if not env_status.get('configured') %}unavailable{% endif %}" 
-                         {% if env_status.get('configured') %}onclick="this.closest('form').submit()"{% endif %}>
-                        <h3>{{ env_config.name }}</h3>
-                        <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0.5rem 0;">
-                            {{ env_config.description }}
-                        </p>
-                        {% if env_status.get('configured') %}
-                            {% if env_status.get('available') %}
-                                <span class="env-status status-ok">● Доступно</span>
-                            {% else %}
-                                <span class="env-status status-error">● Недоступно</span>
-                                {% if env_status.get('error') %}
-                                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
-                                        {{ env_status.error }}
-                                    </div>
+            <div style="margin-bottom: 2rem;">
+                <h2 style="margin-bottom: 1rem;">Окружения</h2>
+                <div class="environment-selector">
+                    {% for env_key, env_config in environments.items() %}
+                    {% set env_status = env_statuses.get(env_key, {}) %}
+                    <form method="POST" action="{{ url_for('remote_admin.select_environment') }}" style="flex: 1;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="environment" value="{{ env_key }}">
+                        <div class="env-card {% if env_key == current_environment %}active{% endif %} {% if not env_status.get('configured') %}unavailable{% endif %}" 
+                             {% if env_status.get('configured') %}onclick="this.closest('form').submit()"{% endif %}>
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <h3 style="margin: 0;">{{ env_config.name }}</h3>
+                                {% if env_key == current_environment %}
+                                <span style="color: var(--accent-1); font-size: 1.2rem;">✓</span>
                                 {% endif %}
+                            </div>
+                            <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0.5rem 0;">
+                                {{ env_config.description }}
+                            </p>
+                            {% if env_status.get('configured') %}
+                                {% if env_status.get('available') %}
+                                    <span class="env-status status-ok">● Доступно</span>
+                                {% else %}
+                                    <span class="env-status status-error">● Недоступно</span>
+                                    {% if env_status.get('error') %}
+                                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
+                                            {{ env_status.error }}
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
+                            {% else %}
+                                <span class="env-status status-warning">● Не настроено</span>
                             {% endif %}
-                        {% else %}
-                            <span class="env-status status-warning">● Не настроено</span>
-                        {% endif %}
-                    </div>
-                </form>
-                {% endfor %}
+                        </div>
+                    </form>
+                    {% endfor %}
+                </div>
+                <div style="margin-top: 1rem; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-md);">
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">
+                        💡 Для добавления нового окружения установите переменные окружения: <code>ENV_&lt;NAME&gt;_URL</code> и <code>ENV_&lt;NAME&gt;_TOKEN</code>
+                    </p>
+                </div>
             </div>
 
             {# Статистика текущего окружения #}
