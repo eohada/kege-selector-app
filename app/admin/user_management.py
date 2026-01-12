@@ -92,7 +92,7 @@ def api_users_create():
             return jsonify({'success': False, 'error': 'Password is required'}), 400
         
         # Проверка допустимых ролей
-        valid_roles = ['admin', 'tutor', 'student', 'parent']
+        valid_roles = ['admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer', 'creator']
         if role not in valid_roles:
             return jsonify({'success': False, 'error': f'Invalid role. Must be one of: {", ".join(valid_roles)}'}), 400
         
