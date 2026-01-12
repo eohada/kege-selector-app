@@ -24,7 +24,8 @@ from app.models import UserProfile, FamilyTie, Enrollment, Student
 from core.db_models import Tester, task_topics
 from core.audit_logger import audit_logger
 from app import csrf
-from app.auth.rbac_utils import require_admin
+from app.auth.rbac_utils import require_admin, has_permission, check_access
+from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES
 
 logger = logging.getLogger(__name__)
 

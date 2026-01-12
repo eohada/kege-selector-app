@@ -221,6 +221,12 @@ class User(db.Model):
     def is_parent(self):
         """Проверка, является ли пользователь родителем"""
         return self.role == 'parent'
+
+    def is_chief_tester(self):
+        return self.role == 'chief_tester'
+
+    def is_designer(self):
+        return self.role == 'designer'
     
     # Старые методы (для обратной совместимости)
     def is_creator(self):
@@ -230,17 +236,34 @@ class User(db.Model):
     def get_role_display(self):
         """Возвращает отображаемое название роли"""
         role_map = {
+            'creator': 'Создатель',
             'admin': 'Администратор',
+            'chief_tester': 'Главный тестировщик',
             'tutor': 'Преподаватель',
+            'designer': 'Графический дизайнер',
+            'tester': 'Тестировщик',
             'student': 'Ученик',
             'parent': 'Родитель',
-            'tester': 'Тестировщик',
-            'creator': 'Создатель'
         }
         return role_map.get(self.role, self.role)
     
     def __repr__(self):
         return f'<User {self.username} ({self.role})>'
+
+    # JSON поле для индивидуальных прав пользователя
+    custom_permissions = db.Column(db.JSON, nullable=True)
+
+# Новая модель для хранения настроек ролей
+class RolePermission(db.Model):
+    __tablename__ = 'RolePermissions'
+    id = db.Column(db.Integer, primary_key=True)
+    role = db.Column(db.String(50), nullable=False)
+    permission_name = db.Column(db.String(100), nullable=False)
+    is_enabled = db.Column(db.Boolean, default=False)
+    
+    __table_args__ = (
+        db.UniqueConstraint('role', 'permission_name', name='uq_role_permission'),
+    )
 
 class Tester(db.Model):
 
