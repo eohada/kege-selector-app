@@ -178,89 +178,115 @@ def dashboard():
     # Оптимизация: объединяем запросы статистики где возможно
     # Статистика по урокам - один запрос с группировкой
     # Применяем data scoping к урокам
-    lesson_query = db.session.query(
-        Lesson.status,
-        func.count(Lesson.lesson_id).label('count')
-    )
-    
-    # Фильтруем уроки по доступным ученикам
-    if not scope['can_see_all'] and scope['student_ids']:
-        student_users = User.query.filter(User.id.in_(scope['student_ids'])).all()
-        student_emails = [u.email for u in student_users if u.email]
-        if student_emails:
-            accessible_students = Student.query.filter(Student.email.in_(student_emails)).all()
-            accessible_student_ids = [s.student_id for s in accessible_students]
-            lesson_query = lesson_query.filter(Lesson.student_id.in_(accessible_student_ids))
-        else:
+    try:
+        lesson_query = db.session.query(
+            Lesson.status,
+            func.count(Lesson.lesson_id).label('count')
+        )
+        
+        # Фильтруем уроки по доступным ученикам
+        if not scope['can_see_all'] and scope['student_ids']:
+            student_users = User.query.filter(User.id.in_(scope['student_ids'])).all()
+            student_emails = [u.email for u in student_users if u.email]
+            if student_emails:
+                accessible_students = Student.query.filter(Student.email.in_(student_emails)).all()
+                accessible_student_ids = [s.student_id for s in accessible_students]
+                lesson_query = lesson_query.filter(Lesson.student_id.in_(accessible_student_ids))
+            else:
+                accessible_student_ids = []
+        elif not scope['can_see_all']:
             accessible_student_ids = []
-    elif not scope['can_see_all']:
+        else:
+            accessible_student_ids = None
+        
+        lesson_stats = lesson_query.group_by(Lesson.status).all()
+        
+        lesson_stats_dict = {stat[0]: stat[1] for stat in lesson_stats}
+        total_lessons = sum(lesson_stats_dict.values())
+        completed_lessons = lesson_stats_dict.get('completed', 0)
+        planned_lessons = lesson_stats_dict.get('planned', 0)
+        in_progress_lessons = lesson_stats_dict.get('in_progress', 0)
+        cancelled_lessons = lesson_stats_dict.get('cancelled', 0)
+    except Exception as e:
+        logger.warning(f"Error getting lesson statistics: {e}")
         accessible_student_ids = []
-    else:
-        accessible_student_ids = None
+        total_lessons = 0
+        completed_lessons = 0
+        planned_lessons = 0
+        in_progress_lessons = 0
+        cancelled_lessons = 0
     
-    lesson_stats = lesson_query.group_by(Lesson.status).all()
-    
-    lesson_stats_dict = {stat[0]: stat[1] for stat in lesson_stats}
-    total_lessons = sum(lesson_stats_dict.values())
-    completed_lessons = lesson_stats_dict.get('completed', 0)
-    planned_lessons = lesson_stats_dict.get('planned', 0)
-    in_progress_lessons = lesson_stats_dict.get('in_progress', 0)
-    cancelled_lessons = lesson_stats_dict.get('cancelled', 0)
-    
-    archived_students_count = Student.query.filter_by(is_active=False).count()
+    # Статистика по архивным ученикам - только если есть доступ
+    try:
+        archived_students_count = Student.query.filter_by(is_active=False).count()
+    except Exception as e:
+        logger.warning(f"Error counting archived students: {e}")
+        archived_students_count = 0
     
     # Статистика по заданиям - используем подзапросы для оптимизации
     # Ученик и родитель не видят общую статистику по задачам
-    if current_user.is_student() or current_user.is_parent():
+    try:
+        if current_user.is_student() or current_user.is_parent() or current_user.is_designer() or (current_user.role == 'tester' and not current_user.is_chief_tester()):
+            total_tasks = 0
+            accepted_tasks_count = 0
+            skipped_tasks_count = 0
+            blacklisted_tasks_count = 0
+        else:
+            total_tasks = Tasks.query.count()
+            # Используем подзапросы вместо distinct для лучшей производительности
+            accepted_tasks_count = db.session.query(func.count(func.distinct(UsageHistory.task_fk))).scalar() or 0
+            skipped_tasks_count = db.session.query(func.count(func.distinct(SkippedTasks.task_fk))).scalar() or 0
+            blacklisted_tasks_count = db.session.query(func.count(func.distinct(BlacklistTasks.task_fk))).scalar() or 0
+    except Exception as e:
+        logger.warning(f"Error getting task statistics: {e}")
         total_tasks = 0
         accepted_tasks_count = 0
         skipped_tasks_count = 0
         blacklisted_tasks_count = 0
-    else:
-        total_tasks = Tasks.query.count()
-        # Используем подзапросы вместо distinct для лучшей производительности
-        accepted_tasks_count = db.session.query(func.count(func.distinct(UsageHistory.task_fk))).scalar() or 0
-        skipped_tasks_count = db.session.query(func.count(func.distinct(SkippedTasks.task_fk))).scalar() or 0
-        blacklisted_tasks_count = db.session.query(func.count(func.distinct(BlacklistTasks.task_fk))).scalar() or 0
     
     # Статистика по последним урокам (за последние 7 дней)
     # Считаем только уроки, которые были проведены за последние 7 дней
-    now = moscow_now()
-    week_ago = now - timedelta(days=7)
-    
-    # Уроки, которые были проведены за последние 7 дней
-    recent_completed_query = Lesson.query.filter(
-        Lesson.status == 'completed',
-        Lesson.lesson_date >= week_ago,
-        Lesson.lesson_date <= now
-    )
-    if accessible_student_ids is not None:
-        recent_completed_query = recent_completed_query.filter(Lesson.student_id.in_(accessible_student_ids))
-    recent_completed = recent_completed_query.count()
-    
-    # Уроки, запланированные на ближайшие 7 дней (в будущем)
-    week_ahead = now + timedelta(days=7)
-    recent_planned_query = Lesson.query.filter(
-        Lesson.status.in_(['planned', 'in_progress']),
-        Lesson.lesson_date >= now,
-        Lesson.lesson_date <= week_ahead
-    )
-    if accessible_student_ids is not None:
-        recent_planned_query = recent_planned_query.filter(Lesson.student_id.in_(accessible_student_ids))
-    recent_planned = recent_planned_query.count()
-    
-    recent_lessons = recent_completed + recent_planned
-    
-    # Статистика по домашним заданиям (только за последние 7 дней - проведенные уроки)
-    homework_query = Lesson.query.filter(
-        Lesson.status == 'completed',
-        Lesson.lesson_date >= week_ago,
-        Lesson.lesson_date <= now,
-        Lesson.homework_status.in_(['assigned_done', 'assigned_not_done'])
-    )
-    if accessible_student_ids is not None:
-        homework_query = homework_query.filter(Lesson.student_id.in_(accessible_student_ids))
-    lessons_with_homework = homework_query.count()
+    try:
+        now = moscow_now()
+        week_ago = now - timedelta(days=7)
+        
+        # Уроки, которые были проведены за последние 7 дней
+        recent_completed_query = Lesson.query.filter(
+            Lesson.status == 'completed',
+            Lesson.lesson_date >= week_ago,
+            Lesson.lesson_date <= now
+        )
+        if accessible_student_ids is not None:
+            recent_completed_query = recent_completed_query.filter(Lesson.student_id.in_(accessible_student_ids))
+        recent_completed = recent_completed_query.count()
+        
+        # Уроки, запланированные на ближайшие 7 дней (в будущем)
+        week_ahead = now + timedelta(days=7)
+        recent_planned_query = Lesson.query.filter(
+            Lesson.status.in_(['planned', 'in_progress']),
+            Lesson.lesson_date >= now,
+            Lesson.lesson_date <= week_ahead
+        )
+        if accessible_student_ids is not None:
+            recent_planned_query = recent_planned_query.filter(Lesson.student_id.in_(accessible_student_ids))
+        recent_planned = recent_planned_query.count()
+        
+        recent_lessons = recent_completed + recent_planned
+        
+        # Статистика по домашним заданиям (только за последние 7 дней - проведенные уроки)
+        homework_query = Lesson.query.filter(
+            Lesson.status == 'completed',
+            Lesson.lesson_date >= week_ago,
+            Lesson.lesson_date <= now,
+            Lesson.homework_status.in_(['assigned_done', 'assigned_not_done'])
+        )
+        if accessible_student_ids is not None:
+            homework_query = homework_query.filter(Lesson.student_id.in_(accessible_student_ids))
+        lessons_with_homework = homework_query.count()
+    except Exception as e:
+        logger.warning(f"Error getting recent lessons statistics: {e}")
+        recent_lessons = 0
+        lessons_with_homework = 0
 
     return render_template('dashboard.html',
                          students=students,

@@ -111,6 +111,7 @@ def create_app(config_name=None):
             with app.app_context():
                 # Импортируем все модели, чтобы они были зарегистрированы в SQLAlchemy
                 from app.models import Reminder  # Явный импорт для создания таблицы
+                from app.models import Assignment, AssignmentTask, Submission, Answer  # Импортируем новые модели
                 db.create_all()
                 # Проверяем, что можем подключиться
                 db.session.execute(text("SELECT 1"))
