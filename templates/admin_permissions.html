@@ -1,135 +1,185 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление правами доступа · Админ-панель</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .tab-content.hidden { display: none; }
+        .tab-btn.active { border-bottom: 2px solid var(--accent-primary); color: var(--accent-primary); background: var(--surface-2); }
+        
+        /* Switch styles */
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 50px;
+          height: 24px;
+        }
+        .switch input { 
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: var(--surface-3);
+          transition: .4s;
+          border: 1px solid var(--stroke-1);
+        }
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 16px;
+          width: 16px;
+          left: 3px;
+          bottom: 3px;
+          background-color: var(--text-muted);
+          transition: .4s;
+        }
+        input:checked + .slider {
+          background-color: var(--accent-primary);
+        }
+        input:checked + .slider:before {
+          transform: translateX(26px);
+          background-color: white;
+        }
+        .slider.round {
+          border-radius: 24px;
+        }
+        .slider.round:before {
+          border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'admin' %}
+        {% include '_primary_nav.html' %}
 
-{% block content %}
-<div class="container-fluid">
-    <div class="glass-panel">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <h1><img src="{{ url_for('static', filename='icons/icons8-settings-100.png') }}" class="ui-icon ui-icon--md"> Управление правами доступа</h1>
-            <div class="hero-actions">
-                <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost">Назад в админку</a>
+        {% include '_ux_enhancements.html' %}
+
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">
+                        ← К админ панели
+                    </a>
+                    <h1 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                        <img src="{{ url_for('static', filename='icons/icons8-settings-100.png') }}" class="ui-icon ui-icon--md"> 
+                        Управление правами доступа
+                    </h1>
+                </div>
             </div>
-        </div>
 
-        <form method="POST" class="neo-form">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            
-            <div class="tabs-container">
-                <div class="tabs-header" style="display: flex; gap: 1rem; border-bottom: 1px solid var(--stroke-1); margin-bottom: 1.5rem; overflow-x: auto;">
+            <form method="POST" class="neo-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="tabs-container">
+                    <div class="tabs-header" style="display: flex; gap: 1rem; border-bottom: 1px solid var(--stroke-1); margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 0.5rem;">
+                        {% for role in roles %}
+                        <button type="button" class="tab-btn neo-button ghost {% if loop.first %}active{% endif %}" onclick="openTab(event, 'role-{{ role }}')" style="white-space: nowrap;">
+                            {{ role|upper }}
+                        </button>
+                        {% endfor %}
+                    </div>
+
                     {% for role in roles %}
-                    <button type="button" class="tab-btn neo-button ghost {% if loop.first %}active{% endif %}" onclick="openTab(event, 'role-{{ role }}')" style="white-space: nowrap;">
-                        {{ role|upper }}
-                    </button>
+                    <div id="role-{{ role }}" class="tab-content {% if not loop.first %}hidden{% endif %}">
+                        <div style="display: grid; gap: 2rem;">
+                            {% for cat_key, cat_name in categories.items() %}
+                            <div class="permission-category">
+                                <h3 style="margin-bottom: 1rem; color: var(--accent-primary); border-bottom: 1px solid var(--stroke-1); padding-bottom: 0.5rem;">{{ cat_name }}</h3>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+                                    {% for perm_key, perm_data in permissions.items() %}
+                                        {% if perm_data.category == cat_key %}
+                                        <div class="permission-item" style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); display: flex; justify-content: space-between; align-items: center;">
+                                            <div>
+                                                <div style="font-weight: 600;">{{ perm_data.name }}</div>
+                                                <div style="font-size: 0.8rem; color: var(--text-muted);">{{ perm_key }}</div>
+                                            </div>
+                                            <label class="switch">
+                                                <input type="checkbox" name="{{ role }}_{{ perm_key }}" {% if role_permissions[role].get(perm_key) %}checked{% endif %}>
+                                                <span class="slider round"></span>
+                                            </label>
+                                        </div>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
                     {% endfor %}
                 </div>
 
-                {% for role in roles %}
-                <div id="role-{{ role }}" class="tab-content {% if not loop.first %}hidden{% endif %}">
-                    <div style="display: grid; gap: 2rem;">
-                        {% for cat_key, cat_name in categories.items() %}
-                        <div class="permission-category">
-                            <h3 style="margin-bottom: 1rem; color: var(--accent-primary); border-bottom: 1px solid var(--stroke-1); padding-bottom: 0.5rem;">{{ cat_name }}</h3>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
-                                {% for perm_key, perm_data in permissions.items() %}
-                                    {% if perm_data.category == cat_key %}
-                                    <div class="permission-item" style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); display: flex; justify-content: space-between; align-items: center;">
-                                        <div>
-                                            <div style="font-weight: 600;">{{ perm_data.name }}</div>
-                                            <div style="font-size: 0.8rem; color: var(--text-muted);">{{ perm_key }}</div>
-                                        </div>
-                                        <label class="switch">
-                                            <input type="checkbox" name="{{ role }}_{{ perm_key }}" {% if role_permissions[role].get(perm_key) %}checked{% endif %}>
-                                            <span class="slider round"></span>
-                                        </label>
-                                    </div>
-                                    {% endif %}
-                                {% endfor %}
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
+                <div class="hero-actions" style="margin-top: 2rem; border-top: 1px solid var(--stroke-1); padding-top: 1.5rem;">
+                    <button type="submit" class="neo-button accent">
+                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" class="ui-icon ui-icon--sm">
+                        Сохранить настройки прав
+                    </button>
                 </div>
-                {% endfor %}
-            </div>
-
-            <div class="hero-actions" style="margin-top: 2rem; border-top: 1px solid var(--stroke-1); padding-top: 1.5rem;">
-                <button type="submit" class="neo-button accent">
-                    <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" class="ui-icon ui-icon--sm">
-                    Сохранить настройки прав
-                </button>
-            </div>
-        </form>
+            </form>
+        </section>
     </div>
-</div>
 
-<style>
-    .tab-content.hidden { display: none; }
-    .tab-btn.active { border-bottom: 2px solid var(--accent-primary); color: var(--accent-primary); background: var(--surface-2); }
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script>
+    function openTab(evt, roleName) {
+        var i, tabcontent, tablinks;
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+        tablinks = document.getElementsByClassName("tab-btn");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+        document.getElementById(roleName).style.display = "block";
+        evt.currentTarget.className += " active";
+    }
     
-    /* Switch styles */
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 50px;
-      height: 24px;
-    }
-    .switch input { 
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: var(--surface-3);
-      transition: .4s;
-      border: 1px solid var(--stroke-1);
-    }
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 16px;
-      width: 16px;
-      left: 3px;
-      bottom: 3px;
-      background-color: var(--text-muted);
-      transition: .4s;
-    }
-    input:checked + .slider {
-      background-color: var(--accent-primary);
-    }
-    input:checked + .slider:before {
-      transform: translateX(26px);
-      background-color: white;
-    }
-    .slider.round {
-      border-radius: 24px;
-    }
-    .slider.round:before {
-      border-radius: 50%;
-    }
-</style>
-
-<script>
-function openTab(evt, roleName) {
-    var i, tabcontent, tablinks;
-    tabcontent = document.getElementsByClassName("tab-content");
-    for (i = 0; i < tabcontent.length; i++) {
-        tabcontent[i].style.display = "none";
-    }
-    tablinks = document.getElementsByClassName("tab-btn");
-    for (i = 0; i < tablinks.length; i++) {
-        tablinks[i].className = tablinks[i].className.replace(" active", "");
-    }
-    document.getElementById(roleName).style.display = "block";
-    evt.currentTarget.className += " active";
-}
-// Open first tab by default
-document.addEventListener("DOMContentLoaded", function() {
-    document.getElementsByClassName("tab-btn")[0].click();
-});
-</script>
-{% endblock %}
+    document.addEventListener("DOMContentLoaded", function() {
+        // Flash messages handling
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            try {
+                var msg = {{ message|tojson }};
+                var cat = '{{ category }}';
+                var toastFunc = window.toast || toast;
+                if (toastFunc) {
+                    if (cat === 'error' || cat === 'danger') {
+                        toastFunc.error(msg);
+                    } else if (cat === 'warning') {
+                        toastFunc.warning(msg);
+                    } else if (cat === 'info') {
+                        toastFunc.info(msg);
+                    } else {
+                        toastFunc.success(msg);
+                    }
+                }
+            } catch (e) {
+                console.error('Ошибка при отображении flash сообщения:', e);
+            }
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+        
+        // Open first tab by default if not already open
+        if (document.getElementsByClassName("tab-btn").length > 0 && document.querySelector(".tab-btn.active") === null) {
+             document.getElementsByClassName("tab-btn")[0].click();
+        }
+    });
+    </script>
+</body>
+</html>
