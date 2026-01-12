@@ -487,43 +487,43 @@ def admin_sandbox_user_delete(user_id):
         except Exception as e:
             flash(f'Ошибка запроса: {str(e)}', 'error')
     else:
-        # Если удаленный API не настроен, используем внутренний маршрут напрямую
-        # Вызываем функцию sandbox_internal_user_delete напрямую
+        # Если удаленный API не настроен, используем обычное удаление (как в продакшене)
+        user = User.query.get_or_404(user_id)
+        
+        if user.is_creator():
+            flash('Нельзя удалить создателя', 'error')
+            return redirect(url_for('admin.admin_users'))
+        
+        username = user.username
+        
         try:
-            user = User.query.get(user_id)
-            if not user:
-                flash('Пользователь не найден.', 'error')
-            elif user.is_creator():
-                flash('Нельзя удалить создателя', 'error')
-            else:
-                username = user.username
-                try:
-                    # Удаляем логи пользователя
-                    from sqlalchemy import delete
-                    from app.models import AuditLog
-                    deleted_logs = db.session.execute(
-                        delete(AuditLog).where(AuditLog.user_id == user_id)
-                    ).rowcount
-                except Exception as e:
-                    logger.warning(f"Error deleting user logs: {e}")
-                    db.session.rollback()
-                    deleted_logs = 0
-                
-                db.session.delete(user)
-                db.session.commit()
-                
-                audit_logger.log(
-                    action='delete_user',
-                    entity='User',
-                    entity_id=user_id,
-                    status='success',
-                    metadata={
-                        'username': username,
-                        'deleted_logs': deleted_logs
-                    }
-                )
-                
-                flash(f'Пользователь "{username}" и {deleted_logs} его логов удалены', 'success')
+            try:
+                # Удаляем логи пользователя
+                from sqlalchemy import delete
+                from app.models import AuditLog
+                deleted_logs = db.session.execute(
+                    delete(AuditLog).where(AuditLog.user_id == user_id)
+                ).rowcount
+            except Exception as e:
+                logger.warning(f"Error deleting user logs: {e}")
+                db.session.rollback()
+                deleted_logs = 0
+            
+            db.session.delete(user)
+            db.session.commit()
+            
+            audit_logger.log(
+                action='delete_user',
+                entity='User',
+                entity_id=user_id,
+                status='success',
+                metadata={
+                    'username': username,
+                    'deleted_logs': deleted_logs
+                }
+            )
+            
+            flash(f'Пользователь "{username}" и {deleted_logs} его логов удалены', 'success')
         except Exception as e:
             db.session.rollback()
             logger.error(f'Ошибка при удалении пользователя: {e}', exc_info=True)
