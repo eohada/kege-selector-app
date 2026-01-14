@@ -41,6 +41,70 @@ def diagnostics_test():
         'note': 'Для полной диагностики требуется авторизация'
     })
 
+@admin_bp.route('/admin/diagnostics/db-check')
+def diagnostics_db_check():
+    """
+    Простая проверка подключения к БД (без авторизации для удобства)
+    Можно использовать для проверки БД в Railway
+    """
+    result = {
+        'status': 'checking',
+        'environment': os.environ.get('ENVIRONMENT', 'unknown'),
+        'database': {},
+        'timestamp': None
+    }
+    
+    try:
+        from datetime import datetime
+        result['timestamp'] = datetime.now().isoformat()
+        
+        # Проверка DATABASE_URL
+        database_url = os.environ.get('DATABASE_URL', 'NOT SET')
+        result['database']['DATABASE_URL_set'] = 'YES' if database_url != 'NOT SET' else 'NO'
+        result['database']['DATABASE_URL_preview'] = _mask_url(database_url)
+        result['database']['database_type'] = _get_database_type(database_url)
+        
+        # Проверка подключения
+        from flask import current_app
+        with current_app.app_context():
+            with db.engine.connect() as conn:
+                # Простой запрос для проверки
+                conn.execute(text("SELECT 1"))
+                result['database']['connection_status'] = 'OK'
+                result['status'] = 'success'
+                
+                # Проверка таблиц
+                try:
+                    inspector = inspect(db.engine)
+                    tables = inspector.get_table_names()
+                    result['database']['tables_count'] = len(tables)
+                    result['database']['tables'] = sorted(tables)
+                    
+                    # Проверка основных таблиц
+                    important_tables = ['Users', 'Students', 'Lessons', 'Tasks']
+                    result['database']['important_tables'] = {}
+                    for table in important_tables:
+                        if table in tables:
+                            try:
+                                count_result = conn.execute(text(f'SELECT COUNT(*) FROM "{table}"'))
+                                count = count_result.fetchone()[0]
+                                result['database']['important_tables'][table] = count
+                            except Exception as e:
+                                result['database']['important_tables'][table] = f'error: {str(e)}'
+                        else:
+                            result['database']['important_tables'][table] = 'not found'
+                            
+                except Exception as e:
+                    result['database']['tables_error'] = str(e)
+                    
+    except Exception as e:
+        result['status'] = 'error'
+        result['error'] = str(e)
+        result['database']['connection_status'] = 'ERROR'
+        result['database']['connection_error'] = str(e)
+    
+    return jsonify(result)
+
 def get_diagnostics_data():
     """
     Собирает диагностическую информацию о текущем окружении
