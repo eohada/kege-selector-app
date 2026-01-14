@@ -4,6 +4,7 @@
 """
 import os
 import logging
+from datetime import datetime
 from flask import jsonify, render_template
 from flask_login import login_required
 from sqlalchemy import text, inspect
@@ -38,8 +39,34 @@ def diagnostics_test():
         'status': 'OK',
         'message': 'Диагностический endpoint доступен',
         'endpoint': '/admin/diagnostics',
-        'note': 'Для полной диагностики требуется авторизация'
+        'note': 'Для полной диагностики требуется авторизация',
+        'environment': os.environ.get('ENVIRONMENT', 'unknown'),
+        'timestamp': datetime.now().isoformat() if 'datetime' in dir() else 'unknown'
     })
+
+@admin_bp.route('/admin/diagnostics/simple')
+def diagnostics_simple():
+    """
+    Очень простая проверка без подключения к БД
+    Используйте для проверки, что приложение работает
+    """
+    try:
+        from datetime import datetime
+        return jsonify({
+            'status': 'OK',
+            'message': 'Application is running',
+            'environment': os.environ.get('ENVIRONMENT', 'unknown'),
+            'railway_environment': os.environ.get('RAILWAY_ENVIRONMENT', 'not set'),
+            'database_url_set': 'YES' if os.environ.get('DATABASE_URL') else 'NO',
+            'database_url_preview': _mask_url(os.environ.get('DATABASE_URL', 'NOT SET')),
+            'timestamp': datetime.now().isoformat()
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'ERROR',
+            'error': str(e),
+            'message': 'Application error occurred'
+        }), 200  # Всегда 200, чтобы показать ошибку
 
 @admin_bp.route('/admin/diagnostics/db-check')
 def diagnostics_db_check():
@@ -51,7 +78,8 @@ def diagnostics_db_check():
         'status': 'checking',
         'environment': os.environ.get('ENVIRONMENT', 'unknown'),
         'database': {},
-        'timestamp': None
+        'timestamp': None,
+        'errors': []
     }
     
     try:
@@ -59,51 +87,94 @@ def diagnostics_db_check():
         result['timestamp'] = datetime.now().isoformat()
         
         # Проверка DATABASE_URL
-        database_url = os.environ.get('DATABASE_URL', 'NOT SET')
-        result['database']['DATABASE_URL_set'] = 'YES' if database_url != 'NOT SET' else 'NO'
-        result['database']['DATABASE_URL_preview'] = _mask_url(database_url)
-        result['database']['database_type'] = _get_database_type(database_url)
+        try:
+            database_url = os.environ.get('DATABASE_URL', 'NOT SET')
+            result['database']['DATABASE_URL_set'] = 'YES' if database_url != 'NOT SET' else 'NO'
+            result['database']['DATABASE_URL_preview'] = _mask_url(database_url)
+            result['database']['database_type'] = _get_database_type(database_url)
+        except Exception as e:
+            result['errors'].append(f"Error checking DATABASE_URL: {str(e)}")
+            logger.error(f"Error checking DATABASE_URL: {e}", exc_info=True)
         
         # Проверка подключения
-        from flask import current_app
-        with current_app.app_context():
-            with db.engine.connect() as conn:
-                # Простой запрос для проверки
-                conn.execute(text("SELECT 1"))
-                result['database']['connection_status'] = 'OK'
-                result['status'] = 'success'
-                
-                # Проверка таблиц
+        try:
+            from flask import current_app, has_app_context
+            if not has_app_context():
+                result['status'] = 'error'
+                result['error'] = 'No Flask app context available'
+                result['database']['connection_status'] = 'ERROR'
+                result['database']['connection_error'] = 'No Flask app context'
+                return jsonify(result), 200  # Возвращаем 200, но с ошибкой в JSON
+            
+            with current_app.app_context():
                 try:
-                    inspector = inspect(db.engine)
-                    tables = inspector.get_table_names()
-                    result['database']['tables_count'] = len(tables)
-                    result['database']['tables'] = sorted(tables)
+                    # Проверяем, что db.engine доступен
+                    if not hasattr(db, 'engine') or db.engine is None:
+                        result['status'] = 'error'
+                        result['error'] = 'Database engine not initialized'
+                        result['database']['connection_status'] = 'ERROR'
+                        result['database']['connection_error'] = 'Database engine not initialized'
+                        return jsonify(result), 200
                     
-                    # Проверка основных таблиц
-                    important_tables = ['Users', 'Students', 'Lessons', 'Tasks']
-                    result['database']['important_tables'] = {}
-                    for table in important_tables:
-                        if table in tables:
-                            try:
-                                count_result = conn.execute(text(f'SELECT COUNT(*) FROM "{table}"'))
-                                count = count_result.fetchone()[0]
-                                result['database']['important_tables'][table] = count
-                            except Exception as e:
-                                result['database']['important_tables'][table] = f'error: {str(e)}'
-                        else:
-                            result['database']['important_tables'][table] = 'not found'
+                    with db.engine.connect() as conn:
+                        # Простой запрос для проверки
+                        conn.execute(text("SELECT 1"))
+                        result['database']['connection_status'] = 'OK'
+                        result['status'] = 'success'
+                        
+                        # Проверка таблиц
+                        try:
+                            inspector = inspect(db.engine)
+                            tables = inspector.get_table_names()
+                            result['database']['tables_count'] = len(tables)
+                            result['database']['tables'] = sorted(tables)
+                            
+                            # Проверка основных таблиц
+                            important_tables = ['Users', 'Students', 'Lessons', 'Tasks']
+                            result['database']['important_tables'] = {}
+                            for table in important_tables:
+                                if table in tables:
+                                    try:
+                                        count_result = conn.execute(text(f'SELECT COUNT(*) FROM "{table}"'))
+                                        count = count_result.fetchone()[0]
+                                        result['database']['important_tables'][table] = count
+                                    except Exception as e:
+                                        result['database']['important_tables'][table] = f'error: {str(e)}'
+                                        result['errors'].append(f"Error counting {table}: {str(e)}")
+                                else:
+                                    result['database']['important_tables'][table] = 'not found'
+                                    
+                        except Exception as e:
+                            result['database']['tables_error'] = str(e)
+                            result['errors'].append(f"Error inspecting tables: {str(e)}")
+                            logger.error(f"Error inspecting tables: {e}", exc_info=True)
                             
                 except Exception as e:
-                    result['database']['tables_error'] = str(e)
+                    result['status'] = 'error'
+                    result['error'] = str(e)
+                    result['database']['connection_status'] = 'ERROR'
+                    result['database']['connection_error'] = str(e)
+                    result['errors'].append(f"Database connection error: {str(e)}")
+                    logger.error(f"Database connection error: {e}", exc_info=True)
+                    
+        except Exception as e:
+            result['status'] = 'error'
+            result['error'] = str(e)
+            result['database']['connection_status'] = 'ERROR'
+            result['database']['connection_error'] = str(e)
+            result['errors'].append(f"Flask app context error: {str(e)}")
+            logger.error(f"Flask app context error: {e}", exc_info=True)
                     
     except Exception as e:
         result['status'] = 'error'
         result['error'] = str(e)
         result['database']['connection_status'] = 'ERROR'
         result['database']['connection_error'] = str(e)
+        result['errors'].append(f"Unexpected error: {str(e)}")
+        logger.error(f"Unexpected error in diagnostics_db_check: {e}", exc_info=True)
     
-    return jsonify(result)
+    # Всегда возвращаем 200, даже при ошибках, чтобы показать информацию
+    return jsonify(result), 200
 
 def get_diagnostics_data():
     """
