@@ -22,6 +22,118 @@ from flask_login import current_user
 # Базовая директория проекта
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
+@main_bp.route('/health')
+def health_check():
+    """
+    Простейший endpoint для проверки работоспособности приложения
+    Не требует авторизации и не использует БД
+    """
+    try:
+        from flask import jsonify
+        return jsonify({
+            'status': 'OK',
+            'message': 'Application is running',
+            'environment': os.environ.get('ENVIRONMENT', 'unknown'),
+            'database_url_set': 'YES' if os.environ.get('DATABASE_URL') else 'NO',
+            'timestamp': datetime.now().isoformat()
+        }), 200
+    except Exception as e:
+        from flask import jsonify
+        return jsonify({
+            'status': 'ERROR',
+            'error': str(e)
+        }), 200
+
+@main_bp.route('/setup/first-user', methods=['GET', 'POST'])
+def setup_first_user():
+    """
+    Временный endpoint для создания первого пользователя в пустой базе
+    Работает только если в базе нет пользователей (для безопасности)
+    После создания первого пользователя этот endpoint автоматически отключается
+    """
+    from flask import jsonify, request
+    from werkzeug.security import generate_password_hash
+    from core.db_models import moscow_now
+    
+    try:
+        # Проверяем, есть ли уже пользователи в базе
+        user_count = User.query.count()
+        
+        if user_count > 0:
+            return jsonify({
+                'success': False,
+                'error': 'Users already exist. This endpoint is disabled for security.',
+                'user_count': user_count
+            }), 403
+        
+        if request.method == 'GET':
+            # Показываем форму для создания пользователя
+            return jsonify({
+                'message': 'Create first user',
+                'method': 'POST',
+                'fields': {
+                    'username': 'string (required)',
+                    'password': 'string (required)',
+                    'role': 'string (optional, default: creator)',
+                    'email': 'string (optional)'
+                },
+                'example': {
+                    'username': 'admin',
+                    'password': 'your_secure_password',
+                    'role': 'creator',
+                    'email': 'admin@example.com'
+                }
+            }), 200
+        
+        # POST - создаем пользователя
+        data = request.get_json() if request.is_json else request.form
+        
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        role = data.get('role', 'creator').strip()
+        email = data.get('email', '').strip() or None
+        
+        if not username:
+            return jsonify({'success': False, 'error': 'Username is required'}), 400
+        
+        if not password:
+            return jsonify({'success': False, 'error': 'Password is required'}), 400
+        
+        if len(password) < 8:
+            return jsonify({'success': False, 'error': 'Password must be at least 8 characters'}), 400
+        
+        # Проверяем, что пользователь с таким username не существует
+        if User.query.filter_by(username=username).first():
+            return jsonify({'success': False, 'error': 'Username already exists'}), 409
+        
+        # Создаем пользователя
+        user = User(
+            username=username,
+            email=email,
+            password_hash=generate_password_hash(password),
+            role=role,
+            is_active=True,
+            created_at=moscow_now()
+        )
+        db.session.add(user)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'User "{username}" created successfully',
+            'username': username,
+            'role': role,
+            'note': 'You can now login with these credentials. This endpoint is now disabled.'
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating first user: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @main_bp.route('/')
 @main_bp.route('/index')
 @main_bp.route('/home')
