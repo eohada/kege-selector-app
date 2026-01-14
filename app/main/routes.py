@@ -18,6 +18,7 @@ from sqlalchemy import func, or_
 from datetime import timedelta
 from core.audit_logger import audit_logger
 from flask_login import current_user
+from app import csrf
 
 # Базовая директория проекта
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -45,6 +46,7 @@ def health_check():
         }), 200
 
 @main_bp.route('/setup/first-user', methods=['GET', 'POST'])
+@csrf.exempt  # Отключаем CSRF для этого endpoint (работает только если в БД нет пользователей)
 def setup_first_user():
     """
     Временный endpoint для создания первого пользователя в пустой базе
