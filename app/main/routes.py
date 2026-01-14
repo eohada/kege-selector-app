@@ -58,8 +58,16 @@ def setup_first_user():
     from core.db_models import moscow_now
     
     try:
-        # Проверяем, есть ли уже пользователи в базе
-        user_count = User.query.count()
+        # Проверяем подключение к БД и количество пользователей
+        try:
+            user_count = User.query.count()
+        except Exception as db_error:
+            # Если БД недоступна, возвращаем ошибку
+            return jsonify({
+                'success': False,
+                'error': f'Database connection failed: {str(db_error)}',
+                'hint': 'Check DATABASE_URL configuration in Railway Variables'
+            }), 500
         
         if user_count > 0:
             return jsonify({
@@ -105,20 +113,35 @@ def setup_first_user():
             return jsonify({'success': False, 'error': 'Password must be at least 8 characters'}), 400
         
         # Проверяем, что пользователь с таким username не существует
-        if User.query.filter_by(username=username).first():
-            return jsonify({'success': False, 'error': 'Username already exists'}), 409
+        try:
+            if User.query.filter_by(username=username).first():
+                return jsonify({'success': False, 'error': 'Username already exists'}), 409
+        except Exception as db_error:
+            return jsonify({
+                'success': False,
+                'error': f'Database query failed: {str(db_error)}',
+                'hint': 'Check DATABASE_URL configuration'
+            }), 500
         
         # Создаем пользователя
-        user = User(
-            username=username,
-            email=email,
-            password_hash=generate_password_hash(password),
-            role=role,
-            is_active=True,
-            created_at=moscow_now()
-        )
-        db.session.add(user)
-        db.session.commit()
+        try:
+            user = User(
+                username=username,
+                email=email,
+                password_hash=generate_password_hash(password),
+                role=role,
+                is_active=True,
+                created_at=moscow_now()
+            )
+            db.session.add(user)
+            db.session.commit()
+        except Exception as db_error:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'error': f'Failed to create user: {str(db_error)}',
+                'hint': 'Check database connection and permissions'
+            }), 500
         
         return jsonify({
             'success': True,
