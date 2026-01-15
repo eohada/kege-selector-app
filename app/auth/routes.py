@@ -26,8 +26,13 @@ class LoginForm(FlaskForm):
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    """Страница входа для тестеров"""
+    """Страница входа"""
+    # Если это админ-окружение и пользователь уже авторизован - сразу в админку
+    is_admin_env = os.environ.get('ENVIRONMENT') == 'admin'
+    
     if current_user.is_authenticated:
+        if is_admin_env:
+            return redirect(url_for('remote_admin.dashboard'))
         return redirect(url_for('main.dashboard'))
     
     form = LoginForm()
@@ -41,6 +46,11 @@ def login():
         if user and user.is_active:
             # Проверяем пароль
             if check_password_hash(user.password_hash, password):
+                # Проверка для админ-окружения: только creator
+                if is_admin_env and not user.is_creator():
+                    flash('Доступ к админ-панели разрешен только Создателю', 'danger')
+                    return render_template('remote_admin/login.html' if is_admin_env else 'auth/login.html', form=form)
+                
                 # Обновляем время последнего входа
                 user.last_login = moscow_now()
                 try:
@@ -66,6 +76,8 @@ def login():
                 if next_page and next_page.startswith('/'):
                     # Если есть next параметр, используем его
                     pass
+                elif is_admin_env:
+                    next_page = url_for('remote_admin.dashboard')
                 elif user.is_parent():
                     # Родитель идет на свой дашборд
                     next_page = url_for('parents.parent_dashboard')
@@ -104,7 +116,10 @@ def login():
                 metadata={'username': username, 'reason': 'user_not_found_or_inactive'}
             )
     
-    return render_template('login.html', form=form)
+    if is_admin_env:
+        return render_template('remote_admin/login.html', form=form)
+    
+    return render_template('auth/login.html', form=form)
 
 @auth_bp.route('/logout', methods=['GET', 'POST'])
 @login_required
