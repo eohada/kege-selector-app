@@ -499,35 +499,46 @@ def permissions():
     
     # GET запрос - получаем текущие права
     try:
+        logger.info(f"Fetching permissions from environment: {current_env}")
         resp = make_remote_request('GET', '/internal/remote-admin/api/permissions')
+        logger.info(f"Permissions API response: status={resp.status_code}, content-type={resp.headers.get('Content-Type', 'unknown')}")
+        
         if resp.status_code == 200:
             try:
                 data = resp.json()
+                logger.debug(f"Permissions data received: roles={len(data.get('roles_permissions', {}))}, all_perms={len(data.get('all_permissions', {}))}, categories={len(data.get('permission_categories', {}))}")
                 roles_permissions = data.get('roles_permissions', {})
-                all_permissions = data.get('all_permissions', [])
+                all_permissions = data.get('all_permissions', {})  # Это словарь, не список!
                 permission_categories = data.get('permission_categories', {})
             except ValueError as json_error:
-                logger.error(f"Failed to parse JSON from permissions API: {json_error}. Response: {resp.text[:200]}")
+                logger.error(f"Failed to parse JSON from permissions API: {json_error}. Response: {resp.text[:500]}")
                 roles_permissions = {}
-                all_permissions = []
+                all_permissions = {}
                 permission_categories = {}
                 flash(f'Ошибка: неверный формат ответа от сервера', 'error')
         else:
             roles_permissions = {}
-            all_permissions = []
+            all_permissions = {}
             permission_categories = {}
-            error_text = resp.text[:100] if resp.text else f'HTTP {resp.status_code}'
+            error_text = resp.text[:200] if resp.text else f'HTTP {resp.status_code}'
+            logger.error(f"Permissions API returned error: {resp.status_code}, response: {error_text}")
             flash(f'Ошибка загрузки прав: {error_text}', 'error')
     except Exception as e:
         logger.error(f"Error loading permissions: {e}", exc_info=True)
         roles_permissions = {}
-        all_permissions = []
+        all_permissions = {}
         permission_categories = {}
         flash(f'Ошибка загрузки прав: {str(e)}', 'error')
     
-    return render_template('remote_admin/permissions.html',
-                         roles_permissions=roles_permissions,
-                         all_permissions=all_permissions,
-                         permission_categories=permission_categories,
-                         current_environment=current_env,
-                         environment_name=environments.get(current_env, {}).get('name', current_env))
+    try:
+        logger.debug(f"Rendering permissions template with: roles={len(roles_permissions)}, all_perms={len(all_permissions)}, categories={len(permission_categories)}")
+        return render_template('remote_admin/permissions.html',
+                             roles_permissions=roles_permissions,
+                             all_permissions=all_permissions,
+                             permission_categories=permission_categories,
+                             current_environment=current_env,
+                             environment_name=environments.get(current_env, {}).get('name', current_env))
+    except Exception as template_error:
+        logger.error(f"Error rendering permissions template: {template_error}", exc_info=True)
+        flash(f'Ошибка отображения страницы: {str(template_error)}', 'error')
+        return redirect(url_for('remote_admin.dashboard'))
