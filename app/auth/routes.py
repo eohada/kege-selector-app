@@ -27,16 +27,24 @@ class LoginForm(FlaskForm):
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     """Страница входа"""
-    # Если это админ-окружение и пользователь уже авторизован - сразу в админку
-    is_admin_env = os.environ.get('ENVIRONMENT') == 'admin'
-    
-    if current_user.is_authenticated:
-        if is_admin_env:
-            return redirect(url_for('remote_admin.dashboard'))
-        return redirect(url_for('main.dashboard'))
-    
-    form = LoginForm()
-    if form.validate_on_submit():
+    try:
+        # Если это админ-окружение и пользователь уже авторизован - сразу в админку
+        is_admin_env = os.environ.get('ENVIRONMENT') == 'admin'
+        
+        # Безопасная проверка авторизации
+        try:
+            is_authenticated = current_user.is_authenticated if hasattr(current_user, 'is_authenticated') else False
+        except Exception as e:
+            logger.warning(f"Error checking authentication: {e}")
+            is_authenticated = False
+        
+        if is_authenticated:
+            if is_admin_env:
+                return redirect(url_for('remote_admin.dashboard'))
+            return redirect(url_for('main.dashboard'))
+        
+        form = LoginForm()
+        if form.validate_on_submit():
         username = form.username.data.strip()
         password = form.password.data
         
@@ -47,7 +55,13 @@ def login():
             # Проверяем пароль
             if check_password_hash(user.password_hash, password):
                 # Проверка для админ-окружения: только creator
-                if is_admin_env and not user.is_creator():
+                try:
+                    is_creator = user.is_creator() if hasattr(user, 'is_creator') else False
+                except Exception as e:
+                    logger.error(f"Error checking is_creator: {e}", exc_info=True)
+                    is_creator = False
+                
+                if is_admin_env and not is_creator:
                     flash('Доступ к админ-панели разрешен только Создателю', 'danger')
                     return render_template('remote_admin/login.html' if is_admin_env else 'auth/login.html', form=form)
                 
@@ -116,10 +130,16 @@ def login():
                 metadata={'username': username, 'reason': 'user_not_found_or_inactive'}
             )
     
-    if is_admin_env:
-        return render_template('remote_admin/login.html', form=form)
-    
-    return render_template('auth/login.html', form=form)
+        if is_admin_env:
+            return render_template('remote_admin/login.html', form=form)
+        
+        return render_template('auth/login.html', form=form)
+    except Exception as e:
+        logger.error(f"Error in login route: {e}", exc_info=True)
+        flash('Произошла ошибка при обработке запроса. Попробуйте позже.', 'danger')
+        is_admin_env = os.environ.get('ENVIRONMENT') == 'admin'
+        form = LoginForm()
+        return render_template('remote_admin/login.html' if is_admin_env else 'auth/login.html', form=form), 500
 
 @auth_bp.route('/logout', methods=['GET', 'POST'])
 @login_required
