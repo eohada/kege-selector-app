@@ -102,6 +102,36 @@ def check_and_fix_rbac_schema(app):
                         count += 1
                 db.session.commit()
                 logger.info(f"Filled default permissions ({count} records)")
+            else:
+                # Таблица существует, проверяем, есть ли в ней права
+                existing_count = RolePermission.query.count()
+                if existing_count == 0:
+                    logger.info("RolePermissions table exists but is empty. Initializing default permissions...")
+                    try:
+                        count = 0
+                        for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
+                            for perm_name in perms:
+                                # Проверяем, что право существует в ALL_PERMISSIONS
+                                from app.auth.permissions import ALL_PERMISSIONS
+                                if perm_name not in ALL_PERMISSIONS:
+                                    logger.warning(f"Permission '{perm_name}' not found in ALL_PERMISSIONS, skipping")
+                                    continue
+                                
+                                # Проверяем, нет ли уже такой записи (на случай параллельных запросов)
+                                exists = RolePermission.query.filter_by(
+                                    role=role, 
+                                    permission_name=perm_name
+                                ).first()
+                                if not exists:
+                                    rp = RolePermission(role=role, permission_name=perm_name, is_enabled=True)
+                                    db.session.add(rp)
+                                    count += 1
+                        
+                        db.session.commit()
+                        logger.info(f"Initialized {count} default permission records")
+                    except Exception as init_error:
+                        db.session.rollback()
+                        logger.error(f"Error initializing default permissions: {init_error}", exc_info=True)
             
             # 2. Ensure custom_permissions column in Users
             users_table = _resolve_table_name(table_names, 'Users')

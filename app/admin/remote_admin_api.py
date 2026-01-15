@@ -12,7 +12,7 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from app.admin import admin_bp
 from app.models import User, AuditLog, MaintenanceMode, db, UserProfile
 from app.models import FamilyTie, Enrollment, Student, Lesson, RolePermission
-from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES
+from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES, DEFAULT_ROLE_PERMISSIONS
 from core.audit_logger import audit_logger
 from core.db_models import moscow_now
 
@@ -597,6 +597,37 @@ def remote_admin_api_permissions():
             # Получаем все права из БД
             try:
                 role_permissions = RolePermission.query.all()
+                
+                # Если в базе нет прав, инициализируем их из DEFAULT_ROLE_PERMISSIONS
+                if len(role_permissions) == 0:
+                    logger.info("No role permissions found in database. Initializing from DEFAULT_ROLE_PERMISSIONS...")
+                    try:
+                        count = 0
+                        for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
+                            for perm_name in perms:
+                                # Проверяем, что право существует в ALL_PERMISSIONS
+                                if perm_name not in ALL_PERMISSIONS:
+                                    logger.warning(f"Permission '{perm_name}' not found in ALL_PERMISSIONS, skipping")
+                                    continue
+                                
+                                rp = RolePermission(
+                                    role=role, 
+                                    permission_name=perm_name, 
+                                    is_enabled=True
+                                )
+                                db.session.add(rp)
+                                count += 1
+                        
+                        db.session.commit()
+                        logger.info(f"Initialized {count} default permission records")
+                        
+                        # Перезагружаем права из БД
+                        role_permissions = RolePermission.query.all()
+                    except Exception as init_error:
+                        db.session.rollback()
+                        logger.error(f"Error initializing default permissions: {init_error}", exc_info=True)
+                        # Продолжаем работу, даже если инициализация не удалась
+                
                 permissions_map = {}
                 
                 # Инициализируем все роли пустыми списками
