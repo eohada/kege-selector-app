@@ -8,56 +8,79 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <style>
         .environment-selector {
-            display: flex;
-            gap: 1rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
             margin-bottom: 2rem;
             padding: 1.5rem;
             background: var(--surface-2);
             border-radius: var(--radius-md);
         }
         .env-card {
-            flex: 1;
             padding: 1.5rem;
             background: var(--surface-1);
             border-radius: var(--radius-md);
             border: 2px solid var(--stroke-2);
             cursor: pointer;
             transition: all 0.2s;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
         }
         .env-card:hover {
             border-color: var(--accent-1);
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         .env-card.active {
             border-color: var(--accent-1);
             background: var(--surface-3);
         }
         .env-card.unavailable {
-            opacity: 0.5;
+            opacity: 0.7;
             cursor: not-allowed;
+            border-color: var(--danger);
         }
         .env-status {
             display: inline-block;
             padding: 0.25rem 0.75rem;
             border-radius: var(--radius-sm);
             font-size: 0.85rem;
-            margin-top: 0.5rem;
+            margin-top: 1rem;
+            font-weight: 500;
         }
         .status-ok {
-            background: rgba(46, 255, 125, 0.15);
+            background: rgba(46, 255, 125, 0.1);
             color: #2eff7d;
+            border: 1px solid rgba(46, 255, 125, 0.2);
         }
         .status-error {
-            background: rgba(255, 46, 46, 0.15);
+            background: rgba(255, 46, 46, 0.1);
             color: #ff2e2e;
+            border: 1px solid rgba(255, 46, 46, 0.2);
         }
         .status-warning {
-            background: rgba(255, 200, 46, 0.15);
+            background: rgba(255, 200, 46, 0.1);
             color: #ffc82e;
+            border: 1px solid rgba(255, 200, 46, 0.2);
+        }
+        .error-message {
+            font-size: 0.8rem;
+            color: var(--danger);
+            margin-top: 0.5rem;
+            background: rgba(0,0,0,0.2);
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+            font-family: monospace;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
         }
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1.5rem;
             margin-top: 2rem;
         }
@@ -65,6 +88,7 @@
             padding: 1.5rem;
             background: var(--surface-2);
             border-radius: var(--radius-md);
+            border: 1px solid var(--stroke-2);
         }
         .stat-value {
             font-size: 2rem;
@@ -75,6 +99,49 @@
         .stat-label {
             color: var(--text-muted);
             font-size: 0.9rem;
+        }
+        .functions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .function-card {
+            text-decoration: none;
+            color: var(--text-primary);
+            padding: 1.5rem;
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-2);
+            border-radius: var(--radius-md);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .function-card:hover {
+            border-color: var(--accent-1);
+            transform: translateY(-2px);
+            background: var(--surface-2);
+        }
+        .function-icon {
+            font-size: 2rem;
+            background: var(--surface-2);
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-md);
+        }
+        .function-info h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .function-info p {
+            margin: 0.25rem 0 0 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
         }
     </style>
 </head>
@@ -111,26 +178,33 @@
                                 {{ env_config.description }}
                             </p>
                             {% if env_status.get('configured') %}
+                                <div style="margin-top: auto;">
                                 {% if env_status.get('available') %}
                                     <span class="env-status status-ok">● Доступно</span>
                                 {% else %}
                                     <span class="env-status status-error">● Недоступно</span>
                                     {% if env_status.get('error') %}
-                                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">
+                                        <div class="error-message" title="{{ env_status.error }}">
                                             {{ env_status.error }}
                                         </div>
                                     {% endif %}
                                 {% endif %}
+                                </div>
                             {% else %}
-                                <span class="env-status status-warning">● Не настроено</span>
+                                <div style="margin-top: auto;">
+                                    <span class="env-status status-warning">● Не настроено</span>
+                                </div>
                             {% endif %}
                         </div>
                     </form>
                     {% endfor %}
                 </div>
-                <div style="margin-top: 1rem; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-md);">
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">
-                        💡 Для добавления нового окружения установите переменные окружения: <code>ENV_&lt;NAME&gt;_URL</code> и <code>ENV_&lt;NAME&gt;_TOKEN</code>
+                
+                <div style="margin-top: 1rem; padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: var(--radius-md); display: flex; align-items: center; gap: 1rem;">
+                    <span style="font-size: 1.2rem;">💡</span>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0; line-height: 1.4;">
+                        Для добавления нового окружения установите переменные окружения: <br>
+                        <code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px;">ENV_&lt;NAME&gt;_URL</code> и <code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.4rem; border-radius: 4px;">ENV_&lt;NAME&gt;_TOKEN</code>
                     </p>
                 </div>
             </div>
@@ -158,33 +232,47 @@
             {% endif %}
 
             {# Навигация по функциям #}
-            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--stroke-2);">
-                <h2 style="margin-bottom: 1rem;">Функции управления</h2>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                    <a href="{{ url_for('remote_admin.users_list') }}" class="neo-button outline" style="text-decoration: none; text-align: center; padding: 1.5rem;">
-                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">👥</div>
-                        <div style="font-weight: 600;">Пользователи</div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">Управление пользователями</div>
+            <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--stroke-2);">
+                <h2 style="margin-bottom: 1.5rem;">Функции управления</h2>
+                <div class="functions-grid">
+                    <a href="{{ url_for('remote_admin.users_list') }}" class="function-card">
+                        <div class="function-icon">👥</div>
+                        <div class="function-info">
+                            <h3>Пользователи</h3>
+                            <p>Управление пользователями</p>
+                        </div>
                     </a>
-                    <a href="{{ url_for('remote_admin.testers') }}" class="neo-button outline" style="text-decoration: none; text-align: center; padding: 1.5rem;">
-                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">🧪</div>
-                        <div style="font-weight: 600;">Тестеры</div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">Управление тестерами</div>
+                    
+                    <a href="{{ url_for('remote_admin.testers') }}" class="function-card">
+                        <div class="function-icon">🧪</div>
+                        <div class="function-info">
+                            <h3>Тестеры</h3>
+                            <p>Управление тестерами</p>
+                        </div>
                     </a>
-                    <a href="{{ url_for('remote_admin.permissions') }}" class="neo-button outline" style="text-decoration: none; text-align: center; padding: 1.5rem;">
-                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔐</div>
-                        <div style="font-weight: 600;">Права доступа</div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">RBAC управление</div>
+                    
+                    <a href="{{ url_for('remote_admin.permissions') }}" class="function-card">
+                        <div class="function-icon">🔐</div>
+                        <div class="function-info">
+                            <h3>Права доступа</h3>
+                            <p>RBAC управление</p>
+                        </div>
                     </a>
-                    <a href="{{ url_for('remote_admin.audit_logs') }}" class="neo-button outline" style="text-decoration: none; text-align: center; padding: 1.5rem;">
-                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">📋</div>
-                        <div style="font-weight: 600;">Логи действий</div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">Аудит и мониторинг</div>
+                    
+                    <a href="{{ url_for('remote_admin.audit_logs') }}" class="function-card">
+                        <div class="function-icon">📋</div>
+                        <div class="function-info">
+                            <h3>Логи действий</h3>
+                            <p>Аудит и мониторинг</p>
+                        </div>
                     </a>
-                    <a href="{{ url_for('remote_admin.maintenance') }}" class="neo-button outline" style="text-decoration: none; text-align: center; padding: 1.5rem;">
-                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔧</div>
-                        <div style="font-weight: 600;">Тех. работы</div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">Режим обслуживания</div>
+                    
+                    <a href="{{ url_for('remote_admin.maintenance') }}" class="function-card">
+                        <div class="function-icon">🔧</div>
+                        <div class="function-info">
+                            <h3>Тех. работы</h3>
+                            <p>Режим обслуживания</p>
+                        </div>
                     </a>
                 </div>
             </div>
