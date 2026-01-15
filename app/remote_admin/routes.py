@@ -483,6 +483,8 @@ def permissions():
                     perm_name = key[5:]  # Убираем префикс 'perm_'
                     permissions_list.append(perm_name)
             
+            logger.info(f"Updating permissions for role '{role}': {len(permissions_list)} permissions")
+            
             payload = {
                 'role': role,
                 'permissions': permissions_list  # Отправляем список, а не словарь
@@ -536,11 +538,45 @@ def permissions():
         flash(f'Ошибка загрузки прав: {str(e)}', 'error')
     
     try:
-        logger.info(f"Rendering permissions template with: roles={len(roles_permissions)}, all_perms={len(all_permissions)}, categories={len(permission_categories)}")
+        # Подготавливаем данные для шаблона
+        # Список ролей из roles_permissions
+        roles_list = list(roles_permissions.keys()) if roles_permissions else []
+        logger.info(f"Preparing template data: roles_list={len(roles_list)}, roles={roles_list}")
+        
+        # Группируем права по категориям
+        categories_dict = {}
+        if all_permissions and permission_categories:
+            # Если all_permissions - это словарь вида {'perm_key': {'name': '...', 'category': '...'}}
+            for perm_key, perm_data in all_permissions.items():
+                if isinstance(perm_data, dict):
+                    category = perm_data.get('category', 'other')
+                    if category not in categories_dict:
+                        categories_dict[category] = []
+                    categories_dict[category].append(perm_key)
+                else:
+                    # Если perm_data - не словарь, используем ключ категории из permission_categories
+                    category = 'other'
+                    for cat_key, cat_name in permission_categories.items():
+                        # Попробуем найти категорию по ключу разрешения
+                        if perm_key.startswith(cat_key) or cat_key in perm_key:
+                            category = cat_key
+                            break
+                    if category not in categories_dict:
+                        categories_dict[category] = []
+                    categories_dict[category].append(perm_key)
+        elif all_permissions:
+            # Если есть только all_permissions без категорий, создаем одну категорию
+            categories_dict['other'] = list(all_permissions.keys())
+        
+        logger.info(f"Categories prepared: {len(categories_dict)} categories, keys: {list(categories_dict.keys())}")
+        
+        logger.info(f"Rendering permissions template with: roles={len(roles_list)}, all_perms={len(all_permissions)}, categories={len(categories_dict)}")
         result = render_template('remote_admin/permissions.html',
+                             roles=roles_list,
                              roles_permissions=roles_permissions,
                              all_permissions=all_permissions,
                              permission_categories=permission_categories,
+                             categories=categories_dict,
                              current_environment=current_env,
                              environment_name=environments.get(current_env, {}).get('name', current_env))
         logger.info(f"Permissions template rendered successfully")

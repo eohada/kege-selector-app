@@ -102,11 +102,17 @@
                     <div style="padding: 1rem; font-weight: 600; background: var(--surface-3); border-bottom: 1px solid var(--stroke-2);">
                         Роли
                     </div>
+                    {% if roles %}
                     {% for role in roles %}
                     <div class="role-item" onclick="selectRole('{{ role }}')">
                         {{ role|capitalize }}
                     </div>
                     {% endfor %}
+                    {% else %}
+                    <div style="padding: 1rem; color: var(--text-muted); text-align: center;">
+                        Роли не найдены
+                    </div>
+                    {% endif %}
                 </div>
 
                 {# Панель прав #}
@@ -121,22 +127,37 @@
                                 <button type="submit" class="neo-button">Сохранить изменения</button>
                             </div>
 
-                            {% for category, cat_perms in categories.items() %}
+                            {% if categories %}
+                            {% for category_key, cat_perms in categories.items() %}
                             <div class="category-block">
-                                <div class="category-title">{{ category }}</div>
+                                <div class="category-title">{{ permission_categories.get(category_key, category_key) }}</div>
                                 <div class="permissions-list">
                                     {% for perm in cat_perms %}
+                                    {% if perm in all_permissions %}
+                                    {% set perm_data = all_permissions[perm] %}
                                     <label class="permission-item">
-                                        <input type="checkbox" name="permissions" value="{{ perm }}" class="perm-check" id="perm-{{ perm }}">
+                                        <input type="checkbox" name="perm_{{ perm }}" value="on" class="perm-check" id="perm-{{ perm }}">
                                         <div>
-                                            <div class="perm-label">{{ perm }}</div>
-                                            {# Здесь можно добавить описание права, если оно есть в словаре #}
+                                            <div class="perm-label">
+                                                {% if perm_data is mapping and perm_data.get('name') %}
+                                                    {{ perm_data.get('name') }}
+                                                {% else %}
+                                                    {{ perm }}
+                                                {% endif %}
+                                            </div>
+                                            <div class="perm-desc">{{ perm }}</div>
                                         </div>
                                     </label>
+                                    {% endif %}
                                     {% endfor %}
                                 </div>
                             </div>
                             {% endfor %}
+                            {% else %}
+                            <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                                <p>Нет доступных прав для настройки</p>
+                            </div>
+                            {% endif %}
                         </div>
 
                         <div id="empty-state" style="text-align: center; padding: 4rem; color: var(--text-muted);">
@@ -152,12 +173,22 @@
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script>
         // Данные о правах из сервера
-        const permissionsMap = {{ permissions_map|tojson }};
+        const permissionsMap = {{ roles_permissions|tojson }};
+        const allPermissions = {{ all_permissions|tojson }};
+        const permissionCategories = {{ permission_categories|tojson }};
+        
+        console.log('Permissions data loaded:', {
+            roles: Object.keys(permissionsMap || {}),
+            allPermissionsCount: Object.keys(allPermissions || {}).length,
+            categoriesCount: Object.keys(permissionCategories || {}).length
+        });
         
         function selectRole(role) {
+            console.log('Selecting role:', role);
             // Обновляем UI активной роли
             document.querySelectorAll('.role-item').forEach(el => {
-                if (el.textContent.trim().toLowerCase() === role) {
+                const roleText = el.textContent.trim();
+                if (roleText.toLowerCase() === role.toLowerCase() || roleText === role) {
                     el.classList.add('active');
                 } else {
                     el.classList.remove('active');
@@ -165,19 +196,30 @@
             });
             
             // Показываем форму
-            document.getElementById('permissions-container').style.display = 'block';
-            document.getElementById('empty-state').style.display = 'none';
-            document.getElementById('role-title').textContent = role;
-            document.getElementById('selected-role').value = role;
+            const container = document.getElementById('permissions-container');
+            const emptyState = document.getElementById('empty-state');
+            if (container) container.style.display = 'block';
+            if (emptyState) emptyState.style.display = 'none';
+            
+            const roleTitle = document.getElementById('role-title');
+            const selectedRole = document.getElementById('selected-role');
+            if (roleTitle) roleTitle.textContent = role;
+            if (selectedRole) selectedRole.value = role;
             
             // Сбрасываем все чекбоксы
             document.querySelectorAll('.perm-check').forEach(cb => cb.checked = false);
             
             // Отмечаем права выбранной роли
             const rolePerms = permissionsMap[role] || [];
+            console.log('Role permissions:', rolePerms);
             rolePerms.forEach(perm => {
                 const cb = document.getElementById('perm-' + perm);
-                if (cb) cb.checked = true;
+                if (cb) {
+                    cb.checked = true;
+                    console.log('Checked permission:', perm);
+                } else {
+                    console.warn('Permission checkbox not found:', perm);
+                }
             });
         }
     </script>
