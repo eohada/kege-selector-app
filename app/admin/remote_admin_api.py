@@ -581,25 +581,47 @@ def remote_admin_api_tester(tester_id):
 @csrf.exempt
 def remote_admin_api_permissions():
     """API: Управление правами доступа"""
+    logger.info(f"Remote admin permissions API request: method={request.method}, path={request.path}")
+    
     if not _remote_admin_guard():
+        logger.warning(f"Remote admin permissions API request rejected: no valid token")
         return jsonify({'error': 'unauthorized'}), 401
+    
+    logger.info(f"Remote admin permissions API request authenticated successfully")
     
     try:
         if request.method == 'GET':
             # Получаем все права из БД
-            role_permissions = RolePermission.query.all()
-            permissions_map = {}
-            for rp in role_permissions:
-                if rp.role not in permissions_map:
-                    permissions_map[rp.role] = []
-                permissions_map[rp.role].append(rp.permission)
+            try:
+                role_permissions = RolePermission.query.all()
+                permissions_map = {}
+                for rp in role_permissions:
+                    if rp.role not in permissions_map:
+                        permissions_map[rp.role] = []
+                    permissions_map[rp.role].append(rp.permission)
+                
+                logger.debug(f"Found {len(role_permissions)} role permissions, {len(permissions_map)} roles")
+                logger.debug(f"ALL_PERMISSIONS count: {len(ALL_PERMISSIONS) if ALL_PERMISSIONS else 0}")
+                logger.debug(f"PERMISSION_CATEGORIES count: {len(PERMISSION_CATEGORIES) if PERMISSION_CATEGORIES else 0}")
+                
+            # Проверяем, что ALL_PERMISSIONS и PERMISSION_CATEGORIES доступны
+            try:
+                all_perms = dict(ALL_PERMISSIONS) if ALL_PERMISSIONS else {}
+                perm_cats = dict(PERMISSION_CATEGORIES) if PERMISSION_CATEGORIES else {}
+            except Exception as e:
+                logger.error(f"Error converting permissions to dict: {e}", exc_info=True)
+                all_perms = {}
+                perm_cats = {}
             
             return jsonify({
                 'success': True,
                 'roles_permissions': permissions_map,
-                'all_permissions': ALL_PERMISSIONS,
-                'permission_categories': PERMISSION_CATEGORIES
+                'all_permissions': all_perms,
+                'permission_categories': perm_cats
             })
+            except Exception as db_error:
+                logger.error(f"Database error in permissions GET: {db_error}", exc_info=True)
+                raise
             
         elif request.method == 'POST':
             data = request.get_json() or {}
