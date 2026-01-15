@@ -275,6 +275,10 @@ def register_hooks(app):
         if request.path.startswith('/internal/sandbox-admin/'):
             return
         
+        # Внутренний remote-admin API — server-to-server по токену, не требует Flask-Login
+        if request.path.startswith('/internal/remote-admin/'):
+            return
+        
         # Проверяем авторизацию
         if not current_user.is_authenticated:
             # Сохраняем URL для редиректа после входа

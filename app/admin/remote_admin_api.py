@@ -570,9 +570,9 @@ def remote_admin_api_permissions():
             
             return jsonify({
                 'success': True,
-                'permissions_map': permissions_map,
+                'roles_permissions': permissions_map,
                 'all_permissions': ALL_PERMISSIONS,
-                'categories': PERMISSION_CATEGORIES
+                'permission_categories': PERMISSION_CATEGORIES
             })
             
         elif request.method == 'POST':

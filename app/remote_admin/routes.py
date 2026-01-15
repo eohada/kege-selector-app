@@ -470,17 +470,17 @@ def permissions():
     if request.method == 'POST':
         try:
             role = request.form.get('role', '').strip()
-            permissions_data = {}
+            permissions_list = []
             
-            # Собираем все разрешения из формы
+            # Собираем все разрешения из формы (только включенные)
             for key, value in request.form.items():
-                if key.startswith('perm_'):
+                if key.startswith('perm_') and value == 'on':
                     perm_name = key[5:]  # Убираем префикс 'perm_'
-                    permissions_data[perm_name] = value == 'on'
+                    permissions_list.append(perm_name)
             
             payload = {
                 'role': role,
-                'permissions': permissions_data
+                'permissions': permissions_list  # Отправляем список, а не словарь
             }
             
             resp = make_remote_request('POST', '/internal/remote-admin/api/permissions', payload=payload)
@@ -501,15 +501,23 @@ def permissions():
     try:
         resp = make_remote_request('GET', '/internal/remote-admin/api/permissions')
         if resp.status_code == 200:
-            data = resp.json()
-            roles_permissions = data.get('roles_permissions', {})
-            all_permissions = data.get('all_permissions', [])
-            permission_categories = data.get('permission_categories', {})
+            try:
+                data = resp.json()
+                roles_permissions = data.get('roles_permissions', {})
+                all_permissions = data.get('all_permissions', [])
+                permission_categories = data.get('permission_categories', {})
+            except ValueError as json_error:
+                logger.error(f"Failed to parse JSON from permissions API: {json_error}. Response: {resp.text[:200]}")
+                roles_permissions = {}
+                all_permissions = []
+                permission_categories = {}
+                flash(f'Ошибка: неверный формат ответа от сервера', 'error')
         else:
             roles_permissions = {}
             all_permissions = []
             permission_categories = {}
-            flash(f'Ошибка загрузки прав: {resp.status_code}', 'error')
+            error_text = resp.text[:100] if resp.text else f'HTTP {resp.status_code}'
+            flash(f'Ошибка загрузки прав: {error_text}', 'error')
     except Exception as e:
         logger.error(f"Error loading permissions: {e}", exc_info=True)
         roles_permissions = {}

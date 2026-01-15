@@ -142,15 +142,21 @@ def make_remote_request(method: str, path: str, payload: Optional[Dict] = None, 
     
     try:
         if method.upper() == 'GET':
-            return requests.get(url, headers=headers, timeout=timeout)
+            resp = requests.get(url, headers=headers, timeout=timeout)
         elif method.upper() == 'POST':
-            return requests.post(url, headers=headers, json=(payload or {}), timeout=timeout)
+            resp = requests.post(url, headers=headers, json=(payload or {}), timeout=timeout)
         elif method.upper() == 'PUT':
-            return requests.put(url, headers=headers, json=(payload or {}), timeout=timeout)
+            resp = requests.put(url, headers=headers, json=(payload or {}), timeout=timeout)
         elif method.upper() == 'DELETE':
-            return requests.delete(url, headers=headers, timeout=timeout)
+            resp = requests.delete(url, headers=headers, timeout=timeout)
         else:
             raise ValueError(f'Unsupported HTTP method: {method}')
+        
+        # Логируем ответ для отладки
+        if resp.status_code != 200:
+            logger.warning(f"Request to {url} returned status {resp.status_code}. Response: {resp.text[:200]}")
+        
+        return resp
     except requests.exceptions.RequestException as e:
         logger.error(f"Request failed to {url}: {e}")
         mock_resp = requests.Response()
@@ -174,25 +180,36 @@ def get_environment_status(env: str) -> Dict:
         # Используем отдельный таймаут для проверки статуса
         resp = make_remote_request('GET', '/internal/remote-admin/status', env=env)
         if resp.status_code == 200:
-            data = resp.json()
-            return {
-                'configured': True,
-                'available': True,
-                'status': data.get('status', 'unknown'),
-                'stats': data.get('stats', {})
-            }
+            try:
+                data = resp.json()
+                return {
+                    'configured': True,
+                    'available': True,
+                    'status': data.get('status', 'unknown'),
+                    'stats': data.get('stats', {})
+                }
+            except ValueError as json_error:
+                # Ответ не JSON - возможно, HTML страница ошибки
+                logger.error(f"Failed to parse JSON from {env} status endpoint: {json_error}. Response: {resp.text[:200]}")
+                return {
+                    'configured': True,
+                    'available': False,
+                    'error': f'Invalid response format: {str(json_error)[:50]}'
+                }
         else:
+            # Пытаемся получить текст ошибки
+            error_text = resp.text[:100] if resp.text else f'HTTP {resp.status_code}'
             return {
                 'configured': True,
                 'available': False,
-                'error': f'HTTP {resp.status_code}'
+                'error': error_text
             }
     except Exception as e:
-        logger.error(f"Error checking environment {env} status: {e}")
+        logger.error(f"Error checking environment {env} status: {e}", exc_info=True)
         return {
             'configured': True,
             'available': False,
-            'error': str(e)
+            'error': str(e)[:100]  # Ограничиваем длину ошибки
         }
 
 
