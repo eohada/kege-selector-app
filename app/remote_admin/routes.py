@@ -456,14 +456,19 @@ def maintenance():
 @login_required
 def permissions():
     """Управление правами доступа (RBAC)"""
+    logger.info(f"Permissions page accessed: method={request.method}, user={current_user.username if current_user.is_authenticated else 'anonymous'}")
+    
     if not current_user.is_creator():
+        logger.warning(f"Non-creator user {current_user.username} attempted to access permissions page")
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
     
     current_env = get_current_environment()
     environments = get_environments()
+    logger.info(f"Current environment: {current_env}")
     
     if not is_environment_configured(current_env):
+        logger.warning(f"Environment {current_env} is not configured")
         flash(f'Окружение {environments.get(current_env, {}).get("name", current_env)} не настроено', 'error')
         return redirect(url_for('remote_admin.dashboard'))
     
@@ -531,13 +536,15 @@ def permissions():
         flash(f'Ошибка загрузки прав: {str(e)}', 'error')
     
     try:
-        logger.debug(f"Rendering permissions template with: roles={len(roles_permissions)}, all_perms={len(all_permissions)}, categories={len(permission_categories)}")
-        return render_template('remote_admin/permissions.html',
+        logger.info(f"Rendering permissions template with: roles={len(roles_permissions)}, all_perms={len(all_permissions)}, categories={len(permission_categories)}")
+        result = render_template('remote_admin/permissions.html',
                              roles_permissions=roles_permissions,
                              all_permissions=all_permissions,
                              permission_categories=permission_categories,
                              current_environment=current_env,
                              environment_name=environments.get(current_env, {}).get('name', current_env))
+        logger.info(f"Permissions template rendered successfully")
+        return result
     except Exception as template_error:
         logger.error(f"Error rendering permissions template: {template_error}", exc_info=True)
         flash(f'Ошибка отображения страницы: {str(template_error)}', 'error')
