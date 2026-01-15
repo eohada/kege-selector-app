@@ -162,9 +162,14 @@ def setup_first_user():
 @main_bp.route('/')
 @main_bp.route('/index')
 @main_bp.route('/home')
-@login_required
 def index():
     """Главная страница с описанием платформы"""
+    # Если это админ-окружение, сразу редиректим в админку
+    if os.environ.get('ENVIRONMENT') == 'admin':
+        return redirect(url_for('remote_admin.dashboard'))
+
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
     return render_template('index.html')
 
 @main_bp.route('/dashboard')
