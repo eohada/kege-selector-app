@@ -450,3 +450,76 @@ def maintenance():
                          status=status,
                          current_environment=current_env,
                          environment_name=environments.get(current_env, {}).get('name', current_env))
+
+
+@remote_admin_bp.route('/permissions', methods=['GET', 'POST'])
+@login_required
+def permissions():
+    """Управление правами доступа (RBAC)"""
+    if not current_user.is_creator():
+        flash('Доступ только для Создателя', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    current_env = get_current_environment()
+    environments = get_environments()
+    
+    if not is_environment_configured(current_env):
+        flash(f'Окружение {environments.get(current_env, {}).get("name", current_env)} не настроено', 'error')
+        return redirect(url_for('remote_admin.dashboard'))
+    
+    if request.method == 'POST':
+        try:
+            role = request.form.get('role', '').strip()
+            permissions_data = {}
+            
+            # Собираем все разрешения из формы
+            for key, value in request.form.items():
+                if key.startswith('perm_'):
+                    perm_name = key[5:]  # Убираем префикс 'perm_'
+                    permissions_data[perm_name] = value == 'on'
+            
+            payload = {
+                'role': role,
+                'permissions': permissions_data
+            }
+            
+            resp = make_remote_request('POST', '/internal/remote-admin/api/permissions', payload=payload)
+            
+            if resp.status_code == 200:
+                flash('Права обновлены успешно', 'success')
+            else:
+                error_data = resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {}
+                flash(error_data.get('error', f'Ошибка обновления прав: {resp.status_code}'), 'error')
+                
+        except Exception as e:
+            logger.error(f"Error updating permissions: {e}", exc_info=True)
+            flash(f'Ошибка: {str(e)}', 'error')
+            
+        return redirect(url_for('remote_admin.permissions'))
+    
+    # GET запрос - получаем текущие права
+    try:
+        resp = make_remote_request('GET', '/internal/remote-admin/api/permissions')
+        if resp.status_code == 200:
+            data = resp.json()
+            roles_permissions = data.get('roles_permissions', {})
+            all_permissions = data.get('all_permissions', [])
+            permission_categories = data.get('permission_categories', {})
+        else:
+            roles_permissions = {}
+            all_permissions = []
+            permission_categories = {}
+            flash(f'Ошибка загрузки прав: {resp.status_code}', 'error')
+    except Exception as e:
+        logger.error(f"Error loading permissions: {e}", exc_info=True)
+        roles_permissions = {}
+        all_permissions = []
+        permission_categories = {}
+        flash(f'Ошибка загрузки прав: {str(e)}', 'error')
+    
+    return render_template('remote_admin/permissions.html',
+                         roles_permissions=roles_permissions,
+                         all_permissions=all_permissions,
+                         permission_categories=permission_categories,
+                         current_environment=current_env,
+                         environment_name=environments.get(current_env, {}).get('name', current_env))
