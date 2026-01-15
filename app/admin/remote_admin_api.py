@@ -102,7 +102,7 @@ def remote_admin_status():
                 'active_users': active_users,
                 'total_logs': total_logs,
                 'today_logs': today_logs,
-                'maintenance_enabled': maintenance_status.enabled
+                'maintenance_enabled': maintenance_status.is_enabled
             }
         })
     except Exception as e:
@@ -431,9 +431,8 @@ def remote_admin_api_maintenance():
             return jsonify({
                 'success': True,
                 'status': {
-                    'enabled': status.enabled,
+                    'enabled': status.is_enabled,
                     'message': status.message,
-                    'allowed_ips': status.allowed_ips,
                     'updated_at': status.updated_at.isoformat() if status.updated_at else None,
                     'updated_by': status.updated_by
                 }
@@ -445,13 +444,12 @@ def remote_admin_api_maintenance():
             enabled = bool(data.get('enabled', False))
             message = data.get('message', '').strip()
             
-            # Устанавливаем статус через модель
-            MaintenanceMode.set_status(
-                enabled=enabled,
-                message=message,
-                user_id=None, # System/Remote Admin
-                username='Remote Admin'
-            )
+            # Устанавливаем статус напрямую
+            status = MaintenanceMode.get_status()
+            status.is_enabled = enabled
+            status.message = message
+            status.updated_by = None  # System/Remote Admin
+            db.session.commit()
             
             audit_logger.log(
                 action='toggle_maintenance',
