@@ -12,6 +12,15 @@ from app.remote_admin.environment_manager import (
     get_environment_config, is_environment_configured
 )
 
+# Импортируем csrf для исключения API endpoints из CSRF защиты
+try:
+    from app import csrf
+    if csrf:
+        # Исключаем все API endpoints из CSRF защиты
+        pass  # Будем использовать декоратор @csrf.exempt
+except ImportError:
+    csrf = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -95,3 +104,9 @@ def api_stats():
     except Exception as e:
         logger.error(f"Error fetching stats: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
+
+# Исключаем все API endpoints из CSRF защиты после определения функций
+if csrf:
+    csrf.exempt(api_users_list)
+    csrf.exempt(api_user_manage)
+    csrf.exempt(api_stats)
