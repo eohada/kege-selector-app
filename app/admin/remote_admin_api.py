@@ -603,7 +603,10 @@ def remote_admin_api_permissions():
                 logger.debug(f"Found {len(role_permissions)} role permissions, {len(permissions_map)} roles")
                 logger.debug(f"ALL_PERMISSIONS count: {len(ALL_PERMISSIONS) if ALL_PERMISSIONS else 0}")
                 logger.debug(f"PERMISSION_CATEGORIES count: {len(PERMISSION_CATEGORIES) if PERMISSION_CATEGORIES else 0}")
-                
+            except Exception as db_error:
+                logger.error(f"Database error in permissions GET: {db_error}", exc_info=True)
+                raise
+            
             # Проверяем, что ALL_PERMISSIONS и PERMISSION_CATEGORIES доступны
             try:
                 all_perms = dict(ALL_PERMISSIONS) if ALL_PERMISSIONS else {}
@@ -619,9 +622,6 @@ def remote_admin_api_permissions():
                 'all_permissions': all_perms,
                 'permission_categories': perm_cats
             })
-            except Exception as db_error:
-                logger.error(f"Database error in permissions GET: {db_error}", exc_info=True)
-                raise
             
         elif request.method == 'POST':
             data = request.get_json() or {}
