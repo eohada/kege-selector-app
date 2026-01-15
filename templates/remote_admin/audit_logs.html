@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Логи действий · Удаленная админка</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <style>
+        .logs-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .logs-table th {
+            text-align: left;
+            padding: 1rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            border-bottom: 1px solid var(--stroke-2);
+        }
+        .logs-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--stroke-1);
+            color: var(--text-primary);
+        }
+        .logs-table tr:hover {
+            background: var(--surface-3);
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .status-success {
+            background: rgba(46, 255, 125, 0.1);
+            color: #2eff7d;
+        }
+        .status-error {
+            background: rgba(255, 46, 46, 0.1);
+            color: #ff2e2e;
+        }
+        .meta-cell {
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: monospace;
+            color: var(--text-muted);
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+        }
+        .page-link {
+            padding: 0.5rem 1rem;
+            background: var(--surface-2);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .page-link:hover, .page-link.active {
+            background: var(--accent-1);
+            color: white;
+        }
+        .page-link.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .filters-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: var(--surface-2);
+            border-radius: var(--radius-md);
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'remote_admin' %}
+        {% include '_primary_nav.html' %}
+
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="{{ url_for('remote_admin.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
+                        ← К удаленной админке
+                    </a>
+                    <div>
+                        <h1 style="margin: 0;">Логи действий</h1>
+                        <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
+                            Окружение: <strong>{{ environment_name }}</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <form method="GET" class="filters-bar">
+                <div class="neo-field" style="margin: 0; flex: 1; max-width: 200px;">
+                    <select name="action" class="neo-input" onchange="this.form.submit()">
+                        <option value="">Все действия</option>
+                        <option value="login" {% if filter_action == 'login' %}selected{% endif %}>Вход в систему</option>
+                        <option value="logout" {% if filter_action == 'logout' %}selected{% endif %}>Выход</option>
+                        <option value="create_user" {% if filter_action == 'create_user' %}selected{% endif %}>Создание пользователя</option>
+                        <option value="delete_user" {% if filter_action == 'delete_user' %}selected{% endif %}>Удаление пользователя</option>
+                        <option value="toggle_maintenance" {% if filter_action == 'toggle_maintenance' %}selected{% endif %}>Режим обслуживания</option>
+                        <option value="admin_access" {% if filter_action == 'admin_access' %}selected{% endif %}>Доступ к админке</option>
+                    </select>
+                </div>
+                
+                <div class="neo-field" style="margin: 0; flex: 1; max-width: 150px;">
+                    <input type="number" name="user_id" class="neo-input" placeholder="User ID" value="{{ filter_user_id or '' }}">
+                </div>
+
+                <button type="submit" class="neo-button">Фильтр</button>
+                
+                {% if filter_action or filter_user_id %}
+                <a href="{{ url_for('remote_admin.audit_logs') }}" class="neo-button ghost">Сбросить</a>
+                {% endif %}
+            </form>
+
+            {% if logs %}
+            <div style="overflow-x: auto;">
+                <table class="logs-table">
+                    <thead>
+                        <tr>
+                            <th>Время (UTC)</th>
+                            <th>Действие</th>
+                            <th>Пользователь (ID)</th>
+                            <th>Сущность</th>
+                            <th>ID Сущности</th>
+                            <th>Статус</th>
+                            <th>Метаданные</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td style="white-space: nowrap;">
+                                {{ log.timestamp[:19].replace('T', ' ') if log.timestamp else '—' }}
+                            </td>
+                            <td>
+                                <strong>{{ log.action }}</strong>
+                            </td>
+                            <td>
+                                {% if log.user_id %}
+                                <a href="{{ url_for('remote_admin.user_edit', user_id=log.user_id) }}" style="color: var(--accent-1); text-decoration: none;">
+                                    #{{ log.user_id }}
+                                </a>
+                                {% else %}
+                                <span style="color: var(--text-muted);">Система</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ log.entity or '—' }}</td>
+                            <td>{{ log.entity_id or '—' }}</td>
+                            <td>
+                                {% if log.status == 'success' %}
+                                <span class="status-badge status-success">Успех</span>
+                                {% else %}
+                                <span class="status-badge status-error">{{ log.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="meta-cell" title="{{ log.metadata }}">
+                                {{ log.metadata }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {# Пагинация #}
+            {% if pagination.pages > 1 %}
+            <div class="pagination">
+                {% if pagination.has_prev %}
+                <a href="{{ url_for('remote_admin.audit_logs', page=pagination.prev_num, action=filter_action, user_id=filter_user_id) }}" class="page-link">←</a>
+                {% endif %}
+                
+                {% for p in pagination.iter_pages %}
+                    {% if p %}
+                        <a href="{{ url_for('remote_admin.audit_logs', page=p, action=filter_action, user_id=filter_user_id) }}" class="page-link {% if p == pagination.page %}active{% endif %}">
+                            {{ p }}
+                        </a>
+                    {% else %}
+                        <span class="page-link disabled">...</span>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if pagination.has_next %}
+                <a href="{{ url_for('remote_admin.audit_logs', page=pagination.next_num, action=filter_action, user_id=filter_user_id) }}" class="page-link">→</a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% else %}
+            <div style="text-align: center; padding: 4rem; color: var(--text-muted);">
+                <p>Логов не найдено</p>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</body>
+</html>

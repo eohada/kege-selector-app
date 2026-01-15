@@ -67,6 +67,9 @@
                         </p>
                     </div>
                 </div>
+                <a href="{{ url_for('remote_admin.user_new') }}" class="neo-button" style="text-decoration: none;">
+                    + Создать пользователя
+                </a>
             </div>
 
             {% if users %}
@@ -123,10 +126,9 @@
                         </td>
                         <td>
                             <div class="action-buttons" style="display: flex; gap: 0.5rem;">
-                                <button type="button" class="neo-button ghost" style="padding:0.5rem 0.75rem;" 
-                                        onclick="editUser({{ user.id }})" title="Редактировать">
+                                <a href="{{ url_for('remote_admin.user_edit', user_id=user.id) }}" class="neo-button ghost" style="padding:0.5rem 0.75rem; text-decoration: none;" title="Редактировать">
                                     <img src="{{ url_for('static', filename='icons/icons8-редактировать-100.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm">
-                                </button>
+                                </a>
                                 {% if user.role != 'creator' %}
                                 <button type="button" class="neo-button danger action-delete-btn" style="padding:0.5rem 0.75rem;" title="Удалить" 
                                         data-url="{{ url_for('remote_admin.api_user_manage', user_id=user.id) }}" 
@@ -154,11 +156,6 @@
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
     <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
     <script>
-        function editUser(userId) {
-            // В будущем можно добавить модальное окно редактирования
-            alert('Редактирование пользователя будет доступно в следующей версии');
-        }
-        
         // Обработка удаления через AJAX
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.action-delete-btn').forEach(btn => {

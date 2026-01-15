@@ -11,8 +11,10 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.admin import admin_bp
 from app.models import User, AuditLog, MaintenanceMode, db, UserProfile
-from app.models import FamilyTie, Enrollment, Student, Lesson
+from app.models import FamilyTie, Enrollment, Student, Lesson, RolePermission
+from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES
 from core.audit_logger import audit_logger
+from core.db_models import moscow_now
 
 logger = logging.getLogger(__name__)
 
@@ -88,39 +90,107 @@ def remote_admin_status():
         return jsonify({'error': str(e)}), 500
 
 
-@admin_bp.route('/internal/remote-admin/api/users', methods=['GET'])
+@admin_bp.route('/internal/remote-admin/api/users', methods=['GET', 'POST'])
 def remote_admin_api_users():
-    """API: Список пользователей"""
+    """API: Список пользователей или создание нового"""
     if not _remote_admin_guard():
         return jsonify({'error': 'unauthorized'}), 401
     
     try:
-        role_filter = request.args.get('role')
-        is_active_filter = request.args.get('is_active')
+        if request.method == 'POST':
+            # Создание нового пользователя
+            from werkzeug.security import generate_password_hash
+            from core.db_models import moscow_now
+            
+            data = request.get_json() or {}
+            username = data.get('username', '').strip()
+            email = data.get('email', '').strip() or None
+            password = data.get('password', '').strip()
+            role = data.get('role', 'student').strip()
+            is_active = data.get('is_active', True)
+            
+            if not username:
+                return jsonify({'error': 'username is required'}), 400
+            
+            if not password:
+                return jsonify({'error': 'password is required'}), 400
+            
+            # Проверка уникальности
+            if User.query.filter_by(username=username).first():
+                return jsonify({'error': 'username already exists'}), 409
+            
+            if email and User.query.filter_by(email=email).first():
+                return jsonify({'error': 'email already exists'}), 409
+            
+            # Создаем пользователя
+            user = User(
+                username=username,
+                email=email,
+                password_hash=generate_password_hash(password),
+                role=role,
+                is_active=is_active,
+                created_at=moscow_now()
+            )
+            db.session.add(user)
+            db.session.flush()
+            
+            # Создаем профиль
+            profile = UserProfile(user_id=user.id)
+            db.session.add(profile)
+            db.session.commit()
+            
+            audit_logger.log(
+                action='create_user',
+                entity='User',
+                entity_id=user.id,
+                status='success',
+                metadata={
+                    'username': username,
+                    'role': role,
+                    'created_by_remote_admin': True
+                }
+            )
+            
+            return jsonify({
+                'success': True,
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'role': user.role,
+                    'is_active': user.is_active
+                }
+            }), 201
         
-        query = User.query
-        
-        if role_filter:
-            query = query.filter(User.role == role_filter)
-        if is_active_filter is not None:
-            is_active = is_active_filter.lower() == 'true'
-            query = query.filter(User.is_active == is_active)
-        
-        users = query.order_by(User.created_at.desc()).all()
-        
-        return jsonify({
-            'success': True,
-            'users': [{
-                'id': u.id,
-                'username': u.username,
-                'email': u.email,
-                'role': u.role,
-                'is_active': u.is_active,
-                'created_at': u.created_at.isoformat() if u.created_at else None,
-                'last_login': u.last_login.isoformat() if u.last_login else None
-            } for u in users]
-        })
+        else:
+            # GET - список пользователей
+            role_filter = request.args.get('role')
+            is_active_filter = request.args.get('is_active')
+            
+            query = User.query
+            
+            if role_filter:
+                query = query.filter(User.role == role_filter)
+            if is_active_filter is not None:
+                is_active = is_active_filter.lower() == 'true'
+                query = query.filter(User.is_active == is_active)
+            
+            users = query.order_by(User.created_at.desc()).all()
+            
+            return jsonify({
+                'success': True,
+                'users': [{
+                    'id': u.id,
+                    'username': u.username,
+                    'email': u.email,
+                    'role': u.role,
+                    'is_active': u.is_active,
+                    'created_at': u.created_at.isoformat() if u.created_at else None,
+                    'last_login': u.last_login.isoformat() if u.last_login else None
+                } for u in users]
+            })
     except Exception as e:
+        db.session.rollback()
         logger.error(f"Error in remote_admin_api_users: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
@@ -314,9 +384,9 @@ def remote_admin_api_audit_logs():
             } for log in logs.items],
             'pagination': {
                 'page': logs.page,
-                'pages': logs.pages,
                 'per_page': logs.per_page,
-                'total': logs.total
+                'total': logs.total,
+                'pages': logs.pages
             }
         })
     except Exception as e:
@@ -326,7 +396,7 @@ def remote_admin_api_audit_logs():
 
 @admin_bp.route('/internal/remote-admin/api/maintenance', methods=['GET', 'POST'])
 def remote_admin_api_maintenance():
-    """API: Управление техническими работами"""
+    """API: Управление режимом обслуживания"""
     if not _remote_admin_guard():
         return jsonify({'error': 'unauthorized'}), 401
     
@@ -335,32 +405,150 @@ def remote_admin_api_maintenance():
             status = MaintenanceMode.get_status()
             return jsonify({
                 'success': True,
-                'enabled': status.is_enabled,
-                'message': status.message or ''
+                'status': {
+                    'enabled': status.enabled,
+                    'message': status.message,
+                    'allowed_ips': status.allowed_ips,
+                    'updated_at': status.updated_at.isoformat() if status.updated_at else None,
+                    'updated_by': status.updated_by
+                }
             })
-        
+            
         elif request.method == 'POST':
             data = request.get_json() or {}
-            action = data.get('action')
             
-            status = MaintenanceMode.get_status()
+            enabled = bool(data.get('enabled', False))
+            message = data.get('message', '').strip()
             
-            if action == 'toggle':
-                status.is_enabled = not status.is_enabled
-            elif action == 'update_message':
-                status.message = data.get('message', '')
+            # Устанавливаем статус через модель
+            MaintenanceMode.set_status(
+                enabled=enabled,
+                message=message,
+                user_id=None, # System/Remote Admin
+                username='Remote Admin'
+            )
             
-            db.session.commit()
+            audit_logger.log(
+                action='toggle_maintenance',
+                entity='MaintenanceMode',
+                entity_id=None,
+                status='success',
+                metadata={
+                    'enabled': enabled,
+                    'message': message,
+                    'source': 'remote_admin'
+                }
+            )
             
+            return jsonify({'success': True})
+            
+    except Exception as e:
+        logger.error(f"Error in remote_admin_api_maintenance: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/testers', methods=['GET', 'POST'])
+def remote_admin_api_testers():
+    """API: Управление тестерами (сущности Tester)"""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    
+    # Тестеры доступны только если модель существует (обычно Sandbox)
+    try:
+        from core.db_models import Tester
+    except ImportError:
+        return jsonify({'error': 'Tester model not found'}), 501
+    
+    try:
+        if request.method == 'GET':
+            testers = Tester.query.order_by(Tester.created_at.desc()).all()
             return jsonify({
                 'success': True,
-                'enabled': status.is_enabled,
-                'message': status.message or ''
+                'testers': [{
+                    'id': t.id,
+                    'name': t.name,
+                    'is_active': t.is_active,
+                    'created_at': t.created_at.isoformat() if t.created_at else None
+                } for t in testers]
             })
+            
+        elif request.method == 'POST':
+            data = request.get_json() or {}
+            name = data.get('name', '').strip()
+            is_active = bool(data.get('is_active', True))
+            
+            if not name:
+                return jsonify({'error': 'name is required'}), 400
+                
+            tester = Tester(
+                name=name,
+                is_active=is_active,
+                created_at=moscow_now()
+            )
+            db.session.add(tester)
+            db.session.commit()
+            
+            audit_logger.log(
+                action='create_tester',
+                entity='Tester',
+                entity_id=tester.id,
+                status='success',
+                metadata={'name': name, 'source': 'remote_admin'}
+            )
+            
+            return jsonify({'success': True, 'tester_id': tester.id})
+            
+    except Exception as e:
+        logger.error(f"Error in remote_admin_api_testers: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/testers/<int:tester_id>', methods=['POST', 'DELETE'])
+def remote_admin_api_tester(tester_id):
+    """API: Управление конкретным тестером"""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
         
+    try:
+        from core.db_models import Tester
+    except ImportError:
+        return jsonify({'error': 'Tester model not found'}), 501
+    
+    try:
+        tester = Tester.query.get(tester_id)
+        if not tester:
+            return jsonify({'error': 'tester not found'}), 404
+            
+        if request.method == 'POST':
+            # Обновление (toggle active или edit)
+            data = request.get_json() or {}
+            
+            if 'is_active' in data:
+                tester.is_active = bool(data['is_active'])
+            
+            if 'name' in data:
+                tester.name = data['name'].strip()
+                
+            db.session.commit()
+            return jsonify({'success': True})
+            
+        elif request.method == 'DELETE':
+            db.session.delete(tester)
+            db.session.commit()
+            
+            audit_logger.log(
+                action='delete_tester',
+                entity='Tester',
+                entity_id=tester_id,
+                status='success',
+                metadata={'source': 'remote_admin'}
+            )
+            
+            return jsonify({'success': True})
+            
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Error in remote_admin_api_maintenance: {e}", exc_info=True)
+        logger.error(f"Error in remote_admin_api_tester: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 
@@ -371,48 +559,53 @@ def remote_admin_api_permissions():
         return jsonify({'error': 'unauthorized'}), 401
     
     try:
-        from app.models import RolePermission
-        from app.auth.permissions import ALL_PERMISSIONS, DEFAULT_ROLE_PERMISSIONS
-        
         if request.method == 'GET':
-            roles = ['creator', 'admin', 'chief_tester', 'tutor', 'designer', 'tester', 'student', 'parent']
-            permissions_data = {}
-            
-            for role in roles:
-                permissions_data[role] = {}
-                for perm_key in ALL_PERMISSIONS.keys():
-                    perm_record = RolePermission.query.filter_by(role=role, permission_name=perm_key).first()
-                    if perm_record:
-                        permissions_data[role][perm_key] = perm_record.is_enabled
-                    else:
-                        # Используем значение по умолчанию
-                        permissions_data[role][perm_key] = perm_key in DEFAULT_ROLE_PERMISSIONS.get(role, [])
+            # Получаем все права из БД
+            role_permissions = RolePermission.query.all()
+            permissions_map = {}
+            for rp in role_permissions:
+                if rp.role not in permissions_map:
+                    permissions_map[rp.role] = []
+                permissions_map[rp.role].append(rp.permission)
             
             return jsonify({
                 'success': True,
-                'permissions': permissions_data
+                'permissions_map': permissions_map,
+                'all_permissions': ALL_PERMISSIONS,
+                'categories': PERMISSION_CATEGORIES
             })
-        
+            
         elif request.method == 'POST':
             data = request.get_json() or {}
             role = data.get('role')
-            permission = data.get('permission')
-            enabled = data.get('enabled', False)
+            permissions = data.get('permissions', []) # Список permissions для этой роли
             
-            if not role or not permission:
-                return jsonify({'error': 'role and permission required'}), 400
+            if not role:
+                return jsonify({'error': 'role is required'}), 400
+                
+            # Удаляем старые права для роли
+            db.session.execute(
+                delete(RolePermission).where(RolePermission.role == role)
+            )
             
-            perm_record = RolePermission.query.filter_by(role=role, permission_name=permission).first()
-            if not perm_record:
-                perm_record = RolePermission(role=role, permission_name=permission, is_enabled=enabled)
-                db.session.add(perm_record)
-            else:
-                perm_record.is_enabled = enabled
+            # Добавляем новые
+            for perm in permissions:
+                if perm in ALL_PERMISSIONS:
+                    rp = RolePermission(role=role, permission=perm)
+                    db.session.add(rp)
             
             db.session.commit()
             
+            audit_logger.log(
+                action='update_permissions',
+                entity='RolePermission',
+                entity_id=None,
+                status='success',
+                metadata={'role': role, 'count': len(permissions), 'source': 'remote_admin'}
+            )
+            
             return jsonify({'success': True})
-        
+            
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error in remote_admin_api_permissions: {e}", exc_info=True)

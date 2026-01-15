@@ -17,12 +17,13 @@ import sys
 # Добавляем корневую директорию в путь
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from app import app, db
+from app import create_app, db
 from core.db_models import User, moscow_now
 from werkzeug.security import generate_password_hash
 
 def create_user(username, password, role='tester', force_production=False):
     """Создает или обновляет пользователя"""
+    app = create_app()
     with app.app_context():
         # Проверяем окружение
         environment = os.environ.get('ENVIRONMENT', 'local')

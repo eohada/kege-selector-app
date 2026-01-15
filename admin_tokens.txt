@@ -1,0 +1,16 @@
+Токены для удаленной админки
+============================================================
+
+ДЛЯ ADMIN СЕРВИСА:
+PRODUCTION_ADMIN_TOKEN=t3lIHl5kTM6YxYVVu4VWM9Zqi1VLP8rWYD9SOoRV3Za2wZrT8cEmnpZe3L7X883nGiDPyalLuKvX_kGkd_o-8w
+SANDBOX_ADMIN_TOKEN=qNuSBX126FILtjhWrZvdVwBx8YGXMS5lGSd42lqumr9ZPoUSJ2KhX8pxPxO3cv_KrCZiZsc3_lybeBp0N3TVKg
+ADMIN_ADMIN_TOKEN=3yu5g6Tr7SnATm8_WLpDXcJ6c7blnB3QxVgF_3Eqev9BFIQISTJu7t09_hKx0fBQgZhKqnkwa_rW32wXIArlag
+
+ДЛЯ PRODUCTION СЕРВИСА:
+PRODUCTION_ADMIN_TOKEN=t3lIHl5kTM6YxYVVu4VWM9Zqi1VLP8rWYD9SOoRV3Za2wZrT8cEmnpZe3L7X883nGiDPyalLuKvX_kGkd_o-8w
+
+ДЛЯ SANDBOX СЕРВИСА:
+SANDBOX_ADMIN_TOKEN=qNuSBX126FILtjhWrZvdVwBx8YGXMS5lGSd42lqumr9ZPoUSJ2KhX8pxPxO3cv_KrCZiZsc3_lybeBp0N3TVKg
+
+ДЛЯ ADMIN СЕРВИСА (если нужно управлять самим собой):
+ADMIN_ADMIN_TOKEN=3yu5g6Tr7SnATm8_WLpDXcJ6c7blnB3QxVgF_3Eqev9BFIQISTJu7t09_hKx0fBQgZhKqnkwa_rW32wXIArlag

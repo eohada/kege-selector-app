@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Права доступа (RBAC) · Удаленная админка</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <style>
+        .rbac-grid {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .roles-list {
+            background: var(--surface-2);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+        .role-item {
+            padding: 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--stroke-1);
+            transition: all 0.2s;
+        }
+        .role-item:hover {
+            background: var(--surface-3);
+        }
+        .role-item.active {
+            background: var(--accent-1);
+            color: white;
+        }
+        .permissions-panel {
+            background: var(--surface-2);
+            border-radius: var(--radius-md);
+            padding: 2rem;
+        }
+        .category-block {
+            margin-bottom: 2rem;
+        }
+        .category-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--stroke-2);
+        }
+        .permissions-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+        .permission-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.8rem;
+            padding: 0.8rem;
+            background: var(--surface-1);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--stroke-1);
+        }
+        .permission-item:hover {
+            border-color: var(--accent-1);
+        }
+        .perm-check {
+            width: 1.2rem;
+            height: 1.2rem;
+            margin-top: 0.2rem;
+            cursor: pointer;
+        }
+        .perm-label {
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        .perm-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'remote_admin' %}
+        {% include '_primary_nav.html' %}
+
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="{{ url_for('remote_admin.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
+                        ← К удаленной админке
+                    </a>
+                    <div>
+                        <h1 style="margin: 0;">Права доступа (RBAC)</h1>
+                        <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
+                            Окружение: <strong>{{ environment_name }}</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rbac-grid">
+                {# Список ролей #}
+                <div class="roles-list">
+                    <div style="padding: 1rem; font-weight: 600; background: var(--surface-3); border-bottom: 1px solid var(--stroke-2);">
+                        Роли
+                    </div>
+                    {% for role in roles %}
+                    <div class="role-item" onclick="selectRole('{{ role }}')">
+                        {{ role|capitalize }}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {# Панель прав #}
+                <div class="permissions-panel">
+                    <form method="POST" action="{{ url_for('remote_admin.permissions') }}" id="permissions-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="role" id="selected-role">
+                        
+                        <div id="permissions-container" style="display: none;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                                <h2 style="margin: 0;">Права для роли: <span id="role-title" style="color: var(--accent-1);"></span></h2>
+                                <button type="submit" class="neo-button">Сохранить изменения</button>
+                            </div>
+
+                            {% for category, cat_perms in categories.items() %}
+                            <div class="category-block">
+                                <div class="category-title">{{ category }}</div>
+                                <div class="permissions-list">
+                                    {% for perm in cat_perms %}
+                                    <label class="permission-item">
+                                        <input type="checkbox" name="permissions" value="{{ perm }}" class="perm-check" id="perm-{{ perm }}">
+                                        <div>
+                                            <div class="perm-label">{{ perm }}</div>
+                                            {# Здесь можно добавить описание права, если оно есть в словаре #}
+                                        </div>
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div id="empty-state" style="text-align: center; padding: 4rem; color: var(--text-muted);">
+                            <p>Выберите роль слева для настройки прав</p>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </div>
+    
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script>
+        // Данные о правах из сервера
+        const permissionsMap = {{ permissions_map|tojson }};
+        
+        function selectRole(role) {
+            // Обновляем UI активной роли
+            document.querySelectorAll('.role-item').forEach(el => {
+                if (el.textContent.trim().toLowerCase() === role) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+            
+            // Показываем форму
+            document.getElementById('permissions-container').style.display = 'block';
+            document.getElementById('empty-state').style.display = 'none';
+            document.getElementById('role-title').textContent = role;
+            document.getElementById('selected-role').value = role;
+            
+            // Сбрасываем все чекбоксы
+            document.querySelectorAll('.perm-check').forEach(cb => cb.checked = false);
+            
+            // Отмечаем права выбранной роли
+            const rolePerms = permissionsMap[role] || [];
+            rolePerms.forEach(perm => {
+                const cb = document.getElementById('perm-' + perm);
+                if (cb) cb.checked = true;
+            });
+        }
+    </script>
+</body>
+</html>

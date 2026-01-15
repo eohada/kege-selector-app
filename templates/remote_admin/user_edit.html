@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if user %}Редактирование пользователя{% else %}Создание пользователя{% endif %} · Удаленная админка</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'remote_admin' %}
+        {% include '_primary_nav.html' %}
+
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 900px;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                <a href="{{ url_for('remote_admin.users_list') }}" class="neo-button ghost" style="text-decoration: none;">
+                    ← К списку пользователей
+                </a>
+                <div>
+                    <h1 style="margin: 0;">{% if user %}Редактирование пользователя{% else %}Создание пользователя{% endif %}</h1>
+                    <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
+                        Окружение: <strong>{{ environment_name }}</strong>
+                    </p>
+                </div>
+            </div>
+
+            <form method="POST" action="{% if user %}{{ url_for('remote_admin.user_edit', user_id=user.id) }}{% else %}{{ url_for('remote_admin.user_new') }}{% endif %}" class="neo-form" data-no-ajax>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                {# Основная информация #}
+                <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
+                    <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Основная информация</h2>
+                    
+                    <div class="neo-field">
+                        <label class="neo-label" for="username">Имя пользователя *</label>
+                        <input type="text" id="username" name="username" class="neo-input" 
+                               value="{{ user.username if user else '' }}" required>
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="email">Email</label>
+                        <input type="email" id="email" name="email" class="neo-input" 
+                               value="{{ user.email if user else '' }}">
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="role">Роль *</label>
+                        <select id="role" name="role" class="neo-input" required>
+                            <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>Администратор</option>
+                            <option value="tutor" {% if user and user.role == 'tutor' %}selected{% endif %}>Преподаватель</option>
+                            <option value="student" {% if user and user.role == 'student' %}selected{% endif %}>Ученик</option>
+                            <option value="parent" {% if user and user.role == 'parent' %}selected{% endif %}>Родитель</option>
+                            <option value="tester" {% if user and user.role == 'tester' %}selected{% endif %}>Тестировщик</option>
+                            <option value="chief_tester" {% if user and user.role == 'chief_tester' %}selected{% endif %}>Главный тестировщик</option>
+                            <option value="designer" {% if user and user.role == 'designer' %}selected{% endif %}>Графический дизайнер</option>
+                            <option value="creator" {% if user and user.role == 'creator' %}selected{% endif %}>Создатель</option>
+                        </select>
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="password">Пароль {% if user %}(оставьте пустым, чтобы не менять){% else %}*{% endif %}</label>
+                        <input type="password" id="password" name="password" class="neo-input" 
+                               {% if not user %}required{% endif %}>
+                    </div>
+
+                    <div class="neo-field" style="align-items: flex-start;">
+                        <label class="neo-label">Статус</label>
+                        <label style="display:flex; gap:0.6rem; align-items:center; color: var(--text-primary);">
+                            <input type="checkbox" name="is_active" {% if not user or user.is_active %}checked{% endif %}>
+                            <span style="color: var(--text-muted);">Активен</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <a href="{{ url_for('remote_admin.users_list') }}" class="neo-button outline">Отмена</a>
+                    <button type="submit" class="neo-button">
+                        {% if user %}Сохранить{% else %}Создать{% endif %}
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+</body>
+</html>
