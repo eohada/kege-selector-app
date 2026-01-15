@@ -160,6 +160,10 @@ def register_hooks(app):
         if request.path.startswith('/internal/sandbox-admin/'):
             return None
         
+        # Внутренний remote-admin API — пропускаем проверку тех работ
+        if request.path.startswith('/internal/remote-admin/'):
+            return None
+        
         # Получаем окружение - проверяем оба варианта
         environment = os.environ.get('ENVIRONMENT', 'local')
         railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
