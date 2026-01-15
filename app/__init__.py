@@ -39,12 +39,15 @@ def create_app(config_name=None):
         if database_url.startswith('postgres://'):
             database_url = database_url.replace('postgres://', 'postgresql://', 1)
         
-        # В Railway внутренний URL должен работать, но если нет - используем внешний
-        external_db_url = os.environ.get('DATABASE_EXTERNAL_URL') or os.environ.get('POSTGRES_URL')
-        if external_db_url:
-            if external_db_url.startswith('postgres://'):
-                external_db_url = external_db_url.replace('postgres://', 'postgresql://', 1)
-            database_url = external_db_url
+        # В Railway используем внутренний URL, для локального запуска - внешний
+        is_railway = os.environ.get('RAILWAY_ENVIRONMENT') is not None
+        if not is_railway:
+            # Локальный запуск - используем внешний URL если доступен
+            external_db_url = os.environ.get('DATABASE_EXTERNAL_URL') or os.environ.get('POSTGRES_URL')
+            if external_db_url:
+                if external_db_url.startswith('postgres://'):
+                    external_db_url = external_db_url.replace('postgres://', 'postgresql://', 1)
+                database_url = external_db_url
         
         app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     else:
