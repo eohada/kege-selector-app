@@ -607,7 +607,9 @@ def remote_admin_api_permissions():
                 for rp in role_permissions:
                     if rp.role not in permissions_map:
                         permissions_map[rp.role] = []
-                    permissions_map[rp.role].append(rp.permission)
+                    # Используем только включенные права (is_enabled=True)
+                    if rp.is_enabled:
+                        permissions_map[rp.role].append(rp.permission_name)
                 
                 logger.debug(f"Found {len(role_permissions)} role permissions, {len(permissions_map)} roles")
                 logger.debug(f"Roles in permissions_map: {list(permissions_map.keys())}")
@@ -649,7 +651,7 @@ def remote_admin_api_permissions():
             # Добавляем новые
             for perm in permissions:
                 if perm in ALL_PERMISSIONS:
-                    rp = RolePermission(role=role, permission=perm)
+                    rp = RolePermission(role=role, permission_name=perm, is_enabled=True)
                     db.session.add(rp)
             
             db.session.commit()
