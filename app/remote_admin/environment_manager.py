@@ -136,23 +136,28 @@ def make_remote_request(method: str, path: str, payload: Optional[Dict] = None, 
     headers = {
         'X-Admin-Token': token,
         'User-Agent': 'Remote-Admin/1.0',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'  # Явно указываем, что ожидаем JSON
     }
     timeout = 5 # Уменьшаем таймаут до 5 секунд
     
+    logger.debug(f"Making {method} request to {url} with token: {token[:10]}...")
+    
     try:
         if method.upper() == 'GET':
-            resp = requests.get(url, headers=headers, timeout=timeout)
+            resp = requests.get(url, headers=headers, timeout=timeout, allow_redirects=False)
         elif method.upper() == 'POST':
-            resp = requests.post(url, headers=headers, json=(payload or {}), timeout=timeout)
+            resp = requests.post(url, headers=headers, json=(payload or {}), timeout=timeout, allow_redirects=False)
         elif method.upper() == 'PUT':
-            resp = requests.put(url, headers=headers, json=(payload or {}), timeout=timeout)
+            resp = requests.put(url, headers=headers, json=(payload or {}), timeout=timeout, allow_redirects=False)
         elif method.upper() == 'DELETE':
-            resp = requests.delete(url, headers=headers, timeout=timeout)
+            resp = requests.delete(url, headers=headers, timeout=timeout, allow_redirects=False)
         else:
             raise ValueError(f'Unsupported HTTP method: {method}')
         
         # Логируем ответ для отладки
+        logger.debug(f"Response from {url}: status={resp.status_code}, content-type={resp.headers.get('Content-Type', 'unknown')}, body-preview={resp.text[:200]}")
+        
         if resp.status_code != 200:
             logger.warning(f"Request to {url} returned status {resp.status_code}. Response: {resp.text[:200]}")
         
@@ -190,11 +195,25 @@ def get_environment_status(env: str) -> Dict:
                 }
             except ValueError as json_error:
                 # Ответ не JSON - возможно, HTML страница ошибки
-                logger.error(f"Failed to parse JSON from {env} status endpoint: {json_error}. Response: {resp.text[:200]}")
+                error_msg = str(json_error)
+                response_preview = resp.text[:500] if resp.text else "(empty response)"
+                logger.error(f"Failed to parse JSON from {env} status endpoint: {error_msg}")
+                logger.error(f"Response status: {resp.status_code}, Content-Type: {resp.headers.get('Content-Type', 'unknown')}")
+                logger.error(f"Response preview: {response_preview}")
+                
+                # Проверяем, не является ли это HTML страницей входа
+                if resp.text and ('<html' in resp.text.lower() or '<!doctype' in resp.text.lower()):
+                    logger.error(f"Received HTML page instead of JSON - likely redirected to login page")
+                    return {
+                        'configured': True,
+                        'available': False,
+                        'error': 'Received HTML instead of JSON (likely login redirect). Check if code is deployed and tokens match.'
+                    }
+                
                 return {
                     'configured': True,
                     'available': False,
-                    'error': f'Invalid response format: {str(json_error)[:50]}'
+                    'error': f'Invalid response format: {error_msg[:100]}'
                 }
         else:
             # Пытаемся получить текст ошибки

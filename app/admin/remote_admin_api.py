@@ -31,22 +31,26 @@ def _remote_admin_guard() -> bool:
     provided = request.headers.get('X-Admin-Token', '')
     
     if not provided:
+        logger.warning(f"Remote admin API request without X-Admin-Token header: {request.path}")
         return False
     
     # Проверяем все возможные токены из переменных окружения
     # Production
     expected_prod = (os.environ.get('PRODUCTION_ADMIN_TOKEN') or '').strip()
     if expected_prod and hmac.compare_digest(provided, expected_prod):
+        logger.debug(f"Remote admin request authenticated with PRODUCTION_ADMIN_TOKEN")
         return True
     
     # Sandbox
     expected_sandbox = (os.environ.get('SANDBOX_ADMIN_TOKEN') or '').strip()
     if expected_sandbox and hmac.compare_digest(provided, expected_sandbox):
+        logger.debug(f"Remote admin request authenticated with SANDBOX_ADMIN_TOKEN")
         return True
     
     # Admin
     expected_admin = (os.environ.get('ADMIN_ADMIN_TOKEN') or '').strip()
     if expected_admin and hmac.compare_digest(provided, expected_admin):
+        logger.debug(f"Remote admin request authenticated with ADMIN_ADMIN_TOKEN")
         return True
     
     # Произвольные окружения (ENV_<NAME>_TOKEN)
@@ -54,8 +58,10 @@ def _remote_admin_guard() -> bool:
         if key.startswith('ENV_') and key.endswith('_TOKEN'):
             token = value.strip()
             if token and hmac.compare_digest(provided, token):
+                logger.debug(f"Remote admin request authenticated with {key}")
                 return True
     
+    logger.warning(f"Remote admin API request with invalid token: {request.path}, provided_token_preview: {provided[:10]}...")
     return False
 
 
@@ -63,8 +69,14 @@ def _remote_admin_guard() -> bool:
 @csrf.exempt
 def remote_admin_status():
     """Статус окружения для удаленной админки"""
+    logger.info(f"Remote admin status request received: path={request.path}, method={request.method}")
+    logger.debug(f"Request headers: {dict(request.headers)}")
+    
     if not _remote_admin_guard():
+        logger.warning(f"Remote admin status request rejected: no valid token")
         return jsonify({'error': 'unauthorized'}), 401
+    
+    logger.info(f"Remote admin status request authenticated successfully")
     
     try:
         total_users = User.query.count()
