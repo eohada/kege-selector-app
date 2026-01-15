@@ -591,16 +591,26 @@ def remote_admin_api_permissions():
     
     try:
         if request.method == 'GET':
+            # Все возможные роли в системе
+            ALL_ROLES = ['creator', 'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer']
+            
             # Получаем все права из БД
             try:
                 role_permissions = RolePermission.query.all()
                 permissions_map = {}
+                
+                # Инициализируем все роли пустыми списками
+                for role in ALL_ROLES:
+                    permissions_map[role] = []
+                
+                # Заполняем правами из БД
                 for rp in role_permissions:
                     if rp.role not in permissions_map:
                         permissions_map[rp.role] = []
                     permissions_map[rp.role].append(rp.permission)
                 
                 logger.debug(f"Found {len(role_permissions)} role permissions, {len(permissions_map)} roles")
+                logger.debug(f"Roles in permissions_map: {list(permissions_map.keys())}")
                 logger.debug(f"ALL_PERMISSIONS count: {len(ALL_PERMISSIONS) if ALL_PERMISSIONS else 0}")
                 logger.debug(f"PERMISSION_CATEGORIES count: {len(PERMISSION_CATEGORIES) if PERMISSION_CATEGORIES else 0}")
             except Exception as db_error:
