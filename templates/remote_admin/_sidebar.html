@@ -1,0 +1,57 @@
+{# Боковое меню для навигации между разделами админки #}
+<aside style="position: fixed; left: 0; top: 70px; width: 250px; height: calc(100vh - 70px); background: var(--surface-2); border-right: 1px solid var(--stroke-2); padding: 1.5rem; overflow-y: auto; z-index: 100;">
+    <nav style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <a href="{{ url_for('remote_admin.dashboard') }}" 
+           class="sidebar-link {% if request.endpoint == 'remote_admin.dashboard' %}active{% endif %}"
+           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
+            <span style="font-size: 1.2rem;">📊</span>
+            <span style="font-weight: 500;">Дашборд</span>
+        </a>
+        
+        <a href="{{ url_for('remote_admin.users_list') }}" 
+           class="sidebar-link {% if request.endpoint in ['remote_admin.users_list', 'remote_admin.user_new', 'remote_admin.user_edit'] %}active{% endif %}"
+           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
+            <span style="font-size: 1.2rem;">👥</span>
+            <span style="font-weight: 500;">Пользователи</span>
+        </a>
+
+        <a href="{{ url_for('remote_admin.testers') }}" 
+           class="sidebar-link {% if request.endpoint in ['remote_admin.testers', 'remote_admin.tester_toggle', 'remote_admin.tester_delete'] %}active{% endif %}"
+           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
+            <span style="font-size: 1.2rem;">🧪</span>
+            <span style="font-weight: 500;">Тестеры</span>
+        </a>
+
+        <a href="{{ url_for('remote_admin.permissions') }}" 
+           class="sidebar-link {% if request.endpoint == 'remote_admin.permissions' %}active{% endif %}"
+           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
+            <span style="font-size: 1.2rem;">🔐</span>
+            <span style="font-weight: 500;">Права доступа</span>
+        </a>
+
+        <a href="{{ url_for('remote_admin.audit_logs') }}" 
+           class="sidebar-link {% if request.endpoint == 'remote_admin.audit_logs' %}active{% endif %}"
+           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
+            <span style="font-size: 1.2rem;">📋</span>
+            <span style="font-weight: 500;">Логи действий</span>
+        </a>
+
+        <a href="{{ url_for('remote_admin.maintenance') }}" 
+           class="sidebar-link {% if request.endpoint == 'remote_admin.maintenance' %}active{% endif %}"
+           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
+            <span style="font-size: 1.2rem;">🔧</span>
+            <span style="font-weight: 500;">Тех. работы</span>
+        </a>
+    </nav>
+</aside>
+
+<style>
+.sidebar-link:hover {
+    background: var(--surface-3);
+}
+.sidebar-link.active {
+    background: var(--accent-1);
+    color: #000;
+    font-weight: 600;
+}
+</style>

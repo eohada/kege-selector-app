@@ -12,20 +12,16 @@
 </head>
 <body>
     <div class="app-shell">
-        {% set active_page = 'remote_admin_users' %}
-        {% include 'remote_admin/_nav.html' %}
+        {% include 'remote_admin/_header.html' %}
+        {% include 'remote_admin/_sidebar.html' %}
 
-        <section class="glass-panel" style="margin: 2rem auto; max-width: 900px;">
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
-                <a href="{{ url_for('remote_admin.users_list') }}" class="neo-button ghost" style="text-decoration: none;">
-                    ← К списку пользователей
-                </a>
-                <div>
-                    <h1 style="margin: 0;">{% if user %}Редактирование пользователя{% else %}Создание пользователя{% endif %}</h1>
-                    <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
-                        Окружение: <strong>{{ environment_name }}</strong>
-                    </p>
-                </div>
+        <main style="margin-left: 250px; margin-top: 70px; padding: 2rem;">
+        <section class="glass-panel" style="max-width: 900px; padding: 2rem;">
+            <div style="margin-bottom: 1.5rem;">
+                <h1 style="margin: 0;">{% if user %}Редактирование пользователя{% else %}Создание пользователя{% endif %}</h1>
+                <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
+                    Окружение: <strong>{{ environment_name }}</strong>
+                </p>
             </div>
 
             <form method="POST" action="{% if user %}{{ url_for('remote_admin.user_edit', user_id=user.id) }}{% else %}{{ url_for('remote_admin.user_new') }}{% endif %}" class="neo-form" data-no-ajax>
@@ -84,6 +80,7 @@
                 </div>
             </form>
         </section>
+        </main>
     </div>
 
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
