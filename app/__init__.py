@@ -106,7 +106,7 @@ def create_app(config_name=None):
             logger.info(f"Using DATABASE_URL (internal Railway connection)")
             logger.info(f"Database type: PostgreSQL (internal)")
         
-        # Проверяем подключение к БД
+        # Проверяем подключение к БД (не блокируем запуск при ошибке)
         try:
             with app.app_context():
                 # Импортируем все модели, чтобы они были зарегистрированы в SQLAlchemy
@@ -117,8 +117,9 @@ def create_app(config_name=None):
                 db.session.execute(text("SELECT 1"))
                 logger.info("✓ Database connection: OK")
         except Exception as e:
-            logger.error(f"✗ Database connection: FAILED - {str(e)}")
-            logger.error("This may cause issues with the application!")
+            logger.warning(f"⚠ Database connection check failed: {str(e)}")
+            logger.warning("Application will continue, but database operations may fail")
+            # Не блокируем запуск приложения, даже если БД недоступна
     else:
         logger.warning("DATABASE_URL not set, using SQLite")
         logger.warning("This is likely a local development environment")
