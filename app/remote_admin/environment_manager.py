@@ -116,22 +116,21 @@ def is_environment_configured(env: Optional[str] = None) -> bool:
 def make_remote_request(method: str, path: str, payload: Optional[Dict] = None, env: Optional[str] = None) -> requests.Response:
     """
     Выполнить запрос к удаленному API окружения
-    
-    Args:
-        method: HTTP метод (GET, POST, etc.)
-        path: Путь API (начинается с /)
-        payload: Тело запроса для POST/PUT
-        env: Окружение (если None, используется текущее из сессии)
-    
-    Returns:
-        Response объект requests
     """
+    if env is None:
+        env = get_current_environment()
+        
     config = get_environment_config(env)
     base_url = config.get('url', '').rstrip('/')
     token = config.get('token', '')
     
     if not base_url or not token:
-        raise RuntimeError(f'Environment {env or get_current_environment()} is not configured')
+        # Вместо RuntimeError возвращаем мок-ответ с ошибкой, чтобы не валить приложение 500-й
+        logger.warning(f"Environment {env} is not configured correctly")
+        mock_resp = requests.Response()
+        mock_resp.status_code = 503
+        mock_resp._content = b'{"error": "Environment not configured"}'
+        return mock_resp
     
     url = f"{base_url}{path}"
     headers = {
@@ -139,18 +138,25 @@ def make_remote_request(method: str, path: str, payload: Optional[Dict] = None, 
         'User-Agent': 'Remote-Admin/1.0',
         'Content-Type': 'application/json'
     }
-    timeout = 10
+    timeout = 5 # Уменьшаем таймаут до 5 секунд
     
-    if method.upper() == 'GET':
-        return requests.get(url, headers=headers, timeout=timeout)
-    elif method.upper() == 'POST':
-        return requests.post(url, headers=headers, json=(payload or {}), timeout=timeout)
-    elif method.upper() == 'PUT':
-        return requests.put(url, headers=headers, json=(payload or {}), timeout=timeout)
-    elif method.upper() == 'DELETE':
-        return requests.delete(url, headers=headers, timeout=timeout)
-    else:
-        raise ValueError(f'Unsupported HTTP method: {method}')
+    try:
+        if method.upper() == 'GET':
+            return requests.get(url, headers=headers, timeout=timeout)
+        elif method.upper() == 'POST':
+            return requests.post(url, headers=headers, json=(payload or {}), timeout=timeout)
+        elif method.upper() == 'PUT':
+            return requests.put(url, headers=headers, json=(payload or {}), timeout=timeout)
+        elif method.upper() == 'DELETE':
+            return requests.delete(url, headers=headers, timeout=timeout)
+        else:
+            raise ValueError(f'Unsupported HTTP method: {method}')
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Request failed to {url}: {e}")
+        mock_resp = requests.Response()
+        mock_resp.status_code = 502
+        mock_resp._content = f'{{"error": "Connection failed: {str(e)}"}}'.encode('utf-8')
+        return mock_resp
 
 
 def get_environment_status(env: str) -> Dict:
@@ -165,6 +171,7 @@ def get_environment_status(env: str) -> Dict:
         }
     
     try:
+        # Используем отдельный таймаут для проверки статуса
         resp = make_remote_request('GET', '/internal/remote-admin/status', env=env)
         if resp.status_code == 200:
             data = resp.json()
