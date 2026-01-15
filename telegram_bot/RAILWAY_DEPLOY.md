@@ -38,10 +38,10 @@ TELEGRAM_BOT_LOG_LEVEL=INFO  # Уровень логирования (INFO, DEBU
 
 **Start Command:**
 ```
-python -m telegram_bot.bot
+python telegram_bot/run_bot.py
 ```
 
-Или используйте файл `telegram_bot/railway.json` (Railway автоматически его подхватит).
+Railway автоматически подхватит команду из `telegram_bot/railway.json`, если файл находится в корне проекта. Если создаете отдельный сервис, установите команду вручную в Settings → Deploy.
 
 ### Шаг 5: Проверка деплоя
 
