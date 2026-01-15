@@ -107,3 +107,6 @@ celerybeat.pid
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Telegram bot (separate repository)
+telegram-task-tracker-bot/

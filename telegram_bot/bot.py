@@ -84,6 +84,25 @@ def extract_tags(text: str) -> list:
     return found_tags
 
 
+def is_main_tester(user_id: int) -> bool:
+    """
+    Проверка, является ли пользователь главным тестировщиком
+    
+    Args:
+        user_id: ID пользователя
+        
+    Returns:
+        True если пользователь главный тестировщик
+    """
+    main_tester_id = os.getenv('TELEGRAM_MAIN_TESTER_ID')
+    if not main_tester_id:
+        return False
+    try:
+        return int(main_tester_id) == user_id
+    except ValueError:
+        return False
+
+
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Обработчик сообщений из группы тестировщиков
@@ -165,6 +184,12 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     author_id = author.id
     author_username = author.username
     author_first_name = author.first_name
+    
+    # Проверяем, является ли автор главным тестировщиком
+    # Если да, не отправляем репорт админу (главный тестировщик отправляет репорты через личку)
+    if is_main_tester(author_id):
+        logger.info(f"Сообщение от главного тестировщика (ID: {author_id}), пропускаем обработку из группы")
+        return
     
     # Получаем контент сообщения
     content = text
@@ -577,16 +602,28 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /start"""
     logger.info(f"[COMMAND] /start вызван в chat_id={update.message.chat.id}, type={update.message.chat.type}")
     
+    user_id = update.effective_user.id
+    
     # Проверяем, что команда вызвана админом
     admin_id = os.getenv('TELEGRAM_ADMIN_ID')
-    is_admin = admin_id and str(update.effective_user.id) == admin_id
+    is_admin = admin_id and str(user_id) == admin_id
+    
+    # Проверяем, является ли пользователь главным тестировщиком
+    is_main_tester_user = is_main_tester(user_id)
     
     message = "🤖 Бот-трекер репортов запущен!\n\n"
     message += "Бот отслеживает сообщения в группе тестировщиков по тегам:\n"
     message += "• #BUG - ошибка функционала\n"
     message += "• #UIFIX - ошибка интерфейса/верстки\n"
     message += "• #FEATURE - предложение по функционалу\n\n"
-    message += "Репорты автоматически пересылаются админу в личку."
+    
+    if is_main_tester_user:
+        message += "✅ Вы главный тестировщик!\n"
+        message += "Вы можете отправлять репорты прямо в эту личку.\n"
+        message += "Просто напишите сообщение с тегом (#BUG, #UIFIX или #FEATURE).\n\n"
+        message += "Репорты будут автоматически отправлены администратору."
+    else:
+        message += "Репорты автоматически пересылаются админу в личку."
     
     if is_admin:
         message += "\n\n📋 <b>Команды:</b>\n"
@@ -599,12 +636,224 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(message, parse_mode='HTML')
 
 
+async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Обработчик сообщений из лички от главного тестировщика
+    
+    Позволяет главному тестировщику отправлять репорты прямо в личку боту
+    """
+    if not update.message:
+        return
+    
+    # Проверяем, что сообщение из лички
+    if update.message.chat.type != 'private':
+        return
+    
+    user_id = update.effective_user.id
+    
+    # Проверяем, что это главный тестировщик
+    if not is_main_tester(user_id):
+        return
+    
+    message = update.message
+    
+    # Получаем текст сообщения или подпись к медиа
+    text = message.text or message.caption or ""
+    
+    # Если сообщение не содержит текста, игнорируем его
+    if not text:
+        return
+    
+    # Извлекаем теги из сообщения
+    tags = extract_tags(text)
+    
+    # Если нет отслеживаемых тегов, игнорируем сообщение
+    if not tags:
+        return
+    
+    # Используем первый найденный тег
+    tag = tags[0]
+    logger.info(f"Получен репорт от главного тестировщика с тегом {tag}")
+    
+    # Генерируем уникальный ID репорта (используем chat_id и message_id из лички)
+    report_id = generate_report_id(message.chat.id, message.message_id)
+    
+    # Получаем информацию об авторе
+    author = message.from_user
+    author_id = author.id
+    author_username = author.username
+    author_first_name = author.first_name
+    
+    # Получаем контент сообщения
+    content = text
+    if not content and message.caption:
+        content = message.caption
+    
+    # Сохраняем репорт в базу данных
+    # Для репортов из лички group_chat_id и group_message_id будут ID лички
+    added = db.add_report(
+        report_id=report_id,
+        group_message_id=message.message_id,
+        group_chat_id=message.chat.id,  # ID лички (положительное число)
+        author_id=author_id,
+        author_username=author_username,
+        author_first_name=author_first_name,
+        tag=tag,
+        content=content
+    )
+    
+    # Если репорт уже существует, не обрабатываем повторно
+    if not added:
+        logger.info(f"Репорт {report_id} уже существует, пропускаем")
+        await update.message.reply_text("✅ Репорт уже был обработан ранее")
+        return
+    
+    # Получаем числовой ID репорта из базы данных для отображения
+    report_data = db.get_report(report_id)
+    numeric_id = report_data.get('numeric_id') or report_data.get('id') if report_data else None
+    
+    # Получаем ID админа из переменных окружения
+    admin_id = os.getenv('TELEGRAM_ADMIN_ID')
+    if not admin_id:
+        logger.error("TELEGRAM_ADMIN_ID не установлен в переменных окружения")
+        await update.message.reply_text("❌ Ошибка: ID администратора не настроен")
+        return
+    
+    try:
+        admin_id = int(admin_id)
+    except ValueError:
+        logger.error(f"TELEGRAM_ADMIN_ID должен быть числом, получено: {admin_id}")
+        await update.message.reply_text("❌ Ошибка конфигурации")
+        return
+    
+    # Определяем тип медиа, если есть
+    media_type = ""
+    if message.photo:
+        media_type = "📷 Фото"
+    elif message.video:
+        media_type = "🎥 Видео"
+    elif message.document:
+        media_type = "📄 Документ"
+    elif message.audio:
+        media_type = "🎵 Аудио"
+    elif message.voice:
+        media_type = "🎤 Голосовое"
+    elif message.video_note:
+        media_type = "📹 Видеосообщение"
+    elif message.sticker:
+        media_type = "😀 Стикер"
+    
+    # Формируем сообщение для админа
+    media_info = f"\n📎 <b>Тип:</b> {media_type}" if media_type else ""
+    display_id = f"#{numeric_id}" if numeric_id else f"<code>{report_id}</code>"
+    admin_message = f"""
+{tag} <b>Новый репорт</b> {display_id} <i>(от главного тестировщика)</i>
+
+👤 <b>Автор:</b> {author_first_name or 'Неизвестно'}
+{'@' + author_username if author_username else ''}{media_info}
+
+📝 <b>Содержание:</b>
+{content[:500]}{'...' if len(content) > 500 else ''}
+
+🆔 <b>ID:</b> {display_id}
+📅 <b>Дата:</b> {datetime.now().strftime('%d.%m.%Y %H:%M')}
+"""
+    
+    # Создаем inline-кнопки для управления статусом
+    keyboard = [
+        [
+            InlineKeyboardButton("🔄 В работе", callback_data=f"status_{report_id}_in_progress"),
+            InlineKeyboardButton("✅ Решено", callback_data=f"status_{report_id}_resolved")
+        ],
+        [
+            InlineKeyboardButton("❌ Отклонено", callback_data=f"status_{report_id}_rejected"),
+            InlineKeyboardButton("📋 Детали", callback_data=f"details_{report_id}")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    # Отправляем сообщение админу
+    try:
+        # Если есть медиа, пересылаем его вместе с текстом
+        if message.photo:
+            photo = message.photo[-1]
+            sent_message = await context.bot.send_photo(
+                chat_id=admin_id,
+                photo=photo.file_id,
+                caption=admin_message,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        elif message.video:
+            sent_message = await context.bot.send_video(
+                chat_id=admin_id,
+                video=message.video.file_id,
+                caption=admin_message,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        elif message.document:
+            sent_message = await context.bot.send_document(
+                chat_id=admin_id,
+                document=message.document.file_id,
+                caption=admin_message,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        elif message.audio:
+            sent_message = await context.bot.send_audio(
+                chat_id=admin_id,
+                audio=message.audio.file_id,
+                caption=admin_message,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        elif message.voice:
+            sent_message = await context.bot.send_voice(
+                chat_id=admin_id,
+                voice=message.voice.file_id,
+                caption=admin_message,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        else:
+            # Обычное текстовое сообщение
+            sent_message = await context.bot.send_message(
+                chat_id=admin_id,
+                text=admin_message,
+                parse_mode='HTML',
+                reply_markup=reply_markup
+            )
+        
+        # Сохраняем ID сообщения админу в базу данных
+        db.update_status(
+            report_id=report_id,
+            status='new',
+            admin_message_id=sent_message.message_id,
+            admin_chat_id=admin_id
+        )
+        
+        # Подтверждаем главному тестировщику
+        await update.message.reply_text(f"✅ Репорт {display_id} отправлен администратору")
+        
+    except Exception as e:
+        logger.error(f"Ошибка при отправке репорта админу: {e}")
+        await update.message.reply_text("❌ Ошибка при отправке репорта. Попробуйте позже.")
+
+
 async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /stats - показывает статистику репортов"""
-    # Проверяем, что команда вызвана админом
+    user_id = update.effective_user.id
+    
+    # Проверяем, что команда вызвана админом (не главным тестировщиком)
     admin_id = os.getenv('TELEGRAM_ADMIN_ID')
-    if not admin_id or str(update.effective_user.id) != admin_id:
+    if not admin_id or str(user_id) != admin_id:
         await update.message.reply_text("❌ Эта команда доступна только администратору")
+        return
+    
+    # Дополнительная проверка - главный тестировщик не должен видеть статистику
+    if is_main_tester(user_id):
+        await update.message.reply_text("❌ Эта команда недоступна")
         return
     
     # Получаем статистику по статусам
@@ -629,10 +878,17 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def list_reports_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /list - показывает список репортов"""
-    # Проверяем, что команда вызвана админом
+    user_id = update.effective_user.id
+    
+    # Проверяем, что команда вызвана админом (не главным тестировщиком)
     admin_id = os.getenv('TELEGRAM_ADMIN_ID')
-    if not admin_id or str(update.effective_user.id) != admin_id:
+    if not admin_id or str(user_id) != admin_id:
         await update.message.reply_text("❌ Эта команда доступна только администратору")
+        return
+    
+    # Дополнительная проверка - главный тестировщик не должен видеть список репортов
+    if is_main_tester(user_id):
+        await update.message.reply_text("❌ Эта команда недоступна")
         return
     
     # Получаем фильтр из аргументов команды (если есть)
@@ -925,6 +1181,16 @@ def main():
     # Этот обработчик регистрируется ПОСЛЕ команд, чтобы не мешать их обработке
     application.add_handler(MessageHandler(filters.ALL, debug_handler), group=1)
     
+    # Регистрируем обработчик сообщений из лички от главного тестировщика (ПЕРЕД обработчиком группы)
+    # Обрабатываем сообщения из лички (private), кроме команд
+    application.add_handler(
+        MessageHandler(
+            filters.ChatType.PRIVATE & ~filters.COMMAND,
+            handle_private_message
+        ),
+        group=2
+    )
+    
     # Регистрируем обработчик сообщений из группы
     # Обрабатываем все типы сообщений (текст, фото, видео и т.д.), кроме команд
     # Включаем обработку reply-сообщений
@@ -933,7 +1199,7 @@ def main():
             ~filters.COMMAND,
             handle_group_message
         ),
-        group=2
+        group=3
     )
     
     # Добавляем обработчик для отладки всех callback-запросов
@@ -957,12 +1223,15 @@ def main():
     group_id = os.getenv('TELEGRAM_GROUP_ID')
     topic_id = os.getenv('TELEGRAM_TOPIC_ID')
     
+    main_tester_id = os.getenv('TELEGRAM_MAIN_TESTER_ID')
+    
     logger.info("=" * 50)
     logger.info("Настройки бота:")
     logger.info(f"  TELEGRAM_BOT_TOKEN: {'✓ установлен' if bot_token else '✗ НЕ УСТАНОВЛЕН'}")
     logger.info(f"  TELEGRAM_ADMIN_ID: {'✓ установлен' if admin_id else '✗ НЕ УСТАНОВЛЕН'}")
     logger.info(f"  TELEGRAM_GROUP_ID: {'✓ установлен (' + group_id + ')' if group_id else '✗ НЕ УСТАНОВЛЕН (бот не будет обрабатывать сообщения!)'}")
     logger.info(f"  TELEGRAM_TOPIC_ID: {'✓ установлен (' + topic_id + ')' if topic_id else '○ не установлен (ответы будут в основной чат)'}")
+    logger.info(f"  TELEGRAM_MAIN_TESTER_ID: {'✓ установлен (' + main_tester_id + ')' if main_tester_id else '○ не установлен (главный тестировщик не настроен)'}")
     logger.info("=" * 50)
     
     if not group_id:

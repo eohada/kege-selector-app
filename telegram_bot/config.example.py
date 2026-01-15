@@ -18,3 +18,11 @@ TELEGRAM_GROUP_ID = os.getenv('TELEGRAM_GROUP_ID', None)
 
 # Путь к базе данных репортов
 REPORTS_DB_PATH = os.getenv('REPORTS_DB_PATH', 'data/reports.db')
+
+# ID топика для отправки ответов (опционально)
+TELEGRAM_TOPIC_ID = os.getenv('TELEGRAM_TOPIC_ID', None)
+
+# ID главного тестировщика (опционально)
+# Главный тестировщик может отправлять репорты через личку боту
+# Ему не будут приходить уведомления о новых репортах из группы
+TELEGRAM_MAIN_TESTER_ID = os.getenv('TELEGRAM_MAIN_TESTER_ID', None)
