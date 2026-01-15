@@ -47,88 +47,88 @@ def login():
         if form.validate_on_submit():
             username = form.username.data.strip()
             password = form.password.data
-        
-        # Ищем пользователя по логину
-        user = User.query.filter_by(username=username).first()
-        
-        if user and user.is_active:
-            # Проверяем пароль
-            if check_password_hash(user.password_hash, password):
-                # Проверка для админ-окружения: только creator
-                try:
-                    is_creator = user.is_creator() if hasattr(user, 'is_creator') else False
-                except Exception as e:
-                    logger.error(f"Error checking is_creator: {e}", exc_info=True)
-                    is_creator = False
-                
-                if is_admin_env and not is_creator:
-                    flash('Доступ к админ-панели разрешен только Создателю', 'danger')
-                    return render_template('remote_admin/login.html' if is_admin_env else 'auth/login.html', form=form)
-                
-                # Обновляем время последнего входа
-                user.last_login = moscow_now()
-                try:
-                    db.session.commit()
-                except Exception as e:
-                    db.session.rollback()
-                    raise
-                
-                # Входим
-                login_user(user, remember=True)
-                
-                # Логируем вход
-                audit_logger.log(
-                    action='login',
-                    entity='User',
-                    entity_id=user.id,
-                    status='success',
-                    metadata={'username': user.username, 'role': user.role}
-                )
-                
-                # Редирект в зависимости от роли
-                next_page = request.args.get('next')
-                if next_page and next_page.startswith('/'):
-                    # Если есть next параметр, используем его
-                    pass
-                elif is_admin_env:
-                    next_page = url_for('remote_admin.dashboard')
-                elif user.is_parent():
-                    # Родитель идет на свой дашборд
-                    next_page = url_for('parents.parent_dashboard')
-                elif user.is_student():
-                    # Ученик идет на свой профиль
-                    student = None
-                    if user.email:
-                        student = Student.query.filter_by(email=user.email).first()
-                    if student:
-                        next_page = url_for('students.student_profile', student_id=student.student_id)
-                    else:
+            
+            # Ищем пользователя по логину
+            user = User.query.filter_by(username=username).first()
+            
+            if user and user.is_active:
+                # Проверяем пароль
+                if check_password_hash(user.password_hash, password):
+                    # Проверка для админ-окружения: только creator
+                    try:
+                        is_creator = user.is_creator() if hasattr(user, 'is_creator') else False
+                    except Exception as e:
+                        logger.error(f"Error checking is_creator: {e}", exc_info=True)
+                        is_creator = False
+                    
+                    if is_admin_env and not is_creator:
+                        flash('Доступ к админ-панели разрешен только Создателю', 'danger')
+                        return render_template('remote_admin/login.html' if is_admin_env else 'auth/login.html', form=form)
+                    
+                    # Обновляем время последнего входа
+                    user.last_login = moscow_now()
+                    try:
+                        db.session.commit()
+                    except Exception as e:
+                        db.session.rollback()
+                        raise
+                    
+                    # Входим
+                    login_user(user, remember=True)
+                    
+                    # Логируем вход
+                    audit_logger.log(
+                        action='login',
+                        entity='User',
+                        entity_id=user.id,
+                        status='success',
+                        metadata={'username': user.username, 'role': user.role}
+                    )
+                    
+                    # Редирект в зависимости от роли
+                    next_page = request.args.get('next')
+                    if next_page and next_page.startswith('/'):
+                        # Если есть next параметр, используем его
+                        pass
+                    elif is_admin_env:
+                        next_page = url_for('remote_admin.dashboard')
+                    elif user.is_parent():
+                        # Родитель идет на свой дашборд
+                        next_page = url_for('parents.parent_dashboard')
+                    elif user.is_student():
+                        # Ученик идет на свой профиль
+                        student = None
+                        if user.email:
+                            student = Student.query.filter_by(email=user.email).first()
+                        if student:
+                            next_page = url_for('students.student_profile', student_id=student.student_id)
+                        else:
+                            next_page = url_for('main.dashboard')
+                    elif user.is_admin():
+                        # Админ может выбрать dashboard или админку
                         next_page = url_for('main.dashboard')
-                elif user.is_admin():
-                    # Админ может выбрать dashboard или админку
-                    next_page = url_for('main.dashboard')
+                    else:
+                        # Тьютор и остальные - на dashboard
+                        next_page = url_for('main.dashboard')
+                    
+                    flash('Вход выполнен успешно!', 'success')
+                    return redirect(next_page)
                 else:
-                    # Тьютор и остальные - на dashboard
-                    next_page = url_for('main.dashboard')
-                
-                flash('Вход выполнен успешно!', 'success')
-                return redirect(next_page)
+                    flash('Неверный логин или пароль.', 'danger')
+                    audit_logger.log(
+                        action='login_failed',
+                        entity='User',
+                        status='error',
+                        metadata={'username': username, 'reason': 'invalid_password'}
+                    )
             else:
                 flash('Неверный логин или пароль.', 'danger')
                 audit_logger.log(
                     action='login_failed',
                     entity='User',
                     status='error',
-                    metadata={'username': username, 'reason': 'invalid_password'}
+                    metadata={'username': username, 'reason': 'user_not_found_or_inactive'}
                 )
-        else:
-            flash('Неверный логин или пароль.', 'danger')
-            audit_logger.log(
-                action='login_failed',
-                entity='User',
-                status='error',
-                metadata={'username': username, 'reason': 'user_not_found_or_inactive'}
-            )
     
         if is_admin_env:
             return render_template('remote_admin/login.html', form=form)
