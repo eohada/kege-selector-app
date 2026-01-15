@@ -18,6 +18,13 @@ from core.db_models import moscow_now
 
 logger = logging.getLogger(__name__)
 
+# Импортируем csrf безопасным способом (после всех других импортов)
+try:
+    from app import csrf
+except ImportError:
+    # Если циклический импорт, используем current_app
+    csrf = None
+
 
 def _remote_admin_guard() -> bool:
     """Проверка токена для удаленной админки"""
@@ -53,6 +60,7 @@ def _remote_admin_guard() -> bool:
 
 
 @admin_bp.route('/internal/remote-admin/status', methods=['GET'])
+@csrf.exempt
 def remote_admin_status():
     """Статус окружения для удаленной админки"""
     if not _remote_admin_guard():
@@ -91,6 +99,7 @@ def remote_admin_status():
 
 
 @admin_bp.route('/internal/remote-admin/api/users', methods=['GET', 'POST'])
+@csrf.exempt
 def remote_admin_api_users():
     """API: Список пользователей или создание нового"""
     if not _remote_admin_guard():
@@ -196,6 +205,7 @@ def remote_admin_api_users():
 
 
 @admin_bp.route('/internal/remote-admin/api/users/<int:user_id>', methods=['GET', 'POST', 'DELETE'])
+@csrf.exempt
 def remote_admin_api_user(user_id):
     """API: Управление пользователем"""
     if not _remote_admin_guard():
@@ -303,6 +313,7 @@ def remote_admin_api_user(user_id):
 
 
 @admin_bp.route('/internal/remote-admin/api/stats', methods=['GET'])
+@csrf.exempt
 def remote_admin_api_stats():
     """API: Статистика окружения"""
     if not _remote_admin_guard():
@@ -348,6 +359,7 @@ def remote_admin_api_stats():
 
 
 @admin_bp.route('/internal/remote-admin/api/audit-logs', methods=['GET'])
+@csrf.exempt
 def remote_admin_api_audit_logs():
     """API: Список логов действий"""
     if not _remote_admin_guard():
@@ -395,6 +407,7 @@ def remote_admin_api_audit_logs():
 
 
 @admin_bp.route('/internal/remote-admin/api/maintenance', methods=['GET', 'POST'])
+@csrf.exempt
 def remote_admin_api_maintenance():
     """API: Управление режимом обслуживания"""
     if not _remote_admin_guard():
@@ -448,6 +461,7 @@ def remote_admin_api_maintenance():
 
 
 @admin_bp.route('/internal/remote-admin/api/testers', methods=['GET', 'POST'])
+@csrf.exempt
 def remote_admin_api_testers():
     """API: Управление тестерами (сущности Tester)"""
     if not _remote_admin_guard():
@@ -504,6 +518,7 @@ def remote_admin_api_testers():
 
 
 @admin_bp.route('/internal/remote-admin/api/testers/<int:tester_id>', methods=['POST', 'DELETE'])
+@csrf.exempt
 def remote_admin_api_tester(tester_id):
     """API: Управление конкретным тестером"""
     if not _remote_admin_guard():
@@ -553,6 +568,7 @@ def remote_admin_api_tester(tester_id):
 
 
 @admin_bp.route('/internal/remote-admin/api/permissions', methods=['GET', 'POST'])
+@csrf.exempt
 def remote_admin_api_permissions():
     """API: Управление правами доступа"""
     if not _remote_admin_guard():

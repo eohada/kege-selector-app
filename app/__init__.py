@@ -207,26 +207,8 @@ def create_app(config_name=None):
     csrf.exempt(sandbox_internal_tester_entity_delete)
     
     # Исключаем внутренний remote-admin API из CSRF (server-to-server по токену)
-    from app.admin.remote_admin_api import (
-        remote_admin_status,
-        remote_admin_api_users,
-        remote_admin_api_user,
-        remote_admin_api_stats,
-        remote_admin_api_audit_logs,
-        remote_admin_api_maintenance,
-        remote_admin_api_testers,
-        remote_admin_api_tester,
-        remote_admin_api_permissions,
-    )
-    csrf.exempt(remote_admin_status)
-    csrf.exempt(remote_admin_api_users)
-    csrf.exempt(remote_admin_api_user)
-    csrf.exempt(remote_admin_api_stats)
-    csrf.exempt(remote_admin_api_audit_logs)
-    csrf.exempt(remote_admin_api_maintenance)
-    csrf.exempt(remote_admin_api_testers)
-    csrf.exempt(remote_admin_api_tester)
-    csrf.exempt(remote_admin_api_permissions)
+    # Используем декоратор @csrf.exempt прямо в remote_admin_api.py для избежания проблем с импортами
+    # Здесь просто убеждаемся, что пути исключены через before_request хук
     
     # Импорт и регистрация хуков before_request
     from app.utils.hooks import register_hooks
