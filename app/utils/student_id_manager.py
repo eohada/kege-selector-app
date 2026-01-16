@@ -3,7 +3,6 @@
 Присваивает трехзначные числа (100-999) и переиспользует освобожденные идентификаторы
 """
 import logging
-from sqlalchemy import func
 from app.models import Student, db
 
 logger = logging.getLogger(__name__)
