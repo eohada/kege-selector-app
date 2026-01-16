@@ -8,7 +8,7 @@ from datetime import timedelta
 from flask import request, redirect, url_for
 from flask_login import current_user
 from sqlalchemy import text
-from app.models import db, Lesson, moscow_now, MOSCOW_TZ
+from app.models import db, Lesson, Student, moscow_now, MOSCOW_TZ
 from app.utils.db_migrations import ensure_schema_columns
 from core.audit_logger import audit_logger
 
