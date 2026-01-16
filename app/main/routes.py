@@ -243,14 +243,29 @@ def dashboard():
     if search_query:
         search_pattern = f'%{search_query}%'
         filters = [
-            Student.name.ilike(search_pattern),
-            Student.platform_id.ilike(search_pattern)
+            Student.name.ilike(search_pattern)
         ]
-        try:
-            student_id_num = int(search_query)
-            filters.append(Student.student_id == student_id_num)
-        except ValueError:
-            pass
+        
+        # Если запрос начинается с #, это platform_id
+        if search_query.startswith('#'):
+            # Убираем # и ищем по platform_id
+            platform_id_query = search_query[1:].strip()
+            if platform_id_query:
+                filters.append(Student.platform_id.ilike(f'%{platform_id_query}%'))
+        else:
+            # Ищем по platform_id как строке (может содержать числа)
+            filters.append(Student.platform_id.ilike(search_pattern))
+            # Если запрос - чисто число, ищем также по student_id
+            # НО только если это не совпадает с User.id текущего пользователя
+            try:
+                student_id_num = int(search_query)
+                # Исключаем поиск по student_id, если он совпадает с User.id текущего пользователя
+                # Это предотвращает конфликт идентификаторов
+                if current_user.id != student_id_num:
+                    filters.append(Student.student_id == student_id_num)
+            except ValueError:
+                pass
+        
         query = query.filter(or_(*filters))
 
     if category_filter:

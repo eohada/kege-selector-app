@@ -192,13 +192,30 @@ def api_global_search():
     try:
         # Поиск по ученикам
         search_pattern = f'%{query}%'
-        students = Student.query.filter(
-            or_(
-                Student.name.ilike(search_pattern),
-                Student.platform_id.ilike(search_pattern),
-                Student.category.ilike(search_pattern)
-            )
-        ).limit(10).all()
+        filters = [
+            Student.name.ilike(search_pattern),
+            Student.category.ilike(search_pattern)
+        ]
+        
+        # Если запрос начинается с #, это platform_id
+        if query.startswith('#'):
+            # Убираем # и ищем по platform_id
+            platform_id_query = query[1:].strip()
+            if platform_id_query:
+                filters.append(Student.platform_id.ilike(f'%{platform_id_query}%'))
+        else:
+            # Ищем по platform_id как строке
+            filters.append(Student.platform_id.ilike(search_pattern))
+            # Если запрос - чисто число, ищем также по student_id
+            # НО только если это не совпадает с User.id текущего пользователя
+            try:
+                student_id_num = int(query)
+                if current_user.id != student_id_num:
+                    filters.append(Student.student_id == student_id_num)
+            except ValueError:
+                pass
+        
+        students = Student.query.filter(or_(*filters)).limit(10).all()
         
         for student in students:
             results['students'].append({
