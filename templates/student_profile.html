@@ -1649,10 +1649,13 @@
                 </div>
                 
                 <div class="student-actions">
+                    {% if not current_user.is_student() and not current_user.is_parent() %}
                     <form method="POST" action="{{ url_for('students.student_start_lesson', student_id=student.student_id) }}" style="margin: 0;">
                         <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Начать урок" class="ui-icon ui-icon--sm">Начать урок</button>
                     </form>
+                    {% endif %}
                     <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button outline"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Статистика" class="ui-icon ui-icon--sm">Статистика</a>
+                    {% if not current_user.is_student() and not current_user.is_parent() %}
                     <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm ui-icon--only"></a>
                     <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" style="margin: 0;">
                         <button type="submit" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/ARHIV.png') }}" alt="Архив" class="ui-icon ui-icon--sm ui-icon--only"></button>
@@ -1660,6 +1663,7 @@
                     <form method="POST" action="{{ url_for('students.student_delete', student_id=student.student_id) }}" class="confirm-delete-form" style="margin: 0;">
                         <button type="submit" class="neo-button danger"><img src="{{ url_for('static', filename='icons/MUSORN.png') }}" alt="Удалить" class="ui-icon ui-icon--sm ui-icon--only"></button>
                     </form>
+                    {% endif %}
                 </div>
             </div>
             
@@ -2117,11 +2121,14 @@
                         <div class="lesson-actions-bar">
                             <div class="lesson-primary-actions">
                                 {% if lesson.status == 'planned' %}
+                                {% if not current_user.is_student() and not current_user.is_parent() %}
                                 <form method="POST" action="{{ url_for('lessons.lesson_start', lesson_id=lesson.lesson_id) }}" style="margin: 0;">
                                     <button type="submit" class="action-btn primary"><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Начать" class="ui-icon ui-icon--sm">Начать урок</button>
                                 </form>
                                 {% endif %}
+                                {% endif %}
                                 
+                                {% if not current_user.is_student() and not current_user.is_parent() %}
                                 <!-- Горизонтальное меню (раскрывается вправо по клику) -->
                                 <div class="create-dropdown" onclick="toggleDropdown(event, this)">
                                     <button type="button" class="create-dropdown-btn">
@@ -2143,18 +2150,25 @@
                                 <form method="POST" action="{{ url_for('lessons.lesson_homework_not_assigned', lesson_id=lesson.lesson_id) }}" style="margin: 0;">
                                     <button type="submit" class="action-btn secondary icon-only" title="ДЗ не задано"><img src="{{ url_for('static', filename='icons/MINUS.png') }}" alt="ДЗ не задано" class="ui-icon ui-icon--only"></button>
                                 </form>
+                                {% endif %}
                                 
                                 {% if homework_count %}
                                 <a href="{{ url_for('lessons.lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="action-btn secondary" title="Экспортировать ДЗ в Markdown">📄 Экспорт</a>
                                 {% endif %}
+                                
+                                {% if lesson.status == 'completed' or lesson.status == 'in_progress' %}
+                                <a href="{{ url_for('lessons.lesson_homework', lesson_id=lesson.lesson_id) }}" class="action-btn secondary" title="Просмотреть домашнее задание">📝 ДЗ</a>
+                                {% endif %}
                             </div>
                             
+                            {% if not current_user.is_student() and not current_user.is_parent() %}
                             <div class="lesson-secondary-actions">
                                 <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="action-btn secondary icon-only" title="Редактировать урок"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm ui-icon--only"></a>
                                 <form method="POST" action="{{ url_for('lessons.lesson_delete', lesson_id=lesson.lesson_id) }}" class="confirm-delete-form" style="margin: 0;">
                                     <button type="submit" class="action-btn secondary icon-only danger" title="Удалить урок"><img src="{{ url_for('static', filename='icons/MUSORN.png') }}" alt="Удалить" class="ui-icon ui-icon--sm ui-icon--only"></button>
                                 </form>
                             </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

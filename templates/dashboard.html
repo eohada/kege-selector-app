@@ -310,7 +310,9 @@
                 <p class="empty-state-description">{% if show_archive %}В архиве пока нет учеников{% else %}Добавьте первого ученика, чтобы начать работу{% endif %}</p>
                 {% if not show_archive %}
                 <div class="empty-state-actions">
+                    {% if not current_user.is_student() and not current_user.is_parent() %}
                     <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">Добавить ученика</a>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
