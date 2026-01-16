@@ -14,6 +14,7 @@ from app.students.stats_service import StatsService
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.models import Student, StudentTaskStatistics, Lesson, LessonTask, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from app.models import User, FamilyTie
+from app.utils.student_id_manager import assign_platform_id_if_needed
 from core.audit_logger import audit_logger
 from flask_login import current_user
 
@@ -65,6 +66,11 @@ def student_new():
                 goal_text=goal_text_value,
                 programming_language=programming_language_value
             )
+            
+            # Автоматически присваиваем трехзначный идентификатор, если не указан
+            if not platform_id:
+                assign_platform_id_if_needed(student)
+            
             db.session.add(student)
             db.session.commit()
             
