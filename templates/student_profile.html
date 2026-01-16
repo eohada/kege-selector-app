@@ -1921,11 +1921,15 @@
                         {% if lesson.lesson_type == 'exam' %}<div><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Проверочный" class="ui-icon ui-icon--sm">Проверочный</div>{% endif %}
                     </div>
                     <div class="lesson-actions">
+                        {% if not current_user.is_student() and not current_user.is_parent() %}
                         <form method="POST" action="{{ url_for('lessons.lesson_start', lesson_id=lesson.lesson_id) }}" style="display: inline; margin: 0;">
                             <button type="submit" class="neo-button accent" style="font-size: 0.85rem; padding: 0.5rem 1rem;"><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Начать" class="ui-icon ui-icon--sm">Начать</button>
                         </form>
+                        {% endif %}
                         <a href="#" class="neo-button outline" style="font-size: 0.85rem; padding: 0.5rem 1rem;" data-lesson-id="{{ lesson.lesson_id }}" data-assignment-type="homework" onclick="tryShowTemplateModal(event, this.dataset.lessonId, this.dataset.assignmentType); return false;"><img src="{{ url_for('static', filename='icons/dz.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm">ДЗ</a>
+                        {% if not current_user.is_student() and not current_user.is_parent() %}
                         <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.85rem; padding: 0.5rem 1rem;"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm ui-icon--only"></a>
+                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
@@ -1941,8 +1945,10 @@
                     <h2><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Все уроки" class="ui-icon ui-icon--md">Все уроки</h2>
                 </div>
                 <div class="hero-actions">
+                    {% if not current_user.is_student() and not current_user.is_parent() %}
                     {% if current_user.is_admin() or current_user.is_tutor() %}
                     <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить урок" class="ui-icon ui-icon--sm">Добавить урок</a>
+                    {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -2168,7 +2174,9 @@
                 <h3 class="empty-state-title">Пока нет других уроков</h3>
                 <p class="empty-state-description">Все уроки отображены в блоке "Ключевые уроки" выше</p>
                 <div class="empty-state-actions">
+                    {% if not current_user.is_student() and not current_user.is_parent() %}
                     <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent" data-tooltip="Создать новый урок (Ctrl+N)"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить урок" class="ui-icon ui-icon--sm">Добавить урок</a>
+                    {% endif %}
                     <a href="{{ url_for('schedule.schedule') }}" class="neo-button ghost" data-tooltip="Перейти к расписанию"><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="ui-icon ui-icon--sm">Расписание</a>
                 </div>
             </div>

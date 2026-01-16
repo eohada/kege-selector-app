@@ -294,6 +294,15 @@ def register_hooks(app):
                 logger.info(f"require_login: redirecting unauthenticated user from {request.path} to login")
                 return redirect(url_for('auth.login', next=request.url))
     
+    @app.context_processor
+    def inject_current_student():
+        """Добавляет current_student в контекст шаблонов для учеников"""
+        current_student = None
+        if current_user.is_authenticated and current_user.is_student():
+            if current_user.email:
+                current_student = Student.query.filter_by(email=current_user.email).first()
+        return dict(current_student=current_student)
+
     @app.before_request
     def identify_tester():
         """Идентификация тестировщика (только для неавторизованных пользователей)"""
