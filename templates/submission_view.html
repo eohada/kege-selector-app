@@ -297,9 +297,75 @@
         </div>
         {% endif %}
         {% endif %}
+        
+        <!-- Чат / Комментарии -->
+        <section class="submission-comments" style="margin-top: 3rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem;">
+            <h3 style="margin-bottom: 1.5rem;">Комментарии</h3>
+            
+            <div id="comments-list" style="display: flex; flex-direction: column; gap: 1rem; max-height: 400px; overflow-y: auto; margin-bottom: 1.5rem;">
+                {% if submission.comments %}
+                    {% for comment in submission.comments %}
+                    <div class="comment-item" style="display: flex; gap: 1rem;">
+                        <div class="comment-avatar" style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: var(--bg-secondary); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--text-primary);">
+                            {% if comment.author.avatar_url %}
+                                <img src="{{ comment.author.avatar_url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                            {% else %}
+                                {{ comment.author.username[0].upper() }}
+                            {% endif %}
+                        </div>
+                        <div class="comment-content" style="background: var(--surface-2); padding: 0.8rem 1rem; border-radius: 12px; max-width: 80%;">
+                            <div class="comment-header" style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.85em;">
+                                <span style="font-weight: 600; margin-right: 1rem; color: var(--text-primary);">{{ comment.author.username }}</span>
+                                <span style="color: var(--text-muted);">{{ comment.created_at.strftime('%d.%m %H:%M') }}</span>
+                            </div>
+                            <div class="comment-text" style="line-height: 1.5; color: var(--text-primary);">{{ comment.text }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div id="no-comments" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                        Нет комментариев. Задайте вопрос преподавателю!
+                    </div>
+                {% endif %}
+            </div>
+            
+            <form id="comment-form" style="display: flex; gap: 1rem;">
+                <input type="text" id="comment-input" class="neo-input" placeholder="Написать сообщение..." required style="flex: 1;">
+                <button type="submit" class="neo-button accent">Отправить</button>
+            </form>
+        </section>
     </main>
     
     <script>
+        // Чат
+        const commentForm = document.getElementById('comment-form');
+        if (commentForm) {
+            commentForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const input = document.getElementById('comment-input');
+                const text = input.value.trim();
+                if (!text) return;
+                
+                fetch(`{{ url_for('assignments.submission_comment_create', submission_id=submission.submission_id) }}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ text })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        input.value = '';
+                        location.reload(); 
+                    } else {
+                        alert('Ошибка: ' + (data.error || 'Не удалось отправить комментарий'));
+                    }
+                });
+            });
+        }
+        
         // Инициализация KaTeX для рендеринга формул
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof renderMathInElement !== 'undefined') {
