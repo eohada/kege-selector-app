@@ -296,12 +296,12 @@ def register_hooks(app):
     
     @app.context_processor
     def inject_current_student():
-        """Добавляет current_student в контекст шаблонов для учеников"""
+        """Добавляет current_student и moscow_now в контекст шаблонов"""
         current_student = None
         if current_user.is_authenticated and current_user.is_student():
             if current_user.email:
                 current_student = Student.query.filter_by(email=current_user.email).first()
-        return dict(current_student=current_student)
+        return dict(current_student=current_student, moscow_now=moscow_now)
 
     @app.before_request
     def identify_tester():

@@ -241,6 +241,80 @@
                         </section>
                         {% endif %}
                         
+                        <!-- Задания (Assignments) -->
+                        {% if pending_assignments or recent_submissions %}
+                        <section class="glass-panel" style="margin-bottom: 2rem;">
+                            <div class="panel-head">
+                                <div>
+                                    <p class="eyebrow">обучение</p>
+                                    <h2>Задания</h2>
+                                </div>
+                            </div>
+                            
+                            <div style="display: grid; gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+                                <!-- Активные задания -->
+                                <div>
+                                    <h3 style="font-size: 1rem; color: var(--text-muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">Нужно выполнить</h3>
+                                    {% if pending_assignments %}
+                                        <div class="lessons-list">
+                                            {% for sub in pending_assignments %}
+                                            <div class="lesson-item" style="align-items: flex-start;">
+                                                <div style="flex: 1;">
+                                                    <div style="font-weight: 500; color: var(--text-primary);">
+                                                        {{ sub.assignment.title }}
+                                                    </div>
+                                                    {% if sub.assignment.deadline %}
+                                                    <div style="font-size: 0.85em; margin-top: 0.25rem; {% if sub.assignment.deadline < moscow_now() %}color: var(--danger);{% else %}color: var(--text-muted);{% endif %}">
+                                                        Дедлайн: {{ sub.assignment.deadline.strftime('%d.%m %H:%M') }}
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="lesson-status" style="background: var(--surface-3); color: var(--text-muted);">
+                                                    {{ sub.status }}
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <p style="color: var(--text-muted); font-size: 0.9em; font-style: italic;">Нет активных заданий</p>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Недавние результаты -->
+                                <div>
+                                    <h3 style="font-size: 1rem; color: var(--text-muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">Недавние результаты</h3>
+                                    {% if recent_submissions %}
+                                        <div class="lessons-list">
+                                            {% for sub in recent_submissions %}
+                                            <div class="lesson-item">
+                                                <div>
+                                                    <div style="font-weight: 500; color: var(--text-primary);">
+                                                        {{ sub.assignment.title }}
+                                                    </div>
+                                                    <div style="font-size: 0.85em; color: var(--text-muted); margin-top: 0.25rem;">
+                                                        Сдано: {{ sub.submitted_at.strftime('%d.%m') if sub.submitted_at else '-' }}
+                                                    </div>
+                                                </div>
+                                                {% if sub.status == 'GRADED' %}
+                                                    <div class="lesson-status completed">
+                                                        {{ sub.percentage|round|int }}%
+                                                    </div>
+                                                {% else %}
+                                                    <div class="lesson-status planned">
+                                                        На проверке
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <p style="color: var(--text-muted); font-size: 0.9em; font-style: italic;">Нет проверенных работ</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </section>
+                        {% endif %}
+                        
                         <!-- Предстоящие уроки -->
                         {% if upcoming_lessons %}
                         <section class="glass-panel" style="margin-bottom: 2rem;">

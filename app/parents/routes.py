@@ -7,11 +7,12 @@ from flask import render_template, request, jsonify
 from flask_login import login_required, current_user
 
 from app.parents import parents_bp
-from app.models import db, User, FamilyTie, Student, Lesson, Enrollment
+from app.models import db, User, FamilyTie, Student, Lesson, Enrollment, Submission, Assignment
 from app.students.stats_service import StatsService
 from app.auth.rbac_utils import require_parent, get_user_scope
 from core.audit_logger import audit_logger
 from core.db_models import moscow_now
+from sqlalchemy.orm import joinedload
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,8 @@ def parent_dashboard():
         child_stats = None
         upcoming_lessons = []
         recent_lessons = []
+        pending_assignments = []
+        recent_submissions = []
         
         selected_student = None
         selected_student_user = User.query.get(selected_student_id)
@@ -125,6 +128,22 @@ def parent_dashboard():
                 'problem_topics': problem_topics,
                 'ai_summary': ai_summary
             }
+            
+            # Загружаем задания (Assignments)
+            try:
+                all_submissions = Submission.query.filter(
+                    Submission.student_id == selected_student.student_id
+                ).options(
+                    joinedload(Submission.assignment)
+                ).order_by(Submission.assigned_at.desc()).all()
+                
+                for sub in all_submissions:
+                    if sub.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED']:
+                        pending_assignments.append(sub)
+                    elif sub.status in ['SUBMITTED', 'GRADED'] and len(recent_submissions) < 5:
+                        recent_submissions.append(sub)
+            except Exception as e:
+                logger.error(f"Error loading submissions for parent dashboard: {e}")
             
             # Предстоящие уроки (ближайшие 7 дней)
             from datetime import timedelta
@@ -175,6 +194,8 @@ def parent_dashboard():
                              financial_data=financial_data,
                              upcoming_lessons=upcoming_lessons,
                              recent_lessons=recent_lessons,
+                             pending_assignments=pending_assignments,
+                             recent_submissions=recent_submissions,
                              access_level=selected_tie.access_level)
         
     except Exception as e:
@@ -185,7 +206,9 @@ def parent_dashboard():
                              selected_child=None,
                              child_stats=None,
                              upcoming_lessons=[],
-                             recent_lessons=[])
+                             recent_lessons=[],
+                             pending_assignments=[],
+                             recent_submissions=[])
 
 
 @parents_bp.route('/api/parent/children', methods=['GET'])
