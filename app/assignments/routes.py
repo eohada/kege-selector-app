@@ -10,9 +10,10 @@ from sqlalchemy.orm import joinedload
 
 from app.assignments import assignments_bp
 from app.models import (
-    db, Assignment, AssignmentTask, Submission, Answer, SubmissionComment,
+    db, Assignment, AssignmentTask, Submission, Answer,
     Student, User, Tasks, Lesson, Enrollment
 )
+from core.db_models import SubmissionComment
 from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 from core.db_models import moscow_now
 from core.audit_logger import audit_logger
