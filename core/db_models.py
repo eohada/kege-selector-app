@@ -672,3 +672,26 @@ class Answer(db.Model):
     
     def __repr__(self):
         return f'<Answer {self.answer_id}: submission {self.submission_id}, task {self.assignment_task_id}, score {self.score}>'
+
+
+class SubmissionComment(db.Model):
+    """
+    Комментарии к сдаче работы (чат учитель-ученик)
+    """
+    __tablename__ = 'SubmissionComments'
+    
+    comment_id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id'), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    
+    text = db.Column(db.Text, nullable=False)
+    is_read = db.Column(db.Boolean, default=False, nullable=False)
+    
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    
+    # Связи
+    submission = db.relationship('Submission', backref=db.backref('comments', lazy=True, cascade='all, delete-orphan'))
+    author = db.relationship('User')
+    
+    def __repr__(self):
+        return f'<Comment {self.comment_id}: submission {self.submission_id} by {self.author_id}>'

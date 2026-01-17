@@ -538,6 +538,15 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create Assignments system tables: {e}")
             
+            # 6. Создаем таблицу комментариев к заданиям (SubmissionComments)
+            comments_table = _resolve_table_name(table_names, 'SubmissionComments')
+            if not comments_table:
+                try:
+                    db.create_all() # Создаст таблицу SubmissionComments если её нет
+                    logger.info("Created SubmissionComments table")
+                except Exception as e:
+                    logger.warning(f"Could not create SubmissionComments table: {e}")
+            
             # Коммитим миграции RBAC и Assignments
             try:
                 db.session.commit()
