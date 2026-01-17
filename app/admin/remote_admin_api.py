@@ -129,6 +129,7 @@ def remote_admin_api_users():
             password = data.get('password', '').strip()
             role = data.get('role', 'student').strip()
             is_active = data.get('is_active', True)
+            platform_id = data.get('platform_id', '').strip() or None
             
             if not username:
                 return jsonify({'error': 'username is required'}), 400
@@ -142,6 +143,20 @@ def remote_admin_api_users():
             
             if email and User.query.filter_by(email=email).first():
                 return jsonify({'error': 'email already exists'}), 409
+            
+            # Если роль - студент, проверяем уникальность platform_id
+            if role == 'student' and platform_id:
+                from app.models import Student
+                from app.utils.student_id_manager import is_valid_three_digit_id
+                
+                # Проверяем формат идентификатора
+                if not is_valid_three_digit_id(platform_id):
+                    return jsonify({'error': 'platform_id must be a three-digit number between 100 and 999'}), 400
+                
+                # Проверяем уникальность
+                existing_student = Student.query.filter_by(platform_id=platform_id).first()
+                if existing_student:
+                    return jsonify({'error': f'platform_id "{platform_id}" already exists'}), 409
             
             # Создаем пользователя
             user = User(
@@ -158,6 +173,44 @@ def remote_admin_api_users():
             # Создаем профиль
             profile = UserProfile(user_id=user.id)
             db.session.add(profile)
+            
+            # Если роль - студент, создаем запись Student
+            if role == 'student':
+                from app.models import Student
+                from app.utils.student_id_manager import assign_platform_id_if_needed
+                
+                # Проверяем, нет ли уже студента с таким email
+                student_record = None
+                if email:
+                    student_record = Student.query.filter_by(email=email).first()
+                
+                if not student_record:
+                    # Создаем новую запись Student
+                    student_record = Student(
+                        name=username,  # Используем username как имя по умолчанию
+                        email=email,
+                        platform_id=platform_id,
+                        is_active=is_active
+                    )
+                    db.session.add(student_record)
+                    db.session.flush()
+                    
+                    # Автоматически присваиваем идентификатор, если не указан
+                    if not platform_id:
+                        assign_platform_id_if_needed(student_record)
+                        db.session.flush()
+                else:
+                    # Обновляем существующую запись
+                    student_record.name = username
+                    student_record.email = email
+                    student_record.is_active = is_active
+                    if platform_id:
+                        student_record.platform_id = platform_id
+                    elif not student_record.platform_id:
+                        # Присваиваем идентификатор, если его нет
+                        assign_platform_id_if_needed(student_record)
+                        db.session.flush()
+            
             db.session.commit()
             
             audit_logger.log(
@@ -232,22 +285,45 @@ def remote_admin_api_user(user_id):
             # Получаем профиль
             profile = UserProfile.query.filter_by(user_id=user_id).first()
             
+            # Получаем Student, если роль - студент
+            student = None
+            if user.role == 'student':
+                from app.models import Student
+                if user.email:
+                    student = Student.query.filter_by(email=user.email).first()
+                # Если не найден по email, ищем по связи через User.id (если есть такая связь)
+                if not student:
+                    # Пробуем найти по user_id, если есть поле user_id в Student
+                    try:
+                        student = Student.query.filter_by(user_id=user_id).first()
+                    except:
+                        pass
+            
+            user_data = {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'role': user.role,
+                'is_active': user.is_active,
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                'last_login': user.last_login.isoformat() if user.last_login else None,
+                'profile': {
+                    'first_name': profile.first_name if profile else None,
+                    'last_name': profile.last_name if profile else None,
+                    'phone': profile.phone if profile else None,
+                } if profile else None
+            }
+            
+            # Добавляем platform_id для студентов
+            if student:
+                user_data['student'] = {
+                    'platform_id': student.platform_id,
+                    'name': student.name
+                }
+            
             return jsonify({
                 'success': True,
-                'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'role': user.role,
-                    'is_active': user.is_active,
-                    'created_at': user.created_at.isoformat() if user.created_at else None,
-                    'last_login': user.last_login.isoformat() if user.last_login else None,
-                    'profile': {
-                        'first_name': profile.first_name if profile else None,
-                        'last_name': profile.last_name if profile else None,
-                        'phone': profile.phone if profile else None,
-                    } if profile else None
-                }
+                'user': user_data
             })
         
         elif request.method == 'POST':
@@ -259,7 +335,7 @@ def remote_admin_api_user(user_id):
             if user.is_creator():
                 return jsonify({'error': 'cannot modify creator'}), 403
             
-            # Обновляем поля
+            # Обновляем поля пользователя
             if 'username' in data:
                 user.username = data['username']
             if 'email' in data:
@@ -268,6 +344,70 @@ def remote_admin_api_user(user_id):
                 user.role = data['role']
             if 'is_active' in data:
                 user.is_active = bool(data['is_active'])
+            
+            # Обновляем пароль, если указан
+            if 'password' in data and data['password']:
+                from werkzeug.security import generate_password_hash
+                user.password_hash = generate_password_hash(data['password'])
+            
+            # Если роль - студент, обновляем или создаем запись Student
+            if user.role == 'student':
+                from app.models import Student
+                from app.utils.student_id_manager import is_valid_three_digit_id, assign_platform_id_if_needed
+                
+                platform_id = data.get('platform_id', '').strip() or None
+                
+                # Проверяем формат идентификатора, если указан
+                if platform_id and not is_valid_three_digit_id(platform_id):
+                    return jsonify({'error': 'platform_id must be a three-digit number between 100 and 999'}), 400
+                
+                # Ищем существующую запись Student
+                student_record = None
+                if user.email:
+                    student_record = Student.query.filter_by(email=user.email).first()
+                
+                # Если не найден по email, пробуем найти по user_id (если есть такая связь)
+                if not student_record:
+                    try:
+                        student_record = Student.query.filter_by(user_id=user_id).first()
+                    except:
+                        pass
+                
+                if not student_record:
+                    # Создаем новую запись Student
+                    student_record = Student(
+                        name=user.username,  # Используем username как имя по умолчанию
+                        email=user.email,
+                        platform_id=platform_id,
+                        is_active=user.is_active
+                    )
+                    db.session.add(student_record)
+                    db.session.flush()
+                    
+                    # Автоматически присваиваем идентификатор, если не указан
+                    if not platform_id:
+                        assign_platform_id_if_needed(student_record)
+                        db.session.flush()
+                else:
+                    # Обновляем существующую запись
+                    student_record.name = user.username
+                    student_record.email = user.email
+                    student_record.is_active = user.is_active
+                    
+                    # Обновляем platform_id, если указан
+                    if platform_id:
+                        # Проверяем уникальность (кроме текущего студента)
+                        existing = Student.query.filter(
+                            Student.platform_id == platform_id,
+                            Student.student_id != student_record.student_id
+                        ).first()
+                        if existing:
+                            return jsonify({'error': f'platform_id "{platform_id}" already exists'}), 409
+                        student_record.platform_id = platform_id
+                    elif not student_record.platform_id:
+                        # Присваиваем идентификатор, если его нет
+                        assign_platform_id_if_needed(student_record)
+                        db.session.flush()
             
             db.session.commit()
             

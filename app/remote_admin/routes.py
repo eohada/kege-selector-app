@@ -132,7 +132,8 @@ def user_new():
                 'email': request.form.get('email', '').strip() or None,
                 'password': request.form.get('password', '').strip(),
                 'role': request.form.get('role', 'student').strip(),
-                'is_active': request.form.get('is_active') == 'on'
+                'is_active': request.form.get('is_active') == 'on',
+                'platform_id': request.form.get('platform_id', '').strip() or None
             }
             
             if not data['username']:
@@ -186,7 +187,8 @@ def user_edit(user_id):
                 'username': request.form.get('username', '').strip(),
                 'email': request.form.get('email', '').strip() or None,
                 'role': request.form.get('role', 'student').strip(),
-                'is_active': request.form.get('is_active') == 'on'
+                'is_active': request.form.get('is_active') == 'on',
+                'platform_id': request.form.get('platform_id', '').strip() or None
             }
             
             # Пароль обновляется только если указан

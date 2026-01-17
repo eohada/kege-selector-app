@@ -45,7 +45,7 @@
 
                     <div class="neo-field">
                         <label class="neo-label" for="role">Роль *</label>
-                        <select id="role" name="role" class="neo-input" required>
+                        <select id="role" name="role" class="neo-input" required onchange="toggleStudentFields()">
                             <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>Администратор</option>
                             <option value="tutor" {% if user and user.role == 'tutor' %}selected{% endif %}>Преподаватель</option>
                             <option value="student" {% if user and user.role == 'student' %}selected{% endif %}>Ученик</option>
@@ -55,6 +55,14 @@
                             <option value="designer" {% if user and user.role == 'designer' %}selected{% endif %}>Графический дизайнер</option>
                             <option value="creator" {% if user and user.role == 'creator' %}selected{% endif %}>Создатель</option>
                         </select>
+                    </div>
+
+                    <div class="neo-field" id="platform_id_field" style="display: none;">
+                        <label class="neo-label" for="platform_id">Идентификатор ученика</label>
+                        <input type="text" id="platform_id" name="platform_id" class="neo-input" 
+                               value="{% if user and user.role == 'student' and user.student %}{{ user.student.platform_id }}{% endif %}"
+                               placeholder="Оставьте пустым для автоматического присвоения...">
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Уникальный трехзначный идентификатор (100-999). Если не указан, будет автоматически присвоен свободный номер.</small>
                     </div>
 
                     <div class="neo-field">
@@ -85,5 +93,30 @@
 
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+    <script>
+        // Показываем/скрываем поле идентификатора в зависимости от роли
+        function toggleStudentFields() {
+            const roleSelect = document.getElementById('role');
+            const platformIdField = document.getElementById('platform_id_field');
+            
+            if (roleSelect && platformIdField) {
+                if (roleSelect.value === 'student') {
+                    platformIdField.style.display = 'block';
+                } else {
+                    platformIdField.style.display = 'none';
+                }
+            }
+        }
+        
+        // Вызываем при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleStudentFields();
+            // Также вызываем при изменении роли
+            const roleSelect = document.getElementById('role');
+            if (roleSelect) {
+                roleSelect.addEventListener('change', toggleStudentFields);
+            }
+        });
+    </script>
 </body>
 </html>
