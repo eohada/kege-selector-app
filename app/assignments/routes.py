@@ -572,6 +572,8 @@ def submission_submit(submission_id):
 @check_access('assignment.grade')
 def submission_grade_view(submission_id):
     """Страница проверки работы учителем"""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        return redirect(url_for('assignments.submission_view', submission_id=submission_id))  # comment
     submission = Submission.query.options(
         joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
         joinedload(Submission.answers),
@@ -618,6 +620,8 @@ def submission_grade_save(submission_id):
         "status": "GRADED" или "RETURNED"
     }
     """
+    if current_user.is_student() or current_user.is_parent():  # comment
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403  # comment
     submission = Submission.query.options(
         joinedload(Submission.assignment).joinedload(Assignment.tasks),
         joinedload(Submission.answers)
