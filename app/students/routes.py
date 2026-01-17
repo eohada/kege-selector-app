@@ -200,6 +200,11 @@ def student_profile(student_id):
             upcoming_lessons = []
             other_lessons = all_lessons
         
+        # Находим User ученика (для аватарки и связей)
+        student_user_obj = None
+        if student.email:
+            student_user_obj = User.query.filter_by(email=student.email, role='student').first()
+
         # Загружаем информацию о родителях (для тьюторов)
         parents_info = []
         try:
@@ -213,19 +218,13 @@ def student_profile(student_id):
                 elif hasattr(current_user, 'is_creator') and current_user.is_creator():
                     can_see_parents = True
             
-            if can_see_parents:
+            if can_see_parents and student_user_obj:
                 try:
-                    # Находим User ученика по email
-                    student_user = None
-                    if student.email:
-                        student_user = User.query.filter_by(email=student.email, role='student').first()
-                    
-                    if student_user:
-                        # Получаем всех родителей этого ученика
-                        family_ties = FamilyTie.query.filter_by(
-                            student_id=student_user.id,
-                            is_confirmed=True
-                        ).all()
+                    # Получаем всех родителей этого ученика
+                    family_ties = FamilyTie.query.filter_by(
+                        student_id=student_user_obj.id,
+                        is_confirmed=True
+                    ).all()
                         
                         for tie in family_ties:
                             try:
@@ -258,6 +257,7 @@ def student_profile(student_id):
         
         return render_template('student_profile.html', 
                                student=student, 
+                               student_user=student_user_obj,
                                lessons=all_lessons,
                                last_completed=last_completed,
                                upcoming_lessons=upcoming_lessons,
