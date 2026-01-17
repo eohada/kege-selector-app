@@ -110,15 +110,16 @@ def users_list():
                          environment_name=environments.get(current_env, {}).get('name', current_env))
 
 
-def _get_users_by_role(role):
-    """Получает список пользователей по роли через API"""
-    try:
-        resp = make_remote_request('GET', '/internal/remote-admin/api/users', params={'role': role, 'is_active': 'true'})
-        if resp.status_code == 200:
-            return resp.json().get('users', [])
-    except Exception as e:
-        logger.error(f"Error fetching {role}s: {e}")
-    return []
+def _get_users_by_role(role):  # comment
+    """Получает список пользователей по роли через API"""  # comment
+    try:  # comment
+        path = f"/internal/remote-admin/api/users?role={role}&is_active=true"  # comment
+        resp = make_remote_request('GET', path)  # comment
+        if resp.status_code == 200:  # comment
+            return resp.json().get('users', [])  # comment
+    except Exception as e:  # comment
+        logger.error(f"Error fetching {role}s: {e}")  # comment
+    return []  # comment
 
 
 @remote_admin_bp.route('/users/new', methods=['GET', 'POST'])

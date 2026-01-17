@@ -240,9 +240,9 @@ def remote_admin_api_users():
             username = data.get('username', '').strip()
             email = data.get('email', '').strip() or None
             password = data.get('password', '').strip()
-            role = data.get('role', 'student').strip()
-            is_active = data.get('is_active', True)
-            platform_id = data.get('platform_id', '').strip() or None
+            role = (data.get('role') or 'student').strip()  # comment
+            is_active = data.get('is_active', True)  # comment
+            platform_id = (data.get('platform_id') or '').strip() or None  # comment
             
             # Связи
             tutor_id = data.get('tutor_id')
@@ -505,7 +505,7 @@ def remote_admin_api_user(user_id):
                 from app.models import Student
                 from app.utils.student_id_manager import is_valid_three_digit_id, assign_platform_id_if_needed
                 
-                platform_id = data.get('platform_id', '').strip() or None
+                platform_id = (data.get('platform_id') or '').strip() or None  # comment
                 
                 # Проверяем формат идентификатора, если указан
                 if platform_id and not is_valid_three_digit_id(platform_id):
