@@ -12,7 +12,7 @@ from app.students.forms import StudentForm, normalize_school_class
 from app.students.utils import get_sorted_assignments
 from app.students.stats_service import StatsService
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
-from app.models import Student, StudentTaskStatistics, Lesson, LessonTask, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Student, StudentTaskStatistics, Lesson, LessonTask, db, moscow_now, MOSCOW_TZ, TOMSK_TZ, Submission, Assignment
 from app.models import User, FamilyTie
 from app.utils.student_id_manager import assign_platform_id_if_needed
 from core.audit_logger import audit_logger
@@ -164,6 +164,18 @@ def student_profile(student_id):
         
         now = moscow_now()
         
+        # Загружаем активные задания (новая система LMS)
+        active_submissions = []
+        try:
+            active_submissions = Submission.query.filter(
+                Submission.student_id == student_id,
+                Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED'])
+            ).options(
+                db.joinedload(Submission.assignment)
+            ).order_by(Submission.assigned_at.desc()).all()
+        except Exception as e:
+            logger.error(f"Error loading active submissions: {e}")
+        
         # Загружаем уроки с предзагрузкой homework_tasks и task для каждого homework_task
         try:
             all_lessons = Lesson.query.filter_by(student_id=student_id).options(
@@ -225,29 +237,29 @@ def student_profile(student_id):
                         student_id=student_user_obj.id,
                         is_confirmed=True
                     ).all()
-                        
-                        for tie in family_ties:
-                            try:
-                                parent_user = User.query.get(tie.parent_id)
-                                if parent_user:
-                                    # Безопасно получаем профиль
-                                    from app.models import UserProfile
-                                    parent_profile = UserProfile.query.filter_by(user_id=parent_user.id).first()
+                    
+                    for tie in family_ties:
+                        try:
+                            parent_user = User.query.get(tie.parent_id)
+                            if parent_user:
+                                # Безопасно получаем профиль
+                                from app.models import UserProfile
+                                parent_profile = UserProfile.query.filter_by(user_id=parent_user.id).first()
+                                
+                                if parent_profile:
+                                    name = f"{parent_profile.first_name or ''} {parent_profile.last_name or ''}".strip()
+                                    if not name:
+                                        name = parent_user.username
                                     
-                                    if parent_profile:
-                                        name = f"{parent_profile.first_name or ''} {parent_profile.last_name or ''}".strip()
-                                        if not name:
-                                            name = parent_user.username
-                                        
-                                        parents_info.append({
-                                            'name': name,
-                                            'phone': parent_profile.phone,
-                                            'telegram_id': parent_profile.telegram_id,
-                                            'access_level': tie.access_level
-                                        })
-                            except Exception as e:
-                                logger.error(f"Ошибка при загрузке родителя {tie.parent_id}: {e}", exc_info=True)
-                                continue
+                                    parents_info.append({
+                                        'name': name,
+                                        'phone': parent_profile.phone,
+                                        'telegram_id': parent_profile.telegram_id,
+                                        'access_level': tie.access_level
+                                    })
+                        except Exception as e:
+                            logger.error(f"Ошибка при загрузке родителя {tie.parent_id}: {e}", exc_info=True)
+                            continue
                 except Exception as e:
                     logger.error(f"Ошибка при загрузке информации о родителях: {e}", exc_info=True)
                     # Не блокируем отображение профиля, просто не показываем родителей
@@ -258,6 +270,7 @@ def student_profile(student_id):
         return render_template('student_profile.html', 
                                student=student, 
                                student_user=student_user_obj,
+                               active_submissions=active_submissions,
                                lessons=all_lessons,
                                last_completed=last_completed,
                                upcoming_lessons=upcoming_lessons,
