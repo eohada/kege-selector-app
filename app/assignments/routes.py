@@ -10,7 +10,7 @@ from sqlalchemy.orm import joinedload
 
 from app.assignments import assignments_bp
 from app.models import (
-    db, Assignment, AssignmentTask, Submission, Answer,
+    db, Assignment, AssignmentTask, Submission, Answer, SubmissionComment,
     Student, User, Tasks, Lesson, Enrollment
 )
 from app.auth.rbac_utils import check_access, get_user_scope, has_permission
@@ -322,7 +322,8 @@ def submission_view(submission_id):
     """Просмотр и выполнение работы"""
     submission = Submission.query.options(
         joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
-        joinedload(Submission.answers)
+        joinedload(Submission.answers),
+        joinedload(Submission.comments).joinedload(SubmissionComment.author)
     ).get_or_404(submission_id)
     
     # Проверка доступа
@@ -573,7 +574,8 @@ def submission_grade_view(submission_id):
     submission = Submission.query.options(
         joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
         joinedload(Submission.answers),
-        joinedload(Submission.student)
+        joinedload(Submission.student),
+        joinedload(Submission.comments).joinedload(SubmissionComment.author)
     ).get_or_404(submission_id)
     
     assignment = submission.assignment
