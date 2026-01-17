@@ -1699,6 +1699,36 @@
             </div>
         </section>
         
+        {% if active_submissions %}
+        <section class="glass-panel" style="margin-top: 2rem; margin-bottom: 2rem;">
+            <h2 style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
+                <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" class="ui-icon ui-icon--md">
+                Активные задания
+                <span class="badge" style="background: var(--accent-color); color: black; font-size: 0.8rem; padding: 0.2em 0.6em; border-radius: 10px;">{{ active_submissions|length }}</span>
+            </h2>
+            
+            <div class="assignments-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+                {% for sub in active_submissions %}
+                <div class="assignment-card" style="background: var(--bg-secondary); border: 1px solid var(--stroke-1); padding: 1.5rem; border-radius: var(--radius-md); transition: transform 0.2s, border-color 0.2s;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem;">
+                        <span class="badge" style="background: rgba(var(--accent-rgb), 0.1); color: var(--accent-color); padding: 0.3em 0.8em; border-radius: 4px; font-size: 0.8rem;">{{ sub.status }}</span>
+                        {% if sub.assignment.deadline %}
+                        <span style="font-size: 0.85rem; color: var(--text-muted);">до {{ sub.assignment.deadline.strftime('%d.%m %H:%M') }}</span>
+                        {% endif %}
+                    </div>
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: var(--text-primary);">{{ sub.assignment.title }}</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem; line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; height: 2.8em;">
+                        {{ sub.assignment.description or 'Нет описания' }}
+                    </p>
+                    <a href="{{ url_for('assignments.submission_view', submission_id=sub.submission_id) }}" class="neo-button outline sm" style="width: 100%; justify-content: center;">
+                        Перейти к выполнению
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+        
         {% if student.target_score or student.deadline or student.diagnostic_level or student.overall_rating or student.goal_text or student.programming_language %}
         <section class="data-cards">
             {% if student.school_class %}
