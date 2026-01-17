@@ -718,3 +718,60 @@ def submission_grade_save(submission_id):
         db.session.rollback()
         logger.error(f"Error in submission_grade_save: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@assignments_bp.route('/submissions/<int:submission_id>/comments', methods=['POST'])
+@login_required
+def submission_comment_create(submission_id):
+    """Добавление комментария к сдаче"""
+    submission = Submission.query.get_or_404(submission_id)
+    
+    # Проверка доступа
+    scope = get_user_scope(current_user)
+    student = get_student_by_user_id(current_user.id)
+    
+    is_author = student and submission.student_id == student.student_id
+    is_teacher = scope['can_see_all'] or submission.assignment.created_by_id == current_user.id
+    
+    if not (is_author or is_teacher):
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+        
+    try:
+        data = request.get_json()
+        text = data.get('text', '').strip()
+        
+        if not text:
+            return jsonify({'success': False, 'error': 'Текст комментария обязателен'}), 400
+            
+        comment = SubmissionComment(
+            submission_id=submission.submission_id,
+            author_id=current_user.id,
+            text=text,
+            created_at=moscow_now()
+        )
+        db.session.add(comment)
+        db.session.commit()
+        
+        # Получаем данные автора для ответа
+        author_name = current_user.username
+        if current_user.profile:
+            author_name = f"{current_user.profile.first_name or ''} {current_user.profile.last_name or ''}".strip() or current_user.username
+            
+        return jsonify({
+            'success': True,
+            'comment': {
+                'id': comment.comment_id,
+                'text': comment.text,
+                'created_at': comment.created_at.isoformat(),
+                'author': {
+                    'id': current_user.id,
+                    'name': author_name,
+                    'avatar_url': current_user.avatar_url
+                }
+            }
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating comment: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
