@@ -24,6 +24,23 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def _extract_request_data():
+    """Получить данные из JSON или form-data безопасно"""  # comment
+    data = request.get_json(silent=True)  # comment
+    if data is not None:  # comment
+        return data  # comment
+    if not request.form:  # comment
+        return {}  # comment
+    raw_form = request.form.to_dict(flat=False)  # comment
+    normalized = {}  # comment
+    for key, values in raw_form.items():  # comment
+        if key in ('parent_ids', 'child_ids'):  # comment
+            normalized[key] = values  # comment
+        else:  # comment
+            normalized[key] = values[0] if values else ''  # comment
+    return normalized  # comment
+
+
 @remote_admin_bp.route('/api/users')
 @login_required
 def api_users_list():
@@ -65,7 +82,7 @@ def api_user_manage(user_id):
         if method == 'GET':
             resp = make_remote_request('GET', f'/internal/remote-admin/api/users/{user_id}')
         elif method == 'POST':
-            data = request.get_json() or {}
+            data = _extract_request_data()  # comment
             resp = make_remote_request('POST', f'/internal/remote-admin/api/users/{user_id}', payload=data)
         elif method == 'DELETE':
             resp = make_remote_request('DELETE', f'/internal/remote-admin/api/users/{user_id}')
