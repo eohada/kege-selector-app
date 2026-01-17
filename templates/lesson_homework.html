@@ -627,7 +627,7 @@
         </div>
         {% endif %}
         
-        <form method="POST" action="{{ url_for('lessons.lesson_homework_save', lesson_id=lesson.lesson_id) }}">
+        <form method="POST" action="{% if is_student_view %}{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_save', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_save', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_save', lesson_id=lesson.lesson_id) }}{% endif %}{% else %}{{ url_for('lessons.lesson_homework_save', lesson_id=lesson.lesson_id) }}{% endif %}"><!-- comment -->
             {% for hw_task in homework_tasks %}
             {% set order_num = loop.index %}
             {% set ordinal_name = ordinal_names.get(order_num, order_num ~ "-е") %}
@@ -638,15 +638,14 @@
                         <div class="task-number">N{{ hw_task.task.task_number }} - {{ ordinal_name }}</div>
                         <div class="task-site-id">№ {{ hw_task.task.site_task_id }}</div>
                     </div>
-                    <div class="task-actions">
-                        <a href="{{ hw_task.task.source_url }}" target="_blank" class="neo-button outline">
-                            🔗 Открыть на сайте
-                        </a>
-                        <button type="button"
-                                class="neo-button danger"
-                                data-delete-task="{{ hw_task.lesson_task_id }}"
-                                data-assignment-type="{{ assignment_type }}">🗑️ Удалить</button>
-                    </div>
+                    {% if not is_student_view and not is_parent_view %}{# comment #}
+                    <div class="task-actions"><!-- comment -->
+                        <a href="{{ hw_task.task.source_url }}" target="_blank" class="neo-button outline"><!-- comment -->
+                            🔗 Открыть на сайте<!-- comment -->
+                        </a><!-- comment -->
+                        <button type="button" class="neo-button danger" data-delete-task="{{ hw_task.lesson_task_id }}" data-assignment-type="{{ assignment_type }}">🗑️ Удалить</button><!-- comment -->
+                    </div><!-- comment -->
+                    {% endif %}{# comment #}
                 </div>
                 
                 <div class="task-content">
@@ -669,26 +668,41 @@
                 </div>
                 {% endif %}
                 
-                {% if is_homework or is_classwork or is_exam %}
-                <div class="answer-section">
-                    <label class="answer-label" for="answer_{{ hw_task.lesson_task_id }}">
-                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Правильный ответ" class="ui-icon ui-icon--sm">Правильный ответ:
-                    </label>
-                    {# Приоритет у student_answer (ручное редактирование), затем task.answer из базы #}
-                    {% set correct_answer = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}
-                    <input type="text" 
-                           class="answer-input" 
-                           id="answer_{{ hw_task.lesson_task_id }}" 
-                           name="answer_{{ hw_task.lesson_task_id }}" 
-                           value="{{ correct_answer or '' }}"
-                           placeholder="{% if hw_task.task and hw_task.task.answer %}Ответ загружен из базы (можно изменить){% else %}Введи правильный ответ для проверки...{% endif %}">
-                    {% if hw_task.task and hw_task.task.answer and not hw_task.student_answer %}
-                    <small style="color: var(--accent-2); display: block; margin-top: 0.5rem;">
-                        💡 Ответ загружен автоматически из базы данных. Можно изменить вручную.
-                    </small>
-                    {% endif %}
-                </div>
-                {% endif %}
+                {% if is_homework or is_classwork or is_exam %}{# comment #}
+                {% if is_student_view %}{# comment #}
+                <div class="answer-section"><!-- comment -->
+                    <label class="answer-label" for="submission_{{ hw_task.lesson_task_id }}"><!-- comment -->
+                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Ответ" class="ui-icon ui-icon--sm"><!-- comment -->Ваш ответ:<!-- comment -->
+                    </label><!-- comment -->
+                    <textarea class="answer-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" {% if is_read_only %}disabled{% endif %}>{{ hw_task.student_submission or '' }}</textarea><!-- comment -->
+                    {% if is_read_only %}{# comment #}
+                    <small style="color: var(--text-muted); display: block; margin-top: 0.5rem;"><!-- comment -->
+                        Работа сдана. Ответы доступны только для просмотра.<!-- comment -->
+                    </small><!-- comment -->
+                    {% endif %}{# comment #}
+                </div><!-- comment -->
+                {% elif is_parent_view %}{# comment #}
+                <div class="answer-section"><!-- comment -->
+                    <div class="answer-label"><!-- comment -->
+                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Ответ" class="ui-icon ui-icon--sm"><!-- comment -->Ответ ученика:<!-- comment -->
+                    </div><!-- comment -->
+                    <div class="answer-input" style="white-space: pre-wrap;">{{ hw_task.student_submission or '(нет ответа)' }}</div><!-- comment -->
+                </div><!-- comment -->
+                {% else %}{# comment #}
+                <div class="answer-section"><!-- comment -->
+                    <label class="answer-label" for="answer_{{ hw_task.lesson_task_id }}"><!-- comment -->
+                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Правильный ответ" class="ui-icon ui-icon--sm"><!-- comment -->Правильный ответ:<!-- comment -->
+                    </label><!-- comment -->
+                    {% set correct_answer = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}{# comment #}
+                    <input type="text" class="answer-input" id="answer_{{ hw_task.lesson_task_id }}" name="answer_{{ hw_task.lesson_task_id }}" value="{{ correct_answer or '' }}" placeholder="{% if hw_task.task and hw_task.task.answer %}Ответ загружен из базы (можно изменить){% else %}Введи правильный ответ для проверки...{% endif %}"><!-- comment -->
+                    {% if hw_task.task and hw_task.task.answer and not hw_task.student_answer %}{# comment #}
+                    <small style="color: var(--accent-2); display: block; margin-top: 0.5rem;"><!-- comment -->
+                        💡 Ответ загружен автоматически из базы данных. Можно изменить вручную.<!-- comment -->
+                    </small><!-- comment -->
+                    {% endif %}{# comment #}
+                </div><!-- comment -->
+                {% endif %}{# comment #}
+                {% endif %}{# comment #}
 
                 {% if (is_homework or is_classwork or is_exam) and hw_task.student_submission %}
                 <div class="auto-check-result">
@@ -696,124 +710,133 @@
                 </div>
                 {% endif %}
                 
-                {% if is_homework or is_classwork or is_exam %}
-                <div class="status-toggle">
-                    <span class="status-toggle-label">Статус задания:</span>
-                    <div class="status-toggle-switch" 
-                         data-task-id="{{ hw_task.lesson_task_id }}"
-                         data-status="{% if hw_task.submission_correct == true %}correct{% elif hw_task.submission_correct == false %}incorrect{% else %}none{% endif %}">
-                        <div class="status-toggle-slider">
-                            {% if hw_task.submission_correct == true %}✓{% elif hw_task.submission_correct == false %}✗{% else %}—{% endif %}
-                        </div>
-                        <div class="status-toggle-labels">
-                            <span>✓</span>
-                            <span>—</span>
-                            <span>✗</span>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
+                {% if is_homework or is_classwork or is_exam %}{# comment #}
+                {% if not is_student_view and not is_parent_view %}{# comment #}
+                <div class="status-toggle"><!-- comment -->
+                    <span class="status-toggle-label">Статус задания:</span><!-- comment -->
+                    <div class="status-toggle-switch" data-task-id="{{ hw_task.lesson_task_id }}" data-status="{% if hw_task.submission_correct == true %}correct{% elif hw_task.submission_correct == false %}incorrect{% else %}none{% endif %}"><!-- comment -->
+                        <div class="status-toggle-slider"><!-- comment -->
+                            {% if hw_task.submission_correct == true %}✓{% elif hw_task.submission_correct == false %}✗{% else %}—{% endif %}<!-- comment -->
+                        </div><!-- comment -->
+                        <div class="status-toggle-labels"><!-- comment -->
+                            <span>✓</span><!-- comment -->
+                            <span>—</span><!-- comment -->
+                            <span>✗</span><!-- comment -->
+                        </div><!-- comment -->
+                    </div><!-- comment -->
+                </div><!-- comment -->
+                {% endif %}{# comment #}
+                {% endif %}{# comment #}
             </section>
             {% endfor %}
             
-            {% if is_homework %}
-            <section class="result-panel">
-                <h3><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Результат" class="ui-icon ui-icon--sm">Результат выполнения ДЗ</h3>
-                <div class="result-grid">
-                    <div class="result-field">
-                        <label for="homework_result_percent">Процент выполнения (%)</label>
-                        <input type="number"
-                               id="homework_result_percent"
-                               name="homework_result_percent"
-                               min="0"
-                               max="100"
-                               step="1"
-                               value="{{ lesson.homework_result_percent if lesson.homework_result_percent is not none else '' }}">
-                    </div>
-                    <div class="result-field" style="grid-column: span 2;">
-                        <label for="homework_result_notes">Заметки по проверке</label>
-                        <textarea id="homework_result_notes"
-                                  name="homework_result_notes"
-                                  placeholder="Отметь сильные стороны, типичные ошибки, договоренности...">{{ lesson.homework_result_notes or '' }}</textarea>
-                    </div>
-                </div>
-            </section>
-            {% endif %}
+            {% if is_homework and not is_student_view and not is_parent_view %}{# comment #}
+            <section class="result-panel"><!-- comment -->
+                <h3><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Результат" class="ui-icon ui-icon--sm"><!-- comment -->Результат выполнения ДЗ</h3><!-- comment -->
+                <div class="result-grid"><!-- comment -->
+                    <div class="result-field"><!-- comment -->
+                        <label for="homework_result_percent">Процент выполнения (%)</label><!-- comment -->
+                        <input type="number" id="homework_result_percent" name="homework_result_percent" min="0" max="100" step="1" value="{{ lesson.homework_result_percent if lesson.homework_result_percent is not none else '' }}"><!-- comment -->
+                    </div><!-- comment -->
+                    <div class="result-field" style="grid-column: span 2;"><!-- comment -->
+                        <label for="homework_result_notes">Заметки по проверке</label><!-- comment -->
+                        <textarea id="homework_result_notes" name="homework_result_notes" placeholder="Отметь сильные стороны, типичные ошибки, договоренности...">{{ lesson.homework_result_notes or '' }}</textarea><!-- comment -->
+                    </div><!-- comment -->
+                </div><!-- comment -->
+            </section><!-- comment -->
+            {% endif %}{# comment #}
             
-            <div class="homework-actions">
-                {% if is_homework %}
-                <button type="submit" class="neo-button accent" data-tooltip="Сохранить все ответы и результаты (Ctrl+S)">💾 Сохранить все ответы</button>
-                {% endif %}
-                <a href="#" class="neo-button accent" data-tooltip="Добавить дополнительные задания" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">
-                    <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">Добавить ещё задания
-                </a>
-                {% if is_homework %}
-                <a href="{{ url_for('lessons.lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown">
-                    📄 Экспорт в Obsidian
-                </a>
-                {% elif is_classwork %}
-                <a href="{{ url_for('lessons.lesson_classwork_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown">
-                    📄 Экспорт в Obsidian
-                </a>
-                {% elif is_exam %}
-                <a href="{{ url_for('lessons.lesson_exam_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown">
-                    📄 Экспорт в Obsidian
-                </a>
-                {% endif %}
-            </div>
+            {% if not is_student_view and not is_parent_view %}{# comment #}
+            <div class="homework-actions"><!-- comment -->
+                {% if is_homework %}{# comment #}
+                <button type="submit" class="neo-button accent" data-tooltip="Сохранить все ответы и результаты (Ctrl+S)">💾 Сохранить все ответы</button><!-- comment -->
+                {% endif %}{# comment #}
+                <a href="#" class="neo-button accent" data-tooltip="Добавить дополнительные задания" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;"><!-- comment -->
+                    <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm"><!-- comment -->Добавить ещё задания<!-- comment -->
+                </a><!-- comment -->
+                {% if is_homework %}{# comment #}
+                <a href="{{ url_for('lessons.lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown"><!-- comment -->
+                    📄 Экспорт в Obsidian<!-- comment -->
+                </a><!-- comment -->
+                {% elif is_classwork %}{# comment #}
+                <a href="{{ url_for('lessons.lesson_classwork_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown"><!-- comment -->
+                    📄 Экспорт в Obsidian<!-- comment -->
+                </a><!-- comment -->
+                {% elif is_exam %}{# comment #}
+                <a href="{{ url_for('lessons.lesson_exam_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown"><!-- comment -->
+                    📄 Экспорт в Obsidian<!-- comment -->
+                </a><!-- comment -->
+                {% endif %}{# comment #}
+            </div><!-- comment -->
+            {% else %}{# comment #}
+            <div class="homework-actions"><!-- comment -->
+                <button type="submit" class="neo-button accent" {% if is_read_only %}disabled{% endif %}><!-- comment -->
+                    💾 Сохранить ответы<!-- comment -->
+                </button><!-- comment -->
+                <button type="submit" class="neo-button outline" {% if is_read_only %}disabled{% endif %} formaction="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_submit', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_submit', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_submit', lesson_id=lesson.lesson_id) }}{% endif %}"><!-- comment -->
+                    ✅ Сдать работу<!-- comment -->
+                </button><!-- comment -->
+            </div><!-- comment -->
+            {% endif %}{# comment #}
         </form>
-        {% for hw_task in homework_tasks %}
-        <form id="delete-form-{{ hw_task.lesson_task_id }}" method="POST" action="{{ url_for('lessons.lesson_homework_delete_task', lesson_id=lesson.lesson_id, lesson_task_id=hw_task.lesson_task_id, assignment_type=assignment_type) }}" style="display: none;">
-            {% if csrf_token %}
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            {% endif %}
-        </form>
-        {% endfor %}
+        {% if not is_student_view and not is_parent_view %}{# comment #}
+        {% for hw_task in homework_tasks %}{# comment #}
+        <form id="delete-form-{{ hw_task.lesson_task_id }}" method="POST" action="{{ url_for('lessons.lesson_homework_delete_task', lesson_id=lesson.lesson_id, lesson_task_id=hw_task.lesson_task_id, assignment_type=assignment_type) }}" style="display: none;"><!-- comment -->
+            {% if csrf_token %}{# comment #}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><!-- comment -->
+            {% endif %}{# comment #}
+        </form><!-- comment -->
+        {% endfor %}{# comment #}
 
-        {% if is_homework %}
-        <section class="auto-check-panel">
-            <h3>⚙️ Автопроверка по ответам</h3>
-            <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p>
-            <form id="auto-check-form-homework" method="POST" action="{{ url_for('lessons.lesson_homework_auto_check', lesson_id=lesson.lesson_id) }}">
-                <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea>
-                <div style="margin-top: 1rem;">
-                    <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button>
-                </div>
-            </form>
-        </section>
-        {% elif is_classwork %}
-        <section class="auto-check-panel">
-            <h3>⚙️ Автопроверка по ответам</h3>
-            <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p>
-            <form id="auto-check-form-classwork" method="POST" action="{{ url_for('lessons.lesson_classwork_auto_check', lesson_id=lesson.lesson_id) }}">
-                <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea>
-                <div style="margin-top: 1rem;">
-                    <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button>
-                </div>
-            </form>
-        </section>
-        {% elif is_exam %}
-        <section class="auto-check-panel">
-            <h3>⚙️ Автопроверка по ответам</h3>
-            <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p>
-            <p style="color: var(--accent-2); margin-top: 0.5rem;"><strong>⚠️ Проверочная работа учитывается в статистике с весом ×2</strong></p>
-            <form id="auto-check-form-exam" method="POST" action="{{ url_for('lessons.lesson_exam_auto_check', lesson_id=lesson.lesson_id) }}">
-                <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea>
-                <div style="margin-top: 1rem;">
-                    <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button>
-                </div>
-            </form>
-        </section>
-        {% endif %}
+        {% if is_homework %}{# comment #}
+        <section class="auto-check-panel"><!-- comment -->
+            <h3>⚙️ Автопроверка по ответам</h3><!-- comment -->
+            <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p><!-- comment -->
+            <form id="auto-check-form-homework" method="POST" action="{{ url_for('lessons.lesson_homework_auto_check', lesson_id=lesson.lesson_id) }}"><!-- comment -->
+                <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea><!-- comment -->
+                <div style="margin-top: 1rem;"><!-- comment -->
+                    <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button><!-- comment -->
+                </div><!-- comment -->
+            </form><!-- comment -->
+        </section><!-- comment -->
+        {% elif is_classwork %}{# comment #}
+        <section class="auto-check-panel"><!-- comment -->
+            <h3>⚙️ Автопроверка по ответам</h3><!-- comment -->
+            <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p><!-- comment -->
+            <form id="auto-check-form-classwork" method="POST" action="{{ url_for('lessons.lesson_classwork_auto_check', lesson_id=lesson.lesson_id) }}"><!-- comment -->
+                <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea><!-- comment -->
+                <div style="margin-top: 1rem;"><!-- comment -->
+                    <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button><!-- comment -->
+                </div><!-- comment -->
+            </form><!-- comment -->
+        </section><!-- comment -->
+        {% elif is_exam %}{# comment #}
+        <section class="auto-check-panel"><!-- comment -->
+            <h3>⚙️ Автопроверка по ответам</h3><!-- comment -->
+            <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p><!-- comment -->
+            <p style="color: var(--accent-2); margin-top: 0.5rem;"><strong>⚠️ Проверочная работа учитывается в статистике с весом ×2</strong></p><!-- comment -->
+            <form id="auto-check-form-exam" method="POST" action="{{ url_for('lessons.lesson_exam_auto_check', lesson_id=lesson.lesson_id) }}"><!-- comment -->
+                <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea><!-- comment -->
+                <div style="margin-top: 1rem;"><!-- comment -->
+                    <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button><!-- comment -->
+                </div><!-- comment -->
+            </form><!-- comment -->
+        </section><!-- comment -->
+        {% endif %}{# comment #}
+        {% endif %}{# comment #}
         {% else %}
         <section class="glass-panel">
             <div class="empty-state">
                 <div style="font-size: 4rem; margin-bottom: 0.6rem;">{{ assignment_icon }}</div>
                 <h3>Заданий пока нет</h3>
-                <p style="color: var(--text-muted);">{{ 'Добавь задания через генератор в режиме ДЗ' if is_homework else 'Добавь задания через генератор в режиме классной работы' }}</p>
-                <a href="#" class="neo-button accent" style="margin-top: 2em;" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">
-                    <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">Добавить задания
-                </a>
+                <p style="color: var(--text-muted);"><!-- comment -->{{ 'Добавь задания через генератор в режиме ДЗ' if is_homework else 'Добавь задания через генератор в режиме классной работы' }}<!-- comment --></p><!-- comment -->
+                {% if not is_student_view and not is_parent_view %}{# comment #}
+                <a href="#" class="neo-button accent" style="margin-top: 2em;" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;"><!-- comment -->
+                    <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm"><!-- comment -->Добавить задания<!-- comment -->
+                </a><!-- comment -->
+                {% else %}{# comment #}
+                <p style="color: var(--text-muted); margin-top: 1.5rem;"><!-- comment -->Задания появятся после назначения преподавателем.<!-- comment --></p><!-- comment -->
+                {% endif %}{# comment #}
             </div>
         </section>
         {% endif %}

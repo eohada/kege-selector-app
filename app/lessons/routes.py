@@ -3,12 +3,12 @@
 """
 import logging
 from flask import render_template, request, redirect, url_for, flash, jsonify, make_response, current_app  # current_app нужен для определения типа БД (Postgres)
-from flask_login import login_required
+from flask_login import login_required, current_user  # comment
 from sqlalchemy import text  # text нужен для setval(pg_get_serial_sequence(...)) при сбитых sequences
 
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
-from app.lessons.utils import get_sorted_assignments, perform_auto_check
+from app.lessons.utils import get_sorted_assignments, perform_auto_check, normalize_answer_value  # comment
 from app.models import Lesson, LessonTask, Student, Tasks, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from core.audit_logger import audit_logger
 
@@ -176,12 +176,22 @@ def lesson_homework_view(lesson_id):
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
     ).get_or_404(lesson_id)
     student = lesson.student
-    homework_tasks = get_sorted_assignments(lesson, 'homework')
+    homework_tasks = get_sorted_assignments(lesson, 'homework')  # comment
+    is_student_view = current_user.is_student()  # comment
+    is_parent_view = current_user.is_parent()  # comment
+    is_read_only = False  # comment
+    if is_parent_view:  # comment
+        is_read_only = True  # comment
+    elif is_student_view:  # comment
+        is_read_only = all(t.submission_correct is not None for t in homework_tasks)  # comment
     return render_template('lesson_homework.html',
                            lesson=lesson,
                            student=student,
                            homework_tasks=homework_tasks,
-                           assignment_type='homework')
+                           assignment_type='homework',  # comment
+                           is_student_view=is_student_view,  # comment
+                           is_parent_view=is_parent_view,  # comment
+                           is_read_only=is_read_only)  # comment
 
 @lessons_bp.route('/lesson/<int:lesson_id>/classwork-tasks')
 @login_required
@@ -193,12 +203,22 @@ def lesson_classwork_view(lesson_id):
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
     ).get_or_404(lesson_id)
     student = lesson.student
-    classwork_tasks = get_sorted_assignments(lesson, 'classwork')
+    classwork_tasks = get_sorted_assignments(lesson, 'classwork')  # comment
+    is_student_view = current_user.is_student()  # comment
+    is_parent_view = current_user.is_parent()  # comment
+    is_read_only = False  # comment
+    if is_parent_view:  # comment
+        is_read_only = True  # comment
+    elif is_student_view:  # comment
+        is_read_only = all(t.submission_correct is not None for t in classwork_tasks)  # comment
     return render_template('lesson_homework.html',
                            lesson=lesson,
                            student=student,
                            homework_tasks=classwork_tasks,
-                           assignment_type='classwork')
+                           assignment_type='classwork',  # comment
+                           is_student_view=is_student_view,  # comment
+                           is_parent_view=is_parent_view,  # comment
+                           is_read_only=is_read_only)  # comment
 
 @lessons_bp.route('/lesson/<int:lesson_id>/exam-tasks')
 @login_required
@@ -210,17 +230,161 @@ def lesson_exam_view(lesson_id):
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
     ).get_or_404(lesson_id)
     student = lesson.student
-    exam_tasks = get_sorted_assignments(lesson, 'exam')
+    exam_tasks = get_sorted_assignments(lesson, 'exam')  # comment
+    is_student_view = current_user.is_student()  # comment
+    is_parent_view = current_user.is_parent()  # comment
+    is_read_only = False  # comment
+    if is_parent_view:  # comment
+        is_read_only = True  # comment
+    elif is_student_view:  # comment
+        is_read_only = all(t.submission_correct is not None for t in exam_tasks)  # comment
     return render_template('lesson_homework.html',
                            lesson=lesson,
                            student=student,
                            homework_tasks=exam_tasks,
-                           assignment_type='exam')
+                           assignment_type='exam',  # comment
+                           is_student_view=is_student_view,  # comment
+                           is_parent_view=is_parent_view,  # comment
+                           is_read_only=is_read_only)  # comment
+
+
+def _get_current_lesson_student(lesson):  # comment
+    """Проверяем, что текущий пользователь - ученик этого урока"""  # comment
+    if not current_user.is_student():  # comment
+        return None  # comment
+    if not current_user.email:  # comment
+        return None  # comment
+    student = Student.query.filter_by(email=current_user.email).first()  # comment
+    if not student:  # comment
+        return None  # comment
+    if student.student_id != lesson.student_id:  # comment
+        return None  # comment
+    return student  # comment
+
+
+def _save_student_submissions(lesson, assignment_type):  # comment
+    """Сохраняем ответы ученика без автопроверки"""  # comment
+    tasks = get_sorted_assignments(lesson, assignment_type)  # comment
+    for task in tasks:  # comment
+        field_name = f'submission_{task.lesson_task_id}'  # comment
+        if field_name in request.form:  # comment
+            value = request.form.get(field_name, '').strip()  # comment
+            task.student_submission = value if value else None  # comment
+    return tasks  # comment
+
+
+def _submit_student_submissions(lesson, assignment_type):  # comment
+    """Фиксируем ответы ученика и запускаем авто-проверку"""  # comment
+    tasks = get_sorted_assignments(lesson, assignment_type)  # comment
+    for task in tasks:  # comment
+        field_name = f'submission_{task.lesson_task_id}'  # comment
+        value = request.form.get(field_name, '').strip()  # comment
+        task.student_submission = value if value else None  # comment
+        expected = (task.student_answer if task.student_answer else (task.task.answer if task.task and task.task.answer else '')) or ''  # comment
+        if not expected:  # comment
+            task.submission_correct = False  # comment
+            continue  # comment
+        if not value:  # comment
+            task.submission_correct = False  # comment
+            continue  # comment
+        normalized_value = normalize_answer_value(value)  # comment
+        normalized_expected = normalize_answer_value(expected)  # comment
+        task.submission_correct = normalized_value == normalized_expected and normalized_expected != ''  # comment
+    if assignment_type == 'homework':  # comment
+        lesson.homework_status = 'assigned_done'  # comment
+    return tasks  # comment
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/homework-tasks/student-save', methods=['POST'])  # comment
+@login_required  # comment
+def lesson_homework_student_save(lesson_id):  # comment
+    """Сохранение ответов ученика (ДЗ)"""  # comment
+    lesson = Lesson.query.get_or_404(lesson_id)  # comment
+    if not _get_current_lesson_student(lesson):  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
+    _save_student_submissions(lesson, 'homework')  # comment
+    db.session.commit()  # comment
+    flash('Ответы сохранены', 'success')  # comment
+    return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/classwork-tasks/student-save', methods=['POST'])  # comment
+@login_required  # comment
+def lesson_classwork_student_save(lesson_id):  # comment
+    """Сохранение ответов ученика (КР)"""  # comment
+    lesson = Lesson.query.get_or_404(lesson_id)  # comment
+    if not _get_current_lesson_student(lesson):  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
+    _save_student_submissions(lesson, 'classwork')  # comment
+    db.session.commit()  # comment
+    flash('Ответы сохранены', 'success')  # comment
+    return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/exam-tasks/student-save', methods=['POST'])  # comment
+@login_required  # comment
+def lesson_exam_student_save(lesson_id):  # comment
+    """Сохранение ответов ученика (Проверочная)"""  # comment
+    lesson = Lesson.query.get_or_404(lesson_id)  # comment
+    if not _get_current_lesson_student(lesson):  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson_id))  # comment
+    _save_student_submissions(lesson, 'exam')  # comment
+    db.session.commit()  # comment
+    flash('Ответы сохранены', 'success')  # comment
+    return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson_id))  # comment
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/homework-tasks/student-submit', methods=['POST'])  # comment
+@login_required  # comment
+def lesson_homework_student_submit(lesson_id):  # comment
+    """Сдача работы учеником (ДЗ)"""  # comment
+    lesson = Lesson.query.get_or_404(lesson_id)  # comment
+    if not _get_current_lesson_student(lesson):  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
+    _submit_student_submissions(lesson, 'homework')  # comment
+    db.session.commit()  # comment
+    flash('Работа сдана', 'success')  # comment
+    return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/classwork-tasks/student-submit', methods=['POST'])  # comment
+@login_required  # comment
+def lesson_classwork_student_submit(lesson_id):  # comment
+    """Сдача работы учеником (КР)"""  # comment
+    lesson = Lesson.query.get_or_404(lesson_id)  # comment
+    if not _get_current_lesson_student(lesson):  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
+    _submit_student_submissions(lesson, 'classwork')  # comment
+    db.session.commit()  # comment
+    flash('Работа сдана', 'success')  # comment
+    return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/exam-tasks/student-submit', methods=['POST'])  # comment
+@login_required  # comment
+def lesson_exam_student_submit(lesson_id):  # comment
+    """Сдача работы учеником (Проверочная)"""  # comment
+    lesson = Lesson.query.get_or_404(lesson_id)  # comment
+    if not _get_current_lesson_student(lesson):  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson_id))  # comment
+    _submit_student_submissions(lesson, 'exam')  # comment
+    db.session.commit()  # comment
+    flash('Работа сдана', 'success')  # comment
+    return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson_id))  # comment
 
 @lessons_bp.route('/lesson/<int:lesson_id>/homework-tasks/save', methods=['POST'])
 @login_required
 def lesson_homework_save(lesson_id):
     """Сохранение домашнего задания"""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
     lesson = Lesson.query.get_or_404(lesson_id)
     homework_tasks = [ht for ht in lesson.homework_assignments]
 
@@ -281,6 +445,8 @@ def lesson_homework_save(lesson_id):
 @login_required
 def lesson_task_set_status(lesson_id, lesson_task_id):
     """Установка статуса задания (правильно/неправильно/не решено)"""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403  # comment
     lesson = Lesson.query.get_or_404(lesson_id)
     lesson_task = LessonTask.query.filter_by(
         lesson_task_id=lesson_task_id,
@@ -337,6 +503,9 @@ def lesson_task_set_status(lesson_id, lesson_task_id):
 @login_required
 def lesson_homework_auto_check(lesson_id):
     """Автопроверка домашнего задания"""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
     lesson = Lesson.query.get_or_404(lesson_id)
     result = perform_auto_check(lesson, 'homework')
     
@@ -439,6 +608,9 @@ def lesson_homework_auto_check(lesson_id):
 @login_required
 def lesson_classwork_auto_check(lesson_id):
     """Автопроверка классной работы"""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
     lesson = Lesson.query.get_or_404(lesson_id)
     result = perform_auto_check(lesson, 'classwork')
     
@@ -527,6 +699,9 @@ def lesson_classwork_auto_check(lesson_id):
 @login_required
 def lesson_exam_auto_check(lesson_id):
     """Автопроверка проверочной работы"""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson_id))  # comment
     lesson = Lesson.query.get_or_404(lesson_id)
     result = perform_auto_check(lesson, 'exam')
     
@@ -617,6 +792,9 @@ def lesson_exam_auto_check(lesson_id):
 @login_required
 def lesson_homework_delete_task(lesson_id, lesson_task_id):
     """Удаление задания из урока"""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
     lesson = Lesson.query.get_or_404(lesson_id)
     lesson_task = LessonTask.query.get_or_404(lesson_task_id)
     assignment_type = request.args.get('assignment_type', 'homework')
@@ -658,6 +836,9 @@ def lesson_homework_delete_task(lesson_id, lesson_task_id):
 @login_required
 def lesson_homework_not_assigned(lesson_id):
     """Отметка домашнего задания как не заданного"""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
     lesson = Lesson.query.get_or_404(lesson_id)
     for hw_task in lesson.homework_assignments:
         db.session.delete(hw_task)
@@ -677,6 +858,9 @@ def lesson_homework_not_assigned(lesson_id):
 @login_required
 def lesson_homework_export_md(lesson_id):
     """Экспорт домашнего задания в Markdown"""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
     from app.lessons.export import lesson_export_md
     return lesson_export_md(lesson_id, 'homework')
 
@@ -684,6 +868,9 @@ def lesson_homework_export_md(lesson_id):
 @login_required
 def lesson_classwork_export_md(lesson_id):
     """Экспорт классной работы в Markdown"""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
     from app.lessons.export import lesson_export_md
     return lesson_export_md(lesson_id, 'classwork')
 
@@ -691,6 +878,9 @@ def lesson_classwork_export_md(lesson_id):
 @login_required
 def lesson_exam_export_md(lesson_id):
     """Экспорт проверочной работы в Markdown"""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        flash('Доступ запрещен', 'danger')  # comment
+        return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson_id))  # comment
     from app.lessons.export import lesson_export_md
     return lesson_export_md(lesson_id, 'exam')
 
@@ -698,9 +888,9 @@ def lesson_exam_export_md(lesson_id):
 @login_required
 def lesson_manual_create(lesson_id):
     """Ручное создание заданий"""
-    if current_user.is_student():
-        flash('Доступ запрещен.', 'danger')
-        return redirect(url_for('main.dashboard'))
+    if current_user.is_student() or current_user.is_parent():  # comment
+        flash('Доступ запрещен.', 'danger')  # comment
+        return redirect(url_for('main.dashboard'))  # comment
         
     lesson = Lesson.query.get_or_404(lesson_id)
     assignment_type = request.args.get('type', 'homework')
