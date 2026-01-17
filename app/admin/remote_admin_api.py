@@ -124,6 +124,7 @@ def remote_admin_api_users():
             from core.db_models import moscow_now
             
             data = request.get_json() or {}
+            logger.info(f"Creating user via remote admin API: {data}")
             username = data.get('username', '').strip()
             email = data.get('email', '').strip() or None
             password = data.get('password', '').strip()

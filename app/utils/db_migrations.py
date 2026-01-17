@@ -58,16 +58,26 @@ def _fix_postgres_sequences(app, inspector):
                 cols = {col['name'] for col in inspector.get_columns(real_table)}
                 if pk_column not in cols:
                     continue
-                db.session.execute(
-                    text(
-                        f"SELECT setval("
-                        f"pg_get_serial_sequence('\"{real_table}\"', '{pk_column}'), "
-                        f"COALESCE((SELECT MAX(\"{pk_column}\") FROM \"{real_table}\"), 0), "
-                        f"true"
-                        f")"
-                    )
-                )
-                db.session.commit()
+                
+                # Проверяем MAX ID
+                try:
+                    max_id_result = db.session.execute(text(f'SELECT MAX("{pk_column}") FROM "{real_table}"'))
+                    max_id = max_id_result.scalar()
+                    
+                    if max_id and max_id > 0:
+                        db.session.execute(
+                            text(
+                                f"SELECT setval("
+                                f"pg_get_serial_sequence('\"{real_table}\"', '{pk_column}'), "
+                                f":max_id, "
+                                f"true"
+                                f")"
+                            ), {'max_id': max_id}
+                        )
+                        db.session.commit()
+                except Exception as seq_err:
+                    logger.warning(f"Error checking/fixing sequence for {real_table}: {seq_err}")
+                    db.session.rollback()
             except Exception as e:
                 db.session.rollback()
                 logger.warning(f"Could not fix sequence for {real_table}.{pk_column}: {e}")
