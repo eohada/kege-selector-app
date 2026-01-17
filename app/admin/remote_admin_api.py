@@ -26,6 +26,118 @@ except ImportError:
     csrf = None
 
 
+def _manage_student_tutor(student_user_id, tutor_id, replace=False):
+    """Assign or update a tutor for a student via Enrollment"""
+    if tutor_id is None:
+        if replace:
+            try:
+                existing_active = Enrollment.query.filter_by(
+                    student_id=student_user_id,
+                    status='active',
+                    subject='GENERAL'
+                ).all()
+                for enrollment in existing_active:
+                    enrollment.status = 'archived'
+            except Exception as e:
+                logger.error(f"Error archiving enrollments for student {student_user_id}: {e}")
+        return
+        
+    try:
+        tutor_id_str = str(tutor_id).strip()
+        tutor_id_int = int(tutor_id_str) if tutor_id_str else None
+        
+        if replace:
+            existing_active = Enrollment.query.filter_by(
+                student_id=student_user_id,
+                status='active',
+                subject='GENERAL'
+            ).all()
+            for enrollment in existing_active:
+                if not tutor_id_int or enrollment.tutor_id != tutor_id_int:
+                    enrollment.status = 'archived'
+        
+        if not tutor_id_int:
+            return
+        
+        # Check if enrollment already exists
+        existing = Enrollment.query.filter_by(
+            student_id=student_user_id,
+            tutor_id=tutor_id_int,
+            subject='GENERAL'
+        ).first()
+        
+        if existing:
+            if existing.status != 'active':
+                existing.status = 'active'
+            return
+        
+        enrollment = Enrollment(
+            student_id=student_user_id,
+            tutor_id=tutor_id_int,
+            subject='GENERAL', 
+            status='active',
+            created_at=moscow_now()
+        )
+        db.session.add(enrollment)
+    except Exception as e:
+        logger.error(f"Error assigning tutor {tutor_id} to student {student_user_id}: {e}")
+
+
+def _manage_family_ties(target_user_id, target_role, related_ids, replace=False):
+    """Manage FamilyTies for student (parents) or parent (children)"""
+    if related_ids is None:
+        return
+        
+    try:
+        # related_ids can be a list of IDs
+        if isinstance(related_ids, str):
+            related_ids = [int(x.strip()) for x in related_ids.split(',') if x.strip()]
+        
+        new_ids = set(int(x) for x in related_ids if x)
+        
+        if target_role == 'student':
+            # Add or remove parents
+            current_ties = FamilyTie.query.filter_by(student_id=target_user_id).all()
+            current_parent_ids = {t.parent_id for t in current_ties}
+            
+            if replace:
+                for tie in current_ties:
+                    if tie.parent_id not in new_ids:
+                        db.session.delete(tie)
+            
+            for pid in new_ids:
+                if pid not in current_parent_ids:
+                    tie = FamilyTie(
+                        parent_id=pid,
+                        student_id=target_user_id,
+                        access_level='full',
+                        is_confirmed=True
+                    )
+                    db.session.add(tie)
+                    
+        elif target_role == 'parent':
+            # Add or remove children
+            current_ties = FamilyTie.query.filter_by(parent_id=target_user_id).all()
+            current_child_ids = {t.student_id for t in current_ties}
+            
+            if replace:
+                for tie in current_ties:
+                    if tie.student_id not in new_ids:
+                        db.session.delete(tie)
+            
+            for sid in new_ids:
+                if sid not in current_child_ids:
+                    tie = FamilyTie(
+                        parent_id=target_user_id,
+                        student_id=sid,
+                        access_level='full',
+                        is_confirmed=True
+                    )
+                    db.session.add(tie)
+    except Exception as e:
+        logger.error(f"Error managing family ties for {target_user_id}: {e}")
+
+
 def _remote_admin_guard() -> bool:
     """Проверка токена для удаленной админки"""
     provided = request.headers.get('X-Admin-Token', '')
@@ -132,6 +244,11 @@ def remote_admin_api_users():
             is_active = data.get('is_active', True)
             platform_id = data.get('platform_id', '').strip() or None
             
+            # Связи
+            tutor_id = data.get('tutor_id')
+            parent_ids = data.get('parent_ids', [])
+            child_ids = data.get('child_ids', [])
+            
             if not username:
                 return jsonify({'error': 'username is required'}), 400
             
@@ -211,6 +328,18 @@ def remote_admin_api_users():
                         # Присваиваем идентификатор, если его нет
                         assign_platform_id_if_needed(student_record)
                         db.session.flush()
+                
+                # Привязка тьютора
+                if tutor_id:
+                    _manage_student_tutor(user.id, tutor_id)
+                
+                # Привязка родителей
+                if parent_ids:
+                    _manage_family_ties(user.id, 'student', parent_ids)
+            
+            # Если роль - родитель, привязываем детей
+            if role == 'parent' and child_ids:
+                _manage_family_ties(user.id, 'parent', child_ids)
             
             db.session.commit()
             
@@ -322,6 +451,26 @@ def remote_admin_api_user(user_id):
                     'name': student.name
                 }
             
+            # Enrich with relationships
+            if user.role == 'student':
+                # Get tutor
+                active_enrollment = Enrollment.query.filter_by(
+                    student_id=user.id, 
+                    status='active',
+                    subject='GENERAL'
+                ).first()
+                if active_enrollment:
+                    user_data['tutor_id'] = active_enrollment.tutor_id
+                
+                # Get parents
+                ties = FamilyTie.query.filter_by(student_id=user.id).all()
+                user_data['parent_ids'] = [t.parent_id for t in ties]
+                
+            elif user.role == 'parent':
+                # Get children
+                ties = FamilyTie.query.filter_by(parent_id=user.id).all()
+                user_data['child_ids'] = [t.student_id for t in ties]
+            
             return jsonify({
                 'success': True,
                 'user': user_data
@@ -409,6 +558,19 @@ def remote_admin_api_user(user_id):
                         # Присваиваем идентификатор, если его нет
                         assign_platform_id_if_needed(student_record)
                         db.session.flush()
+
+                # Привязка тьютора (обновление)
+                if 'tutor_id' in data:
+                    tutor_id = data['tutor_id']
+                    _manage_student_tutor(user.id, tutor_id, replace=True)
+                
+                # Привязка родителей (обновление)
+                if 'parent_ids' in data:
+                    _manage_family_ties(user.id, 'student', data['parent_ids'], replace=True)
+            
+            # Если роль - родитель, обновляем детей
+            if user.role == 'parent' and 'child_ids' in data:
+                _manage_family_ties(user.id, 'parent', data['child_ids'], replace=True)
             
             db.session.commit()
             

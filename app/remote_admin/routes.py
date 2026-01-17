@@ -110,6 +110,17 @@ def users_list():
                          environment_name=environments.get(current_env, {}).get('name', current_env))
 
 
+def _get_users_by_role(role):
+    """Получает список пользователей по роли через API"""
+    try:
+        resp = make_remote_request('GET', '/internal/remote-admin/api/users', params={'role': role, 'is_active': 'true'})
+        if resp.status_code == 200:
+            return resp.json().get('users', [])
+    except Exception as e:
+        logger.error(f"Error fetching {role}s: {e}")
+    return []
+
+
 @remote_admin_bp.route('/users/new', methods=['GET', 'POST'])
 @login_required
 def user_new():
@@ -133,20 +144,31 @@ def user_new():
                 'password': request.form.get('password', '').strip(),
                 'role': request.form.get('role', 'student').strip(),
                 'is_active': request.form.get('is_active') == 'on',
-                'platform_id': request.form.get('platform_id', '').strip() or None
+                'platform_id': request.form.get('platform_id', '').strip() or None,
+                'tutor_id': request.form.get('tutor_id'),
+                'parent_ids': request.form.getlist('parent_ids'),
+                'child_ids': request.form.getlist('child_ids')
             }
             
             if not data['username']:
                 flash('Имя пользователя обязательно', 'error')
+                tutors = _get_users_by_role('tutor')
+                parents = _get_users_by_role('parent')
+                students = _get_users_by_role('student')
                 return render_template('remote_admin/user_edit.html', user=None, 
                                      current_environment=current_env,
-                                     environment_name=environments.get(current_env, {}).get('name', current_env))
+                                     environment_name=environments.get(current_env, {}).get('name', current_env),
+                                     tutors=tutors, parents=parents, students=students)
             
             if not data['password']:
                 flash('Пароль обязателен', 'error')
+                tutors = _get_users_by_role('tutor')
+                parents = _get_users_by_role('parent')
+                students = _get_users_by_role('student')
                 return render_template('remote_admin/user_edit.html', user=None,
                                      current_environment=current_env,
-                                     environment_name=environments.get(current_env, {}).get('name', current_env))
+                                     environment_name=environments.get(current_env, {}).get('name', current_env),
+                                     tutors=tutors, parents=parents, students=students)
             
             resp = make_remote_request('POST', '/internal/remote-admin/api/users', payload=data)
             
@@ -161,9 +183,15 @@ def user_new():
             logger.error(f"Error creating user: {e}", exc_info=True)
             flash(f'Ошибка создания пользователя: {str(e)}', 'error')
     
+    # Загружаем списки для селектов
+    tutors = _get_users_by_role('tutor')
+    parents = _get_users_by_role('parent')
+    students = _get_users_by_role('student')
+    
     return render_template('remote_admin/user_edit.html', user=None,
                          current_environment=current_env,
-                         environment_name=environments.get(current_env, {}).get('name', current_env))
+                         environment_name=environments.get(current_env, {}).get('name', current_env),
+                         tutors=tutors, parents=parents, students=students)
 
 
 @remote_admin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
@@ -188,7 +216,10 @@ def user_edit(user_id):
                 'email': request.form.get('email', '').strip() or None,
                 'role': request.form.get('role', 'student').strip(),
                 'is_active': request.form.get('is_active') == 'on',
-                'platform_id': request.form.get('platform_id', '').strip() or None
+                'platform_id': request.form.get('platform_id', '').strip() or None,
+                'tutor_id': request.form.get('tutor_id'),
+                'parent_ids': request.form.getlist('parent_ids'),
+                'child_ids': request.form.getlist('child_ids')
             }
             
             # Пароль обновляется только если указан
@@ -222,9 +253,15 @@ def user_edit(user_id):
         flash(f'Ошибка загрузки пользователя: {str(e)}', 'error')
         return redirect(url_for('remote_admin.users_list'))
     
+    # Загружаем списки для селектов
+    tutors = _get_users_by_role('tutor')
+    parents = _get_users_by_role('parent')
+    students = _get_users_by_role('student')
+    
     return render_template('remote_admin/user_edit.html', user=user_data,
                          current_environment=current_env,
-                         environment_name=environments.get(current_env, {}).get('name', current_env))
+                         environment_name=environments.get(current_env, {}).get('name', current_env),
+                         tutors=tutors, parents=parents, students=students)
 
 
 @remote_admin_bp.route('/testers', methods=['GET', 'POST'])
