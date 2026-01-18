@@ -137,6 +137,9 @@ class Lesson(db.Model):
     status = db.Column(db.String(50), default='planned')
     topic = db.Column(db.String(300), nullable=True)
     notes = db.Column(db.Text, nullable=True)
+    content = db.Column(db.Text, nullable=True)  # Markdown контент урока (теория)
+    student_notes = db.Column(db.Text, nullable=True)  # Личные заметки ученика
+    materials = db.Column(db.JSON, nullable=True)  # Прикрепленные файлы/материалы [{"name": "...", "url": "...", "type": "..."}]
     homework = db.Column(db.Text, nullable=True)
     homework_status = db.Column(db.String(50), default='not_assigned')
     homework_result_percent = db.Column(db.Integer, nullable=True)

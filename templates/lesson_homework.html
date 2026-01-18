@@ -1,724 +1,291 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if assignment_type == 'homework' %}Домашнее задание{% elif assignment_type == 'classwork' %}Классная работа{% elif assignment_type == 'exam' %}Проверочная работа{% else %}Задания{% endif %} - {{ student.name }}</title>
-    {% if csrf_token %}
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    {% endif %}
+{% extends 'base.html' %}
 
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+{% block title %}{{ lesson.topic or 'Урок' }}{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+<style>
+    .lesson-header {
+        margin-bottom: 2rem;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem;
+    }
+    .lesson-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+    }
+    .lesson-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    /* Tabs */
+    .lesson-tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+    }
+    .tab-btn {
+        background: transparent;
+        border: none;
+        padding: 0.8rem 1.5rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .tab-btn:hover {
+        color: var(--text-main);
+        background: rgba(255,255,255,0.05);
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    }
+    .tab-btn.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+    }
     
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
-    {% include '_ux_enhancements.html' %}
+    .tab-pane {
+        display: none;
+        animation: fadeIn 0.3s ease;
+    }
+    .tab-pane.active {
+        display: block;
+    }
     
-    <style>
-        .homework-hero {
-            margin-bottom: 2rem;
-        }
-        
-        .homework-header {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 2.2rem;
-            margin-bottom: 2rem;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .homework-header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent-1), transparent);
-            opacity: 0.6;
-        }
-        
-        .homework-header h1 {
-            font-size: 2.2em;
-            font-weight: 800;
-            color: var(--text-primary);
-            margin-bottom: 1.2rem;
-            letter-spacing: -0.02em;
-        }
-        
-        .homework-info {
-            color: var(--text-muted);
-            line-height: 1.8;
-        }
-        
-        .homework-info strong {
-            color: var(--accent-1);
-        }
-        
-        .homework-hint {
-            display: block;
-            margin-top: 1em;
-            padding: 0.8em 1em;
-            background: rgba(23, 96, 216, 0.12);
-            border-left: 3px solid var(--accent-2);
-            border-radius: var(--radius-sm);
-            color: var(--accent-2);
-            font-weight: 600;
-        }
-        
-        
-        /* Овальный переключатель с тремя положениями */
-        .status-toggle {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
-        
-        .status-toggle-label {
-            font-weight: 600;
-            color: var(--text-primary);
-            font-size: 0.9em;
-        }
-        
-        .status-toggle-switch {
-            position: relative;
-            width: 140px;
-            height: 40px;
-            background: var(--surface-2);
-            border: 2px solid var(--stroke-1);
-            border-radius: 20px;
-            cursor: grab;
-            transition: background 0.3s ease, border-color 0.3s ease;
-            display: flex;
-            align-items: center;
-            padding: 0 4px;
-            user-select: none;
-        }
-        
-        .status-toggle-switch:active {
-            cursor: grabbing;
-        }
-        
-        .status-toggle-switch:hover {
-            border-color: var(--accent-1);
-        }
-        
-        .status-toggle-slider {
-            position: absolute;
-            width: 32px;
-            height: 32px;
-            background: var(--surface-1);
-            border: 2px solid var(--stroke-1);
-            border-radius: 50%;
-            transition: left 0.2s ease, right 0.2s ease, transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.85em;
-            font-weight: 700;
-            cursor: grab;
-            z-index: 2;
-        }
-        
-        .status-toggle-slider:active {
-            cursor: grabbing;
-        }
-        
-        .status-toggle-switch.dragging .status-toggle-slider {
-            transition: none;
-        }
-        
-        .status-toggle-switch[data-status="correct"] {
-            background: rgba(16, 185, 129, 0.2);
-            border-color: var(--success-color, #10b981);
-        }
-        
-        .status-toggle-switch[data-status="correct"] .status-toggle-slider {
-            left: 4px;
-            background: var(--success-color, #10b981);
-            color: white;
-            border-color: var(--success-color, #10b981);
-        }
-        
-        .status-toggle-switch[data-status="incorrect"] {
-            background: rgba(239, 68, 68, 0.2);
-            border-color: var(--danger-color, #ef4444);
-        }
-        
-        .status-toggle-switch[data-status="incorrect"] .status-toggle-slider {
-            right: 4px;
-            background: var(--danger-color, #ef4444);
-            color: white;
-            border-color: var(--danger-color, #ef4444);
-        }
-        
-        .status-toggle-switch[data-status="none"] {
-            background: rgba(128, 128, 128, 0.1);
-        }
-        
-        .status-toggle-switch[data-status="none"] .status-toggle-slider {
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--surface-1);
-            color: var(--text-muted);
-            border-color: var(--stroke-1);
-        }
-        
-        .status-toggle-labels {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 8px;
-            pointer-events: none;
-            font-size: 0.7em;
-            font-weight: 600;
-        }
-        
-        .status-toggle-labels span {
-            color: var(--text-muted);
-            transition: color 0.3s ease;
-        }
-        
-        .status-toggle-switch[data-status="correct"] .status-toggle-labels span:first-child {
-            color: var(--success-color, #10b981);
-        }
-        
-        .status-toggle-switch[data-status="incorrect"] .status-toggle-labels span:last-child {
-            color: var(--danger-color, #ef4444);
-        }
-        
-        .task-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--stroke-1);
-        }
-        
-        .task-number {
-            font-size: 1.5em;
-            font-weight: 800;
-            color: var(--accent-1);
-            margin-bottom: 0.3em;
-        }
-        
-        .task-site-id {
-            font-size: 0.9em;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
-        
-        .autocheck-indicator {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            padding: 1rem;
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            margin-bottom: 2rem;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .autocheck-square {
-            width: 32px;
-            height: 32px;
-            border: 2px solid var(--stroke-1);
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 0.85em;
-            color: var(--text-primary);
-        }
-        
-        .autocheck-square:hover {
-            transform: scale(1.2);
-            border-color: var(--accent-1);
-            box-shadow: 0 0 8px rgba(23, 96, 216, 0.3);
-        }
-        
-        .task-actions {
-            display: flex;
-            gap: 0.8em;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        
-        .task-content {
-            line-height: 1.8;
-            font-size: 1.05em;
-            color: var(--text-primary);
-            margin-bottom: 1.5rem;
-        }
-        
-        .task-content img {
-            max-width: 100%;
-            height: auto;
-            border-radius: var(--radius-sm);
-            margin: 1em 0;
-        }
-        
-        .task-content table {
-            border-collapse: collapse;
-            margin: 1em 0;
-            width: 100%;
-        }
-        
-        .task-content td, .task-content th {
-            border: 1px solid var(--stroke-1);
-            padding: 0.5em;
-        }
-        
-        .attached-files {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .attached-files h4 {
-            color: var(--text-primary);
-            margin-bottom: 1rem;
-            font-weight: 600;
-            font-size: 0.95rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        
-        .file-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-        }
-        
-        .file-list li {
-            margin: 0;
-        }
-        
-        .file-link {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.4rem;
-            padding: 0.65rem 1.2rem;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--stroke-1);
-            text-decoration: none;
-            font-weight: 600;
-            letter-spacing: 0.03em;
-            color: var(--text-primary);
-            background: var(--surface-2);
-            transition: all 0.2s ease;
-            font-size: 0.9rem;
-        }
-        
-        .file-link:hover {
-            transform: translateY(-1px);
-            border-color: var(--accent-1);
-            color: var(--accent-1);
-            background: var(--surface-1);
-            box-shadow: var(--shadow-soft);
-        }
-        
-        .answer-section {
-            background: rgba(0, 254, 202, 0.12);
-            border: 1px solid var(--stroke-1);
-            border-left: 3px solid var(--success);
-            border-radius: var(--radius-sm);
-            padding: 1.2rem;
-            margin-top: 1.5rem;
-        }
-        
-        .answer-label {
-            font-weight: 700;
-            color: var(--success);
-            font-size: 1.1em;
-            margin-bottom: 0.8em;
-            display: block;
-        }
-        
-        .answer-input {
-            width: 100%;
-            padding: 0.8em;
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 1em;
-            font-family: 'MonaspaceNeon', 'Courier New', monospace;
-            transition: all 0.3s ease;
-        }
-        
-        .answer-input:focus {
-            outline: none;
-            border-color: var(--success);
-            box-shadow: 0 0 0 3px rgba(0, 254, 202, 0.2);
-        }
-        
-        .answer-input::placeholder {
-            color: var(--text-muted);
-        }
-        
-        .result-panel {
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            margin: 2rem 0;
-        }
-        
-        .result-panel h3 {
-            font-size: 1.5em;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 1.5rem;
-        }
-        
-        .result-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;
-        }
-        
-        .result-field {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5em;
-        }
-        
-        .result-field label {
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-        
-        .result-field input,
-        .result-field textarea {
-            padding: 0.8em;
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 1em;
-            font-family: inherit;
-            transition: all 0.3s ease;
-        }
-        
-        .result-field input:focus,
-        .result-field textarea:focus {
-            outline: none;
-            border-color: var(--accent-1);
-            box-shadow: 0 0 0 3px rgba(0, 198, 164, 0.2);
-        }
-        
-        .result-field textarea {
-            min-height: 140px;
-            resize: vertical;
-        }
-        
-        .auto-check-panel {
-            margin-top: 2.5rem;
-            padding: 2rem;
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-left: 3px solid var(--accent-2);
-            border-radius: var(--radius-lg);
-        }
-        
-        .auto-check-panel h3 {
-            color: var(--accent-2);
-            margin-bottom: 0.5em;
-            font-weight: 700;
-        }
-        
-        .auto-check-panel p {
-            color: var(--text-muted);
-            margin-bottom: 1em;
-        }
-        
-        .auto-check-panel code {
-            background: var(--surface-2);
-            padding: 0.2em 0.5em;
-            border-radius: 4px;
-            color: var(--accent-1);
-            font-family: 'MonaspaceNeon', 'Courier New', monospace;
-        }
-        
-        .auto-check-panel textarea {
-            width: 100%;
-            min-height: 120px;
-            margin: 1em 0;
-            padding: 1em;
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--stroke-1);
-            background: var(--surface-2);
-            color: var(--text-primary);
-            font-size: 1em;
-            font-family: 'MonaspaceNeon', 'Courier New', monospace;
-        }
-        
-        .auto-check-panel textarea:focus {
-            outline: none;
-            border-color: var(--accent-2);
-            box-shadow: 0 0 0 3px rgba(23, 96, 216, 0.2);
-        }
-        
-        .auto-check-result {
-            margin-top: 1em;
-            padding: 0.75rem 1rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.95em;
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-        }
-        
-        .homework-actions {
-            display: flex;
-            gap: 1em;
-            justify-content: center;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-top: 2em;
-        }
-    </style>
-</head>
-<body class="{% if active_lesson %}lesson-active{% endif %}" data-csrf-token="{{ csrf_token() if csrf_token else '' }}">
-    {% set is_homework = assignment_type == 'homework' %}
-    {% set is_classwork = assignment_type == 'classwork' %}
-    {% set is_exam = assignment_type == 'exam' %}
-    {% if is_homework %}
-        {% set assignment_title = 'Домашнее задание' %}
-        {% set assignment_icon = url_for('static', filename='icons/dz.png') %}
-        {% set assignment_hint = 'Задания, собранные здесь, попадут в домашнее задание и сохранятся для проверки.' %}
-    {% elif is_exam %}
-        {% set assignment_title = 'Проверочная работа' %}
-        {% set assignment_icon = url_for('static', filename='icons/icons8-bar-chart-100.png') %}
-        {% set assignment_hint = 'Проверочная работа влияет на статистику в два раза сильнее.' %}
-    {% else %}
-        {% set assignment_title = 'Классная работа' %}
-        {% set assignment_icon = url_for('static', filename='icons/klassrab.png') %}
-        {% set assignment_hint = 'Эти задания используются прямо на уроке и также исключаются из будущего ДЗ.' %}
-    {% endif %}
-    
-    {% if active_lesson %}
-    <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        <img src="{{ url_for('static', filename='icons/comfort.png') }}" alt="Урок" class="ui-icon ui-icon--sm">Урок идет: {{ active_student.name }}
-    </div>
-    <div class="now-playing-panel" id="lessonMenu">
-        <div class="hero-eyebrow">текущий урок</div>
-        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
-        {% if active_lesson.topic %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
-        {% endif %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
-        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
-        <div class="hero-actions" style="margin-top: 1rem;">
-            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
-            </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
-        </div>
-    </div>
-    <script>
-        function toggleLessonMenu() {
-            const menu = document.getElementById('lessonMenu');
-            if (menu) {
-                menu.classList.toggle('active');
-            }
-        }
-        document.addEventListener('click', (event) => {
-            const menu = document.getElementById('lessonMenu');
-            const badge = document.querySelector('.now-playing-pill');
-            if (!menu || !badge) return;
-            if (!menu.contains(event.target) && !badge.contains(event.target)) {
-                menu.classList.remove('active');
-            }
-        });
-    </script>
-    {% endif %}
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 
-    <div class="app-shell">
-        {% set active_page = 'dashboard' %}
-        {% include '_primary_nav.html' %}
+    /* Markdown Content */
+    .markdown-content {
+        line-height: 1.6;
+        font-size: 1.1rem;
+    }
+    .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+        margin-top: 1.5em;
+        margin-bottom: 0.5em;
+    }
+    .markdown-content ul, .markdown-content ol {
+        padding-left: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .markdown-content img {
+        max-width: 100%;
+        border-radius: var(--radius-md);
+        margin: 1rem 0;
+    }
+    .markdown-content pre {
+        background: rgba(0,0,0,0.2);
+        padding: 1rem;
+        border-radius: var(--radius-md);
+        overflow-x: auto;
+    }
+    .markdown-content blockquote {
+        border-left: 4px solid var(--accent);
+        padding-left: 1rem;
+        margin: 1rem 0;
+        color: var(--text-muted);
+    }
 
-        {# Flash messages будут показаны через toast #}
+    /* Materials */
+    .materials-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    .material-card {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-md);
+        padding: 1rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        transition: transform 0.2s;
+        position: relative;
+    }
+    .material-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--accent);
+    }
+    .material-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .material-name {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        word-break: break-all;
+    }
+    .material-delete {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        color: var(--danger);
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .material-card:hover .material-delete {
+        opacity: 1;
+    }
 
-        <section class="glass-panel homework-hero">
+    /* Editor */
+    .editor-toolbar {
+        border-color: var(--glass-border) !important;
+        background: rgba(255,255,255,0.05) !important;
+        color: var(--text-main) !important;
+    }
+    .editor-toolbar i {
+        color: var(--text-main) !important;
+    }
+    .editor-toolbar a:hover, .editor-toolbar a.active {
+        background: rgba(255,255,255,0.1) !important;
+        border-color: transparent !important;
+    }
+    .CodeMirror {
+        background: var(--glass-bg) !important;
+        color: var(--text-main) !important;
+        border-color: var(--glass-border) !important;
+    }
+    .editor-preview {
+        background: var(--bg-body) !important;
+    }
+</style>
+
+<div class="container">
+    <!-- Header -->
+    <header class="lesson-header">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div>
-                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                    <a href="{{ url_for('lessons.lesson_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="text-decoration: none;">
-                        ← К уроку
-                    </a>
-                </div>
-                <p class="hero-eyebrow">{{ assignment_title.lower() }}</p>
-                <h1 class="hero-title"><img src="{{ assignment_icon }}" alt="{{ assignment_title }}" class="ui-icon ui-icon--md"> {{ assignment_title }}</h1>
-                <p class="hero-subtitle">{{ student.name }}</p>
-            </div>
-        </section>
-
-        <section class="glass-panel homework-header">
-            <div class="homework-info">
-                {% if lesson.lesson_date %}
-                <div><strong>Дата урока:</strong> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
-                {% endif %}
-                {% if lesson.topic %}
-                <div><strong>Тема:</strong> {{ lesson.topic }}</div>
-                {% endif %}
-                <div><strong>Всего заданий:</strong> {{ homework_tasks|length }} шт.</div>
-                <span class="homework-hint">{{ assignment_hint }}</span>
-            </div>
-            <div class="hero-actions" style="margin-top: 1.5rem;">
-                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Профиль ученика</a>
-            </div>
-        </section>
-
-        {% if homework_tasks %}
-        {# Словарь для порядковых числительных #}
-        {% set ordinal_names = {
-            1: "первое", 2: "второе", 3: "третье", 4: "четвертое", 5: "пятое",
-            6: "шестое", 7: "седьмое", 8: "восьмое", 9: "девятое", 10: "десятое",
-            11: "одиннадцатое", 12: "двенадцатое", 13: "тринадцатое", 14: "четырнадцатое", 15: "пятнадцатое",
-            16: "шестнадцатое", 17: "семнадцатое", 18: "восемнадцатое", 19: "девятнадцатое", 20: "двадцатое",
-            21: "двадцать первое", 22: "двадцать второе", 23: "двадцать третье", 24: "двадцать четвертое",
-            25: "двадцать пятое", 26: "двадцать шестое", 27: "двадцать седьмое"
-        } %}
-        
-        {# Проверяем, есть ли результаты автопроверки для отображения индикатора #}
-        {% set has_autocheck_results = homework_tasks | selectattr('submission_correct', 'ne', none) | list | length > 0 %}
-        
-        {# Визуальный индикатор результатов автопроверки #}
-        {% if has_autocheck_results %}
-        <div class="autocheck-indicator">
-            <div style="font-weight: 600; color: var(--text-primary); margin-right: 0.5rem;">Результаты автопроверки:</div>
-            {% for hw_task in homework_tasks %}
-                {% set order_num = loop.index %}
-                {% set ordinal_name = ordinal_names.get(order_num, order_num ~ "-е") %}
-                {% set is_correct = hw_task.submission_correct if hw_task.submission_correct is not none else none %}
-                <button type="button"
-                        class="autocheck-square"
-                        data-task-id="{{ hw_task.lesson_task_id }}"
-                        data-order-num="{{ order_num }}"
-                        style="background: {% if is_correct == true %}var(--success-color, #10b981){% elif is_correct == false %}var(--danger-color, #ef4444){% else %}var(--surface-1){% endif %};"
-                        title="N{{ hw_task.task.task_number }} - {{ ordinal_name }}{% if is_correct is not none %} ({% if is_correct %}✓{% else %}✗{% endif %}){% endif %}"
-                        onclick="scrollToTaskByOrder({{ order_num }})">
-                    {{ order_num }}
-                </button>
-            {% endfor %}
-        </div>
-        {% endif %}
-        
-        <form method="POST" action="{% if is_student_view %}{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_save', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_save', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_save', lesson_id=lesson.lesson_id) }}{% endif %}{% else %}{{ url_for('lessons.lesson_homework_save', lesson_id=lesson.lesson_id) }}{% endif %}"><!-- comment -->
-            {% for hw_task in homework_tasks %}
-            {% set order_num = loop.index %}
-            {% set ordinal_name = ordinal_names.get(order_num, order_num ~ "-е") %}
-            {% set is_correct = hw_task.submission_correct if hw_task.submission_correct is not none else none %}
-            <section class="task-card {% if is_correct == true %}autocheck-correct{% elif is_correct == false %}autocheck-incorrect{% endif %}" data-task-id="{{ hw_task.lesson_task_id }}">
-                <div class="task-header">
-                    <div>
-                        <div class="task-number">N{{ hw_task.task.task_number }} - {{ ordinal_name }}</div>
-                        <div class="task-site-id">№ {{ hw_task.task.site_task_id }}</div>
+                <h1 style="margin-bottom: 0.5rem;">{{ lesson.topic or 'Тема не указана' }}</h1>
+                <div class="lesson-meta">
+                    <div class="lesson-meta-item">
+                        📅 {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
                     </div>
-                    {% if not is_student_view and not is_parent_view %}{# comment #}
-                    <div class="task-actions"><!-- comment -->
-                        <a href="{{ hw_task.task.source_url }}" target="_blank" class="neo-button outline"><!-- comment -->
-                            🔗 Открыть на сайте<!-- comment -->
-                        </a><!-- comment -->
-                        <button type="button" class="neo-button danger" data-delete-task="{{ hw_task.lesson_task_id }}" data-assignment-type="{{ assignment_type }}">🗑️ Удалить</button><!-- comment -->
-                    </div><!-- comment -->
-                    {% endif %}{# comment #}
+                    <div class="lesson-meta-item">
+                        ⏱ {{ lesson.duration }} мин
+                    </div>
+                    <div class="lesson-meta-item">
+                        🎓 {{ student.name }}
+                    </div>
+                    <div class="lesson-meta-item">
+                        📂 {{ assignment_type|capitalize }}
+                    </div>
+                </div>
+            </div>
+            <div>
+                 <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button outline sm">
+                    ⬅ Назад в профиль
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Tabs Navigation -->
+    <div class="lesson-tabs">
+        <button class="tab-btn active" onclick="switchTab('theory')">📖 Конспект</button>
+        <button class="tab-btn" onclick="switchTab('tasks')">
+            {% if assignment_type == 'homework' %}🏠 Домашнее задание{% elif assignment_type == 'classwork' %}🏫 Классная работа{% else %}📝 Проверочная{% endif %}
+        </button>
+        <button class="tab-btn" onclick="switchTab('materials')">📎 Материалы</button>
+        <button class="tab-btn" onclick="switchTab('notes')">📒 Заметки {{ 'ученика' if not is_student_view else '' }}</button>
+    </div>
+
+    <!-- TAB: THEORY -->
+    <div id="tab-theory" class="tab-pane active">
+        <div class="glass-panel">
+            {% if not is_student_view and not is_parent_view %}
+            <!-- Teacher Edit Mode -->
+            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                <h3>Конспект урока</h3>
+                <button class="neo-button accent sm" onclick="saveContent()">💾 Сохранить конспект</button>
+            </div>
+            <textarea id="theory-editor">{{ lesson.content or '' }}</textarea>
+            {% else %}
+            <!-- Student View Mode -->
+            <h3>Конспект урока</h3>
+            <div id="theory-content" class="markdown-content">
+                {{ lesson.content or '*Конспект пуст*' }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- TAB: TASKS (Existing Logic) -->
+    <div id="tab-tasks" class="tab-pane">
+        <!-- Вставка существующего контента задач -->
+        <div class="tasks-container">
+             <form id="homework-form" method="POST" action="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_save', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_save', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_save', lesson_id=lesson.lesson_id) }}{% endif %}">
+            
+            {% if csrf_token %}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% endif %}
+
+            {% if homework_tasks %}
+            {% for hw_task in homework_tasks %}
+            <section class="task-card" data-task-id="{{ hw_task.lesson_task_id }}">
+                <div class="task-header">
+                    <span class="task-number">№{{ hw_task.task.task_number if hw_task.task else '?' }}</span>
+                    <div class="task-meta">
+                        {% if not is_student_view and not is_parent_view %}
+                        <button type="button" class="icon-btn danger" onclick="handleDeleteTask({{ hw_task.lesson_task_id }}, '{{ assignment_type }}')" title="Удалить задание">🗑</button>
+                        {% endif %}
+                    </div>
                 </div>
                 
                 <div class="task-content">
                     {{ hw_task.task.content_html|safe }}
+                    {% if hw_task.task.attached_files %}
+                    <div class="task-attachments">
+                        <strong>Вложения:</strong> {{ hw_task.task.attached_files }}
+                    </div>
+                    {% endif %}
                 </div>
                 
-                {% if hw_task.task.attached_files %}
-                <div class="attached-files">
-                    <h4>📎 Прикрепленные файлы:</h4>
-                    <ul class="file-list">
-                        {% set files = hw_task.task.attached_files | from_json %}
-                        {% for file in files %}
-                        <li>
-                            <a href="{{ file.url }}" target="_blank" class="file-link" download>
-                                {{ file.name }}
-                            </a>
-                        </li>
-                        {% endfor %}
-                    </ul>
+                {% if not is_read_only %}
+                <div class="answer-section">
+                    <label class="answer-label" for="submission_{{ hw_task.lesson_task_id }}">
+                        <img src="{{ url_for('static', filename='icons/icons8-редактировать-100.png') }}" alt="Ответ" class="ui-icon ui-icon--sm">Твой ответ:
+                    </label>
+                    <input type="text" class="answer-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_submission or '' }}" placeholder="Введи ответ..." autocomplete="off">
+                </div>
+                {% else %}
+                <div class="answer-section">
+                     <label class="answer-label">Твой ответ:</label>
+                     <div class="answer-input" style="background: rgba(0,0,0,0.2); border: none;">{{ hw_task.student_submission or '—' }}</div>
                 </div>
                 {% endif %}
-                
-                {% if is_homework or is_classwork or is_exam %}{# comment #}
-                {% if is_student_view %}{# comment #}
-                <div class="answer-section"><!-- comment -->
-                    <label class="answer-label" for="submission_{{ hw_task.lesson_task_id }}"><!-- comment -->
-                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Ответ" class="ui-icon ui-icon--sm"><!-- comment -->Ваш ответ:<!-- comment -->
-                    </label><!-- comment -->
-                    <textarea class="answer-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" {% if is_read_only %}disabled{% endif %}>{{ hw_task.student_submission or '' }}</textarea><!-- comment -->
-                    {% if hw_task.submission_correct is not none %}{# comment #}
-                    <div style="margin-top: 0.5rem; font-weight: 600; color: {% if hw_task.submission_correct %}var(--success){% else %}var(--danger){% endif %};"><!-- comment -->
-                        Автопроверка: {% if hw_task.submission_correct %}верно{% else %}неверно{% endif %}<!-- comment -->
-                    </div><!-- comment -->
-                    {% else %}{# comment #}
-                    <div style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.9em;"><!-- comment -->
-                        Автопроверка: нет результата<!-- comment -->
-                    </div><!-- comment -->
-                    {% endif %}{# comment #}
-                    {% if is_read_only %}{# comment #}
-                    <small style="color: var(--text-muted); display: block; margin-top: 0.5rem;"><!-- comment -->
-                        Работа сдана. Ответы доступны только для просмотра.<!-- comment -->
-                    </small><!-- comment -->
-                    {% endif %}{# comment #}
-                </div><!-- comment -->
-                {% elif is_parent_view %}{# comment #}
-                <div class="answer-section"><!-- comment -->
-                    <div class="answer-label"><!-- comment -->
-                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Ответ" class="ui-icon ui-icon--sm"><!-- comment -->Ответ ученика:<!-- comment -->
-                    </div><!-- comment -->
-                    <div class="answer-input" style="white-space: pre-wrap;">{{ hw_task.student_submission or '(нет ответа)' }}</div><!-- comment -->
-                </div><!-- comment -->
-                {% else %}{# comment #}
-                <div class="answer-section"><!-- comment -->
-                    <label class="answer-label" for="answer_{{ hw_task.lesson_task_id }}"><!-- comment -->
-                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Правильный ответ" class="ui-icon ui-icon--sm"><!-- comment -->Правильный ответ:<!-- comment -->
-                    </label><!-- comment -->
-                    {% set correct_answer = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}{# comment #}
-                    <input type="text" class="answer-input" id="answer_{{ hw_task.lesson_task_id }}" name="answer_{{ hw_task.lesson_task_id }}" value="{{ correct_answer or '' }}" placeholder="{% if hw_task.task and hw_task.task.answer %}Ответ загружен из базы (можно изменить){% else %}Введи правильный ответ для проверки...{% endif %}"><!-- comment -->
-                    {% if hw_task.task and hw_task.task.answer and not hw_task.student_answer %}{# comment #}
-                    <small style="color: var(--accent-2); display: block; margin-top: 0.5rem;"><!-- comment -->
-                        💡 Ответ загружен автоматически из базы данных. Можно изменить вручную.<!-- comment -->
-                    </small><!-- comment -->
-                    {% endif %}{# comment #}
-                </div><!-- comment -->
-                {% endif %}{# comment #}
-                {% endif %}{# comment #}
 
+                <!-- Auto check status for Student -->
                 {% if (is_homework or is_classwork or is_exam) and hw_task.student_submission %}
                     {% if not is_student_view %}
                     <div class="auto-check-result">
                         <div><strong>Ответ ученика:</strong> {{ hw_task.student_submission }}</div>
                     </div>
                     {% endif %}
+                {% endif %}
+
+                {% if is_student_view %}
+                     <!-- Статус для ученика -->
+                     {% if hw_task.submission_correct == true %}
+                        <div style="margin-top: 0.5rem; color: var(--success);">✅ Верно</div>
+                     {% elif hw_task.submission_correct == false %}
+                        <div style="margin-top: 0.5rem; color: var(--danger);">❌ Неверно</div>
+                     {% endif %}
                 {% endif %}
                 
                 {% if is_student_view and is_read_only %}
@@ -730,887 +297,256 @@
                     {% endif %}
                 {% endif %}
                 
-                {% if is_homework or is_classwork or is_exam %}{# comment #}
-                {% if not is_student_view and not is_parent_view %}{# comment #}
-                <div class="status-toggle"><!-- comment -->
-                    <span class="status-toggle-label">Статус задания:</span><!-- comment -->
-                    <div class="status-toggle-switch" data-task-id="{{ hw_task.lesson_task_id }}" data-status="{% if hw_task.submission_correct == true %}correct{% elif hw_task.submission_correct == false %}incorrect{% else %}none{% endif %}"><!-- comment -->
-                        <div class="status-toggle-slider"><!-- comment -->
-                            {% if hw_task.submission_correct == true %}✓{% elif hw_task.submission_correct == false %}✗{% else %}—{% endif %}<!-- comment -->
-                        </div><!-- comment -->
-                        <div class="status-toggle-labels"><!-- comment -->
-                            <span>✓</span><!-- comment -->
-                            <span>—</span><!-- comment -->
-                            <span>✗</span><!-- comment -->
-                        </div><!-- comment -->
-                    </div><!-- comment -->
-                </div><!-- comment -->
-                {% endif %}{# comment #}
-                {% endif %}{# comment #}
+                <!-- Teacher View: Correct Answer and Status Toggle -->
+                {% if not is_student_view and not is_parent_view %}
+                <div class="answer-section" style="margin-top: 1rem; border-top: 1px dashed var(--glass-border); padding-top: 0.5rem;">
+                     <label>Правильный ответ (из базы):</label>
+                     <code>{{ hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else 'Нет') }}</code>
+                </div>
+                
+                <div class="status-toggle">
+                    <span class="status-toggle-label">Статус задания:</span>
+                    <div class="status-toggle-switch" data-task-id="{{ hw_task.lesson_task_id }}" data-status="{% if hw_task.submission_correct == true %}correct{% elif hw_task.submission_correct == false %}incorrect{% else %}none{% endif %}">
+                        <div class="status-toggle-slider">
+                            {% if hw_task.submission_correct == true %}✓{% elif hw_task.submission_correct == false %}✗{% else %}—{% endif %}
+                        </div>
+                        <div class="status-toggle-labels">
+                            <span>✓</span>
+                            <span>—</span>
+                            <span>✗</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
             </section>
             {% endfor %}
             
-            {% if is_homework and not is_student_view and not is_parent_view %}{# comment #}
-            <section class="result-panel"><!-- comment -->
-                <h3><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Результат" class="ui-icon ui-icon--sm"><!-- comment -->Результат выполнения ДЗ</h3><!-- comment -->
-                <div class="result-grid"><!-- comment -->
-                    <div class="result-field"><!-- comment -->
-                        <label for="homework_result_percent">Процент выполнения (%)</label><!-- comment -->
-                        <input type="number" id="homework_result_percent" name="homework_result_percent" min="0" max="100" step="1" value="{{ lesson.homework_result_percent if lesson.homework_result_percent is not none else '' }}"><!-- comment -->
-                    </div><!-- comment -->
-                    <div class="result-field" style="grid-column: span 2;"><!-- comment -->
-                        <label for="homework_result_notes">Заметки по проверке</label><!-- comment -->
-                        <textarea id="homework_result_notes" name="homework_result_notes" placeholder="Отметь сильные стороны, типичные ошибки, договоренности...">{{ lesson.homework_result_notes or '' }}</textarea><!-- comment -->
-                    </div><!-- comment -->
-                </div><!-- comment -->
-            </section><!-- comment -->
-            {% endif %}{# comment #}
-            
-            {% if not is_student_view and not is_parent_view %}{# comment #}
-            <div class="homework-actions"><!-- comment -->
-                {% if is_homework %}{# comment #}
-                <button type="submit" class="neo-button accent" data-tooltip="Сохранить все ответы и результаты (Ctrl+S)">💾 Сохранить все ответы</button><!-- comment -->
-                {% endif %}{# comment #}
-                <a href="#" class="neo-button accent" data-tooltip="Добавить дополнительные задания" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;"><!-- comment -->
-                    <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm"><!-- comment -->Добавить ещё задания<!-- comment -->
-                </a><!-- comment -->
-                {% if is_homework %}{# comment #}
-                <a href="{{ url_for('lessons.lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown"><!-- comment -->
-                    📄 Экспорт в Obsidian<!-- comment -->
-                </a><!-- comment -->
-                {% elif is_classwork %}{# comment #}
-                <a href="{{ url_for('lessons.lesson_classwork_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown"><!-- comment -->
-                    📄 Экспорт в Obsidian<!-- comment -->
-                </a><!-- comment -->
-                {% elif is_exam %}{# comment #}
-                <a href="{{ url_for('lessons.lesson_exam_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button outline" data-tooltip="Экспортировать задания в формат Obsidian Markdown"><!-- comment -->
-                    📄 Экспорт в Obsidian<!-- comment -->
-                </a><!-- comment -->
-                {% endif %}{# comment #}
-            </div><!-- comment -->
-            {% else %}{# comment #}
-            <div class="homework-actions"><!-- comment -->
-                <button type="submit" class="neo-button accent" {% if is_read_only %}disabled{% endif %}><!-- comment -->
-                    💾 Сохранить черновик<!-- comment -->
-                </button><!-- comment -->
-                <button type="submit" class="neo-button outline" {% if is_read_only %}disabled{% endif %} formaction="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_submit', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_submit', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_submit', lesson_id=lesson.lesson_id) }}{% endif %}"><!-- comment -->
-                    ✅ Сдать работу<!-- comment -->
-                </button><!-- comment -->
-            </div><!-- comment -->
-            {% endif %}{# comment #}
-        </form>
-        {% if not is_student_view and not is_parent_view %}{# comment #}
-        {% for hw_task in homework_tasks %}{# comment #}
-        <form id="delete-form-{{ hw_task.lesson_task_id }}" method="POST" action="{{ url_for('lessons.lesson_homework_delete_task', lesson_id=lesson.lesson_id, lesson_task_id=hw_task.lesson_task_id, assignment_type=assignment_type) }}" style="display: none;"><!-- comment -->
-            {% if csrf_token %}{# comment #}
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><!-- comment -->
-            {% endif %}{# comment #}
-        </form><!-- comment -->
-        {% endfor %}{# comment #}
+            {% if not is_student_view and not is_parent_view %}
+            <div class="homework-actions">
+                <button type="submit" class="neo-button accent">💾 Сохранить изменения</button>
+                <a href="#" class="neo-button outline" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">➕ Добавить задания</a>
+            </div>
+            {% else %}
+            <div class="homework-actions">
+                <button type="submit" class="neo-button accent" {% if is_read_only %}disabled{% endif %}>💾 Сохранить черновик</button>
+                <button type="submit" class="neo-button outline" {% if is_read_only %}disabled{% endif %} formaction="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_submit', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_submit', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_submit', lesson_id=lesson.lesson_id) }}{% endif %}">✅ Сдать работу</button>
+            </div>
+            {% endif %}
 
-        {% if is_homework %}{# comment #}
-        <section class="auto-check-panel"><!-- comment -->
-            <h3>⚙️ Автопроверка по ответам</h3><!-- comment -->
-            <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p><!-- comment -->
-            <form id="auto-check-form-homework" method="POST" action="{{ url_for('lessons.lesson_homework_auto_check', lesson_id=lesson.lesson_id) }}"><!-- comment -->
-                <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea><!-- comment -->
-                <div style="margin-top: 1rem;"><!-- comment -->
-                    <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button><!-- comment -->
-                </div><!-- comment -->
-            </form><!-- comment -->
-        </section><!-- comment -->
-        {% elif is_classwork %}{# comment #}
-        <section class="auto-check-panel"><!-- comment -->
-            <h3>⚙️ Автопроверка по ответам</h3><!-- comment -->
-            <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p><!-- comment -->
-            <form id="auto-check-form-classwork" method="POST" action="{{ url_for('lessons.lesson_classwork_auto_check', lesson_id=lesson.lesson_id) }}"><!-- comment -->
-                <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea><!-- comment -->
-                <div style="margin-top: 1rem;"><!-- comment -->
-                    <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button><!-- comment -->
-                </div><!-- comment -->
-            </form><!-- comment -->
-        </section><!-- comment -->
-        {% elif is_exam %}{# comment #}
-        <section class="auto-check-panel"><!-- comment -->
-            <h3>⚙️ Автопроверка по ответам</h3><!-- comment -->
-            <p>Вставь массив вида <code>[1, -1, "Москва", 42]</code>. Значение <code>-1</code> означает, что задание не выполнено.</p><!-- comment -->
-            <p style="color: var(--accent-2); margin-top: 0.5rem;"><strong>⚠️ Проверочная работа учитывается в статистике с весом ×2</strong></p><!-- comment -->
-            <form id="auto-check-form-exam" method="POST" action="{{ url_for('lessons.lesson_exam_auto_check', lesson_id=lesson.lesson_id) }}"><!-- comment -->
-                <textarea name="auto_answers" placeholder='[1, -1, "Москва", 42]' required></textarea><!-- comment -->
-                <div style="margin-top: 1rem;"><!-- comment -->
-                    <button type="submit" class="neo-button accent" data-tooltip="Автоматическая проверка заданий по ответам из базы данных">🤖 Проверить автоматически</button><!-- comment -->
-                </div><!-- comment -->
-            </form><!-- comment -->
-        </section><!-- comment -->
-        {% endif %}{# comment #}
-        {% endif %}{# comment #}
-        {% else %}
-        <section class="glass-panel">
+            {% else %}
             <div class="empty-state">
-                <div style="font-size: 4rem; margin-bottom: 0.6rem;">{{ assignment_icon }}</div>
                 <h3>Заданий пока нет</h3>
-                <p style="color: var(--text-muted);"><!-- comment -->{{ 'Добавь задания через генератор в режиме ДЗ' if is_homework else 'Добавь задания через генератор в режиме классной работы' }}<!-- comment --></p><!-- comment -->
-                {% if not is_student_view and not is_parent_view %}{# comment #}
-                <a href="#" class="neo-button accent" style="margin-top: 2em;" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;"><!-- comment -->
-                    <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm"><!-- comment -->Добавить задания<!-- comment -->
-                </a><!-- comment -->
-                {% else %}{# comment #}
-                <p style="color: var(--text-muted); margin-top: 1.5rem;"><!-- comment -->Задания появятся после назначения преподавателем.<!-- comment --></p><!-- comment -->
-                {% endif %}{# comment #}
+                 {% if not is_student_view and not is_parent_view %}
+                <a href="#" class="neo-button accent" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">Добавить задания</a>
+                {% endif %}
             </div>
-        </section>
-        {% endif %}
+            {% endif %}
+            </form>
+        </div>
     </div>
-    
-    <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    <script src="{{ url_for('static', filename='loading.js') }}"></script>
-    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
-    <script>
-        const CSRF_TOKEN = document.body.dataset.csrfToken || (document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '');
 
-        async function handleDeleteTask(taskId, assignmentType) {
-            const form = document.getElementById(`delete-form-${taskId}`);
-            if (!form) {
-                if (window.toast) {
-                    toast.error('Форма удаления не найдена');
-                }
-                return;
-            }
-
-            // Показываем модальное окно подтверждения
-            showConfirmModal({
-                title: 'Удалить задание?',
-                message: 'Задание будет удалено из домашнего задания. Это действие можно отменить, добавив задание заново.',
-                confirmText: 'Удалить',
-                cancelText: 'Отмена',
-                confirmClass: 'danger',
-                onConfirm: async () => {
-                    // Показываем индикатор загрузки
-                    const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-                    const loaderId = taskCard ? loading.show(taskCard, 'Удаление...') : null;
-
-                    try {
-                        const formData = new FormData(form);
-                        const response = await fetch(form.action, {
-                            method: 'POST',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'X-CSRFToken': CSRF_TOKEN || formData.get('csrf_token') || ''
-                            },
-                            body: formData
-                        });
-
-                        if (!response.ok) {
-                            throw new Error(`HTTP ${response.status}`);
-                        }
-
-                        if (loaderId) loading.hide(loaderId);
-
-                        const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
-                        if (taskElement) {
-                            taskElement.style.opacity = '0.5';
-                            setTimeout(() => taskElement.remove(), 300);
-                        }
-
-                        if (window.toast) {
-                            toast.success('Задание удалено');
-                        }
-
-                        setTimeout(() => {
-                            if (!document.querySelector('.task-card')) {
-                                window.location.reload();
-                            }
-                        }, 400);
-                    } catch (error) {
-                        if (loaderId) loading.hide(loaderId);
-                        console.error('Ошибка удаления задания:', error);
-                        if (window.toast) {
-                            toast.error('Ошибка при удалении задания');
-                        }
-                    }
-                }
-            });
-        }
-        
-        // Обработка форм автопроверки через AJAX
-        function initAutoCheckForms() {
-            const forms = ['auto-check-form-homework', 'auto-check-form-classwork', 'auto-check-form-exam'];
-            
-            forms.forEach(formId => {
-                const form = document.getElementById(formId);
-                if (!form) return;
-                
-                form.addEventListener('submit', async function(e) {
-                    e.preventDefault();
-                    
-                    const submitButton = form.querySelector('button[type="submit"]');
-                    const originalText = submitButton.textContent;
-                    submitButton.disabled = true;
-                    submitButton.textContent = '⏳ Проверка...';
-                    
-                    const formData = new FormData(form);
-                    const loaderId = loading.show(form, 'Выполняется автопроверка...');
-                    
-                    try {
-                        const response = await fetch(form.action, {
-                            method: 'POST',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'X-CSRFToken': CSRF_TOKEN || formData.get('csrf_token') || ''
-                            },
-                            body: formData
-                        });
-                        
-                        const data = await response.json();
-                        
-                        if (loaderId) loading.hide(loaderId);
-                        submitButton.disabled = false;
-                        submitButton.textContent = originalText;
-                        
-                        if (data.success) {
-                            if (window.toast) {
-                                toast.success(data.message);
-                            }
-                            // Обновляем страницу через небольшую задержку, чтобы показать обновленные результаты
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 1000);
-                        } else {
-                            const category = data.category || 'error';
-                            if (window.toast) {
-                                if (category === 'warning') {
-                                    toast.warning(data.error);
-                                } else if (category === 'danger' || category === 'error') {
-                                    toast.error(data.error);
-                                } else {
-                                    toast.info(data.error);
-                                }
-                            }
-                        }
-                    } catch (error) {
-                        if (loaderId) loading.hide(loaderId);
-                        submitButton.disabled = false;
-                        submitButton.textContent = originalText;
-                        console.error('Ошибка автопроверки:', error);
-                        if (window.toast) {
-                            toast.error('Ошибка при выполнении автопроверки. Попробуйте еще раз.');
-                        }
-                    }
-                });
-            });
-        }
-        
-        // Функция для прокрутки к заданию по его ID
-        function scrollToTask(lessonTaskId) {
-            const taskElement = document.querySelector(`section[data-task-id="${lessonTaskId}"]`);
-            if (taskElement) {
-                taskElement.scrollIntoView({behavior: 'smooth', block: 'start'});
-                // Добавляем временную подсветку для визуального эффекта
-                taskElement.style.transition = 'box-shadow 0.3s ease';
-                taskElement.style.boxShadow = '0 0 20px rgba(23, 96, 216, 0.5)';
-                setTimeout(() => {
-                    taskElement.style.boxShadow = '';
-                }, 1000);
-            } else {
-                console.error('Task element not found for ID:', lessonTaskId);
-            }
-        }
-        
-        // Функция для прокрутки к заданию по порядковому номеру
-        function scrollToTaskByOrder(orderNum) {
-            // Находим все карточки заданий
-            const taskCards = document.querySelectorAll('section.task-card[data-task-id]');
-            if (taskCards && taskCards.length >= orderNum) {
-                // Порядковый номер начинается с 1, а индекс массива с 0
-                const targetCard = taskCards[orderNum - 1];
-                if (targetCard) {
-                    targetCard.scrollIntoView({behavior: 'smooth', block: 'start'});
-                    // Добавляем временную подсветку для визуального эффекта
-                    targetCard.style.transition = 'box-shadow 0.3s ease';
-                    targetCard.style.boxShadow = '0 0 20px rgba(23, 96, 216, 0.5)';
-                    setTimeout(() => {
-                        targetCard.style.boxShadow = '';
-                    }, 1000);
-                } else {
-                    console.error('Task card not found for order number:', orderNum);
-                }
-            } else {
-                console.error('Task cards not found or order number out of range:', orderNum);
-            }
-        }
-        
-        // Функция для установки статуса задания
-        function setTaskStatus(lessonTaskId, toggleElement, newStatus) {
-            // Визуальное обновление сразу (оптимистичное обновление)
-            toggleElement.setAttribute('data-status', newStatus);
-            const slider = toggleElement.querySelector('.status-toggle-slider');
-            if (newStatus === 'correct') {
-                slider.textContent = '✓';
-            } else if (newStatus === 'incorrect') {
-                slider.textContent = '✗';
-            } else {
-                slider.textContent = '—';
-            }
-            
-            // Обновляем обводку задания
-            const taskCard = document.querySelector(`section[data-task-id="${lessonTaskId}"]`);
-            if (taskCard) {
-                taskCard.classList.remove('autocheck-correct', 'autocheck-incorrect');
-                if (newStatus === 'correct') {
-                    taskCard.classList.add('autocheck-correct');
-                } else if (newStatus === 'incorrect') {
-                    taskCard.classList.add('autocheck-incorrect');
-                }
-            }
-            
-            // Обновляем индикатор автопроверки сразу
-            const indicatorSquare = document.querySelector(`.autocheck-square[data-task-id="${lessonTaskId}"]`);
-            if (indicatorSquare) {
-                if (newStatus === 'correct') {
-                    indicatorSquare.style.background = 'var(--success-color, #10b981)';
-                } else if (newStatus === 'incorrect') {
-                    indicatorSquare.style.background = 'var(--danger-color, #ef4444)';
-                } else {
-                    indicatorSquare.style.background = 'var(--surface-1)';
-                }
-            }
-            
-            // Отправляем запрос на сервер
-            const lessonId = {{ lesson.lesson_id }};
-            fetch(`/lesson/${lessonId}/task/${lessonTaskId}/set-status`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': CSRF_TOKEN || ''
-                },
-                body: JSON.stringify({ status: newStatus })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    // Откатываем изменения при ошибке
-                    const currentStatus = toggleElement.getAttribute('data-status');
-                    setTaskStatus(lessonTaskId, toggleElement, currentStatus);
-                    if (window.toast) {
-                        toast.error(data.error || 'Ошибка при сохранении статуса');
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Ошибка при сохранении статуса:', error);
-                if (window.toast) {
-                    toast.error('Ошибка при сохранении статуса');
-                }
-            });
-        }
-        
-        // Функция для переключения статуса задания (клик)
-        function toggleTaskStatus(lessonTaskId, toggleElement) {
-            const currentStatus = toggleElement.getAttribute('data-status');
-            let newStatus;
-            
-            // Циклическое переключение: none -> correct -> incorrect -> none
-            if (currentStatus === 'none') {
-                newStatus = 'correct';
-            } else if (currentStatus === 'correct') {
-                newStatus = 'incorrect';
-            } else {
-                newStatus = 'none';
-            }
-            
-            setTaskStatus(lessonTaskId, toggleElement, newStatus);
-        }
-        
-        // Инициализация drag and drop для переключателей статуса
-        function initStatusToggleDrag() {
-            document.querySelectorAll('.status-toggle-switch').forEach(toggle => {
-                const slider = toggle.querySelector('.status-toggle-slider');
-                if (!slider) return;
-                
-                let isDragging = false;
-                let startX = 0;
-                let startLeft = 0;
-                
-                const getStatusFromPosition = (x) => {
-                    const rect = toggle.getBoundingClientRect();
-                    const relativeX = x - rect.left;
-                    const width = rect.width;
-                    const third = width / 3;
-                    
-                    if (relativeX < third) {
-                        return 'correct';
-                    } else if (relativeX > third * 2) {
-                        return 'incorrect';
-                    } else {
-                        return 'none';
-                    }
-                };
-                
-                const updateSliderPosition = (status) => {
-                    const lessonTaskId = parseInt(toggle.getAttribute('data-task-id'));
-                    setTaskStatus(lessonTaskId, toggle, status);
-                };
-                
-                // Обработчик начала перетаскивания
-                slider.addEventListener('mousedown', (e) => {
-                    isDragging = true;
-                    startX = e.clientX;
-                    startLeft = slider.offsetLeft;
-                    toggle.classList.add('dragging');
-                    e.preventDefault();
-                });
-                
-                // Обработчик движения мыши
-                document.addEventListener('mousemove', (e) => {
-                    if (!isDragging) return;
-                    
-                    const rect = toggle.getBoundingClientRect();
-                    const relativeX = e.clientX - rect.left;
-                    const width = rect.width;
-                    const sliderWidth = slider.offsetWidth;
-                    const minX = 4;
-                    const maxX = width - sliderWidth - 4;
-                    
-                    let newX = relativeX - sliderWidth / 2;
-                    newX = Math.max(minX, Math.min(maxX, newX));
-                    slider.style.left = newX + 'px';
-                    slider.style.transform = 'none';
-                    slider.style.right = 'auto';
-                });
-                
-                // Обработчик окончания перетаскивания
-                document.addEventListener('mouseup', (e) => {
-                    if (!isDragging) return;
-                    isDragging = false;
-                    toggle.classList.remove('dragging');
-                    
-                    const rect = toggle.getBoundingClientRect();
-                    const newStatus = getStatusFromPosition(e.clientX);
-                    updateSliderPosition(newStatus);
-                });
-                
-                // Обработчик клика по переключателю (не по слайдеру)
-                toggle.addEventListener('click', (e) => {
-                    if (e.target === slider || slider.contains(e.target)) return;
-                    
-                    const rect = toggle.getBoundingClientRect();
-                    const clickX = e.clientX - rect.left;
-                    const newStatus = getStatusFromPosition(clickX + rect.left);
-                    const lessonTaskId = parseInt(toggle.getAttribute('data-task-id'));
-                    setTaskStatus(lessonTaskId, toggle, newStatus);
-                });
-            });
-        }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('[data-delete-task]').forEach(button => {
-                button.addEventListener('click', function() {
-                    const taskId = parseInt(this.getAttribute('data-delete-task'), 10);
-                    const assignmentTypeValue = this.getAttribute('data-assignment-type') || 'homework';
-                    handleDeleteTask(taskId, assignmentTypeValue);
-                });
-            });
-
-            // Инициализация форм автопроверки
-            initAutoCheckForms();
-            
-            // Инициализация drag and drop для переключателей статуса
-            initStatusToggleDrag();
-
-            // Инициализация KaTeX для рендеринга формул
-            if (typeof renderMathInElement !== 'undefined') {
-                renderMathInElement(document.body, {
-                    delimiters: [
-                        {left: '$$', right: '$$', display: true},
-                        {left: '$', right: '$', display: false},
-                        {left: '\\(', right: '\\)', display: false},
-                        {left: '\\[', right: '\\]', display: true}
-                    ],
-                    throwOnError: false,
-                    strict: false
-                });
-            }
-        });
-    </script>
-    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
-    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
-    
-    <script>
-        // Модальное окно для выбора шаблона
-        let currentLessonId = {{ lesson.lesson_id }};
-        let currentAssignmentType = '{{ assignment_type }}';
-
-        function tryShowTemplateModal(event, lessonId, assignmentType) {
-            // Устанавливаем переменные
-            currentLessonId = typeof lessonId === 'string' ? parseInt(lessonId, 10) : lessonId;
-            currentAssignmentType = assignmentType;
-            
-            console.log('tryShowTemplateModal вызвана:', { lessonId, assignmentType, currentLessonId, currentAssignmentType });
-            
-            // Предотвращаем переход по ссылке
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
-            
-            // Пытаемся показать модальное окно
-            try {
-                const modal = document.getElementById('templateModal');
-                if (!modal) {
-                    console.error('Модальное окно не найдено');
-                    generateNewTasks();
-                    return false;
-                }
-                
-                const modalTitle = document.getElementById('templateModalTitle');
-                const templatesList = document.getElementById('templatesList');
-                
-                if (!modalTitle || !templatesList) {
-                    console.error('Элементы модального окна не найдены');
-                    generateNewTasks();
-                    return false;
-                }
-                
-                // Устанавливаем заголовок в зависимости от типа
-                const titles = {
-                    'homework': 'Выберите шаблон для ДЗ',
-                    'classwork': 'Выберите шаблон для классной работы',
-                    'exam': 'Выберите шаблон для проверочной работы'
-                };
-                modalTitle.textContent = titles[assignmentType] || 'Выберите шаблон';
-                
-                // Устанавливаем ссылку для ручного создания
-                const manualBtn = document.getElementById('manualCreateBtn');
-                if (manualBtn) {
-                    const validTypes = ['homework', 'classwork', 'exam'];
-                    const validType = validTypes.includes(assignmentType) ? assignmentType : 'homework';
-                    manualBtn.href = `{{ url_for('lessons.lesson_manual_create', lesson_id=0) }}`.replace('0', currentLessonId) + `?type=${validType}`;
-                }
-                
-                // Загружаем шаблоны через API
-                const studentCategory = '{{ student.category if student else "" }}';
-                console.log('Загрузка шаблонов:', { assignmentType, studentCategory, lessonId });
-                loadTemplates(assignmentType, studentCategory, lessonId);
-                
-                modal.style.display = 'flex';
-                return false;
-            } catch (error) {
-                console.error('Ошибка при открытии модального окна:', error);
-                generateNewTasks();
-                return false;
-            }
-        }
-
-        function closeTemplateModal() {
-            const modal = document.getElementById('templateModal');
-            if (modal) {
-                modal.style.display = 'none';
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            try {
-                const params = new URLSearchParams(window.location.search);
-                const shouldOpen = params.get('open_create') === '1';
-                if (shouldOpen) {
-                    tryShowTemplateModal(null, currentLessonId, currentAssignmentType);
-                }
-            } catch (e) {
-                console.warn('Не удалось автозапустить модалку шаблонов:', e);
-            }
-        });
-
-        function loadTemplates(type, category, lessonId) {
-            const templatesList = document.getElementById('templatesList');
-            if (!templatesList) {
-                console.error('templatesList не найден');
-                return;
-            }
-            
-            templatesList.innerHTML = '<div style="text-align: center; padding: 2rem;"><div class="loading-spinner"></div><p>Загрузка шаблонов...</p></div>';
-            
-            // Сохраняем lessonId
-            if (lessonId) {
-                currentLessonId = lessonId;
-            }
-            
-            const params = new URLSearchParams({ type: type });
-            if (category) params.append('category', category);
-            
-            const apiUrl = `{{ url_for("api.api_templates") }}?${params.toString()}`;
-            console.log('Запрос к API:', apiUrl);
-            
-            fetch(apiUrl)
-                .then(response => {
-                    console.log('Ответ API:', response.status, response.statusText);
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Данные от API:', data);
-                    if (data.success) {
-                        renderTemplates(data.templates, type);
-                    } else {
-                        console.error('API вернул success=false:', data);
-                        templatesList.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Ошибка загрузки шаблонов: ' + (data.error || 'Неизвестная ошибка') + '</div>';
-                    }
-                })
-                .catch(error => {
-                    console.error('Ошибка загрузки шаблонов:', error);
-                    templatesList.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">Ошибка загрузки шаблонов: ' + error.message + '</div>';
-                });
-        }
-
-        function renderTemplates(templates, assignmentType) {
-            const templatesList = document.getElementById('templatesList');
-            if (!templatesList) return;
-            
-            const lessonId = currentLessonId;
-            const type = assignmentType || currentAssignmentType || 'homework';
-            
-            // Фильтруем шаблоны по типу
-            const filteredTemplates = templates.filter(t => t.type === type);
-            
-            if (filteredTemplates.length === 0) {
-                templatesList.innerHTML = `
-                    <div style="text-align: center; padding: 2rem;">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
-                        <h3>Нет шаблонов</h3>
-                        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Создайте шаблон в библиотеке шаблонов или сгенерируйте задания вручную</p>
-                        <div style="display: flex; flex-direction: column; gap: 1rem; align-items: center;">
-                            <button onclick="generateNewTasks(${lessonId}, '${type}')" class="neo-button accent" style="width: 100%; max-width: 300px;">
-                                🎲 Сгенерировать новые задания
-                            </button>
-                            <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost" style="text-decoration: none; width: 100%; max-width: 300px; text-align: center;">
-                                <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="ui-icon ui-icon--sm">Перейти в библиотеку
-                            </a>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-            
-            // Сначала добавляем опцию "Сгенерировать новые задания"
-            const generateOption = `
-                <div class="template-option" onclick="generateNewTasks(${lessonId}, '${type}')" style="
-                    padding: 1.5rem;
-                    border: 2px solid var(--accent-1);
-                    border-radius: var(--radius-lg);
-                    background: var(--surface-1);
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    text-align: center;
-                    margin-bottom: 1rem;
-                " onmouseover="this.style.borderColor='var(--accent-2)'; this.style.background='var(--surface-2)'; this.style.transform='scale(1.02)'" 
-                   onmouseout="this.style.borderColor='var(--accent-1)'; this.style.background='var(--surface-1)'; this.style.transform='scale(1)'">
-                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎲</div>
-                    <h3 style="margin: 0; font-size: 1.1em; font-weight: 700; color: var(--accent-1);">Сгенерировать новые задания</h3>
-                    <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9em;">Использовать генератор для создания уникального набора</p>
-                </div>
-                
-                <div class="template-option" onclick="manualCreateTasks(${lessonId}, '${type}')" style="
-                    padding: 1.5rem;
-                    border: 2px solid var(--text-primary);
-                    border-radius: var(--radius-lg);
-                    background: var(--surface-1);
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    text-align: center;
-                    margin-bottom: 1rem;
-                " onmouseover="this.style.borderColor='var(--accent-1)'; this.style.background='var(--surface-2)'; this.style.transform='scale(1.02)'" 
-                   onmouseout="this.style.borderColor='var(--text-primary)'; this.style.background='var(--surface-1)'; this.style.transform='scale(1)'">
-                    <div style="margin-bottom: 0.5rem;"><img src="{{ url_for('static', filename='icons/dz.png') }}" alt="ДЗ" class="ui-icon ui-icon--md ui-icon--only"></div>
-                    <h3 style="margin: 0; font-size: 1.1em; font-weight: 700; color: var(--text-primary);">Создать вручную</h3>
-                    <p style="margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 0.9em;">Конструктор для ручного добавления заданий</p>
-                </div>
-            `;
-            
-            // Затем добавляем шаблоны
-            const templatesHtml = filteredTemplates.map(template => `
-                <div class="template-option" onclick="applyTemplate(${template.id})" style="
-                    padding: 1.5rem;
-                    border: 1px solid var(--stroke-1);
-                    border-radius: var(--radius-lg);
-                    background: var(--surface-1);
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    margin-bottom: 1rem;
-                " onmouseover="this.style.borderColor='var(--accent-1)'; this.style.transform='translateY(-2px)'" 
-                   onmouseout="this.style.borderColor='var(--stroke-1)'; this.style.transform='translateY(0)'">
-                    <div style="display: flex; justify-content: space-between; align-items: start;">
-                        <div style="flex: 1;">
-                            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1em; font-weight: 700;">${template.name}</h3>
-                            ${template.description ? `<p style="margin: 0; color: var(--text-muted); font-size: 0.9em;">${template.description}</p>` : ''}
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
-                        ${template.category ? `<span style="padding: 0.25rem 0.75rem; background: var(--accent-1); color: white; border-radius: var(--radius-sm); font-size: 0.85em;">${template.category}</span>` : ''}
-                        <span style="padding: 0.25rem 0.75rem; background: var(--surface-3); color: var(--text-muted); border-radius: var(--radius-sm); font-size: 0.85em;">
-                            ${template.task_count} заданий
-                        </span>
-                    </div>
-                </div>
-            `).join('');
-            
-            templatesList.innerHTML = generateOption + templatesHtml;
-        }
-
-        function applyTemplate(templateId) {
-            if (!currentLessonId || !templateId) {
-                console.error('applyTemplate: отсутствуют параметры', { currentLessonId, templateId });
-                return;
-            }
-            
-            const validTypes = ['homework', 'classwork', 'exam']; // Разрешённые типы заданий для урока
-            const safeType = validTypes.includes(currentAssignmentType) ? currentAssignmentType : 'homework'; // Фикс: всегда передаём валидный тип
-            
-            const loadingDiv = document.createElement('div');
-            loadingDiv.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
-            loadingDiv.innerHTML = '<div style="background: var(--surface-1); padding: 2rem; border-radius: var(--radius-lg); text-align: center;"><div class="loading-spinner"></div><p>Применение шаблона...</p></div>';
-            document.body.appendChild(loadingDiv);
-            
-            const csrfToken = CSRF_TOKEN || (document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : '');
-            
-            fetch(`{{ url_for('templates.template_apply', template_id=0) }}`.replace('0', templateId), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({
-                    lesson_id: currentLessonId, // ID урока
-                    assignment_type: safeType // Тип (ДЗ/КР/Провер.) — чтобы задания попадали в правильный раздел
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.body.removeChild(loadingDiv);
-                if (data.success) {
-                    if (typeof toast !== 'undefined' && toast) {
-                        toast.success(data.message || 'Шаблон успешно применен');
-                    }
-                    closeTemplateModal();
-                    setTimeout(() => window.location.reload(), 1000);
-                } else {
-                    if (typeof toast !== 'undefined' && toast) {
-                        toast.error(data.error || 'Ошибка при применении шаблона');
-                    }
-                }
-            })
-            .catch(error => {
-                document.body.removeChild(loadingDiv);
-                console.error('Ошибка применения шаблона:', error);
-                if (typeof toast !== 'undefined' && toast) {
-                    toast.error('Ошибка при применении шаблона');
-                }
-            });
-        }
-
-        function generateNewTasks(lessonId, assignmentType) {
-            closeTemplateModal();
-            
-            const finalLessonId = lessonId || currentLessonId;
-            const finalAssignmentType = assignmentType || currentAssignmentType || 'homework';
-            
-            if (!finalLessonId) {
-                console.error('generateNewTasks: lessonId не установлен');
-                if (typeof toast !== 'undefined' && toast) {
-                    toast.error('Ошибка: не удалось определить ID урока');
-                }
-                return;
-            }
-            
-            const validTypes = ['homework', 'classwork', 'exam'];
-            const validAssignmentType = validTypes.includes(finalAssignmentType) ? finalAssignmentType : 'homework';
-            
-            const url = `{{ url_for('kege_generator.kege_generator') }}?lesson_id=${finalLessonId}&assignment_type=${validAssignmentType}`;
-            console.log('Переход на генератор:', url);
-            window.location.href = url;
-        }
-        
-        function manualCreateTasks(lessonId, assignmentType) {
-            closeTemplateModal();
-            
-            const finalLessonId = lessonId || currentLessonId;
-            const finalAssignmentType = assignmentType || currentAssignmentType || 'homework';
-            
-            if (!finalLessonId) {
-                console.error('manualCreateTasks: lessonId не установлен');
-                if (typeof toast !== 'undefined' && toast) {
-                    toast.error('Ошибка: не удалось определить ID урока');
-                }
-                return;
-            }
-            
-            const url = `/lesson/${finalLessonId}/manual-create?type=${finalAssignmentType}`;
-            console.log('Переход на ручное создание:', url);
-            window.location.href = url;
-        }
-    </script>
-
-    <!-- Модальное окно выбора шаблона -->
-    <div id="templateModal" style="
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.7);
-        z-index: 9999;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem;
-    ">
-        <div style="
-            background: var(--surface-1);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-lg);
-            max-width: 600px;
-            width: 100%;
-            max-height: 80vh;
-            overflow-y: auto;
-            padding: 2rem;
-            position: relative;
-        ">
-            <button onclick="closeTemplateModal()" style="
-                position: absolute;
-                top: 1rem;
-                right: 1rem;
-                background: none;
-                border: none;
-                font-size: 1.5rem;
-                cursor: pointer;
-                color: var(--text-muted);
-                padding: 0.5rem;
-                line-height: 1;
-            ">×</button>
-            
-            <h2 id="templateModalTitle" style="margin: 0 0 1.5rem 0; font-size: 1.5em; font-weight: 700;">Выберите шаблон</h2>
-            
-            <div style="margin-bottom: 1.5rem;">
-                <a href="#" id="manualCreateBtn" class="neo-button outline" style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem; width: 100%;">
-                    <span><img src="{{ url_for('static', filename='icons/dz.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm ui-icon--only"></span>
-                    <span style="font-weight: 600;">Создать задания вручную</span>
-                </a>
+    <!-- TAB: MATERIALS -->
+    <div id="tab-materials" class="tab-pane">
+        <div class="glass-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3>Материалы к уроку</h3>
+                {% if not is_student_view and not is_parent_view %}
+                <label class="neo-button accent sm" style="cursor: pointer;">
+                    📤 Загрузить файл
+                    <input type="file" id="material-upload" style="display: none;" onchange="uploadMaterial(this)">
+                </label>
+                {% endif %}
             </div>
             
-            <div id="templatesList"></div>
-            
-            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--stroke-1); text-align: center;">
-                <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="ui-icon ui-icon--sm">Управление шаблонами</a>
+            <div class="materials-grid" id="materials-list">
+                {% if lesson.materials and lesson.materials|length > 0 %}
+                    {% for mat in lesson.materials %}
+                    <div class="material-card">
+                        {% if not is_student_view and not is_parent_view %}
+                        <div class="material-delete" onclick="deleteMaterial('{{ mat.url }}', this)">🗑</div>
+                        {% endif %}
+                        <div class="material-icon">
+                            {% if mat.type in ['jpg','jpeg','png','gif'] %}🖼️{% elif mat.type == 'pdf' %}📄{% else %}📁{% endif %}
+                        </div>
+                        <div class="material-name">{{ mat.name }}</div>
+                        <a href="{{ mat.url }}" target="_blank" class="neo-button outline sm" download>Скачать</a>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p style="color: var(--text-muted); grid-column: 1/-1; text-align: center;">Нет прикрепленных материалов</p>
+                {% endif %}
             </div>
         </div>
     </div>
 
-    <style>
-        .template-option:hover {
-            box-shadow: var(--shadow-soft);
+    <!-- TAB: NOTES -->
+    <div id="tab-notes" class="tab-pane">
+        <div class="glass-panel">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                <h3>{{ 'Твои заметки' if is_student_view else 'Заметки ученика' }}</h3>
+                <button class="neo-button accent sm" onclick="saveNotes()">💾 Сохранить заметки</button>
+            </div>
+            <textarea id="notes-editor">{{ lesson.student_notes or '' }}</textarea>
+            <p style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">
+                🔒 Эти заметки видишь только ты {{ 'и преподаватель' if is_student_view else 'и ученик' }}.
+            </p>
+        </div>
+    </div>
+
+</div>
+
+<!-- HIDDEN FORMS FOR JS -->
+{% for hw_task in homework_tasks %}
+<form id="delete-form-{{ hw_task.lesson_task_id }}" method="POST" action="{{ url_for('lessons.lesson_homework_delete_task', lesson_id=lesson.lesson_id, lesson_task_id=hw_task.lesson_task_id, assignment_type=assignment_type) }}" style="display: none;">
+    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+</form>
+{% endfor %}
+
+<!-- SCRIPTS -->
+<script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+<script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
+<script src="{{ url_for('static', filename='toast.js') }}"></script>
+<script src="{{ url_for('static', filename='loading.js') }}"></script>
+
+<script>
+    const LESSON_ID = {{ lesson.lesson_id }};
+    const CSRF_TOKEN = "{{ csrf_token() if csrf_token else '' }}";
+    
+    // Tabs Logic
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        
+        document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+        
+        // Refresh editors if needed (codemirror sometimes needs refresh on visible)
+        if (tabName === 'theory' && window.theoryEditor) window.theoryEditor.codemirror.refresh();
+        if (tabName === 'notes' && window.notesEditor) window.notesEditor.codemirror.refresh();
+    }
+
+    // Initialize Editors
+    document.addEventListener('DOMContentLoaded', () => {
+        {% if not is_student_view and not is_parent_view %}
+        window.theoryEditor = new EasyMDE({
+            element: document.getElementById('theory-editor'),
+            spellChecker: false,
+            autosave: { enabled: true, uniqueId: `lesson_${LESSON_ID}_theory` },
+            toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "image", "|", "preview", "side-by-side", "fullscreen"]
+        });
+        {% else %}
+        // Render Markdown for students
+        const contentDiv = document.getElementById('theory-content');
+        if (contentDiv) {
+            contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(contentDiv.innerText));
         }
-    </style>
-</body>
-</html>
+        {% endif %}
+
+        // Notes Editor (for everyone authorized)
+        window.notesEditor = new EasyMDE({
+            element: document.getElementById('notes-editor'),
+            spellChecker: false,
+            autosave: { enabled: true, uniqueId: `lesson_${LESSON_ID}_notes` },
+             toolbar: ["bold", "italic", "heading", "|", "unordered-list", "|", "link", "preview"]
+        });
+    });
+
+    // Save Functions
+    async function saveContent() {
+        if (!window.theoryEditor) return;
+        const content = window.theoryEditor.value();
+        
+        try {
+            const res = await fetch(`/lesson/${LESSON_ID}/content/save`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                body: JSON.stringify({ content })
+            });
+            if (res.ok) toast.success('Конспект сохранен');
+            else toast.error('Ошибка сохранения');
+        } catch (e) {
+            console.error(e);
+            toast.error('Ошибка сети');
+        }
+    }
+
+    async function saveNotes() {
+        if (!window.notesEditor) return;
+        const notes = window.notesEditor.value();
+        
+        try {
+            const res = await fetch(`/lesson/${LESSON_ID}/student-notes/save`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                body: JSON.stringify({ notes })
+            });
+            if (res.ok) toast.success('Заметки сохранены');
+            else toast.error('Ошибка сохранения');
+        } catch (e) {
+            console.error(e);
+            toast.error('Ошибка сети');
+        }
+    }
+
+    // Material Upload
+    async function uploadMaterial(input) {
+        if (!input.files || !input.files[0]) return;
+        const file = input.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+        if (CSRF_TOKEN) formData.append('csrf_token', CSRF_TOKEN);
+
+        const loader = loading.show(input.parentElement, 'Загрузка...');
+        
+        try {
+            const res = await fetch(`/lesson/${LESSON_ID}/upload`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRFToken': CSRF_TOKEN }
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                toast.success('Файл загружен');
+                setTimeout(() => location.reload(), 500); // Simple reload to update list
+            } else {
+                toast.error(data.error || 'Ошибка загрузки');
+            }
+        } catch (e) {
+            toast.error('Ошибка сети');
+        } finally {
+            loading.hide(loader);
+            input.value = '';
+        }
+    }
+
+    async function deleteMaterial(url, btn) {
+        if (!confirm('Удалить этот файл?')) return;
+        
+        try {
+            const res = await fetch(`/lesson/${LESSON_ID}/material/delete`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                body: JSON.stringify({ url })
+            });
+            if (res.ok) {
+                toast.success('Файл удален');
+                btn.closest('.material-card').remove();
+            } else {
+                toast.error('Ошибка удаления');
+            }
+        } catch (e) {
+            toast.error('Ошибка сети');
+        }
+    }
+
+    // Task Deletion (Legacy Support)
+    function handleDeleteTask(taskId, type) {
+         if(!confirm('Удалить задание?')) return;
+         document.getElementById(`delete-form-${taskId}`).submit();
+    }
+</script>
+{% endblock %}

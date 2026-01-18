@@ -2,6 +2,9 @@
 Маршруты для управления уроками
 """
 import logging
+import os
+import json
+from werkzeug.utils import secure_filename
 from flask import render_template, request, redirect, url_for, flash, jsonify, make_response, current_app  # current_app нужен для определения типа БД (Postgres)
 from flask_login import login_required, current_user  # comment
 from sqlalchemy import text  # text нужен для setval(pg_get_serial_sequence(...)) при сбитых sequences
@@ -962,3 +965,119 @@ def lesson_manual_create(lesson_id):
             return jsonify({'success': False, 'error': str(e)}), 500
 
     return render_template('lesson_manual_create.html', lesson=lesson, assignment_type=assignment_type)
+
+@lessons_bp.route('/lesson/<int:lesson_id>/content/save', methods=['POST'])
+@login_required
+def lesson_content_save(lesson_id):
+    """Сохранение контента урока (теории)"""
+    if current_user.is_student() or current_user.is_parent():
+         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    
+    lesson = Lesson.query.get_or_404(lesson_id)
+    data = request.get_json()
+    if data and 'content' in data:
+        lesson.content = data['content']
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'success': False, 'error': 'No content provided'}), 400
+
+@lessons_bp.route('/lesson/<int:lesson_id>/student-notes/save', methods=['POST'])
+@login_required
+def lesson_student_notes_save(lesson_id):
+    """Сохранение заметок ученика"""
+    lesson = Lesson.query.get_or_404(lesson_id)
+    # Здесь можно добавить проверку прав доступа
+    
+    data = request.get_json()
+    if data and 'notes' in data:
+        lesson.student_notes = data['notes']
+        db.session.commit()
+        return jsonify({'success': True})
+    return jsonify({'success': False, 'error': 'No notes provided'}), 400
+
+@lessons_bp.route('/lesson/<int:lesson_id>/upload', methods=['POST'])
+@login_required
+def lesson_upload_material(lesson_id):
+    if current_user.is_student() or current_user.is_parent():
+         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    
+    lesson = Lesson.query.get_or_404(lesson_id)
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'No selected file'}), 400
+        
+    if file:
+        filename = secure_filename(file.filename)
+        # Create folder: static/uploads/lessons/<lesson_id>/
+        upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'lessons', str(lesson_id))
+        os.makedirs(upload_folder, exist_ok=True)
+        file_path = os.path.join(upload_folder, filename)
+        file.save(file_path)
+        
+        # Update JSON materials
+        materials = lesson.materials or []
+        # Ensure it's a list
+        if isinstance(materials, str):
+            try:
+                materials = json.loads(materials)
+            except:
+                materials = []
+        
+        new_material = {
+            'name': filename,
+            'url': url_for('static', filename=f'uploads/lessons/{lesson_id}/{filename}'),
+            'type': filename.split('.')[-1].lower() if '.' in filename else 'file'
+        }
+        materials.append(new_material)
+        lesson.materials = materials 
+        
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(lesson, "materials")
+        
+        db.session.commit()
+        return jsonify({'success': True, 'material': new_material})
+        
+    return jsonify({'success': False, 'error': 'Unknown error'}), 500
+
+@lessons_bp.route('/lesson/<int:lesson_id>/material/delete', methods=['POST'])
+@login_required
+def lesson_delete_material(lesson_id):
+    if current_user.is_student() or current_user.is_parent():
+         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+         
+    lesson = Lesson.query.get_or_404(lesson_id)
+    data = request.get_json()
+    url_to_delete = data.get('url')
+    
+    if not url_to_delete:
+        return jsonify({'success': False, 'error': 'No URL provided'}), 400
+        
+    materials = lesson.materials or []
+    if isinstance(materials, str):
+            try:
+                materials = json.loads(materials)
+            except:
+                materials = []
+                
+    new_materials = [m for m in materials if m.get('url') != url_to_delete]
+    
+    if len(new_materials) != len(materials):
+        lesson.materials = new_materials
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(lesson, "materials")
+        db.session.commit()
+        
+        try:
+             # Удаляем файл физически
+             filename = url_to_delete.split('/')[-1]
+             file_path = os.path.join(current_app.root_path, 'static', 'uploads', 'lessons', str(lesson_id), secure_filename(filename))
+             if os.path.exists(file_path):
+                 os.remove(file_path)
+        except Exception as e:
+            logger.warning(f"Failed to delete file {url_to_delete}: {e}")
+
+        return jsonify({'success': True})
+    
+    return jsonify({'success': False, 'error': 'Material not found'}), 404
