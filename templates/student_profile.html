@@ -2193,7 +2193,7 @@
                                 {% endif %}
                                 
                                 {% if lesson.status == 'completed' or lesson.status == 'in_progress' %}
-                                <a href="{{ url_for('lessons.lesson_homework', lesson_id=lesson.lesson_id) }}" class="action-btn secondary" title="Просмотреть домашнее задание">📝 ДЗ</a>
+                                <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="action-btn secondary" title="Просмотреть домашнее задание">📝 ДЗ</a>{# comment #}
                                 {% endif %}
                             </div>
                             
