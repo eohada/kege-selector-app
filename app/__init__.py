@@ -109,7 +109,7 @@ def create_app(config_name=None):
             logger.info(f"Using DATABASE_URL (internal Railway connection)")
             logger.info(f"Database type: PostgreSQL (internal)")
         
-        # Проверяем подключение к БД (не блокируем запуск при ошибке)
+        # Проверяем подключение к БД и выполняем миграции (не блокируем запуск при ошибке)
         try:
             with app.app_context():
                 # Импортируем все модели, чтобы они были зарегистрированы в SQLAlchemy
@@ -119,6 +119,14 @@ def create_app(config_name=None):
                 # Проверяем, что можем подключиться
                 db.session.execute(text("SELECT 1"))
                 logger.info("✓ Database connection: OK")
+                # Выполняем миграции схемы
+                from app.utils.db_migrations import ensure_schema_columns
+                try:
+                    ensure_schema_columns(app)
+                    logger.info("✓ Database schema migrations: OK")
+                except Exception as mig_error:
+                    logger.warning(f"⚠ Schema migration failed: {str(mig_error)}")
+                    logger.warning("Application will continue, migrations will retry on first request")
         except Exception as e:
             logger.warning(f"⚠ Database connection check failed: {str(e)}")
             logger.warning("Application will continue, but database operations may fail")

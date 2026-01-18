@@ -192,22 +192,29 @@ def ensure_schema_columns(app):
                 return
 
             lesson_columns = {col['name'] for col in inspector.get_columns(lessons_table)}
-            if 'homework_result_percent' not in lesson_columns:
-                db.session.execute(text('ALTER TABLE Lessons ADD COLUMN homework_result_percent INTEGER'))
-            if 'homework_result_notes' not in lesson_columns:
-                db.session.execute(text('ALTER TABLE Lessons ADD COLUMN homework_result_notes TEXT'))
-
+            db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+            is_postgres = 'postgresql' in db_url or 'postgres' in db_url
+            
+            # Функция для безопасного добавления колонки
+            def safe_add_column(col_name, col_type):
+                if col_name not in lesson_columns:
+                    try:
+                        if is_postgres:
+                            db.session.execute(text(f'ALTER TABLE "{lessons_table}" ADD COLUMN {col_name} {col_type}'))
+                        else:
+                            db.session.execute(text(f'ALTER TABLE {lessons_table} ADD COLUMN {col_name} {col_type}'))
+                        logger.info(f"Added column {col_name} to {lessons_table}")
+                    except Exception as e:
+                        logger.warning(f"Could not add column {col_name} to {lessons_table}: {e}")
+                        db.session.rollback()
+            
+            safe_add_column('homework_result_percent', 'INTEGER')
+            safe_add_column('homework_result_notes', 'TEXT')
+            
             # Новые поля для полноценного урока
-            if 'content' not in lesson_columns:
-                db.session.execute(text('ALTER TABLE Lessons ADD COLUMN content TEXT'))
-            if 'student_notes' not in lesson_columns:
-                db.session.execute(text('ALTER TABLE Lessons ADD COLUMN student_notes TEXT'))
-            if 'materials' not in lesson_columns:
-                db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-                if 'postgresql' in db_url or 'postgres' in db_url:
-                    db.session.execute(text('ALTER TABLE "Lessons" ADD COLUMN materials JSON'))
-                else:
-                    db.session.execute(text('ALTER TABLE Lessons ADD COLUMN materials JSON'))
+            safe_add_column('content', 'TEXT')
+            safe_add_column('student_notes', 'TEXT')
+            safe_add_column('materials', 'JSON')
 
             if lesson_tasks_table:
                 lesson_task_columns = {col['name'] for col in inspector.get_columns(lesson_tasks_table)}
