@@ -714,9 +714,20 @@
                 {% endif %}{# comment #}
 
                 {% if (is_homework or is_classwork or is_exam) and hw_task.student_submission %}
-                <div class="auto-check-result">
-                    <div><strong>Ответ ученика:</strong> {{ hw_task.student_submission }}</div>
-                </div>
+                    {% if not is_student_view %}
+                    <div class="auto-check-result">
+                        <div><strong>Ответ ученика:</strong> {{ hw_task.student_submission }}</div>
+                    </div>
+                    {% endif %}
+                {% endif %}
+                
+                {% if is_student_view and is_read_only %}
+                    {% set correct_val = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}
+                    {% if correct_val %}
+                    <div class="auto-check-result" style="margin-top: 0.5rem; border: 1px solid var(--success); background: rgba(0, 255, 0, 0.05); padding: 0.5rem; border-radius: 4px;">
+                        <div><strong style="color: var(--success);">Правильный ответ:</strong> {{ correct_val }}</div>
+                    </div>
+                    {% endif %}
                 {% endif %}
                 
                 {% if is_homework or is_classwork or is_exam %}{# comment #}

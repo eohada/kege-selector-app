@@ -183,7 +183,7 @@ def lesson_homework_view(lesson_id):
     if is_parent_view:  # comment
         is_read_only = True  # comment
     elif is_student_view:  # comment
-        is_read_only = all(t.submission_correct is not None for t in homework_tasks)  # comment
+        is_read_only = (lesson.homework_status == 'assigned_done')  # comment
     return render_template('lesson_homework.html',
                            lesson=lesson,
                            student=student,
