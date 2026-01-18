@@ -1,343 +1,447 @@
-<!DOCTYPE html> <!-- comment -->
-<html lang="ru"> <!-- comment -->
-<head> <!-- comment -->
-    <meta charset="UTF-8"> <!-- comment -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- comment -->
-    <title>{{ student.name }} · Учебное пространство</title> <!-- comment -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}"> <!-- comment -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}"> <!-- comment -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}"> <!-- comment -->
-    {% include '_ux_enhancements.html' %} <!-- comment -->
-    {% if csrf_token %} <!-- comment -->
-    <meta name="csrf-token" content="{{ csrf_token() }}"> <!-- comment -->
-    {% endif %} <!-- comment -->
-    <style> /* comment */
-        .page-shell { /* comment */
-            padding: 2rem 1.5rem 3rem; /* comment */
-        } /* comment */
-        .hero { /* comment */
-            background: linear-gradient(135deg, rgba(0, 240, 255, 0.06), rgba(110, 64, 255, 0.08)); /* comment */
-            border: 1px solid var(--glass-border); /* comment */
-            border-radius: var(--radius-lg); /* comment */
-            padding: 1.5rem; /* comment */
-            margin-bottom: 2rem; /* comment */
-        } /* comment */
-        .hero-top { /* comment */
-            display: flex; /* comment */
-            flex-wrap: wrap; /* comment */
-            gap: 1.5rem; /* comment */
-            align-items: center; /* comment */
-            justify-content: space-between; /* comment */
-        } /* comment */
-        .hero-left { /* comment */
-            display: flex; /* comment */
-            align-items: center; /* comment */
-            gap: 1rem; /* comment */
-        } /* comment */
-        .avatar { /* comment */
-            width: 64px; /* comment */
-            height: 64px; /* comment */
-            border-radius: 50%; /* comment */
-            background: rgba(255, 255, 255, 0.08); /* comment */
-            display: flex; /* comment */
-            align-items: center; /* comment */
-            justify-content: center; /* comment */
-            font-weight: 700; /* comment */
-            font-size: 1.5rem; /* comment */
-            color: var(--accent); /* comment */
-        } /* comment */
-        .hero-meta { /* comment */
-            display: flex; /* comment */
-            flex-wrap: wrap; /* comment */
-            gap: 0.75rem 1.5rem; /* comment */
-            margin-top: 0.5rem; /* comment */
-            color: var(--text-muted); /* comment */
-            font-size: 0.9rem; /* comment */
-        } /* comment */
-        .action-row { /* comment */
-            display: flex; /* comment */
-            flex-wrap: wrap; /* comment */
-            gap: 0.6rem; /* comment */
-        } /* comment */
-        .grid { /* comment */
-            display: grid; /* comment */
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* comment */
-            gap: 1rem; /* comment */
-        } /* comment */
-        .panel { /* comment */
-            background: var(--glass-bg); /* comment */
-            border: 1px solid var(--glass-border); /* comment */
-            border-radius: var(--radius-lg); /* comment */
-            padding: 1.25rem; /* comment */
-        } /* comment */
-        .panel h3 { /* comment */
-            margin-top: 0; /* comment */
-            margin-bottom: 0.75rem; /* comment */
-        } /* comment */
-        .workflow { /* comment */
-            display: grid; /* comment */
-            gap: 0.6rem; /* comment */
-        } /* comment */
-        .workflow-step { /* comment */
-            padding: 0.6rem 0.9rem; /* comment */
-            border-radius: 10px; /* comment */
-            border: 1px dashed var(--glass-border); /* comment */
-            color: var(--text-muted); /* comment */
-        } /* comment */
-        .workflow-step.active { /* comment */
-            border-style: solid; /* comment */
-            border-color: var(--accent); /* comment */
-            color: var(--text-main); /* comment */
-            background: rgba(0, 255, 210, 0.06); /* comment */
-        } /* comment */
-        .lesson-card { /* comment */
-            background: rgba(0, 0, 0, 0.25); /* comment */
-            border: 1px solid var(--glass-border); /* comment */
-            border-radius: var(--radius-lg); /* comment */
-            padding: 1rem; /* comment */
-            display: grid; /* comment */
-            gap: 0.7rem; /* comment */
-        } /* comment */
-        .lesson-title { /* comment */
-            font-size: 1.1rem; /* comment */
-            font-weight: 600; /* comment */
-        } /* comment */
-        .lesson-meta { /* comment */
-            display: flex; /* comment */
-            flex-wrap: wrap; /* comment */
-            gap: 0.7rem 1.2rem; /* comment */
-            color: var(--text-muted); /* comment */
-            font-size: 0.85rem; /* comment */
-        } /* comment */
-        .lesson-actions { /* comment */
-            display: flex; /* comment */
-            flex-wrap: wrap; /* comment */
-            gap: 0.6rem; /* comment */
-        } /* comment */
-        .badge { /* comment */
-            display: inline-flex; /* comment */
-            align-items: center; /* comment */
-            gap: 0.35rem; /* comment */
-            padding: 0.2rem 0.6rem; /* comment */
-            border-radius: 999px; /* comment */
-            font-size: 0.75rem; /* comment */
-            background: rgba(255, 255, 255, 0.08); /* comment */
-            color: var(--text-muted); /* comment */
-        } /* comment */
-        .filter-row { /* comment */
-            display: flex; /* comment */
-            flex-wrap: wrap; /* comment */
-            gap: 0.6rem; /* comment */
-            margin-bottom: 1rem; /* comment */
-        } /* comment */
-        .filter-row input, .filter-row select { /* comment */
-            background: rgba(255, 255, 255, 0.06); /* comment */
-            border: 1px solid var(--glass-border); /* comment */
-            border-radius: 10px; /* comment */
-            padding: 0.6rem 0.8rem; /* comment */
-            color: var(--text-main); /* comment */
-        } /* comment */
-        .submissions-list { /* comment */
-            display: grid; /* comment */
-            gap: 0.6rem; /* comment */
-        } /* comment */
-        .submission-item { /* comment */
-            padding: 0.7rem 0.9rem; /* comment */
-            border-radius: 12px; /* comment */
-            border: 1px solid var(--glass-border); /* comment */
-            background: rgba(0, 0, 0, 0.2); /* comment */
-            display: flex; /* comment */
-            align-items: center; /* comment */
-            justify-content: space-between; /* comment */
-            gap: 1rem; /* comment */
-        } /* comment */
-        .muted { /* comment */
-            color: var(--text-muted); /* comment */
-            font-size: 0.85rem; /* comment */
-        } /* comment */
-    </style> <!-- comment -->
-</head> <!-- comment -->
-<body data-csrf-token="{{ csrf_token() if csrf_token else '' }}"> <!-- comment -->
-    {% include '_primary_nav.html' %} <!-- comment -->
-    {% include '_mobile_menu.html' %} <!-- comment -->
-    <main class="page-shell"> <!-- comment -->
-        {% set avatar_letter = student.name[0]|upper if student.name else 'U' %} {# comment #}
-        <section class="hero"> <!-- comment -->
-            <div class="hero-top"> <!-- comment -->
-                <div class="hero-left"> <!-- comment -->
-                    {% if student_user and student_user.avatar_url %} <!-- comment -->
-                    <img class="avatar" src="{{ student_user.avatar_url }}" alt="Аватар"> <!-- comment -->
-                    {% else %} <!-- comment -->
-                    <div class="avatar">{{ avatar_letter }}</div> <!-- comment -->
-                    {% endif %} <!-- comment -->
-                    <div> <!-- comment -->
-                        <h1 style="margin: 0 0 0.2rem 0;">{{ student.name }}</h1> <!-- comment -->
-                        <div class="hero-meta"> <!-- comment -->
-                            <div>🎯 Цель: {{ student.target_score or 'не задана' }}</div> <!-- comment -->
-                            <div>🎓 Класс: {{ student.school_class or '—' }}</div> <!-- comment -->
-                            <div>📚 Категория: {{ student.category or '—' }}</div> <!-- comment -->
-                            <div>📅 Дедлайн: {{ student.deadline or '—' }}</div> <!-- comment -->
-                        </div> <!-- comment -->
-                    </div> <!-- comment -->
-                </div> <!-- comment -->
-                <div class="action-row"> <!-- comment -->
-                    <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button outline">📊 Прогресс</a> <!-- comment -->
-                    {% if not current_user.is_student() and not current_user.is_parent() %} <!-- comment -->
-                    <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent">➕ Новый урок</a> <!-- comment -->
-                    <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="neo-button outline">✏️ Редактировать профиль</a> <!-- comment -->
-                    {% endif %} <!-- comment -->
-                    <a href="{{ url_for('main.dashboard') }}" class="neo-button outline">⬅ К списку</a> <!-- comment -->
-                </div> <!-- comment -->
-            </div> <!-- comment -->
-        </section> <!-- comment -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ student.name }} · Личный кабинет</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        :root {
+            --sidebar-width: 280px;
+        }
+        
+        body {
+            background-color: #121212;
+            color: var(--text-main);
+        }
 
-        {% set workflow_state = 'plan' %} {# comment #}
-        {% if in_progress_lesson %} {% set workflow_state = 'lesson' %} {% endif %} {# comment #}
-        {% if active_submissions and not in_progress_lesson %} {% set workflow_state = 'homework' %} {% endif %} {# comment #}
-        <section class="grid" style="margin-bottom: 1.5rem;"> <!-- comment -->
-            <div class="panel"> <!-- comment -->
-                <h3>Учебный процесс</h3> <!-- comment -->
-                <div class="workflow"> <!-- comment -->
-                    <div class="workflow-step {% if workflow_state == 'plan' %}active{% endif %}">1. Планирование: создаём урок, фиксируем цель, готовим материалы</div> <!-- comment -->
-                    <div class="workflow-step {% if workflow_state == 'lesson' %}active{% endif %}">2. Урок: конспект, практика, совместные заметки</div> <!-- comment -->
-                    <div class="workflow-step {% if workflow_state == 'homework' %}active{% endif %}">3. Домашняя работа: выполнение, авто‑проверка, комментарии</div> <!-- comment -->
-                    <div class="workflow-step {% if workflow_state == 'review' %}active{% endif %}">4. Проверка: оценка, обратная связь, корректировки</div> <!-- comment -->
-                    <div class="workflow-step {% if workflow_state == 'summary' %}active{% endif %}">5. Итоги: фиксация результата, план следующего шага</div> <!-- comment -->
-                </div> <!-- comment -->
-            </div> <!-- comment -->
-            <div class="panel"> <!-- comment -->
-                <h3>Сейчас в работе</h3> <!-- comment -->
-                {% if in_progress_lesson %} <!-- comment -->
-                <div class="lesson-card"> <!-- comment -->
-                    <div class="lesson-title">🟢 Идёт урок: {{ in_progress_lesson.topic or 'Тема не указана' }}</div> <!-- comment -->
-                    <div class="lesson-meta"> <!-- comment -->
-                        <div>⏱ {{ in_progress_lesson.duration }} мин</div> <!-- comment -->
-                        <div>📅 {{ in_progress_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div> <!-- comment -->
-                    </div> <!-- comment -->
-                    <div class="lesson-actions"> <!-- comment -->
-                        <a class="neo-button accent sm" href="{{ url_for('lessons.lesson_homework_view', lesson_id=in_progress_lesson.lesson_id) }}">Открыть рабочее пространство</a> <!-- comment -->
-                        {% if not current_user.is_student() and not current_user.is_parent() %} <!-- comment -->
-                        <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=in_progress_lesson.lesson_id) }}"> <!-- comment -->
-                            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %} <!-- comment -->
-                            <input type="hidden" name="topic" value="{{ in_progress_lesson.topic or '' }}"> <!-- comment -->
-                            <input type="hidden" name="notes" value="{{ in_progress_lesson.notes or '' }}"> <!-- comment -->
-                            <input type="hidden" name="homework" value="{{ in_progress_lesson.homework or '' }}"> <!-- comment -->
-                            <button type="submit" class="neo-button outline sm">✅ Завершить урок</button> <!-- comment -->
-                        </form> <!-- comment -->
-                        {% endif %} <!-- comment -->
-                    </div> <!-- comment -->
-                </div> <!-- comment -->
-                {% else %} <!-- comment -->
-                <div class="muted">Нет активного урока. Запланируйте следующий или откройте ближайший.</div> <!-- comment -->
-                {% endif %} <!-- comment -->
-            </div> <!-- comment -->
-        </section> <!-- comment -->
+        .layout-container {
+            display: grid;
+            grid-template-columns: var(--sidebar-width) 1fr;
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            min-height: calc(100vh - 60px);
+        }
 
-        <section class="grid" style="margin-bottom: 1.5rem;"> <!-- comment -->
-            <div class="panel"> <!-- comment -->
-                <h3>Активные работы</h3> <!-- comment -->
-                {% if active_submissions %} <!-- comment -->
-                <div class="submissions-list"> <!-- comment -->
-                    {% for submission in active_submissions %} <!-- comment -->
-                    <div class="submission-item"> <!-- comment -->
-                        <div> <!-- comment -->
-                            <div><strong>{{ submission.assignment.title }}</strong></div> <!-- comment -->
-                            <div class="muted">Статус: {{ submission.status }}</div> <!-- comment -->
-                        </div> <!-- comment -->
-                        <a class="neo-button outline sm" href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}">Открыть</a> <!-- comment -->
-                    </div> <!-- comment -->
-                    {% endfor %} <!-- comment -->
-                </div> <!-- comment -->
-                {% else %} <!-- comment -->
-                <div class="muted">Нет активных работ. Когда преподаватель назначит задания, они появятся здесь.</div> <!-- comment -->
-                {% endif %} <!-- comment -->
-            </div> <!-- comment -->
-            <div class="panel"> <!-- comment -->
-                <h3>Связи и доступ</h3> <!-- comment -->
-                {% if parents_info and parents_info|length > 0 %} <!-- comment -->
-                <div class="submissions-list"> <!-- comment -->
-                    {% for parent in parents_info %} <!-- comment -->
-                    <div class="submission-item"> <!-- comment -->
-                        <div> <!-- comment -->
-                            <div><strong>{{ parent.name }}</strong></div> <!-- comment -->
-                            <div class="muted">Доступ: {{ parent.access_level }}</div> <!-- comment -->
-                        </div> <!-- comment -->
-                        <div class="muted">{{ parent.phone or 'Телефон не указан' }}</div> <!-- comment -->
-                    </div> <!-- comment -->
-                    {% endfor %} <!-- comment -->
-                </div> <!-- comment -->
-                {% else %} <!-- comment -->
-                <div class="muted">Информация о родителях недоступна или не настроена.</div> <!-- comment -->
-                {% endif %} <!-- comment -->
-            </div> <!-- comment -->
-        </section> <!-- comment -->
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
 
-        <section class="panel"> <!-- comment -->
-            <h3>Лента уроков</h3> <!-- comment -->
-            <div class="filter-row"> <!-- comment -->
-                <input id="lessonSearch" type="text" placeholder="Поиск по теме или заметкам..."> <!-- comment -->
-                <select id="lessonStatusFilter"> <!-- comment -->
-                    <option value="all">Все статусы</option> <!-- comment -->
-                    <option value="planned">Запланирован</option> <!-- comment -->
-                    <option value="in_progress">Идёт</option> <!-- comment -->
-                    <option value="completed">Проведён</option> <!-- comment -->
-                </select> <!-- comment -->
-            </div> <!-- comment -->
-            <div class="grid" id="lessonList"> <!-- comment -->
-                {% for lesson in lessons %} <!-- comment -->
-                <div class="lesson-card" data-status="{{ lesson.status }}" data-search="{{ (lesson.topic or '')|lower }} {{ (lesson.notes or '')|lower }}"> <!-- comment -->
-                    <div class="lesson-title">{{ lesson.topic or 'Тема не указана' }}</div> <!-- comment -->
-                    <div class="lesson-meta"> <!-- comment -->
-                        <div>📅 {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div> <!-- comment -->
-                        <div>⏱ {{ lesson.duration }} мин</div> <!-- comment -->
-                        <div>📌 Статус: {{ lesson.status }}</div> <!-- comment -->
-                        <div>🏠 ДЗ: {{ lesson.homework_status }}</div> <!-- comment -->
-                    </div> <!-- comment -->
-                    <div> <!-- comment -->
-                        {% if lesson.content %}<span class="badge">📖 Есть конспект</span>{% endif %} <!-- comment -->
-                        {% if lesson.materials %}<span class="badge">📎 Материалы</span>{% endif %} <!-- comment -->
-                        {% if lesson.homework_assignments and lesson.homework_assignments|length > 0 %} <!-- comment -->
-                        <span class="badge">🧩 Заданий: {{ lesson.homework_assignments|length }}</span> <!-- comment -->
-                        {% endif %} <!-- comment -->
-                    </div> <!-- comment -->
-                    <div class="lesson-actions"> <!-- comment -->
-                        <a class="neo-button accent sm" href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}">Рабочее пространство</a> <!-- comment -->
-                        {% if not current_user.is_student() and not current_user.is_parent() %} <!-- comment -->
-                        <form method="POST" action="{{ url_for('lessons.lesson_start', lesson_id=lesson.lesson_id) }}"> <!-- comment -->
-                            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %} <!-- comment -->
-                            <button type="submit" class="neo-button outline sm">▶ Начать урок</button> <!-- comment -->
-                        </form> <!-- comment -->
-                        <a class="neo-button outline sm" href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}">✏️ Редактировать</a> <!-- comment -->
-                        {% endif %} <!-- comment -->
-                    </div> <!-- comment -->
-                </div> <!-- comment -->
-                {% endfor %} <!-- comment -->
-                {% if lessons|length == 0 %} <!-- comment -->
-                <div class="muted">Уроков пока нет. Создайте первый урок и начните процесс обучения.</div> <!-- comment -->
-                {% endif %} <!-- comment -->
-            </div> <!-- comment -->
-        </section> <!-- comment -->
-    </main> <!-- comment -->
+        .profile-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            text-align: center;
+            position: sticky;
+            top: 2rem;
+        }
 
-    <script src="{{ url_for('static', filename='toast.js') }}"></script> <!-- comment -->
-    <script> // comment
-        const lessonSearch = document.getElementById('lessonSearch'); // comment
-        const statusFilter = document.getElementById('lessonStatusFilter'); // comment
-        const lessonList = document.getElementById('lessonList'); // comment
-        function applyFilters() { // comment
-            if (!lessonList) return; // comment
-            const q = (lessonSearch.value || '').trim().toLowerCase(); // comment
-            const status = statusFilter.value; // comment
-            lessonList.querySelectorAll('.lesson-card').forEach(card => { // comment
-                const cardStatus = card.getAttribute('data-status'); // comment
-                const searchable = card.getAttribute('data-search') || ''; // comment
-                const statusOk = (status === 'all') || (cardStatus === status); // comment
-                const textOk = !q || searchable.includes(q); // comment
-                card.style.display = (statusOk && textOk) ? 'grid' : 'none'; // comment
-            }); // comment
-        } // comment
-        if (lessonSearch) lessonSearch.addEventListener('input', applyFilters); // comment
-        if (statusFilter) statusFilter.addEventListener('change', applyFilters); // comment
-    </script> <!-- comment -->
-</body> <!-- comment -->
-</html> <!-- comment -->
+        .avatar-lg {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            border: 2px solid var(--glass-border);
+        }
+
+        .profile-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-meta {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            padding: 0.8rem 1rem;
+            border-radius: 10px;
+            color: var(--text-muted);
+            transition: all 0.2s;
+            text-decoration: none;
+            border: 1px solid transparent;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border-color: var(--glass-border);
+        }
+
+        .nav-item i {
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        /* Active Lesson Hero */
+        .active-lesson-hero {
+            background: linear-gradient(135deg, rgba(0, 255, 178, 0.1), rgba(0, 200, 255, 0.05));
+            border: 1px solid var(--accent);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .active-lesson-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent);
+        }
+
+        .hero-label {
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .hero-title {
+            font-size: 1.75rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+            color: var(--text-muted);
+        }
+
+        /* Card Grid */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .content-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .content-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .card-status {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.1);
+            color: var(--text-muted);
+            align-self: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .card-status.in_progress { background: rgba(0, 255, 178, 0.15); color: var(--accent); }
+        .card-status.completed { background: rgba(100, 255, 100, 0.1); color: #8aff8a; }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .card-meta {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: auto;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 900px) {
+            .layout-container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                display: none; /* Hide sidebar on mobile, assume mobile menu handles nav */
+            }
+            /* Show minimal profile on mobile */
+            .mobile-profile {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                margin-bottom: 2rem;
+                background: var(--glass-bg);
+                padding: 1rem;
+                border-radius: var(--radius-lg);
+            }
+        }
+        @media (min-width: 901px) {
+            .mobile-profile {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body data-csrf-token="{{ csrf_token() if csrf_token else '' }}">
+    {% include '_primary_nav.html' %}
+    {% include '_mobile_menu.html' %}
+
+    <div class="layout-container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="profile-card">
+                {% set avatar_letter = student.name[0]|upper if student.name else 'U' %}
+                {% if student_user and student_user.avatar_url %}
+                <img class="avatar-lg" src="{{ student_user.avatar_url }}" alt="Аватар">
+                {% else %}
+                <div class="avatar-lg">{{ avatar_letter }}</div>
+                {% endif %}
+                
+                <h2 class="profile-name">{{ student.name }}</h2>
+                
+                <div class="profile-meta">
+                    <span>{{ student.school_class or 'Класс не указан' }}</span>
+                    <span>Цель: {{ student.target_score or '—' }}</span>
+                </div>
+
+                <div class="sidebar-nav">
+                    <a href="#" class="nav-item active"><i class="fas fa-home"></i> Обзор</a>
+                    <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="nav-item"><i class="fas fa-chart-line"></i> Статистика</a>
+                    <a href="{{ url_for('assignments.assignments_list') }}" class="nav-item"><i class="fas fa-tasks"></i> Задания</a>
+                    {% if not current_user.is_student() and not current_user.is_parent() %}
+                    <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="nav-item" style="color: var(--accent);"><i class="fas fa-plus"></i> Новый урок</a>
+                    <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="nav-item"><i class="fas fa-cog"></i> Настройки</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Parents Info Block (For Tutors) -->
+            {% if parents_info %}
+            <div class="panel" style="padding: 1rem;">
+                <h4 style="margin: 0 0 1rem 0; font-size: 1rem;">Родители</h4>
+                {% for parent in parents_info %}
+                <div style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                    <div><i class="fas fa-user"></i> {{ parent.name }}</div>
+                    <div style="color: var(--text-muted); font-size: 0.8rem; margin-left: 1.2rem;">{{ parent.phone or 'Нет телефона' }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="main-content">
+            <!-- Mobile Header -->
+            <div class="mobile-profile">
+                <div class="avatar-lg" style="width: 50px; height: 50px; font-size: 1.2rem; margin: 0;">{{ avatar_letter }}</div>
+                <div>
+                    <div style="font-weight: 700;">{{ student.name }}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">{{ student.school_class or 'Класс не указан' }}</div>
+                </div>
+            </div>
+
+            <!-- CURRENT FOCUS -->
+            {% if in_progress_lesson %}
+            <section>
+                <div class="section-header">
+                    <h2 class="section-title"><i class="fas fa-play-circle" style="color: var(--accent);"></i> Сейчас в работе</h2>
+                </div>
+                <div class="active-lesson-hero">
+                    <div class="hero-label"><i class="fas fa-circle fa-xs" style="color: var(--accent);"></i> Активный урок</div>
+                    <h1 class="hero-title">{{ in_progress_lesson.topic or 'Тема не указана' }}</h1>
+                    <div class="hero-stats">
+                        <span><i class="far fa-clock"></i> {{ in_progress_lesson.duration }} мин</span>
+                        <span><i class="far fa-calendar"></i> {{ in_progress_lesson.lesson_date.strftime('%d.%m') }}</span>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=in_progress_lesson.lesson_id) }}" class="neo-button accent">
+                            Продолжить урок <i class="fas fa-arrow-right"></i>
+                        </a>
+                        {% if not current_user.is_student() and not current_user.is_parent() %}
+                        <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=in_progress_lesson.lesson_id) }}">
+                             {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                             <input type="hidden" name="topic" value="{{ in_progress_lesson.topic }}">
+                            <button type="submit" class="neo-button outline">Завершить</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+            {% endif %}
+
+            <!-- UPCOMING / PENDING -->
+            {% if active_submissions %}
+            <section>
+                <div class="section-header">
+                    <h2 class="section-title"><i class="fas fa-exclamation-circle" style="color: #ffaa00;"></i> Требует внимания</h2>
+                </div>
+                <div class="card-grid">
+                    {% for submission in active_submissions %}
+                    <div class="content-card" style="border-left: 3px solid #ffaa00;">
+                        <div class="card-status" style="color: #ffaa00; background: rgba(255, 170, 0, 0.1);">Домашняя работа</div>
+                        <h3 class="card-title">{{ submission.assignment.title }}</h3>
+                        <div class="card-meta">
+                            <span>Дедлайн: {{ submission.assignment.deadline.strftime('%d.%m') if submission.assignment.deadline else '—' }}</span>
+                            <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}" style="color: var(--accent);">Открыть</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+
+            <!-- LESSON FEED -->
+            <section>
+                <div class="section-header">
+                    <h2 class="section-title"><i class="fas fa-layer-group"></i> Программа обучения</h2>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select id="lessonFilter" style="background: var(--glass-bg); border: 1px solid var(--glass-border); padding: 0.5rem; border-radius: 8px; color: var(--text-main);">
+                            <option value="all">Все уроки</option>
+                            <option value="completed">Прошедшие</option>
+                            <option value="planned">Будущие</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="card-grid" id="lessonsContainer">
+                    {% for lesson in lessons %}
+                    <div class="content-card lesson-item" data-status="{{ lesson.status }}">
+                        <div class="card-status {{ lesson.status }}">
+                            {% if lesson.status == 'completed' %}Проведён
+                            {% elif lesson.status == 'in_progress' %}Идёт
+                            {% else %}Запланирован{% endif %}
+                        </div>
+                        <h3 class="card-title">{{ lesson.topic or 'Тема не определена' }}</h3>
+                        
+                        <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            {% if lesson.content %}
+                            <span style="font-size: 0.75rem; background: rgba(255,255,255,0.05); padding: 0.2rem 0.5rem; border-radius: 4px;">📝 Конспект</span>
+                            {% endif %}
+                            {% if lesson.materials %}
+                            <span style="font-size: 0.75rem; background: rgba(255,255,255,0.05); padding: 0.2rem 0.5rem; border-radius: 4px;">📎 Материалы</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="card-meta">
+                            <span><i class="far fa-calendar"></i> {{ lesson.lesson_date.strftime('%d.%m.%Y') }}</span>
+                            <div style="display: flex; gap: 0.5rem;">
+                                {% if not current_user.is_student() and not current_user.is_parent() and lesson.status == 'planned' %}
+                                <form method="POST" action="{{ url_for('lessons.lesson_start', lesson_id=lesson.lesson_id) }}" style="display:inline;">
+                                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                    <button type="submit" style="background: none; border: none; color: var(--accent); cursor: pointer; padding: 0;">Start</button>
+                                </form>
+                                {% endif %}
+                                <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" style="color: var(--text-main); text-decoration: none;"><i class="fas fa-external-link-alt"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    
+                    {% if lessons|length == 0 %}
+                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">
+                        Уроков пока нет
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script>
+        document.getElementById('lessonFilter').addEventListener('change', function(e) {
+            const status = e.target.value;
+            const items = document.querySelectorAll('.lesson-item');
+            
+            items.forEach(item => {
+                if (status === 'all') {
+                    item.style.display = 'flex';
+                } else {
+                    const itemStatus = item.getAttribute('data-status');
+                    if (status === 'completed' && itemStatus === 'completed') {
+                        item.style.display = 'flex';
+                    } else if (status === 'planned' && itemStatus === 'planned') {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

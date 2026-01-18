@@ -6,6 +6,7 @@ import logging  # Логирование для отладки и прод-ло�
 from flask import render_template, request, redirect, url_for, flash, jsonify, current_app  # current_app нужен для определения типа БД (Postgres)
 from flask_login import login_required
 from sqlalchemy import text  # text нужен для выполнения SQL setval(pg_get_serial_sequence(...)) при сбитых sequences
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 from app.students import students_bp
 from app.students.forms import StudentForm, normalize_school_class
@@ -17,6 +18,7 @@ from app.models import User, FamilyTie
 from app.utils.student_id_manager import assign_platform_id_if_needed
 from core.audit_logger import audit_logger
 from flask_login import current_user
+from app.utils.db_migrations import ensure_schema_columns
 
 logger = logging.getLogger(__name__)
 
@@ -177,13 +179,31 @@ def student_profile(student_id):
             logger.error(f"Error loading active submissions: {e}")
         
         # Загружаем уроки с предзагрузкой homework_tasks и task для каждого homework_task
-        try:
-            all_lessons = Lesson.query.filter_by(student_id=student_id).options(
-                db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
-            ).order_by(Lesson.lesson_date.desc()).all()
-        except Exception as e:
-            logger.error(f"Error loading lessons for student {student_id}: {e}", exc_info=True)
-            all_lessons = []
+        # Robust fetch with retry for missing columns
+        all_lessons = []
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                all_lessons = Lesson.query.filter_by(student_id=student_id).options(
+                    db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
+                ).order_by(Lesson.lesson_date.desc()).all()
+                break # Success
+            except (OperationalError, ProgrammingError) as e:
+                db.session.rollback()
+                if attempt < max_retries - 1 and ('column' in str(e).lower() or 'does not exist' in str(e).lower()):
+                    logger.warning(f"Database schema issue detected ({e}). Attempting auto-fix...")
+                    try:
+                        ensure_schema_columns(current_app)
+                        logger.info("Schema fix applied. Retrying query...")
+                        continue
+                    except Exception as fix_err:
+                        logger.error(f"Failed to auto-fix schema: {fix_err}")
+                        all_lessons = []
+                        break
+                else:
+                    logger.error(f"Error loading lessons for student {student_id} (attempt {attempt+1}): {e}", exc_info=True)
+                    all_lessons = []
+                    break
         
         # Разделяем уроки на категории для "Актуальные уроки"
         try:
