@@ -8,6 +8,8 @@ from werkzeug.utils import secure_filename
 from flask import render_template, request, redirect, url_for, flash, jsonify, make_response, current_app  # current_app нужен для определения типа БД (Postgres)
 from flask_login import login_required, current_user  # comment
 from sqlalchemy import text  # text нужен для setval(pg_get_serial_sequence(...)) при сбитых sequences
+from sqlalchemy.exc import OperationalError, ProgrammingError
+from app.utils.db_migrations import ensure_schema_columns
 
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
@@ -173,11 +175,34 @@ def lesson_complete(lesson_id):
 @login_required
 def lesson_homework_view(lesson_id):
     """Просмотр домашних заданий урока"""
-    # Оптимизация: используем joinedload для избежания N+1 проблем
-    lesson = Lesson.query.options(
-        db.joinedload(Lesson.student),
-        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
-    ).get_or_404(lesson_id)
+    
+    # --- AUTO-FIX FOR SCHEMA ISSUES ---
+    # Try to load lesson. If it fails due to missing columns, run migration and retry.
+    lesson = None
+    max_retries = 2
+    for attempt in range(max_retries):
+        try:
+            # Оптимизация: используем joinedload для избежания N+1 проблем
+            lesson = Lesson.query.options(
+                db.joinedload(Lesson.student),
+                db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
+            ).get_or_404(lesson_id)
+            break # Success
+        except (OperationalError, ProgrammingError) as e:
+            db.session.rollback()
+            if attempt < max_retries - 1 and ('column' in str(e).lower() or 'does not exist' in str(e).lower()):
+                logger.warning(f"Database schema issue detected in lesson_homework_view ({e}). Attempting auto-fix...")
+                try:
+                    ensure_schema_columns(current_app)
+                    logger.info("Schema fix applied. Retrying query...")
+                    continue
+                except Exception as fix_err:
+                    logger.error(f"Failed to auto-fix schema: {fix_err}")
+                    raise e # Re-raise original error if fix fails
+            else:
+                raise e # Re-raise if not a schema issue or retries exhausted
+    # ----------------------------------
+
     student = lesson.student
     homework_tasks = get_sorted_assignments(lesson, 'homework')  # comment
     is_student_view = current_user.is_student()  # comment
