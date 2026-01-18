@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель: Логи действий · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <style>
+        .audit-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .audit-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .metadata-toggle {
+            cursor: pointer;
+            color: var(--accent-1);
+            text-decoration: underline;
+        }
+        .metadata-content {
+            display: none;
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background: var(--surface-1);
+            border-radius: var(--radius-sm);
+            font-family: 'MonaspaceNeon', 'Courier New', monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .metadata-content.show {
+            display: block;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+        }
+        .pagination a, .pagination span {
+            padding: 0.5rem 1rem;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+        .pagination a:hover {
+            background: var(--surface-3);
+        }
+        .pagination .current {
+            background: var(--accent-1);
+            color: #001b18;
+            border-color: var(--accent-1);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'admin' %}
+        {% include '_primary_nav.html' %}
+
+        {% include '_ux_enhancements.html' %}
+
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">
+                    ← К админ панели
+                </a>
+            </div>
+            <h1 style="margin-bottom: 1rem;">Журнал аудита</h1>
+            <div style="color: var(--text-muted); margin-bottom: 1.25rem;">
+                По умолчанию показаны <strong>все действия тестеров</strong>: user-тестеры + tester entities.
+            </div>
+
+            <div class="audit-stats">
+                <div class="audit-stat-card">
+                    <div class="audit-stat-value">{{ stats.total_events }}</div>
+                    <div class="audit-stat-label">Всего событий</div>
+                </div>
+                <div class="audit-stat-card">
+                    <div class="audit-stat-value">{{ stats.total_testers }}</div>
+                    <div class="audit-stat-label">Активных тестеров</div>
+                </div>
+                <div class="audit-stat-card">
+                    <div class="audit-stat-value">{{ stats.error_count }}</div>
+                    <div class="audit-stat-label">Ошибок</div>
+                </div>
+                <div class="audit-stat-card">
+                    <div class="audit-stat-value">{{ stats.today_events }}</div>
+                    <div class="audit-stat-label">Событий сегодня</div>
+                </div>
+            </div>
+
+            <form method="GET" class="audit-filters">
+                <div class="neo-field">
+                    <label class="neo-label">Исполнитель</label>
+                    <select name="actor" class="neo-select">
+                        <option value="">Все</option>
+                        {% if user_testers %}
+                        <optgroup label="User testers">
+                            {% for user in user_testers %}
+                            <option value="u:{{ user.id }}" {% if filters.actor == ('u:' ~ user.id) %}selected{% endif %}>
+                                {{ user.username }} (id={{ user.id }})
+                            </option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                        {% if tester_entities %}
+                        <optgroup label="Tester entities">
+                            {% for t in tester_entities %}
+                            <option value="t:{{ t.tester_id }}" {% if filters.actor == ('t:' ~ t.tester_id) %}selected{% endif %}>
+                                {{ t.name }} ({{ t.tester_id[:8] }}…)
+                            </option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                        {% if creator_users %}
+                        <optgroup label="Creators">
+                            {% for user in creator_users %}
+                            <option value="u:{{ user.id }}" {% if filters.actor == ('u:' ~ user.id) %}selected{% endif %}>
+                                {{ user.username }} (creator, id={{ user.id }})
+                            </option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Источник</label>
+                    <select name="source" class="neo-select">
+                        <option value="testers" {% if filters.source == 'testers' or not filters.source %}selected{% endif %}>Все тестеры</option>
+                        <option value="tester_users" {% if filters.source == 'tester_users' %}selected{% endif %}>Только user testers</option>
+                        <option value="tester_entities" {% if filters.source == 'tester_entities' %}selected{% endif %}>Только tester entities</option>
+                        <option value="creators" {% if filters.source == 'creators' %}selected{% endif %}>Только creators</option>
+                        <option value="all" {% if filters.source == 'all' %}selected{% endif %}>Вообще всё</option>
+                    </select>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Действие</label>
+                    <select name="action" class="neo-select">
+                        <option value="">Все</option>
+                        {% for action in actions %}
+                        <option value="{{ action }}" {% if filters.action == action %}selected{% endif %}>{{ action }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Сущность</label>
+                    <select name="entity" class="neo-select">
+                        <option value="">Все</option>
+                        {% for entity in entities %}
+                        <option value="{{ entity }}" {% if filters.entity == entity %}selected{% endif %}>{{ entity }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Статус</label>
+                    <select name="status" class="neo-select">
+                        <option value="">Все</option>
+                        <option value="success" {% if filters.status == 'success' %}selected{% endif %}>Успех</option>
+                        <option value="error" {% if filters.status == 'error' %}selected{% endif %}>Ошибка</option>
+                        <option value="warning" {% if filters.status == 'warning' %}selected{% endif %}>Предупреждение</option>
+                        <option value="info" {% if filters.status == 'info' %}selected{% endif %}>Инфо</option>
+                    </select>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Дата от</label>
+                    <input type="datetime-local" name="date_from" value="{{ filters.date_from }}" class="neo-input">
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Дата до</label>
+                    <input type="datetime-local" name="date_to" value="{{ filters.date_to }}" class="neo-input">
+                </div>
+                <div class="neo-field" style="display:flex; align-items:flex-end;">
+                    <label style="display:inline-flex; gap:0.5rem; align-items:center; color: var(--text-muted); margin-bottom: 0.75rem;">
+                        <input type="checkbox" name="include_creator" value="1" {% if filters.include_creator %}checked{% endif %}>
+                        включить creator в “Все тестеры”
+                    </label>
+                </div>
+                <div class="neo-field" style="display: flex; align-items: flex-end;">
+                    <button type="submit" class="neo-button accent">Применить</button>
+                    <a href="{{ url_for('admin.admin_audit') }}" class="neo-button ghost" style="margin-left: 0.5rem;">Сбросить</a>
+                </div>
+            </form>
+
+            <div style="overflow-x: auto;">
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th>Время</th>
+                            <th>Исполнитель</th>
+                            <th>Действие</th>
+                            <th>Сущность</th>
+                            <th>Статус</th>
+                            <th>Длительность</th>
+                            <th>Детали</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.timestamp.strftime('%d.%m.%Y %H:%M:%S') }}</td>
+                            <td>
+                                {% if log.user %}
+                                    {{ log.user.username }} ({{ log.user.get_role_display() }}, id={{ log.user.id }})
+                                {% elif log.tester_id %}
+                                    {{ log.tester_name or 'Anonymous' }} (entity: {{ log.tester_id[:8] }}…)
+                                {% else %}
+                                    {{ log.tester_name or 'Неизвестно' }}
+                                {% endif %}
+                            </td>
+                            <td>{{ log.action }}</td>
+                            <td>{{ log.entity or '-' }}</td>
+                            <td>
+                                <span class="status-badge status-{{ log.status }}">
+                                    {{ log.status }}
+                                </span>
+                            </td>
+                            <td>{% if log.duration_ms %}{{ log.duration_ms }}ms{% else %}-{% endif %}</td>
+                            <td>
+                                <span class="metadata-toggle" onclick="toggleMetadata({{ log.id }})">
+                                    Показать
+                                </span>
+                                <div class="metadata-content" id="metadata-{{ log.id }}">
+                                    <strong>URL:</strong> {{ log.url or '-' }}<br>
+                                    <strong>Метод:</strong> {{ log.method or '-' }}<br>
+                                    <strong>IP:</strong> {{ log.ip_address or '-' }}<br>
+                                    {% if log.entity_id %}<strong>ID сущности:</strong> {{ log.entity_id }}<br>{% endif %}
+                                    {% if log.meta_data %}
+                                    <strong>Метаданные:</strong><br>
+                                    {{ log.get_metadata() | tojson(indent=2) }}
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" style="text-align: center; padding: 2rem;">
+                                Логи не найдены
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if pagination %}
+            <div class="pagination">
+                {% if pagination.has_prev %}
+                <a href="{{ url_for('admin.admin_audit', page=pagination.prev_num, **filters) }}">← Назад</a>
+                {% endif %}
+                <span class="current">Страница {{ pagination.page }} из {{ pagination.pages }}</span>
+                {% if pagination.has_next %}
+                <a href="{{ url_for('admin.admin_audit', page=pagination.next_num, **filters) }}">Вперёд →</a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div style="margin-top: 2rem; text-align: center;">
+                <a href="{{ url_for('admin.admin_audit_export', **filters) }}" class="neo-button accent">
+                    <img src="{{ url_for('static', filename='icons/EKSPORT.png') }}" alt="Экспорт" class="ui-icon ui-icon--sm">Экспорт в CSV
+                </a>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        function toggleMetadata(logId) {
+            const content = document.getElementById('metadata-' + logId);
+            const toggle = content.previousElementSibling;
+            if (content.classList.contains('show')) {
+                content.classList.remove('show');
+                toggle.textContent = 'Показать';
+            } else {
+                content.classList.add('show');
+                toggle.textContent = 'Скрыть';
+            }
+        }
+    </script>
+</body>
+</html>
+

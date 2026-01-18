@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Экспорт в Markdown - {{ student.name }} · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .markdown-container {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            position: relative;
+            margin-bottom: 2rem;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 10;
+        }
+        
+        .markdown-text {
+            font-family: 'MonaspaceNeon', 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-size: 0.95em;
+            padding-top: 3rem;
+            background: var(--surface-2);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-top: 3rem;
+        }
+        
+        .info-box {
+            background: rgba(31, 123, 255, 0.1);
+            border-left: 3px solid var(--accent-2);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            color: var(--accent-2);
+        }
+    </style>
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
+    {% include '_active_lesson_banner.html' %}
+    
+    <div class="app-shell">
+        {% set active_page = 'dashboard' %}
+        {% include '_primary_nav.html' %}
+
+        {% include '_ux_enhancements.html' %}
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <p class="hero-eyebrow">экспорт в markdown</p>
+                    <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Экспорт" class="ui-icon ui-icon--md"> Экспорт в Markdown (Obsidian)</h1>
+                </div>
+                <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">← Назад к ДЗ</a>
+            </div>
+        </section>
+        
+        <div class="info-box">
+            Скопируй текст ниже и вставь в Obsidian. Блоки <code style="background: var(--surface-2); padding: 0.2em 0.4em; border-radius: 4px; font-family: 'MonaspaceNeon', 'Courier New', monospace;">spoiler-block</code> будут работать как скрытые спойлеры.
+        </div>
+        
+        <section class="markdown-container">
+            <button class="neo-button accent copy-btn" onclick="copyToClipboard()" id="copyBtn"><img src="{{ url_for('static', filename='icons/icons8-копировать-100.png') }}" alt="Копировать" class="ui-icon ui-icon--sm"> Копировать</button>
+            <div class="markdown-text" id="markdownText">{{ markdown_content }}</div>
+        </section>
+    </div>
+    
+    <script>
+        function copyToClipboard() {
+            const text = document.getElementById('markdownText').textContent;
+            const button = document.getElementById('copyBtn');
+            
+            navigator.clipboard.writeText(text).then(() => {
+                button.textContent = '✓ Скопировано!';
+                button.classList.remove('accent');
+                button.classList.add('ghost');
+                
+                setTimeout(() => {
+                    button.innerHTML = '<img src="{{ url_for("static", filename="icons/icons8-копировать-100.png") }}" alt="Копировать" class="ui-icon ui-icon--sm"> Копировать';
+                    button.classList.remove('ghost');
+                    button.classList.add('accent');
+                }, 2000);
+            }).catch(err => {
+                if (typeof toast !== 'undefined' && toast) {
+                    toast.error('Ошибка при копировании: ' + err);
+                }
+            });
+        }
+    </script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+</body>
+</html>

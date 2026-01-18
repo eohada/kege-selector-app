@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Главная · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = None %}
+        {% include '_primary_nav.html' %}
+
+        <section class="dashboard-hero glass-panel">
+            <div>
+                <p class="hero-eyebrow">для преподавателей</p>
+                <h1 class="hero-title">Чёрный неон. Платформа для онлайн-школы.</h1>
+                <p class="hero-subtitle">
+                    Современная платформа для управления учебным процессом, подготовки к ЕГЭ и организации онлайн-обучения.
+                    Все инструменты, необходимые преподавателю для эффективной работы с учениками, в едином пространстве.
+                </p>
+                <div class="hero-actions">
+                    <a href="{{ url_for('main.dashboard') }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/RAKET.png') }}" alt="Старт" class="ui-icon ui-icon--sm">Начать работу</a>
+                    <a href="{{ url_for('kege_generator.kege_generator') }}" class="neo-button outline"><img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--sm">Генератор</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-panel" style="margin-top: 2rem;">
+            <h2 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.8rem; font-weight: 600;">Возможности для преподавателей</h2>
+            <div style="display: grid; gap: 2rem;">
+                <div>
+                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-1);"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="ui-icon ui-icon--sm">Управление учениками</h3>
+                    <p style="margin: 0; line-height: 1.7; color: var(--text-muted);">
+                        Создавайте профили учеников, отслеживайте их прогресс, храните информацию о целях и достижениях.
+                        Ведите историю уроков, домашних заданий и результатов. Все данные в одном месте, с удобным поиском и фильтрацией.
+                    </p>
+                </div>
+                <div>
+                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-2);"><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="ui-icon ui-icon--sm">Расписание и планирование</h3>
+                    <p style="margin: 0; line-height: 1.7; color: var(--text-muted);">
+                        Удобное календарное расписание с поддержкой московского и томского времени. Массовое создание уроков,
+                        автоматическое отслеживание активных занятий, планирование на недели и месяцы вперед.
+                    </p>
+                </div>
+                <div>
+                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-3);"><img src="{{ url_for('static', filename='icons/icons8-мишень-100.png') }}" alt="КЕГЭ" class="ui-icon ui-icon--sm">Генератор заданий КЕГЭ</h3>
+                    <p style="margin: 0; line-height: 1.7; color: var(--text-muted);">
+                        Умный подбор заданий из обширной базы данных. Система автоматически исключает уже использованные задания,
+                        учитывает пропущенные и заблокированные варианты. Поиск по уникальному ID, фильтрация по типам заданий.
+                    </p>
+                </div>
+                <div>
+                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-1);"><img src="{{ url_for('static', filename='icons/dz.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm">Домашние задания и классные работы</h3>
+                    <p style="margin: 0; line-height: 1.7; color: var(--text-muted);">
+                        Формируйте домашние задания и классные работы прямо на уроке. Добавляйте задания из генератора,
+                        отслеживайте статус выполнения, проверяйте результаты. Экспорт в Markdown для удобной работы.
+                    </p>
+                </div>
+                <div>
+                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-2);"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Аналитика" class="ui-icon ui-icon--sm">Аналитика и отчетность</h3>
+                    <p style="margin: 0; line-height: 1.7; color: var(--text-muted);">
+                        Детальное логирование всех действий, статистика по ученикам, отслеживание использования заданий.
+                        Полная история изменений для прозрачности работы и анализа эффективности обучения.
+                    </p>
+                </div>
+                <div>
+                    <h3 style="margin-top: 0; margin-bottom: 0.8rem; font-size: 1.3rem; color: var(--accent-3);"><img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" alt="Интеграция" class="ui-icon ui-icon--sm">Интеграция и экспорт</h3>
+                    <p style="margin: 0; line-height: 1.7; color: var(--text-muted);">
+                        Экспорт данных в JSON для резервного копирования и миграции. Импорт учеников и уроков из внешних систем.
+                        Интеграция с платформами для синхронизации данных.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-panel" style="margin-top: 2rem;">
+            <h2 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.8rem; font-weight: 600;">Преимущества платформы</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="margin-bottom: 0.5rem;"><img src="{{ url_for('static', filename='icons/FATS.png') }}" alt="Быстро" class="ui-icon ui-icon--md ui-icon--only"></div>
+                    <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">Быстро</h4>
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9em; line-height: 1.6;">
+                        Мгновенный подбор заданий, быстрая навигация, оптимизированный интерфейс
+                    </p>
+                </div>
+                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="margin-bottom: 0.5rem;"><img src="{{ url_for('static', filename='icons/comfort.png') }}" alt="Удобно" class="ui-icon ui-icon--md ui-icon--only"></div>
+                    <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">Удобно</h4>
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9em; line-height: 1.6;">
+                        Современный дизайн, интуитивная навигация, все инструменты под рукой
+                    </p>
+                </div>
+                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🔒</div>
+                    <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">Надежно</h4>
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9em; line-height: 1.6;">
+                        Резервное копирование данных, полная история изменений, защита информации
+                    </p>
+                </div>
+                <div style="padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">📈</div>
+                    <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">Эффективно</h4>
+                    <p style="margin: 0; color: var(--text-muted); font-size: 0.9em; line-height: 1.6;">
+                        Автоматизация рутинных задач, умный подбор заданий, экономия времени
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-panel" style="margin-top: 2rem; margin-bottom: 3rem;">
+            <h2 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.8rem; font-weight: 600;">С чего начать</h2>
+            <div style="display: grid; gap: 1.5rem;">
+                <div style="display: flex; align-items: start; gap: 1rem; padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="font-size: 1.8rem; min-width: 2.5rem;">1️⃣</div>
+                    <div>
+                        <strong style="color: var(--text-primary); font-size: 1.1rem; display: block; margin-bottom: 0.5rem;">Добавьте учеников</strong>
+                        <p style="margin: 0; color: var(--text-muted); line-height: 1.7;">
+                            Перейдите в раздел "Ученики" и создайте профили для ваших учеников. Укажите их цели, уровень подготовки,
+                            категорию (ЕГЭ, ОГЭ, программирование, ЛЕВЕЛАП) и другую важную информацию.
+                        </p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: start; gap: 1rem; padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="font-size: 1.8rem; min-width: 2.5rem;">2️⃣</div>
+                    <div>
+                        <strong style="color: var(--text-primary); font-size: 1.1rem; display: block; margin-bottom: 0.5rem;">Создайте расписание</strong>
+                        <p style="margin: 0; color: var(--text-muted); line-height: 1.7;">
+                            В разделе "Расписание" запланируйте уроки для ваших учеников. Используйте массовое создание для регулярных занятий.
+                            Выбирайте удобный часовой пояс (московский или томский) для корректного отображения времени.
+                        </p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: start; gap: 1rem; padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="font-size: 1.8rem; min-width: 2.5rem;">3️⃣</div>
+                    <div>
+                        <strong style="color: var(--text-primary); font-size: 1.1rem; display: block; margin-bottom: 0.5rem;">Используйте генератор заданий</strong>
+                        <p style="margin: 0; color: var(--text-muted); line-height: 1.7;">
+                            В разделе "Генератор" создавайте подборки заданий КЕГЭ для уроков и домашних заданий. Система автоматически
+                            исключит уже использованные задания и предложит новые варианты. Ищите задания по уникальному ID.
+                        </p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: start; gap: 1rem; padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="font-size: 1.8rem; min-width: 2.5rem;">4️⃣</div>
+                    <div>
+                        <strong style="color: var(--text-primary); font-size: 1.1rem; display: block; margin-bottom: 0.5rem;">Ведите уроки и ДЗ</strong>
+                        <p style="margin: 0; color: var(--text-muted); line-height: 1.7;">
+                            Во время урока добавляйте задания в домашнюю работу или классную работу. Отслеживайте выполнение,
+                            проверяйте результаты, ведите заметки о прогрессе учеников.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+</body>
+</html>

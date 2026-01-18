@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Массовое создание уроков · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
+    {% include '_active_lesson_banner.html' %}
+    
+    <div class="app-shell">
+        {% set active_page = 'schedule' %}
+        {% include '_primary_nav.html' %}
+
+        {% include '_ux_enhancements.html' %}
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div>
+                <p class="hero-eyebrow">массовое создание</p>
+                <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Создание" class="ui-icon ui-icon--md"> Массовое создание уроков</h1>
+            </div>
+        </section>
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div class="info-box">
+                <strong>Инструкция:</strong>
+                <ol style="margin: 0.5em 0 0 1.5em; list-style: decimal;">
+                    <li>Убедитесь, что все ученики созданы в системе с правильными platform_id</li>
+                    <li>Вставьте данные уроков в формате JSON ниже</li>
+                    <li>Нажмите "Создать уроки"</li>
+                </ol>
+            </div>
+        </section>
+
+        <section class="glass-panel">
+            <form method="POST" data-validate>
+                <div class="neo-field" style="margin-bottom: 1.5rem;">
+                    <label class="neo-label" for="lessons_data">Данные уроков (JSON формат)</label>
+                    <textarea id="lessons_data" 
+                              name="lessons_data" 
+                              class="neo-textarea" 
+                              placeholder='[
+  {
+    "platform_id": "Иванов Иван 123",
+    "date": "2024-09-23",
+    "time": "10:00",
+    "duration": 60,
+    "status": "completed"
+  },
+  {
+    "platform_id": "Петров Петр 456",
+    "date": "2024-09-23",
+    "time": "14:00",
+    "duration": 60,
+    "status": "completed"
+  }
+]'
+                              style="min-height: 400px;"
+                              required></textarea>
+                </div>
+                
+                <div class="info-box" style="margin-bottom: 1.5rem;">
+                    <strong>Формат данных:</strong>
+                    <pre>[
+  {
+    "platform_id": "ID ученика на платформе (например: Иванов Иван 123)",
+    "date": "YYYY-MM-DD (например: 2024-09-23)",
+    "time": "HH:MM (например: 10:00)",
+    "duration": 60,  // длительность в минутах (опционально, по умолчанию 60)
+    "status": "completed"  // статус: completed, planned, cancelled (опционально, по умолчанию completed)
+  }
+]</pre>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Создать" class="ui-icon ui-icon--sm"> Создать уроки</button>
+                    <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost">← Назад</a>
+                </div>
+            </form>
+        </section>
+    </div>
+    
+    {# Flash messages будут показаны через toast #}
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script>
+        // Конвертируем flash-сообщения в toast-уведомления
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.error('{{ message|e }}');
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.warning('{{ message|e }}');
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.info('{{ message|e }}');
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.success('{{ message|e }}');
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
+</body>
+</html>

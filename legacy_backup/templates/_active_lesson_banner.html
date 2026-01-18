@@ -1,0 +1,227 @@
+
+{% if active_lesson %}
+<style>
+    /* Глобальная панель активного урока */
+    .active-lesson-banner {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9999;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 0.8em 2em;
+        border-radius: 50px;
+        box-shadow: 0 8px 30px rgba(16, 185, 129, 0.6);
+        font-weight: 700;
+        font-size: 1.1em;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        animation: pulse 2s ease-in-out infinite;
+        user-select: none;
+    }
+    
+    .active-lesson-banner:hover {
+        transform: translateX(-50%) scale(1.05);
+        box-shadow: 0 12px 40px rgba(16, 185, 129, 0.8);
+    }
+    
+    .active-lesson-banner .lesson-emoji {
+        font-size: 1.3em;
+        margin-right: 0.3em;
+        display: inline-block;
+        animation: rotate 3s linear infinite;
+    }
+    
+    @keyframes rotate {
+        0% { transform: rotate(0deg); }
+        10% { transform: rotate(-10deg); }
+        20% { transform: rotate(10deg); }
+        30% { transform: rotate(-10deg); }
+        40% { transform: rotate(10deg); }
+        50% { transform: rotate(0deg); }
+        100% { transform: rotate(0deg); }
+    }
+    
+    .lesson-menu {
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 9998;
+        background: rgba(30, 30, 40, 0.98);
+        border: 2px solid rgba(16, 185, 129, 0.5);
+        border-radius: 16px;
+        padding: 1.5em;
+        min-width: 400px;
+        max-width: 500px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        display: none;
+    }
+    
+    .lesson-menu.active {
+        display: block;
+        animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    }
+    
+    .lesson-menu-header {
+        font-weight: 700;
+        color: #6ee7b7;
+        margin-bottom: 0.8em;
+        padding-bottom: 0.5em;
+        border-bottom: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    
+    .lesson-menu-info {
+        color: #e0e0e0;
+        font-size: 0.95em;
+        margin-bottom: 0.3em;
+    }
+    
+    .lesson-menu-actions {
+        margin-top: 1em;
+        padding-top: 1em;
+        border-top: 1px solid rgba(16, 185, 129, 0.3);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5em;
+    }
+    
+    .lesson-menu-btn {
+        padding: 0.7em 1.5em;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.3s ease;
+        text-align: center;
+        width: 100%;
+    }
+    
+    .lesson-menu-btn.complete {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    
+    .lesson-menu-btn.complete:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.5);
+    }
+    
+    .lesson-menu-btn.profile {
+        background: rgba(147, 51, 234, 0.2);
+        color: #c084fc;
+        border: 1px solid rgba(147, 51, 234, 0.3);
+        text-decoration: none;
+        display: block;
+    }
+    
+    .lesson-menu-btn.profile:hover {
+        background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+        color: white;
+    }
+    
+    /* Стили для полей ввода */
+    .lesson-menu input[type="text"]:focus,
+    .lesson-menu textarea:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    }
+    
+    .lesson-menu input[type="text"]::placeholder,
+    .lesson-menu textarea::placeholder {
+        color: #808090;
+    }
+    
+    /* Кастомный скроллбар для меню */
+    .lesson-menu::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .lesson-menu::-webkit-scrollbar-track {
+        background: rgba(20, 20, 30, 0.5);
+        border-radius: 4px;
+    }
+    
+    .lesson-menu::-webkit-scrollbar-thumb {
+        background: rgba(16, 185, 129, 0.5);
+        border-radius: 4px;
+    }
+    
+    .lesson-menu::-webkit-scrollbar-thumb:hover {
+        background: rgba(16, 185, 129, 0.7);
+    }
+</style>
+
+<div class="active-lesson-banner" onclick="toggleLessonMenu()">
+    <span class="lesson-emoji">🎓</span>
+    <span>Урок идет: {{ active_student.name }}</span>
+</div>
+
+<div class="lesson-menu" id="lessonMenu">
+    <div class="lesson-menu-header">Текущий урок</div>
+    <form id="lessonDataForm" method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+        <div class="lesson-menu-info" style="margin-bottom: 1em;"><strong>Ученик:</strong> {{ active_student.name }}</div>
+        <div class="lesson-menu-info" style="margin-bottom: 0.5em;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
+        <div class="lesson-menu-info" style="margin-bottom: 1em;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</div>
+
+        <div style="margin-top: 1em; padding-top: 1em; border-top: 1px solid rgba(16, 185, 129, 0.3);">
+            <div style="margin-bottom: 0.8em;">
+                <label style="display: block; color: #6ee7b7; font-size: 0.9em; margin-bottom: 0.3em;">Тема урока:</label>
+                <input type="text" name="topic" value="{{ active_lesson.topic or '' }}" 
+                       style="width: 100%; padding: 0.5em; background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; color: #e0e0e0; font-size: 0.9em;">
+            </div>
+            
+            <div style="margin-bottom: 0.8em;">
+                <label style="display: block; color: #6ee7b7; font-size: 0.9em; margin-bottom: 0.3em;">Заметки о уроке:</label>
+                <textarea name="notes" rows="3" 
+                          style="width: 100%; padding: 0.5em; background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; color: #e0e0e0; font-size: 0.9em; resize: vertical;">{{ active_lesson.notes or '' }}</textarea>
+            </div>
+            
+            <div style="margin-bottom: 0.8em;">
+                <label style="display: block; color: #6ee7b7; font-size: 0.9em; margin-bottom: 0.3em;">Домашнее задание:</label>
+                <textarea name="homework" rows="3" 
+                          style="width: 100%; padding: 0.5em; background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; color: #e0e0e0; font-size: 0.9em; resize: vertical;">{{ active_lesson.homework or '' }}</textarea>
+            </div>
+        </div>
+        
+        <div class="lesson-menu-actions">
+            <button type="submit" class="lesson-menu-btn complete"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить урок и сохранить</button>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="lesson-menu-btn profile">
+                👤 Открыть профиль
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+    function toggleLessonMenu() {
+        const menu = document.getElementById('lessonMenu');
+        menu.classList.toggle('active');
+    }
+    
+    document.addEventListener('click', function(e) {
+        const menu = document.getElementById('lessonMenu');
+        const banner = document.querySelector('.active-lesson-banner');
+        
+        if (menu && banner && !menu.contains(e.target) && !banner.contains(e.target)) {
+            menu.classList.remove('active');
+        }
+    });
+</script>
+{% endif %}
+

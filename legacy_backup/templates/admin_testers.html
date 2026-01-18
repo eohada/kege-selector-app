@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление тестировщиками · Админ-панель</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .testers-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface-2);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        .testers-table th {
+            background: var(--surface-3);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--stroke-2);
+        }
+        .testers-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--stroke-1);
+        }
+        .testers-table tr:hover {
+            background: var(--surface-3);
+        }
+        .tester-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .tester-id {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-family: 'MonaspaceNeon', 'Courier New', monospace;
+        }
+        .tester-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.9rem;
+        }
+        .stat-badge {
+            background: var(--surface-3);
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+        }
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .status-active {
+            color: #28a745;
+        }
+        .status-inactive {
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'admin' %}
+        {% include '_primary_nav.html' %}
+
+        {% include '_ux_enhancements.html' %}
+
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">
+                    ← К админ панели
+                </a>
+            </div>
+            <h1 style="margin-bottom: 1rem;">Управление тестировщиками</h1>
+
+            <form method="POST" action="{{ url_for('admin.admin_testers_clear_all') }}" 
+                  class="confirm-delete-form" 
+                  style="margin-bottom: 2rem;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="neo-button danger"><img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Очистить" class="ui-icon ui-icon--sm"> Очистить все логи пользователей</button>
+            </form>
+
+            <table class="testers-table">
+                <thead>
+                    <tr>
+                        <th>Имя</th>
+                        <th>ID / Роль</th>
+                        <th>Статус</th>
+                        <th>Первое появление</th>
+                        <th>Последнее действие</th>
+                        <th>Статистика</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if users %}
+                    {% for user_data in users %}
+                    {% set user = user_data[0] %}
+                    {% set logs_count = user_data[1] or 0 %}
+                    {% set last_action = user_data[2] %}
+                    <tr>
+                        <td>
+                            <div class="tester-name">{{ user.username }}</div>
+                        </td>
+                        <td>
+                            <div class="tester-id">ID: {{ user.id }} · {{ user.get_role_display() }}</div>
+                        </td>
+                        <td>
+                            <span class="status-active">● Активен</span>
+                        </td>
+                        <td>-</td>
+                        <td>{% if last_action %}{{ last_action.strftime('%d.%m.%Y %H:%M') }}{% else %}-{% endif %}</td>
+                        <td>
+                            <div class="tester-stats">
+                                <span class="stat-badge">{{ logs_count }} логов</span>
+                                {% if last_action %}
+                                <span class="stat-badge">Последнее: {{ last_action.strftime('%d.%m %H:%M') }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <span class="neo-button ghost" style="font-size: 0.9rem; padding: 0.5rem 1rem;">{{ user.get_role_display() }}</span>
+                                {% if not user.is_creator() %}
+                                <form method="POST" action="{{ url_for('admin.admin_testers_delete', user_id=user.id) }}" 
+                                      class="confirm-delete-form" 
+                                      style="display: inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="neo-button danger" style="font-size: 0.9rem; padding: 0.5rem 1rem;"><img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Удалить" class="ui-icon ui-icon--sm"> Удалить</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                            Нет пользователей
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+
+            <div style="margin-top: 2rem;">
+                <a href="{{ url_for('admin.admin_audit', secret=request.args.get('secret', '')) }}" class="neo-button ghost">← Назад к логам</a>
+            </div>
+        </section>
+    </div>
+    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+</body>
+</html>

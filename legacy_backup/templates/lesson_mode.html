@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Режим урока: {{ student.name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .lesson-mode-header {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-left: 4px solid var(--accent-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        
+        .lesson-mode-header::before {
+            content: 'РЕЖИМ УРОКА';
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: linear-gradient(120deg, var(--accent-1-strong), var(--accent-2-strong));
+            color: #001b18;
+            padding: 0.5em 1em;
+            border-radius: var(--radius-sm);
+            font-size: 0.8em;
+            font-weight: 700;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .student-focus {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+        
+        .student-avatar-large {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(120deg, var(--accent-1-strong), var(--accent-2-strong));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #001b18;
+            flex-shrink: 0;
+            box-shadow: var(--shadow-accent);
+        }
+        
+        .student-info-large {
+            flex: 1;
+        }
+        
+        .student-name-large {
+            font-size: 2em;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 0.5em;
+        }
+        
+        .student-stats {
+            display: flex;
+            gap: 2rem;
+            color: var(--text-muted);
+            font-size: 0.95em;
+            flex-wrap: wrap;
+        }
+        
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .quick-action-card {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        .quick-action-card:hover {
+            border-color: var(--accent-1);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-soft);
+        }
+        
+        .quick-action-icon {
+            margin-bottom: 0.5em;
+        }
+        
+        .quick-action-title {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.3em;
+        }
+        
+        .quick-action-desc {
+            font-size: 0.9em;
+            color: var(--text-muted);
+        }
+        
+        .upcoming-lesson-banner {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-left: 4px solid var(--accent-2);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .upcoming-lesson-banner h3 {
+            color: var(--accent-2);
+            margin-bottom: 0.5em;
+            font-weight: 700;
+        }
+        
+        .current-lesson-banner {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-left: 4px solid var(--success);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        
+        .current-lesson-banner::before {
+            content: 'УРОК ИДЕТ';
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: linear-gradient(120deg, var(--success), #00c6ad);
+            color: #001b18;
+            padding: 0.4em 0.8em;
+            border-radius: var(--radius-sm);
+            font-size: 0.85em;
+            font-weight: 700;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .current-lesson-banner h3 {
+            color: var(--success);
+            margin-bottom: 0.5em;
+            font-weight: 700;
+        }
+        
+        .exit-lesson-mode {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            z-index: 1000;
+        }
+        
+        .lesson-history-item {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.2rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .lesson-history-item:hover {
+            border-color: var(--accent-1);
+            transform: translateX(4px);
+            box-shadow: var(--shadow-soft);
+        }
+    </style>
+</head>
+<body class="lesson-active">
+    {% include '_active_lesson_banner.html' %}
+    
+    <div class="exit-lesson-mode">
+        <a href="{{ url_for('main.dashboard') }}" class="neo-button danger"><img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Выйти" class="ui-icon ui-icon--sm">Выйти из режима урока</a>
+    </div>
+    
+    <div class="app-shell">
+        <section class="glass-panel lesson-mode-header">
+            <div class="student-focus">
+                <div class="student-avatar-large">{{ student.name[0].upper() }}</div>
+                <div class="student-info-large">
+                    <div class="student-name-large">{{ student.name }}</div>
+                    {% if student.platform_id %}
+                    <div style="color: var(--text-muted); font-size: 0.9em; margin-bottom: 0.5em;">
+                        ID: <span style="color: var(--accent-1); font-weight: 600;">{{ student.platform_id }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="student-stats">
+                        {% if student.target_score %}
+                        <div><img src="{{ url_for('static', filename='icons/icons8-мишень-100.png') }}" alt="Цель" class="ui-icon ui-icon--sm"> Цель: <span style="color: var(--accent-1); font-weight: 600;">{{ student.target_score }}</span> баллов</div>
+                        {% endif %}
+                        {% if student.deadline %}
+                        <div><img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Срок" class="ui-icon ui-icon--sm"> Срок: <span style="color: var(--accent-1); font-weight: 600;">{{ student.deadline }}</span></div>
+                        {% endif %}
+                        {% if student.diagnostic_level %}
+                        <div><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Диагностика" class="ui-icon ui-icon--sm"> Диагностика: <span style="color: var(--accent-1); font-weight: 600;">{{ student.diagnostic_level }}</span></div>
+                        {% endif %}
+                        {% if student.overall_rating %}
+                        <div><img src="{{ url_for('static', filename='icons/STAR.png') }}" alt="Оценка" class="ui-icon ui-icon--sm"> Оценка: <span style="color: var(--accent-1); font-weight: 600;">{{ student.overall_rating }}</span></div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        {# Flash messages будут показаны через toast #}
+        
+        {% if current_lesson %}
+        <section class="current-lesson-banner">
+            <h3>Текущий урок</h3>
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Дата:</strong> {{ current_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
+            {% if current_lesson.lesson_type == 'exam' %}
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проверочный" class="ui-icon ui-icon--sm">Проверочный урок</div>
+            {% elif current_lesson.lesson_type == 'introductory' %}
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" alt="Вводный" class="ui-icon ui-icon--sm">Вводный урок</div>
+            {% else %}
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Обычный" class="ui-icon ui-icon--sm">Обычный урок</div>
+            {% endif %}
+            {% if current_lesson.topic %}
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тема:</strong> {{ current_lesson.topic }}</div>
+            {% endif %}
+            {% if current_lesson.duration %}
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Длительность:</strong> {{ current_lesson.duration }} минут</div>
+            {% endif %}
+            {% if current_lesson.homework %}
+            <div style="margin-top: 0.5em; color: var(--text-primary);"><strong>Домашнее задание:</strong> {{ current_lesson.homework }}</div>
+            {% endif %}
+            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=current_lesson.lesson_id) }}" style="margin-top: 1rem;">
+                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить урок</button>
+            </form>
+        </section>
+        {% endif %}
+        
+        {% if upcoming_lesson and not current_lesson %}
+        <section class="upcoming-lesson-banner">
+            <h3><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="План" class="ui-icon ui-icon--sm">Ближайший запланированный урок</h3>
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Дата:</strong> {{ upcoming_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
+            {% if upcoming_lesson.lesson_type == 'exam' %}
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проверочный" class="ui-icon ui-icon--sm">Проверочный урок</div>
+            {% elif upcoming_lesson.lesson_type == 'introductory' %}
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" alt="Вводный" class="ui-icon ui-icon--sm">Вводный урок</div>
+            {% else %}
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Обычный" class="ui-icon ui-icon--sm">Обычный урок</div>
+            {% endif %}
+            {% if upcoming_lesson.topic %}
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тема:</strong> {{ upcoming_lesson.topic }}</div>
+            {% endif %}
+            {% if upcoming_lesson.homework %}
+            <div style="margin-top: 0.5em; color: var(--text-primary);"><strong>Домашнее задание:</strong> {{ upcoming_lesson.homework }}</div>
+            {% endif %}
+            <form method="POST" action="{{ url_for('lessons.lesson_start', lesson_id=upcoming_lesson.lesson_id) }}" style="margin-top: 1rem;">
+                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Начать" class="ui-icon ui-icon--sm">Начать урок</button>
+            </form>
+        </section>
+        {% endif %}
+        
+        <section class="quick-actions">
+            <a href="{{ url_for('kege_generator.kege_generator') }}" class="quick-action-card">
+                <div class="quick-action-icon"><img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--md ui-icon--only"></div>
+                <div class="quick-action-title">Генератор КЕГЭ</div>
+                <div class="quick-action-desc">Подобрать задания для практики</div>
+            </a>
+            
+            <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="quick-action-card">
+                <div class="quick-action-icon"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--only"></div>
+                <div class="quick-action-title">Добавить урок</div>
+                <div class="quick-action-desc">Запланировать новое занятие</div>
+            </a>
+            
+            <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="quick-action-card">
+                <div class="quick-action-icon"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Профиль" class="ui-icon ui-icon--md ui-icon--only"></div>
+                <div class="quick-action-title">Профиль</div>
+                <div class="quick-action-desc">Открыть полный профиль ученика</div>
+            </a>
+        </section>
+        
+        {% if lessons %}
+        <section class="glass-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">история</p>
+                    <h2>Последние уроки</h2>
+                </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem;">
+                {% for lesson in lessons[:5] %}
+                <div class="lesson-history-item">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                        <div>
+                            <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.3em;">
+                                {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
+                                {% if lesson.topic %} - {{ lesson.topic }}{% endif %}
+                            </div>
+                            <div style="color: var(--text-muted); font-size: 0.9em;">
+                                <img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Время" class="ui-icon ui-icon--sm"> {{ lesson.duration }} минут | 
+                                {% if lesson.status == 'completed' %}<img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проведен" class="ui-icon ui-icon--sm">Проведен
+                                {% elif lesson.status == 'planned' %}<img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="План" class="ui-icon ui-icon--sm">Запланирован
+                                {% elif lesson.status == 'cancelled' %}<img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Отменен" class="ui-icon ui-icon--sm">Отменен
+                                {% else %}<img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" alt="Статус" class="ui-icon ui-icon--sm"> {{ lesson.status }}{% endif %}
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 0.5em; flex-wrap: wrap;">
+                            <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.9em; padding: 0.5em 1em;"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm">Редактировать</a>
+                            {% if lesson.homework_tasks %}
+                            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline" style="font-size: 0.9em; padding: 0.5em 1em;"><img src="{{ url_for('static', filename='icons/dz.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm">ДЗ</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+    </div>
+    
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script>
+        // Конвертируем flash-сообщения в toast-уведомления
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.error('{{ message|e }}');
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.warning('{{ message|e }}');
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.info('{{ message|e }}');
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.success('{{ message|e }}');
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
+</body>
+</html>

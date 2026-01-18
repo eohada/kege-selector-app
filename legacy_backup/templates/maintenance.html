@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Технические работы · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <style>
+        .maintenance-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .maintenance-panel {
+            max-width: 700px;
+            width: 100%;
+            text-align: center;
+        }
+        .maintenance-icon {
+            font-size: 6rem;
+            margin-bottom: 2rem;
+            animation: pulse 2s ease-in-out infinite;
+            filter: drop-shadow(0 0 20px rgba(0, 255, 213, 0.3));
+        }
+        @keyframes pulse {
+            0%, 100% { 
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 0.7;
+                transform: scale(1.05);
+            }
+        }
+        .maintenance-message {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            line-height: 1.8;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .maintenance-apology {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 2rem;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <div class="maintenance-page">
+            <section class="glass-panel maintenance-panel">
+                <div class="hero-eyebrow">технические работы</div>
+                <div class="maintenance-icon">🔧</div>
+                <h1 class="hero-title">Ведутся технические работы</h1>
+                <p class="hero-subtitle">Мы обновляем систему для улучшения вашего опыта</p>
+                <p class="maintenance-message">
+                    {{ message }}
+                </p>
+                <p class="maintenance-apology">
+                    Мы приносим извинения за временные неудобства.
+                </p>
+                <div class="hero-actions" style="margin-top: 2rem; justify-content: center;">
+                    <a href="{{ url_for('main.dashboard') }}" class="neo-button accent">
+                        ← Возврат на главную страницу
+                    </a>
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>
+

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Режим обслуживания · Удаленная админка</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+</head>
+<body>
+    <div class="app-shell">
+        {% include 'remote_admin/_header.html' %}
+        {% include 'remote_admin/_sidebar.html' %}
+
+        <main style="margin-left: 250px; margin-top: 70px; padding: 2rem;">
+        <section class="glass-panel" style="max-width: 800px; padding: 2rem;">
+            <div style="margin-bottom: 2rem;">
+                <h1 style="margin: 0;">Технические работы</h1>
+                <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
+                    Окружение: <strong>{{ environment_name }}</strong>
+                </p>
+            </div>
+
+            <div class="glass-panel" style="padding: 2rem; background: var(--surface-2); border: 2px solid {% if status.enabled %}var(--accent-1){% else %}var(--stroke-2){% endif %};">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem;">
+                    <div>
+                        <h2 style="margin: 0 0 0.5rem 0;">Статус платформы</h2>
+                        <p style="color: var(--text-muted); margin: 0;">
+                            {% if status.enabled %}
+                            <span style="color: #ff2e2e;">● Режим обслуживания ВКЛЮЧЕН</span>
+                            <br>Пользователи видят страницу-заглушку.
+                            {% else %}
+                            <span style="color: #2eff7d;">● Платформа работает штатно</span>
+                            <br>Доступ открыт для всех пользователей.
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <div style="text-align: right; font-size: 0.9rem; color: var(--text-muted);">
+                        <div>Обновлено: {{ status.updated_at[:16].replace('T', ' ') if status.updated_at else '—' }}</div>
+                        <div>Кем: {{ status.updated_by or '—' }}</div>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('remote_admin.maintenance') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="toggle">
+                    
+                    <div class="neo-field">
+                        <label class="neo-label">Сообщение для пользователей</label>
+                        <textarea name="message" class="neo-input" rows="3" placeholder="Например: Проводим плановое обновление. Вернемся через 15 минут.">{{ status.message or '' }}</textarea>
+                        <div class="neo-hint">Отображается на странице заглушке, когда режим включен.</div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--stroke-1);">
+                        <label class="toggle-switch" style="display: flex; align-items: center; gap: 1rem; cursor: pointer;">
+                            <input type="checkbox" name="enabled" style="width: 1.5rem; height: 1.5rem;" {% if status.enabled %}checked{% endif %}>
+                            <span style="font-size: 1.1rem; font-weight: 500;">Включить режим обслуживания</span>
+                        </label>
+                        
+                        <button type="submit" class="neo-button {% if status.enabled %}primary{% else %}danger{% endif %}">
+                            Сохранить настройки
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(255, 200, 46, 0.1); border-radius: var(--radius-md); border-left: 4px solid #ffc82e;">
+                <h3 style="margin: 0 0 0.5rem 0; color: #ffc82e;">Важно знать</h3>
+                <ul style="margin: 0; padding-left: 1.5rem; color: var(--text-primary); font-size: 0.95rem;">
+                    <li>Включенный режим блокирует доступ ко всем страницам для обычных пользователей.</li>
+                    <li>Администраторы и Создатели <strong>всегда имеют доступ</strong>, даже при включенном режиме.</li>
+                    <li>API endpoints для удаленной админки остаются доступными.</li>
+                    <li>Используйте этот режим при миграции базы данных или обновлении кода.</li>
+                </ul>
+            </div>
+        </section>
+        </main>
+    </div>
+    
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>

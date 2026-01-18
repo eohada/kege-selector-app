@@ -1,0 +1,713 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор КЕГЭ · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% include '_ux_enhancements.html' %}
+    <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .gen-premium-shell {
+            display: grid;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+            grid-template-columns: minmax(320px, 1fr) minmax(520px, 2.1fr);
+            align-items: start;
+        }
+
+        .gen-start-card {
+            position: sticky;
+            top: 1rem;
+        }
+
+        .gen-deck {
+            position: relative;
+            min-height: 520px;
+        }
+
+        .gen-task-card {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.6rem;
+            box-shadow: var(--shadow-soft);
+            transition: transform 240ms ease, opacity 240ms ease, border-color 240ms ease, box-shadow 240ms ease;
+        }
+
+        .gen-task-card.is-entering {
+            transform: translateY(10px);
+            opacity: 0;
+        }
+
+        .gen-task-card.is-leaving {
+            transform: translateY(-10px);
+            opacity: 0;
+        }
+
+        .gen-task-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--stroke-1);
+            margin-bottom: 1rem;
+        }
+
+        .gen-task-badges {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .gen-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--stroke-1);
+            background: var(--surface-2);
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.9rem;
+            letter-spacing: 0.01em;
+        }
+
+        .gen-task-body {
+            color: var(--text-primary);
+            line-height: 1.75;
+            font-size: 1.02rem;
+        }
+
+        .gen-task-body img {
+            max-width: 100%;
+            height: auto;
+            border-radius: var(--radius-md);
+        }
+
+        .gen-answer {
+            margin-top: 1.1rem;
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            border: 1px dashed var(--stroke-2);
+            background: rgba(0, 198, 164, 0.06);
+            display: none;
+        }
+
+        .gen-answer.is-visible {
+            display: block;
+        }
+
+        .gen-actions-row {
+            margin-top: 1.2rem;
+            display: flex;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+        }
+
+        .gen-actions-row .neo-button {
+            flex: 1 1 180px;
+            justify-content: center;
+        }
+
+        .gen-empty {
+            border: 1px dashed var(--stroke-2);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            color: var(--text-muted);
+            background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0));
+        }
+
+        .gen-kbd {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            border: 1px solid var(--stroke-1);
+            background: var(--surface-2);
+            border-radius: 0.5rem;
+            padding: 0.1rem 0.35rem;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 1024px) {
+            .gen-premium-shell {
+                grid-template-columns: 1fr;
+            }
+            .gen-start-card {
+                position: static;
+            }
+        }
+    </style>
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
+    {% set is_homework = (assignment_type == 'homework') %}
+    {% set is_classwork = (assignment_type == 'classwork') %}
+    {% set is_exam = (assignment_type == 'exam') %}
+    {% if is_homework %}
+        {% set mode_label = 'домашнего задания' %}
+        {% set banner_icon_path = 'icons/dz.png' %}
+        {% set mode_class = 'generator-mode--homework' %}
+    {% elif is_exam %}
+        {% set mode_label = 'проверочной работы' %}
+        {% set banner_icon_path = 'icons/icons8-bar-chart-100.png' %}
+        {% set mode_class = 'generator-mode--exam' %}
+    {% else %}
+        {% set mode_label = 'классной работы' %}
+        {% set banner_icon_path = 'icons/klassrab.png' %}
+        {% set mode_class = 'generator-mode--classwork' %}
+    {% endif %}
+    {% if lesson_id %}
+        {% if is_homework %}
+            {% set mode_text = 'Домашняя работа без повторов' %}
+        {% elif is_exam %}
+            {% set mode_text = 'Проверочная работа без повторов' %}
+        {% else %}
+            {% set mode_text = 'Классная работа без повторов' %}
+        {% endif %}
+    {% else %}
+        {% set mode_text = 'Общий генератор' %}
+    {% endif %}
+
+    {% if active_lesson %}
+    <div class="now-playing-pill" onclick="toggleLessonMenu()">
+        <img src="{{ url_for('static', filename='icons/comfort.png') }}" alt="Урок" class="ui-icon ui-icon--sm">Урок идет: {{ active_student.name }}
+    </div>
+    <div class="now-playing-panel" id="lessonMenu">
+        <div class="hero-eyebrow">текущий урок</div>
+        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
+        {% if active_lesson.topic %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
+        {% endif %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
+        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
+        <div class="hero-actions" style="margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
+            </form>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="app-shell">
+        {% set active_page = 'generator' %}
+        {% include '_primary_nav.html' %}
+
+        <section class="glass-panel generator-hero">
+            <div>
+                <p class="hero-eyebrow">генератор заданий</p>
+                <h1 class="hero-title">Один поток. Одна задача. Максимум фокуса.</h1>
+                <p class="hero-subtitle">
+                    Выбираешь номер задания, запускаешь поток — и получаешь карточки по одной.
+                    Каждое решение (принять / пропустить / в чёрный список) сразу двигает тебя к следующей.
+                </p>
+                <div class="hero-actions" style="display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap;">
+                    <span class="hero-eyebrow" style="margin-bottom: 0;">режим работы</span>
+                    <span style="font-size: 1.1rem; font-weight: 600; color: var(--accent-1);">
+                        {{ mode_text }}
+                    </span>
+                </div>
+            </div>
+            <div class="generator-context">
+                <div>
+                    <p class="hero-eyebrow">что уже известно</p>
+                    <div class="hero-metric-value" style="font-size: 1.4rem;">
+                        {{ 'Нет привязки к уроку' if not lesson else 'Урок #' ~ lesson.lesson_id }}
+                    </div>
+                </div>
+                <div>
+                    <p class="hero-eyebrow">следующий шаг</p>
+                    <p style="margin: 0; color: var(--text-muted);">
+                        Запусти генератор и работай в спокойном темпе. Горячие клавиши: <span class="gen-kbd">A</span> принять · <span class="gen-kbd">S</span> пропустить · <span class="gen-kbd">B</span> blacklist · <span class="gen-kbd">Space</span> ответ
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        {# Flash messages будут показаны через toast #}
+
+        {% if lesson and student %}
+        <section class="glass-panel generator-mode {{ mode_class }}">
+            <div class="generator-mode__icon"><img src="{{ url_for('static', filename=banner_icon_path) }}" alt="Режим" class="ui-icon ui-icon--md ui-icon--only"></div>
+            <div style="flex: 1;">
+                <div class="generator-mode__title">Режим {{ mode_label }}</div>
+                <div style="color: var(--text-primary);">
+                    <strong>Ученик:</strong> {{ student.name }}
+                    {% if lesson.lesson_date %}
+                    · <strong>Урок:</strong> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
+                    {% endif %}
+                    {% if lesson.topic %}
+                    · <strong>Тема:</strong> {{ lesson.topic }}
+                    {% endif %}
+                </div>
+                <div class="generator-mode__hint">
+                    {{ 'Все принятые карточки попадут в ДЗ и скроются из будущих выдач для ученика.' if is_homework else 'Все принятые карточки добавляются в работу и не повторяются для ученика.' }}
+                </div>
+            </div>
+            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) if assignment_type == 'homework' else url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">
+                ← К уроку
+            </a>
+        </section>
+        {% elif template_id %}
+        <section class="glass-panel generator-mode {{ mode_class }}">
+            <div class="generator-mode__icon"><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблон" class="ui-icon ui-icon--md ui-icon--only"></div>
+            <div style="flex: 1;">
+                <div class="generator-mode__title">Режим редактирования шаблона</div>
+                <div class="generator-mode__hint">
+                    Все принятые задания будут добавлены в шаблон.
+                </div>
+            </div>
+            <a href="{{ url_for('templates.template_view', template_id=template_id) }}" class="neo-button ghost">
+                ← К шаблону
+            </a>
+        </section>
+        {% endif %}
+
+        <div class="gen-premium-shell">
+            <section class="glass-panel generator-panel gen-start-card">
+                <h2>Запуск</h2>
+                <p>Выбери номер задания и запусти поток. Остановишься — когда захочешь.</p>
+                <form id="genStartForm" class="generator-form-grid" onsubmit="return false;">
+                    {{ selection_form.hidden_tag() }}
+                    <div class="neo-field">
+                        {{ selection_form.task_type.label(class_='neo-label') }}
+                        {{ selection_form.task_type(class_='neo-select', id='taskTypeSelect') }}
+                    </div>
+                    <div class="generator-actions">
+                        <button type="button" class="neo-button accent" id="genStartBtn">
+                            <img src="{{ url_for('static', filename='icons/RAKET.png') }}" alt="Старт" class="ui-icon ui-icon--sm">Старт
+                        </button>
+                        <button type="button" class="neo-button ghost" id="genStopBtn" disabled>
+                            <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Стоп" class="ui-icon ui-icon--sm">Стоп
+                        </button>
+                    </div>
+                    <label class="neo-checkbox" style="margin-top:0.4rem;">
+                        <input id="useSkipped" type="checkbox" class="neo-checkbox-input">
+                        <span>включать пропущенные (опционально)</span>
+                    </label>
+                    <div class="generator-note">
+                        Подсказка: кнопки можно прожимать с клавиатуры — <span class="gen-kbd">A</span>/<span class="gen-kbd">S</span>/<span class="gen-kbd">B</span>.
+                    </div>
+                </form>
+                <div class="generator-reset" style="margin-top: 1.4rem;">
+                    <details>
+                        <summary style="cursor:pointer; color: var(--text-primary); font-weight: 700;">Расширенные действия</summary>
+                        <div style="margin-top: 1rem;">
+                            <div class="generator-links" style="margin-bottom: 1rem;">
+                                <a href="{{ url_for('kege_generator.show_accepted') }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Принятые" class="ui-icon ui-icon--sm">Принятые</a>
+                                <a href="{{ url_for('kege_generator.show_skipped') }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/MINUS.png') }}" alt="Пропущенные" class="ui-icon ui-icon--sm">Пропущенные</a>
+                            </div>
+                            <form method="POST"
+                                  action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
+                                  class="generator-form-grid generator-reset">
+                                {{ reset_form.hidden_tag() }}
+                                <div class="neo-field">
+                                    {{ reset_form.task_type_reset.label(class_='neo-label') }}
+                                    {{ reset_form.task_type_reset(class_='neo-select') }}
+                                </div>
+                                <div class="neo-field">
+                                    {{ reset_form.reset_type.label(class_='neo-label') }}
+                                    {{ reset_form.reset_type(class_='neo-select') }}
+                                </div>
+                                {{ reset_form.reset_submit(class_='neo-button danger') }}
+                            </form>
+                            <form method="POST"
+                                  action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
+                                  class="generator-form-grid" style="margin-top: 1rem;">
+                                {{ search_form.hidden_tag() }}
+                                <div class="neo-field">
+                                    {{ search_form.task_id.label(class_='neo-label') }}
+                                    {{ search_form.task_id(class_='neo-input') }}
+                                </div>
+                                {{ search_form.search_submit(class_='neo-button ghost') }}
+                            </form>
+                        </div>
+                    </details>
+                </div>
+            </section>
+
+            <section class="glass-panel gen-deck" id="genDeck"
+                     data-lesson-id="{{ lesson_id or '' }}"
+                     data-assignment-type="{{ assignment_type }}"
+                     data-template-id="{{ template_id or '' }}">
+                <div class="gen-empty" id="genEmpty">
+                    <div style="display:flex; gap: 0.75rem; align-items:center; margin-bottom: 0.75rem;">
+                        <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--md ui-icon--only">
+                        <div style="font-weight: 800; color: var(--text-primary); font-size: 1.15rem;">Готов к запуску</div>
+                    </div>
+                    Выбери номер задания слева и нажми <strong>Старт</strong>. Дальше ты работаешь в потоке — быстро и без лишних кликов.
+                </div>
+
+                <div class="gen-task-card is-entering" id="genTaskCard" style="display:none;">
+                    <div class="gen-task-top">
+                        <div class="gen-task-badges">
+                            <span class="gen-pill" id="genTaskBadge">
+                                <img src="{{ url_for('static', filename='icons/lesson.png') }}" alt="Задание" class="ui-icon ui-icon--sm ui-icon--only">
+                                <span id="genTaskTitle">Задание</span>
+                            </span>
+                            <a id="genSourceLink" class="gen-pill" href="#" target="_blank" rel="noopener" style="text-decoration:none; display:none;">
+                                <img src="{{ url_for('static', filename='icons/lupa.png') }}" alt="Источник" class="ui-icon ui-icon--sm ui-icon--only">
+                                источник
+                            </a>
+                        </div>
+                        <button type="button" class="neo-button ghost" id="genToggleAnswerBtn" disabled>
+                            <img src="{{ url_for('static', filename='icons/icons8-спрятать-100.png') }}" alt="Ответ" class="ui-icon ui-icon--sm">Ответ
+                        </button>
+                    </div>
+
+                    <div class="gen-task-body" id="genTaskBody"></div>
+                    <div class="gen-answer" id="genAnswer"></div>
+
+                    <div class="gen-actions-row">
+                        <button type="button" class="neo-button accent" id="genAcceptBtn" disabled>
+                            <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Принять" class="ui-icon ui-icon--sm">Принять
+                        </button>
+                        <button type="button" class="neo-button ghost" id="genSkipBtn" disabled>
+                            <img src="{{ url_for('static', filename='icons/MINUS.png') }}" alt="Пропустить" class="ui-icon ui-icon--sm">Пропустить
+                        </button>
+                        <button type="button" class="neo-button danger" id="genBlacklistBtn" disabled>
+                            <img src="{{ url_for('static', filename='icons/musor.png') }}" alt="Blacklist" class="ui-icon ui-icon--sm">Blacklist
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 0.85rem; display:none;" id="genBlacklistPanel">
+                        <div class="neo-field">
+                            <label class="neo-label">Причина (опционально)</label>
+                            <input type="text" class="neo-input" id="genBlacklistReason" placeholder="Например: не по теме / битая разметка / плохой вариант">
+                        </div>
+                        <div class="gen-actions-row" style="margin-top:0.75rem;">
+                            <button type="button" class="neo-button danger" id="genBlacklistConfirmBtn">
+                                <img src="{{ url_for('static', filename='icons/archiv.png') }}" alt="Подтвердить" class="ui-icon ui-icon--sm">Добавить
+                            </button>
+                            <button type="button" class="neo-button ghost" id="genBlacklistCancelBtn">Отмена</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script>
+        function toggleLessonMenu() {
+            const menu = document.getElementById('lessonMenu');
+            if (menu) {
+                menu.classList.toggle('active');
+            }
+        }
+
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('lessonMenu');
+            const badge = document.querySelector('.now-playing-pill');
+            if (!menu || !badge) return;
+            if (!menu.contains(event.target) && !badge.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+    </script>
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
+    <script>
+        window.__GEN_SEED_TASK__ = {{ seed_task_payload | tojson if seed_task_payload else 'null' }};
+    </script>
+    <script>
+        (function() {
+            const deck = document.getElementById('genDeck');
+            const empty = document.getElementById('genEmpty');
+            const card = document.getElementById('genTaskCard');
+            const body = document.getElementById('genTaskBody');
+            const answer = document.getElementById('genAnswer');
+            const title = document.getElementById('genTaskTitle');
+            const badge = document.getElementById('genTaskBadge');
+            const sourceLink = document.getElementById('genSourceLink');
+
+            const startBtn = document.getElementById('genStartBtn');
+            const stopBtn = document.getElementById('genStopBtn');
+            const taskTypeSelect = document.getElementById('taskTypeSelect');
+            const useSkipped = document.getElementById('useSkipped');
+
+            const toggleAnswerBtn = document.getElementById('genToggleAnswerBtn');
+            const acceptBtn = document.getElementById('genAcceptBtn');
+            const skipBtn = document.getElementById('genSkipBtn');
+            const blacklistBtn = document.getElementById('genBlacklistBtn');
+
+            const blPanel = document.getElementById('genBlacklistPanel');
+            const blReason = document.getElementById('genBlacklistReason');
+            const blConfirm = document.getElementById('genBlacklistConfirmBtn');
+            const blCancel = document.getElementById('genBlacklistCancelBtn');
+
+            let currentTask = null;
+            let isBusy = false;
+
+            function getCtx() {
+                return {
+                    lesson_id: deck.dataset.lessonId || null,
+                    assignment_type: deck.dataset.assignmentType || 'homework',
+                    template_id: deck.dataset.templateId || null,
+                };
+            }
+
+            function setButtonsEnabled(enabled) {
+                toggleAnswerBtn.disabled = !enabled;
+                acceptBtn.disabled = !enabled;
+                skipBtn.disabled = !enabled;
+                blacklistBtn.disabled = !enabled;
+            }
+
+            function setBusy(busy) {
+                isBusy = busy;
+                startBtn.disabled = busy;
+                stopBtn.disabled = !currentTask ? true : busy ? true : false;
+                setButtonsEnabled(!busy && !!currentTask);
+            }
+
+            function renderMath(container) {
+                try {
+                    if (window.renderMathInElement) {
+                        window.renderMathInElement(container, {
+                            delimiters: [
+                                {left: "$$", right: "$$", display: true},
+                                {left: "$", right: "$", display: false}
+                            ]
+                        });
+                    }
+                } catch (_) {}
+            }
+
+            function renderTask(task) {
+                currentTask = task;
+                blPanel.style.display = 'none';
+                blReason.value = '';
+                answer.classList.remove('is-visible');
+                answer.textContent = '';
+
+                if (!task) {
+                    card.style.display = 'none';
+                    empty.style.display = 'block';
+                    stopBtn.disabled = true;
+                    setButtonsEnabled(false);
+                    return;
+                }
+
+                empty.style.display = 'none';
+                card.style.display = 'block';
+
+                title.textContent = `Задание ${task.task_number} · #${task.task_id}`;
+                badge.title = task.site_task_id ? `site_task_id: ${task.site_task_id}` : '';
+
+                body.innerHTML = task.content_html || '';
+                renderMath(body);
+
+                if (task.source_url) {
+                    sourceLink.href = task.source_url;
+                    sourceLink.style.display = 'inline-flex';
+                } else {
+                    sourceLink.href = '#';
+                    sourceLink.style.display = 'none';
+                }
+
+                if (task.answer) {
+                    toggleAnswerBtn.disabled = false;
+                    answer.textContent = task.answer;
+                } else {
+                    toggleAnswerBtn.disabled = true;
+                }
+
+                stopBtn.disabled = false;
+                setButtonsEnabled(true);
+            }
+
+            async function postJSON(url, payload) {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': token
+                    },
+                    body: JSON.stringify(payload || {})
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok || !data || data.success === false) {
+                    const err = (data && data.error) ? data.error : `HTTP ${resp.status}`;
+                    throw new Error(err);
+                }
+                return data;
+            }
+
+            function animateSwap(nextTask, message) {
+                card.classList.add('is-leaving');
+                setTimeout(() => {
+                    renderTask(nextTask);
+                    card.classList.remove('is-leaving');
+                    card.classList.add('is-entering');
+                    setTimeout(() => card.classList.remove('is-entering'), 30);
+                    if (message && window.toast) window.toast.success(message);
+                }, 200);
+            }
+
+            async function startStream() {
+                if (isBusy) return;
+                setBusy(true);
+                try {
+                    const task_type = taskTypeSelect.value;
+                    const ctx = getCtx();
+                    const data = await postJSON('/kege-generator/stream/start', {
+                        task_type,
+                        lesson_id: ctx.lesson_id,
+                        assignment_type: ctx.assignment_type,
+                        template_id: ctx.template_id,
+                        use_skipped: !!useSkipped.checked
+                    });
+                    if (data.done) {
+                        renderTask(null);
+                        if (window.toast) window.toast.warning('Задания закончились. Попробуй включить пропущенные или сбросить историю.');
+                    } else {
+                        renderTask(data.task);
+                        card.classList.remove('is-entering');
+                        card.classList.add('is-entering');
+                        setTimeout(() => card.classList.remove('is-entering'), 30);
+                    }
+                } catch (e) {
+                    if (window.toast) window.toast.error(e.message || 'Ошибка запуска генератора');
+                } finally {
+                    setBusy(false);
+                }
+            }
+
+            async function act(action, extra) {
+                if (isBusy || !currentTask) return;
+                setBusy(true);
+                try {
+                    const ctx = getCtx();
+                    const data = await postJSON('/kege-generator/stream/act', {
+                        action,
+                        task_id: currentTask.task_id,
+                        task_type: currentTask.task_number,
+                        lesson_id: ctx.lesson_id,
+                        assignment_type: ctx.assignment_type,
+                        template_id: ctx.template_id,
+                        use_skipped: !!useSkipped.checked,
+                        ...(extra || {})
+                    });
+                    if (data.done) {
+                        animateSwap(null, data.message || 'Готово.');
+                        if (window.toast) window.toast.info('Задания закончились.');
+                    } else {
+                        animateSwap(data.task, data.message);
+                    }
+                } catch (e) {
+                    if (window.toast) window.toast.error(e.message || 'Ошибка');
+                } finally {
+                    setBusy(false);
+                }
+            }
+
+            startBtn?.addEventListener('click', startStream);
+            stopBtn?.addEventListener('click', () => {
+                currentTask = null;
+                renderTask(null);
+                if (window.toast) window.toast.info('Остановлено.');
+            });
+
+            toggleAnswerBtn?.addEventListener('click', () => {
+                if (!currentTask || !currentTask.answer) return;
+                answer.classList.toggle('is-visible');
+            });
+
+            acceptBtn?.addEventListener('click', () => act('accept'));
+            skipBtn?.addEventListener('click', () => act('skip'));
+
+            blacklistBtn?.addEventListener('click', () => {
+                if (!currentTask) return;
+                blPanel.style.display = 'block';
+                blReason.focus();
+            });
+            blCancel?.addEventListener('click', () => {
+                blPanel.style.display = 'none';
+                blReason.value = '';
+            });
+            blConfirm?.addEventListener('click', () => {
+                const reason = blReason.value || '';
+                blPanel.style.display = 'none';
+                blReason.value = '';
+                act('blacklist', {reason});
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+                if (!currentTask) return;
+                if (isBusy) return;
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    toggleAnswerBtn?.click();
+                } else if (e.key === 'a' || e.key === 'A') {
+                    acceptBtn?.click();
+                } else if (e.key === 's' || e.key === 'S') {
+                    skipBtn?.click();
+                } else if (e.key === 'b' || e.key === 'B') {
+                    blacklistBtn?.click();
+                } else if (e.key === 'Escape') {
+                    stopBtn?.click();
+                }
+            });
+
+            // Если пришли через "поиск по ID" — показываем seed task сразу, без запроса.
+            if (window.__GEN_SEED_TASK__) {
+                try {
+                    renderTask(window.__GEN_SEED_TASK__);
+                    card.classList.remove('is-entering');
+                    card.classList.add('is-entering');
+                    setTimeout(() => card.classList.remove('is-entering'), 30);
+                } catch (_) {}
+            }
+        })();
+    </script>
+    <script>
+        // Конвертируем flash-сообщения в toast-уведомления
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.error('{{ message|e }}');
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.warning('{{ message|e }}');
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.info('{{ message|e }}');
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.success('{{ message|e }}');
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
+</body>
+</html>

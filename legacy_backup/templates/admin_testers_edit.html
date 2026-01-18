@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактировать тестировщика · Админ-панель</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'admin' %}
+        {% include '_primary_nav.html' %}
+
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 800px;">
+            <h1 style="margin-bottom: 1rem;">Редактировать тестировщика</h1>
+
+            <form method="POST" class="hero-section" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="neo-field">
+                    <label class="neo-label">ID тестировщика</label>
+                    <input type="text" value="{{ tester.tester_id }}" disabled class="neo-input" style="background: var(--surface-3);">
+                </div>
+
+                <div class="neo-field">
+                    <label class="neo-label" for="name">Имя *</label>
+                    <input type="text" id="name" name="name" value="{{ tester.name }}" required class="neo-input">
+                </div>
+
+                <div class="neo-field">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" name="is_active" {% if tester.is_active %}checked{% endif %}>
+                        <span class="neo-label" style="margin: 0;">Активен</span>
+                    </label>
+                </div>
+
+                <div class="neo-field">
+                    <label class="neo-label">Первое появление</label>
+                    <input type="text" value="{{ tester.first_seen.strftime('%d.%m.%Y %H:%M:%S') if tester.first_seen else '-' }}" disabled class="neo-input" style="background: var(--surface-3);">
+                </div>
+
+                <div class="neo-field">
+                    <label class="neo-label">Последнее появление</label>
+                    <input type="text" value="{{ tester.last_seen.strftime('%d.%m.%Y %H:%M:%S') if tester.last_seen else '-' }}" disabled class="neo-input" style="background: var(--surface-3);">
+                </div>
+
+                <div class="neo-field">
+                    <label class="neo-label">IP адрес</label>
+                    <input type="text" value="{{ tester.ip_address or '-' }}" disabled class="neo-input" style="background: var(--surface-3);">
+                </div>
+
+                <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                    <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-сохранить-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm"> Сохранить</button>
+                    <a href="{{ url_for('admin.admin_testers') }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Отмена" class="ui-icon ui-icon--sm">Отмена</a>
+                </div>
+            </form>
+        </section>
+    </div>
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+</body>
+</html>

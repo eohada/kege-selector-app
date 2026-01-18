@@ -1,0 +1,20 @@
+{# Минималистичный header для удаленной админки - БЕЗ навбара #}
+<header style="position: fixed; top: 0; left: 0; right: 0; background: var(--surface-2); border-bottom: 1px solid var(--stroke-2); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 200;">
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <div style="background: var(--accent-1); color: #000; padding: 0.5rem 1rem; border-radius: var(--radius-sm); font-weight: 700; font-size: 1.1rem; letter-spacing: 0.5px;">
+            REMOTE CONTROL
+        </div>
+        <div style="color: var(--text-muted); font-size: 0.9rem;">
+            Центр управления платформой
+        </div>
+    </div>
+    
+    {% if current_user and current_user.is_authenticated %}
+    <div style="display: flex; align-items: center; gap: 1rem;">
+        <span style="color: var(--text-muted); font-size: 0.9rem;">{{ current_user.username }}</span>
+        <a href="{{ url_for('auth.logout') }}" class="neo-button ghost small" style="text-decoration: none;">
+            Выход
+        </a>
+    </div>
+    {% endif %}
+</header>

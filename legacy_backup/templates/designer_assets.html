@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление ассетами · Дизайнер</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'dashboard' %}
+        {% include '_primary_nav.html' %}
+
+        {% include '_ux_enhancements.html' %}
+
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
+                        ← На главную
+                    </a>
+                    <h1 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                        <img src="{{ url_for('static', filename='icons/icons8-image-100.png') }}" class="ui-icon ui-icon--md" onerror="this.src='{{ url_for('static', filename='icons/SHABL.png') }}'"> 
+                        Управление ассетами
+                    </h1>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem;">
+                {% for asset in assets %}
+                <div class="asset-card" style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); overflow: hidden;">
+                    <div style="height: 150px; display: flex; align-items: center; justify-content: center; background: var(--surface-3); padding: 1rem;">
+                        <img src="{{ asset.url }}" alt="{{ asset.filename }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                    </div>
+                    <div style="padding: 1rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.5rem; word-break: break-all;">{{ asset.filename }}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Папка: {{ asset.folder }}</div>
+                        
+                        <form action="{{ url_for('designer.replace_asset') }}" method="POST" enctype="multipart/form-data" class="replace-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="folder" value="{{ asset.folder }}">
+                            <input type="hidden" name="filename" value="{{ asset.filename }}">
+                            
+                            <label class="neo-button ghost" style="width: 100%; text-align: center; cursor: pointer; display: block;">
+                                Заменить файл
+                                <input type="file" name="file" style="display: none;" onchange="this.form.submit()">
+                            </label>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Flash messages handling
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            try {
+                var msg = {{ message|tojson }};
+                var cat = '{{ category }}';
+                var toastFunc = window.toast || toast;
+                if (toastFunc) {
+                    if (cat === 'error' || cat === 'danger') {
+                        toastFunc.error(msg);
+                    } else if (cat === 'warning') {
+                        toastFunc.warning(msg);
+                    } else if (cat === 'info') {
+                        toastFunc.info(msg);
+                    } else {
+                        toastFunc.success(msg);
+                    }
+                }
+            } catch (e) {
+                console.error('Ошибка при отображении flash сообщения:', e);
+            }
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,225 @@
+{# Общий файл для всех UX улучшений #}
+
+{# Breadcrumbs container - добавляется в начале контента #}
+<div class="breadcrumbs-container"></div>
+
+{# Подключаем toast.js для отображения уведомлений #}
+<script src="{{ url_for('static', filename='toast.js') }}"></script>
+
+{# Универсальный обработчик форм для немедленного показа toast-уведомлений #}
+<script src="{{ url_for('static', filename='form-toast-handler.js') }}"></script>
+<script src="{{ url_for('static', filename='ux-utils.js') }}"></script>
+
+{# Универсальный обработчик flash сообщений - работает на всех страницах #}
+{# Сохраняем flash сообщения в JSON для последующего использования #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<script type="application/json" id="flash-messages-data">
+[
+    {% for category, message in messages %}
+    {"category": "{{ category }}", "message": {{ message|tojson }}}{% if not loop.last %},{% endif %}
+    {% endfor %}
+]
+</script>
+{% endif %}
+{% endwith %}
+
+<script>
+(function() {
+    'use strict';
+    
+    // Функция для получения toast функции
+    function getToastFunction() {
+        if (typeof toast !== 'undefined' && toast && typeof toast.success === 'function') {
+            return toast;
+        } else if (window.toast && typeof window.toast.success === 'function') {
+            return window.toast;
+        }
+        return null;
+    }
+    
+    // Функция для отображения flash сообщений
+    function showFlashMessages() {
+        var toastFunc = getToastFunction();
+        if (!toastFunc) {
+            // Если toast еще не загружен, ждем и пробуем снова (максимум 10 раз = 2 секунды)
+            if (typeof showFlashMessages.attempts === 'undefined') {
+                showFlashMessages.attempts = 0;
+            }
+            showFlashMessages.attempts++;
+            if (showFlashMessages.attempts < 20) {
+                setTimeout(showFlashMessages, 100);
+            }
+            return;
+        }
+        
+        // Проверяем, не были ли уже показаны сообщения
+        if (showFlashMessages.displayed) {
+            return;
+        }
+        
+        // Получаем flash сообщения из JSON
+        var flashDataEl = document.getElementById('flash-messages-data');
+        if (!flashDataEl) {
+            return;
+        }
+        
+        try {
+            var messages = JSON.parse(flashDataEl.textContent);
+            if (Array.isArray(messages) && messages.length > 0) {
+                messages.forEach(function(msg) {
+                    try {
+                        var cat = msg.category || 'success';
+                        var msgText = msg.message || '';
+                        
+                        if (cat === 'error' || cat === 'danger') {
+                            toastFunc.error(msgText);
+                        } else if (cat === 'warning') {
+                            toastFunc.warning(msgText);
+                        } else if (cat === 'info') {
+                            toastFunc.info(msgText);
+                        } else {
+                            toastFunc.success(msgText);
+                        }
+                    } catch (e) {
+                        console.error('Ошибка при отображении flash сообщения:', e);
+                    }
+                });
+                
+                // Помечаем, что сообщения уже показаны
+                showFlashMessages.displayed = true;
+            }
+        } catch (e) {
+            console.error('Ошибка при парсинге flash сообщений:', e);
+        }
+    }
+    
+    // Запускаем обработку flash сообщений
+    // Пробуем несколько раз, так как toast.js может загружаться асинхронно
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            showFlashMessages();
+            // Дополнительные попытки на случай, если toast.js загружается позже
+            setTimeout(showFlashMessages, 200);
+            setTimeout(showFlashMessages, 500);
+        });
+    } else {
+        // DOM уже загружен
+        showFlashMessages();
+        setTimeout(showFlashMessages, 200);
+        setTimeout(showFlashMessages, 500);
+    }
+    
+    // Также пробуем после полной загрузки страницы
+    window.addEventListener('load', function() {
+        setTimeout(showFlashMessages, 100);
+    });
+})();
+</script>
+
+{# КРИТИЧЕСКИ ВАЖНО: Принудительная установка базового размера шрифта для консистентности между окружениями #}
+<script>
+(function() {
+    'use strict';
+    // Принудительно устанавливаем базовый размер шрифта при загрузке страницы
+    // Это гарантирует одинаковый размер в песочнице и проде
+    function enforceBaseFontSize() {
+        const html = document.documentElement;
+        const body = document.body;
+        
+        // Устанавливаем размер в пикселях напрямую
+        html.style.fontSize = '16px';
+        html.style.setProperty('font-size', '16px', 'important');
+        
+        body.style.fontSize = '16px';
+        body.style.setProperty('font-size', '16px', 'important');
+        
+        // Отключаем авто-масштабирование текста
+        html.style.setProperty('-webkit-text-size-adjust', '100%', 'important');
+        html.style.setProperty('-moz-text-size-adjust', '100%', 'important');
+        html.style.setProperty('text-size-adjust', '100%', 'important');
+    }
+    
+    // Выполняем сразу при загрузке скрипта
+    enforceBaseFontSize();
+    
+    // Повторяем после полной загрузки DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enforceBaseFontSize);
+    } else {
+        enforceBaseFontSize();
+    }
+    
+    // Также выполняем после полной загрузки страницы
+    window.addEventListener('load', enforceBaseFontSize);
+    
+    // Функция для принудительной установки максимальной ширины контейнеров
+    function enforceMaxWidth() {
+        const containers = document.querySelectorAll('.app-shell, .container');
+        containers.forEach(function(container) {
+            const computedStyle = window.getComputedStyle(container);
+            const currentWidth = computedStyle.width;
+            const currentMaxWidth = computedStyle.maxWidth;
+            
+            // Устанавливаем максимальную ширину в пикселях
+            container.style.setProperty('max-width', '1380px', 'important');
+            
+            // Если текущая ширина больше 1380px, ограничиваем её
+            const widthValue = parseFloat(currentWidth);
+            if (!isNaN(widthValue) && widthValue > 1380) {
+                container.style.setProperty('width', '1380px', 'important');
+            }
+        });
+    }
+    
+    // Выполняем принудительную установку ширины
+    enforceMaxWidth();
+    
+    // Повторяем после загрузки DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', enforceMaxWidth);
+    } else {
+        enforceMaxWidth();
+    }
+    
+    // Также выполняем после полной загрузки страницы
+    window.addEventListener('load', enforceMaxWidth);
+    
+    // Отслеживаем изменения размера окна
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            enforceMaxWidth();
+        }, 100);
+    });
+    
+    // Защита от изменения размера через CSS (если кто-то попытается переопределить)
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                const html = document.documentElement;
+                const body = document.body;
+                
+                // Проверяем, что размер не изменился
+                const htmlFontSize = window.getComputedStyle(html).fontSize;
+                const bodyFontSize = window.getComputedStyle(body).fontSize;
+                
+                if (htmlFontSize !== '16px') {
+                    html.style.setProperty('font-size', '16px', 'important');
+                }
+                
+                if (bodyFontSize !== '16px') {
+                    body.style.setProperty('font-size', '16px', 'important');
+                }
+            }
+        });
+    });
+    
+    // Наблюдаем за изменениями в html и body
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+    observer.observe(document.body, { attributes: true, attributeFilter: ['style'] });
+})();
+</script>
+
+{# Примечание: UX скрипты были удалены, но breadcrumbs container оставлен для совместимости #}

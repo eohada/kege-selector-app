@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ панель · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'admin' %}
+        {% include '_primary_nav.html' %}
+
+        {% include '_ux_enhancements.html' %}
+
+        <section class="dashboard-hero glass-panel">
+            <div>
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                    <a href="{{ url_for('auth.user_profile') }}" class="neo-button ghost" style="text-decoration: none;">
+                        ← К профилю
+                    </a>
+                </div>
+                <p class="hero-eyebrow">администрирование</p>
+                <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Админ" class="ui-icon ui-icon--md">Админ панель</h1>
+                <p class="hero-subtitle">Минималистичная панель управления системой и пользователями.</p>
+                <div class="hero-actions">
+                    <a href="{{ url_for('admin.admin_users') }}" class="neo-button accent" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Пользователи" class="ui-icon ui-icon--sm"> Управление пользователями</a>
+                    {% if current_user.is_creator() %}
+                    <a href="{{ url_for('admin.admin_permissions') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-settings-100.png') }}" alt="Права" class="ui-icon ui-icon--sm"> Права доступа</a>
+                    {% endif %}
+                    <a href="{{ url_for('admin.admin_testers') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Тестировщики" class="ui-icon ui-icon--sm"> Тестировщики</a>
+                    <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Tester entities" class="ui-icon ui-icon--sm"> Tester entities</a>
+                    <a href="{{ url_for('admin.admin_topics') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Темы" class="ui-icon ui-icon--sm"> Темы</a>
+                    <a href="{{ url_for('admin.admin_audit') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Аудит" class="ui-icon ui-icon--sm"> Аудит</a>
+                    <a href="{{ url_for('admin.diagnostics') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-лупа-100-2.png') }}" alt="Диагностика" class="ui-icon ui-icon--sm"> Диагностика</a>
+                </div>
+            </div>
+            <div class="hero-pane">
+                <div class="hero-metric">
+                    <div class="hero-metric-label">окружение</div>
+                    <div class="hero-metric-value" style="font-size: 1.4rem;">{{ environment or 'local' }}</div>
+                </div>
+                <div class="hero-metric" style="border-left: 3px solid {% if is_production %}var(--danger){% else %}var(--success){% endif %};">
+                    <div class="hero-metric-label">режим</div>
+                    <div class="hero-metric-value" style="font-size: 1.4rem;">{% if is_production %}production{% else %}safe{% endif %}</div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hero-metric-label">пользователей (prod)</div>
+                    <div class="hero-metric-value" style="font-size: 1.6rem;">{{ total_users }}</div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hero-metric-label">логов сегодня (prod)</div>
+                    <div class="hero-metric-value" style="font-size: 1.6rem;">{{ today_logs }}</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">создание пользователя</p>
+                    <h2>Создать тестировщика (User)</h2>
+                </div>
+            </div>
+
+            {% if is_production and sandbox_base_url %}
+            <div style="margin-bottom: 1rem; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid rgba(0, 254, 202, 0.25); background: rgba(0, 254, 202, 0.06);">
+                <strong style="display: block; margin-bottom: 0.35rem;">Управление sandbox из production</strong>
+                <div style="color: var(--text-muted); font-size: 0.95rem;">Команды отправляются в sandbox по `SANDBOX_ADMIN_URL`.</div>
+            </div>
+            {% elif is_production %}
+            <div style="margin-bottom: 1rem; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid rgba(255, 108, 145, 0.35); background: rgba(255, 108, 145, 0.08);">
+                <strong style="display: block; margin-bottom: 0.35rem;">Внимание: production</strong>
+                <div style="color: var(--text-muted); font-size: 0.95rem;">Sandbox не подключён (нужны `SANDBOX_ADMIN_URL` и `SANDBOX_ADMIN_TOKEN`).</div>
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{% if is_production and sandbox_base_url %}{{ url_for('admin.admin_sandbox_user_tester_create') }}{% else %}{{ url_for('admin.admin_testers_create') }}{% endif %}" class="filters-grid" style="align-items: end;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="neo-field">
+                    <label class="neo-label" for="tester-username">Логин</label>
+                    <input id="tester-username" name="username" class="neo-input" placeholder="например: tester1" required>
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label" for="tester-password">Пароль</label>
+                    <input id="tester-password" name="password" type="password" class="neo-input" placeholder="введите пароль" required>
+                </div>
+                <div class="neo-field" style="align-items: flex-start;">
+                    <label class="neo-label">Опции</label>
+                    <label style="display:flex; gap:0.6rem; align-items:center; color: var(--text-primary);">
+                        <input type="checkbox" name="allow_update">
+                        <span style="color: var(--text-muted);">Обновить существующего</span>
+                    </label>
+                </div>
+                <div class="filters-actions">
+                    <button type="submit" class="neo-button accent" style="min-width: 220px;">Создать</button>
+                </div>
+            </form>
+        </section>
+
+        {% if is_production and sandbox_base_url %}
+        <section class="glass-panel" id="sandbox" style="margin-bottom: 2rem;">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">sandbox</p>
+                    <h2>Тестировщики и логирование</h2>
+                    {% if sandbox_summary and sandbox_summary.success %}
+                    <div style="color: var(--text-muted); margin-top: 0.35rem;">
+                        User testers: <strong style="color: var(--text-primary);">{{ sandbox_summary.users|length }}</strong>
+                        · Tester entities: <strong style="color: var(--text-primary);">{{ sandbox_summary.tester_entities|length }}</strong>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if sandbox_error %}
+            <div style="margin-bottom: 1rem; padding: 1rem; border-radius: var(--radius-sm); border: 1px solid rgba(255, 108, 145, 0.35); background: rgba(255, 108, 145, 0.08);">
+                <strong style="display: block; margin-bottom: 0.35rem;">Ошибка связи с sandbox</strong>
+                <div style="color: var(--text-muted); font-size: 0.95rem;">{{ sandbox_error }}</div>
+            </div>
+            {% endif %}
+
+            {% if sandbox_summary and sandbox_summary.success %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem;">
+                <div class="admin-card">
+                    <div style="font-weight: 700; margin-bottom: 0.75rem; font-size: 1.1rem;">User testers (sandbox)</div>
+                    <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                        {% for u in sandbox_summary.users[:12] %}
+                        <div class="admin-item">
+                            <div style="min-width:0; flex: 1;">
+                                <div class="admin-item-name">{{ u.username }}</div>
+                                <div class="admin-item-meta">id {{ u.id }} · logs {{ u.logs_count }}{% if u.last_action %} · last {{ u.last_action[:19].replace('T',' ') }}{% endif %}</div>
+                            </div>
+                            <div class="admin-item-actions">
+                                <form method="POST" action="{{ url_for('admin.admin_sandbox_user_toggle_active', user_id=u.id) }}" style="margin:0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="neo-button ghost" style="padding:0.5rem 0.75rem;" title="{% if u.is_active %}Деактивировать{% else %}Активировать{% endif %}">{% if u.is_active %}<img src="{{ url_for('static', filename='icons/icons8-пауза-100.png') }}" alt="Пауза" class="ui-icon ui-icon--sm">{% else %}<img src="{{ url_for('static', filename='icons/icons8-воспроизвести-100.png') }}" alt="Воспроизвести" class="ui-icon ui-icon--sm">{% endif %}</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('admin.admin_sandbox_user_delete', user_id=u.id) }}" class="confirm-delete-form" style="margin:0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="neo-button danger" style="padding:0.5rem 0.75rem;" title="Удалить"><img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Удалить" class="ui-icon ui-icon--sm"></button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div style="margin-top: 1rem;">
+                        <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem;">Смена пароля (sandbox user id)</div>
+                        <form method="POST" action="{{ url_for('admin.admin_sandbox_user_set_password', user_id=0) }}" style="display:flex; gap:0.6rem; flex-wrap:wrap;" onsubmit="this.action = this.action.replace('/0/','/' + this.querySelector('[name=user_id]').value + '/');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input name="user_id" class="neo-input" placeholder="id" style="max-width:120px;" required>
+                            <input name="password" type="password" class="neo-input" placeholder="новый пароль" style="min-width:220px;" required>
+                            <button type="submit" class="neo-button outline">Обновить</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="admin-card">
+                    <div style="font-weight: 700; margin-bottom: 0.75rem; font-size: 1.1rem;">Tester entities (sandbox)</div>
+                    <form method="POST" action="{{ url_for('admin.admin_sandbox_tester_entity_create') }}" style="display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom: 0.8rem;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input name="name" class="neo-input" placeholder="имя (например: AnonymousLab)" required>
+                        <label style="display:flex; gap:0.5rem; align-items:center; color: var(--text-muted);">
+                            <input type="checkbox" name="is_active" checked>
+                            active
+                        </label>
+                        <button type="submit" class="neo-button accent">Создать</button>
+                    </form>
+
+                    <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                        {% for t in sandbox_summary.tester_entities[:12] %}
+                        <div class="admin-item">
+                            <div style="min-width:0; flex: 1;">
+                                <div class="admin-item-name">{{ t.name }}</div>
+                                <div class="admin-item-meta">logs {{ t.logs_count }}{% if t.last_action %} · last {{ t.last_action[:19].replace('T',' ') }}{% endif %}</div>
+                            </div>
+                            <div class="admin-item-actions">
+                                <form method="POST" action="{{ url_for('admin.admin_sandbox_tester_entity_toggle_active', tester_id=t.tester_id) }}" style="margin:0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="neo-button ghost" style="padding:0.5rem 0.75rem;" title="{% if t.is_active %}Деактивировать{% else %}Активировать{% endif %}">{% if t.is_active %}<img src="{{ url_for('static', filename='icons/icons8-пауза-100.png') }}" alt="Пауза" class="ui-icon ui-icon--sm">{% else %}<img src="{{ url_for('static', filename='icons/icons8-воспроизвести-100.png') }}" alt="Воспроизвести" class="ui-icon ui-icon--sm">{% endif %}</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('admin.admin_sandbox_tester_entity_delete', tester_id=t.tester_id) }}" class="confirm-delete-form" style="margin:0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="neo-button danger" style="padding:0.5rem 0.75rem;" title="Удалить"><img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Удалить" class="ui-icon ui-icon--sm"></button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        {% if is_production %}
+        <section class="glass-panel" id="db-sync" style="margin-bottom: 2rem;">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">синхронизация</p>
+                    <h2>Production → Sandbox (БД)</h2>
+                    <div style="color: var(--text-muted); margin-top: 0.35rem;">
+                        Важно: операция очищает и заново заполняет таблицы в sandbox (TRUNCATE + INSERT).
+                    </div>
+                </div>
+                <form method="POST" action="{{ url_for('admin.admin_sandbox_db_sync_run') }}" style="margin:0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label style="display:inline-flex; gap:0.5rem; align-items:center; color: var(--text-muted); margin-right: 0.75rem;">
+                        <input type="checkbox" name="include_users">
+                        синкать Users (снесёт sandbox тестеров)
+                    </label>
+                    <button id="dbSyncBtn" type="submit" class="neo-button accent">Запустить</button>
+                </form>
+            </div>
+
+            <div id="dbSyncMeta" style="color: var(--text-muted); margin-bottom: 0.75rem;"></div>
+            <pre id="dbSyncLog" style="white-space: pre-wrap; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); padding: 1rem; max-height: 260px; overflow: auto;">{% if db_sync_state and db_sync_state.log %}{{ db_sync_state.log }}{% else %}Лог синхронизации появится здесь.{% endif %}</pre>
+        </section>
+        {% endif %}
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">тех. работы</p>
+                    <h2>Maintenance</h2>
+                </div>
+                <form method="POST" action="{{ url_for('admin.toggle_maintenance') }}" style="margin: 0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="neo-button {% if maintenance_enabled %}danger{% else %}accent{% endif %}">
+                        {% if maintenance_enabled %}Выключить{% else %}Включить{% endif %}
+                    </button>
+                </form>
+            </div>
+
+            <div style="margin-bottom: 1rem; color: var(--text-muted);">
+                {% if maintenance_enabled %}● Включен — песочница редиректит на тех. работы{% else %}● Выключен — приложение работает{% endif %}
+            </div>
+
+            <form method="POST" action="{{ url_for('admin.update_maintenance_message') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="neo-field">
+                    <label class="neo-label" for="maintenance-message">Сообщение</label>
+                    <textarea id="maintenance-message" name="message" rows="3" class="neo-input" placeholder="Ведутся технические работы. Пожалуйста, зайдите позже.">{{ maintenance_message or '' }}</textarea>
+                </div>
+                <div class="hero-actions">
+                    <button type="submit" class="neo-button outline"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm">Сохранить сообщение</button>
+                    <a href="{{ url_for('admin.debug_export') }}" class="neo-button ghost" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-инструменты-100.png') }}" alt="Debug" class="ui-icon ui-icon--sm"> Debug export</a>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error({{ message|tojson }});
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning({{ message|tojson }});
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info({{ message|tojson }});
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success({{ message|tojson }});
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            const btn = document.getElementById('dbSyncBtn');
+            const meta = document.getElementById('dbSyncMeta');
+            const logEl = document.getElementById('dbSyncLog');
+
+            async function refreshDbSync() {
+                if (!btn || !meta || !logEl) return;
+                try {
+                    const res = await fetch('{{ url_for('admin.admin_sandbox_db_sync_status') }}', { headers: { 'Accept': 'application/json' } });
+                    const data = await res.json();
+                    if (!data || !data.success) return;
+                    const state = data.state || {};
+                    btn.disabled = !!state.running;
+                    btn.textContent = state.running ? 'Выполняется…' : 'Запустить';
+                    const started = state.started_at ? new Date(state.started_at * 1000).toLocaleString() : '—';
+                    const finished = state.finished_at ? new Date(state.finished_at * 1000).toLocaleString() : '—';
+                    const ok = state.ok === null || typeof state.ok === 'undefined' ? '—' : (state.ok ? 'OK' : 'FAIL');
+                    meta.textContent = `Статус: ${state.running ? 'RUNNING' : ok} · Старт: ${started} · Конец: ${finished}`;
+                    if (state.log) logEl.textContent = state.log;
+                } catch (e) {}
+            }
+
+            refreshDbSync();
+            setInterval(refreshDbSync, 3000);
+        });
+    </script>
+</body>
+</html>

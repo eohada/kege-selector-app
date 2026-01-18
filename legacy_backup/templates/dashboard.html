@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
+    {% if active_lesson %}
+    <div class="now-playing-pill" onclick="toggleLessonMenu()">
+        <img src="{{ url_for('static', filename='icons/comfort.png') }}" alt="Урок" class="ui-icon ui-icon--sm">Урок идет: {{ active_student.name }}
+    </div>
+    <div class="now-playing-panel" id="lessonMenu">
+        <div class="hero-eyebrow">текущий урок</div>
+        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
+        {% if active_lesson.topic %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
+        {% endif %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
+        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
+        <div class="hero-actions" style="margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
+            </form>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
+        </div>
+    </div>
+    <script>
+        function toggleLessonMenu() {
+            const menu = document.getElementById('lessonMenu');
+            if (menu) {
+                menu.classList.toggle('active');
+            }
+        }
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('lessonMenu');
+            const badge = document.querySelector('.now-playing-pill');
+            if (!menu || !badge) return;
+            if (!menu.contains(event.target) && !badge.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+    </script>
+    {% endif %}
+
+    <div class="app-shell">
+        {% set active_page = 'dashboard' %}
+        {% include '_primary_nav.html' %}
+
+        {% include '_ux_enhancements.html' %}
+        
+        <section class="dashboard-hero glass-panel">
+            <div>
+                <p class="hero-eyebrow">панель управления</p>
+                <h1 class="hero-title">Чёрный неон. Новый взгляд на учёбу.</h1>
+                <p class="hero-subtitle">
+                    Управляй учениками, уроками и прогрессом в едином неоновом пространстве. Лаконично, быстро
+                    и с визуальными акцентами на то, что важно прямо сейчас.
+                </p>
+                <div class="hero-actions">
+                    <a href="{{ url_for('main.export_data') }}" class="neo-button accent">
+                        <img src="{{ url_for('static', filename='icons/EKSPORT.png') }}" alt="Экспорт" class="ui-icon ui-icon--md">
+                        Экспорт
+                    </a>
+                    <a href="{{ url_for('main.import_data') }}" class="neo-button outline">
+                        <img src="{{ url_for('static', filename='icons/icons8-загрузка-настольного-компьютера-100.png') }}" alt="Импорт" class="ui-icon ui-icon--md">
+                        Импорт
+                    </a>
+                    <a href="{{ url_for('main.backup_db') }}" class="neo-button ghost">
+                        <img src="{{ url_for('static', filename='icons/BACKUP.png') }}" alt="Бэкап БД" class="ui-icon ui-icon--md">
+                        Бэкап БД
+                    </a>
+                </div>
+            </div>
+            <div class="hero-pane">
+                <div class="hero-metric">
+                    <div class="hero-metric-label">активные ученики</div>
+                    <div class="hero-metric-value">{{ total_students }}</div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hero-metric-label">запланировано уроков</div>
+                    <div class="hero-metric-value">{{ planned_lessons }}</div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hero-metric-label">проведено уроков</div>
+                    <div class="hero-metric-value">{{ completed_lessons }}</div>
+                </div>
+            </div>
+        </section>
+
+        {# Flash messages будут показаны через toast #}
+
+        <section class="glass-panel filters-panel">
+            <form method="GET" action="{{ url_for('main.dashboard') }}" class="filters-grid">
+                <input type="hidden" name="show_archive" value="{{ 'true' if show_archive else 'false' }}">
+                <div class="neo-field">
+                    <label class="neo-label">Поиск <span class="keyboard-hint" data-tooltip="Нажмите Ctrl+F для быстрого поиска"><kbd>Ctrl</kbd>+<kbd>F</kbd></span></label>
+                    <input type="text" name="search" value="{{ search_query }}" class="neo-input" placeholder="Имя или ID ученика" data-tooltip="Введите имя или ID ученика для поиска">
+                </div>
+                <div class="neo-field">
+                    <label class="neo-label">Категория</label>
+                    <select name="category" class="neo-select">
+                        <option value="">Все категории</option>
+                        <option value="ЕГЭ" {% if category_filter == 'ЕГЭ' %}selected{% endif %}>ЕГЭ</option>
+                        <option value="ОГЭ" {% if category_filter == 'ОГЭ' %}selected{% endif %}>ОГЭ</option>
+                        <option value="ЛЕВЕЛАП" {% if category_filter == 'ЛЕВЕЛАП' %}selected{% endif %}>ЛЕВЕЛАП</option> <!-- Фильтр по направлению ЛЕВЕЛАП -->
+                        <option value="ПРОГРАММИРОВАНИЕ" {% if category_filter == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option> <!-- Фильтр по направлению программирования -->
+                    </select>
+                </div>
+                <div class="filters-actions">
+                    <button type="submit" class="neo-button accent" data-tooltip="Применить фильтры (Enter)">
+                        <img src="{{ url_for('static', filename='icons/icons8-лупа-100-2.png') }}" alt="Найти" class="ui-icon ui-icon--sm">
+                        Найти
+                    </button>
+                    {% if search_query or category_filter %}
+                    <a href="{{ url_for('main.dashboard', show_archive='true' if show_archive else 'false') }}" class="neo-button ghost" data-tooltip="Сбросить все фильтры">⟲ Сбросить</a>
+                    {% endif %}
+                </div>
+            </form>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+                <a href="{{ url_for('main.dashboard', show_archive='false', search=search_query, category=category_filter) }}" 
+                   class="neo-button {% if not show_archive %}accent{% else %}ghost{% endif %}" 
+                   style="text-decoration: none;">
+                    <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Активные" style="width: 18px; height: 18px; margin-right: 0.4rem; vertical-align: middle;">
+                    Активные ({{ total_students }})
+                </a>
+                <a href="{{ url_for('main.dashboard', show_archive='true', search=search_query, category=category_filter) }}" 
+                   class="neo-button {% if show_archive %}accent{% else %}ghost{% endif %}" 
+                   style="text-decoration: none;">
+                    <img src="{{ url_for('static', filename='icons/ARHIV.png') }}" alt="Архив" class="ui-icon">
+                    Архив ({{ archived_students_count }})
+                </a>
+            </div>
+        </section>
+
+        <section class="stats-grid">
+            <article class="stat-card">
+                <strong>{{ students|length }}</strong>
+                <span>НА ЭКРАНЕ</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ total_students }}</strong>
+                <span>АКТИВНЫХ</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ total_lessons }}</strong>
+                <span>ВСЕГО УРОКОВ</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ planned_lessons }}</strong>
+                <span>ЗАПЛАНИРОВАНО</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ completed_lessons }}</strong>
+                <span>ПРОВЕДЕНО</span>
+            </article>
+            {% if in_progress_lessons %}
+            <article class="stat-card">
+                <strong>{{ in_progress_lessons }}</strong>
+                <span>ИДЕТ СЕЙЧАС</span>
+            </article>
+            {% endif %}
+            <article class="stat-card">
+                <strong>{{ recent_lessons }}</strong>
+                <span>ЗА НЕДЕЛЮ</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ lessons_with_homework }}</strong>
+                <span>С ДЗ</span>
+            </article>
+            {% if not category_filter %}
+            <article class="stat-card">
+                <strong>{{ ege_students }}</strong>
+                <span>ЕГЭ</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ oge_students }}</strong>
+                <span>ОГЭ</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ levelup_students }}</strong>
+                <span>ЛЕВЕЛАП</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ programming_students }}</strong>
+                <span>ПРОГРАММИРОВАНИЕ</span>
+            </article>
+            {% endif %}
+            <article class="stat-card">
+                <strong>{{ total_tasks }}</strong>
+                <span>ЗАДАНИЙ В БД</span>
+            </article>
+            <article class="stat-card">
+                <strong>{{ accepted_tasks_count }}</strong>
+                <span>ПРИНЯТО</span>
+            </article>
+        </section>
+
+        <section class="glass-panel students-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">{% if show_archive %}архивные ученики{% else %}активные ученики{% endif %}</p>
+                    <h2>{{ students|length }} в подборке</h2>
+                </div>
+                <div class="hero-actions">
+                    {% if not show_archive %}
+                    <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">Добавить</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if students %}
+            <div class="students-grid">
+                {% if not show_archive %}
+                <a href="{{ url_for('students.student_new') }}" class="student-card student-card--cta">
+                    <div class="hero-eyebrow">quick action</div>
+                    <h3 style="margin: 0;">Создать нового ученика</h3>
+                    <p class="hero-subtitle">Стартовая точка для целей, уроков и заметок.</p>
+                </a>
+                {% endif %}
+                {% for student in students %}
+                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}"
+                   class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %}"
+                   data-student-id="{{ student.student_id }}">
+                    <div class="student-card__head">
+                        <div class="student-avatar {% if show_archive %}student-avatar--archived{% endif %}">{{ student.name[0].upper() }}</div>
+                        <div>
+                            <p class="student-name">{{ student.name }}{% if show_archive %} <span style="opacity: 0.6; font-size: 0.85em;">(архив)</span>{% endif %}</p>
+                            {% if student.platform_id %}
+                            <p class="student-meta student-platform-id">ID: {{ student.platform_id }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if student.category %}
+                    <span class="student-tag student-category">{{ student.category }}</span>
+                    {% endif %}
+                    {% if student.school_class %}
+                    <span class="student-tag student-class">{{ student.school_class }} класс</span> {# Отображаем класс ученика прямо на карточке #}
+                    {% endif %}
+                    {% if student.description %}
+                    <p class="hero-subtitle" style="font-size: 0.9rem;">
+                        "{{ student.description[:130] }}{% if student.description|length > 130 %}…{% endif %}"
+                    </p>
+                    {% endif %}
+                    <div class="student-insights">
+                        {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.goal_text %}
+                        <div><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--sm">Цель: {{ student.goal_text }}</div> <!-- Текстовая цель для программирования -->
+                        {% elif student.category == 'ЛЕВЕЛАП' and student.goal_text %}
+                        <div><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--sm">Цель: {{ student.goal_text }}</div> <!-- Текстовая цель для ЛЕВЕЛАП -->
+                        {% elif student.target_score %}
+                        <div><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--sm">{% if student.category == 'ОГЭ' %}Целевая оценка{% else %}Цель{% endif %}: {{ student.target_score }}{% if student.category != 'ОГЭ' %} баллов{% endif %}</div> <!-- Числовая цель -->
+                        {% endif %}
+                        {% if student.category != 'ПРОГРАММИРОВАНИЕ' and student.deadline %}
+                        <div><img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Срок" class="ui-icon ui-icon--sm">Срок: {{ student.deadline }}</div> <!-- Срок достижения цели -->
+                        {% endif %}
+                        {% if student.school_class %}
+                        <div><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Класс" class="ui-icon ui-icon--sm">Класс: {{ student.school_class }}</div> {# Информация о текущем классе #}
+                        {% endif %}
+                        {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.programming_language %}
+                        <div>Язык: {{ student.programming_language }}</div> <!-- Предпочитаемый язык программирования -->
+                        {% endif %}
+                        {% if student.diagnostic_level %}
+                        <div><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Диагностика" class="ui-icon ui-icon--sm">Диагностика: <span>{{ student.diagnostic_level }}</span></div>
+                        {% endif %}
+                        {% if student.overall_rating %}
+                        <div><img src="{{ url_for('static', filename='icons/OSENKA.png') }}" alt="Оценка" class="ui-icon ui-icon--sm">Оценка: <span>{{ student.overall_rating }}</span></div>
+                        {% endif %}
+                        {% if student.strengths %}
+                        <div><img src="{{ url_for('static', filename='icons/SILSTORON.png') }}" alt="Сильные стороны" class="ui-icon ui-icon--sm">Сильные стороны: <span>{{ student.strengths[:60] }}{% if student.strengths|length > 60 %}…{% endif %}</span></div>
+                        {% endif %}
+                        {% if student.weaknesses %}
+                        <div><img src="{{ url_for('static', filename='icons/ROSTA ZONA.png') }}" alt="Зоны роста" class="ui-icon ui-icon--sm">Зоны роста: <span>{{ student.weaknesses[:60] }}{% if student.weaknesses|length > 60 %}…{% endif %}</span></div>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+
+            {% if pagination.pages > 1 %}
+            <div class="pagination">
+                {% if pagination.has_prev %}
+                <a href="{{ url_for('main.dashboard', page=pagination.prev_num, search=search_query, category=category_filter, show_archive='true' if show_archive else 'false') }}" class="pagination-btn">‹ Назад</a>
+                {% else %}
+                <span class="pagination-btn disabled">‹ Назад</span>
+                {% endif %}
+                <span>Страница {{ pagination.page }} из {{ pagination.pages }}</span>
+                {% if pagination.has_next %}
+                <a href="{{ url_for('main.dashboard', page=pagination.next_num, search=search_query, category=category_filter, show_archive='true' if show_archive else 'false') }}" class="pagination-btn">Вперёд ›</a>
+                {% else %}
+                <span class="pagination-btn disabled">Вперёд ›</span>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-state-icon">
+                    {% if show_archive %}
+                        <img src="{{ url_for('static', filename='icons/archiv.png') }}" alt="Архив" class="ui-icon ui-icon--md ui-icon--only">
+                    {% else %}
+                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="ui-icon ui-icon--md ui-icon--only">
+                    {% endif %}
+                </div>
+                <h3 class="empty-state-title">{% if show_archive %}Архив пуст{% else %}Пока нет учеников{% endif %}</h3>
+                <p class="empty-state-description">{% if show_archive %}В архиве пока нет учеников{% else %}Добавьте первого ученика, чтобы начать работу{% endif %}</p>
+                {% if not show_archive %}
+                <div class="empty-state-actions">
+                    {% if not current_user.is_student() and not current_user.is_parent() %}
+                    <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">Добавить ученика</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='dashboard-ajax.js') }}"></script>
+    <script src="{{ url_for('static', filename='filter-storage.js') }}"></script>
+    <script src="{{ url_for('static', filename='filter-state-manager.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script>
+        // Убеждаемся, что класс creator-theme-active не применяется на других страницах
+        document.addEventListener('DOMContentLoaded', () => {
+            const profileContainer = document.querySelector('.profile-container.theme-creator');
+            if (!profileContainer) {
+                document.body.classList.remove('creator-theme-active');
+            }
+        });
+    </script>
+</body>
+</html>

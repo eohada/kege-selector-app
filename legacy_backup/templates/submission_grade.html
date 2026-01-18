@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проверка работы - {{ assignment.title }}</title>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    
+    <style>
+        .grade-header {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .grade-header h1 {
+            font-size: 2em;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+        
+        .student-info {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--stroke-1);
+        }
+        
+        .task-card {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--stroke-1);
+        }
+        
+        .task-content {
+            margin-bottom: 1.5rem;
+            line-height: 1.8;
+        }
+        
+        .answer-section {
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .score-input-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .score-input {
+            width: 80px;
+            padding: 0.5rem;
+            border: 2px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            font-size: 1.1em;
+            font-weight: 700;
+            text-align: center;
+        }
+        
+        .score-input:focus {
+            outline: none;
+            border-color: var(--accent-1);
+        }
+        
+        .max-score {
+            color: var(--text-muted);
+        }
+        
+        .comment-input {
+            width: 100%;
+            min-height: 80px;
+            padding: 0.75rem;
+            border: 2px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            resize: vertical;
+            margin-top: 0.5rem;
+        }
+        
+        .feedback-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid var(--stroke-1);
+        }
+        
+        .submit-section {
+            position: sticky;
+            bottom: 0;
+            background: var(--surface-1);
+            border-top: 2px solid var(--stroke-1);
+            padding: 1.5rem;
+            margin-top: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .total-score {
+            font-size: 1.5em;
+            font-weight: 800;
+            color: var(--accent-1);
+        }
+    </style>
+</head>
+<body>
+    {% include '_primary_nav.html' %}
+    
+    <main class="container" style="max-width: 1000px; margin: 2rem auto; padding: 0 1.5rem;">
+        <div class="grade-header">
+            <h1>{{ assignment.title }}</h1>
+            <div class="student-info">
+                <div>
+                    <div style="font-size: 0.9em; color: var(--text-muted);">Ученик</div>
+                    <div style="font-weight: 700; font-size: 1.2em;">{{ submission.student.name }}</div>
+                </div>
+                <div>
+                    <div style="font-size: 0.9em; color: var(--text-muted);">Статус</div>
+                    <div style="font-weight: 700;">
+                        {% if submission.status == 'SUBMITTED' %}Сдано
+                        {% elif submission.status == 'GRADED' %}Проверено
+                        {% elif submission.status == 'RETURNED' %}На доработку
+                        {% else %}{{ submission.status }}{% endif %}
+                    </div>
+                </div>
+                {% if submission.submitted_at %}
+                <div>
+                    <div style="font-size: 0.9em; color: var(--text-muted);">Сдано</div>
+                    <div style="font-weight: 700;">{{ submission.submitted_at.strftime('%d.%m.%Y %H:%M') }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if submission.status == 'SUBMITTED' %}
+        <form id="grade-form">
+            {% for task_item in tasks_data %}
+            <div class="task-card" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
+                <div class="task-header">
+                    <div>
+                        <div style="font-size: 1.2em; font-weight: 700; color: var(--accent-1);">
+                            Задание {{ task_item.task.task_number }}
+                        </div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-top: 0.25rem;">
+                            Максимальный балл: {{ task_item.assignment_task.max_score }}
+                        </div>
+                    </div>
+                    {% if task_item.assignment_task.requires_manual_grading %}
+                    <span class="badge" style="background: var(--warning); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-sm);">
+                        Ручная проверка
+                    </span>
+                    {% else %}
+                    <span class="badge" style="background: var(--success); color: white; padding: 0.5rem 1rem; border-radius: var(--radius-sm);">
+                        Авто-проверка
+                    </span>
+                    {% endif %}
+                </div>
+                
+                <div class="task-content">
+                    {{ task_item.task.content_html|safe }}
+                </div>
+                
+                <div class="answer-section">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem;">Ответ ученика:</div>
+                    <div style="white-space: pre-wrap; padding: 0.75rem; background: var(--surface-1); border-radius: var(--radius-sm);">
+                        {{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}
+                    </div>
+                    
+                    {% if task_item.answer and task_item.answer.is_correct is not none %}
+                    <div style="margin-top: 0.75rem; padding: 0.5rem; background: {% if task_item.answer.is_correct %}var(--success){% else %}var(--danger){% endif %}; color: white; border-radius: var(--radius-sm); font-weight: 600;">
+                        {% if task_item.answer.is_correct %}✓ Правильно{% else %}✗ Неправильно{% endif %}
+                        (Авто-проверка: {{ task_item.answer.score }}/{{ task_item.assignment_task.max_score }})
+                    </div>
+                    {% endif %}
+                    
+                    <div class="score-input-group">
+                        <label style="font-weight: 600;">Балл:</label>
+                        <input 
+                            type="number" 
+                            class="score-input" 
+                            name="score_{{ task_item.assignment_task.assignment_task_id }}"
+                            value="{{ task_item.answer.score if task_item.answer and task_item.answer.score is not none else task_item.assignment_task.max_score if task_item.answer and task_item.answer.is_correct else 0 }}"
+                            min="0"
+                            max="{{ task_item.assignment_task.max_score }}"
+                            data-max="{{ task_item.assignment_task.max_score }}"
+                            required
+                        >
+                        <span class="max-score">/ {{ task_item.assignment_task.max_score }}</span>
+                    </div>
+                    
+                    <div style="margin-top: 1rem;">
+                        <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Комментарий к задаче:</label>
+                        <textarea 
+                            class="comment-input"
+                            name="comment_{{ task_item.assignment_task.assignment_task_id }}"
+                            placeholder="Оставьте комментарий к ответу ученика (необязательно)"
+                        >{{ task_item.answer.teacher_comment if task_item.answer and task_item.answer.teacher_comment else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            <div class="feedback-section">
+                <label style="font-weight: 700; font-size: 1.1em; display: block; margin-bottom: 0.75rem;">
+                    Общий комментарий к работе:
+                </label>
+                <textarea 
+                    id="teacher-feedback"
+                    class="comment-input"
+                    style="min-height: 120px;"
+                    placeholder="Напишите общий комментарий к работе ученика..."
+                >{{ submission.teacher_feedback if submission.teacher_feedback else '' }}</textarea>
+            </div>
+            
+            <div class="submit-section">
+                <div>
+                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">Итоговый балл</div>
+                    <div class="total-score" id="total-score">0 / {{ submission.max_score }}</div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button type="button" id="return-btn" class="btn-secondary" style="padding: 1rem 2rem;">
+                        Вернуть на доработку
+                    </button>
+                    <button type="button" id="grade-btn" class="btn-primary" style="padding: 1rem 2rem;">
+                        Завершить проверку
+                    </button>
+                </div>
+            </div>
+        </form>
+        {% else %}
+        {# Просмотр уже проверенной работы #}
+        {% for task_item in tasks_data %}
+        <div class="task-card">
+            <div class="task-header">
+                <div>
+                    <div style="font-size: 1.2em; font-weight: 700; color: var(--accent-1);">
+                        Задание {{ task_item.task.task_number }}
+                    </div>
+                </div>
+                {% if task_item.answer and task_item.answer.score is not none %}
+                <div style="font-size: 1.3em; font-weight: 800; color: var(--accent-1);">
+                    {{ task_item.answer.score }}/{{ task_item.assignment_task.max_score }}
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="task-content">
+                {{ task_item.task.content_html|safe }}
+            </div>
+            
+            <div class="answer-section">
+                <div style="font-weight: 600; margin-bottom: 0.5rem;">Ответ ученика:</div>
+                <div style="white-space: pre-wrap; padding: 0.75rem; background: var(--surface-1); border-radius: var(--radius-sm);">
+                    {{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}
+                </div>
+                
+                {% if task_item.answer and task_item.answer.teacher_comment %}
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--accent-1);">Комментарий:</div>
+                    <div>{{ task_item.answer.teacher_comment }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if submission.teacher_feedback %}
+        <div class="task-card" style="background: var(--accent-1); color: white;">
+            <div style="font-weight: 700; margin-bottom: 0.5rem;">Общий комментарий преподавателя:</div>
+            <div>{{ submission.teacher_feedback }}</div>
+        </div>
+        {% endif %}
+        
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="btn-primary">
+                Назад к работе
+            </a>
+        </div>
+        {% endif %}
+    </main>
+    
+    <script>
+        // Инициализация KaTeX
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\[', right: '\\]', display: true},
+                        {left: '\\(', right: '\\)', display: false}
+                    ]
+                });
+            }
+        });
+        
+        {% if submission.status == 'SUBMITTED' %}
+        // Подсчет итогового балла
+        function updateTotalScore() {
+            let total = 0;
+            let maxTotal = 0;
+            document.querySelectorAll('.score-input').forEach(input => {
+                const score = parseInt(input.value) || 0;
+                const max = parseInt(input.dataset.max) || 0;
+                total += score;
+                maxTotal += max;
+            });
+            document.getElementById('total-score').textContent = `${total} / ${maxTotal}`;
+        }
+        
+        document.querySelectorAll('.score-input').forEach(input => {
+            input.addEventListener('input', updateTotalScore);
+            input.addEventListener('change', function() {
+                const max = parseInt(this.dataset.max) || 0;
+                if (parseInt(this.value) > max) {
+                    this.value = max;
+                }
+                if (parseInt(this.value) < 0) {
+                    this.value = 0;
+                }
+                updateTotalScore();
+            });
+        });
+        
+        updateTotalScore();
+        
+        // Сохранение оценки
+        document.getElementById('grade-btn')?.addEventListener('click', function() {
+            const scores = [];
+            document.querySelectorAll('.score-input').forEach(input => {
+                scores.push({
+                    assignment_task_id: parseInt(input.name.replace('score_', '')),
+                    score: parseInt(input.value) || 0,
+                    comment: document.querySelector(`textarea[name="comment_${input.name.replace('score_', '')}"]`)?.value || ''
+                });
+            });
+            
+            const data = {
+                scores: scores,
+                teacher_feedback: document.getElementById('teacher-feedback').value,
+                status: 'GRADED'
+            };
+            
+            fetch(`{{ url_for('assignments.submission_grade_save', submission_id=submission.submission_id) }}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Работа успешно проверена!');
+                    location.reload();
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Не удалось сохранить оценку'));
+                }
+            });
+        });
+        
+        // Возврат на доработку
+        document.getElementById('return-btn')?.addEventListener('click', function() {
+            if (!confirm('Вернуть работу на доработку? Ученик сможет исправить ответы и сдать заново.')) {
+                return;
+            }
+            
+            const scores = [];
+            document.querySelectorAll('.score-input').forEach(input => {
+                scores.push({
+                    assignment_task_id: parseInt(input.name.replace('score_', '')),
+                    score: parseInt(input.value) || 0,
+                    comment: document.querySelector(`textarea[name="comment_${input.name.replace('score_', '')}"]`)?.value || ''
+                });
+            });
+            
+            const data = {
+                scores: scores,
+                teacher_feedback: document.getElementById('teacher-feedback').value,
+                status: 'RETURNED'
+            };
+            
+            fetch(`{{ url_for('assignments.submission_grade_save', submission_id=submission.submission_id) }}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Работа возвращена на доработку!');
+                    location.reload();
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Не удалось вернуть работу'));
+                }
+            });
+        });
+        {% endif %}
+    </script>
+</body>
+</html>

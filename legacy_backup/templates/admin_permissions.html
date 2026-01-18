@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление правами доступа · Админ-панель</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        /* Role Cards Grid */
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .role-card {
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 0.8rem;
+        }
+
+        .role-card:hover {
+            transform: translateY(-4px);
+            background: var(--surface-1);
+        }
+
+        .role-card.active {
+            background: var(--surface-1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .role-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--role-color);
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+
+        .role-card:hover::before,
+        .role-card.active::before {
+            opacity: 1;
+        }
+
+        .role-card.active {
+            border-color: var(--role-color);
+        }
+
+        .role-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--role-color);
+            filter: drop-shadow(0 0 10px rgba(0,0,0,0.3));
+        }
+
+        .role-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .role-key {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-family: monospace;
+            background: rgba(0,0,0,0.2);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        /* Role Colors */
+        .role-creator { --role-color: #ff2e2e; }
+        .role-admin { --role-color: #ff6b2e; }
+        .role-chief_tester { --role-color: #ffb32e; }
+        .role-tutor { --role-color: #2e7dff; }
+        .role-designer { --role-color: #d62eff; }
+        .role-tester { --role-color: #2effd5; }
+        .role-student { --role-color: #2eff7d; }
+        .role-parent { --role-color: #ffe02e; }
+
+        /* Permissions Section */
+        .permissions-section {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+        
+        .permissions-section.active {
+            display: block;
+        }
+
+        .permission-category {
+            margin-bottom: 2rem;
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+        }
+
+        .category-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.8rem;
+            border-bottom: 1px solid var(--stroke-1);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .perms-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        /* Neo Toggle Switch */
+        .perm-item {
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .perm-item:hover {
+            border-color: rgba(255,255,255,0.1);
+            transform: translateY(-1px);
+        }
+
+        .perm-info {
+            padding-right: 1rem;
+        }
+
+        .perm-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 0.2rem;
+            color: var(--text-primary);
+        }
+
+        .perm-key {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: monospace;
+        }
+
+        /* Custom Toggle */
+        .neo-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 26px;
+            flex-shrink: 0;
+        }
+
+        .neo-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--surface-3);
+            transition: .3s;
+            border: 1px solid var(--stroke-2);
+            border-radius: 4px; /* Boxy look */
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: var(--text-muted);
+            transition: .3s;
+            border-radius: 2px; /* Boxy look */
+        }
+
+        input:checked + .slider {
+            background-color: rgba(0, 255, 213, 0.15);
+            border-color: var(--accent-1);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(22px);
+            background-color: var(--accent-1);
+            box-shadow: 0 0 10px var(--accent-1);
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px var(--accent-1);
+        }
+        
+        /* Creator special */
+        .role-creator-perms input:checked + .slider {
+            background-color: rgba(255, 46, 46, 0.15);
+            border-color: #ff2e2e;
+        }
+        .role-creator-perms input:checked + .slider:before {
+            background-color: #ff2e2e;
+            box-shadow: 0 0 10px #ff2e2e;
+        }
+
+        /* Disabled state */
+        input:disabled + .slider {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'admin' %}
+        {% include '_primary_nav.html' %}
+
+        {% include '_ux_enhancements.html' %}
+
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">
+                        ← К админ панели
+                    </a>
+                    <h1 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                        <img src="{{ url_for('static', filename='icons/icons8-settings-100.png') }}" class="ui-icon ui-icon--md"> 
+                        Управление правами доступа
+                    </h1>
+                </div>
+            </div>
+
+            <form method="POST" class="neo-form" id="permissionsForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <!-- Role Selection Grid -->
+                <div class="role-grid">
+                    {% for role in roles %}
+                    <div class="role-card role-{{ role }}" onclick="selectRole('{{ role }}')">
+                        <div class="role-icon">
+                            {% if role == 'creator' %}👑{% endif %}
+                            {% if role == 'admin' %}🛡️{% endif %}
+                            {% if role == 'chief_tester' %}🐞{% endif %}
+                            {% if role == 'tutor' %}🎓{% endif %}
+                            {% if role == 'designer' %}🎨{% endif %}
+                            {% if role == 'tester' %}🧪{% endif %}
+                            {% if role == 'student' %}📚{% endif %}
+                            {% if role == 'parent' %}👨‍👩‍👧{% endif %}
+                        </div>
+                        <div class="role-name">{{ role|upper }}</div>
+                        <div class="role-key">{{ role }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Permissions Editors (One per role, hidden/shown via JS) -->
+                <div id="permissionsContainer">
+                    {% for role in roles %}
+                    <div id="perms-{{ role }}" class="permissions-section {% if role == 'creator' %}role-creator-perms{% endif %}">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <h2 style="margin:0; border-left: 4px solid var(--role-color, var(--accent-1)); padding-left: 1rem;">
+                                Настройка прав: <span style="color: var(--text-primary);">{{ role|upper }}</span>
+                            </h2>
+                            {% if role == 'creator' %}
+                            <div class="neo-badge" style="background: rgba(255,46,46,0.1); color: #ff2e2e; padding: 0.5rem 1rem; border-radius: 4px; border: 1px solid rgba(255,46,46,0.3);">
+                                ⚠️ Полный доступ (системный)
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        {% for cat_key, cat_name in categories.items() %}
+                        <div class="permission-category">
+                            <div class="category-title">{{ cat_name }}</div>
+                            <div class="perms-grid">
+                                {% for perm_key, perm_data in permissions.items() %}
+                                    {% if perm_data.category == cat_key %}
+                                    <div class="perm-item">
+                                        <div class="perm-info">
+                                            <div class="perm-name">{{ perm_data.name }}</div>
+                                            <div class="perm-key">{{ perm_key }}</div>
+                                        </div>
+                                        <label class="neo-switch">
+                                            <input type="checkbox" name="{{ role }}_{{ perm_key }}" 
+                                                {% if role_permissions[role].get(perm_key) %}checked{% endif %}
+                                                {% if role == 'creator' %}disabled{% endif %}>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="hero-actions" style="margin-top: 2rem; border-top: 1px solid var(--stroke-1); padding-top: 1.5rem; justify-content: center; display: none;" id="saveActions">
+                    <button type="submit" class="neo-button accent" style="min-width: 250px;">
+                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" class="ui-icon ui-icon--sm">
+                        Сохранить изменения
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script>
+    function selectRole(roleName) {
+        // Update cards UI
+        document.querySelectorAll('.role-card').forEach(card => {
+            card.classList.remove('active');
+            if (card.classList.contains('role-' + roleName)) {
+                card.classList.add('active');
+            }
+        });
+
+        // Hide all permission sections
+        document.querySelectorAll('.permissions-section').forEach(section => {
+            section.classList.remove('active');
+        });
+
+        // Show selected permission section
+        const selectedSection = document.getElementById('perms-' + roleName);
+        if (selectedSection) {
+            selectedSection.classList.add('active');
+            
+            // Scroll to section smoothly
+            selectedSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            // Show save button
+            document.getElementById('saveActions').style.display = 'flex';
+        }
+    }
+    
+    document.addEventListener("DOMContentLoaded", function() {
+        // Flash messages handling
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            try {
+                var msg = {{ message|tojson }};
+                var cat = '{{ category }}';
+                var toastFunc = window.toast || toast;
+                if (toastFunc) {
+                    if (cat === 'error' || cat === 'danger') {
+                        toastFunc.error(msg);
+                    } else if (cat === 'warning') {
+                        toastFunc.warning(msg);
+                    } else if (cat === 'info') {
+                        toastFunc.info(msg);
+                    } else {
+                        toastFunc.success(msg);
+                    }
+                }
+            } catch (e) {
+                console.error('Ошибка при отображении flash сообщения:', e);
+            }
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+    });
+    </script>
+</body>
+</html>

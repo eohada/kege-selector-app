@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if user %}Редактирование пользователя{% else %}Создание пользователя{% endif %} · Удаленная админка</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body>
+    <div class="app-shell">
+        {% include 'remote_admin/_header.html' %}
+        {% include 'remote_admin/_sidebar.html' %}
+
+        <main style="margin-left: 250px; margin-top: 70px; padding: 2rem;">
+        <section class="glass-panel" style="max-width: 900px; padding: 2rem;">
+            <div style="margin-bottom: 1.5rem;">
+                <h1 style="margin: 0;">{% if user %}Редактирование пользователя{% else %}Создание пользователя{% endif %}</h1>
+                <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
+                    Окружение: <strong>{{ environment_name }}</strong>
+                </p>
+            </div>
+
+            <form method="POST" action="{% if user %}{{ url_for('remote_admin.user_edit', user_id=user.id) }}{% else %}{{ url_for('remote_admin.user_new') }}{% endif %}" class="neo-form" data-no-ajax>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                {# Основная информация #}
+                <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
+                    <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Основная информация</h2>
+                    
+                    <div class="neo-field">
+                        <label class="neo-label" for="username">Имя пользователя *</label>
+                        <input type="text" id="username" name="username" class="neo-input" 
+                               value="{{ user.username if user else '' }}" required>
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="email">Email</label>
+                        <input type="email" id="email" name="email" class="neo-input" 
+                               value="{{ user.email if user else '' }}">
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="role">Роль *</label>
+                        <select id="role" name="role" class="neo-input" required onchange="toggleStudentFields()">
+                            <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>Администратор</option>
+                            <option value="tutor" {% if user and user.role == 'tutor' %}selected{% endif %}>Преподаватель</option>
+                            <option value="student" {% if user and user.role == 'student' %}selected{% endif %}>Ученик</option>
+                            <option value="parent" {% if user and user.role == 'parent' %}selected{% endif %}>Родитель</option>
+                            <option value="tester" {% if user and user.role == 'tester' %}selected{% endif %}>Тестировщик</option>
+                            <option value="chief_tester" {% if user and user.role == 'chief_tester' %}selected{% endif %}>Главный тестировщик</option>
+                            <option value="designer" {% if user and user.role == 'designer' %}selected{% endif %}>Графический дизайнер</option>
+                            <option value="creator" {% if user and user.role == 'creator' %}selected{% endif %}>Создатель</option>
+                        </select>
+                    </div>
+
+                    <div class="neo-field" id="platform_id_field" style="display: none;">
+                        <label class="neo-label" for="platform_id">Идентификатор ученика</label>
+                        <input type="text" id="platform_id" name="platform_id" class="neo-input" 
+                               value="{% if user and user.role == 'student' and user.student %}{{ user.student.platform_id }}{% endif %}"
+                               placeholder="Оставьте пустым для автоматического присвоения...">
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Уникальный трехзначный идентификатор (100-999). Если не указан, будет автоматически присвоен свободный номер.</small>
+                    </div>
+
+                    {# Связи (показываются динамически) #}
+                    <div class="glass-panel" id="connections_panel" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: rgba(0,0,0,0.2); display: none;">
+                        <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: var(--accent-primary);">Связи и привязки</h3>
+                        
+                        {# Для студента: Тьютор и Родители #}
+                        <div id="student_connections" style="display: none;">
+                            <div class="neo-field">
+                                <label class="neo-label" for="tutor_id">Преподаватель (Тьютор)</label>
+                                <select id="tutor_id" name="tutor_id" class="neo-input">
+                                    <option value="">-- Выберите тьютора --</option>
+                                    {% for tutor in tutors %}
+                                    <option value="{{ tutor.id }}" {% if user and user.tutor_id == tutor.id %}selected{% endif %}>
+                                        {{ tutor.username }} ({{ tutor.email }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <small style="color: var(--text-muted);">Основной преподаватель, который будет проверять задания.</small>
+                            </div>
+                            
+                            <div class="neo-field">
+                                <label class="neo-label" for="parent_ids">Родители (Ctrl+Click для выбора нескольких)</label>
+                                <select id="parent_ids" name="parent_ids" class="neo-input" multiple style="height: 120px;">
+                                    {% for parent in parents %}
+                                    <option value="{{ parent.id }}" {% if user and user.parent_ids and parent.id in user.parent_ids %}selected{% endif %}>
+                                        {{ parent.username }} ({{ parent.email }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        {# Для родителя: Дети #}
+                        <div id="parent_connections" style="display: none;">
+                            <div class="neo-field">
+                                <label class="neo-label" for="child_ids">Дети (ученики) (Ctrl+Click для выбора нескольких)</label>
+                                <select id="child_ids" name="child_ids" class="neo-input" multiple style="height: 120px;">
+                                    {% for student in students %}
+                                    <option value="{{ student.id }}" {% if user and user.child_ids and student.id in user.child_ids %}selected{% endif %}>
+                                        {{ student.username }} ({{ student.email }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="password">Пароль {% if user %}(оставьте пустым, чтобы не менять){% else %}*{% endif %}</label>
+                        <input type="password" id="password" name="password" class="neo-input" 
+                               {% if not user %}required{% endif %}>
+                    </div>
+
+                    <div class="neo-field" style="align-items: flex-start;">
+                        <label class="neo-label">Статус</label>
+                        <label style="display:flex; gap:0.6rem; align-items:center; color: var(--text-primary);">
+                            <input type="checkbox" name="is_active" {% if not user or user.is_active %}checked{% endif %}>
+                            <span style="color: var(--text-muted);">Активен</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <a href="{{ url_for('remote_admin.users_list') }}" class="neo-button outline">Отмена</a>
+                    <button type="submit" class="neo-button">
+                        {% if user %}Сохранить{% else %}Создать{% endif %}
+                    </button>
+                </div>
+            </form>
+        </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
+    <script>
+        // Показываем/скрываем поля в зависимости от роли
+        function toggleStudentFields() {
+            const roleSelect = document.getElementById('role');
+            const platformIdField = document.getElementById('platform_id_field');
+            const connectionsPanel = document.getElementById('connections_panel');
+            const studentConnections = document.getElementById('student_connections');
+            const parentConnections = document.getElementById('parent_connections');
+            
+            if (!roleSelect) {
+                return;
+            }
+            
+            const role = roleSelect.value;
+            
+            if (platformIdField) {
+                platformIdField.style.display = role === 'student' ? 'block' : 'none';
+            }
+            
+            if (connectionsPanel && studentConnections && parentConnections) {
+                if (role === 'student') {
+                    connectionsPanel.style.display = 'block';
+                    studentConnections.style.display = 'block';
+                    parentConnections.style.display = 'none';
+                } else if (role === 'parent') {
+                    connectionsPanel.style.display = 'block';
+                    studentConnections.style.display = 'none';
+                    parentConnections.style.display = 'block';
+                } else {
+                    connectionsPanel.style.display = 'none';
+                }
+            }
+        }
+        
+        // Вызываем при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleStudentFields();
+            // Также вызываем при изменении роли
+            const roleSelect = document.getElementById('role');
+            if (roleSelect) {
+                roleSelect.addEventListener('change', toggleStudentFields);
+            }
+        });
+    </script>
+</body>
+</html>

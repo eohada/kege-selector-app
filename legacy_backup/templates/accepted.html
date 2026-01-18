@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %} · Чёрный неон</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='katex/katex/katex.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    <script defer src="{{ url_for('static', filename='katex/katex/katex.min.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='katex/katex/contrib/auto-render.min.js') }}"></script>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
+    {% include '_active_lesson_banner.html' %}
+    
+    <div class="app-shell">
+        {% set active_page = 'generator' %}
+        {% include '_primary_nav.html' %}
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div>
+                <p class="hero-eyebrow">принятые задания</p>
+                <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Принято" class="ui-icon ui-icon--sm">Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %}</h1>
+                <p class="hero-subtitle">Всего: {{ tasks|length }} шт.</p>
+            </div>
+        </section>
+
+        {# Flash messages будут показаны через toast #}
+
+        <section class="glass-panel filters-panel">
+            <div class="neo-field">
+                <label class="neo-label" for="task-type-filter">Фильтр по номеру задания</label>
+                <select id="task-type-filter" class="neo-select" onchange="filterByTaskType(this.value)">
+                    <option value="">Все задания</option>
+                    {% for i in range(1, 28) %}
+                        <option value="{{ i }}" {% if task_type == i %}selected{% endif %}>Задание {{ i }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </section>
+
+        {% if tasks %}
+        <div>
+            {% for task in tasks %}
+            <section class="glass-panel task-card" data-task-id="{{ task.task_id }}" style="margin-bottom: 2rem;">
+                <div class="task-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--stroke-1);">
+                    <div>
+                        <b style="color: var(--text-primary);">№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b>
+                        <span style="color: var(--text-muted); margin: 0 0.5em;">|</span>
+                        <a href="{{ task.source_url }}" target="_blank" class="neo-button ghost" style="font-size: 0.9em; padding: 0.4em 0.8em;"><img src="{{ url_for('static', filename='icons/lupa.png') }}" alt="Источник" class="ui-icon ui-icon--sm">Источник</a>
+                    </div>
+                    <span class="neo-button accent" style="font-size: 0.85em; padding: 0.4em 0.8em; cursor: default;"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Принято" class="ui-icon ui-icon--sm">ПРИНЯТО</span>
+                </div>
+                
+                <div class="task-content" style="line-height: 1.8; font-size: 1.05em; color: var(--text-primary); margin-bottom: 1.5rem;">
+                    {{ task.content_html | safe }}
+                </div>
+                
+                {% if task.attached_files %}
+                <div class="attached-files" style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">📎 Прикрепленные файлы</h4>
+                    <ul class="file-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                        {% set files = task.attached_files | from_json %}
+                        {% for file in files %}
+                        <li>
+                            <a href="{{ file.url }}" target="_blank" class="neo-button outline" style="font-size: 0.9rem; padding: 0.65rem 1.2rem; text-decoration: none;" download>
+                                {{ file.name }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </section>
+            {% endfor %}
+        </div>
+        {% else %}
+        <section class="glass-panel">
+            <div class="empty-state">
+                <div class="empty-state-icon">✓</div>
+                <h3 class="empty-state-title">Нет принятых заданий</h3>
+                <p class="empty-state-description">Принятые задания будут отображаться здесь</p>
+                <div class="empty-state-actions">
+                    <a href="{{ url_for('kege_generator.kege_generator') }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--sm">Перейти к генератору</a>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false,
+                    trust: true
+                });
+            }
+        });
+        
+        function filterByTaskType(taskType) {
+            if (taskType === '') {
+                window.location.href = '{{ url_for('kege_generator.show_accepted') }}';
+            } else {
+                window.location.href = '{{ url_for('kege_generator.show_accepted') }}?task_type=' + taskType;
+            }
+        }
+    </script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script>
+        // Конвертируем flash-сообщения в toast-уведомления
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.error('{{ message|e }}');
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.warning('{{ message|e }}');
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.info('{{ message|e }}');
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.success('{{ message|e }}');
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
+</body>
+</html>

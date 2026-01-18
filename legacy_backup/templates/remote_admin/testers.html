@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление тестерами · Удаленная админка</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+</head>
+<body>
+    <div class="app-shell">
+        {% include 'remote_admin/_header.html' %}
+        {% include 'remote_admin/_sidebar.html' %}
+
+        <main style="margin-left: 250px; margin-top: 70px; padding: 2rem;">
+        <section class="glass-panel" style="max-width: 1000px; padding: 2rem;">
+            <div style="margin-bottom: 2rem;">
+                <h1 style="margin: 0;">Тестеры (Tester Entities)</h1>
+                <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
+                    Окружение: <strong>{{ environment_name }}</strong>
+                </p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 300px; gap: 2rem;">
+                {# Список тестеров #}
+                <div>
+                    {% if testers %}
+                    <table class="neo-table" style="width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Имя</th>
+                                <th>Статус</th>
+                                <th>Создан</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tester in testers %}
+                            <tr>
+                                <td><strong>{{ tester.name }}</strong></td>
+                                <td>
+                                    {% if tester.is_active %}
+                                    <span style="color: #2eff7d;">● Активен</span>
+                                    {% else %}
+                                    <span style="color: var(--text-muted);">● Неактивен</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ tester.created_at[:10] if tester.created_at else '—' }}</td>
+                                <td>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <form method="POST" action="{{ url_for('remote_admin.tester_toggle', tester_id=tester.id) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden" name="is_active" value="{{ 'false' if tester.is_active else 'true' }}">
+                                            <button type="submit" class="neo-button ghost small" title="{{ 'Отключить' if tester.is_active else 'Включить' }}">
+                                                {{ '⛔' if tester.is_active else '✅' }}
+                                            </button>
+                                        </form>
+                                        
+                                        <form method="POST" action="{{ url_for('remote_admin.tester_delete', tester_id=tester.id) }}" onsubmit="return confirm('Удалить тестера {{ tester.name }}?');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="neo-button danger small" title="Удалить">
+                                                🗑️
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div style="text-align: center; padding: 3rem; background: var(--surface-2); border-radius: var(--radius-md); color: var(--text-muted);">
+                        Тестеры не найдены
+                    </div>
+                    {% endif %}
+                </div>
+
+                {# Форма создания #}
+                <div class="glass-panel" style="background: var(--surface-2); height: fit-content; padding: 1.5rem;">
+                    <h3 style="margin-top: 0;">Новый тестер</h3>
+                    <form method="POST" action="{{ url_for('remote_admin.testers') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="neo-field">
+                            <label class="neo-label">Имя</label>
+                            <input type="text" name="name" class="neo-input" placeholder="Например: Тестовая школа №1" required>
+                        </div>
+
+                        <div class="neo-field" style="align-items: flex-start;">
+                            <label class="neo-label">Статус</label>
+                            <label style="display:flex; gap:0.6rem; align-items:center; color: var(--text-primary);">
+                                <input type="checkbox" name="is_active" checked>
+                                <span style="color: var(--text-muted);">Активен сразу</span>
+                            </label>
+                        </div>
+
+                        <button type="submit" class="neo-button full-width">Создать</button>
+                    </form>
+                    
+                    <div style="margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
+                        <p><strong>Что это такое?</strong></p>
+                        <p>Тестеры (Tester Entities) — это сущности для группировки тестовых пользователей в Sandbox.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        </main>
+    </div>
+    
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ручное создание шаблона · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    {% include '_ux_enhancements.html' %}
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'templates' %}
+        {% include '_primary_nav.html' %}
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost" style="text-decoration: none;">
+                    ← Вернуться назад
+                </a>
+            </div>
+            <p class="hero-eyebrow">создание шаблона</p>
+            <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Создание" class="ui-icon ui-icon--md"> Ручное создание шаблона</h1>
+            <p class="hero-subtitle">Создайте новый шаблон, добавив задания вручную</p>
+        </section>
+
+        <!-- Настройки шаблона -->
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <h3 style="margin-bottom: 1.5rem;">Настройки шаблона</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Название шаблона *</label>
+                    <input type="text" id="template-name" class="neo-input" placeholder="Например: Вариант ЕГЭ №1" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary);">
+                </div>
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Категория</label>
+                    <select id="template-category" class="neo-select" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary);">
+                        <option value="">Без категории</option>
+                        <option value="ЕГЭ" selected>ЕГЭ</option>
+                        <option value="ОГЭ">ОГЭ</option>
+                        <option value="ЛЕВЕЛАП">ЛЕВЕЛАП</option>
+                        <option value="ПРОГРАММИРОВАНИЕ">ПРОГРАММИРОВАНИЕ</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Тип шаблона</label>
+                    <select id="template-type" class="neo-select" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary);">
+                        <option value="homework" selected>Домашняя работа</option>
+                        <option value="classwork">Классная работа</option>
+                        <option value="exam">Проверочная работа</option>
+                        <option value="lesson">Урок</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Описание</label>
+                    <input type="text" id="template-description" class="neo-input" placeholder="Краткое описание содержимого" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary);">
+                </div>
+            </div>
+        </section>
+
+        <div id="tasks-container">
+            <!-- Здесь будут появляться карточки заданий -->
+        </div>
+
+        <section class="glass-panel" style="text-align: center; margin-top: 2rem; border-style: dashed;">
+            <button onclick="addTaskCard()" class="neo-button outline" style="width: 100%; padding: 1.5rem;">
+                <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">Добавить еще задание
+            </button>
+        </section>
+
+        <section class="glass-panel" style="position: sticky; bottom: 2rem; margin-top: 2rem; z-index: 100;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div id="status-text" style="color: var(--text-muted);">Заданий: <span id="tasks-count">0</span></div>
+                <button onclick="saveTemplate()" class="neo-button accent">
+                    💾 Сохранить шаблон
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <template id="task-card-template">
+        <section class="glass-panel task-card-entry" style="margin-bottom: 1.5rem; position: relative;">
+            <button type="button" onclick="removeTaskCard(this)" class="neo-button danger" style="position: absolute; top: 1rem; right: 1rem; padding: 0.5rem;">
+                <img src="{{ url_for('static', filename='icons/MUSORN.png') }}" alt="Удалить" class="ui-icon ui-icon--sm ui-icon--only">
+            </button>
+            
+            <div class="form-group" style="margin-bottom: 1.5rem; max-width: 200px;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Номер задания (ЕГЭ)</label>
+                <input type="number" class="task-number-input" min="1" max="27" value="1" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary);">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Текст задания</label>
+                <textarea class="task-content-input" rows="6" placeholder="Введите текст задания..." style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary); font-family: inherit;"></textarea>
+                <small style="color: var(--text-muted);">Поддерживается HTML-разметка</small>
+            </div>
+
+            <div class="form-group">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Правильный ответ</label>
+                <input type="text" class="task-answer-input" placeholder="Например: 42" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary);">
+            </div>
+        </section>
+    </template>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script>
+        function addTaskCard() {
+            const template = document.getElementById('task-card-template');
+            const clone = template.content.cloneNode(true);
+            document.getElementById('tasks-container').appendChild(clone);
+            updateCount();
+        }
+
+        function removeTaskCard(btn) {
+            btn.closest('.task-card-entry').remove();
+            updateCount();
+        }
+
+        function updateCount() {
+            const count = document.querySelectorAll('.task-card-entry').length;
+            document.getElementById('tasks-count').textContent = count;
+        }
+
+        async function saveTemplate() {
+            const name = document.getElementById('template-name').value.trim();
+            if (!name) {
+                toast.error('Введите название шаблона');
+                document.getElementById('template-name').focus();
+                return;
+            }
+
+            const category = document.getElementById('template-category').value;
+            const type = document.getElementById('template-type').value;
+            const description = document.getElementById('template-description').value.trim();
+
+            const cards = document.querySelectorAll('.task-card-entry');
+            if (cards.length === 0) {
+                toast.warning('Добавьте хотя бы одно задание');
+                return;
+            }
+
+            const tasks = [];
+            let hasError = false;
+
+            cards.forEach((card, index) => {
+                const number = card.querySelector('.task-number-input').value;
+                const content = card.querySelector('.task-content-input').value;
+                const answer = card.querySelector('.task-answer-input').value;
+
+                if (!content.trim()) {
+                    card.querySelector('.task-content-input').style.borderColor = 'var(--danger-color)';
+                    hasError = true;
+                } else {
+                    tasks.push({
+                        number: parseInt(number),
+                        content: content,
+                        answer: answer
+                    });
+                }
+            });
+
+            if (hasError) {
+                toast.error('Заполните текст всех заданий');
+                return;
+            }
+
+            const loaderId = loading.show(document.body, 'Сохранение шаблона...');
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+
+            try {
+                const response = await fetch(window.location.href, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken ? csrfToken.content : ''
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        category: category,
+                        template_type: type,
+                        description: description,
+                        tasks: tasks
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    toast.success('Шаблон успешно создан!');
+                    setTimeout(() => {
+                        window.location.href = "{{ url_for('templates.templates_list') }}";
+                    }, 1000);
+                } else {
+                    toast.error(data.error || 'Ошибка при сохранении');
+                }
+            } catch (e) {
+                console.error(e);
+                toast.error('Ошибка сети');
+            } finally {
+                loading.hide(loaderId);
+            }
+        }
+
+        // Add first card automatically
+        document.addEventListener('DOMContentLoaded', () => {
+            addTaskCard();
+        });
+    </script>
+</body>
+</html>

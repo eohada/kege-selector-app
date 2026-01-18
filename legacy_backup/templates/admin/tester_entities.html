@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление тестировщиками · Админ-панель</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .testers-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--surface-2);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        .testers-table th {
+            background: var(--surface-3);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--stroke-2);
+        }
+        .testers-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--stroke-1);
+        }
+        .testers-table tr:hover {
+            background: var(--surface-3);
+        }
+        .tester-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .tester-id {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-family: 'MonaspaceNeon', 'Courier New', monospace;
+        }
+        .tester-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.9rem;
+        }
+        .stat-badge {
+            background: var(--surface-3);
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+        }
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .status-active {
+            color: #22c55e;
+        }
+        .status-inactive {
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'admin' %}
+        {% include '_primary_nav.html' %}
+
+        {% include '_ux_enhancements.html' %}
+
+        <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+                <div>
+                    <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">
+                        ← К админ панели
+                    </a>
+                </div>
+                {% if is_production and sandbox_base_url %}
+                <a href="{{ url_for('admin.admin_panel') }}#sandbox" class="neo-button accent" style="text-decoration: none;">
+                    <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Создать" class="ui-icon ui-icon--sm">Создать в sandbox
+                </a>
+                {% else %}
+                <a href="{{ url_for('admin.admin_tester_entities_create') }}" class="neo-button accent" style="text-decoration: none;">
+                    <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Создать" class="ui-icon ui-icon--sm">Создать тестировщика
+                </a>
+                {% endif %}
+            </div>
+            <h1 style="margin-bottom: 1rem;">Управление тестировщиками</h1>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">
+                Управление записями <code>Tester</code> (tester entities). Это отдельная сущность от <code>User</code> (логин/пароль).
+            </p>
+            
+            {% if anonymous_count and anonymous_count > 0 %}
+            <div style="padding: 1rem; background: rgba(255, 108, 145, 0.06); border-radius: var(--radius-sm); border: 1px solid rgba(255, 108, 145, 0.25); margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+                    <div>
+                        <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 0.25rem;">
+                            Найдены legacy записи “Anonymous” ({{ anonymous_count }})
+                        </div>
+                        <div style="font-size: 0.9rem; color: var(--text-muted);">
+                            Это исторически созданные автоматом записи. В списке ниже показываются только созданные вручную профили.
+                        </div>
+                    </div>
+                    <form method="POST" 
+                          action="{{ url_for('admin.admin_tester_entities_delete_anonymous') }}" 
+                          style="display: inline;"
+                          onsubmit="return confirm('Удалить все {{ anonymous_count }} legacy записей «Anonymous»?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="neo-button danger" style="text-decoration: none;">
+                            <img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Очистить" class="ui-icon ui-icon--sm"> Очистить
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if testers %}
+            <table class="testers-table">
+                <thead>
+                    <tr>
+                        <th>Имя</th>
+                        <th>ID</th>
+                        <th>Статус</th>
+                        <th>IP адрес</th>
+                        <th>Первое появление</th>
+                        <th>Последнее действие</th>
+                        <th>Статистика</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tester_data in testers %}
+                    {% set tester = tester_data[0] %}
+                    {% set logs_count = tester_data[1] or 0 %}
+                    {% set last_action = tester_data[2] %}
+                    <tr>
+                        <td>
+                            <div class="tester-name">{{ tester.name }}</div>
+                        </td>
+                        <td>
+                            <div class="tester-id">{{ tester.tester_id[:8] }}...</div>
+                        </td>
+                        <td>
+                            {% if tester.is_active %}
+                                <span class="status-active">● Активен</span>
+                            {% else %}
+                                <span class="status-inactive">○ Неактивен</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="font-size: 0.9rem; color: var(--text-muted);">
+                                {{ tester.ip_address or '—' }}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-size: 0.9rem; color: var(--text-muted);">
+                                {{ tester.first_seen.strftime('%d.%m.%Y %H:%M') if tester.first_seen else '—' }}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-size: 0.9rem; color: var(--text-muted);">
+                                {{ tester.last_seen.strftime('%d.%m.%Y %H:%M') if tester.last_seen else '—' }}
+                            </div>
+                            {% if last_action %}
+                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">
+                                ({{ last_action.strftime('%d.%m.%Y %H:%M') }})
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="tester-stats">
+                                <span class="stat-badge">{{ logs_count }} логов</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{{ url_for('admin.admin_tester_entities_edit', tester_id=tester.tester_id) }}" 
+                                   class="neo-button outline" 
+                                   style="text-decoration: none; padding: 0.5rem 1rem; font-size: 0.9rem;">
+                                    ✏️ Редактировать
+                                </a>
+                                <form method="POST" 
+                                      action="{{ url_for('admin.admin_tester_entities_delete', tester_id=tester.tester_id) }}" 
+                                      style="display: inline;"
+                                      onsubmit="return confirm('Вы уверены, что хотите удалить тестировщика «{{ tester.name }}»?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="neo-button danger" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+                                        <img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Удалить" class="ui-icon ui-icon--sm"> Удалить
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                <p style="font-size: 1.2rem; margin-bottom: 1rem;">Тестировщики не найдены</p>
+                <p>Создайте первого тестировщика, нажав кнопку «Создать тестировщика» выше.</p>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <script>
+                    showToast('{{ message }}', '{{ category }}');
+                </script>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+</body>
+</html>
+

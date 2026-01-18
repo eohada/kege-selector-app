@@ -1,0 +1,132 @@
+{# Единая шапка/навигация для всего проекта (премиум-минимализм) #}
+{# Ожидаемые переменные: active_page (dashboard|schedule|generator|plans|reminders|templates|admin|None) #}
+<header class="nav-primary">
+    <div class="nav-brand">
+        {% if current_user and current_user.is_authenticated %}
+        <div class="nav-user-actions">
+            <div class="profile-dropdown">
+                <a href="{{ url_for('auth.user_profile') }}" class="user-profile-avatar nav-dropdown-trigger {% if current_user.is_creator() %}creator{% endif %}" title="{{ current_user.username }}">
+                    {% if current_user.avatar_url %}<img src="{{ current_user.avatar_url }}" alt="Avatar">{% else %}{{ current_user.username[0].upper() }}{% endif %}
+                </a>
+                
+                <div class="profile-dropdown-content">
+                    <a href="{{ url_for('auth.user_profile') }}" class="profile-item">
+                        <img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Profile">
+                        <span>Профиль</span>
+                    </a>
+                    
+                    <div style="border-top: 1px solid var(--stroke-1); margin: 0.4rem 0;"></div>
+                    
+                    <a href="{{ url_for('auth.logout') }}" class="profile-item" style="color: var(--danger);">
+                        <img src="{{ url_for('static', filename='icons/icons8-выход-100.png') }}" alt="Logout" style="filter: hue-rotate(-150deg);">
+                        <span>Выход</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+            <div class="brand-mark">LOGO</div>
+            <div class="brand-caption">Слот под фирменный знак</div>
+        </a>
+    </div>
+
+    {% include '_mobile_menu.html' %}
+
+    <nav class="nav-links">
+        {% if current_user.is_parent() %}
+        {# Навигация для родителя #}
+        <a href="{{ url_for('parents.parent_dashboard') }}" class="nav-link {% if active_page == 'parent_dashboard' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Мои дети" class="nav-link-icon">
+                <span class="nav-link-label">Мои дети</span>
+            </span>
+        </a>
+        {% elif current_user.is_student() %}
+        {# Навигация для ученика #}
+        {% if current_student %}
+        <a href="{{ url_for('students.student_profile', student_id=current_student.student_id) }}" class="nav-link {% if active_page == 'student_profile' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Мой профиль" class="nav-link-icon">
+                <span class="nav-link-label">Мой профиль</span>
+            </span>
+        </a>
+        <a href="{{ url_for('students.student_analytics', student_id=current_student.student_id) if current_student else '#' }}" class="nav-link {% if active_page == 'student_analytics' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Статистика" class="nav-link-icon">
+                <span class="nav-link-label">Статистика</span>
+            </span>
+        </a>
+        {% endif %}
+        {% else %}
+        {# Навигация для админа, тьютора и остальных #}
+        <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="nav-link-icon">
+                <span class="nav-link-label">Ученики</span>
+            </span>
+        </a>
+
+        <a href="{{ url_for('schedule.schedule') }}" class="nav-link {% if active_page == 'schedule' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="nav-link-icon">
+                <span class="nav-link-label">Расписание</span>
+            </span>
+        </a>
+
+        <a href="{{ url_for('reminders.reminders_list') }}" class="nav-link {% if active_page == 'reminders' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" alt="Напоминания" class="nav-link-icon">
+                <span class="nav-link-label">Напоминания</span>
+            </span>
+        </a>
+
+        {% if current_user.is_authenticated and has_permission(current_user, 'assets.manage') %}
+        <a href="{{ url_for('designer.assets_manager') }}" class="nav-link {% if active_page == 'assets' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/icons8-image-100.png') }}" alt="Ассеты" class="nav-link-icon">
+                <span class="nav-link-label">Ассеты</span>
+            </span>
+        </a>
+        {% endif %}
+        
+        {% if current_user.is_authenticated and has_permission(current_user, 'assignment.view') %}
+        <a href="{% if current_user.is_student() %}{{ url_for('assignments.submissions_list') }}{% else %}{{ url_for('assignments.assignments_list') }}{% endif %}" class="nav-link {% if active_page == 'assignments' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Работы" class="nav-link-icon">
+                <span class="nav-link-label">{% if current_user.is_student() %}Мои работы{% else %}Работы{% endif %}</span>
+            </span>
+        </a>
+        {% endif %}
+        {% endif %}
+
+        {% if not current_user.is_parent() and not current_user.is_student() %}
+        {# Выпадающее меню для инструментов (только для админа, тьютора и старых ролей) #}
+        <div class="nav-dropdown">
+            <div class="nav-link nav-dropdown-trigger {% if active_page in ['generator', 'plans', 'templates'] %}active{% endif %}">
+                <span class="nav-link-content">
+                    <img src="{{ url_for('static', filename='icons/icons8-меню-100.png') }}" alt="Инструменты" class="nav-link-icon">
+                    <span class="nav-link-label">Инструменты</span>
+                </span>
+            </div>
+            <div class="nav-dropdown-content">
+                <a href="{{ url_for('kege_generator.kege_generator') }}" class="dropdown-item {% if active_page == 'generator' %}active{% endif %}">
+                    <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" class="nav-link-icon">
+                    <span>Генератор</span>
+                </a>
+                <a href="{{ url_for('main.update_plans') }}" class="dropdown-item {% if active_page == 'plans' %}active{% endif %}">
+                    <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" class="nav-link-icon">
+                    <span>Планы</span>
+                </a>
+                <a href="{{ url_for('templates.templates_list') }}" class="dropdown-item {% if active_page == 'templates' %}active{% endif %}">
+                    <img src="{{ url_for('static', filename='icons/SHABL.png') }}" class="nav-link-icon">
+                    <span>Шаблоны</span>
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </nav>
+</header>
+
+

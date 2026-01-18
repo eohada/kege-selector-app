@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ template.name }} · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    {% include '_ux_enhancements.html' %}
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'templates' %}
+        {% include '_primary_nav.html' %}
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost" style="text-decoration: none;">← К библиотеке</a>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div>
+                    <p class="hero-eyebrow">просмотр шаблона</p>
+                    <h1 class="hero-title">{{ template.name }}</h1>
+                    {% if template.description %}
+                    <p class="hero-subtitle">{{ template.description }}</p>
+                    {% endif %}
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm">Редактировать</a>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+                <span style="padding: 0.5rem 1rem; background: var(--surface-2); color: var(--text-primary); border-radius: var(--radius-sm); font-weight: 600;">
+                    {% if template.template_type == 'homework' %}<img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm"> Домашние задания
+                    {% elif template.template_type == 'classwork' %}<img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Классная работа" class="ui-icon ui-icon--sm"> Классные работы
+                    {% elif template.template_type == 'exam' %}<img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проверочные" class="ui-icon ui-icon--sm">Проверочные работы
+                    {% else %}<img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Уроки" class="ui-icon ui-icon--sm"> Уроки{% endif %}
+                </span>
+                {% if template.category %}
+                <span style="padding: 0.5rem 1rem; background: var(--accent-1); color: white; border-radius: var(--radius-sm); font-weight: 600;">{{ template.category }}</span>
+                {% endif %}
+                <span style="padding: 0.5rem 1rem; background: var(--surface-2); color: var(--text-muted); border-radius: var(--radius-sm);">
+                    {{ template_tasks|length }} заданий
+                </span>
+            </div>
+        </section>
+
+        {% if template_tasks %}
+        <section class="glass-panel">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">задания в шаблоне</p>
+                    <h2>Список заданий ({{ template_tasks|length }})</h2>
+                </div>
+            </div>
+
+            {% for template_task in template_tasks %}
+            {% set task = template_task.task %}
+            <div class="task-card" style="
+                background: var(--surface-1);
+                border: 1px solid var(--stroke-1);
+                border-radius: var(--radius-lg);
+                padding: 2rem;
+                margin-bottom: 2rem;
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--stroke-1);">
+                    <div>
+                        <div style="font-size: 1.5em; font-weight: 800; color: var(--accent-1); margin-bottom: 0.3em;">
+                            Задание {{ task.task_number }}
+                        </div>
+                        {% if task.site_task_id %}
+                        <div style="font-size: 0.9em; color: var(--text-muted); font-weight: 600;">
+                            ID: {{ task.site_task_id }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="task-content" style="margin-bottom: 1rem;">
+                    {{ task.content_html|safe }}
+                </div>
+
+                {% if task.answer %}
+                <div style="padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm); margin-top: 1rem;">
+                    <strong style="color: var(--accent-1);">Ответ:</strong> 
+                    <span style="color: var(--text-primary);">{{ task.answer }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </section>
+        {% else %}
+        <section class="glass-panel">
+            <div class="empty-state">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">📭</div>
+                <h3>Нет заданий</h3>
+                <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Добавьте задания в шаблон через генератор</p>
+                <a href="{{ url_for('kege_generator.kege_generator') }}?template_id={{ template.template_id }}" class="neo-button accent">🎲 Добавить задания</a>
+            </div>
+        </section>
+        {% endif %}
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>
+    <script>
+        // Автоматический рендеринг формул KaTeX
+        document.addEventListener("DOMContentLoaded", function() {
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: "$$", right: "$$", display: true},
+                        {left: "$", right: "$", display: false},
+                        {left: "\\[", right: "\\]", display: true},
+                        {left: "\\(", right: "\\)", display: false}
+                    ]
+                });
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

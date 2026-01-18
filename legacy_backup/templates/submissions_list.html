@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои работы - Назначенные задания</title>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+</head>
+<body>
+    {% include '_primary_nav.html' %}
+    
+    <main class="container" style="max-width: 1200px; margin: 2rem auto; padding: 0 1.5rem;">
+        <div class="page-header" style="margin-bottom: 2rem;">
+            <h1 style="font-size: 2.5em; font-weight: 800; margin-bottom: 0.5rem;">Мои работы</h1>
+            <p style="color: var(--text-muted); font-size: 1.1em;">Назначенные домашние задания, контрольные и проверочные работы</p>
+        </div>
+        
+        {% if submissions %}
+        <div class="submissions-list" style="display: flex; flex-direction: column; gap: 1rem;">
+            {% for submission in submissions %}
+            <div class="submission-card" style="background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem; transition: transform 0.2s, box-shadow 0.2s;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div style="flex: 1;">
+                        <h3 style="font-size: 1.3em; font-weight: 700; margin-bottom: 0.5rem;">
+                            <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}" style="color: var(--text-primary); text-decoration: none;">
+                                {{ submission.assignment.title }}
+                            </a>
+                        </h3>
+                        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                            <span class="badge" style="padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85em; font-weight: 600;">
+                                {% if submission.assignment.assignment_type == 'homework' %}ДЗ
+                                {% elif submission.assignment.assignment_type == 'classwork' %}КР
+                                {% elif submission.assignment.assignment_type == 'exam' %}Проверочная
+                                {% else %}{{ submission.assignment.assignment_type }}{% endif %}
+                            </span>
+                            <span class="status-badge status-{{ submission.status.lower() }}" style="padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85em; font-weight: 600;">
+                                {% if submission.status == 'ASSIGNED' %}Назначено
+                                {% elif submission.status == 'IN_PROGRESS' %}В процессе
+                                {% elif submission.status == 'SUBMITTED' %}Сдано
+                                {% elif submission.status == 'GRADED' %}Проверено
+                                {% elif submission.status == 'RETURNED' %}На доработку
+                                {% else %}{{ submission.status }}{% endif %}
+                            </span>
+                            {% if submission.is_late %}
+                            <span class="badge" style="padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85em; font-weight: 600; background: var(--danger); color: white;">
+                                Опоздание
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div style="color: var(--text-muted); font-size: 0.9em;">
+                            <div>📅 Дедлайн: <strong>{{ submission.assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</strong></div>
+                            {% if submission.submitted_at %}
+                            <div style="margin-top: 0.25rem;">✅ Сдано: <strong>{{ submission.submitted_at.strftime('%d.%m.%Y %H:%M') }}</strong></div>
+                            {% endif %}
+                            {% if submission.status == 'GRADED' and submission.total_score is not none %}
+                            <div style="margin-top: 0.5rem; font-size: 1.1em; font-weight: 700; color: var(--accent-1);">
+                                Оценка: {{ submission.total_score }}/{{ submission.max_score }} ({{ "%.1f"|format(submission.percentage) }}%)
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}" class="btn-primary" style="display: inline-block;">
+                            {% if submission.status == 'ASSIGNED' %}Начать
+                            {% elif submission.status == 'IN_PROGRESS' %}Продолжить
+                            {% elif submission.status in ['SUBMITTED', 'GRADED', 'RETURNED'] %}Просмотр
+                            {% else %}Открыть{% endif %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 4rem 2rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg);">
+            <div style="font-size: 4em; margin-bottom: 1rem;">📚</div>
+            <h2 style="font-size: 1.5em; margin-bottom: 0.5rem;">Нет назначенных работ</h2>
+            <p style="color: var(--text-muted);">Вам пока не назначено никаких работ</p>
+        </div>
+        {% endif %}
+    </main>
+    
+    <style>
+        .status-assigned { background: var(--surface-2); color: var(--text-primary); }
+        .status-in_progress { background: var(--accent-2); color: white; }
+        .status-submitted { background: var(--accent-1); color: white; }
+        .status-graded { background: var(--success); color: white; }
+        .status-returned { background: var(--warning); color: white; }
+    </style>
+</body>
+</html>

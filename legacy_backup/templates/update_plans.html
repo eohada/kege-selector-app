@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Планы обновления · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .plans-content {
+            color: var(--text-primary);
+            line-height: 1.8;
+            font-size: 1.05em;
+        }
+        
+        .plans-content h1 {
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--stroke-1);
+            padding-bottom: 0.5em;
+            margin-bottom: 1.5em;
+            font-size: 2.2em;
+            font-weight: 800;
+        }
+        
+        .plans-content h2 {
+            color: var(--accent-1);
+            margin-top: 2em;
+            margin-bottom: 1em;
+            font-size: 1.8em;
+            font-weight: 700;
+            border-left: 4px solid var(--accent-1);
+            padding-left: 0.5em;
+        }
+        
+        .plans-content h3 {
+            color: var(--accent-2);
+            margin-top: 1.5em;
+            margin-bottom: 0.8em;
+            font-size: 1.4em;
+            font-weight: 700;
+        }
+        
+        .plans-content h4 {
+            color: var(--text-primary);
+            margin-top: 1.2em;
+            margin-bottom: 0.6em;
+            font-size: 1.2em;
+            font-weight: 700;
+        }
+        
+        .plans-content p {
+            margin-bottom: 1em;
+            color: var(--text-primary);
+        }
+        
+        .plans-content ul, .plans-content ol {
+            margin-left: 2em;
+            margin-bottom: 1em;
+        }
+        
+        .plans-content li {
+            margin-bottom: 0.5em;
+            color: var(--text-primary);
+        }
+        
+        .plans-content strong {
+            color: var(--accent-1);
+            font-weight: 700;
+        }
+        
+        .plans-content code {
+            background: var(--surface-2);
+            padding: 0.2em 0.5em;
+            border-radius: 4px;
+            color: var(--accent-1);
+            font-family: 'MonaspaceNeon', 'Courier New', monospace;
+            font-size: 0.9em;
+            border: 1px solid var(--stroke-1);
+        }
+        
+        .plans-content pre {
+            background: var(--surface-2);
+            padding: 1em;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--stroke-1);
+            overflow-x: auto;
+            margin: 1em 0;
+        }
+        
+        .plans-content pre code {
+            background: none;
+            padding: 0;
+            border: none;
+        }
+        
+        .plans-content blockquote {
+            border-left: 3px solid var(--accent-2);
+            padding-left: 1em;
+            margin: 1em 0;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        
+        .plans-content a {
+            color: var(--accent-2);
+            text-decoration: none;
+        }
+        
+        .plans-content a:hover {
+            color: var(--accent-2-strong);
+            text-decoration: underline;
+        }
+        
+        .priority-section {
+            background: var(--surface-1);
+            padding: 1.5rem;
+            border-radius: var(--radius-lg);
+            margin-top: 2rem;
+            border: 1px solid var(--stroke-1);
+        }
+        
+        .priority-high {
+            border-left: 4px solid var(--danger);
+        }
+        
+        .priority-medium {
+            border-left: 4px solid var(--warning);
+        }
+        
+        .priority-low {
+            border-left: 4px solid var(--success);
+        }
+        
+        .task-item {
+            background: var(--surface-2);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--stroke-1);
+            transition: all 0.3s ease;
+        }
+        
+        .task-item:hover {
+            border-color: var(--accent-1);
+            box-shadow: var(--shadow-soft);
+            transform: translateX(4px);
+        }
+        
+        .task-number {
+            display: inline-block;
+            background: linear-gradient(120deg, var(--accent-1-strong), var(--accent-2-strong));
+            color: #001b18;
+            padding: 0.3em 0.8em;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            margin-right: 0.5em;
+            font-size: 0.9em;
+        }
+        
+        .tools-list, .actions-list {
+            background: var(--surface-2);
+            padding: 1rem;
+            border-radius: var(--radius-sm);
+            margin-top: 0.8rem;
+            border: 1px solid var(--stroke-1);
+        }
+        
+        .tools-list li::before {
+            content: "🔧 ";
+            margin-right: 0.3em;
+        }
+        
+        .actions-list li::before {
+            content: "✓ ";
+            margin-right: 0.3em;
+            color: var(--success);
+        }
+    </style>
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
+    {% if active_lesson %}
+    <div class="now-playing-pill" onclick="toggleLessonMenu()">
+        <img src="{{ url_for('static', filename='icons/icons8-наушники-100.png') }}" alt="Урок" class="ui-icon ui-icon--sm"> Урок идет: {{ active_student.name }}
+    </div>
+    <div class="now-playing-panel" id="lessonMenu">
+        <div class="hero-eyebrow">текущий урок</div>
+        <p style="margin: 0 0 0.4rem 0;"><strong>Ученик:</strong> {{ active_student.name }}</p>
+        {% if active_lesson.topic %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
+        {% endif %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
+        <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
+        <div class="hero-actions" style="margin-top: 1rem;">
+            <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
+                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
+            </form>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
+        </div>
+    </div>
+    <script>
+        function toggleLessonMenu() {
+            const menu = document.getElementById('lessonMenu');
+            if (menu) {
+                menu.classList.toggle('active');
+            }
+        }
+        document.addEventListener('click', (event) => {
+            const menu = document.getElementById('lessonMenu');
+            const badge = document.querySelector('.now-playing-pill');
+            if (!menu || !badge) return;
+            if (!menu.contains(event.target) && !badge.contains(event.target)) {
+                menu.classList.remove('active');
+            }
+        });
+    </script>
+    {% endif %}
+
+    <div class="app-shell">
+        {% set active_page = 'plans' %}
+        {% include '_primary_nav.html' %}
+
+        <section class="glass-panel">
+            <div>
+                <p class="hero-eyebrow">планы обновления</p>
+                <h1 class="hero-title">Дорожная карта развития</h1>
+            </div>
+        </section>
+
+        <section class="glass-panel">
+            <div class="plans-content">
+                {{ plans_content|markdown|safe }}
+            </div>
+        </section>
+    </div>
+    
+    <script>
+        // Дополнительная обработка для улучшения отображения
+        document.addEventListener('DOMContentLoaded', function() {
+            const content = document.querySelector('.plans-content');
+            if (content) {
+                // Добавляем стили для приоритетов
+                const prioritySections = content.querySelectorAll('h4');
+                prioritySections.forEach(function(h4) {
+                    const parent = h4.parentElement;
+                    if (h4.textContent.includes('Высокий приоритет')) {
+                        parent.classList.add('priority-section', 'priority-high');
+                    } else if (h4.textContent.includes('Средний приоритет')) {
+                        parent.classList.add('priority-section', 'priority-medium');
+                    } else if (h4.textContent.includes('Низкий приоритет')) {
+                        parent.classList.add('priority-section', 'priority-low');
+                    }
+                });
+                
+                // Обертываем элементы задач в task-item
+                const taskElements = content.querySelectorAll('h4 + ul, h4 + ol');
+                taskElements.forEach(function(list) {
+                    const parent = list.parentElement;
+                    if (!parent.classList.contains('task-item')) {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'task-item';
+                        list.parentNode.insertBefore(wrapper, list);
+                        wrapper.appendChild(list);
+                    }
+                });
+            }
+        });
+    </script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+</body>
+</html>

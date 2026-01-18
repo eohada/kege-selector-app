@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Импорт данных · Чёрный неон</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
+    {% include '_active_lesson_banner.html' %}
+    
+    <div class="app-shell">
+        {% set active_page = 'dashboard' %}
+        {% include '_primary_nav.html' %}
+
+        {% include '_ux_enhancements.html' %}
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <div>
+                <p class="hero-eyebrow">импорт данных</p>
+                <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-загрузка-настольного-компьютера-100.png') }}" alt="Импорт" class="ui-icon ui-icon--md">Импорт данных</h1>
+            </div>
+        </section>
+
+        {# Flash messages будут показаны через toast #}
+
+        <section class="glass-panel" style="margin-bottom: 2rem; border-left: 4px solid var(--danger);">
+            <div style="background: rgba(255, 108, 145, 0.12); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); padding: 1rem; color: var(--danger);">
+                <strong style="display: block; margin-bottom: 0.5rem;">⚠️ Внимание!</strong>
+                <p style="margin: 0; color: var(--text-primary);">Импорт добавит новые записи в базу данных. Существующие ученики с такими же именем и ID платформы будут пропущены.</p>
+            </div>
+        </section>
+
+        <section class="glass-panel">
+            <form method="POST" enctype="multipart/form-data" data-validate>
+                <div class="neo-field" style="margin-bottom: 1.5rem;">
+                    <label class="neo-label" for="file">Выберите JSON файл для импорта</label>
+                    <input type="file" 
+                           id="file" 
+                           name="file" 
+                           accept=".json" 
+                           required 
+                           class="neo-input"
+                           style="cursor: pointer;">
+                    <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.5em;">Файл должен быть в формате JSON, экспортированный из этой системы</small>
+                </div>
+                
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-загрузка-настольного-компьютера-100.png') }}" alt="Импорт" class="ui-icon ui-icon--sm">Импортировать</button>
+                    <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Отмена" class="ui-icon ui-icon--sm">Отмена</a>
+                </div>
+            </form>
+        </section>
+    </div>
+    
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
+    <script>
+        // Конвертируем flash-сообщения в toast-уведомления
+        document.addEventListener('DOMContentLoaded', function() {
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% if category == 'error' or category == 'danger' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.error('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.error('{{ message|e }}');
+                            }
+                        {% elif category == 'warning' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.warning('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.warning('{{ message|e }}');
+                            }
+                        {% elif category == 'info' %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.info('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.info('{{ message|e }}');
+                            }
+                        {% else %}
+                            if (typeof toast !== 'undefined' && toast) {
+                                toast.success('{{ message|e }}');
+                            } else if (window.toast) {
+                                window.toast.success('{{ message|e }}');
+                            }
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        });
+    </script>
+</body>
+</html>
