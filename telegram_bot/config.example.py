@@ -26,3 +26,7 @@ TELEGRAM_TOPIC_ID = os.getenv('TELEGRAM_TOPIC_ID', None)
 # Главный тестировщик может отправлять репорты через личку боту
 # Ему не будут приходить уведомления о новых репортах из группы
 TELEGRAM_MAIN_TESTER_ID = os.getenv('TELEGRAM_MAIN_TESTER_ID', None)
+
+# ID второго главного тестировщика (опционально)
+# Второй главный тестировщик имеет тот же функционал, что и первый
+TELEGRAM_MAIN_TESTER_ID_2 = os.getenv('TELEGRAM_MAIN_TESTER_ID_2', None)

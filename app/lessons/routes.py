@@ -263,13 +263,23 @@ def _get_current_lesson_student(lesson):  # comment
 
 
 def _save_student_submissions(lesson, assignment_type):  # comment
-    """Сохраняем ответы ученика без автопроверки"""  # comment
+    """Сохраняем ответы ученика и считаем статус автопроверки"""  # comment
     tasks = get_sorted_assignments(lesson, assignment_type)  # comment
     for task in tasks:  # comment
         field_name = f'submission_{task.lesson_task_id}'  # comment
         if field_name in request.form:  # comment
             value = request.form.get(field_name, '').strip()  # comment
             task.student_submission = value if value else None  # comment
+        if not task.student_submission:  # comment
+            task.submission_correct = None  # comment
+            continue  # comment
+        expected = (task.student_answer if task.student_answer else (task.task.answer if task.task and task.task.answer else '')) or ''  # comment
+        if not expected:  # comment
+            task.submission_correct = None  # comment
+            continue  # comment
+        normalized_value = normalize_answer_value(task.student_submission)  # comment
+        normalized_expected = normalize_answer_value(expected)  # comment
+        task.submission_correct = normalized_value == normalized_expected and normalized_expected != ''  # comment
     return tasks  # comment
 
 

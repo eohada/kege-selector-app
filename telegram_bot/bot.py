@@ -2,7 +2,7 @@
 Telegram бот для трекинга репортов от тестировщиков
 
 Функционал:
-- Мониторинг группы по тегам (#BUG, #UIFIX, #FEATURE)
+- Мониторинг группы по тегам (#BUG, #UIFIX, #FEATURE, #ADM)
 - Пересылка репортов в личку админу
 - Управление статусами репортов через inline-кнопки
 - Отправка обновлений статуса в группу
@@ -34,7 +34,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Теги для отслеживания
-TRACKED_TAGS = ['#BUG', '#UIFIX', '#FEATURE']
+TRACKED_TAGS = ['#BUG', '#UIFIX', '#FEATURE', '#ADM']
 
 # Статусы репортов
 STATUSES = {
@@ -86,7 +86,7 @@ def extract_tags(text: str) -> list:
 
 def is_main_tester(user_id: int) -> bool:
     """
-    Проверка, является ли пользователь главным тестировщиком
+    Проверка, является ли пользователь главным тестировщиком (первым или вторым)
     
     Args:
         user_id: ID пользователя
@@ -94,13 +94,25 @@ def is_main_tester(user_id: int) -> bool:
     Returns:
         True если пользователь главный тестировщик
     """
+    # Проверяем первого главного тестировщика
     main_tester_id = os.getenv('TELEGRAM_MAIN_TESTER_ID')
-    if not main_tester_id:
-        return False
-    try:
-        return int(main_tester_id) == user_id
-    except ValueError:
-        return False
+    if main_tester_id:
+        try:
+            if int(main_tester_id) == user_id:
+                return True
+        except ValueError:
+            pass
+    
+    # Проверяем второго главного тестировщика
+    main_tester_id_2 = os.getenv('TELEGRAM_MAIN_TESTER_ID_2')
+    if main_tester_id_2:
+        try:
+            if int(main_tester_id_2) == user_id:
+                return True
+        except ValueError:
+            pass
+    
+    return False
 
 
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -185,11 +197,17 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     author_username = author.username
     author_first_name = author.first_name
     
+    logger.info(f"Автор сообщения: ID={author_id}, username={author_username}, first_name={author_first_name}")
+    
     # Проверяем, является ли автор главным тестировщиком
-    # Если да, не отправляем репорт админу (главный тестировщик отправляет репорты через личку)
-    if is_main_tester(author_id):
-        logger.info(f"Сообщение от главного тестировщика (ID: {author_id}), пропускаем обработку из группы")
+    # Если да и тег #ADM - не обрабатываем (главный тестировщик должен отправлять #ADM только через личку)
+    # Обычные репорты (#BUG, #UIFIX, #FEATURE) от главного тестировщика обрабатываются как обычно
+    if is_main_tester(author_id) and tag == '#ADM':
+        logger.info(f"Репорт #ADM от главного тестировщика (ID: {author_id}), пропускаем обработку из группы")
+        logger.info(f"💡 Главный тестировщик должен отправлять репорты #ADM через личку боту, а не в группу")
         return
+    
+    logger.info(f"Продолжаем обработку репорта (тег: {tag}, автор: {author_id})")
     
     # Получаем контент сообщения
     content = text
@@ -408,9 +426,9 @@ async def handle_status_callback(update: Update, context: ContextTypes.DEFAULT_T
     # Получаем числовой ID для отображения
     numeric_id = report.get('numeric_id') or report.get('id', '?')
     
-    # Формируем сообщение для группы
+    # Формируем сообщение об обновлении статуса
     status_text = STATUSES.get(new_status, new_status)
-    group_message = f"""
+    status_message = f"""
 {report['tag']} <b>Статус обновлен</b> #{numeric_id}
 
 📝 <b>Репорт:</b> {report['content'][:200]}{'...' if len(report['content']) > 200 else ''}
@@ -420,45 +438,93 @@ async def handle_status_callback(update: Update, context: ContextTypes.DEFAULT_T
 🆔 <b>ID:</b> #{numeric_id}
 """
     
-    # Отправляем обновление в группу
+    # Проверяем, является ли автор репорта главным тестировщиком
+    author_id = report.get('author_id')
+    is_from_main_tester = author_id and is_main_tester(author_id)
+    
+    # Отправляем обновление статуса
     try:
-        # Получаем ID топика из переменных окружения (если указан)
-        topic_id = os.getenv('TELEGRAM_TOPIC_ID')
-        message_thread_id = None
-        
-        if topic_id:
-            try:
-                message_thread_id = int(topic_id)
-                logger.info(f"[CALLBACK] Отправка сообщения в топик {message_thread_id}")
-            except ValueError:
-                logger.warning(f"[CALLBACK] TELEGRAM_TOPIC_ID имеет неверный формат: {topic_id}")
+        if is_from_main_tester:
+            # Если репорт от главного тестировщика, отправляем уведомление в личку
+            # Отправляем обоим главным тестировщикам (если они настроены)
+            main_tester_id = os.getenv('TELEGRAM_MAIN_TESTER_ID')
+            main_tester_id_2 = os.getenv('TELEGRAM_MAIN_TESTER_ID_2')
+            
+            # Отправляем первому главному тестировщику
+            if main_tester_id:
+                try:
+                    tester_id = int(main_tester_id)
+                    if tester_id == author_id:  # Отправляем только тому, кто создал репорт
+                        logger.info(f"[CALLBACK] Репорт от главного тестировщика, отправка в личку {tester_id}")
+                        sent_message = await context.bot.send_message(
+                            chat_id=tester_id,
+                            text=status_message,
+                            parse_mode='HTML'
+                        )
+                        logger.info(f"[CALLBACK] Сообщение отправлено главному тестировщику в личку: message_id={sent_message.message_id}")
+                except ValueError:
+                    logger.error(f"[CALLBACK] TELEGRAM_MAIN_TESTER_ID имеет неверный формат")
+                except Exception as e:
+                    logger.error(f"[CALLBACK] Ошибка при отправке сообщения главному тестировщику: {e}")
+            
+            # Отправляем второму главному тестировщику
+            if main_tester_id_2:
+                try:
+                    tester_id_2 = int(main_tester_id_2)
+                    if tester_id_2 == author_id:  # Отправляем только тому, кто создал репорт
+                        logger.info(f"[CALLBACK] Репорт от второго главного тестировщика, отправка в личку {tester_id_2}")
+                        sent_message = await context.bot.send_message(
+                            chat_id=tester_id_2,
+                            text=status_message,
+                            parse_mode='HTML'
+                        )
+                        logger.info(f"[CALLBACK] Сообщение отправлено второму главному тестировщику в личку: message_id={sent_message.message_id}")
+                except ValueError:
+                    logger.error(f"[CALLBACK] TELEGRAM_MAIN_TESTER_ID_2 имеет неверный формат")
+                except Exception as e:
+                    logger.error(f"[CALLBACK] Ошибка при отправке сообщения второму главному тестировщику: {e}")
+            
+            if not main_tester_id and not main_tester_id_2:
+                logger.warning(f"[CALLBACK] TELEGRAM_MAIN_TESTER_ID и TELEGRAM_MAIN_TESTER_ID_2 не установлены, не могу отправить уведомление")
         else:
-            logger.info(f"[CALLBACK] TELEGRAM_TOPIC_ID не установлен, отправка в основной чат")
-        
-        # Параметры для отправки сообщения
-        send_params = {
-            'chat_id': report['group_chat_id'],
-            'text': group_message,
-            'parse_mode': 'HTML'
-        }
-        
-        # Если указан топик, добавляем message_thread_id
-        # ВАЖНО: если отправляем в топик, reply_to_message_id может не работать,
-        # если оригинальное сообщение было в другом топике
-        if message_thread_id:
-            send_params['message_thread_id'] = message_thread_id
-            logger.info(f"[CALLBACK] Параметры отправки: chat_id={send_params['chat_id']}, thread_id={message_thread_id}")
-            # Не используем reply_to_message_id при отправке в топик, если оригинальное сообщение было в другом топике
-            # Можно попробовать добавить, но это может вызвать ошибку
-            # send_params['reply_to_message_id'] = report['group_message_id']
-        else:
-            # Если не указан топик, используем reply_to_message_id
-            send_params['reply_to_message_id'] = report['group_message_id']
-            logger.info(f"[CALLBACK] Параметры отправки: chat_id={send_params['chat_id']}, без топика, reply_to={report['group_message_id']}")
-        
-        logger.info(f"[CALLBACK] Отправка сообщения с параметрами: {send_params}")
-        sent_message = await context.bot.send_message(**send_params)
-        logger.info(f"[CALLBACK] Сообщение отправлено в группу: message_id={sent_message.message_id}")
+            # Если репорт не от главного тестировщика, отправляем в группу как обычно
+            # Получаем ID топика из переменных окружения (если указан)
+            topic_id = os.getenv('TELEGRAM_TOPIC_ID')
+            message_thread_id = None
+            
+            if topic_id:
+                try:
+                    message_thread_id = int(topic_id)
+                    logger.info(f"[CALLBACK] Отправка сообщения в топик {message_thread_id}")
+                except ValueError:
+                    logger.warning(f"[CALLBACK] TELEGRAM_TOPIC_ID имеет неверный формат: {topic_id}")
+            else:
+                logger.info(f"[CALLBACK] TELEGRAM_TOPIC_ID не установлен, отправка в основной чат")
+            
+            # Параметры для отправки сообщения
+            send_params = {
+                'chat_id': report['group_chat_id'],
+                'text': status_message,
+                'parse_mode': 'HTML'
+            }
+            
+            # Если указан топик, добавляем message_thread_id
+            # ВАЖНО: если отправляем в топик, reply_to_message_id может не работать,
+            # если оригинальное сообщение было в другом топике
+            if message_thread_id:
+                send_params['message_thread_id'] = message_thread_id
+                logger.info(f"[CALLBACK] Параметры отправки: chat_id={send_params['chat_id']}, thread_id={message_thread_id}")
+                # Не используем reply_to_message_id при отправке в топик, если оригинальное сообщение было в другом топике
+                # Можно попробовать добавить, но это может вызвать ошибку
+                # send_params['reply_to_message_id'] = report['group_message_id']
+            else:
+                # Если не указан топик, используем reply_to_message_id
+                send_params['reply_to_message_id'] = report['group_message_id']
+                logger.info(f"[CALLBACK] Параметры отправки: chat_id={send_params['chat_id']}, без топика, reply_to={report['group_message_id']}")
+            
+            logger.info(f"[CALLBACK] Отправка сообщения с параметрами: {send_params}")
+            sent_message = await context.bot.send_message(**send_params)
+            logger.info(f"[CALLBACK] Сообщение отправлено в группу: message_id={sent_message.message_id}")
         
         # Обновляем сообщение в личке админа
         current_text = query.message.text or query.message.caption or ""
@@ -615,12 +681,13 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message += "Бот отслеживает сообщения в группе тестировщиков по тегам:\n"
     message += "• #BUG - ошибка функционала\n"
     message += "• #UIFIX - ошибка интерфейса/верстки\n"
-    message += "• #FEATURE - предложение по функционалу\n\n"
+    message += "• #FEATURE - предложение по функционалу\n"
+    message += "• #ADM - административные вопросы\n\n"
     
     if is_main_tester_user:
         message += "✅ Вы главный тестировщик!\n"
         message += "Вы можете отправлять репорты прямо в эту личку.\n"
-        message += "Просто напишите сообщение с тегом (#BUG, #UIFIX или #FEATURE).\n\n"
+        message += "Просто напишите сообщение с тегом (#BUG, #UIFIX, #FEATURE или #ADM).\n\n"
         message += "Репорты будут автоматически отправлены администратору."
     else:
         message += "Репорты автоматически пересылаются админу в личку."
@@ -631,6 +698,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message += "/list bug - список репортов #BUG\n"
         message += "/list uifix - список репортов #UIFIX\n"
         message += "/list feature - список репортов #FEATURE\n"
+        message += "/list adm - список репортов #ADM\n"
         message += "/stats - статистика репортов"
     
     await update.message.reply_text(message, parse_mode='HTML')
@@ -895,7 +963,7 @@ async def list_reports_command(update: Update, context: ContextTypes.DEFAULT_TYP
     tag_filter = None
     if context.args and len(context.args) > 0:
         tag_arg = context.args[0].upper()
-        if tag_arg in ['BUG', 'UIFIX', 'FEATURE']:
+        if tag_arg in ['BUG', 'UIFIX', 'FEATURE', 'ADM']:
             tag_filter = f"#{tag_arg}"
     
     # Получаем список репортов
@@ -939,6 +1007,8 @@ async def list_reports_command(update: Update, context: ContextTypes.DEFAULT_TYP
         filter_row.append(InlineKeyboardButton("🎨 #UIFIX", callback_data="list_tag_#UIFIX"))
     if tag_filter != '#FEATURE':
         filter_row.append(InlineKeyboardButton("✨ #FEATURE", callback_data="list_tag_#FEATURE"))
+    if tag_filter != '#ADM':
+        filter_row.append(InlineKeyboardButton("⚙️ #ADM", callback_data="list_tag_#ADM"))
     if filter_row:
         keyboard.append(filter_row)
     
@@ -1007,6 +1077,8 @@ async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             filter_row.append(InlineKeyboardButton("🎨 #UIFIX", callback_data="list_tag_#UIFIX"))
         if tag != '#FEATURE':
             filter_row.append(InlineKeyboardButton("✨ #FEATURE", callback_data="list_tag_#FEATURE"))
+        if tag != '#ADM':
+            filter_row.append(InlineKeyboardButton("⚙️ #ADM", callback_data="list_tag_#ADM"))
         if filter_row:
             keyboard.append(filter_row)
         
@@ -1057,8 +1129,11 @@ async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         keyboard = [
             [
                 InlineKeyboardButton("🐛 #BUG", callback_data="list_tag_#BUG"),
-                InlineKeyboardButton("🎨 #UIFIX", callback_data="list_tag_#UIFIX"),
-                InlineKeyboardButton("✨ #FEATURE", callback_data="list_tag_#FEATURE")
+                InlineKeyboardButton("🎨 #UIFIX", callback_data="list_tag_#UIFIX")
+            ],
+            [
+                InlineKeyboardButton("✨ #FEATURE", callback_data="list_tag_#FEATURE"),
+                InlineKeyboardButton("⚙️ #ADM", callback_data="list_tag_#ADM")
             ]
         ]
         
@@ -1224,6 +1299,7 @@ def main():
     topic_id = os.getenv('TELEGRAM_TOPIC_ID')
     
     main_tester_id = os.getenv('TELEGRAM_MAIN_TESTER_ID')
+    main_tester_id_2 = os.getenv('TELEGRAM_MAIN_TESTER_ID_2')
     
     logger.info("=" * 50)
     logger.info("Настройки бота:")
@@ -1232,6 +1308,7 @@ def main():
     logger.info(f"  TELEGRAM_GROUP_ID: {'✓ установлен (' + group_id + ')' if group_id else '✗ НЕ УСТАНОВЛЕН (бот не будет обрабатывать сообщения!)'}")
     logger.info(f"  TELEGRAM_TOPIC_ID: {'✓ установлен (' + topic_id + ')' if topic_id else '○ не установлен (ответы будут в основной чат)'}")
     logger.info(f"  TELEGRAM_MAIN_TESTER_ID: {'✓ установлен (' + main_tester_id + ')' if main_tester_id else '○ не установлен (главный тестировщик не настроен)'}")
+    logger.info(f"  TELEGRAM_MAIN_TESTER_ID_2: {'✓ установлен (' + main_tester_id_2 + ')' if main_tester_id_2 else '○ не установлен (второй главный тестировщик не настроен)'}")
     logger.info("=" * 50)
     
     if not group_id:

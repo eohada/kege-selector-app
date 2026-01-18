@@ -675,6 +675,15 @@
                         <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Ответ" class="ui-icon ui-icon--sm"><!-- comment -->Ваш ответ:<!-- comment -->
                     </label><!-- comment -->
                     <textarea class="answer-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" {% if is_read_only %}disabled{% endif %}>{{ hw_task.student_submission or '' }}</textarea><!-- comment -->
+                    {% if hw_task.submission_correct is not none %}{# comment #}
+                    <div style="margin-top: 0.5rem; font-weight: 600; color: {% if hw_task.submission_correct %}var(--success){% else %}var(--danger){% endif %};"><!-- comment -->
+                        Автопроверка: {% if hw_task.submission_correct %}верно{% else %}неверно{% endif %}<!-- comment -->
+                    </div><!-- comment -->
+                    {% else %}{# comment #}
+                    <div style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.9em;"><!-- comment -->
+                        Автопроверка: нет результата<!-- comment -->
+                    </div><!-- comment -->
+                    {% endif %}{# comment #}
                     {% if is_read_only %}{# comment #}
                     <small style="color: var(--text-muted); display: block; margin-top: 0.5rem;"><!-- comment -->
                         Работа сдана. Ответы доступны только для просмотра.<!-- comment -->
@@ -771,7 +780,7 @@
             {% else %}{# comment #}
             <div class="homework-actions"><!-- comment -->
                 <button type="submit" class="neo-button accent" {% if is_read_only %}disabled{% endif %}><!-- comment -->
-                    💾 Сохранить ответы<!-- comment -->
+                    💾 Сохранить черновик<!-- comment -->
                 </button><!-- comment -->
                 <button type="submit" class="neo-button outline" {% if is_read_only %}disabled{% endif %} formaction="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_submit', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_submit', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_submit', lesson_id=lesson.lesson_id) }}{% endif %}"><!-- comment -->
                     ✅ Сдать работу<!-- comment -->
