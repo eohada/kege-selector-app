@@ -268,7 +268,8 @@ def lesson_homework_view(lesson_id):
                            is_student_view=is_student_view,  # comment
                            is_parent_view=is_parent_view,  # comment
                            is_read_only=is_read_only,  # comment
-                           viewer_timezone=viewer_timezone)  # comment
+                           viewer_timezone=viewer_timezone,  # comment
+                           review_summary=(lesson.review_summaries or {}).get('homework', {}))  # comment
 
 @lessons_bp.route('/lesson/<int:lesson_id>/classwork-tasks')
 @login_required
@@ -302,7 +303,8 @@ def lesson_classwork_view(lesson_id):
                            is_student_view=is_student_view,  # comment
                            is_parent_view=is_parent_view,  # comment
                            is_read_only=is_read_only,  # comment
-                           viewer_timezone=viewer_timezone)  # comment
+                           viewer_timezone=viewer_timezone,  # comment
+                           review_summary=(lesson.review_summaries or {}).get('classwork', {}))  # comment
 
 @lessons_bp.route('/lesson/<int:lesson_id>/exam-tasks')
 @login_required
@@ -336,7 +338,64 @@ def lesson_exam_view(lesson_id):
                            is_student_view=is_student_view,  # comment
                            is_parent_view=is_parent_view,  # comment
                            is_read_only=is_read_only,  # comment
-                           viewer_timezone=viewer_timezone)  # comment
+                           viewer_timezone=viewer_timezone,  # comment
+                           review_summary=(lesson.review_summaries or {}).get('exam', {}))  # comment
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/review-summary/<assignment_type>', methods=['POST'])
+@login_required
+@check_access('assignment.grade')
+def lesson_review_summary_save(lesson_id: int, assignment_type: str):
+    """Сохранение итогов проверки по уроку (для конкретного типа работ)."""
+    assignment_type = (assignment_type or '').strip().lower()
+    if assignment_type not in {'homework', 'classwork', 'exam'}:
+        return jsonify({'success': False, 'error': 'Некорректный тип'}), 400
+
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+
+    # RBAC: проверяем доступ к ученику урока
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all'):
+        accessible_student_ids = _resolve_accessible_student_ids(scope)
+        if lesson.student_id not in accessible_student_ids:
+            return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
+    data = request.get_json(silent=True) or {}
+    percent = data.get('percent', None)
+    notes = (data.get('notes') or '').strip()
+    summary_status = (data.get('status') or '').strip().lower()
+
+    if percent is not None:
+        try:
+            percent = int(percent)
+        except Exception:
+            return jsonify({'success': False, 'error': 'percent должен быть числом'}), 400
+        if percent < 0 or percent > 100:
+            return jsonify({'success': False, 'error': 'percent должен быть 0..100'}), 400
+
+    if summary_status and summary_status not in {'graded', 'returned', 'submitted'}:
+        return jsonify({'success': False, 'error': 'Некорректный статус'}), 400
+
+    summaries = lesson.review_summaries or {}
+    if not isinstance(summaries, dict):
+        summaries = {}
+
+    summaries[assignment_type] = {
+        'percent': percent,
+        'notes': notes,
+        'status': summary_status or None,
+        'updated_at': moscow_now().isoformat()
+    }
+    lesson.review_summaries = summaries
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Failed to save review summary: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Ошибка сохранения'}), 500
+
+    return jsonify({'success': True, 'summary': summaries[assignment_type]})
 
 
 @lessons_bp.route('/reviews/queue')

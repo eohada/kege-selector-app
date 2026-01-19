@@ -199,6 +199,7 @@ class Lesson(db.Model):
     homework_status = db.Column(db.String(50), default='not_assigned')
     homework_result_percent = db.Column(db.Integer, nullable=True)
     homework_result_notes = db.Column(db.Text, nullable=True)
+    review_summaries = db.Column(db.JSON, nullable=True)  # Итоги проверки по типам работ: {"homework": {...}, "classwork": {...}, "exam": {...}}
     published_at = db.Column(db.DateTime, nullable=True) # Дата отправки урока/ДЗ ученику
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)

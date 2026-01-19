@@ -388,6 +388,65 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% endif %}
 
+                {% if not is_parent_view %}
+                <div class="glass-panel" style="margin-bottom: 1.25rem;">
+                    <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+                        <div style="min-width: 0;">
+                            <div class="hero-eyebrow">итог по проверке</div>
+                            <div style="font-weight: 900; font-size: 1.15rem; margin-top: 0.25rem;">
+                                {% if review_summary and review_summary.get('status') %}
+                                    {% if review_summary.get('status') == 'graded' %}Проверено{% elif review_summary.get('status') == 'returned' %}На доработку{% else %}Сдано{% endif %}
+                                {% else %}
+                                    {% if is_student_view %}После проверки здесь появится итог.{% else %}Можно оставить итог по уроку для ученика.{% endif %}
+                                {% endif %}
+                            </div>
+                            {% if review_summary and review_summary.get('percent') is not none %}
+                            <div style="color: var(--text-muted); margin-top: 0.35rem;">Результат: <strong>{{ review_summary.get('percent') }}%</strong></div>
+                            {% endif %}
+                        </div>
+                        {% if not is_student_view and not is_parent_view %}
+                        <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; justify-content: flex-end;">
+                            <button type="button" class="neo-button outline sm" onclick="saveLessonReviewSummary()">
+                                <i class="fas fa-save"></i> Сохранить итог
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if review_summary and review_summary.get('notes') %}
+                    <div style="margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px solid var(--stroke-1); color: var(--text-primary); white-space: pre-wrap; line-height: 1.6;">
+                        {{ review_summary.get('notes') }}
+                    </div>
+                    {% endif %}
+
+                    {% if not is_student_view and not is_parent_view %}
+                    <div style="margin-top: 1rem; display:grid; grid-template-columns: 180px 1fr 220px; gap: 0.75rem; align-items: start;" class="profile-grid-responsive">
+                        <div>
+                            <label class="neo-label">Процент (0..100)</label>
+                            <input class="neo-input" id="lesson-review-percent" type="number" min="0" max="100" value="{{ review_summary.get('percent') if review_summary and review_summary.get('percent') is not none else '' }}" placeholder="Напр. 78">
+                        </div>
+                        <div>
+                            <label class="neo-label">Итоговый комментарий по уроку</label>
+                            <textarea class="neo-textarea" id="lesson-review-notes" placeholder="Коротко: что хорошо, что поправить, на что обратить внимание...">{{ review_summary.get('notes') if review_summary and review_summary.get('notes') else '' }}</textarea>
+                        </div>
+                        <div>
+                            <label class="neo-label">Итоговый статус</label>
+                            {% set sst = (review_summary.get('status') if review_summary else '') %}
+                            <select class="neo-select" id="lesson-review-status">
+                                <option value="" {% if not sst %}selected{% endif %}>Не задан</option>
+                                <option value="submitted" {% if sst == 'submitted' %}selected{% endif %}>Сдано</option>
+                                <option value="graded" {% if sst == 'graded' %}selected{% endif %}>Проверено</option>
+                                <option value="returned" {% if sst == 'returned' %}selected{% endif %}>На доработку</option>
+                            </select>
+                            <div style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.4; margin-top: 0.35rem;">
+                                Видно ученику. Не влияет на блокировку полей (она по статусам задач).
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
                 {% if homework_tasks %}
                 
                 {% if not is_student_view and not is_parent_view %}
@@ -582,6 +641,46 @@
                     {% if not is_student_view and not is_parent_view %}
                     <div style="margin-top: 1.25rem; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); background: var(--surface-2);">
                         <div class="hero-eyebrow" style="margin-bottom: 0.8rem;">проверка преподавателем</div>
+                        {% set tnum = hw_task.task.task_number if hw_task.task and hw_task.task.task_number else None %}
+                        {% if tnum in [24, 25, 26, 27] %}
+                        <div style="margin-bottom: 0.9rem; padding: 0.9rem; border-radius: var(--radius-md); border: 1px solid rgba(0,255,213,0.25); background: rgba(0,255,213,0.05);">
+                            <div style="display:flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                                <div style="min-width: 0;">
+                                    <div class="hero-eyebrow" style="color: var(--accent-1);">чек‑лист проверки 24–27</div>
+                                    <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem; line-height: 1.4;">Отметь пункты и вставь шаблон в комментарий — проверка становится стандартизированной и быстрой.</div>
+                                </div>
+                                <button type="button" class="neo-button ghost sm" onclick="insertRubricTemplate({{ hw_task.lesson_task_id }})">
+                                    <i class="fas fa-wand-magic-sparkles"></i> Вставить шаблон
+                                </button>
+                            </div>
+                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.5rem; margin-top: 0.75rem;">
+                                <label style="display:flex; gap: 0.55rem; align-items: flex-start;">
+                                    <input type="checkbox" class="rubric-ck" data-task="{{ hw_task.lesson_task_id }}" value="Алгоритм/логика решения корректны (основная идея).">
+                                    <span>Алгоритм/логика корректны</span>
+                                </label>
+                                <label style="display:flex; gap: 0.55rem; align-items: flex-start;">
+                                    <input type="checkbox" class="rubric-ck" data-task="{{ hw_task.lesson_task_id }}" value="Учтены крайние случаи (пустые/минимальные/максимальные значения).">
+                                    <span>Крайние случаи</span>
+                                </label>
+                                <label style="display:flex; gap: 0.55rem; align-items: flex-start;">
+                                    <input type="checkbox" class="rubric-ck" data-task="{{ hw_task.lesson_task_id }}" value="Формат ввода/вывода соблюдён, ответ соответствует требуемому виду.">
+                                    <span>Формат ввода/вывода</span>
+                                </label>
+                                <label style="display:flex; gap: 0.55rem; align-items: flex-start;">
+                                    <input type="checkbox" class="rubric-ck" data-task="{{ hw_task.lesson_task_id }}" value="Сложность/эффективность достаточны (нет очевидных неоптимальностей).">
+                                    <span>Эффективность</span>
+                                </label>
+                                <label style="display:flex; gap: 0.55rem; align-items: flex-start;">
+                                    <input type="checkbox" class="rubric-ck" data-task="{{ hw_task.lesson_task_id }}" value="Код читаемый: понятные имена, структура, нет лишнего.">
+                                    <span>Читаемость</span>
+                                </label>
+                                <label style="display:flex; gap: 0.55rem; align-items: flex-start;">
+                                    <input type="checkbox" class="rubric-ck" data-task="{{ hw_task.lesson_task_id }}" value="Решение проверено на примерах (базовые тесты).">
+                                    <span>Проверка на примерах</span>
+                                </label>
+                            </div>
+                        </div>
+                        {% endif %}
                         <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 1rem;">
                             <div class="neo-field">
                                 <label class="neo-label">Ключ (переопределение)</label>
@@ -758,6 +857,7 @@
     <script>
         const LESSON_ID = {{ lesson.lesson_id }};
         const CSRF_TOKEN = "{{ csrf_token() if csrf_token else '' }}";
+        const ASSIGNMENT_TYPE = "{{ assignment_type }}";
         
         // Tabs Logic (с сохранением выбранной вкладки)
         function switchTab(tabName) {
@@ -841,6 +941,50 @@
                 console.error(e);
                 toast.error('Ошибка сети');
             }
+        }
+
+        async function saveLessonReviewSummary() {
+            try {
+                const percentEl = document.getElementById('lesson-review-percent');
+                const notesEl = document.getElementById('lesson-review-notes');
+                const statusEl = document.getElementById('lesson-review-status');
+                const percentRaw = percentEl ? String(percentEl.value || '').trim() : '';
+                const percent = percentRaw === '' ? null : parseInt(percentRaw, 10);
+                const notes = notesEl ? (notesEl.value || '') : '';
+                const status = statusEl ? (statusEl.value || '') : '';
+
+                const res = await fetch(`/lesson/${LESSON_ID}/review-summary/${ASSIGNMENT_TYPE}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({ percent, notes, status })
+                });
+                const data = await res.json();
+                if (!data || !data.success) {
+                    toast.error((data && data.error) ? data.error : 'Ошибка сохранения итога');
+                    return;
+                }
+                toast.success('Итог по уроку сохранён');
+            } catch (e) {
+                toast.error('Ошибка сохранения итога');
+            }
+        }
+
+        function insertRubricTemplate(taskId) {
+            const checks = Array.from(document.querySelectorAll(`.rubric-ck[data-task="${taskId}"]`));
+            if (!checks.length) {
+                toast.info('Чек‑лист недоступен для этой задачи');
+                return;
+            }
+            const picked = checks.filter(c => c.checked).map(c => c.value);
+            const header = 'Проверка (24–27):';
+            const lines = (picked.length ? picked : ['(пункты не выбраны)']).map(x => `- ${x}`);
+            const tpl = `${header}\n${lines.join('\n')}\n\nРекомендации:\n- `;
+            const ta = document.getElementById(`teacher_comment_new_${taskId}`);
+            if (!ta) return;
+            if (ta.value && !ta.value.endsWith('\n')) ta.value += '\n';
+            ta.value += tpl;
+            ta.focus();
+            toast.success('Шаблон вставлен в комментарий');
         }
 
         async function saveNotes() {

@@ -243,6 +243,7 @@ def ensure_schema_columns(app):
             
             safe_add_column('homework_result_percent', 'INTEGER')
             safe_add_column('homework_result_notes', 'TEXT')
+            safe_add_column('review_summaries', 'JSON')
             
             # Новые поля для полноценного урока
             safe_add_column('content', 'TEXT')
