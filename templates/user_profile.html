@@ -16,7 +16,7 @@
         {% include '_primary_nav.html' %}
         {% include '_ux_enhancements.html' %}
 
-        <main class="profile-container {% if current_user and current_user.is_creator() %}theme-creator{% else %}theme-student{% endif %}">
+        <main class="profile-container {% if current_user and current_user.is_creator() %}theme-creator{% endif %}">
             {% if current_user %}
                 <div class="profile-card">
                     <!-- Обложка -->
@@ -68,10 +68,19 @@
                                 </div>
                                 {% endif %}
 
+                                {% if current_user.is_student() %}
                                 <div class="data-row">
-                                    <span class="data-label">Идентификатор</span>
-                                    <span class="data-value" style="font-family: 'MonaspaceNeon', monospace; letter-spacing: 1px; color: var(--accent-color);">#777</span>
+                                    <span class="data-label">ID ученика</span>
+                                    <span class="data-value" style="font-family: 'MonaspaceNeon', monospace; letter-spacing: 1px; color: var(--accent-color);">
+                                        {% if linked_student and linked_student.platform_id %}{{ linked_student.platform_id }}{% else %}—{% endif %}
+                                    </span>
                                 </div>
+                                {% else %}
+                                <div class="data-row">
+                                    <span class="data-label">ID аккаунта</span>
+                                    <span class="data-value" style="font-family: 'MonaspaceNeon', monospace; letter-spacing: 1px; color: var(--accent-color);">#{{ current_user.id }}</span>
+                                </div>
+                                {% endif %}
                                 <div class="data-row">
                                     <span class="data-label">Email / Логин</span>
                                     <span class="data-value">{{ current_user.username }}</span>
@@ -101,8 +110,86 @@
                                 {% endif %}
                             </div>
 
-                            <!-- Правая колонка: Действия -->
+                            <!-- Правая колонка: Соц-блоки + действия -->
                             <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                                {% if current_user.is_student() %}
+                                <div class="profile-section">
+                                    <h3>Учебный профиль</h3>
+                                    {% if linked_student %}
+                                        <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                                            {% if linked_student.school_class %}
+                                            <span class="status-badge status-info">{{ linked_student.school_class }} класс</span>
+                                            {% endif %}
+                                            {% if linked_student.target_score %}
+                                            <span class="status-badge status-info">Цель: {{ linked_student.target_score }}</span>
+                                            {% endif %}
+                                            {% if linked_student.programming_language %}
+                                            <span class="status-badge status-info">{{ linked_student.programming_language }}</span>
+                                            {% endif %}
+                                        </div>
+
+                                        {% if lesson_counts %}
+                                        <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
+                                            <div class="glass-panel" style="padding: 0.9rem; text-align: center;">
+                                                <div style="font-size: 0.85rem; color: var(--text-muted);">Всего уроков</div>
+                                                <div style="font-weight: 800; font-size: 1.4rem; margin-top: 0.25rem;">{{ lesson_counts.total }}</div>
+                                            </div>
+                                            <div class="glass-panel" style="padding: 0.9rem; text-align: center;">
+                                                <div style="font-size: 0.85rem; color: var(--text-muted);">Проведено</div>
+                                                <div style="font-weight: 800; font-size: 1.4rem; margin-top: 0.25rem;">{{ lesson_counts.completed }}</div>
+                                            </div>
+                                            <div class="glass-panel" style="padding: 0.9rem; text-align: center;">
+                                                <div style="font-size: 0.85rem; color: var(--text-muted);">Запланировано</div>
+                                                <div style="font-weight: 800; font-size: 1.4rem; margin-top: 0.25rem;">{{ lesson_counts.planned }}</div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+
+                                        <div style="display:flex; gap: 0.75rem; flex-wrap: wrap;">
+                                            <a href="{{ url_for('students.student_profile', student_id=linked_student.student_id) }}" class="neo-button accent" style="text-decoration:none;">
+                                                <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" class="ui-icon ui-icon--sm">
+                                                Открыть мою комнату
+                                            </a>
+                                            <a href="{{ url_for('students.student_analytics', student_id=linked_student.student_id) }}" class="neo-button outline" style="text-decoration:none;">
+                                                <img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" class="ui-icon ui-icon--sm">
+                                                Статистика
+                                            </a>
+                                            <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost" style="text-decoration:none;">
+                                                <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" class="ui-icon ui-icon--sm">
+                                                Мои работы
+                                            </a>
+                                        </div>
+                                    {% else %}
+                                        <p style="color: var(--text-muted); margin: 0;">
+                                            Учебный профиль ещё не привязан к аккаунту. Сообщите преподавателю/администратору, чтобы связать ваш аккаунт по email.
+                                        </p>
+                                    {% endif %}
+                                </div>
+
+                                {% if recent_lessons and recent_lessons|length > 0 %}
+                                <div class="profile-section">
+                                    <h3>Лента уроков</h3>
+                                    <div style="display:flex; flex-direction: column; gap: 0.75rem;">
+                                        {% for l in recent_lessons %}
+                                        <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=l.lesson_id) }}" class="glass-panel" style="text-decoration:none; padding: 0.9rem; display:flex; justify-content: space-between; gap: 1rem; align-items: center;">
+                                            <div style="min-width: 0;">
+                                                <div style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                    {{ l.topic or 'Урок' }}
+                                                </div>
+                                                <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
+                                                    {{ l.lesson_date.strftime('%d.%m.%Y %H:%M') if l.lesson_date else '—' }}
+                                                </div>
+                                            </div>
+                                            <span class="status-badge status-info" style="white-space: nowrap;">
+                                                {{ 'План' if l.status == 'planned' else ('Проведён' if l.status == 'completed' else ('В процессе' if l.status == 'in_progress' else l.status)) }}
+                                            </span>
+                                        </a>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% endif %}
+
                                 {% if current_user.is_creator() %}
                                 <div class="profile-section" style="background: rgba(255, 46, 46, 0.05); border-color: rgba(255, 46, 46, 0.3);">
                                     <h3>

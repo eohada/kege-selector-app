@@ -162,7 +162,35 @@ def logout():
 @login_required
 def user_profile():
     """Страница профиля пользователя"""
-    return render_template('user_profile.html')
+    from app.models import Student, Lesson, db
+    linked_student = None
+    recent_lessons = []
+    lesson_counts = {'total': 0, 'planned': 0, 'completed': 0}
+    try:
+        # Привязка аккаунта ученика к сущности Student по email (основной кейс)
+        if current_user.is_student():
+            email = (current_user.email or current_user.username or '').strip()
+            if email:
+                linked_student = Student.query.filter_by(email=email).first()
+                if linked_student:
+                    recent_lessons = Lesson.query.filter_by(student_id=linked_student.student_id).order_by(
+                        Lesson.lesson_date.desc()
+                    ).limit(6).all()
+                    lesson_counts['total'] = Lesson.query.filter_by(student_id=linked_student.student_id).count()
+                    lesson_counts['planned'] = Lesson.query.filter_by(student_id=linked_student.student_id, status='planned').count()
+                    lesson_counts['completed'] = Lesson.query.filter_by(student_id=linked_student.student_id, status='completed').count()
+    except Exception as e:
+        logger.warning(f"Failed to build profile context for user {current_user.id}: {e}")
+        linked_student = None
+        recent_lessons = []
+        lesson_counts = {'total': 0, 'planned': 0, 'completed': 0}
+
+    return render_template(
+        'user_profile.html',
+        linked_student=linked_student,
+        recent_lessons=recent_lessons,
+        lesson_counts=lesson_counts,
+    )
 
 @auth_bp.route('/user/profile/update', methods=['POST'])
 @login_required

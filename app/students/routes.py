@@ -136,7 +136,16 @@ def student_profile(student_id):
         
         # Проверка доступа через data scoping
         try:
-            scope = get_user_scope(current_user)
+            # Ученику всегда разрешаем смотреть СВОЙ профиль (по email), даже если scope пустой/не настроен
+            if current_user.is_student():
+                me_email = (current_user.email or '').strip().lower()
+                st_email = (student.email or '').strip().lower() if student.email else ''
+                if me_email and st_email and me_email == st_email:
+                    scope = {'can_see_all': False, 'student_ids': [current_user.id]}
+                else:
+                    scope = get_user_scope(current_user)
+            else:
+                scope = get_user_scope(current_user)
             if not scope['can_see_all']:
                 # Проверяем, есть ли доступ к этому ученику
                 if student.email:
