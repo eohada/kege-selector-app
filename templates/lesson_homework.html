@@ -428,8 +428,9 @@
                             {% endif %}
                         </span>
                         
+                        {% set task_status = ((hw_task.status or 'pending')|lower) %}
                         <!-- Индикатор результата (показываем ученику только после сдачи/проверки/возврата) -->
-                        {% set show_result_for_student = is_student_view and ((hw_task.status or '') in ['submitted','graded','returned']) %}
+                        {% set show_result_for_student = is_student_view and (task_status in ['submitted','graded','returned']) %}
                         {% if (not is_student_view and not is_parent_view) or show_result_for_student %}
                             {% if hw_task.submission_correct == true %}
                                 <span class="status-indicator correct"><i class="fas fa-check-circle"></i> Верно</span>
@@ -439,14 +440,16 @@
                         {% endif %}
 
                         {% if is_student_view %}
-                            {% if (hw_task.status or '') == 'submitted' %}
+                            {% if task_status == 'submitted' %}
                                 <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-info">Сдано</span>
-                            {% elif (hw_task.status or '') == 'graded' %}
+                            {% elif task_status == 'graded' %}
                                 <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-success">Проверено</span>
-                            {% elif (hw_task.status or '') == 'returned' %}
+                            {% elif task_status == 'returned' %}
                                 <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-warning">На доработку</span>
                             {% else %}
-                                {% if hw_task.student_submission %}
+                                {% if is_read_only and hw_task.student_submission %}
+                                    <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-info">Сдано</span>
+                                {% elif hw_task.student_submission %}
                                     <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-info" style="opacity: 0.85;">Черновик</span>
                                 {% else %}
                                     <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-info" style="opacity: 0.6;">Не начато</span>
@@ -478,7 +481,7 @@
                         
                         {% if is_student_view %}
                             {% set tasks = homework_tasks %}
-                            {% set is_task_returned = ((hw_task.status or '') == 'returned') %}
+                            {% set is_task_returned = (task_status == 'returned') %}
                             {% if not is_read_only or is_task_returned %}
                                 <input type="text" class="neo-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_submission or '' }}" placeholder="Введи ответ..." autocomplete="off">
                             {% else %}
@@ -494,7 +497,7 @@
                     </div>
 
                     <!-- Блок с правильным ответом: ученику только после сдачи/проверки/возврата; учителю всегда -->
-                    {% set can_show_answer_to_student = is_student_view and ((hw_task.status or '') in ['submitted','graded','returned']) and is_read_only %}
+                    {% set can_show_answer_to_student = is_student_view and (task_status in ['submitted','graded','returned']) and is_read_only %}
                     {% if can_show_answer_to_student or (not is_student_view and not is_parent_view) %}
                         {% set correct_val = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}
                         {% if correct_val %}
