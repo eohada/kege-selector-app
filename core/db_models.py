@@ -39,6 +39,23 @@ class Tasks(db.Model):
     blacklist_tasks = db.relationship('BlacklistTasks', back_populates='task', lazy=True)
     topics = db.relationship('Topic', secondary=task_topics, backref='tasks', lazy=True)
 
+class TaskReview(db.Model):
+    """Результат ручной проверки задания (фундамент для формироватора банка заданий)."""
+    __tablename__ = 'TaskReviews'
+    review_id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, unique=True, index=True)
+
+    # new | ok | needs_fix | skip
+    status = db.Column(db.String(30), default='new', nullable=False, index=True)
+    notes = db.Column(db.Text, nullable=True)
+
+    reviewer_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    task = db.relationship('Tasks', foreign_keys=[task_id])
+    reviewer = db.relationship('User', foreign_keys=[reviewer_user_id])
+
 class Topic(db.Model):
     """Модель тем (навыков) для тегирования заданий"""
     __tablename__ = 'Topics'

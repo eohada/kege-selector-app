@@ -12,4 +12,5 @@ from app.admin import user_management  # API endpoints для управлени
 from app.admin import family_management  # API endpoints для управления семейными связями
 from app.admin import enrollment_management  # API endpoints для управления учебными контрактами
 from app.admin import remote_admin_api  # Внутренние API для удаленной админки
+from app.admin import task_formator  # Формироватор банка заданий (фундамент)
 

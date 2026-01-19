@@ -4,7 +4,7 @@
 import logging
 from sqlalchemy import inspect, text
 from app.models import db
-from core.db_models import Tester, AuditLog, RolePermission, User, LessonTaskTeacherComment
+from core.db_models import Tester, AuditLog, RolePermission, User, LessonTaskTeacherComment, TaskReview
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
 
 logger = logging.getLogger(__name__)
@@ -190,6 +190,15 @@ def ensure_schema_columns(app):
                 except Exception as e:  # comment
                     logger.warning(f"Could not create LessonTaskTeacherComments table: {e}")  # comment
                     db.session.rollback()  # comment
+
+            # Фундамент: таблица ревью заданий банка (Formator)
+            if 'TaskReviews' not in table_names and 'taskreviews' not in table_names:
+                try:
+                    TaskReview.__table__.create(db.engine)
+                    logger.info("TaskReviews table created")
+                except Exception as e:
+                    logger.warning(f"Could not create TaskReviews table: {e}")
+                    db.session.rollback()
             lessons_table = 'Lessons' if 'Lessons' in table_names else ('lessons' if 'lessons' in table_names else None)
             students_table = 'Students' if 'Students' in table_names else ('students' if 'students' in table_names else None)
             lesson_tasks_table = 'LessonTasks' if 'LessonTasks' in table_names else ('lessontasks' if 'lessontasks' in table_names else None)

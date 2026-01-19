@@ -5,6 +5,7 @@
 from core.db_models import (
     db,
     Tasks,
+    TaskReview,
     UsageHistory,
     SkippedTasks,
     BlacklistTasks,
@@ -39,6 +40,7 @@ from core.db_models import (
 __all__ = [
     'db',
     'Tasks',
+    'TaskReview',
     'UsageHistory',
     'SkippedTasks',
     'BlacklistTasks',

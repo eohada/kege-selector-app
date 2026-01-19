@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Формироватор банка заданий · Админка</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    {% include '_ux_enhancements.html' %}
+    <style>
+        .tf-grid{display:grid;grid-template-columns:430px 1fr;gap:1.5rem;align-items:start}
+        @media (max-width:980px){.tf-grid{grid-template-columns:1fr}}
+        .tf-list{display:flex;flex-direction:column;gap:.75rem}
+        .tf-item{display:flex;gap:.9rem;align-items:flex-start;padding:.9rem;border-radius:var(--radius-md);border:1px solid var(--stroke-1);background:var(--surface-1);text-decoration:none;color:inherit;transition:transform .15s ease,border-color .15s ease,background .15s ease;cursor:pointer}
+        .tf-item:hover{transform:translateY(-1px);border-color:rgba(0,255,213,.35);background:var(--surface-2)}
+        .tf-item.active{border-color:rgba(31,123,255,.55);box-shadow:0 0 0 1px rgba(31,123,255,.25) inset}
+        .tf-item-meta{min-width:0;flex:1}
+        .tf-item-title{font-weight:800;display:flex;align-items:center;gap:.6rem;min-width:0}
+        .tf-item-title span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;min-width:0}
+        .tf-mini{color:var(--text-muted);font-size:.9rem;margin-top:.35rem}
+        .tf-dot{width:10px;height:10px;border-radius:50%;margin-top:.35rem;flex:0 0 auto;border:1px solid rgba(255,255,255,.18)}
+        .tf-dot.new{background:rgba(255,255,255,.25)}
+        .tf-dot.ok{background:rgba(0,254,202,.75);box-shadow:0 0 12px rgba(0,254,202,.25)}
+        .tf-dot.needs_fix{background:rgba(255,212,92,.9);box-shadow:0 0 12px rgba(255,212,92,.22)}
+        .tf-dot.skip{background:rgba(255,108,145,.8);box-shadow:0 0 12px rgba(255,108,145,.22)}
+        .tf-check{display:flex;gap:.75rem;align-items:flex-start;padding:.9rem;border-radius:var(--radius-md);border:1px solid var(--stroke-1);background:var(--surface-1)}
+        .tf-check-badge{padding:.25rem .6rem;border-radius:999px;font-weight:800;font-size:.8rem;letter-spacing:.02em}
+        .tf-b-ok{background:rgba(0,254,202,.12);border:1px solid rgba(0,254,202,.25);color:var(--success)}
+        .tf-b-warn{background:rgba(255,212,92,.10);border:1px solid rgba(255,212,92,.22);color:var(--warning)}
+        .tf-b-fail{background:rgba(255,108,145,.10);border:1px solid rgba(255,108,145,.22);color:var(--danger)}
+        .tf-kv{display:grid;grid-template-columns:180px 1fr;gap:.6rem 1rem;margin-top:1rem}
+        @media (max-width:680px){.tf-kv{grid-template-columns:1fr}}
+        .tf-k{color:var(--text-muted);font-size:.85rem}
+        .tf-v{color:var(--text-primary);font-weight:700;min-width:0;overflow-wrap:anywhere}
+        .tf-actions{display:flex;gap:.75rem;flex-wrap:wrap}
+        .tf-split{display:grid;grid-template-columns:1fr;gap:1rem}
+        .tf-content{background:var(--surface-2);border:1px solid var(--stroke-1);border-radius:var(--radius-md);padding:1rem;overflow:auto;max-height:420px}
+        .tf-code{font-family:'MonaspaceNeon',monospace;font-size:.95rem;letter-spacing:.02em}
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'admin' %}
+        {% include '_primary_nav.html' %}
+        <section class="glass-panel" style="margin-bottom: 1.25rem;">
+            <div class="panel-head">
+                <div>
+                    <p class="hero-eyebrow">админка · банк заданий</p>
+                    <h1 class="hero-title" style="margin-bottom: 0.35rem;">Формироватор базы заданий</h1>
+                    <div style="color: var(--text-muted); max-width: 900px;">
+                        Быстрая проверка спаршенных заданий: условие/ответ + статус ревью. Сейчас это фундамент: дальше сюда можно нарастить редактор, генератор, мультипредметность и ML.
+                    </div>
+                </div>
+                <div class="hero-actions" style="margin-top: 0;">
+                    <a class="neo-button ghost" href="{{ url_for('admin.admin_panel') }}" style="text-decoration:none;">← Админ панель</a>
+                </div>
+            </div>
+            <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem;">
+                <span class="status-badge status-info">Новые: {{ summary.new }}</span>
+                <span class="status-badge status-success">ОК: {{ summary.ok }}</span>
+                <span class="status-badge status-warning">Нужно править: {{ summary.needs_fix }}</span>
+                <span class="status-badge status-danger">Пропуск: {{ summary.skip }}</span>
+            </div>
+        </section>
+
+        <section class="tf-grid">
+            <div class="glass-panel">
+                <div class="panel-head" style="margin-bottom: 1rem;">
+                    <div>
+                        <p class="eyebrow">поиск и фильтры</p>
+                        <h2 style="margin: 0;">Список заданий</h2>
+                        <div style="color: var(--text-muted); margin-top: 0.35rem;">Найдено: <strong style="color:var(--text-primary)">{{ total }}</strong></div>
+                    </div>
+                </div>
+                <form method="GET" action="{{ url_for('admin.admin_task_formator') }}" class="filters-grid" style="align-items:end; margin-bottom: 1rem;">
+                    <div class="neo-field">
+                        <label class="neo-label">Поиск</label>
+                        <input class="neo-input" name="q" value="{{ q }}" placeholder="текст, ответ, source_url, site_task_id">
+                    </div>
+                    <div class="neo-field">
+                        <label class="neo-label">Номер</label>
+                        <select class="neo-select" name="task_number">
+                            <option value="">Любой</option>
+                            {% for n in task_numbers %}
+                            <option value="{{ n }}" {% if task_number == n %}selected{% endif %}>{{ n }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="neo-field">
+                        <label class="neo-label">Ревью</label>
+                        <select class="neo-select" name="review_status">
+                            <option value="all" {% if review_status == 'all' %}selected{% endif %}>Все</option>
+                            <option value="new" {% if review_status == 'new' %}selected{% endif %}>Новые</option>
+                            <option value="ok" {% if review_status == 'ok' %}selected{% endif %}>ОК</option>
+                            <option value="needs_fix" {% if review_status == 'needs_fix' %}selected{% endif %}>Нужно править</option>
+                            <option value="skip" {% if review_status == 'skip' %}selected{% endif %}>Пропуск</option>
+                        </select>
+                    </div>
+                    <div class="filters-actions">
+                        <button type="submit" class="neo-button accent">Применить</button>
+                    </div>
+                </form>
+
+                <div class="tf-list" id="tfList">
+                    {% for t, r in items %}
+                    {% set st = (r.status if r else 'new') %}
+                    <a href="#" class="tf-item {% if loop.first %}active{% endif %}" data-task-id="{{ t.task_id }}" data-status="{{ st }}" onclick="selectTask(event, {{ t.task_id }})">
+                        <div class="tf-dot {{ st }}"></div>
+                        <div class="tf-item-meta">
+                            <div class="tf-item-title">
+                                <span>№{{ t.task_number }} · task_id {{ t.task_id }}</span>
+                            </div>
+                            <div class="tf-mini">
+                                {% if t.source_url %}Источник: {{ t.source_url }}{% else %}Источник: —{% endif %}
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+
+                <div style="display:flex; justify-content: space-between; align-items:center; margin-top: 1rem; gap: 0.75rem; flex-wrap: wrap;">
+                    <div style="color: var(--text-muted); font-size: 0.95rem;">
+                        Стр. {{ page }} · {{ per_page }} / стр.
+                    </div>
+                    <div class="tf-actions">
+                        {% if page > 1 %}
+                        <a class="neo-button ghost" href="{{ url_for('admin.admin_task_formator', q=q, task_number=task_number, review_status=review_status, page=page-1) }}" style="text-decoration:none;">← Назад</a>
+                        {% endif %}
+                        {% if (page * per_page) < total %}
+                        <a class="neo-button ghost" href="{{ url_for('admin.admin_task_formator', q=q, task_number=task_number, review_status=review_status, page=page+1) }}" style="text-decoration:none;">Дальше →</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel">
+                <div class="panel-head" style="margin-bottom: 1rem;">
+                    <div>
+                        <p class="eyebrow">карточка проверки</p>
+                        <h2 style="margin: 0;" id="taskTitle">Выберите задание</h2>
+                    </div>
+                    <div class="tf-actions">
+                        <button type="button" class="neo-button outline" onclick="markReview('ok')">ОК</button>
+                        <button type="button" class="neo-button outline" onclick="markReview('needs_fix')">Нужно править</button>
+                        <button type="button" class="neo-button danger" onclick="markReview('skip')">Пропуск</button>
+                    </div>
+                </div>
+
+                <div class="tf-kv">
+                    <div class="tf-k">task_id</div><div class="tf-v tf-code" id="kvTaskId">—</div>
+                    <div class="tf-k">номер</div><div class="tf-v tf-code" id="kvTaskNumber">—</div>
+                    <div class="tf-k">site_task_id</div><div class="tf-v tf-code" id="kvSiteTaskId">—</div>
+                    <div class="tf-k">source_url</div><div class="tf-v" id="kvSourceUrl">—</div>
+                    <div class="tf-k">обновлено</div><div class="tf-v" id="kvLastScraped">—</div>
+                </div>
+
+                <div class="tf-split" style="margin-top: 1.25rem;">
+                    <div>
+                        <div style="display:flex; align-items:center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                            <h3 style="margin: 0;">Быстрая проверка</h3>
+                            <span class="status-badge status-info" id="reviewBadge">Ревью: новое</span>
+                        </div>
+                        <div id="checks" style="display:flex; flex-direction: column; gap: 0.75rem; margin-top: 0.9rem;"></div>
+                    </div>
+
+                    <div>
+                        <h3 style="margin: 0 0 0.75rem 0;">Условие</h3>
+                        <div class="tf-content" id="taskContent">—</div>
+                    </div>
+
+                    <div>
+                        <h3 style="margin: 0 0 0.75rem 0;">Ответ</h3>
+                        <div class="glass-panel" style="padding: 1rem;">
+                            <div class="tf-code" id="taskAnswer" style="white-space: pre-wrap; overflow-wrap: anywhere;">—</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 style="margin: 0 0 0.75rem 0;">Заметка ревью</h3>
+                        <textarea class="neo-textarea" id="reviewNotes" rows="4" placeholder="Что именно не так? Что исправить в парсинге/данных?"></textarea>
+                        <div style="display:flex; gap: 0.75rem; justify-content: flex-end; margin-top: 0.75rem; flex-wrap: wrap;">
+                            <button type="button" class="neo-button accent" onclick="saveReview()">Сохранить</button>
+                        </div>
+                        <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;" id="reviewMeta"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script>
+        const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const listEl = document.getElementById('tfList');
+        let currentTaskId = null;
+        let currentReviewStatus = 'new';
+
+        function setActiveInList(taskId) {
+            document.querySelectorAll('.tf-item').forEach(a => a.classList.remove('active'));
+            const el = document.querySelector(`.tf-item[data-task-id="${taskId}"]`);
+            if (el) el.classList.add('active');
+        }
+
+        function statusLabel(st) {
+            if (st === 'ok') return 'ОК';
+            if (st === 'needs_fix') return 'Нужно править';
+            if (st === 'skip') return 'Пропуск';
+            return 'Новое';
+        }
+
+        function statusBadgeClass(st) {
+            if (st === 'ok') return 'status-success';
+            if (st === 'needs_fix') return 'status-warning';
+            if (st === 'skip') return 'status-danger';
+            return 'status-info';
+        }
+
+        function levelBadge(level) {
+            if (level === 'ok') return { cls: 'tf-check-badge tf-b-ok', text: 'OK' };
+            if (level === 'warn') return { cls: 'tf-check-badge tf-b-warn', text: 'WARN' };
+            return { cls: 'tf-check-badge tf-b-fail', text: 'FAIL' };
+        }
+
+        async function selectTask(e, taskId) {
+            if (e) e.preventDefault();
+            currentTaskId = taskId;
+            setActiveInList(taskId);
+            await loadTask(taskId);
+        }
+
+        async function loadTask(taskId) {
+            try {
+                const res = await fetch(`/admin/task-formator/api/task/${taskId}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+                const data = await res.json();
+                if (!data.success) {
+                    toast.error(data.error || 'Ошибка загрузки');
+                    return;
+                }
+                const t = data.task;
+                const r = data.review;
+                currentReviewStatus = (r?.status || 'new');
+
+                document.getElementById('taskTitle').textContent = `Задание №${t.task_number}`;
+                document.getElementById('kvTaskId').textContent = String(t.task_id);
+                document.getElementById('kvTaskNumber').textContent = String(t.task_number);
+                document.getElementById('kvSiteTaskId').textContent = t.site_task_id || '—';
+                document.getElementById('kvSourceUrl').textContent = t.source_url || '—';
+                document.getElementById('kvLastScraped').textContent = t.last_scraped ? new Date(t.last_scraped).toLocaleString('ru-RU') : '—';
+
+                document.getElementById('taskContent').innerHTML = t.content_html || '<span style="color: var(--text-muted);">—</span>';
+                document.getElementById('taskAnswer').textContent = t.answer || '—';
+
+                const badge = document.getElementById('reviewBadge');
+                badge.className = `status-badge ${statusBadgeClass(currentReviewStatus)}`;
+                badge.textContent = `Ревью: ${statusLabel(currentReviewStatus)}`;
+
+                document.getElementById('reviewNotes').value = r?.notes || '';
+                document.getElementById('reviewMeta').textContent = r?.updated_at ? `Последнее сохранение: ${new Date(r.updated_at).toLocaleString('ru-RU')}` : '';
+
+                renderChecks(data.checks || []);
+            } catch (err) {
+                toast.error('Ошибка сети');
+            }
+        }
+
+        function renderChecks(checks) {
+            const box = document.getElementById('checks');
+            box.innerHTML = '';
+            checks.forEach(ch => {
+                const b = levelBadge(ch.level);
+                const el = document.createElement('div');
+                el.className = 'tf-check';
+                el.innerHTML = `
+                    <div class="${b.cls}">${b.text}</div>
+                    <div style="min-width:0">
+                        <div style="font-weight: 800; margin-bottom: 0.25rem;">${escapeHtml(ch.title || '')}</div>
+                        <div style="color: var(--text-muted); line-height: 1.45;">${escapeHtml(ch.details || '')}</div>
+                    </div>
+                `;
+                box.appendChild(el);
+            });
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+        }
+
+        function markReview(st) {
+            currentReviewStatus = st;
+            const badge = document.getElementById('reviewBadge');
+            badge.className = `status-badge ${statusBadgeClass(st)}`;
+            badge.textContent = `Ревью: ${statusLabel(st)}`;
+        }
+
+        async function saveReview() {
+            if (!currentTaskId) { toast.warning('Сначала выберите задание'); return; }
+            const notes = (document.getElementById('reviewNotes').value || '').trim();
+            try {
+                const res = await fetch(`/admin/task-formator/api/task/${currentTaskId}/review`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN, 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ status: currentReviewStatus, notes })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    toast.error(data.error || 'Ошибка сохранения');
+                    return;
+                }
+                toast.success('Ревью сохранено');
+                document.getElementById('reviewMeta').textContent = data.updated_at ? `Последнее сохранение: ${new Date(data.updated_at).toLocaleString('ru-RU')}` : '';
+                updateListBadge(currentTaskId, currentReviewStatus);
+            } catch (err) {
+                toast.error('Ошибка сети');
+            }
+        }
+
+        function updateListBadge(taskId, status) {
+            const el = document.querySelector(`.tf-item[data-task-id="${taskId}"]`);
+            if (!el) return;
+            el.setAttribute('data-status', status);
+            const dot = el.querySelector('.tf-dot');
+            if (dot) dot.className = `tf-dot ${status}`;
+        }
+
+        // Авто-выбор первого элемента
+        document.addEventListener('DOMContentLoaded', async () => {
+            const first = document.querySelector('.tf-item[data-task-id]');
+            if (first) {
+                const tid = parseInt(first.getAttribute('data-task-id') || '0', 10);
+                if (tid) {
+                    currentTaskId = tid;
+                    await loadTask(tid);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+

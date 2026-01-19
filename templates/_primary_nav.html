@@ -14,6 +14,13 @@
                         <img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Profile">
                         <span>Профиль</span>
                     </a>
+
+                    {% if current_user.is_admin() or current_user.is_creator() %}
+                    <a href="{{ url_for('admin.admin_panel') }}" class="profile-item">
+                        <img src="{{ url_for('static', filename='icons/icons8-settings-100.png') }}" alt="Admin">
+                        <span>Админ панель</span>
+                    </a>
+                    {% endif %}
                     
                     <div style="border-top: 1px solid var(--stroke-1); margin: 0.4rem 0;"></div>
                     

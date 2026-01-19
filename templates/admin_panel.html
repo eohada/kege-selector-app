@@ -32,6 +32,7 @@
                     {% if current_user.is_creator() %}
                     <a href="{{ url_for('admin.admin_permissions') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-settings-100.png') }}" alt="Права" class="ui-icon ui-icon--sm"> Права доступа</a>
                     {% endif %}
+                    <a href="{{ url_for('admin.admin_task_formator') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-лупа-100-2.png') }}" alt="Формироватор" class="ui-icon ui-icon--sm"> Формироватор банка заданий</a>
                     <a href="{{ url_for('admin.admin_testers') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Тестировщики" class="ui-icon ui-icon--sm"> Тестировщики</a>
                     <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Tester entities" class="ui-icon ui-icon--sm"> Tester entities</a>
                     <a href="{{ url_for('admin.admin_topics') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Темы" class="ui-icon ui-icon--sm"> Темы</a>
