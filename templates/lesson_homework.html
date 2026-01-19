@@ -433,8 +433,6 @@
                                 <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-success">Проверено</span>
                             {% elif (hw_task.status or '') == 'returned' %}
                                 <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-warning">На доработку</span>
-                            {% elif (hw_task.status or '') == 'in_progress' %}
-                                <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-info" style="opacity: 0.8;">В процессе</span>
                             {% else %}
                                 <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-info" style="opacity: 0.6;">Не начато</span>
                             {% endif %}
@@ -463,7 +461,9 @@
                         </label>
                         
                         {% if is_student_view %}
-                            {% if not is_read_only %}
+                            {% set tasks = homework_tasks %}
+                            {% set is_task_returned = ((hw_task.status or '') == 'returned') %}
+                            {% if not is_read_only or is_task_returned %}
                                 <input type="text" class="neo-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_submission or '' }}" placeholder="Введи ответ..." autocomplete="off">
                             {% else %}
                                 <div class="neo-input" style="background: rgba(0,0,0,0.2); border-color: transparent; cursor: not-allowed; opacity: 0.8;">
@@ -490,11 +490,26 @@
                         {% endif %}
                     {% endif %}
 
-                    {% if is_student_view and (hw_task.teacher_comment or '') %}
-                        <div class="teacher-feedback-student" id="student-comment-{{ hw_task.lesson_task_id }}">
-                            <div class="hero-eyebrow" style="margin-bottom: 0.6rem;">комментарий преподавателя</div>
-                            <div style="white-space: pre-wrap; line-height: 1.6; color: var(--text-primary);">{{ hw_task.teacher_comment }}</div>
-                        </div>
+                    {% if is_student_view %}
+                        {% set comments = hw_task.teacher_comments or [] %}
+                        {% if comments|length > 0 %}
+                            <div class="teacher-feedback-student" id="student-comments-{{ hw_task.lesson_task_id }}">
+                                <div class="hero-eyebrow" style="margin-bottom: 0.6rem;">комментарии преподавателя</div>
+                                <select class="neo-select" id="teacher-comments-select-{{ hw_task.lesson_task_id }}" onchange="onTeacherCommentSelect({{ hw_task.lesson_task_id }})">
+                                    {% for c in comments %}
+                                        <option value="{{ c.comment_id }}" data-body="{{ c.body|e }}">{{ c.created_at|format_dt_tz(viewer_timezone) }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div id="teacher-comments-body-{{ hw_task.lesson_task_id }}" style="margin-top: 0.8rem; white-space: pre-wrap; line-height: 1.6; color: var(--text-primary);">
+                                    {{ comments[-1].body }}
+                                </div>
+                            </div>
+                        {% elif (hw_task.teacher_comment or '') %}
+                            <div class="teacher-feedback-student" id="student-comment-{{ hw_task.lesson_task_id }}">
+                                <div class="hero-eyebrow" style="margin-bottom: 0.6rem;">комментарий преподавателя</div>
+                                <div style="white-space: pre-wrap; line-height: 1.6; color: var(--text-primary);">{{ hw_task.teacher_comment }}</div>
+                            </div>
+                        {% endif %}
                     {% endif %}
 
                     {% if not is_student_view and not is_parent_view %}
@@ -510,7 +525,6 @@
                                 <select class="neo-select" id="status_{{ hw_task.lesson_task_id }}" name="status_{{ hw_task.lesson_task_id }}">
                                     {% set st = (hw_task.status or 'pending') %}
                                     <option value="pending" {% if st == 'pending' %}selected{% endif %}>Не начато</option>
-                                    <option value="in_progress" {% if st == 'in_progress' %}selected{% endif %}>В процессе</option>
                                     <option value="submitted" {% if st == 'submitted' %}selected{% endif %}>Сдано</option>
                                     <option value="graded" {% if st == 'graded' %}selected{% endif %}>Проверено</option>
                                     <option value="returned" {% if st == 'returned' %}selected{% endif %}>На доработку</option>
@@ -518,12 +532,28 @@
                             </div>
                         </div>
                         <div class="neo-field" style="margin-top: 1rem;">
-                            <label class="neo-label">Комментарий преподавателя</label>
-                            <textarea class="neo-textarea" id="teacher_comment_{{ hw_task.lesson_task_id }}" name="teacher_comment_{{ hw_task.lesson_task_id }}" placeholder="Что исправить / почему неверно / подсказка...">{{ hw_task.teacher_comment or '' }}</textarea>
+                            <label class="neo-label">Комментарии преподавателя (история)</label>
+                            {% set tcomments = hw_task.teacher_comments or [] %}
+                            {% if tcomments|length > 0 %}
+                                <select class="neo-select" id="teacher-comments-select-teacher-{{ hw_task.lesson_task_id }}" onchange="onTeacherCommentSelectTeacher({{ hw_task.lesson_task_id }})">
+                                    {% for c in tcomments %}
+                                        <option value="{{ c.comment_id }}" data-body="{{ c.body|e }}">{{ c.created_at|format_dt_tz(viewer_timezone) }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div id="teacher-comments-body-teacher-{{ hw_task.lesson_task_id }}" style="margin-top: 0.8rem; white-space: pre-wrap; line-height: 1.6; color: var(--text-primary);">
+                                    {{ tcomments[-1].body }}
+                                </div>
+                            {% else %}
+                                <div style="color: var(--text-muted); font-size: 0.9rem;">Пока нет комментариев.</div>
+                            {% endif %}
+                            <textarea class="neo-textarea" id="teacher_comment_new_{{ hw_task.lesson_task_id }}" placeholder="Добавить новый комментарий..."></textarea>
                         </div>
                         <div class="hero-actions" style="margin-top: 1rem;">
                             <button type="button" class="neo-button accent sm" onclick="saveTeacherFeedback({{ hw_task.lesson_task_id }})">
                                 <i class="fas fa-save"></i> Сохранить проверку
+                            </button>
+                            <button type="button" class="neo-button outline sm" onclick="addTeacherComment({{ hw_task.lesson_task_id }})">
+                                <i class="fas fa-comment-dots"></i> Добавить комментарий
                             </button>
                             <button type="button" class="neo-button outline sm" onclick="markReturned({{ hw_task.lesson_task_id }})">
                                 <i class="fas fa-undo"></i> Вернуть на доработку
@@ -811,11 +841,10 @@
         async function saveTeacherFeedback(taskId) {
             const answerKeyEl = document.getElementById(`answer_key_${taskId}`);
             const statusEl = document.getElementById(`status_${taskId}`);
-            const commentEl = document.getElementById(`teacher_comment_${taskId}`);
             const payload = {
                 answer_key: answerKeyEl ? answerKeyEl.value : '',
                 status: statusEl ? statusEl.value : 'pending',
-                teacher_comment: commentEl ? commentEl.value : ''
+                teacher_comment: ''
             };
             try {
                 const res = await fetch(`/lesson/${LESSON_ID}/task/${taskId}/teacher-feedback/save`, {
@@ -836,10 +865,9 @@
         }
 
         async function markReturned(taskId) {
-            const commentEl = document.getElementById(`teacher_comment_${taskId}`);
             const payload = {
                 status: 'returned',
-                teacher_comment: commentEl ? commentEl.value : ''
+                teacher_comment: ''
             };
             try {
                 const res = await fetch(`/lesson/${LESSON_ID}/task/${taskId}/teacher-feedback/save`, {
@@ -881,7 +909,6 @@
 
         function statusToRu(status) {
             if (status === 'pending') return 'Не начато';
-            if (status === 'in_progress') return 'В процессе';
             if (status === 'submitted') return 'Сдано';
             if (status === 'graded') return 'Проверено';
             if (status === 'returned') return 'На доработку';
@@ -918,8 +945,7 @@
             const answerKeyEl = document.getElementById(`answer_key_${taskId}`);
             if (answerKeyEl && typeof data.answer_key === 'string') answerKeyEl.value = data.answer_key;
 
-            const commentEl = document.getElementById(`teacher_comment_${taskId}`);
-            if (commentEl && typeof data.teacher_comment === 'string') commentEl.value = data.teacher_comment;
+            // teacher_comment больше не редактируем как single-field; история хранится отдельными комментариями
 
             // Обновляем блоки для ученика, если они есть в DOM (например, учитель тестирует под учеником)
             const studentStatusEl = document.getElementById(`student-status-${taskId}`);
@@ -929,6 +955,61 @@
                 if (data.status === 'graded') studentStatusEl.classList.add('status-success');
                 else if (data.status === 'returned') studentStatusEl.classList.add('status-warning');
                 else studentStatusEl.classList.add('status-info');
+            }
+        }
+
+        function onTeacherCommentSelect(taskId) {
+            const sel = document.getElementById(`teacher-comments-select-${taskId}`);
+            const body = document.getElementById(`teacher-comments-body-${taskId}`);
+            if (!sel || !body) return;
+            const opt = sel.options[sel.selectedIndex];
+            body.textContent = opt ? (opt.getAttribute('data-body') || '') : '';
+        }
+
+        function onTeacherCommentSelectTeacher(taskId) {
+            const sel = document.getElementById(`teacher-comments-select-teacher-${taskId}`);
+            const body = document.getElementById(`teacher-comments-body-teacher-${taskId}`);
+            if (!sel || !body) return;
+            const opt = sel.options[sel.selectedIndex];
+            body.textContent = opt ? (opt.getAttribute('data-body') || '') : '';
+        }
+
+        async function addTeacherComment(taskId) {
+            const input = document.getElementById(`teacher_comment_new_${taskId}`);
+            const text = input ? (input.value || '').trim() : '';
+            if (!text) {
+                toast.warning('Комментарий пустой');
+                return;
+            }
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/task/${taskId}/teacher-comment/add`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({ body: text })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    toast.error(data.error || 'Ошибка сохранения');
+                    return;
+                }
+                toast.success('Комментарий добавлен');
+                if (input) input.value = '';
+
+                const teacherSelect = document.getElementById(`teacher-comments-select-teacher-${taskId}`);
+                const teacherBody = document.getElementById(`teacher-comments-body-teacher-${taskId}`);
+                if (teacherSelect && data.comment) {
+                    const opt = document.createElement('option');
+                    // В live-режиме показываем ISO (время будет корректно у ученика при его рендере)
+                    const label = (data.comment.created_at || '').replace('T', ' ').slice(0, 16);
+                    opt.value = String(data.comment.comment_id);
+                    opt.textContent = label;
+                    opt.setAttribute('data-body', data.comment.body || '');
+                    teacherSelect.appendChild(opt);
+                    teacherSelect.value = opt.value;
+                    if (teacherBody) teacherBody.textContent = data.comment.body || '';
+                }
+            } catch (e) {
+                toast.error('Ошибка сети');
             }
         }
     </script>

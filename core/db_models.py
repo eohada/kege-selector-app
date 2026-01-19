@@ -182,6 +182,20 @@ class LessonTask(db.Model):
 
     lesson = db.relationship('Lesson', back_populates='homework_tasks')
     task = db.relationship('Tasks')
+    teacher_comments = db.relationship('LessonTaskTeacherComment', back_populates='lesson_task', lazy=True, cascade='all, delete-orphan')  # comment
+
+
+class LessonTaskTeacherComment(db.Model):  # comment
+    """Комментарий преподавателя к конкретному заданию урока (мульти-комментарии с таймстампами)."""  # comment
+    __tablename__ = 'LessonTaskTeacherComments'  # comment
+    comment_id = db.Column(db.Integer, primary_key=True)  # comment
+    lesson_task_id = db.Column(db.Integer, db.ForeignKey('LessonTasks.lesson_task_id'), nullable=False, index=True)  # comment
+    author_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)  # comment
+    body = db.Column(db.Text, nullable=False)  # comment
+    created_at = db.Column(db.DateTime, default=moscow_now)  # comment
+
+    lesson_task = db.relationship('LessonTask', back_populates='teacher_comments')  # comment
+    author = db.relationship('User', foreign_keys=[author_user_id])  # comment
 
 class User(db.Model):
     """Модель пользователя для авторизации (расширенная для RBAC)"""

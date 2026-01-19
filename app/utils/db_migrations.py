@@ -4,7 +4,7 @@
 import logging
 from sqlalchemy import inspect, text
 from app.models import db
-from core.db_models import Tester, AuditLog, RolePermission, User
+from core.db_models import Tester, AuditLog, RolePermission, User, LessonTaskTeacherComment
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
 
 logger = logging.getLogger(__name__)
@@ -183,6 +183,13 @@ def ensure_schema_columns(app):
             
             # Получаем реальное имя таблицы (может быть в нижнем регистре)
             table_names = inspector.get_table_names()
+            if 'LessonTaskTeacherComments' not in table_names and 'lessontaskteachercomments' not in table_names:  # comment
+                try:  # comment
+                    LessonTaskTeacherComment.__table__.create(db.engine)  # comment
+                    logger.info("LessonTaskTeacherComments table created")  # comment
+                except Exception as e:  # comment
+                    logger.warning(f"Could not create LessonTaskTeacherComments table: {e}")  # comment
+                    db.session.rollback()  # comment
             lessons_table = 'Lessons' if 'Lessons' in table_names else ('lessons' if 'lessons' in table_names else None)
             students_table = 'Students' if 'Students' in table_names else ('students' if 'students' in table_names else None)
             lesson_tasks_table = 'LessonTasks' if 'LessonTasks' in table_names else ('lessontasks' if 'lessontasks' in table_names else None)
@@ -240,6 +247,15 @@ def ensure_schema_columns(app):
                 safe_add_lesson_task_column('status', 'TEXT DEFAULT \'pending\'')  # comment
                 safe_add_lesson_task_column('submission_files', 'JSON')  # comment
                 safe_add_lesson_task_column('teacher_comment', 'TEXT')  # comment
+                try:  # comment
+                    # Убираем устаревший статус in_progress, если он где-то появился
+                    if is_postgres:  # comment
+                        db.session.execute(text(f'UPDATE "{lesson_tasks_table}" SET status = \'pending\' WHERE status = \'in_progress\''))  # comment
+                    else:  # comment
+                        db.session.execute(text(f"UPDATE {lesson_tasks_table} SET status = 'pending' WHERE status = 'in_progress'"))  # comment
+                except Exception as e:  # comment
+                    logger.warning(f"Could not normalize LessonTasks.status values: {e}")  # comment
+                    db.session.rollback()  # comment
 
             if students_table:
                 student_columns = {col['name'] for col in inspector.get_columns(students_table)}

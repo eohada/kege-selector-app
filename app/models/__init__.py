@@ -32,7 +32,8 @@ from core.db_models import (
     AssignmentTask,
     Submission,
     Answer,
-    SubmissionComment
+    SubmissionComment,
+    LessonTaskTeacherComment
 )
 
 __all__ = [
@@ -65,5 +66,6 @@ __all__ = [
     'AssignmentTask',
     'Submission',
     'Answer',
-    'SubmissionComment'
+    'SubmissionComment',
+    'LessonTaskTeacherComment'
 ]

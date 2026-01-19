@@ -14,7 +14,7 @@ from app.utils.db_migrations import ensure_schema_columns
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, perform_auto_check, normalize_answer_value  # comment
-from app.models import Lesson, LessonTask, Student, Tasks, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, LessonTask, Student, Tasks, LessonTaskTeacherComment, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
@@ -211,7 +211,13 @@ def lesson_homework_view(lesson_id):
     if is_parent_view:  # comment
         is_read_only = True  # comment
     elif is_student_view:  # comment
-        is_read_only = _is_student_submission_locked(homework_tasks) or (lesson.homework_status == 'assigned_done')  # comment
+        is_read_only = _is_submission_finalized(lesson, homework_tasks)  # comment
+    viewer_timezone = 'Europe/Moscow'  # comment
+    try:  # comment
+        if current_user and getattr(current_user, 'profile', None) and current_user.profile.timezone:  # comment
+            viewer_timezone = current_user.profile.timezone  # comment
+    except Exception:  # comment
+        viewer_timezone = 'Europe/Moscow'  # comment
     return render_template('lesson_homework.html',
                            lesson=lesson,
                            student=student,
@@ -219,7 +225,8 @@ def lesson_homework_view(lesson_id):
                            assignment_type='homework',  # comment
                            is_student_view=is_student_view,  # comment
                            is_parent_view=is_parent_view,  # comment
-                           is_read_only=is_read_only)  # comment
+                           is_read_only=is_read_only,  # comment
+                           viewer_timezone=viewer_timezone)  # comment
 
 @lessons_bp.route('/lesson/<int:lesson_id>/classwork-tasks')
 @login_required
@@ -238,7 +245,13 @@ def lesson_classwork_view(lesson_id):
     if is_parent_view:  # comment
         is_read_only = True  # comment
     elif is_student_view:  # comment
-        is_read_only = _is_student_submission_locked(classwork_tasks)  # comment
+        is_read_only = _is_submission_finalized(lesson, classwork_tasks)  # comment
+    viewer_timezone = 'Europe/Moscow'  # comment
+    try:  # comment
+        if current_user and getattr(current_user, 'profile', None) and current_user.profile.timezone:  # comment
+            viewer_timezone = current_user.profile.timezone  # comment
+    except Exception:  # comment
+        viewer_timezone = 'Europe/Moscow'  # comment
     return render_template('lesson_homework.html',
                            lesson=lesson,
                            student=student,
@@ -246,7 +259,8 @@ def lesson_classwork_view(lesson_id):
                            assignment_type='classwork',  # comment
                            is_student_view=is_student_view,  # comment
                            is_parent_view=is_parent_view,  # comment
-                           is_read_only=is_read_only)  # comment
+                           is_read_only=is_read_only,  # comment
+                           viewer_timezone=viewer_timezone)  # comment
 
 @lessons_bp.route('/lesson/<int:lesson_id>/exam-tasks')
 @login_required
@@ -265,7 +279,13 @@ def lesson_exam_view(lesson_id):
     if is_parent_view:  # comment
         is_read_only = True  # comment
     elif is_student_view:  # comment
-        is_read_only = _is_student_submission_locked(exam_tasks)  # comment
+        is_read_only = _is_submission_finalized(lesson, exam_tasks)  # comment
+    viewer_timezone = 'Europe/Moscow'  # comment
+    try:  # comment
+        if current_user and getattr(current_user, 'profile', None) and current_user.profile.timezone:  # comment
+            viewer_timezone = current_user.profile.timezone  # comment
+    except Exception:  # comment
+        viewer_timezone = 'Europe/Moscow'  # comment
     return render_template('lesson_homework.html',
                            lesson=lesson,
                            student=student,
@@ -273,7 +293,47 @@ def lesson_exam_view(lesson_id):
                            assignment_type='exam',  # comment
                            is_student_view=is_student_view,  # comment
                            is_parent_view=is_parent_view,  # comment
-                           is_read_only=is_read_only)  # comment
+                           is_read_only=is_read_only,  # comment
+                           viewer_timezone=viewer_timezone)  # comment
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/task/<int:lesson_task_id>/teacher-comment/add', methods=['POST'])  # comment
+@login_required  # comment
+def lesson_task_teacher_comment_add(lesson_id, lesson_task_id):  # comment
+    """Добавить комментарий преподавателя (мульти-комментарии)"""  # comment
+    if current_user.is_student() or current_user.is_parent():  # comment
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403  # comment
+    lesson_task = LessonTask.query.filter_by(lesson_id=lesson_id, lesson_task_id=lesson_task_id).first_or_404()  # comment
+    data = request.get_json(silent=True) or {}  # comment
+    body = (data.get('body') or '').strip()  # comment
+    if not body:  # comment
+        return jsonify({'success': False, 'error': 'Пустой комментарий'}), 400  # comment
+    comment = LessonTaskTeacherComment(lesson_task_id=lesson_task.lesson_task_id, author_user_id=getattr(current_user, 'id', None), body=body)  # comment
+    db.session.add(comment)  # comment
+    # Для обратной совместимости держим последний комментарий в поле teacher_comment
+    lesson_task.teacher_comment = body  # comment
+    try:  # comment
+        db.session.commit()  # comment
+    except Exception as e:  # comment
+        db.session.rollback()  # comment
+        logger.error(f"Failed to add teacher comment: {e}", exc_info=True)  # comment
+        return jsonify({'success': False, 'error': 'Ошибка сохранения'}), 500  # comment
+    tz = 'Europe/Moscow'  # comment
+    try:  # comment
+        if getattr(current_user, 'profile', None) and current_user.profile.timezone:  # comment
+            tz = current_user.profile.timezone  # comment
+    except Exception:  # comment
+        tz = 'Europe/Moscow'  # comment
+    # format_dt_tz фильтр доступен в шаблонах; здесь отдаем ISO и сырой текст, отображение делаем на клиенте
+    return jsonify({  # comment
+        'success': True,  # comment
+        'comment': {  # comment
+            'comment_id': comment.comment_id,  # comment
+            'body': comment.body,  # comment
+            'created_at': comment.created_at.isoformat() if comment.created_at else None,  # comment
+            'timezone': tz,  # comment
+        }  # comment
+    })  # comment
 
 
 def _get_current_lesson_student(lesson):  # comment
@@ -290,21 +350,30 @@ def _get_current_lesson_student(lesson):  # comment
     return student  # comment
 
 
-def _is_student_submission_locked(tasks):  # comment
-    """Серверная блокировка: после сдачи (submitted/graded) ответы нельзя менять. Returned разблокирует."""  # comment
-    if not tasks:  # comment
-        return False  # comment
-    has_returned = any((t.status or '').lower() == 'returned' for t in tasks)  # comment
-    if has_returned:  # comment
-        return False  # comment
-    return any((t.status or '').lower() in ('submitted', 'graded') for t in tasks)  # comment
+def _is_submission_finalized(lesson, tasks):  # comment
+    """После сдачи (submitted/graded) — финализация: редактирование запрещено, кроме задач со статусом returned."""  # comment
+    if tasks and any((t.status or '').lower() in ('submitted', 'graded') for t in tasks):  # comment
+        return True  # comment
+    # Fallback для старых данных, где status еще не проставлялся
+    return getattr(lesson, 'homework_status', None) == 'assigned_done'  # comment
+
+
+def _is_task_editable_for_student(lesson, tasks, task):  # comment
+    """Редактирование учеником: либо работа не финализирована, либо конкретная задача возвращена на доработку."""  # comment
+    if (task.status or '').lower() == 'returned':  # comment
+        return True  # comment
+    return not _is_submission_finalized(lesson, tasks)  # comment
 
 
 def _save_student_submissions(lesson, assignment_type):  # comment
     """Сохраняем ответы ученика и считаем статус автопроверки"""  # comment
     tasks = get_sorted_assignments(lesson, assignment_type)  # comment
+    is_finalized = _is_submission_finalized(lesson, tasks)  # comment
     for task in tasks:  # comment
         field_name = f'submission_{task.lesson_task_id}'  # comment
+        # Если работа уже сдана — разрешаем правки только по возвращенным задачам
+        if is_finalized and (task.status or '').lower() != 'returned':  # comment
+            continue  # comment
         if field_name in request.form:  # comment
             value = request.form.get(field_name, '').strip()  # comment
             task.student_submission = value if value else None  # comment
@@ -318,8 +387,6 @@ def _save_student_submissions(lesson, assignment_type):  # comment
         normalized_value = normalize_answer_value(task.student_submission)  # comment
         normalized_expected = normalize_answer_value(expected)  # comment
         task.submission_correct = normalized_value == normalized_expected and normalized_expected != ''  # comment
-        if (task.status or '').lower() not in ('submitted', 'graded'):  # comment
-            task.status = 'in_progress'  # comment
     return tasks  # comment
 
 
@@ -355,7 +422,7 @@ def lesson_homework_student_save(lesson_id):  # comment
         flash('Доступ запрещен', 'danger')  # comment
         return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
     tasks = get_sorted_assignments(lesson, 'homework')  # comment
-    if _is_student_submission_locked(tasks) or (lesson.homework_status == 'assigned_done'):  # comment
+    if _is_submission_finalized(lesson, tasks) and not any((t.status or '').lower() == 'returned' for t in tasks):  # comment
         flash('Работа уже сдана. Изменения заблокированы.', 'warning')  # comment
         return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
     _save_student_submissions(lesson, 'homework')  # comment
@@ -373,7 +440,7 @@ def lesson_classwork_student_save(lesson_id):  # comment
         flash('Доступ запрещен', 'danger')  # comment
         return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
     tasks = get_sorted_assignments(lesson, 'classwork')  # comment
-    if _is_student_submission_locked(tasks):  # comment
+    if _is_submission_finalized(lesson, tasks) and not any((t.status or '').lower() == 'returned' for t in tasks):  # comment
         flash('Работа уже сдана. Изменения заблокированы.', 'warning')  # comment
         return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
     _save_student_submissions(lesson, 'classwork')  # comment
@@ -391,7 +458,7 @@ def lesson_exam_student_save(lesson_id):  # comment
         flash('Доступ запрещен', 'danger')  # comment
         return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson_id))  # comment
     tasks = get_sorted_assignments(lesson, 'exam')  # comment
-    if _is_student_submission_locked(tasks):  # comment
+    if _is_submission_finalized(lesson, tasks) and not any((t.status or '').lower() == 'returned' for t in tasks):  # comment
         flash('Работа уже сдана. Изменения заблокированы.', 'warning')  # comment
         return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson_id))  # comment
     _save_student_submissions(lesson, 'exam')  # comment
@@ -409,7 +476,7 @@ def lesson_homework_student_submit(lesson_id):  # comment
         flash('Доступ запрещен', 'danger')  # comment
         return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
     tasks = get_sorted_assignments(lesson, 'homework')  # comment
-    if _is_student_submission_locked(tasks) or (lesson.homework_status == 'assigned_done'):  # comment
+    if _is_submission_finalized(lesson, tasks):  # comment
         flash('Работа уже сдана. Повторная сдача заблокирована.', 'warning')  # comment
         return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
     _submit_student_submissions(lesson, 'homework')  # comment
@@ -427,7 +494,7 @@ def lesson_classwork_student_submit(lesson_id):  # comment
         flash('Доступ запрещен', 'danger')  # comment
         return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
     tasks = get_sorted_assignments(lesson, 'classwork')  # comment
-    if _is_student_submission_locked(tasks):  # comment
+    if _is_submission_finalized(lesson, tasks):  # comment
         flash('Работа уже сдана. Повторная сдача заблокирована.', 'warning')  # comment
         return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
     _submit_student_submissions(lesson, 'classwork')  # comment
@@ -445,7 +512,7 @@ def lesson_exam_student_submit(lesson_id):  # comment
         flash('Доступ запрещен', 'danger')  # comment
         return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson_id))  # comment
     tasks = get_sorted_assignments(lesson, 'exam')  # comment
-    if _is_student_submission_locked(tasks):  # comment
+    if _is_submission_finalized(lesson, tasks):  # comment
         flash('Работа уже сдана. Повторная сдача заблокирована.', 'warning')  # comment
         return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson_id))  # comment
     _submit_student_submissions(lesson, 'exam')  # comment
@@ -539,7 +606,7 @@ def lesson_classwork_save(lesson_id):  # comment
         status_key = f'status_{t.lesson_task_id}'  # comment
         if status_key in request.form:  # comment
             s = (request.form.get(status_key, '') or '').strip().lower()  # comment
-            if s in ('pending', 'in_progress', 'submitted', 'graded', 'returned'):  # comment
+            if s in ('pending', 'submitted', 'graded', 'returned'):  # comment
                 t.status = s  # comment
     try:  # comment
         db.session.commit()  # comment
@@ -571,7 +638,7 @@ def lesson_exam_save(lesson_id):  # comment
         status_key = f'status_{t.lesson_task_id}'  # comment
         if status_key in request.form:  # comment
             s = (request.form.get(status_key, '') or '').strip().lower()  # comment
-            if s in ('pending', 'in_progress', 'submitted', 'graded', 'returned'):  # comment
+            if s in ('pending', 'submitted', 'graded', 'returned'):  # comment
                 t.status = s  # comment
     try:  # comment
         db.session.commit()  # comment
@@ -655,7 +722,7 @@ def lesson_task_teacher_feedback_save(lesson_id, lesson_task_id):  # comment
     if 'answer_key' in data:  # comment
         lesson_task.student_answer = answer_key or None  # comment
     lesson_task.teacher_comment = teacher_comment or None  # comment
-    if status in ('pending', 'in_progress', 'submitted', 'graded', 'returned'):  # comment
+    if status in ('pending', 'submitted', 'graded', 'returned'):  # comment
         lesson_task.status = status  # comment
     if 'submission_correct' in data:  # comment
         lesson_task.submission_correct = data.get('submission_correct', None)  # comment

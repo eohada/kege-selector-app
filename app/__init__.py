@@ -7,11 +7,13 @@ from flask import Flask
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
 from sqlalchemy import text
+from zoneinfo import ZoneInfo  # comment
+from datetime import datetime  # comment
 
 # Импортируем db из models, чтобы он был доступен для инициализации
 from app.models import db
 from core.audit_logger import audit_logger
-from app.models import User
+from app.models import User, MOSCOW_TZ  # comment
 
 # Инициализация расширений
 csrf = CSRFProtect()
@@ -76,6 +78,24 @@ def create_app(config_name=None):
     def load_user(user_id):
         """Загрузка пользователя для Flask-Login"""
         return User.query.get(int(user_id))
+
+    @app.template_filter('format_dt_tz')  # comment
+    def format_dt_tz(dt, tz_name='Europe/Moscow'):  # comment
+        """Форматируем datetime в таймзоне пользователя. В БД время обычно хранится как naive MSK."""  # comment
+        if not dt:  # comment
+            return ''  # comment
+        try:  # comment
+            tz = ZoneInfo(tz_name or 'Europe/Moscow')  # comment
+        except Exception:  # comment
+            tz = ZoneInfo('Europe/Moscow')  # comment
+        value = dt  # comment
+        if isinstance(value, datetime):  # comment
+            if value.tzinfo is None:  # comment
+                value = value.replace(tzinfo=MOSCOW_TZ)  # comment
+            value_local = value.astimezone(tz)  # comment
+            # Добавляем краткое обозначение зоны, чтобы не было двусмысленности
+            return value_local.strftime('%d.%m.%Y %H:%M') + f" ({value_local.tzname() or ''})"  # comment
+        return str(value)  # comment
     
     # Настройка логирования
     log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
