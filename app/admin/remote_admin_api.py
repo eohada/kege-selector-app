@@ -29,6 +29,26 @@ def _task_formator_normalize_answer(raw: str) -> str:
     return s
 
 
+def _task_formator_extract_source_url(content_html: str) -> str:
+    """Пытаемся восстановить ссылку на источник из HTML условия (если поле source_url пустое)."""
+    if not content_html:
+        return ''
+
+    html = str(content_html)
+
+    # 1) Явные ссылки в HTML
+    m = re.search(r'href\s*=\s*["\'](https?://[^"\']+)["\']', html, flags=re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+
+    # 2) Иногда URL просто текстом в конце задания
+    m2 = re.search(r'(https?://[^\s<>"\']+)', html, flags=re.IGNORECASE)
+    if m2:
+        return m2.group(1).strip().rstrip(').,;')
+
+    return ''
+
+
 def _task_formator_quick_checks(task: Tasks):
     checks = []
     html = (task.content_html or '').strip()
@@ -61,8 +81,12 @@ def _task_formator_quick_checks(task: Tasks):
 
     # source_url полезен, но в старых данных его может не быть — не шумим WARN,
     # если есть хотя бы site_task_id (можно верифицировать по нему).
-    if not (task.source_url or '').strip():
-        if (task.site_task_id or '').strip():
+    src_db = (task.source_url or '').strip()
+    src_html = _task_formator_extract_source_url(task.content_html or '')
+    if not src_db:
+        if src_html:
+            checks.append({'level': 'ok', 'title': 'Источник найден в условии', 'details': f'Поле source_url пустое, но в HTML найден URL: {src_html}'})
+        elif (task.site_task_id or '').strip():
             checks.append({'level': 'ok', 'title': 'Нет source_url', 'details': 'URL источника не сохранён, но есть site_task_id — верификация возможна.'})
         else:
             checks.append({'level': 'warn', 'title': 'Нет source_url', 'details': 'У задания не сохранён URL источника и нет site_task_id — сложнее верифицировать.'})
@@ -520,11 +544,13 @@ def remote_admin_api_task_formator_list():
     items = []
     for t, r in rows:
         st = (r.status if r else 'new') or 'new'
+        derived = _task_formator_extract_source_url(t.content_html or '') if not (t.source_url or '').strip() else ''
+        effective_source = (t.source_url or '').strip() or derived or None
         items.append({
             'task_id': t.task_id,
             'task_number': t.task_number,
             'site_task_id': t.site_task_id,
-            'source_url': t.source_url,
+            'source_url': effective_source,
             'last_scraped': t.last_scraped.isoformat() if t.last_scraped else None,
             'review_status': st,
         })
@@ -554,6 +580,8 @@ def remote_admin_api_task_formator_task(task_id: int):
     task = Tasks.query.get_or_404(task_id)
     review = TaskReview.query.filter_by(task_id=task_id).first()
     checks = _task_formator_quick_checks(task)
+    derived = _task_formator_extract_source_url(task.content_html or '') if not (task.source_url or '').strip() else ''
+    effective_source = (task.source_url or '').strip() or derived or None
 
     return jsonify({
         'success': True,
@@ -561,7 +589,8 @@ def remote_admin_api_task_formator_task(task_id: int):
             'task_id': task.task_id,
             'task_number': task.task_number,
             'site_task_id': task.site_task_id,
-            'source_url': task.source_url,
+            'source_url': effective_source,
+            'source_url_kind': 'db' if (task.source_url or '').strip() else ('html' if derived else None),
             'last_scraped': task.last_scraped.isoformat() if task.last_scraped else None,
             'content_html': task.content_html,
             'answer': task.answer or '',

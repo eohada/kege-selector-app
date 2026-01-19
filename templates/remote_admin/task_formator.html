@@ -219,7 +219,12 @@
                 document.getElementById('kvTaskId').textContent = String(t.task_id);
                 document.getElementById('kvTaskNumber').textContent = String(t.task_number);
                 document.getElementById('kvSiteTaskId').textContent = t.site_task_id || '—';
-                document.getElementById('kvSourceUrl').textContent = t.source_url || '—';
+                const srcEl = document.getElementById('kvSourceUrl');
+                if (t.source_url) {
+                    srcEl.innerHTML = `<a href="${escapeHtml(t.source_url)}" target="_blank" style="color: var(--accent-1); text-decoration: none;">${escapeHtml(t.source_url)}</a>` + (t.source_url_kind ? ` <span style="color: var(--text-muted); font-size: 0.85rem;">(${escapeHtml(t.source_url_kind)})</span>` : '');
+                } else {
+                    srcEl.textContent = '—';
+                }
                 document.getElementById('kvLastScraped').textContent = t.last_scraped ? new Date(t.last_scraped).toLocaleString('ru-RU') : '—';
 
                 document.getElementById('taskContent').innerHTML = t.content_html || '<span style="color: var(--text-muted);">—</span>';

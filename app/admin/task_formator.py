@@ -23,6 +23,20 @@ def _normalize_answer(raw: str) -> str:
     return s
 
 
+def _extract_source_url_from_html(content_html: str) -> str:
+    """Пытаемся восстановить ссылку на источник из HTML условия (если поле source_url пустое)."""
+    if not content_html:
+        return ''
+    html = str(content_html)
+    m = re.search(r'href\s*=\s*["\'](https?://[^"\']+)["\']', html, flags=re.IGNORECASE)
+    if m:
+        return m.group(1).strip()
+    m2 = re.search(r'(https?://[^\s<>"\']+)', html, flags=re.IGNORECASE)
+    if m2:
+        return m2.group(1).strip().rstrip(').,;')
+    return ''
+
+
 def _run_quick_checks(task: Tasks):
     """
     Быстрые проверки "в стиле ЕГЭ" (эвристики).
@@ -99,8 +113,16 @@ def _run_quick_checks(task: Tasks):
 
     # 3) Ссылка-источник (не критично, но полезно)
     # Не превращаем это в постоянный WARN для старых данных: если есть site_task_id, ок.
-    if not (task.source_url or '').strip():
-        if (task.site_task_id or '').strip():
+    src_db = (task.source_url or '').strip()
+    src_html = _extract_source_url_from_html(task.content_html or '')
+    if not src_db:
+        if src_html:
+            checks.append({
+                'level': 'ok',
+                'title': 'Источник найден в условии',
+                'details': f'Поле source_url пустое, но в HTML найден URL: {src_html}'
+            })
+        elif (task.site_task_id or '').strip():
             checks.append({
                 'level': 'ok',
                 'title': 'Нет source_url',
@@ -214,13 +236,15 @@ def admin_task_formator_task(task_id: int):
     task = Tasks.query.get_or_404(task_id)
     review = _get_review(task_id)
     checks = _run_quick_checks(task)
+    derived = _extract_source_url_from_html(task.content_html or '') if not (task.source_url or '').strip() else ''
+    effective_source = (task.source_url or '').strip() or derived or None
     return jsonify({
         'success': True,
         'task': {
             'task_id': task.task_id,
             'task_number': task.task_number,
             'site_task_id': task.site_task_id,
-            'source_url': task.source_url,
+            'source_url': effective_source,
             'last_scraped': task.last_scraped.isoformat() if task.last_scraped else None,
             'content_html': task.content_html,
             'answer': task.answer or '',
