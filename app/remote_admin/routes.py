@@ -625,3 +625,57 @@ def permissions():
         logger.error(f"Error rendering permissions template: {template_error}", exc_info=True)
         flash(f'Ошибка отображения страницы: {str(template_error)}', 'error')
         return redirect(url_for('remote_admin.dashboard'))
+
+
+@remote_admin_bp.route('/task-formator')
+@login_required
+def task_formator():
+    """Формироватор банка заданий (remote-admin UI)."""
+    if not current_user.is_creator():
+        flash('Доступ только для Создателя', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    current_env = get_current_environment()
+    environments = get_environments()
+
+    if not is_environment_configured(current_env):
+        flash(f'Окружение {environments.get(current_env, {}).get("name", current_env)} не настроено', 'error')
+        return redirect(url_for('remote_admin.dashboard'))
+
+    q = (request.args.get('q') or '').strip()
+    task_number = request.args.get('task_number', type=int)
+    review_status = (request.args.get('review_status') or 'all').strip().lower()
+    page = max(1, request.args.get('page', type=int) or 1)
+
+    try:
+        qs = request.query_string.decode('utf-8') if request.query_string else ''
+        path = '/internal/remote-admin/api/tasks/formator'
+        if qs:
+            path = f"{path}?{qs}"
+        resp = make_remote_request('GET', path)
+        if resp.status_code == 200:
+            data = resp.json()
+        else:
+            data = {'success': False, 'items': [], 'summary': {'new': 0, 'ok': 0, 'needs_fix': 0, 'skip': 0}, 'total': 0, 'page': page, 'per_page': 30}
+            flash(f'Ошибка загрузки списка заданий: {resp.status_code}', 'error')
+    except Exception as e:
+        logger.error(f"Error loading task formator list: {e}", exc_info=True)
+        data = {'success': False, 'items': [], 'summary': {'new': 0, 'ok': 0, 'needs_fix': 0, 'skip': 0}, 'total': 0, 'page': page, 'per_page': 30}
+        flash(f'Ошибка загрузки: {str(e)}', 'error')
+
+    task_numbers = list(range(1, 28))
+
+    return render_template(
+        'remote_admin/task_formator.html',
+        current_environment=current_env,
+        environment_name=environments.get(current_env, {}).get('name', current_env),
+        q=q,
+        task_number=task_number,
+        review_status=review_status,
+        page=data.get('page', page),
+        per_page=data.get('per_page', 30),
+        total=data.get('total', 0),
+        summary=data.get('summary', {'new': 0, 'ok': 0, 'needs_fix': 0, 'skip': 0}),
+        items=data.get('items', []),
+        task_numbers=task_numbers,
+    )

@@ -127,3 +127,73 @@ if csrf:
     csrf.exempt(api_users_list)
     csrf.exempt(api_user_manage)
     csrf.exempt(api_stats)
+
+
+@remote_admin_bp.route('/api/task-formator/list')
+@login_required
+def api_task_formator_list():
+    """Proxy: список заданий формироватора из выбранного окружения."""
+    if not current_user.is_creator():
+        return jsonify({'error': 'Access denied'}), 403
+
+    try:
+        env = get_current_environment()
+        if not is_environment_configured(env):
+            return jsonify({'error': f'Environment {env} is not configured'}), 400
+
+        # forward query params
+        qs = request.query_string.decode('utf-8') if request.query_string else ''
+        path = '/internal/remote-admin/api/tasks/formator'
+        if qs:
+            path = f"{path}?{qs}"
+
+        resp = make_remote_request('GET', path)
+        return jsonify(resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'error': 'Invalid response'}), resp.status_code
+    except Exception as e:
+        logger.error(f"Error proxying task formator list: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@remote_admin_bp.route('/api/task-formator/task/<int:task_id>')
+@login_required
+def api_task_formator_task(task_id: int):
+    """Proxy: карточка задания формироватора."""
+    if not current_user.is_creator():
+        return jsonify({'error': 'Access denied'}), 403
+
+    try:
+        env = get_current_environment()
+        if not is_environment_configured(env):
+            return jsonify({'error': f'Environment {env} is not configured'}), 400
+
+        resp = make_remote_request('GET', f'/internal/remote-admin/api/tasks/formator/{task_id}')
+        return jsonify(resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'error': 'Invalid response'}), resp.status_code
+    except Exception as e:
+        logger.error(f"Error proxying task formator task: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@remote_admin_bp.route('/api/task-formator/task/<int:task_id>/review', methods=['POST'])
+@login_required
+def api_task_formator_save(task_id: int):
+    """Proxy: сохранить ревью задания."""
+    if not current_user.is_creator():
+        return jsonify({'error': 'Access denied'}), 403
+
+    try:
+        env = get_current_environment()
+        if not is_environment_configured(env):
+            return jsonify({'error': f'Environment {env} is not configured'}), 400
+
+        payload = _extract_request_data()
+        resp = make_remote_request('POST', f'/internal/remote-admin/api/tasks/formator/{task_id}/review', payload=payload)
+        return jsonify(resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'error': 'Invalid response'}), resp.status_code
+    except Exception as e:
+        logger.error(f"Error proxying task formator save: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+if csrf:
+    csrf.exempt(api_task_formator_list)
+    csrf.exempt(api_task_formator_task)
+    csrf.exempt(api_task_formator_save)
