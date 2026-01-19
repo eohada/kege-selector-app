@@ -98,12 +98,20 @@ def _run_quick_checks(task: Tasks):
             })
 
     # 3) Ссылка-источник (не критично, но полезно)
+    # Не превращаем это в постоянный WARN для старых данных: если есть site_task_id, ок.
     if not (task.source_url or '').strip():
-        checks.append({
-            'level': 'warn',
-            'title': 'Нет source_url',
-            'details': 'У задания не сохранён URL источника — сложнее верифицировать.'
-        })
+        if (task.site_task_id or '').strip():
+            checks.append({
+                'level': 'ok',
+                'title': 'Нет source_url',
+                'details': 'URL источника не сохранён, но есть site_task_id — верификация возможна.'
+            })
+        else:
+            checks.append({
+                'level': 'warn',
+                'title': 'Нет source_url',
+                'details': 'У задания не сохранён URL источника и нет site_task_id — сложнее верифицировать.'
+            })
 
     if not checks:
         checks.append({'level': 'ok', 'title': 'Базовые проверки пройдены', 'details': 'Явных проблем не найдено.'})

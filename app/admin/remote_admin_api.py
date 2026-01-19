@@ -59,8 +59,13 @@ def _task_formator_quick_checks(task: Tasks):
         if not ans:
             checks.append({'level': 'ok', 'title': 'Ответ не задан (нормально для ручной проверки)', 'details': 'Для заданий 24–27 ответ может отсутствовать/быть неформальным.'})
 
+    # source_url полезен, но в старых данных его может не быть — не шумим WARN,
+    # если есть хотя бы site_task_id (можно верифицировать по нему).
     if not (task.source_url or '').strip():
-        checks.append({'level': 'warn', 'title': 'Нет source_url', 'details': 'У задания не сохранён URL источника — сложнее верифицировать.'})
+        if (task.site_task_id or '').strip():
+            checks.append({'level': 'ok', 'title': 'Нет source_url', 'details': 'URL источника не сохранён, но есть site_task_id — верификация возможна.'})
+        else:
+            checks.append({'level': 'warn', 'title': 'Нет source_url', 'details': 'У задания не сохранён URL источника и нет site_task_id — сложнее верифицировать.'})
 
     if not checks:
         checks.append({'level': 'ok', 'title': 'Базовые проверки пройдены', 'details': 'Явных проблем не найдено.'})

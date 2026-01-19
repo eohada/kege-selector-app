@@ -101,7 +101,7 @@
                         <div class="tf-list" id="tfList">
                             {% for it in items %}
                             {% set st = (it.review_status or 'new') %}
-                            <a href="#" class="tf-item {% if loop.first %}active{% endif %}" data-task-id="{{ it.task_id }}" onclick="selectTask(event, {{ it.task_id }})">
+                            <button type="button" class="tf-item {% if loop.first %}active{% endif %}" data-task-id="{{ it.task_id }}" onclick="selectTask(event, this)" style="text-align:left; width:100%;">
                                 <div class="tf-dot {{ st }}"></div>
                                 <div class="tf-item-meta">
                                     <div class="tf-item-title">
@@ -109,7 +109,7 @@
                                     </div>
                                     <div class="tf-mini">{% if it.source_url %}{{ it.source_url }}{% else %}Источник: —{% endif %}</div>
                                 </div>
-                            </a>
+                            </button>
                             {% endfor %}
                         </div>
 
@@ -197,8 +197,10 @@
         function levelBadge(level){ if(level==='ok')return{cls:'tf-check-badge tf-b-ok',text:'OK'}; if(level==='warn')return{cls:'tf-check-badge tf-b-warn',text:'WARN'}; return{cls:'tf-check-badge tf-b-fail',text:'FAIL'}; }
         function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
 
-        async function selectTask(e, taskId){
+        async function selectTask(e, el){
             if(e) e.preventDefault();
+            const taskId = parseInt(el?.getAttribute('data-task-id') || '0', 10);
+            if(!taskId){ toast.error('Не удалось определить task_id'); return; }
             currentTaskId = taskId;
             setActiveInList(taskId);
             await loadTask(taskId);
