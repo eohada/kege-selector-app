@@ -181,6 +181,65 @@ class CourseModule(db.Model):
     course = db.relationship('Course', back_populates='modules')
     lessons = db.relationship('Lesson', back_populates='course_module', lazy=True)
 
+
+class MaterialAsset(db.Model):
+    """Материал в библиотеке (файлы/раздатки), который можно прикреплять к разным урокам."""
+    __tablename__ = 'MaterialAssets'
+    asset_id = db.Column(db.Integer, primary_key=True)
+    owner_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    tags = db.Column(db.JSON, nullable=True)  # ["геометрия", "pdf", ...]
+    visibility = db.Column(db.String(20), default='private', nullable=False)  # private|shared
+
+    file_name = db.Column(db.String(300), nullable=False)
+    file_url = db.Column(db.Text, nullable=False)  # публичный URL (через static)
+    file_mime = db.Column(db.String(120), nullable=True)
+    file_size = db.Column(db.Integer, nullable=True)
+
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    owner = db.relationship('User', foreign_keys=[owner_user_id])
+    lesson_links = db.relationship('LessonMaterialLink', back_populates='asset', lazy=True, cascade='all, delete-orphan')
+
+
+class LessonMaterialLink(db.Model):
+    """Связь урока с материалом из библиотеки."""
+    __tablename__ = 'LessonMaterialLinks'
+    link_id = db.Column(db.Integer, primary_key=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=False, index=True)
+    asset_id = db.Column(db.Integer, db.ForeignKey('MaterialAssets.asset_id'), nullable=False, index=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    order_index = db.Column(db.Integer, default=0, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id])
+    asset = db.relationship('MaterialAsset', back_populates='lesson_links')
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+    __table_args__ = (
+        Index('ix_lesson_material_unique', 'lesson_id', 'asset_id', unique=True),
+    )
+
+
+class LessonRoomTemplate(db.Model):
+    """Шаблон комнаты/урока: конспект, блоки, материалы."""
+    __tablename__ = 'LessonRoomTemplates'
+    template_id = db.Column(db.Integer, primary_key=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    payload = db.Column(db.JSON, nullable=False)  # {"content": "...", "content_blocks": [...], "materials": [...], "asset_ids": [...]}
+    visibility = db.Column(db.String(20), default='private', nullable=False)  # private|shared
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+
 class Lesson(db.Model):
     __tablename__ = 'Lessons'
     lesson_id = db.Column(db.Integer, primary_key=True)
@@ -193,6 +252,7 @@ class Lesson(db.Model):
     topic = db.Column(db.String(300), nullable=True)
     notes = db.Column(db.Text, nullable=True)
     content = db.Column(db.Text, nullable=True)  # Markdown контент урока (теория)
+    content_blocks = db.Column(db.JSON, nullable=True)  # Конструктор контента (блоки): [{"type":"paragraph",...}, ...]
     student_notes = db.Column(db.Text, nullable=True)  # Личные заметки ученика
     materials = db.Column(db.JSON, nullable=True)  # Прикрепленные файлы/материалы [{"name": "...", "url": "...", "type": "..."}]
     homework = db.Column(db.Text, nullable=True)

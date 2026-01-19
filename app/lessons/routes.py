@@ -15,7 +15,7 @@ from app.auth.rbac_utils import check_access, get_user_scope
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, perform_auto_check, normalize_answer_value  # comment
-from app.models import Lesson, LessonTask, Student, Tasks, LessonTaskTeacherComment, User, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, LessonTask, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
@@ -247,6 +247,26 @@ def lesson_homework_view(lesson_id):
 
     student = lesson.student
     homework_tasks = get_sorted_assignments(lesson, 'homework')  # comment
+    # Материалы из библиотеки, прикрепленные к уроку
+    library_materials = []
+    try:
+        links = LessonMaterialLink.query.filter_by(lesson_id=lesson.lesson_id).options(
+            db.joinedload(LessonMaterialLink.asset)
+        ).order_by(LessonMaterialLink.order_index.asc(), LessonMaterialLink.link_id.asc()).all()
+        for link in links:
+            if not link.asset or not link.asset.is_active:
+                continue
+            a = link.asset
+            library_materials.append({
+                'link_id': link.link_id,
+                'asset_id': a.asset_id,
+                'name': a.title,
+                'url': a.file_url,
+                'type': (a.file_name.split('.')[-1].lower() if a.file_name and '.' in a.file_name else 'file'),
+                'source': 'library'
+            })
+    except Exception as e:
+        logger.warning(f"Failed to load library materials for lesson {lesson_id}: {e}")
     is_student_view = current_user.is_student()  # comment
     is_parent_view = current_user.is_parent()  # comment
     is_read_only = False  # comment
@@ -269,7 +289,8 @@ def lesson_homework_view(lesson_id):
                            is_parent_view=is_parent_view,  # comment
                            is_read_only=is_read_only,  # comment
                            viewer_timezone=viewer_timezone,  # comment
-                           review_summary=(lesson.review_summaries or {}).get('homework', {}))  # comment
+                           review_summary=(lesson.review_summaries or {}).get('homework', {}),  # comment
+                           library_materials=library_materials)  # comment
 
 @lessons_bp.route('/lesson/<int:lesson_id>/classwork-tasks')
 @login_required
@@ -282,6 +303,25 @@ def lesson_classwork_view(lesson_id):
     ).get_or_404(lesson_id)
     student = lesson.student
     classwork_tasks = get_sorted_assignments(lesson, 'classwork')  # comment
+    library_materials = []
+    try:
+        links = LessonMaterialLink.query.filter_by(lesson_id=lesson.lesson_id).options(
+            db.joinedload(LessonMaterialLink.asset)
+        ).order_by(LessonMaterialLink.order_index.asc(), LessonMaterialLink.link_id.asc()).all()
+        for link in links:
+            if not link.asset or not link.asset.is_active:
+                continue
+            a = link.asset
+            library_materials.append({
+                'link_id': link.link_id,
+                'asset_id': a.asset_id,
+                'name': a.title,
+                'url': a.file_url,
+                'type': (a.file_name.split('.')[-1].lower() if a.file_name and '.' in a.file_name else 'file'),
+                'source': 'library'
+            })
+    except Exception as e:
+        logger.warning(f"Failed to load library materials for lesson {lesson_id}: {e}")
     is_student_view = current_user.is_student()  # comment
     is_parent_view = current_user.is_parent()  # comment
     is_read_only = False  # comment
@@ -304,7 +344,8 @@ def lesson_classwork_view(lesson_id):
                            is_parent_view=is_parent_view,  # comment
                            is_read_only=is_read_only,  # comment
                            viewer_timezone=viewer_timezone,  # comment
-                           review_summary=(lesson.review_summaries or {}).get('classwork', {}))  # comment
+                           review_summary=(lesson.review_summaries or {}).get('classwork', {}),  # comment
+                           library_materials=library_materials)  # comment
 
 @lessons_bp.route('/lesson/<int:lesson_id>/exam-tasks')
 @login_required
@@ -317,6 +358,25 @@ def lesson_exam_view(lesson_id):
     ).get_or_404(lesson_id)
     student = lesson.student
     exam_tasks = get_sorted_assignments(lesson, 'exam')  # comment
+    library_materials = []
+    try:
+        links = LessonMaterialLink.query.filter_by(lesson_id=lesson.lesson_id).options(
+            db.joinedload(LessonMaterialLink.asset)
+        ).order_by(LessonMaterialLink.order_index.asc(), LessonMaterialLink.link_id.asc()).all()
+        for link in links:
+            if not link.asset or not link.asset.is_active:
+                continue
+            a = link.asset
+            library_materials.append({
+                'link_id': link.link_id,
+                'asset_id': a.asset_id,
+                'name': a.title,
+                'url': a.file_url,
+                'type': (a.file_name.split('.')[-1].lower() if a.file_name and '.' in a.file_name else 'file'),
+                'source': 'library'
+            })
+    except Exception as e:
+        logger.warning(f"Failed to load library materials for lesson {lesson_id}: {e}")
     is_student_view = current_user.is_student()  # comment
     is_parent_view = current_user.is_parent()  # comment
     is_read_only = False  # comment
@@ -339,7 +399,8 @@ def lesson_exam_view(lesson_id):
                            is_parent_view=is_parent_view,  # comment
                            is_read_only=is_read_only,  # comment
                            viewer_timezone=viewer_timezone,  # comment
-                           review_summary=(lesson.review_summaries or {}).get('exam', {}))  # comment
+                           review_summary=(lesson.review_summaries or {}).get('exam', {}),  # comment
+                           library_materials=library_materials)  # comment
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/review-summary/<assignment_type>', methods=['POST'])

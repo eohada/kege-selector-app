@@ -4,7 +4,12 @@
 import logging
 from sqlalchemy import inspect, text
 from app.models import db
-from core.db_models import Tester, AuditLog, RolePermission, User, LessonTaskTeacherComment, TaskReview, Course, CourseModule
+from core.db_models import (
+    Tester, AuditLog, RolePermission, User,
+    LessonTaskTeacherComment, TaskReview,
+    Course, CourseModule,
+    MaterialAsset, LessonMaterialLink, LessonRoomTemplate
+)
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
 
 logger = logging.getLogger(__name__)
@@ -216,6 +221,31 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create CourseModules table: {e}")
                     db.session.rollback()
+
+            # Фундамент: библиотека материалов и шаблоны комнат/уроков
+            if 'MaterialAssets' not in table_names and 'materialassets' not in table_names:
+                try:
+                    MaterialAsset.__table__.create(db.engine)
+                    logger.info("MaterialAssets table created")
+                except Exception as e:
+                    logger.warning(f"Could not create MaterialAssets table: {e}")
+                    db.session.rollback()
+
+            if 'LessonMaterialLinks' not in table_names and 'lessonmateriallinks' not in table_names:
+                try:
+                    LessonMaterialLink.__table__.create(db.engine)
+                    logger.info("LessonMaterialLinks table created")
+                except Exception as e:
+                    logger.warning(f"Could not create LessonMaterialLinks table: {e}")
+                    db.session.rollback()
+
+            if 'LessonRoomTemplates' not in table_names and 'lessonroomtemplates' not in table_names:
+                try:
+                    LessonRoomTemplate.__table__.create(db.engine)
+                    logger.info("LessonRoomTemplates table created")
+                except Exception as e:
+                    logger.warning(f"Could not create LessonRoomTemplates table: {e}")
+                    db.session.rollback()
             lessons_table = 'Lessons' if 'Lessons' in table_names else ('lessons' if 'lessons' in table_names else None)
             students_table = 'Students' if 'Students' in table_names else ('students' if 'students' in table_names else None)
             lesson_tasks_table = 'LessonTasks' if 'LessonTasks' in table_names else ('lessontasks' if 'lessontasks' in table_names else None)
@@ -247,6 +277,7 @@ def ensure_schema_columns(app):
             
             # Новые поля для полноценного урока
             safe_add_column('content', 'TEXT')
+            safe_add_column('content_blocks', 'JSON')
             safe_add_column('student_notes', 'TEXT')
             safe_add_column('materials', 'JSON')
             safe_add_column('course_module_id', 'INTEGER')

@@ -795,15 +795,25 @@
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                     <h3>Материалы к уроку</h3>
                     {% if not is_student_view and not is_parent_view %}
-                    <label class="neo-button accent sm" style="cursor: pointer;">
-                        <i class="fas fa-cloud-upload-alt"></i> Загрузить файл
-                        <input type="file" id="material-upload" style="display: none;" onchange="uploadMaterial(this)">
-                    </label>
+                    <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end;">
+                        <a class="neo-button ghost sm" href="{{ url_for('library.materials_library') }}" target="_blank">
+                            <i class="fas fa-layer-group"></i> Библиотека
+                        </a>
+                        <button type="button" class="neo-button outline sm" onclick="openLibraryAttachModal()">
+                            <i class="fas fa-paperclip"></i> Из библиотеки
+                        </button>
+                        <label class="neo-button accent sm" style="cursor: pointer;">
+                            <i class="fas fa-cloud-upload-alt"></i> Загрузить в урок
+                            <input type="file" id="material-upload" style="display: none;" onchange="uploadMaterial(this)">
+                        </label>
+                    </div>
                     {% endif %}
                 </div>
                 
                 <div class="materials-grid" id="materials-list">
-                    {% if lesson.materials and lesson.materials|length > 0 %}
+                    {% set has_any_materials = (lesson.materials and lesson.materials|length > 0) or (library_materials and library_materials|length > 0) %}
+                    {% if has_any_materials %}
+                        {% if lesson.materials and lesson.materials|length > 0 %}
                         {% for mat in lesson.materials %}
                         <div class="material-card">
                             {% if not is_student_view and not is_parent_view %}
@@ -813,15 +823,56 @@
                                 {% if mat.type in ['jpg','jpeg','png','gif'] %}🖼️{% elif mat.type == 'pdf' %}📄{% else %}📁{% endif %}
                             </div>
                             <div class="material-name">{{ mat.name }}</div>
+                            <div class="status-badge status-info" style="opacity: 0.8; margin-top: 0.25rem;">в уроке</div>
                             <a href="{{ mat.url }}" target="_blank" class="neo-button outline sm" download>Скачать</a>
                         </div>
                         {% endfor %}
+                        {% endif %}
+
+                        {% if library_materials and library_materials|length > 0 %}
+                        {% for mat in library_materials %}
+                        <div class="material-card" data-library-link="{{ mat.link_id }}">
+                            {% if not is_student_view and not is_parent_view %}
+                            <div class="material-delete" onclick="detachLibraryMaterial({{ mat.link_id }}, this)"><i class="fas fa-unlink"></i></div>
+                            {% endif %}
+                            <div class="material-icon">
+                                {% if mat.type in ['jpg','jpeg','png','gif','webp'] %}🖼️{% elif mat.type == 'pdf' %}📄{% else %}📎{% endif %}
+                            </div>
+                            <div class="material-name">{{ mat.name }}</div>
+                            <div class="status-badge status-success" style="opacity: 0.9; margin-top: 0.25rem;">из библиотеки</div>
+                            <a href="{{ mat.url }}" target="_blank" class="neo-button outline sm" download>Скачать</a>
+                        </div>
+                        {% endfor %}
+                        {% endif %}
                     {% else %}
                         <p style="color: var(--text-muted); grid-column: 1/-1; text-align: center;">Нет прикрепленных материалов</p>
                     {% endif %}
                 </div>
             </div>
         </div>
+
+        <!-- MODAL: Attach from Library -->
+        {% if not is_student_view and not is_parent_view %}
+        <div id="libraryAttachModal" style="display:none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; padding: 1.25rem;">
+            <div class="glass-panel" style="width: min(920px, 100%); max-height: 80vh; overflow: hidden; display:flex; flex-direction: column;">
+                <div style="display:flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 1rem 0.75rem 1rem; border-bottom: 1px solid var(--stroke-1);">
+                    <div>
+                        <div class="hero-eyebrow">библиотека</div>
+                        <div style="font-weight: 900; font-size: 1.15rem; margin-top: 0.25rem;">Прикрепить материал к уроку</div>
+                    </div>
+                    <button type="button" class="neo-button ghost sm" onclick="closeLibraryAttachModal()"><i class="fas fa-xmark"></i></button>
+                </div>
+                <div style="padding: 1rem;">
+                    <div style="display:flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                        <input class="neo-input" id="libraryAttachSearch" placeholder="Поиск по названию…" style="flex: 1; min-width: 240px;">
+                        <button class="neo-button outline sm" type="button" onclick="loadLibraryAssets()"><i class="fas fa-search"></i> Найти</button>
+                        <a class="neo-button ghost sm" href="{{ url_for('library.materials_library') }}" target="_blank"><i class="fas fa-arrow-up-right-from-square"></i> Открыть библиотеку</a>
+                    </div>
+                    <div id="libraryAttachList" style="margin-top: 1rem; display:flex; flex-direction: column; gap: 0.65rem; overflow:auto; max-height: 55vh;"></div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- TAB: NOTES -->
         <div id="tab-notes" class="tab-pane">
@@ -1075,6 +1126,141 @@
             } catch (e) {
                 toast.error('Ошибка сети');
             }
+        }
+
+        async function detachLibraryMaterial(linkId, btn) {
+            if (!confirm('Открепить материал от урока?')) return;
+            try {
+                const res = await fetch(`/library/materials/detach`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({ link_id: linkId })
+                });
+                const data = await res.json();
+                if (data && data.success) {
+                    toast.success('Материал откреплён');
+                    const card = btn.closest('.material-card');
+                    if (card) card.remove();
+                } else {
+                    toast.error((data && data.error) ? data.error : 'Ошибка');
+                }
+            } catch (e) {
+                toast.error('Ошибка сети');
+            }
+        }
+
+        function openLibraryAttachModal() {
+            const modal = document.getElementById('libraryAttachModal');
+            if (!modal) return;
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                const inp = document.getElementById('libraryAttachSearch');
+                if (inp) inp.focus();
+            }, 50);
+            loadLibraryAssets();
+        }
+
+        function closeLibraryAttachModal() {
+            const modal = document.getElementById('libraryAttachModal');
+            if (!modal) return;
+            modal.style.display = 'none';
+        }
+
+        async function loadLibraryAssets() {
+            const list = document.getElementById('libraryAttachList');
+            const q = (document.getElementById('libraryAttachSearch') || {}).value || '';
+            if (!list) return;
+            list.innerHTML = `<div style="color: var(--text-muted); padding: 0.75rem;">Загрузка…</div>`;
+            try {
+                const res = await fetch(`/library/materials/api?q=${encodeURIComponent(q)}`, { headers: { 'X-CSRFToken': CSRF_TOKEN } });
+                const data = await res.json();
+                if (!data || !data.success) {
+                    list.innerHTML = `<div style="color: var(--danger); padding: 0.75rem;">Ошибка загрузки</div>`;
+                    return;
+                }
+                const assets = data.assets || [];
+                if (!assets.length) {
+                    list.innerHTML = `<div class="glass-panel" style="padding: 1rem; text-align:center; color: var(--text-muted);">Ничего не найдено</div>`;
+                    return;
+                }
+                list.innerHTML = '';
+                for (const a of assets) {
+                    const tags = (a.tags || []).slice(0, 6).map(t => `<span style="padding: 0.15rem 0.45rem; border-radius: 999px; border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.03); color: var(--text-muted); font-size: 0.8rem; font-weight: 700;">${escapeHtml(String(t))}</span>`).join('');
+                    const row = document.createElement('div');
+                    row.className = 'glass-panel';
+                    row.style.padding = '0.9rem';
+                    row.style.display = 'flex';
+                    row.style.justifyContent = 'space-between';
+                    row.style.alignItems = 'center';
+                    row.style.gap = '1rem';
+                    row.innerHTML = `
+                        <div style="min-width:0;">
+                            <div style="font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(a.title || a.file_name || 'Материал')}</div>
+                            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem; display:flex; gap: 0.5rem; flex-wrap: wrap; align-items:center;">
+                                <span><i class="far fa-file"></i> ${escapeHtml(a.file_name || '')}</span>
+                                ${tags ? `<span style="display:flex; gap:0.35rem; flex-wrap:wrap;">${tags}</span>` : ''}
+                            </div>
+                        </div>
+                        <div style="display:flex; gap: 0.5rem; flex-wrap: wrap; justify-content:flex-end;">
+                            <a class="neo-button ghost sm" href="${a.file_url}" target="_blank"><i class="fas fa-arrow-up-right-from-square"></i></a>
+                            <button class="neo-button outline sm" type="button">Прикрепить</button>
+                        </div>
+                    `;
+                    const btn = row.querySelector('button');
+                    btn.addEventListener('click', () => attachLibraryAsset(a.asset_id));
+                    list.appendChild(row);
+                }
+            } catch (e) {
+                list.innerHTML = `<div style="color: var(--danger); padding: 0.75rem;">Ошибка сети</div>`;
+            }
+        }
+
+        async function attachLibraryAsset(assetId) {
+            try {
+                const res = await fetch(`/library/materials/${assetId}/attach`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({ lesson_id: LESSON_ID })
+                });
+                const data = await res.json();
+                if (!data || !data.success) {
+                    toast.error((data && data.error) ? data.error : 'Ошибка прикрепления');
+                    return;
+                }
+                const mat = data.material;
+                const linkId = data.link_id;
+                toast.success('Материал прикреплён');
+                addLibraryMaterialCard(mat, linkId);
+            } catch (e) {
+                toast.error('Ошибка сети');
+            }
+        }
+
+        function addLibraryMaterialCard(mat, linkId) {
+            const grid = document.getElementById('materials-list');
+            if (!grid) return;
+            const card = document.createElement('div');
+            card.className = 'material-card';
+            card.dataset.libraryLink = String(linkId);
+            const ext = (mat && mat.type) ? String(mat.type).toLowerCase() : 'file';
+            const icon = (['jpg','jpeg','png','gif','webp'].includes(ext)) ? '🖼️' : (ext === 'pdf' ? '📄' : '📎');
+            card.innerHTML = `
+                <div class="material-delete" onclick="detachLibraryMaterial(${linkId}, this)"><i class="fas fa-unlink"></i></div>
+                <div class="material-icon">${icon}</div>
+                <div class="material-name">${escapeHtml(mat.name || 'Материал')}</div>
+                <div class="status-badge status-success" style="opacity: 0.9; margin-top: 0.25rem;">из библиотеки</div>
+                <a href="${mat.url}" target="_blank" class="neo-button outline sm" download>Скачать</a>
+            `;
+            grid.appendChild(card);
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#39;');
         }
 
         // Task Deletion (Legacy Support)
