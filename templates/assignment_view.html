@@ -12,9 +12,11 @@
     {% include '_ux_enhancements.html' %}
 </head>
 <body>
-    {% include '_primary_nav.html' %}
-    
-    <main class="container" style="max-width: 1400px; margin: 2rem auto; padding: 0 1.5rem;">
+    <div class="app-shell">
+        {% set active_page = 'assignments' %}
+        {% include '_primary_nav.html' %}
+
+        <main style="margin-top: 1.25rem;">
         <div style="margin-bottom: 2rem;">
             <a href="{{ url_for('assignments.assignments_list') }}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
                 ← Назад к списку работ
@@ -106,7 +108,8 @@
                 </div>
             </div>
         </div>
-    </main>
+        </main>
+    </div>
     
     <style>
         .status-assigned { background: var(--surface-2); color: var(--text-primary); }

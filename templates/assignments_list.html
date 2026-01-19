@@ -12,9 +12,11 @@
     {% include '_ux_enhancements.html' %}
 </head>
 <body>
-    {% include '_primary_nav.html' %}
-    
-    <main class="container" style="max-width: 1400px; margin: 2rem auto; padding: 0 1.5rem;">
+    <div class="app-shell">
+        {% set active_page = 'assignments' %}
+        {% include '_primary_nav.html' %}
+
+        <main style="margin-top: 1.25rem;">
         <div class="page-header" style="margin-bottom: 2rem;">
             <h1 style="font-size: 2.5em; font-weight: 800; margin-bottom: 0.5rem;">Работы</h1>
             <p style="color: var(--text-muted); font-size: 1.1em;">Управление домашними заданиями, контрольными и проверочными работами</p>
@@ -75,6 +77,7 @@
             <a href="{{ url_for('kege_generator.kege_generator') }}" class="btn-primary">Создать работу</a>
         </div>
         {% endif %}
-    </main>
+        </main>
+    </div>
 </body>
 </html>

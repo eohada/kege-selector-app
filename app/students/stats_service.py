@@ -43,13 +43,17 @@ class StatsService:
         weekly_scores = {}
         
         for lesson in lessons:
-            # Берем только завершенные уроки за период
-            if lesson.status != 'completed' or not lesson.lesson_date:
+            if not lesson.lesson_date:
                 continue
             
             lesson_date = lesson.lesson_date
             if lesson_date.tzinfo:
                 lesson_date = lesson_date.replace(tzinfo=None)
+
+            # Не берем будущие уроки в тренд
+            now_naive = now.replace(tzinfo=None) if now.tzinfo else now
+            if lesson_date > now_naive:
+                continue
             
             if lesson_date < start_date.replace(tzinfo=None):
                 continue
@@ -63,7 +67,9 @@ class StatsService:
             for assignment_type in ['homework', 'classwork', 'exam']:
                 assignments = get_sorted_assignments(lesson, assignment_type)
                 for lt in assignments:
-                    if lt.submission_correct is not None:
+                    st = (getattr(lt, 'status', None) or '').lower()
+                    # В тренде учитываем только реально сданные/проверенные/возвращенные задачи
+                    if lt.submission_correct is not None and (st in ['submitted', 'graded', 'returned'] or st == ''):
                         # Оценка: 1 если правильно, 0 если неправильно
                         score = 1.0 if lt.submission_correct else 0.0
                         weight = 2.0 if assignment_type == 'exam' else 1.0

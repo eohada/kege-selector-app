@@ -129,17 +129,17 @@
                                         </div>
 
                                         {% if lesson_counts %}
-                                        <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
+                                        <div style="display:grid; grid-template-columns: repeat(3, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
                                             <div class="glass-panel" style="padding: 0.9rem; text-align: center;">
-                                                <div style="font-size: 0.85rem; color: var(--text-muted);">Всего уроков</div>
+                                                <div style="font-size: 0.85rem; color: var(--text-muted); overflow-wrap: anywhere; word-break: break-word; line-height: 1.15;">Всего уроков</div>
                                                 <div style="font-weight: 800; font-size: 1.4rem; margin-top: 0.25rem;">{{ lesson_counts.total }}</div>
                                             </div>
                                             <div class="glass-panel" style="padding: 0.9rem; text-align: center;">
-                                                <div style="font-size: 0.85rem; color: var(--text-muted);">Проведено</div>
+                                                <div style="font-size: 0.85rem; color: var(--text-muted); overflow-wrap: anywhere; word-break: break-word; line-height: 1.15;">Проведено</div>
                                                 <div style="font-weight: 800; font-size: 1.4rem; margin-top: 0.25rem;">{{ lesson_counts.completed }}</div>
                                             </div>
                                             <div class="glass-panel" style="padding: 0.9rem; text-align: center;">
-                                                <div style="font-size: 0.85rem; color: var(--text-muted);">Запланировано</div>
+                                                <div style="font-size: 0.85rem; color: var(--text-muted); overflow-wrap: anywhere; word-break: break-word; line-height: 1.15;">Запланировано</div>
                                                 <div style="font-weight: 800; font-size: 1.4rem; margin-top: 0.25rem;">{{ lesson_counts.planned }}</div>
                                             </div>
                                         </div>

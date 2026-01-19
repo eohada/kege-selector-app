@@ -12,9 +12,11 @@
     {% include '_ux_enhancements.html' %}
 </head>
 <body>
-    {% include '_primary_nav.html' %}
-    
-    <main class="container" style="max-width: 1200px; margin: 2rem auto; padding: 0 1.5rem;">
+    <div class="app-shell">
+        {% set active_page = 'assignments' %}
+        {% include '_primary_nav.html' %}
+
+        <main style="margin-top: 1.25rem;">
         <div class="page-header" style="margin-bottom: 2rem;">
             <h1 style="font-size: 2.5em; font-weight: 800; margin-bottom: 0.5rem;">Мои работы</h1>
             <p style="color: var(--text-muted); font-size: 1.1em;">Назначенные домашние задания, контрольные и проверочные работы</p>
@@ -82,8 +84,35 @@
             <h2 style="font-size: 1.5em; margin-bottom: 0.5rem;">Нет назначенных работ</h2>
             <p style="color: var(--text-muted);">Вам пока не назначено никаких работ</p>
         </div>
+
+        {% if lesson_workspaces and lesson_workspaces|length > 0 %}
+        <div style="margin-top: 2rem;">
+            <h2 style="font-size: 1.4em; margin: 0 0 1rem 0;">Мои уроки (классная комната)</h2>
+            <div style="display:flex; flex-direction: column; gap: 1rem;">
+                {% for item in lesson_workspaces %}
+                <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=item.lesson.lesson_id) }}" class="glass-panel" style="text-decoration:none; padding: 1.25rem; display:flex; justify-content: space-between; gap: 1rem; align-items: center;">
+                    <div style="min-width: 0;">
+                        <div style="font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ item.lesson.topic or 'Урок' }}
+                        </div>
+                        <div style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.35rem;">
+                            {{ item.lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if item.lesson.lesson_date else '—' }}
+                        </div>
+                    </div>
+                    <div style="display:flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end;">
+                        {% if item.has_draft %}
+                        <span class="status-badge status-info" style="opacity: 0.85;">Черновик</span>
+                        {% endif %}
+                        <span class="status-badge status-info">{{ item.done }}/{{ item.total }} выполнено</span>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
         {% endif %}
-    </main>
+        {% endif %}
+        </main>
+    </div>
     
     <style>
         .status-assigned { background: var(--surface-2); color: var(--text-primary); }

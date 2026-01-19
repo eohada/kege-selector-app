@@ -132,9 +132,11 @@
     </style>
 </head>
 <body>
-    {% include '_primary_nav.html' %}
-    
-    <main class="container" style="max-width: 1000px; margin: 2rem auto; padding: 0 1.5rem;">
+    <div class="app-shell">
+        {% set active_page = 'assignments' %}
+        {% include '_primary_nav.html' %}
+
+        <main style="margin-top: 1.25rem;">
         <div class="grade-header">
             <h1>{{ assignment.title }}</h1>
             <div class="student-info">
@@ -305,7 +307,8 @@
             </a>
         </div>
         {% endif %}
-    </main>
+        </main>
+    </div>
     
     <script>
         // Инициализация KaTeX

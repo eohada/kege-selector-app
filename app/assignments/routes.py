@@ -13,6 +13,7 @@ from app.models import (
     db, Assignment, AssignmentTask, Submission, Answer,
     Student, User, Tasks, Lesson, Enrollment
 )
+from app.students.utils import get_sorted_assignments
 from core.db_models import SubmissionComment
 from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 from core.db_models import moscow_now
@@ -28,9 +29,35 @@ logger = logging.getLogger(__name__)
 def get_student_by_user_id(user_id):
     """Получить Student по User.id (через email)"""
     user = User.query.get(user_id)
-    if not user or not user.email:
+    if not user:
         return None
-    return Student.query.filter_by(email=user.email).first()
+
+    candidates = []
+    if user.email and str(user.email).strip():
+        candidates.append(str(user.email).strip())
+    # В некоторых окружениях логин хранится в username, а email может быть пустым
+    if user.username and str(user.username).strip():
+        candidates.append(str(user.username).strip())
+
+    # Удаляем дубли, нормализуем пробелы
+    seen = set()
+    normalized = []
+    for c in candidates:
+        key = c.strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            normalized.append(c.strip())
+
+    if not normalized:
+        return None
+
+    # Пытаемся найти Student по email (case-insensitive)
+    for c in normalized:
+        st = Student.query.filter(func.lower(Student.email) == c.lower()).first()
+        if st:
+            return st
+
+    return None
 
 
 def get_students_for_tutor(tutor_user_id):
@@ -304,7 +331,7 @@ def submissions_list():
     student = get_student_by_user_id(current_user.id)
     if not student:
         flash('Профиль ученика не найден', 'warning')
-        return redirect(url_for('main.dashboard'))
+        return redirect(url_for('auth.user_profile'))
     
     # Получаем все назначенные работы
     submissions = Submission.query.filter_by(
@@ -314,7 +341,41 @@ def submissions_list():
         joinedload(Submission.answers)
     ).order_by(Submission.assigned_at.desc()).all()
     
-    return render_template('submissions_list.html', submissions=submissions)
+    # Если работ по новой системе нет — показываем fallback: последние уроки с практикой
+    lesson_workspaces = []
+    try:
+        lessons = Lesson.query.filter_by(student_id=student.student_id).options(
+            joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
+        ).order_by(Lesson.lesson_date.desc()).limit(10).all()
+
+        for l in lessons:
+            # Берём все задачи урока (все типы), но показываем кратко
+            all_tasks = []
+            for t in get_sorted_assignments(l, 'homework'):
+                all_tasks.append(t)
+            for t in get_sorted_assignments(l, 'classwork'):
+                all_tasks.append(t)
+            for t in get_sorted_assignments(l, 'exam'):
+                all_tasks.append(t)
+
+            if not all_tasks:
+                continue
+
+            total = len(all_tasks)
+            done = sum(1 for t in all_tasks if (t.status or '').lower() in ['submitted', 'graded', 'returned'])
+            has_draft = any((t.student_submission or '').strip() and (t.status or '').lower() not in ['submitted', 'graded', 'returned'] for t in all_tasks)
+
+            lesson_workspaces.append({
+                'lesson': l,
+                'total': total,
+                'done': done,
+                'has_draft': has_draft,
+            })
+    except Exception as e:
+        logger.warning(f"Failed to build lesson_workspaces for student {student.student_id}: {e}")
+        lesson_workspaces = []
+
+    return render_template('submissions_list.html', submissions=submissions, student=student, lesson_workspaces=lesson_workspaces)
 
 
 @assignments_bp.route('/submissions/<int:submission_id>')

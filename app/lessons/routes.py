@@ -440,9 +440,11 @@ def _get_current_lesson_student(lesson):  # comment
     """Проверяем, что текущий пользователь - ученик этого урока"""  # comment
     if not current_user.is_student():  # comment
         return None  # comment
-    if not current_user.email:  # comment
+    # В некоторых окружениях email может быть пустым, а логин хранится в username
+    ident = (current_user.email or current_user.username or '').strip()
+    if not ident:  # comment
         return None  # comment
-    student = Student.query.filter_by(email=current_user.email).first()  # comment
+    student = Student.query.filter(db.func.lower(Student.email) == ident.lower()).first()  # comment
     if not student:  # comment
         return None  # comment
     if student.student_id != lesson.student_id:  # comment
