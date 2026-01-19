@@ -198,6 +198,23 @@
         border-color: var(--stroke-1);
     }
     
+    /* Updated Task Header Styles */
+    .task-header {
+        display: flex;
+        align-items: center; /* Vertical alignment fix */
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--stroke-1);
+    }
+
+    .task-number {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--accent-1);
+        white-space: nowrap;
+    }
+
     .status-indicator {
         display: inline-flex;
         align-items: center;
@@ -206,7 +223,7 @@
         border-radius: var(--radius-sm);
         font-size: 0.85rem;
         font-weight: 600;
-        margin-bottom: 1rem;
+        white-space: nowrap;
     }
     .status-indicator.correct {
         background: rgba(0, 254, 202, 0.1);
@@ -217,6 +234,55 @@
         background: rgba(255, 108, 145, 0.1);
         color: var(--danger);
         border: 1px solid var(--danger);
+    }
+
+    /* Navigation Squares Bar */
+    .task-nav-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: var(--surface-2);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--stroke-1);
+        position: sticky;
+        top: 1rem; /* Sticky offset */
+        z-index: 90;
+    }
+    
+    .task-nav-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: var(--surface-1);
+        border: 1px solid var(--stroke-1);
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .task-nav-btn:hover {
+        border-color: var(--accent-1);
+        color: var(--text-primary);
+        transform: translateY(-2px);
+    }
+    
+    .task-nav-btn.nav-correct {
+        background: rgba(0, 254, 202, 0.1);
+        border-color: var(--success);
+        color: var(--success);
+    }
+    
+    .task-nav-btn.nav-incorrect {
+        background: rgba(255, 108, 145, 0.1);
+        border-color: var(--danger);
+        color: var(--danger);
     }
     </style>
 </head>
@@ -294,6 +360,22 @@
                 {% endif %}
 
                 {% if homework_tasks %}
+                
+                <!-- Navigation Squares -->
+                <div class="task-nav-bar">
+                    {% for hw_task in homework_tasks %}
+                    {% set nav_class = '' %}
+                    {% if hw_task.submission_correct == true %}
+                        {% set nav_class = 'nav-correct' %}
+                    {% elif hw_task.submission_correct == false %}
+                        {% set nav_class = 'nav-incorrect' %}
+                    {% endif %}
+                    <a href="#task-{{ hw_task.lesson_task_id }}" class="task-nav-btn {{ nav_class }}" onclick="event.preventDefault(); document.getElementById('task-{{ hw_task.lesson_task_id }}').scrollIntoView({behavior: 'smooth', block: 'center'});">
+                        {{ loop.index }}
+                    </a>
+                    {% endfor %}
+                </div>
+
                 {% for hw_task in homework_tasks %}
                 <!-- Определяем статус для стилизации карточки -->
                 {% set status_class = 'status-none' %}
@@ -303,9 +385,14 @@
                     {% set status_class = 'status-incorrect' %}
                 {% endif %}
 
-                <section class="task-card {{ status_class }}" data-task-id="{{ hw_task.lesson_task_id }}">
+                <section id="task-{{ hw_task.lesson_task_id }}" class="task-card {{ status_class }}" data-task-id="{{ hw_task.lesson_task_id }}">
                     <div class="task-header">
-                        <span class="task-number" style="font-size: 1.2rem; font-weight: 700; color: var(--accent-1);">Задание №{{ hw_task.task.task_number if hw_task.task else '?' }}</span>
+                        <span class="task-number">
+                            №{{ loop.index }}
+                            {% if hw_task.task.task_number %}
+                            <span style="font-weight: 400; opacity: 0.7; font-size: 0.9em; margin-left: 0.5rem;">(из базы #{{ hw_task.task.task_number }})</span>
+                            {% endif %}
+                        </span>
                         
                         <!-- Индикатор статуса -->
                         {% if hw_task.submission_correct == true %}
