@@ -60,8 +60,8 @@
         border-radius: var(--radius-sm) var(--radius-sm) 0 0;
     }
     .tab-btn.active {
-        color: var(--accent);
-        border-bottom-color: var(--accent);
+        color: var(--accent-1);
+        border-bottom-color: var(--accent-1);
     }
     
     .tab-pane {
@@ -81,6 +81,7 @@
     .markdown-content {
         line-height: 1.6;
         font-size: 1.1rem;
+        color: var(--text-primary);
     }
     .markdown-content h1, .markdown-content h2, .markdown-content h3 {
         margin-top: 1.5em;
@@ -102,7 +103,7 @@
         overflow-x: auto;
     }
     .markdown-content blockquote {
-        border-left: 4px solid var(--accent);
+        border-left: 4px solid var(--accent-1);
         padding-left: 1rem;
         margin: 1rem 0;
         color: var(--text-muted);
@@ -115,8 +116,8 @@
         gap: 1rem;
     }
     .material-card {
-        background: var(--glass-bg);
-        border: 1px solid var(--glass-border);
+        background: var(--surface-2);
+        border: 1px solid var(--stroke-1);
         border-radius: var(--radius-md);
         padding: 1rem;
         display: flex;
@@ -128,7 +129,7 @@
     }
     .material-card:hover {
         transform: translateY(-2px);
-        border-color: var(--accent);
+        border-color: var(--accent-1);
     }
     .material-icon {
         font-size: 2.5rem;
@@ -138,6 +139,7 @@
         font-weight: 500;
         margin-bottom: 0.5rem;
         word-break: break-all;
+        color: var(--text-primary);
     }
     .material-delete {
         position: absolute;
@@ -152,26 +154,69 @@
         opacity: 1;
     }
 
-    /* Editor */
+    /* Editor Toolbar Fix */
     .editor-toolbar {
-        border-color: var(--glass-border) !important;
-        background: rgba(255,255,255,0.05) !important;
-        color: var(--text-main) !important;
+        border-color: var(--stroke-1) !important;
+        background: var(--surface-2) !important;
+        color: var(--text-primary) !important;
+        opacity: 1 !important;
     }
     .editor-toolbar i {
-        color: var(--text-main) !important;
+        color: var(--text-primary) !important;
     }
-    .editor-toolbar a:hover, .editor-toolbar a.active {
-        background: rgba(255,255,255,0.1) !important;
+    .editor-toolbar button {
+        color: var(--text-primary) !important;
+    }
+    .editor-toolbar button:hover, .editor-toolbar button.active {
+        background: var(--surface-3) !important;
         border-color: transparent !important;
+        color: var(--accent-1) !important;
+    }
+    .editor-toolbar button:hover i, .editor-toolbar button.active i {
+        color: var(--accent-1) !important;
     }
     .CodeMirror {
-        background: var(--glass-bg) !important;
-        color: var(--text-main) !important;
-        border-color: var(--glass-border) !important;
+        background: var(--surface-1) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--stroke-1) !important;
     }
     .editor-preview {
-        background: var(--bg-body) !important;
+        background: var(--page-bg) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    /* Task Status Styles */
+    .task-card.status-correct {
+        border-color: var(--success);
+        background: linear-gradient(160deg, rgba(0, 254, 202, 0.05), rgba(10, 10, 18, 0.98));
+    }
+    .task-card.status-incorrect {
+        border-color: var(--danger);
+        background: linear-gradient(160deg, rgba(255, 108, 145, 0.05), rgba(10, 10, 18, 0.98));
+    }
+    .task-card.status-none {
+        border-color: var(--stroke-1);
+    }
+    
+    .status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: var(--radius-sm);
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    .status-indicator.correct {
+        background: rgba(0, 254, 202, 0.1);
+        color: var(--success);
+        border: 1px solid var(--success);
+    }
+    .status-indicator.incorrect {
+        background: rgba(255, 108, 145, 0.1);
+        color: var(--danger);
+        border: 1px solid var(--danger);
     }
     </style>
 </head>
@@ -181,28 +226,28 @@
 
     <div class="container">
         <!-- Header -->
-        <header class="lesson-header">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <header class="lesson-header glass-panel">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
                 <div>
                     <h1 style="margin-bottom: 0.5rem;">{{ lesson.topic or 'Тема не указана' }}</h1>
                     <div class="lesson-meta">
                         <div class="lesson-meta-item">
-                            📅 {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
+                            <i class="far fa-calendar"></i> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
                         </div>
                         <div class="lesson-meta-item">
-                            ⏱ {{ lesson.duration }} мин
+                            <i class="far fa-clock"></i> {{ lesson.duration }} мин
                         </div>
                         <div class="lesson-meta-item">
-                            🎓 {{ student.name }}
+                            <i class="fas fa-user-graduate"></i> {{ student.name }}
                         </div>
                         <div class="lesson-meta-item">
-                            📂 {{ assignment_type|capitalize }}
+                            <i class="fas fa-folder"></i> {{ assignment_type|capitalize }}
                         </div>
                     </div>
                 </div>
                 <div>
                      <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button outline sm">
-                        ⬅ Назад в профиль
+                        <i class="fas fa-arrow-left"></i> Назад в профиль
                     </a>
                 </div>
             </div>
@@ -210,12 +255,12 @@
 
         <!-- Tabs Navigation -->
         <div class="lesson-tabs">
-            <button class="tab-btn active" onclick="switchTab('theory')">📖 Конспект</button>
+            <button class="tab-btn active" onclick="switchTab('theory')"><i class="fas fa-book"></i> Конспект</button>
             <button class="tab-btn" onclick="switchTab('tasks')">
-                {% if assignment_type == 'homework' %}🏠 Домашнее задание{% elif assignment_type == 'classwork' %}🏫 Классная работа{% else %}📝 Проверочная{% endif %}
+                {% if assignment_type == 'homework' %}<i class="fas fa-home"></i> Домашнее задание{% elif assignment_type == 'classwork' %}<i class="fas fa-chalkboard-teacher"></i> Классная работа{% else %}<i class="fas fa-tasks"></i> Проверочная{% endif %}
             </button>
-            <button class="tab-btn" onclick="switchTab('materials')">📎 Материалы</button>
-            <button class="tab-btn" onclick="switchTab('notes')">📒 Заметки {{ 'ученика' if not is_student_view else '' }}</button>
+            <button class="tab-btn" onclick="switchTab('materials')"><i class="fas fa-paperclip"></i> Материалы</button>
+            <button class="tab-btn" onclick="switchTab('notes')"><i class="fas fa-sticky-note"></i> Заметки {{ 'ученика' if not is_student_view else '' }}</button>
         </div>
 
         <!-- TAB: THEORY -->
@@ -223,14 +268,14 @@
             <div class="glass-panel">
                 {% if not is_student_view and not is_parent_view %}
                 <!-- Teacher Edit Mode -->
-                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
-                    <h3>Конспект урока</h3>
-                    <button class="neo-button accent sm" onclick="saveContent()">💾 Сохранить конспект</button>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; align-items: center;">
+                    <h3 style="margin: 0;">Конспект урока</h3>
+                    <button class="neo-button accent sm" onclick="saveContent()"><i class="fas fa-save"></i> Сохранить</button>
                 </div>
                 <textarea id="theory-editor">{{ lesson.content or '' }}</textarea>
                 {% else %}
                 <!-- Student View Mode -->
-                <h3>Конспект урока</h3>
+                <h3 style="margin-bottom: 1.5rem;">Конспект урока</h3>
                 <div id="theory-content" class="markdown-content">
                     {{ lesson.content or '*Конспект пуст*' }}
                 </div>
@@ -250,12 +295,28 @@
 
                 {% if homework_tasks %}
                 {% for hw_task in homework_tasks %}
-                <section class="task-card" data-task-id="{{ hw_task.lesson_task_id }}">
+                <!-- Определяем статус для стилизации карточки -->
+                {% set status_class = 'status-none' %}
+                {% if hw_task.submission_correct == true %}
+                    {% set status_class = 'status-correct' %}
+                {% elif hw_task.submission_correct == false %}
+                    {% set status_class = 'status-incorrect' %}
+                {% endif %}
+
+                <section class="task-card {{ status_class }}" data-task-id="{{ hw_task.lesson_task_id }}">
                     <div class="task-header">
-                        <span class="task-number">№{{ hw_task.task.task_number if hw_task.task else '?' }}</span>
-                        <div class="task-meta">
+                        <span class="task-number" style="font-size: 1.2rem; font-weight: 700; color: var(--accent-1);">Задание №{{ hw_task.task.task_number if hw_task.task else '?' }}</span>
+                        
+                        <!-- Индикатор статуса -->
+                        {% if hw_task.submission_correct == true %}
+                            <span class="status-indicator correct"><i class="fas fa-check-circle"></i> Верно</span>
+                        {% elif hw_task.submission_correct == false %}
+                            <span class="status-indicator incorrect"><i class="fas fa-times-circle"></i> Неверно</span>
+                        {% endif %}
+
+                        <div class="task-meta" style="margin-left: auto;">
                             {% if not is_student_view and not is_parent_view %}
-                            <button type="button" class="icon-btn danger" onclick="handleDeleteTask({{ hw_task.lesson_task_id }}, '{{ assignment_type }}')" title="Удалить задание">🗑</button>
+                            <button type="button" class="neo-button ghost sm" style="color: var(--danger); border-color: var(--danger);" onclick="handleDeleteTask({{ hw_task.lesson_task_id }}, '{{ assignment_type }}')" title="Удалить задание"><i class="fas fa-trash"></i></button>
                             {% endif %}
                         </div>
                     </div>
@@ -263,71 +324,61 @@
                     <div class="task-content">
                         {{ hw_task.task.content_html|safe }}
                         {% if hw_task.task.attached_files %}
-                        <div class="task-attachments">
-                            <strong>Вложения:</strong> {{ hw_task.task.attached_files }}
+                        <div class="task-attachments" style="margin-top: 1rem; padding: 0.5rem; background: rgba(255,255,255,0.05); border-radius: var(--radius-sm);">
+                            <strong><i class="fas fa-paperclip"></i> Вложения:</strong> {{ hw_task.task.attached_files }}
                         </div>
                         {% endif %}
                     </div>
                     
-                    {% if not is_read_only %}
-                    <div class="answer-section">
-                        <label class="answer-label" for="submission_{{ hw_task.lesson_task_id }}">
-                            <img src="{{ url_for('static', filename='icons/icons8-редактировать-100.png') }}" alt="Ответ" class="ui-icon ui-icon--sm">Твой ответ:
+                    <!-- Блок ввода ответа -->
+                    <div class="answer-section" style="margin-top: 1.5rem;">
+                        <label class="neo-label" for="submission_{{ hw_task.lesson_task_id }}">
+                            <i class="fas fa-pen"></i> Твой ответ:
                         </label>
-                        <input type="text" class="answer-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_submission or '' }}" placeholder="Введи ответ..." autocomplete="off">
-                    </div>
-                    {% else %}
-                    <div class="answer-section">
-                         <label class="answer-label">Твой ответ:</label>
-                         <div class="answer-input" style="background: rgba(0,0,0,0.2); border: none;">{{ hw_task.student_submission or '—' }}</div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Auto check status for Student -->
-                    {% if (is_homework or is_classwork or is_exam) and hw_task.student_submission %}
-                        {% if not is_student_view %}
-                        <div class="auto-check-result">
-                            <div><strong>Ответ ученика:</strong> {{ hw_task.student_submission }}</div>
-                        </div>
+                        
+                        {% if not is_read_only %}
+                            <input type="text" class="neo-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_submission or '' }}" placeholder="Введи ответ..." autocomplete="off">
+                        {% else %}
+                            <!-- Read-only view -->
+                            <div class="neo-input" style="background: rgba(0,0,0,0.2); border-color: transparent; cursor: not-allowed; opacity: 0.8;">
+                                {{ hw_task.student_submission or '—' }}
+                            </div>
                         {% endif %}
-                    {% endif %}
+                    </div>
 
-                    {% if is_student_view %}
-                         <!-- Статус для ученика -->
-                         {% if hw_task.submission_correct == true %}
-                            <div style="margin-top: 0.5rem; color: var(--success);">✅ Верно</div>
-                         {% elif hw_task.submission_correct == false %}
-                            <div style="margin-top: 0.5rem; color: var(--danger);">❌ Неверно</div>
-                         {% endif %}
-                    {% endif %}
-                    
-                    {% if is_student_view and is_read_only %}
+                    <!-- Блок с правильным ответом (показываем ученику, если проверено/завершено, и всегда учителю) -->
+                    {% if (is_student_view and (is_read_only or hw_task.submission_correct is not none)) or (not is_student_view and not is_parent_view) %}
                         {% set correct_val = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}
                         {% if correct_val %}
-                        <div class="auto-check-result" style="margin-top: 0.5rem; border: 1px solid var(--success); background: rgba(0, 255, 0, 0.05); padding: 0.5rem; border-radius: 4px;">
-                            <div><strong style="color: var(--success);">Правильный ответ:</strong> {{ correct_val }}</div>
+                        <div class="auto-check-result" style="margin-top: 1rem; padding: 1rem; background: rgba(0, 254, 202, 0.05); border: 1px solid rgba(0, 254, 202, 0.2); border-radius: var(--radius-sm);">
+                            <div style="font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-check"></i> Правильный ответ: 
+                                <span style="font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.2); padding: 0.2rem 0.5rem; border-radius: 4px;">{{ correct_val }}</span>
+                            </div>
                         </div>
                         {% endif %}
                     {% endif %}
                     
-                    <!-- Teacher View: Correct Answer and Status Toggle -->
+                    <!-- Teacher Controls: Status Toggle -->
                     {% if not is_student_view and not is_parent_view %}
-                    <div class="answer-section" style="margin-top: 1rem; border-top: 1px dashed var(--glass-border); padding-top: 0.5rem;">
-                         <label>Правильный ответ (из базы):</label>
-                         <code>{{ hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else 'Нет') }}</code>
-                    </div>
-                    
-                    <div class="status-toggle">
-                        <span class="status-toggle-label">Статус задания:</span>
-                        <div class="status-toggle-switch" data-task-id="{{ hw_task.lesson_task_id }}" data-status="{% if hw_task.submission_correct == true %}correct{% elif hw_task.submission_correct == false %}incorrect{% else %}none{% endif %}">
-                            <div class="status-toggle-slider">
-                                {% if hw_task.submission_correct == true %}✓{% elif hw_task.submission_correct == false %}✗{% else %}—{% endif %}
-                            </div>
-                            <div class="status-toggle-labels">
-                                <span>✓</span>
-                                <span>—</span>
-                                <span>✗</span>
-                            </div>
+                    <div class="status-toggle" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; padding-top: 1rem; border-top: 1px dashed var(--stroke-1);">
+                        <span class="neo-label" style="width: auto; margin: 0;">Статус:</span>
+                        <div class="status-toggle-switch" style="display: flex; background: var(--surface-1); border-radius: 20px; border: 1px solid var(--stroke-1); overflow: hidden;">
+                            <button type="button" onclick="setTaskStatus({{ lesson.lesson_id }}, {{ hw_task.lesson_task_id }}, 'correct')" 
+                                    class="neo-button sm {{ 'accent' if hw_task.submission_correct == true else 'ghost' }}" 
+                                    style="border-radius: 0; border: none; padding: 0.5rem 1rem;">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button type="button" onclick="setTaskStatus({{ lesson.lesson_id }}, {{ hw_task.lesson_task_id }}, 'none')" 
+                                    class="neo-button sm {{ 'ghost' if hw_task.submission_correct is none else 'ghost' }}" 
+                                    style="border-radius: 0; border: none; padding: 0.5rem 1rem; opacity: 0.5;">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <button type="button" onclick="setTaskStatus({{ lesson.lesson_id }}, {{ hw_task.lesson_task_id }}, 'incorrect')" 
+                                    class="neo-button sm {{ 'danger' if hw_task.submission_correct == false else 'ghost' }}" 
+                                    style="border-radius: 0; border: none; padding: 0.5rem 1rem;">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
                     </div>
                     {% endif %}
@@ -335,20 +386,19 @@
                 </section>
                 {% endfor %}
                 
-                {% if not is_student_view and not is_parent_view %}
-                <div class="homework-actions">
-                    <button type="submit" class="neo-button accent">💾 Сохранить изменения</button>
-                    <a href="#" class="neo-button outline" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">➕ Добавить задания</a>
+                <div class="homework-actions" style="position: sticky; bottom: 2rem; z-index: 100; background: var(--surface-1); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); display: flex; gap: 1rem; box-shadow: var(--shadow-soft);">
+                    {% if not is_student_view and not is_parent_view %}
+                        <button type="submit" class="neo-button accent"><i class="fas fa-save"></i> Сохранить изменения</button>
+                        <a href="#" class="neo-button outline" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;"><i class="fas fa-plus"></i> Добавить задания</a>
+                    {% else %}
+                        <button type="submit" class="neo-button accent" {% if is_read_only %}disabled{% endif %}><i class="fas fa-save"></i> Сохранить черновик</button>
+                        <button type="submit" class="neo-button outline" {% if is_read_only %}disabled{% endif %} formaction="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_submit', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_submit', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_submit', lesson_id=lesson.lesson_id) }}{% endif %}"><i class="fas fa-check-double"></i> Сдать работу</button>
+                    {% endif %}
                 </div>
-                {% else %}
-                <div class="homework-actions">
-                    <button type="submit" class="neo-button accent" {% if is_read_only %}disabled{% endif %}>💾 Сохранить черновик</button>
-                    <button type="submit" class="neo-button outline" {% if is_read_only %}disabled{% endif %} formaction="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_submit', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_submit', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_submit', lesson_id=lesson.lesson_id) }}{% endif %}">✅ Сдать работу</button>
-                </div>
-                {% endif %}
 
                 {% else %}
                 <div class="empty-state">
+                    <div class="empty-state-icon">📋</div>
                     <h3>Заданий пока нет</h3>
                      {% if not is_student_view and not is_parent_view %}
                     <a href="#" class="neo-button accent" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">Добавить задания</a>
@@ -366,7 +416,7 @@
                     <h3>Материалы к уроку</h3>
                     {% if not is_student_view and not is_parent_view %}
                     <label class="neo-button accent sm" style="cursor: pointer;">
-                        📤 Загрузить файл
+                        <i class="fas fa-cloud-upload-alt"></i> Загрузить файл
                         <input type="file" id="material-upload" style="display: none;" onchange="uploadMaterial(this)">
                     </label>
                     {% endif %}
@@ -377,7 +427,7 @@
                         {% for mat in lesson.materials %}
                         <div class="material-card">
                             {% if not is_student_view and not is_parent_view %}
-                            <div class="material-delete" onclick="deleteMaterial('{{ mat.url }}', this)">🗑</div>
+                            <div class="material-delete" onclick="deleteMaterial('{{ mat.url }}', this)"><i class="fas fa-trash"></i></div>
                             {% endif %}
                             <div class="material-icon">
                                 {% if mat.type in ['jpg','jpeg','png','gif'] %}🖼️{% elif mat.type == 'pdf' %}📄{% else %}📁{% endif %}
@@ -396,13 +446,13 @@
         <!-- TAB: NOTES -->
         <div id="tab-notes" class="tab-pane">
             <div class="glass-panel">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
-                    <h3>{{ 'Твои заметки' if is_student_view else 'Заметки ученика' }}</h3>
-                    <button class="neo-button accent sm" onclick="saveNotes()">💾 Сохранить заметки</button>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; align-items: center;">
+                    <h3 style="margin: 0;">{{ 'Твои заметки' if is_student_view else 'Заметки ученика' }}</h3>
+                    <button class="neo-button accent sm" onclick="saveNotes()"><i class="fas fa-save"></i> Сохранить</button>
                 </div>
                 <textarea id="notes-editor">{{ lesson.student_notes or '' }}</textarea>
                 <p style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">
-                    🔒 Эти заметки видишь только ты {{ 'и преподаватель' if is_student_view else 'и ученик' }}.
+                    <i class="fas fa-lock"></i> Эти заметки видишь только ты {{ 'и преподаватель' if is_student_view else 'и ученик' }}.
                 </p>
             </div>
         </div>
@@ -500,6 +550,27 @@
                 else toast.error('Ошибка сохранения');
             } catch (e) {
                 console.error(e);
+                toast.error('Ошибка сети');
+            }
+        }
+
+        // Helper for setting task status via AJAX (Teacher only)
+        async function setTaskStatus(lessonId, taskId, status) {
+            try {
+                const res = await fetch(`/lesson/${lessonId}/task/${taskId}/set-status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({ status })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    toast.success('Статус обновлен');
+                    // Reload to update UI styles
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    toast.error(data.error || 'Ошибка');
+                }
+            } catch (e) {
                 toast.error('Ошибка сети');
             }
         }
