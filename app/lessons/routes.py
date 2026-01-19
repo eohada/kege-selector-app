@@ -394,6 +394,48 @@ def lesson_task_teacher_comment_delete(comment_id):  # comment
     return jsonify({'success': True})  # comment
 
 
+@lessons_bp.route('/lesson/<int:lesson_id>/tasks/bulk-update', methods=['POST'])  # comment
+@login_required  # comment
+def lesson_tasks_bulk_update(lesson_id):  # comment
+    """Массовое обновление статусов/проверки задач урока (преподаватель)."""  # comment
+    if current_user.is_student() or current_user.is_parent():  # comment
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403  # comment
+    data = request.get_json(silent=True) or {}  # comment
+    task_ids = data.get('task_ids') or []  # comment
+    status = (data.get('status') or '').strip().lower()  # comment
+    submission_correct = data.get('submission_correct', 'unset')  # comment
+    if not isinstance(task_ids, list) or not task_ids:  # comment
+        return jsonify({'success': False, 'error': 'Нет выбранных заданий'}), 400  # comment
+    if status and status not in ('pending', 'submitted', 'graded', 'returned'):  # comment
+        return jsonify({'success': False, 'error': 'Неверный статус'}), 400  # comment
+    tasks = LessonTask.query.filter(LessonTask.lesson_id == lesson_id, LessonTask.lesson_task_id.in_(task_ids)).all()  # comment
+    if not tasks:  # comment
+        return jsonify({'success': False, 'error': 'Задания не найдены'}), 404  # comment
+    for t in tasks:  # comment
+        if status:  # comment
+            t.status = status  # comment
+        if submission_correct != 'unset':  # comment
+            # допускаем true/false/null
+            if submission_correct in (True, False, None):  # comment
+                t.submission_correct = submission_correct  # comment
+    try:  # comment
+        db.session.commit()  # comment
+    except Exception as e:  # comment
+        db.session.rollback()  # comment
+        logger.error(f"Failed bulk update: {e}", exc_info=True)  # comment
+        return jsonify({'success': False, 'error': 'Ошибка сохранения'}), 500  # comment
+    return jsonify({  # comment
+        'success': True,  # comment
+        'updated': [  # comment
+            {  # comment
+                'lesson_task_id': t.lesson_task_id,  # comment
+                'status': (t.status or 'pending'),  # comment
+                'submission_correct': t.submission_correct,  # comment
+            } for t in tasks  # comment
+        ]  # comment
+    })  # comment
+
+
 def _get_current_lesson_student(lesson):  # comment
     """Проверяем, что текущий пользователь - ученик этого урока"""  # comment
     if not current_user.is_student():  # comment

@@ -390,6 +390,48 @@
 
                 {% if homework_tasks %}
                 
+                {% if not is_student_view and not is_parent_view %}
+                {% set cnt_pending = homework_tasks|selectattr('status', 'equalto', 'pending')|list|length %}
+                {% set cnt_submitted = homework_tasks|selectattr('status', 'equalto', 'submitted')|list|length %}
+                {% set cnt_returned = homework_tasks|selectattr('status', 'equalto', 'returned')|list|length %}
+                {% set cnt_graded = homework_tasks|selectattr('status', 'equalto', 'graded')|list|length %}
+
+                <div class="glass-panel" style="margin-bottom: 1.5rem;">
+                    <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+                        <div>
+                            <div class="hero-eyebrow">панель проверки</div>
+                            <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                                <span class="status-badge status-info" data-tooltip="Не начато">{{ cnt_pending }} · Не начато</span>
+                                <span class="status-badge status-info" data-tooltip="Сдано">{{ cnt_submitted }} · Сдано</span>
+                                <span class="status-badge status-warning" data-tooltip="На доработку">{{ cnt_returned }} · На доработку</span>
+                                <span class="status-badge status-success" data-tooltip="Проверено">{{ cnt_graded }} · Проверено</span>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end;">
+                            <div class="neo-field" style="min-width: 220px;">
+                                <label class="neo-label">Фильтр</label>
+                                <select class="neo-select" id="teacherFilterSelect" onchange="applyTeacherFilter(this.value)">
+                                    <option value="all">Все</option>
+                                    <option value="submitted">Только сдано</option>
+                                    <option value="returned">Только на доработку</option>
+                                    <option value="graded">Только проверено</option>
+                                    <option value="pending">Только не начато</option>
+                                </select>
+                            </div>
+                            <div class="hero-actions" style="margin-top: 0;">
+                                <button type="button" class="neo-button ghost sm" onclick="teacherSelectAllVisible(true)"><i class="fas fa-check-square"></i> Выбрать видимые</button>
+                                <button type="button" class="neo-button ghost sm" onclick="teacherSelectAllVisible(false)"><i class="far fa-square"></i> Снять выбор</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hero-actions" style="margin-top: 1rem;">
+                        <button type="button" class="neo-button outline sm" onclick="bulkUpdateTaskStatus('graded')"><i class="fas fa-check-double"></i> Отметить проверено</button>
+                        <button type="button" class="neo-button outline sm" onclick="bulkUpdateTaskStatus('returned')"><i class="fas fa-undo"></i> Вернуть на доработку</button>
+                        <button type="button" class="neo-button ghost sm" onclick="startReviewMode()"><i class="fas fa-forward"></i> Режим проверки (по сданным)</button>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Navigation Squares -->
                 <div class="task-nav-bar">
                     {% for hw_task in homework_tasks %}
@@ -419,8 +461,13 @@
                     {% set status_class = 'status-incorrect' %}
                 {% endif %}
 
-                <section id="task-{{ hw_task.lesson_task_id }}" class="task-card {{ status_class }}" data-task-id="{{ hw_task.lesson_task_id }}">
+                <section id="task-{{ hw_task.lesson_task_id }}" class="task-card {{ status_class }}" data-task-id="{{ hw_task.lesson_task_id }}" data-task-status="{{ (hw_task.status or 'pending')|lower }}">
                     <div class="task-header">
+                        {% if not is_student_view and not is_parent_view %}
+                        <label style="display:flex; align-items:center; gap:0.5rem; margin-right: 0.5rem;">
+                            <input type="checkbox" class="neo-checkbox-input teacher-task-select" data-task-id="{{ hw_task.lesson_task_id }}" style="width: 18px; height: 18px;">
+                        </label>
+                        {% endif %}
                         <span class="task-number">
                             №{{ loop.index }}
                             {% if hw_task.task.task_number %}
@@ -741,6 +788,15 @@
                 const tab = fromHash || fromStore;
                 if (tab && document.getElementById(`tab-${tab}`)) {
                     switchTab(tab);
+                }
+            } catch (e) {}
+
+            // restore teacher filter
+            try {
+                const saved = localStorage.getItem(`lesson_${LESSON_ID}_teacher_filter`);
+                if (saved && document.getElementById('teacherFilterSelect')) {
+                    document.getElementById('teacherFilterSelect').value = saved;
+                    applyTeacherFilter(saved);
                 }
             } catch (e) {}
 
@@ -1150,6 +1206,77 @@
             } catch (e) {
                 toast.error('Ошибка сети');
             }
+        }
+
+        function getSelectedTeacherTaskIds() {
+            const ids = [];
+            document.querySelectorAll('.teacher-task-select:checked').forEach(cb => {
+                const id = parseInt(cb.getAttribute('data-task-id') || '0', 10);
+                if (id) ids.push(id);
+            });
+            return ids;
+        }
+
+        function teacherSelectAllVisible(flag) {
+            document.querySelectorAll('.task-card').forEach(card => {
+                if (card.style.display === 'none') return;
+                const cb = card.querySelector('.teacher-task-select');
+                if (!cb) return;
+                cb.checked = !!flag;
+            });
+        }
+
+        function applyTeacherFilter(value) {
+            const key = value || 'all';
+            document.querySelectorAll('.task-card').forEach(card => {
+                const st = (card.getAttribute('data-task-status') || 'pending').toLowerCase();
+                if (key === 'all' || st === key) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            try {
+                localStorage.setItem(`lesson_${LESSON_ID}_teacher_filter`, key);
+            } catch (e) {}
+        }
+
+        async function bulkUpdateTaskStatus(status) {
+            const taskIds = getSelectedTeacherTaskIds();
+            if (!taskIds.length) {
+                toast.warning('Выбери задания галочками');
+                return;
+            }
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/tasks/bulk-update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({ task_ids: taskIds, status })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    toast.error(data.error || 'Ошибка');
+                    return;
+                }
+                toast.success('Обновлено');
+                (data.updated || []).forEach(u => {
+                    const card = document.getElementById(`task-${u.lesson_task_id}`);
+                    if (card) card.setAttribute('data-task-status', (u.status || 'pending').toLowerCase());
+                    applyTeacherFeedbackUi(u.lesson_task_id, { status: u.status, submission_correct: u.submission_correct });
+                });
+            } catch (e) {
+                toast.error('Ошибка сети');
+            }
+        }
+
+        function startReviewMode() {
+            // Режим проверки: показываем только "сдано" и прыгаем к первому
+            const sel = document.getElementById('teacherFilterSelect');
+            if (sel) sel.value = 'submitted';
+            applyTeacherFilter('submitted');
+            const first = document.querySelector('.task-card[data-task-status="submitted"]');
+            if (first) first.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            toast.info('Режим проверки: показаны только «Сдано»');
         }
     </script>
 </body>
