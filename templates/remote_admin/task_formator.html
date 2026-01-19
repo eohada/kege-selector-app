@@ -89,6 +89,10 @@
                                             <option value="needs_fix" {% if review_status == 'needs_fix' %}selected{% endif %}>Нужно править</option>
                                             <option value="skip" {% if review_status == 'skip' %}selected{% endif %}>Пропуск</option>
                                         </select>
+                                        <label style="display:flex; gap:0.6rem; align-items:center; margin-top: 0.6rem; color: var(--text-muted); font-size: 0.9rem;">
+                                            <input type="checkbox" name="only_parsed" value="1" {% if request.args.get('only_parsed', '1') in ['1','true','on','yes'] %}checked{% endif %}>
+                                            <span>Только спаршенные (с site_task_id/source_url)</span>
+                                        </label>
                                     </div>
                                     <div>
                                         <button type="submit" class="neo-button accent" style="width: 100%;">Применить</button>

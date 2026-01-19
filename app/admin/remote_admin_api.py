@@ -87,9 +87,11 @@ def _task_formator_quick_checks(task: Tasks):
         if src_html:
             checks.append({'level': 'ok', 'title': 'Источник найден в условии', 'details': f'Поле source_url пустое, но в HTML найден URL: {src_html}'})
         elif (task.site_task_id or '').strip():
-            checks.append({'level': 'ok', 'title': 'Нет source_url', 'details': 'URL источника не сохранён, но есть site_task_id — верификация возможна.'})
+            # Если есть site_task_id, но нет URL — это реально проблема для спаршенных задач
+            checks.append({'level': 'warn', 'title': 'Нет source_url', 'details': 'Есть site_task_id, но source_url пустой — вероятно, потерялась ссылка при парсинге/импорте.'})
         else:
-            checks.append({'level': 'warn', 'title': 'Нет source_url', 'details': 'У задания не сохранён URL источника и нет site_task_id — сложнее верифицировать.'})
+            # Это может быть "ручное" задание (созданное в конструкторе/шаблонах), там источника может не быть
+            checks.append({'level': 'ok', 'title': 'Нет источника (ручное задание?)', 'details': 'У задания нет source_url и site_task_id. Для ручных задач это нормально.'})
 
     if not checks:
         checks.append({'level': 'ok', 'title': 'Базовые проверки пройдены', 'details': 'Явных проблем не найдено.'})
@@ -487,10 +489,17 @@ def remote_admin_api_task_formator_list():
     q = (request.args.get('q') or '').strip()
     task_number = request.args.get('task_number', type=int)
     review_status = (request.args.get('review_status') or 'all').strip().lower()
+    only_parsed_raw = (request.args.get('only_parsed') or '1').strip().lower()
+    only_parsed = only_parsed_raw in ('1', 'true', 'yes', 'on')
     page = max(1, request.args.get('page', type=int) or 1)
     per_page = min(100, max(10, request.args.get('per_page', type=int) or 30))
 
     base = db.session.query(Tasks, TaskReview).outerjoin(TaskReview, TaskReview.task_id == Tasks.task_id)
+    if only_parsed:
+        base = base.filter(
+            (func.coalesce(Tasks.site_task_id, '') != '') |
+            (func.coalesce(Tasks.source_url, '') != '')
+        )
 
     if task_number:
         base = base.filter(Tasks.task_number == task_number)
@@ -515,6 +524,11 @@ def remote_admin_api_task_formator_list():
 
     # summary within current q/task_number (but ignoring review_status)
     summary_base = db.session.query(Tasks.task_id, TaskReview.status).outerjoin(TaskReview, TaskReview.task_id == Tasks.task_id)
+    if only_parsed:
+        summary_base = summary_base.filter(
+            (func.coalesce(Tasks.site_task_id, '') != '') |
+            (func.coalesce(Tasks.source_url, '') != '')
+        )
     if task_number:
         summary_base = summary_base.filter(Tasks.task_number == task_number)
     if q:
@@ -560,6 +574,7 @@ def remote_admin_api_task_formator_list():
         'total': total,
         'page': page,
         'per_page': per_page,
+        'only_parsed': only_parsed,
         'summary': {
             'new': new_count,
             'ok': ok_count,
