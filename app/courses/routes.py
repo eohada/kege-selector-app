@@ -49,16 +49,16 @@ def _can_access_student(student: Student) -> bool:
 
     # Tutor/прочие роли — через data scope (по user_id ученика)
     scope = get_user_scope(current_user)
-    if getattr(scope, 'can_see_all', False):
+    if scope.get('can_see_all'):
         return True
     st_user = _get_student_user(student)
-    if st_user and st_user.id in getattr(scope, 'student_ids', []):
+    if st_user and st_user.id in scope.get('student_ids', []):
         return True
 
     # Если Student не удалось сопоставить по email, пробуем безопасный fallback:
     # если student.student_id совпадает с User.id ученика в Enrollment/FamilyTie.
     try:
-        return student.student_id in getattr(scope, 'student_ids', [])
+        return student.student_id in scope.get('student_ids', [])
     except Exception:
         return False
 
