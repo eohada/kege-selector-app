@@ -1,10 +1,19 @@
-{% extends 'base.html' %}
-
-{% block title %}{{ lesson.topic or 'Урок' }}{% endblock %}
-
-{% block content %}
-<link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
-<style>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ lesson.topic or 'Урок' }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
     .lesson-header {
         margin-bottom: 2rem;
         background: var(--glass-bg);
@@ -164,389 +173,394 @@
     .editor-preview {
         background: var(--bg-body) !important;
     }
-</style>
+    </style>
+</head>
+<body>
+    {% include '_primary_nav.html' %}
+    {% include '_mobile_menu.html' %}
 
-<div class="container">
-    <!-- Header -->
-    <header class="lesson-header">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <h1 style="margin-bottom: 0.5rem;">{{ lesson.topic or 'Тема не указана' }}</h1>
-                <div class="lesson-meta">
-                    <div class="lesson-meta-item">
-                        📅 {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
-                    </div>
-                    <div class="lesson-meta-item">
-                        ⏱ {{ lesson.duration }} мин
-                    </div>
-                    <div class="lesson-meta-item">
-                        🎓 {{ student.name }}
-                    </div>
-                    <div class="lesson-meta-item">
-                        📂 {{ assignment_type|capitalize }}
+    <div class="container">
+        <!-- Header -->
+        <header class="lesson-header">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h1 style="margin-bottom: 0.5rem;">{{ lesson.topic or 'Тема не указана' }}</h1>
+                    <div class="lesson-meta">
+                        <div class="lesson-meta-item">
+                            📅 {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}
+                        </div>
+                        <div class="lesson-meta-item">
+                            ⏱ {{ lesson.duration }} мин
+                        </div>
+                        <div class="lesson-meta-item">
+                            🎓 {{ student.name }}
+                        </div>
+                        <div class="lesson-meta-item">
+                            📂 {{ assignment_type|capitalize }}
+                        </div>
                     </div>
                 </div>
+                <div>
+                     <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button outline sm">
+                        ⬅ Назад в профиль
+                    </a>
+                </div>
             </div>
-            <div>
-                 <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button outline sm">
-                    ⬅ Назад в профиль
-                </a>
-            </div>
+        </header>
+
+        <!-- Tabs Navigation -->
+        <div class="lesson-tabs">
+            <button class="tab-btn active" onclick="switchTab('theory')">📖 Конспект</button>
+            <button class="tab-btn" onclick="switchTab('tasks')">
+                {% if assignment_type == 'homework' %}🏠 Домашнее задание{% elif assignment_type == 'classwork' %}🏫 Классная работа{% else %}📝 Проверочная{% endif %}
+            </button>
+            <button class="tab-btn" onclick="switchTab('materials')">📎 Материалы</button>
+            <button class="tab-btn" onclick="switchTab('notes')">📒 Заметки {{ 'ученика' if not is_student_view else '' }}</button>
         </div>
-    </header>
 
-    <!-- Tabs Navigation -->
-    <div class="lesson-tabs">
-        <button class="tab-btn active" onclick="switchTab('theory')">📖 Конспект</button>
-        <button class="tab-btn" onclick="switchTab('tasks')">
-            {% if assignment_type == 'homework' %}🏠 Домашнее задание{% elif assignment_type == 'classwork' %}🏫 Классная работа{% else %}📝 Проверочная{% endif %}
-        </button>
-        <button class="tab-btn" onclick="switchTab('materials')">📎 Материалы</button>
-        <button class="tab-btn" onclick="switchTab('notes')">📒 Заметки {{ 'ученика' if not is_student_view else '' }}</button>
-    </div>
-
-    <!-- TAB: THEORY -->
-    <div id="tab-theory" class="tab-pane active">
-        <div class="glass-panel">
-            {% if not is_student_view and not is_parent_view %}
-            <!-- Teacher Edit Mode -->
-            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+        <!-- TAB: THEORY -->
+        <div id="tab-theory" class="tab-pane active">
+            <div class="glass-panel">
+                {% if not is_student_view and not is_parent_view %}
+                <!-- Teacher Edit Mode -->
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                    <h3>Конспект урока</h3>
+                    <button class="neo-button accent sm" onclick="saveContent()">💾 Сохранить конспект</button>
+                </div>
+                <textarea id="theory-editor">{{ lesson.content or '' }}</textarea>
+                {% else %}
+                <!-- Student View Mode -->
                 <h3>Конспект урока</h3>
-                <button class="neo-button accent sm" onclick="saveContent()">💾 Сохранить конспект</button>
+                <div id="theory-content" class="markdown-content">
+                    {{ lesson.content or '*Конспект пуст*' }}
+                </div>
+                {% endif %}
             </div>
-            <textarea id="theory-editor">{{ lesson.content or '' }}</textarea>
-            {% else %}
-            <!-- Student View Mode -->
-            <h3>Конспект урока</h3>
-            <div id="theory-content" class="markdown-content">
-                {{ lesson.content or '*Конспект пуст*' }}
-            </div>
-            {% endif %}
         </div>
-    </div>
 
-    <!-- TAB: TASKS (Existing Logic) -->
-    <div id="tab-tasks" class="tab-pane">
-        <!-- Вставка существующего контента задач -->
-        <div class="tasks-container">
-             <form id="homework-form" method="POST" action="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_save', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_save', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_save', lesson_id=lesson.lesson_id) }}{% endif %}">
-            
-            {% if csrf_token %}
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            {% endif %}
+        <!-- TAB: TASKS (Existing Logic) -->
+        <div id="tab-tasks" class="tab-pane">
+            <!-- Вставка существующего контента задач -->
+            <div class="tasks-container">
+                 <form id="homework-form" method="POST" action="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_save', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_save', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_save', lesson_id=lesson.lesson_id) }}{% endif %}">
+                
+                {% if csrf_token %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% endif %}
 
-            {% if homework_tasks %}
-            {% for hw_task in homework_tasks %}
-            <section class="task-card" data-task-id="{{ hw_task.lesson_task_id }}">
-                <div class="task-header">
-                    <span class="task-number">№{{ hw_task.task.task_number if hw_task.task else '?' }}</span>
-                    <div class="task-meta">
-                        {% if not is_student_view and not is_parent_view %}
-                        <button type="button" class="icon-btn danger" onclick="handleDeleteTask({{ hw_task.lesson_task_id }}, '{{ assignment_type }}')" title="Удалить задание">🗑</button>
+                {% if homework_tasks %}
+                {% for hw_task in homework_tasks %}
+                <section class="task-card" data-task-id="{{ hw_task.lesson_task_id }}">
+                    <div class="task-header">
+                        <span class="task-number">№{{ hw_task.task.task_number if hw_task.task else '?' }}</span>
+                        <div class="task-meta">
+                            {% if not is_student_view and not is_parent_view %}
+                            <button type="button" class="icon-btn danger" onclick="handleDeleteTask({{ hw_task.lesson_task_id }}, '{{ assignment_type }}')" title="Удалить задание">🗑</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="task-content">
+                        {{ hw_task.task.content_html|safe }}
+                        {% if hw_task.task.attached_files %}
+                        <div class="task-attachments">
+                            <strong>Вложения:</strong> {{ hw_task.task.attached_files }}
+                        </div>
                         {% endif %}
                     </div>
-                </div>
-                
-                <div class="task-content">
-                    {{ hw_task.task.content_html|safe }}
-                    {% if hw_task.task.attached_files %}
-                    <div class="task-attachments">
-                        <strong>Вложения:</strong> {{ hw_task.task.attached_files }}
+                    
+                    {% if not is_read_only %}
+                    <div class="answer-section">
+                        <label class="answer-label" for="submission_{{ hw_task.lesson_task_id }}">
+                            <img src="{{ url_for('static', filename='icons/icons8-редактировать-100.png') }}" alt="Ответ" class="ui-icon ui-icon--sm">Твой ответ:
+                        </label>
+                        <input type="text" class="answer-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_submission or '' }}" placeholder="Введи ответ..." autocomplete="off">
+                    </div>
+                    {% else %}
+                    <div class="answer-section">
+                         <label class="answer-label">Твой ответ:</label>
+                         <div class="answer-input" style="background: rgba(0,0,0,0.2); border: none;">{{ hw_task.student_submission or '—' }}</div>
                     </div>
                     {% endif %}
-                </div>
+
+                    <!-- Auto check status for Student -->
+                    {% if (is_homework or is_classwork or is_exam) and hw_task.student_submission %}
+                        {% if not is_student_view %}
+                        <div class="auto-check-result">
+                            <div><strong>Ответ ученика:</strong> {{ hw_task.student_submission }}</div>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if is_student_view %}
+                         <!-- Статус для ученика -->
+                         {% if hw_task.submission_correct == true %}
+                            <div style="margin-top: 0.5rem; color: var(--success);">✅ Верно</div>
+                         {% elif hw_task.submission_correct == false %}
+                            <div style="margin-top: 0.5rem; color: var(--danger);">❌ Неверно</div>
+                         {% endif %}
+                    {% endif %}
+                    
+                    {% if is_student_view and is_read_only %}
+                        {% set correct_val = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}
+                        {% if correct_val %}
+                        <div class="auto-check-result" style="margin-top: 0.5rem; border: 1px solid var(--success); background: rgba(0, 255, 0, 0.05); padding: 0.5rem; border-radius: 4px;">
+                            <div><strong style="color: var(--success);">Правильный ответ:</strong> {{ correct_val }}</div>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                    
+                    <!-- Teacher View: Correct Answer and Status Toggle -->
+                    {% if not is_student_view and not is_parent_view %}
+                    <div class="answer-section" style="margin-top: 1rem; border-top: 1px dashed var(--glass-border); padding-top: 0.5rem;">
+                         <label>Правильный ответ (из базы):</label>
+                         <code>{{ hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else 'Нет') }}</code>
+                    </div>
+                    
+                    <div class="status-toggle">
+                        <span class="status-toggle-label">Статус задания:</span>
+                        <div class="status-toggle-switch" data-task-id="{{ hw_task.lesson_task_id }}" data-status="{% if hw_task.submission_correct == true %}correct{% elif hw_task.submission_correct == false %}incorrect{% else %}none{% endif %}">
+                            <div class="status-toggle-slider">
+                                {% if hw_task.submission_correct == true %}✓{% elif hw_task.submission_correct == false %}✗{% else %}—{% endif %}
+                            </div>
+                            <div class="status-toggle-labels">
+                                <span>✓</span>
+                                <span>—</span>
+                                <span>✗</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                </section>
+                {% endfor %}
                 
-                {% if not is_read_only %}
-                <div class="answer-section">
-                    <label class="answer-label" for="submission_{{ hw_task.lesson_task_id }}">
-                        <img src="{{ url_for('static', filename='icons/icons8-редактировать-100.png') }}" alt="Ответ" class="ui-icon ui-icon--sm">Твой ответ:
+                {% if not is_student_view and not is_parent_view %}
+                <div class="homework-actions">
+                    <button type="submit" class="neo-button accent">💾 Сохранить изменения</button>
+                    <a href="#" class="neo-button outline" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">➕ Добавить задания</a>
+                </div>
+                {% else %}
+                <div class="homework-actions">
+                    <button type="submit" class="neo-button accent" {% if is_read_only %}disabled{% endif %}>💾 Сохранить черновик</button>
+                    <button type="submit" class="neo-button outline" {% if is_read_only %}disabled{% endif %} formaction="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_submit', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_submit', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_submit', lesson_id=lesson.lesson_id) }}{% endif %}">✅ Сдать работу</button>
+                </div>
+                {% endif %}
+
+                {% else %}
+                <div class="empty-state">
+                    <h3>Заданий пока нет</h3>
+                     {% if not is_student_view and not is_parent_view %}
+                    <a href="#" class="neo-button accent" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">Добавить задания</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+                </form>
+            </div>
+        </div>
+
+        <!-- TAB: MATERIALS -->
+        <div id="tab-materials" class="tab-pane">
+            <div class="glass-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3>Материалы к уроку</h3>
+                    {% if not is_student_view and not is_parent_view %}
+                    <label class="neo-button accent sm" style="cursor: pointer;">
+                        📤 Загрузить файл
+                        <input type="file" id="material-upload" style="display: none;" onchange="uploadMaterial(this)">
                     </label>
-                    <input type="text" class="answer-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_submission or '' }}" placeholder="Введи ответ..." autocomplete="off">
-                </div>
-                {% else %}
-                <div class="answer-section">
-                     <label class="answer-label">Твой ответ:</label>
-                     <div class="answer-input" style="background: rgba(0,0,0,0.2); border: none;">{{ hw_task.student_submission or '—' }}</div>
-                </div>
-                {% endif %}
-
-                <!-- Auto check status for Student -->
-                {% if (is_homework or is_classwork or is_exam) and hw_task.student_submission %}
-                    {% if not is_student_view %}
-                    <div class="auto-check-result">
-                        <div><strong>Ответ ученика:</strong> {{ hw_task.student_submission }}</div>
-                    </div>
                     {% endif %}
-                {% endif %}
-
-                {% if is_student_view %}
-                     <!-- Статус для ученика -->
-                     {% if hw_task.submission_correct == true %}
-                        <div style="margin-top: 0.5rem; color: var(--success);">✅ Верно</div>
-                     {% elif hw_task.submission_correct == false %}
-                        <div style="margin-top: 0.5rem; color: var(--danger);">❌ Неверно</div>
-                     {% endif %}
-                {% endif %}
+                </div>
                 
-                {% if is_student_view and is_read_only %}
-                    {% set correct_val = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}
-                    {% if correct_val %}
-                    <div class="auto-check-result" style="margin-top: 0.5rem; border: 1px solid var(--success); background: rgba(0, 255, 0, 0.05); padding: 0.5rem; border-radius: 4px;">
-                        <div><strong style="color: var(--success);">Правильный ответ:</strong> {{ correct_val }}</div>
-                    </div>
+                <div class="materials-grid" id="materials-list">
+                    {% if lesson.materials and lesson.materials|length > 0 %}
+                        {% for mat in lesson.materials %}
+                        <div class="material-card">
+                            {% if not is_student_view and not is_parent_view %}
+                            <div class="material-delete" onclick="deleteMaterial('{{ mat.url }}', this)">🗑</div>
+                            {% endif %}
+                            <div class="material-icon">
+                                {% if mat.type in ['jpg','jpeg','png','gif'] %}🖼️{% elif mat.type == 'pdf' %}📄{% else %}📁{% endif %}
+                            </div>
+                            <div class="material-name">{{ mat.name }}</div>
+                            <a href="{{ mat.url }}" target="_blank" class="neo-button outline sm" download>Скачать</a>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p style="color: var(--text-muted); grid-column: 1/-1; text-align: center;">Нет прикрепленных материалов</p>
                     {% endif %}
-                {% endif %}
-                
-                <!-- Teacher View: Correct Answer and Status Toggle -->
-                {% if not is_student_view and not is_parent_view %}
-                <div class="answer-section" style="margin-top: 1rem; border-top: 1px dashed var(--glass-border); padding-top: 0.5rem;">
-                     <label>Правильный ответ (из базы):</label>
-                     <code>{{ hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else 'Нет') }}</code>
                 </div>
-                
-                <div class="status-toggle">
-                    <span class="status-toggle-label">Статус задания:</span>
-                    <div class="status-toggle-switch" data-task-id="{{ hw_task.lesson_task_id }}" data-status="{% if hw_task.submission_correct == true %}correct{% elif hw_task.submission_correct == false %}incorrect{% else %}none{% endif %}">
-                        <div class="status-toggle-slider">
-                            {% if hw_task.submission_correct == true %}✓{% elif hw_task.submission_correct == false %}✗{% else %}—{% endif %}
-                        </div>
-                        <div class="status-toggle-labels">
-                            <span>✓</span>
-                            <span>—</span>
-                            <span>✗</span>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
+            </div>
+        </div>
 
-            </section>
-            {% endfor %}
+        <!-- TAB: NOTES -->
+        <div id="tab-notes" class="tab-pane">
+            <div class="glass-panel">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                    <h3>{{ 'Твои заметки' if is_student_view else 'Заметки ученика' }}</h3>
+                    <button class="neo-button accent sm" onclick="saveNotes()">💾 Сохранить заметки</button>
+                </div>
+                <textarea id="notes-editor">{{ lesson.student_notes or '' }}</textarea>
+                <p style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">
+                    🔒 Эти заметки видишь только ты {{ 'и преподаватель' if is_student_view else 'и ученик' }}.
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- HIDDEN FORMS FOR JS -->
+    {% for hw_task in homework_tasks %}
+    <form id="delete-form-{{ hw_task.lesson_task_id }}" method="POST" action="{{ url_for('lessons.lesson_homework_delete_task', lesson_id=lesson.lesson_id, lesson_task_id=hw_task.lesson_task_id, assignment_type=assignment_type) }}" style="display: none;">
+        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+    </form>
+    {% endfor %}
+
+    <!-- SCRIPTS -->
+    <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+    <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+
+    <script>
+        const LESSON_ID = {{ lesson.lesson_id }};
+        const CSRF_TOKEN = "{{ csrf_token() if csrf_token else '' }}";
+        
+        // Tabs Logic
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
             
+            document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            // Refresh editors if needed (codemirror sometimes needs refresh on visible)
+            if (tabName === 'theory' && window.theoryEditor) window.theoryEditor.codemirror.refresh();
+            if (tabName === 'notes' && window.notesEditor) window.notesEditor.codemirror.refresh();
+        }
+
+        // Initialize Editors
+        document.addEventListener('DOMContentLoaded', () => {
             {% if not is_student_view and not is_parent_view %}
-            <div class="homework-actions">
-                <button type="submit" class="neo-button accent">💾 Сохранить изменения</button>
-                <a href="#" class="neo-button outline" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">➕ Добавить задания</a>
-            </div>
+            window.theoryEditor = new EasyMDE({
+                element: document.getElementById('theory-editor'),
+                spellChecker: false,
+                autosave: { enabled: true, uniqueId: `lesson_${LESSON_ID}_theory` },
+                toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "image", "|", "preview", "side-by-side", "fullscreen"]
+            });
             {% else %}
-            <div class="homework-actions">
-                <button type="submit" class="neo-button accent" {% if is_read_only %}disabled{% endif %}>💾 Сохранить черновик</button>
-                <button type="submit" class="neo-button outline" {% if is_read_only %}disabled{% endif %} formaction="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_submit', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_submit', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_submit', lesson_id=lesson.lesson_id) }}{% endif %}">✅ Сдать работу</button>
-            </div>
+            // Render Markdown for students
+            const contentDiv = document.getElementById('theory-content');
+            if (contentDiv) {
+                contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(contentDiv.innerText));
+            }
             {% endif %}
 
-            {% else %}
-            <div class="empty-state">
-                <h3>Заданий пока нет</h3>
-                 {% if not is_student_view and not is_parent_view %}
-                <a href="#" class="neo-button accent" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">Добавить задания</a>
-                {% endif %}
-            </div>
-            {% endif %}
-            </form>
-        </div>
-    </div>
-
-    <!-- TAB: MATERIALS -->
-    <div id="tab-materials" class="tab-pane">
-        <div class="glass-panel">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h3>Материалы к уроку</h3>
-                {% if not is_student_view and not is_parent_view %}
-                <label class="neo-button accent sm" style="cursor: pointer;">
-                    📤 Загрузить файл
-                    <input type="file" id="material-upload" style="display: none;" onchange="uploadMaterial(this)">
-                </label>
-                {% endif %}
-            </div>
-            
-            <div class="materials-grid" id="materials-list">
-                {% if lesson.materials and lesson.materials|length > 0 %}
-                    {% for mat in lesson.materials %}
-                    <div class="material-card">
-                        {% if not is_student_view and not is_parent_view %}
-                        <div class="material-delete" onclick="deleteMaterial('{{ mat.url }}', this)">🗑</div>
-                        {% endif %}
-                        <div class="material-icon">
-                            {% if mat.type in ['jpg','jpeg','png','gif'] %}🖼️{% elif mat.type == 'pdf' %}📄{% else %}📁{% endif %}
-                        </div>
-                        <div class="material-name">{{ mat.name }}</div>
-                        <a href="{{ mat.url }}" target="_blank" class="neo-button outline sm" download>Скачать</a>
-                    </div>
-                    {% endfor %}
-                {% else %}
-                    <p style="color: var(--text-muted); grid-column: 1/-1; text-align: center;">Нет прикрепленных материалов</p>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- TAB: NOTES -->
-    <div id="tab-notes" class="tab-pane">
-        <div class="glass-panel">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
-                <h3>{{ 'Твои заметки' if is_student_view else 'Заметки ученика' }}</h3>
-                <button class="neo-button accent sm" onclick="saveNotes()">💾 Сохранить заметки</button>
-            </div>
-            <textarea id="notes-editor">{{ lesson.student_notes or '' }}</textarea>
-            <p style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">
-                🔒 Эти заметки видишь только ты {{ 'и преподаватель' if is_student_view else 'и ученик' }}.
-            </p>
-        </div>
-    </div>
-
-</div>
-
-<!-- HIDDEN FORMS FOR JS -->
-{% for hw_task in homework_tasks %}
-<form id="delete-form-{{ hw_task.lesson_task_id }}" method="POST" action="{{ url_for('lessons.lesson_homework_delete_task', lesson_id=lesson.lesson_id, lesson_task_id=hw_task.lesson_task_id, assignment_type=assignment_type) }}" style="display: none;">
-    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-</form>
-{% endfor %}
-
-<!-- SCRIPTS -->
-<script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
-<script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
-<script src="{{ url_for('static', filename='toast.js') }}"></script>
-<script src="{{ url_for('static', filename='loading.js') }}"></script>
-
-<script>
-    const LESSON_ID = {{ lesson.lesson_id }};
-    const CSRF_TOKEN = "{{ csrf_token() if csrf_token else '' }}";
-    
-    // Tabs Logic
-    function switchTab(tabName) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-        
-        document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
-        document.getElementById(`tab-${tabName}`).classList.add('active');
-        
-        // Refresh editors if needed (codemirror sometimes needs refresh on visible)
-        if (tabName === 'theory' && window.theoryEditor) window.theoryEditor.codemirror.refresh();
-        if (tabName === 'notes' && window.notesEditor) window.notesEditor.codemirror.refresh();
-    }
-
-    // Initialize Editors
-    document.addEventListener('DOMContentLoaded', () => {
-        {% if not is_student_view and not is_parent_view %}
-        window.theoryEditor = new EasyMDE({
-            element: document.getElementById('theory-editor'),
-            spellChecker: false,
-            autosave: { enabled: true, uniqueId: `lesson_${LESSON_ID}_theory` },
-            toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "image", "|", "preview", "side-by-side", "fullscreen"]
+            // Notes Editor (for everyone authorized)
+            window.notesEditor = new EasyMDE({
+                element: document.getElementById('notes-editor'),
+                spellChecker: false,
+                autosave: { enabled: true, uniqueId: `lesson_${LESSON_ID}_notes` },
+                 toolbar: ["bold", "italic", "heading", "|", "unordered-list", "|", "link", "preview"]
+            });
         });
-        {% else %}
-        // Render Markdown for students
-        const contentDiv = document.getElementById('theory-content');
-        if (contentDiv) {
-            contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(contentDiv.innerText));
-        }
-        {% endif %}
 
-        // Notes Editor (for everyone authorized)
-        window.notesEditor = new EasyMDE({
-            element: document.getElementById('notes-editor'),
-            spellChecker: false,
-            autosave: { enabled: true, uniqueId: `lesson_${LESSON_ID}_notes` },
-             toolbar: ["bold", "italic", "heading", "|", "unordered-list", "|", "link", "preview"]
-        });
-    });
-
-    // Save Functions
-    async function saveContent() {
-        if (!window.theoryEditor) return;
-        const content = window.theoryEditor.value();
-        
-        try {
-            const res = await fetch(`/lesson/${LESSON_ID}/content/save`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-                body: JSON.stringify({ content })
-            });
-            if (res.ok) toast.success('Конспект сохранен');
-            else toast.error('Ошибка сохранения');
-        } catch (e) {
-            console.error(e);
-            toast.error('Ошибка сети');
-        }
-    }
-
-    async function saveNotes() {
-        if (!window.notesEditor) return;
-        const notes = window.notesEditor.value();
-        
-        try {
-            const res = await fetch(`/lesson/${LESSON_ID}/student-notes/save`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-                body: JSON.stringify({ notes })
-            });
-            if (res.ok) toast.success('Заметки сохранены');
-            else toast.error('Ошибка сохранения');
-        } catch (e) {
-            console.error(e);
-            toast.error('Ошибка сети');
-        }
-    }
-
-    // Material Upload
-    async function uploadMaterial(input) {
-        if (!input.files || !input.files[0]) return;
-        const file = input.files[0];
-        const formData = new FormData();
-        formData.append('file', file);
-        if (CSRF_TOKEN) formData.append('csrf_token', CSRF_TOKEN);
-
-        const loader = loading.show(input.parentElement, 'Загрузка...');
-        
-        try {
-            const res = await fetch(`/lesson/${LESSON_ID}/upload`, {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-CSRFToken': CSRF_TOKEN }
-            });
-            const data = await res.json();
+        // Save Functions
+        async function saveContent() {
+            if (!window.theoryEditor) return;
+            const content = window.theoryEditor.value();
             
-            if (data.success) {
-                toast.success('Файл загружен');
-                setTimeout(() => location.reload(), 500); // Simple reload to update list
-            } else {
-                toast.error(data.error || 'Ошибка загрузки');
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/content/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({ content })
+                });
+                if (res.ok) toast.success('Конспект сохранен');
+                else toast.error('Ошибка сохранения');
+            } catch (e) {
+                console.error(e);
+                toast.error('Ошибка сети');
             }
-        } catch (e) {
-            toast.error('Ошибка сети');
-        } finally {
-            loading.hide(loader);
-            input.value = '';
         }
-    }
 
-    async function deleteMaterial(url, btn) {
-        if (!confirm('Удалить этот файл?')) return;
-        
-        try {
-            const res = await fetch(`/lesson/${LESSON_ID}/material/delete`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-                body: JSON.stringify({ url })
-            });
-            if (res.ok) {
-                toast.success('Файл удален');
-                btn.closest('.material-card').remove();
-            } else {
-                toast.error('Ошибка удаления');
+        async function saveNotes() {
+            if (!window.notesEditor) return;
+            const notes = window.notesEditor.value();
+            
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/student-notes/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({ notes })
+                });
+                if (res.ok) toast.success('Заметки сохранены');
+                else toast.error('Ошибка сохранения');
+            } catch (e) {
+                console.error(e);
+                toast.error('Ошибка сети');
             }
-        } catch (e) {
-            toast.error('Ошибка сети');
         }
-    }
 
-    // Task Deletion (Legacy Support)
-    function handleDeleteTask(taskId, type) {
-         if(!confirm('Удалить задание?')) return;
-         document.getElementById(`delete-form-${taskId}`).submit();
-    }
-</script>
-{% endblock %}
+        // Material Upload
+        async function uploadMaterial(input) {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            if (CSRF_TOKEN) formData.append('csrf_token', CSRF_TOKEN);
+
+            const loader = loading.show(input.parentElement, 'Загрузка...');
+            
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/upload`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-CSRFToken': CSRF_TOKEN }
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    toast.success('Файл загружен');
+                    setTimeout(() => location.reload(), 500); // Simple reload to update list
+                } else {
+                    toast.error(data.error || 'Ошибка загрузки');
+                }
+            } catch (e) {
+                toast.error('Ошибка сети');
+            } finally {
+                loading.hide(loader);
+                input.value = '';
+            }
+        }
+
+        async function deleteMaterial(url, btn) {
+            if (!confirm('Удалить этот файл?')) return;
+            
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/material/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({ url })
+                });
+                if (res.ok) {
+                    toast.success('Файл удален');
+                    btn.closest('.material-card').remove();
+                } else {
+                    toast.error('Ошибка удаления');
+                }
+            } catch (e) {
+                toast.error('Ошибка сети');
+            }
+        }
+
+        // Task Deletion (Legacy Support)
+        function handleDeleteTask(taskId, type) {
+             if(!confirm('Удалить задание?')) return;
+             document.getElementById(`delete-form-${taskId}`).submit();
+        }
+    </script>
+</body>
+</html>
