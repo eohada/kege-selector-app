@@ -670,7 +670,7 @@
                 <div class="homework-actions" style="position: sticky; bottom: 2rem; z-index: 100; background: var(--surface-1); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); display: flex; gap: 1rem; box-shadow: var(--shadow-soft);">
                     {% if not is_student_view and not is_parent_view %}
                         <button type="submit" class="neo-button accent"><i class="fas fa-save"></i> Сохранить изменения</button>
-                        <a href="#" class="neo-button outline" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;"><i class="fas fa-plus"></i> Добавить задания</a>
+                        <a href="{{ url_for('kege_generator.kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button outline"><i class="fas fa-plus"></i> Добавить задания</a>
                     {% else %}
                         <button type="submit" class="neo-button accent" {% if is_read_only %}disabled{% endif %}><i class="fas fa-save"></i> Сохранить черновик</button>
                         <button type="submit" class="neo-button outline" {% if is_read_only %}disabled{% endif %} formaction="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_submit', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_submit', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_submit', lesson_id=lesson.lesson_id) }}{% endif %}"><i class="fas fa-check-double"></i> Сдать работу</button>
@@ -682,7 +682,7 @@
                     <div class="empty-state-icon">📋</div>
                     <h3>Заданий пока нет</h3>
                      {% if not is_student_view and not is_parent_view %}
-                    <a href="#" class="neo-button accent" onclick="tryShowTemplateModal(event, {{ lesson.lesson_id }}, '{{ assignment_type }}'); return false;">Добавить задания</a>
+                    <a href="{{ url_for('kege_generator.kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button accent">Добавить задания</a>
                     {% endif %}
                 </div>
                 {% endif %}
