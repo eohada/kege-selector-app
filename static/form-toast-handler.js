@@ -248,6 +248,9 @@
                 button.addEventListener('click', async function(e) {
                     // Проверяем, не обрабатывается ли форма уже
                     if (form.dataset.ajaxHandled === 'true') return;
+
+                    // Пропускаем формы, которые явно должны отправляться нативно (важно для formaction)
+                    if (form.hasAttribute('data-no-ajax')) return;
                     
                     // Пропускаем специальные формы
                     if (form.id === 'create-student-form' || 
@@ -282,7 +285,10 @@
                     }
                     
                     try {
-                        const result = await handlePostRequest(form.action || window.location.href, formData, {
+                        // Уважаем formaction у конкретной кнопки (иначе "Сдать работу" уедет в form.action)
+                        const targetUrl = button.getAttribute('formaction') || form.action || window.location.href;
+
+                        const result = await handlePostRequest(targetUrl, formData, {
                             successMessage: button.dataset.successMessage || 'Операция выполнена успешно!',
                             delay: 500
                         });
