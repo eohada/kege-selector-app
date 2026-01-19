@@ -285,6 +285,26 @@
         border-color: var(--danger);
         color: var(--danger);
     }
+
+    .task-nav-btn.nav-returned {
+        background: rgba(255, 212, 92, 0.12);
+        border-color: var(--warning);
+        color: var(--warning);
+    }
+
+    .task-nav-btn.nav-graded {
+        background: rgba(31, 123, 255, 0.14);
+        border-color: var(--accent-2);
+        color: var(--accent-2);
+    }
+
+    .teacher-feedback-student {
+        margin-top: 1rem;
+        padding: 1rem;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--stroke-1);
+        background: var(--surface-2);
+    }
     </style>
 </head>
 <body>
@@ -370,7 +390,12 @@
                     {% elif hw_task.submission_correct == false %}
                         {% set nav_class = 'nav-incorrect' %}
                     {% endif %}
-                    <a href="#task-{{ hw_task.lesson_task_id }}" class="task-nav-btn {{ nav_class }}" onclick="event.preventDefault(); document.getElementById('task-{{ hw_task.lesson_task_id }}').scrollIntoView({behavior: 'smooth', block: 'center'});">
+                    {% if (hw_task.status or '') == 'returned' %}
+                        {% set nav_class = 'nav-returned' %}
+                    {% elif (hw_task.status or '') == 'graded' %}
+                        {% set nav_class = 'nav-graded' %}
+                    {% endif %}
+                    <a id="tasknav-{{ hw_task.lesson_task_id }}" href="#task-{{ hw_task.lesson_task_id }}" class="task-nav-btn {{ nav_class }}" onclick="event.preventDefault(); document.getElementById('task-{{ hw_task.lesson_task_id }}').scrollIntoView({behavior: 'smooth', block: 'center'});">
                         {{ loop.index }}
                     </a>
                     {% endfor %}
@@ -399,6 +424,20 @@
                             <span class="status-indicator correct"><i class="fas fa-check-circle"></i> Верно</span>
                         {% elif hw_task.submission_correct == false %}
                             <span class="status-indicator incorrect"><i class="fas fa-times-circle"></i> Неверно</span>
+                        {% endif %}
+
+                        {% if is_student_view %}
+                            {% if (hw_task.status or '') == 'submitted' %}
+                                <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-info">Сдано</span>
+                            {% elif (hw_task.status or '') == 'graded' %}
+                                <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-success">Проверено</span>
+                            {% elif (hw_task.status or '') == 'returned' %}
+                                <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-warning">На доработку</span>
+                            {% elif (hw_task.status or '') == 'in_progress' %}
+                                <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-info" style="opacity: 0.8;">В процессе</span>
+                            {% else %}
+                                <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-info" style="opacity: 0.6;">Не начато</span>
+                            {% endif %}
                         {% endif %}
 
                         <div class="task-meta" style="margin-left: auto;">
@@ -451,6 +490,13 @@
                         {% endif %}
                     {% endif %}
 
+                    {% if is_student_view and (hw_task.teacher_comment or '') %}
+                        <div class="teacher-feedback-student" id="student-comment-{{ hw_task.lesson_task_id }}">
+                            <div class="hero-eyebrow" style="margin-bottom: 0.6rem;">комментарий преподавателя</div>
+                            <div style="white-space: pre-wrap; line-height: 1.6; color: var(--text-primary);">{{ hw_task.teacher_comment }}</div>
+                        </div>
+                    {% endif %}
+
                     {% if not is_student_view and not is_parent_view %}
                     <div style="margin-top: 1.25rem; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); background: var(--surface-2);">
                         <div class="hero-eyebrow" style="margin-bottom: 0.8rem;">проверка преподавателем</div>
@@ -463,11 +509,11 @@
                                 <label class="neo-label">Статус</label>
                                 <select class="neo-select" id="status_{{ hw_task.lesson_task_id }}" name="status_{{ hw_task.lesson_task_id }}">
                                     {% set st = (hw_task.status or 'pending') %}
-                                    <option value="pending" {% if st == 'pending' %}selected{% endif %}>pending</option>
-                                    <option value="in_progress" {% if st == 'in_progress' %}selected{% endif %}>in_progress</option>
-                                    <option value="submitted" {% if st == 'submitted' %}selected{% endif %}>submitted</option>
-                                    <option value="graded" {% if st == 'graded' %}selected{% endif %}>graded</option>
-                                    <option value="returned" {% if st == 'returned' %}selected{% endif %}>returned</option>
+                                    <option value="pending" {% if st == 'pending' %}selected{% endif %}>Не начато</option>
+                                    <option value="in_progress" {% if st == 'in_progress' %}selected{% endif %}>В процессе</option>
+                                    <option value="submitted" {% if st == 'submitted' %}selected{% endif %}>Сдано</option>
+                                    <option value="graded" {% if st == 'graded' %}selected{% endif %}>Проверено</option>
+                                    <option value="returned" {% if st == 'returned' %}selected{% endif %}>На доработку</option>
                                 </select>
                             </div>
                         </div>
@@ -695,8 +741,7 @@
                 const data = await res.json();
                 if (data.success) {
                     toast.success('Статус обновлен');
-                    // Reload to update UI styles
-                    setTimeout(() => location.reload(), 500);
+                    applySubmissionCorrectUi(taskId, data.submission_correct);
                 } else {
                     toast.error(data.error || 'Ошибка');
                 }
@@ -781,6 +826,7 @@
                 const data = await res.json();
                 if (data.success) {
                     toast.success('Проверка сохранена');
+                    applyTeacherFeedbackUi(taskId, data);
                 } else {
                     toast.error(data.error || 'Ошибка сохранения');
                 }
@@ -804,7 +850,7 @@
                 const data = await res.json();
                 if (data.success) {
                     toast.success('Отправлено на доработку');
-                    setTimeout(() => location.reload(), 500);
+                    applyTeacherFeedbackUi(taskId, data);
                 } else {
                     toast.error(data.error || 'Ошибка');
                 }
@@ -824,12 +870,65 @@
                 const data = await res.json();
                 if (data.success) {
                     toast.success('Отмечено как проверено');
-                    setTimeout(() => location.reload(), 500);
+                    applyTeacherFeedbackUi(taskId, data);
                 } else {
                     toast.error(data.error || 'Ошибка');
                 }
             } catch (e) {
                 toast.error('Ошибка сети');
+            }
+        }
+
+        function statusToRu(status) {
+            if (status === 'pending') return 'Не начато';
+            if (status === 'in_progress') return 'В процессе';
+            if (status === 'submitted') return 'Сдано';
+            if (status === 'graded') return 'Проверено';
+            if (status === 'returned') return 'На доработку';
+            return '—';
+        }
+
+        function applySubmissionCorrectUi(taskId, submissionCorrect) {
+            const taskEl = document.getElementById(`task-${taskId}`);
+            const navEl = document.getElementById(`tasknav-${taskId}`);
+            if (taskEl) {
+                taskEl.classList.remove('status-correct', 'status-incorrect', 'status-none');
+                if (submissionCorrect === true) taskEl.classList.add('status-correct');
+                else if (submissionCorrect === false) taskEl.classList.add('status-incorrect');
+                else taskEl.classList.add('status-none');
+            }
+            if (navEl) {
+                navEl.classList.remove('nav-correct', 'nav-incorrect');
+                if (submissionCorrect === true) navEl.classList.add('nav-correct');
+                else if (submissionCorrect === false) navEl.classList.add('nav-incorrect');
+            }
+        }
+
+        function applyTeacherFeedbackUi(taskId, data) {
+            const navEl = document.getElementById(`tasknav-${taskId}`);
+            if (navEl) {
+                navEl.classList.remove('nav-returned', 'nav-graded');
+                if (data.status === 'returned') navEl.classList.add('nav-returned');
+                if (data.status === 'graded') navEl.classList.add('nav-graded');
+            }
+
+            const statusSelect = document.getElementById(`status_${taskId}`);
+            if (statusSelect && data.status) statusSelect.value = data.status;
+
+            const answerKeyEl = document.getElementById(`answer_key_${taskId}`);
+            if (answerKeyEl && typeof data.answer_key === 'string') answerKeyEl.value = data.answer_key;
+
+            const commentEl = document.getElementById(`teacher_comment_${taskId}`);
+            if (commentEl && typeof data.teacher_comment === 'string') commentEl.value = data.teacher_comment;
+
+            // Обновляем блоки для ученика, если они есть в DOM (например, учитель тестирует под учеником)
+            const studentStatusEl = document.getElementById(`student-status-${taskId}`);
+            if (studentStatusEl && data.status) {
+                studentStatusEl.textContent = statusToRu(data.status);
+                studentStatusEl.classList.remove('status-info', 'status-success', 'status-warning');
+                if (data.status === 'graded') studentStatusEl.classList.add('status-success');
+                else if (data.status === 'returned') studentStatusEl.classList.add('status-warning');
+                else studentStatusEl.classList.add('status-info');
             }
         }
     </script>

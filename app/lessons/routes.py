@@ -665,7 +665,14 @@ def lesson_task_teacher_feedback_save(lesson_id, lesson_task_id):  # comment
         db.session.rollback()  # comment
         logger.error(f"Failed to save teacher feedback: {e}", exc_info=True)  # comment
         return jsonify({'success': False, 'error': 'Ошибка сохранения'}), 500  # comment
-    return jsonify({'success': True})  # comment
+    return jsonify({  # comment
+        'success': True,  # comment
+        'lesson_task_id': lesson_task.lesson_task_id,  # comment
+        'status': (lesson_task.status or 'pending'),  # comment
+        'teacher_comment': lesson_task.teacher_comment or '',  # comment
+        'answer_key': lesson_task.student_answer or '',  # comment
+        'submission_correct': lesson_task.submission_correct,  # comment
+    })  # comment
 
 @lessons_bp.route('/lesson/<int:lesson_id>/homework-auto-check', methods=['POST'])
 @login_required
