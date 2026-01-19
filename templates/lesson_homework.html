@@ -365,18 +365,100 @@
                 <!-- Teacher Edit Mode -->
                 <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; align-items: center;">
                     <h3 style="margin: 0;">Конспект урока</h3>
-                    <button class="neo-button accent sm" onclick="saveContent()"><i class="fas fa-save"></i> Сохранить</button>
+                    <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
+                        <div style="display:flex; gap: 0.35rem; background: rgba(255,255,255,0.04); border: 1px solid var(--stroke-1); border-radius: 999px; padding: 0.25rem;">
+                            <button type="button" class="neo-button ghost sm" id="modeMarkdownBtn" onclick="setTheoryMode('markdown')" style="border-radius: 999px;"><i class="fas fa-pen"></i> Markdown</button>
+                            <button type="button" class="neo-button ghost sm" id="modeBlocksBtn" onclick="setTheoryMode('blocks')" style="border-radius: 999px;"><i class="fas fa-cubes"></i> Blocks</button>
+                        </div>
+                        <a class="neo-button ghost sm" href="{{ url_for('library.lesson_templates', lesson_id=lesson.lesson_id) }}" target="_blank"><i class="fas fa-layer-group"></i> Шаблоны</a>
+                        <button class="neo-button outline sm" type="button" onclick="openCreateLessonTemplateModal()"><i class="fas fa-bookmark"></i> Сохранить как шаблон</button>
+                        <button class="neo-button accent sm" onclick="saveContent()"><i class="fas fa-save"></i> Сохранить</button>
+                        <button class="neo-button outline sm" type="button" onclick="saveBlocks()"><i class="fas fa-save"></i> Сохранить блоки</button>
+                    </div>
                 </div>
-                <textarea id="theory-editor">{{ lesson.content or '' }}</textarea>
+                <div id="theory-markdown-wrap">
+                    <textarea id="theory-editor">{{ lesson.content or '' }}</textarea>
+                </div>
+                <div id="theory-blocks-wrap" style="display:none;">
+                    <div style="display:flex; justify-content: space-between; gap: 1rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                        <div style="color: var(--text-muted); font-size: 0.95rem;">Блоки — foundation для конструктора (без Markdown). Можно смешивать: Markdown для текста, Blocks для структуры/раздаток.</div>
+                        <button type="button" class="neo-button outline sm" onclick="addBlock()"><i class="fas fa-plus"></i> Блок</button>
+                    </div>
+                    <div id="blocksList" style="display:flex; flex-direction: column; gap: 0.75rem;"></div>
+                </div>
                 {% else %}
                 <!-- Student View Mode -->
                 <h3 style="margin-bottom: 1.5rem;">Конспект урока</h3>
+                {% if content_blocks and content_blocks|length > 0 %}
+                <div class="markdown-content" style="display:flex; flex-direction: column; gap: 0.9rem;">
+                    {% for b in content_blocks %}
+                        {% if b.type == 'paragraph' %}
+                            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); padding: 1rem; white-space: pre-wrap; line-height: 1.65;">{{ b.text }}</div>
+                        {% elif b.type == 'callout' %}
+                            {% set tone = b.tone or 'info' %}
+                            {% set border = 'rgba(0,255,213,0.25)' if tone == 'info' else ('rgba(0,210,255,0.25)' if tone == 'success' else ('rgba(255,200,0,0.25)' if tone == 'warning' else 'rgba(255,0,80,0.25)')) %}
+                            {% set bg = 'rgba(0,255,213,0.05)' if tone == 'info' else ('rgba(0,210,255,0.05)' if tone == 'success' else ('rgba(255,200,0,0.06)' if tone == 'warning' else 'rgba(255,0,80,0.05)')) %}
+                            <div style="border: 1px solid {{ border }}; background: {{ bg }}; border-radius: var(--radius-md); padding: 1rem;">
+                                {% if b.title %}<div style="font-weight: 900; margin-bottom: 0.35rem;">{{ b.title }}</div>{% endif %}
+                                <div style="white-space: pre-wrap; line-height: 1.65;">{{ b.text }}</div>
+                            </div>
+                        {% elif b.type == 'image' %}
+                            <div style="border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02); border-radius: var(--radius-md); padding: 0.85rem;">
+                                {% if b.url %}
+                                <img src="{{ b.url }}" alt="image" style="width: 100%; max-height: 520px; object-fit: contain; border-radius: var(--radius-md);">
+                                {% endif %}
+                                {% if b.caption %}<div style="color: var(--text-muted); font-size: 0.92rem; margin-top: 0.55rem;">{{ b.caption }}</div>{% endif %}
+                            </div>
+                        {% elif b.type == 'divider' %}
+                            {% if b.style == 'space' %}
+                                <div style="height: 0.5rem;"></div>
+                            {% else %}
+                                <div style="height: 1px; background: var(--stroke-1); opacity: 0.9;"></div>
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% else %}
                 <div id="theory-content" class="markdown-content">
                     {{ lesson.content or '*Конспект пуст*' }}
                 </div>
                 {% endif %}
+                {% endif %}
             </div>
         </div>
+
+        {% if not is_student_view and not is_parent_view %}
+        <div id="createLessonTemplateModal" style="display:none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; padding: 1.25rem;">
+            <div class="glass-panel" style="width: min(720px, 100%); display:flex; flex-direction: column;">
+                <div style="display:flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 1rem 0.75rem 1rem; border-bottom: 1px solid var(--stroke-1);">
+                    <div>
+                        <div class="hero-eyebrow">шаблоны</div>
+                        <div style="font-weight: 900; font-size: 1.15rem; margin-top: 0.25rem;">Сохранить комнату как шаблон</div>
+                    </div>
+                    <button type="button" class="neo-button ghost sm" onclick="closeCreateLessonTemplateModal()"><i class="fas fa-xmark"></i></button>
+                </div>
+                <div style="padding: 1rem;">
+                    <div style="display:grid; grid-template-columns: 1fr; gap: 0.85rem;">
+                        <div>
+                            <label class="neo-label">Название</label>
+                            <input class="neo-input" id="tplTitle" placeholder="Напр.: Урок — Алгоритмы (структура)">
+                        </div>
+                        <div>
+                            <label class="neo-label">Описание (опционально)</label>
+                            <textarea class="neo-textarea" id="tplDesc" placeholder="Что внутри, как использовать..."></textarea>
+                        </div>
+                        <div style="display:flex; justify-content: flex-end; gap: 0.6rem; flex-wrap: wrap;">
+                            <button type="button" class="neo-button outline" onclick="closeCreateLessonTemplateModal()">Отмена</button>
+                            <button type="button" class="neo-button accent" onclick="createLessonTemplate()"><i class="fas fa-bookmark"></i> Сохранить</button>
+                        </div>
+                        <div style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.45;">
+                            Шаблон сохранит: Markdown‑конспект, блоки, материалы (в т.ч. из библиотеки).
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- TAB: TASKS (Existing Logic) -->
         <div id="tab-tasks" class="tab-pane">
@@ -909,6 +991,7 @@
         const LESSON_ID = {{ lesson.lesson_id }};
         const CSRF_TOKEN = "{{ csrf_token() if csrf_token else '' }}";
         const ASSIGNMENT_TYPE = "{{ assignment_type }}";
+        const INITIAL_BLOCKS = {{ (content_blocks or [])|tojson }};
         
         // Tabs Logic (с сохранением выбранной вкладки)
         function switchTab(tabName) {
@@ -958,6 +1041,14 @@
                 autosave: { enabled: true, uniqueId: `lesson_${LESSON_ID}_theory` },
                 toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "image", "|", "preview", "side-by-side", "fullscreen"]
             });
+            // init blocks editor
+            window.__lessonBlocks = Array.isArray(INITIAL_BLOCKS) ? INITIAL_BLOCKS : [];
+            renderBlocks();
+            try {
+                const modeSaved = localStorage.getItem(`lesson_${LESSON_ID}_theory_mode`);
+                if (modeSaved === 'blocks') setTheoryMode('blocks');
+                else setTheoryMode('markdown');
+            } catch (e) { setTheoryMode('markdown'); }
             {% else %}
             // Render Markdown for students
             const contentDiv = document.getElementById('theory-content');
@@ -990,6 +1081,205 @@
                 else toast.error('Ошибка сохранения');
             } catch (e) {
                 console.error(e);
+                toast.error('Ошибка сети');
+            }
+        }
+
+        function setTheoryMode(mode) {
+            const mdWrap = document.getElementById('theory-markdown-wrap');
+            const blWrap = document.getElementById('theory-blocks-wrap');
+            const mdBtn = document.getElementById('modeMarkdownBtn');
+            const blBtn = document.getElementById('modeBlocksBtn');
+            if (!mdWrap || !blWrap || !mdBtn || !blBtn) return;
+            if (mode === 'blocks') {
+                mdWrap.style.display = 'none';
+                blWrap.style.display = 'block';
+                mdBtn.classList.remove('accent');
+                blBtn.classList.add('accent');
+                try { localStorage.setItem(`lesson_${LESSON_ID}_theory_mode`, 'blocks'); } catch (e) {}
+            } else {
+                mdWrap.style.display = 'block';
+                blWrap.style.display = 'none';
+                blBtn.classList.remove('accent');
+                mdBtn.classList.add('accent');
+                try { localStorage.setItem(`lesson_${LESSON_ID}_theory_mode`, 'markdown'); } catch (e) {}
+                try { if (window.theoryEditor) window.theoryEditor.codemirror.refresh(); } catch (e) {}
+            }
+        }
+
+        function addBlock() {
+            if (!Array.isArray(window.__lessonBlocks)) window.__lessonBlocks = [];
+            window.__lessonBlocks.push({ type: 'paragraph', text: '' });
+            renderBlocks();
+        }
+
+        function removeBlock(idx) {
+            if (!Array.isArray(window.__lessonBlocks)) return;
+            window.__lessonBlocks.splice(idx, 1);
+            renderBlocks();
+        }
+
+        function moveBlock(idx, dir) {
+            if (!Array.isArray(window.__lessonBlocks)) return;
+            const next = idx + dir;
+            if (next < 0 || next >= window.__lessonBlocks.length) return;
+            const tmp = window.__lessonBlocks[idx];
+            window.__lessonBlocks[idx] = window.__lessonBlocks[next];
+            window.__lessonBlocks[next] = tmp;
+            renderBlocks();
+        }
+
+        function updateBlock(idx, key, value) {
+            if (!Array.isArray(window.__lessonBlocks)) return;
+            const b = window.__lessonBlocks[idx];
+            if (!b) return;
+            b[key] = value;
+        }
+
+        function renderBlocks() {
+            const host = document.getElementById('blocksList');
+            if (!host) return;
+            const blocks = Array.isArray(window.__lessonBlocks) ? window.__lessonBlocks : [];
+            host.innerHTML = '';
+            if (!blocks.length) {
+                const empty = document.createElement('div');
+                empty.className = 'glass-panel';
+                empty.style.padding = '1rem';
+                empty.style.color = 'var(--text-muted)';
+                empty.innerText = 'Блоков пока нет. Нажми «Блок», чтобы добавить первый.';
+                host.appendChild(empty);
+                return;
+            }
+            blocks.forEach((b, idx) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'glass-panel';
+                wrap.style.padding = '1rem';
+                wrap.style.border = '1px solid var(--stroke-1)';
+                wrap.style.display = 'flex';
+                wrap.style.flexDirection = 'column';
+                wrap.style.gap = '0.75rem';
+
+                const head = document.createElement('div');
+                head.style.display = 'flex';
+                head.style.justifyContent = 'space-between';
+                head.style.alignItems = 'center';
+                head.style.gap = '0.75rem';
+                head.style.flexWrap = 'wrap';
+                head.innerHTML = `
+                    <div style="display:flex; gap: 0.6rem; align-items:center; flex-wrap: wrap;">
+                        <span class="status-badge status-info" style="opacity:0.9;">Блок ${idx + 1}</span>
+                        <select class="neo-select" style="min-width: 220px;">
+                            <option value="paragraph">Текст (без Markdown)</option>
+                            <option value="callout">Выделение (callout)</option>
+                            <option value="image">Картинка</option>
+                            <option value="divider">Разделитель</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; gap: 0.5rem; flex-wrap: wrap; justify-content:flex-end;">
+                        <button type="button" class="neo-button ghost sm"><i class="fas fa-arrow-up"></i></button>
+                        <button type="button" class="neo-button ghost sm"><i class="fas fa-arrow-down"></i></button>
+                        <button type="button" class="neo-button danger sm"><i class="fas fa-trash"></i></button>
+                    </div>
+                `;
+                const sel = head.querySelector('select');
+                sel.value = (b && b.type) ? b.type : 'paragraph';
+                sel.addEventListener('change', () => {
+                    const t = sel.value;
+                    if (t === 'paragraph') window.__lessonBlocks[idx] = { type: 'paragraph', text: '' };
+                    if (t === 'callout') window.__lessonBlocks[idx] = { type: 'callout', tone: 'info', title: '', text: '' };
+                    if (t === 'image') window.__lessonBlocks[idx] = { type: 'image', url: '', caption: '' };
+                    if (t === 'divider') window.__lessonBlocks[idx] = { type: 'divider', style: 'line' };
+                    renderBlocks();
+                });
+                const btnUp = head.querySelectorAll('button')[0];
+                const btnDown = head.querySelectorAll('button')[1];
+                const btnDel = head.querySelectorAll('button')[2];
+                btnUp.addEventListener('click', () => moveBlock(idx, -1));
+                btnDown.addEventListener('click', () => moveBlock(idx, +1));
+                btnDel.addEventListener('click', () => removeBlock(idx));
+                wrap.appendChild(head);
+
+                const body = document.createElement('div');
+                const type = (b && b.type) ? b.type : 'paragraph';
+                if (type === 'paragraph') {
+                    body.innerHTML = `
+                        <label class="neo-label">Текст</label>
+                        <textarea class="neo-textarea" rows="4" placeholder="Обычный текст, без Markdown.">${escapeHtml(b.text || '')}</textarea>
+                    `;
+                    body.querySelector('textarea').addEventListener('input', (e) => updateBlock(idx, 'text', e.target.value));
+                } else if (type === 'callout') {
+                    body.innerHTML = `
+                        <div style="display:grid; grid-template-columns: 220px 1fr; gap: 0.75rem; align-items:start;" class="profile-grid-responsive">
+                            <div>
+                                <label class="neo-label">Тон</label>
+                                <select class="neo-select">
+                                    <option value="info">Инфо</option>
+                                    <option value="success">Успех</option>
+                                    <option value="warning">Внимание</option>
+                                    <option value="danger">Ошибка</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="neo-label">Заголовок</label>
+                                <input class="neo-input" placeholder="Напр.: Важно" value="${escapeHtml(b.title || '')}">
+                            </div>
+                        </div>
+                        <div style="margin-top: 0.75rem;">
+                            <label class="neo-label">Текст</label>
+                            <textarea class="neo-textarea" rows="4" placeholder="Суть выделения...">${escapeHtml(b.text || '')}</textarea>
+                        </div>
+                    `;
+                    const toneSel = body.querySelector('select');
+                    toneSel.value = b.tone || 'info';
+                    toneSel.addEventListener('change', (e) => updateBlock(idx, 'tone', e.target.value));
+                    body.querySelector('input').addEventListener('input', (e) => updateBlock(idx, 'title', e.target.value));
+                    body.querySelector('textarea').addEventListener('input', (e) => updateBlock(idx, 'text', e.target.value));
+                } else if (type === 'image') {
+                    body.innerHTML = `
+                        <label class="neo-label">URL картинки</label>
+                        <input class="neo-input" placeholder="https://..." value="${escapeHtml(b.url || '')}">
+                        <div style="margin-top: 0.75rem;">
+                            <label class="neo-label">Подпись (опционально)</label>
+                            <input class="neo-input" placeholder="Короткая подпись" value="${escapeHtml(b.caption || '')}">
+                        </div>
+                        <div style="margin-top: 0.75rem; color: var(--text-muted); font-size: 0.9rem;">Подсказка: можно вставлять ссылки на материалы из «Библиотеки».</div>
+                    `;
+                    const inputs = body.querySelectorAll('input');
+                    inputs[0].addEventListener('input', (e) => updateBlock(idx, 'url', e.target.value));
+                    inputs[1].addEventListener('input', (e) => updateBlock(idx, 'caption', e.target.value));
+                } else if (type === 'divider') {
+                    body.innerHTML = `
+                        <label class="neo-label">Тип</label>
+                        <select class="neo-select">
+                            <option value="line">Линия</option>
+                            <option value="space">Отступ</option>
+                        </select>
+                    `;
+                    const sel2 = body.querySelector('select');
+                    sel2.value = b.style || 'line';
+                    sel2.addEventListener('change', (e) => updateBlock(idx, 'style', e.target.value));
+                }
+                wrap.appendChild(body);
+
+                host.appendChild(wrap);
+            });
+        }
+
+        async function saveBlocks() {
+            try {
+                const blocks = Array.isArray(window.__lessonBlocks) ? window.__lessonBlocks : [];
+                const res = await fetch(`/lesson/${LESSON_ID}/content-blocks/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({ blocks })
+                });
+                const data = await res.json();
+                if (!data || !data.success) {
+                    toast.error((data && data.error) ? data.error : 'Ошибка сохранения блоков');
+                    return;
+                }
+                toast.success('Блоки сохранены');
+            } catch (e) {
                 toast.error('Ошибка сети');
             }
         }
@@ -1261,6 +1551,44 @@
                 .replaceAll('>', '&gt;')
                 .replaceAll('"', '&quot;')
                 .replaceAll("'", '&#39;');
+        }
+
+        function openCreateLessonTemplateModal() {
+            const modal = document.getElementById('createLessonTemplateModal');
+            if (!modal) return;
+            modal.style.display = 'flex';
+            const title = document.getElementById('tplTitle');
+            if (title && !title.value) title.value = '';
+            setTimeout(() => { if (title) title.focus(); }, 50);
+        }
+
+        function closeCreateLessonTemplateModal() {
+            const modal = document.getElementById('createLessonTemplateModal');
+            if (!modal) return;
+            modal.style.display = 'none';
+        }
+
+        async function createLessonTemplate() {
+            const titleEl = document.getElementById('tplTitle');
+            const descEl = document.getElementById('tplDesc');
+            const title = titleEl ? (titleEl.value || '').trim() : '';
+            const description = descEl ? (descEl.value || '').trim() : '';
+            try {
+                const res = await fetch('/library/lesson-templates/from-lesson', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({ lesson_id: LESSON_ID, title, description })
+                });
+                const data = await res.json();
+                if (!data || !data.success) {
+                    toast.error((data && data.error) ? data.error : 'Ошибка сохранения шаблона');
+                    return;
+                }
+                toast.success('Шаблон сохранён');
+                closeCreateLessonTemplateModal();
+            } catch (e) {
+                toast.error('Ошибка сети');
+            }
         }
 
         // Task Deletion (Legacy Support)

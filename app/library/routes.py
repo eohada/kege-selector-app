@@ -15,6 +15,7 @@ from sqlalchemy import func
 from app.library import library_bp
 from app.auth.rbac_utils import check_access, get_user_scope
 from app.models import db, User, Student, Lesson, MaterialAsset, LessonMaterialLink, LessonRoomTemplate, moscow_now
+from sqlalchemy.orm.attributes import flag_modified
 
 logger = logging.getLogger(__name__)
 
@@ -300,6 +301,167 @@ def materials_detach():
         db.session.rollback()
         logger.error(f"Failed to detach material: {e}", exc_info=True)
         return jsonify({'success': False, 'error': 'Ошибка удаления'}), 500
+
+    return jsonify({'success': True})
+
+
+@library_bp.route('/library/lesson-templates')
+@login_required
+@check_access('lesson.edit')
+def lesson_templates():
+    if not _require_teacher():
+        return "Forbidden", 403
+
+    q = (request.args.get('q') or '').strip()
+    lesson_id = request.args.get('lesson_id', type=int)
+
+    base = LessonRoomTemplate.query.filter(LessonRoomTemplate.is_active.is_(True))
+    base = base.filter(LessonRoomTemplate.created_by_user_id == current_user.id)
+    if q:
+        like = f"%{q.lower()}%"
+        base = base.filter(func.lower(LessonRoomTemplate.title).like(like))
+    templates = base.order_by(LessonRoomTemplate.updated_at.desc(), LessonRoomTemplate.created_at.desc()).limit(200).all()
+
+    lesson = None
+    if lesson_id:
+        try:
+            lesson = Lesson.query.get(lesson_id)
+            if lesson and not _assert_can_access_lesson(lesson):
+                lesson = None
+        except Exception:
+            lesson = None
+
+    return render_template('library_lesson_templates.html', templates=templates, q=q, lesson=lesson)
+
+
+@library_bp.route('/library/lesson-templates/from-lesson', methods=['POST'])
+@login_required
+@check_access('lesson.edit')
+def lesson_template_create_from_lesson():
+    if not _require_teacher():
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
+    data: dict[str, Any] = request.get_json(silent=True) or {}
+    lesson_id = data.get('lesson_id')
+    title = (data.get('title') or '').strip()
+    description = (data.get('description') or '').strip() or None
+    visibility = (data.get('visibility') or 'private').strip().lower()
+    if visibility not in {'private', 'shared'}:
+        visibility = 'private'
+
+    try:
+        lesson_id = int(lesson_id)
+    except Exception:
+        return jsonify({'success': False, 'error': 'lesson_id required'}), 400
+
+    lesson = Lesson.query.get_or_404(lesson_id)
+    if not _assert_can_access_lesson(lesson):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
+    if not title:
+        title = lesson.topic or f"Урок #{lesson.lesson_id}"
+
+    # asset ids attached to this lesson
+    asset_ids: list[int] = []
+    try:
+        links = LessonMaterialLink.query.filter_by(lesson_id=lesson.lesson_id).all()
+        asset_ids = [l.asset_id for l in links if l and l.asset_id]
+    except Exception:
+        asset_ids = []
+
+    payload = {
+        'content': lesson.content or '',
+        'content_blocks': lesson.content_blocks or [],
+        'materials': lesson.materials or [],
+        'asset_ids': asset_ids,
+        'created_from_lesson_id': lesson.lesson_id
+    }
+    if isinstance(payload['materials'], str):
+        try:
+            import json as _json
+            payload['materials'] = _json.loads(payload['materials'])
+        except Exception:
+            payload['materials'] = []
+
+    tpl = LessonRoomTemplate(
+        created_by_user_id=current_user.id,
+        title=title,
+        description=description,
+        payload=payload,
+        visibility=visibility,
+        is_active=True
+    )
+    db.session.add(tpl)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Failed to create lesson template: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Ошибка сохранения'}), 500
+
+    return jsonify({'success': True, 'template_id': tpl.template_id})
+
+
+@library_bp.route('/library/lesson-templates/<int:template_id>/apply', methods=['POST'])
+@login_required
+@check_access('lesson.edit')
+def lesson_template_apply(template_id: int):
+    if not _require_teacher():
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
+    data: dict[str, Any] = request.get_json(silent=True) or {}
+    lesson_id = data.get('lesson_id')
+    replace_materials = bool(data.get('replace_materials', True))
+    try:
+        lesson_id = int(lesson_id)
+    except Exception:
+        return jsonify({'success': False, 'error': 'lesson_id required'}), 400
+
+    tpl = LessonRoomTemplate.query.get_or_404(template_id)
+    if tpl.created_by_user_id != current_user.id and tpl.visibility != 'shared':
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
+    lesson = Lesson.query.get_or_404(lesson_id)
+    if not _assert_can_access_lesson(lesson):
+        return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
+    payload = tpl.payload or {}
+    if not isinstance(payload, dict):
+        return jsonify({'success': False, 'error': 'Некорректный шаблон'}), 400
+
+    lesson.content = (payload.get('content') or '')
+    lesson.content_blocks = payload.get('content_blocks') or []
+    flag_modified(lesson, "content_blocks")
+
+    if replace_materials:
+        mats = payload.get('materials') or []
+        lesson.materials = mats
+        flag_modified(lesson, "materials")
+
+    # replace library links
+    asset_ids = payload.get('asset_ids') or []
+    if not isinstance(asset_ids, list):
+        asset_ids = []
+
+    try:
+        LessonMaterialLink.query.filter_by(lesson_id=lesson.lesson_id).delete()
+        for aid in asset_ids:
+            try:
+                aid = int(aid)
+            except Exception:
+                continue
+            asset = MaterialAsset.query.filter_by(asset_id=aid, is_active=True).first()
+            if not asset:
+                continue
+            # приватная библиотека: разрешаем только свои ассеты
+            if asset.owner_user_id != current_user.id:
+                continue
+            db.session.add(LessonMaterialLink(lesson_id=lesson.lesson_id, asset_id=aid, created_by_user_id=current_user.id, order_index=0))
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Failed to apply lesson template: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Ошибка применения'}), 500
 
     return jsonify({'success': True})
 

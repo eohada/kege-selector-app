@@ -16,6 +16,7 @@ from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, perform_auto_check, normalize_answer_value  # comment
 from app.models import Lesson, LessonTask, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
@@ -246,6 +247,16 @@ def lesson_homework_view(lesson_id):
     # ----------------------------------
 
     student = lesson.student
+    # Контент-блоки (конструктор): приводим к list для шаблона
+    content_blocks = []
+    try:
+        cb = lesson.content_blocks
+        if isinstance(cb, str):
+            cb = json.loads(cb)
+        if isinstance(cb, list):
+            content_blocks = cb
+    except Exception:
+        content_blocks = []
     homework_tasks = get_sorted_assignments(lesson, 'homework')  # comment
     # Материалы из библиотеки, прикрепленные к уроку
     library_materials = []
@@ -290,7 +301,8 @@ def lesson_homework_view(lesson_id):
                            is_read_only=is_read_only,  # comment
                            viewer_timezone=viewer_timezone,  # comment
                            review_summary=(lesson.review_summaries or {}).get('homework', {}),  # comment
-                           library_materials=library_materials)  # comment
+                           library_materials=library_materials,  # comment
+                           content_blocks=content_blocks)  # comment
 
 @lessons_bp.route('/lesson/<int:lesson_id>/classwork-tasks')
 @login_required
@@ -302,6 +314,15 @@ def lesson_classwork_view(lesson_id):
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
     ).get_or_404(lesson_id)
     student = lesson.student
+    content_blocks = []
+    try:
+        cb = lesson.content_blocks
+        if isinstance(cb, str):
+            cb = json.loads(cb)
+        if isinstance(cb, list):
+            content_blocks = cb
+    except Exception:
+        content_blocks = []
     classwork_tasks = get_sorted_assignments(lesson, 'classwork')  # comment
     library_materials = []
     try:
@@ -345,7 +366,8 @@ def lesson_classwork_view(lesson_id):
                            is_read_only=is_read_only,  # comment
                            viewer_timezone=viewer_timezone,  # comment
                            review_summary=(lesson.review_summaries or {}).get('classwork', {}),  # comment
-                           library_materials=library_materials)  # comment
+                           library_materials=library_materials,  # comment
+                           content_blocks=content_blocks)  # comment
 
 @lessons_bp.route('/lesson/<int:lesson_id>/exam-tasks')
 @login_required
@@ -357,6 +379,15 @@ def lesson_exam_view(lesson_id):
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
     ).get_or_404(lesson_id)
     student = lesson.student
+    content_blocks = []
+    try:
+        cb = lesson.content_blocks
+        if isinstance(cb, str):
+            cb = json.loads(cb)
+        if isinstance(cb, list):
+            content_blocks = cb
+    except Exception:
+        content_blocks = []
     exam_tasks = get_sorted_assignments(lesson, 'exam')  # comment
     library_materials = []
     try:
@@ -400,7 +431,8 @@ def lesson_exam_view(lesson_id):
                            is_read_only=is_read_only,  # comment
                            viewer_timezone=viewer_timezone,  # comment
                            review_summary=(lesson.review_summaries or {}).get('exam', {}),  # comment
-                           library_materials=library_materials)  # comment
+                           library_materials=library_materials,  # comment
+                           content_blocks=content_blocks)  # comment
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/review-summary/<assignment_type>', methods=['POST'])
@@ -1591,6 +1623,56 @@ def lesson_content_save(lesson_id):
         db.session.commit()
         return jsonify({'success': True})
     return jsonify({'success': False, 'error': 'No content provided'}), 400
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/content-blocks/save', methods=['POST'])
+@login_required
+def lesson_content_blocks_save(lesson_id):
+    """Сохранение контента урока (конструктор блоков)."""
+    if current_user.is_student() or current_user.is_parent():
+         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    lesson = Lesson.query.get_or_404(lesson_id)
+    data = request.get_json(silent=True) or {}
+    blocks = data.get('blocks', None)
+    if not isinstance(blocks, list):
+        return jsonify({'success': False, 'error': 'blocks must be a list'}), 400
+
+    # sanitize structure
+    cleaned = []
+    for b in blocks:
+        if not isinstance(b, dict):
+            continue
+        t = (b.get('type') or '').strip().lower()
+        if t not in {'paragraph', 'callout', 'image', 'divider'}:
+            continue
+        item = {'type': t}
+        if t == 'paragraph':
+            item['text'] = (b.get('text') or '').strip()
+        elif t == 'callout':
+            item['title'] = (b.get('title') or '').strip()
+            item['text'] = (b.get('text') or '').strip()
+            item['tone'] = (b.get('tone') or 'info').strip().lower()
+            if item['tone'] not in {'info', 'success', 'warning', 'danger'}:
+                item['tone'] = 'info'
+        elif t == 'image':
+            item['url'] = (b.get('url') or '').strip()
+            item['caption'] = (b.get('caption') or '').strip()
+        elif t == 'divider':
+            item['style'] = (b.get('style') or 'line').strip().lower()
+            if item['style'] not in {'line', 'space'}:
+                item['style'] = 'line'
+        cleaned.append(item)
+
+    lesson.content_blocks = cleaned
+    flag_modified(lesson, "content_blocks")
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Failed to save content blocks: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Ошибка сохранения'}), 500
+    return jsonify({'success': True, 'count': len(cleaned)})
 
 @lessons_bp.route('/lesson/<int:lesson_id>/student-notes/save', methods=['POST'])
 @login_required
