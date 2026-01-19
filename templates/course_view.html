@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ course.title }} · Курс</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .course-hero {
+            background: linear-gradient(135deg, rgba(0, 255, 213, 0.06), rgba(31, 123, 255, 0.06));
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.75rem;
+            margin-bottom: 1.25rem;
+        }
+        .course-title {
+            font-size: 2.2rem;
+            font-weight: 900;
+            margin: 0.4rem 0 0 0;
+        }
+        .course-meta {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 0.75rem;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+        .course-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .progress-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.75rem;
+            margin-top: 1.25rem;
+        }
+        .metric {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            padding: 0.9rem 1rem;
+        }
+        .metric .label { color: var(--text-muted); font-size: 0.85rem; }
+        .metric .value { font-size: 1.35rem; font-weight: 900; margin-top: 0.25rem; }
+
+        .module-card {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+        }
+        .module-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        .module-title {
+            font-size: 1.25rem;
+            font-weight: 900;
+            margin: 0;
+        }
+        .lesson-chip {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: center;
+            padding: 0.9rem 1rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--stroke-1);
+            background: var(--surface-2);
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .lesson-chip:hover { transform: translateY(-1px); background: rgba(255,255,255,0.04); }
+        .lesson-chip .left { min-width: 0; }
+        .lesson-chip .topic {
+            font-weight: 800;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .lesson-chip .sub {
+            color: var(--text-muted);
+            margin-top: 0.35rem;
+            font-size: 0.9rem;
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .module-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1rem;
+        }
+        @media (max-width: 980px) {
+            .module-grid { grid-template-columns: 1fr; }
+            .course-actions { justify-content: flex-start; }
+        }
+        .assign-box {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+        }
+        .assign-box-title { font-weight: 900; margin: 0; font-size: 1.05rem; }
+        .assign-row { display: grid; grid-template-columns: 1fr; gap: 0.75rem; margin-top: 1rem; }
+        .assign-actions { display:flex; justify-content: flex-end; margin-top: 0.75rem; }
+        .small-muted { color: var(--text-muted); font-size: 0.9rem; line-height: 1.4; margin-top: 0.35rem; }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'students' %}
+        {% include '_primary_nav.html' %}
+
+        <main style="margin-top: 1.25rem;">
+            <div class="course-hero">
+                <div style="display:flex; justify-content: space-between; gap: 1rem; align-items: flex-start; flex-wrap: wrap;">
+                    <div style="min-width: 0;">
+                        <div class="hero-eyebrow">Курс ученика</div>
+                        <div class="course-title">{{ course.title }}</div>
+                        <div class="course-meta">
+                            <span><i class="fas fa-user-graduate"></i> {{ student.name }}</span>
+                            {% if course.subject %}<span><i class="fas fa-book"></i> {{ course.subject }}</span>{% endif %}
+                            <span>
+                                <i class="far fa-clock"></i>
+                                Обновлён: {{ course.updated_at.strftime('%d.%m.%Y') if course.updated_at else '—' }}
+                            </span>
+                            <span class="status-badge {% if course.status == 'archived' %}status-warning{% else %}status-success{% endif %}">
+                                {% if course.status == 'archived' %}Архив{% else %}Активен{% endif %}
+                            </span>
+                        </div>
+                        {% if course.description %}
+                        <div style="margin-top: 0.85rem; color: var(--text-muted); line-height: 1.55;">
+                            {{ course.description }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="course-actions">
+                        <a class="neo-button ghost" href="{{ url_for('courses.student_courses', student_id=student.student_id) }}">
+                            <i class="fas fa-arrow-left ui-icon ui-icon--sm"></i> Курсы
+                        </a>
+                        <a class="neo-button outline" href="{{ url_for('students.student_profile', student_id=student.student_id) }}">
+                            <i class="fas fa-user ui-icon ui-icon--sm"></i> Профиль
+                        </a>
+                        {% if not current_user.is_student() and not current_user.is_parent() %}
+                        <a class="neo-button outline" href="{{ url_for('courses.course_edit', course_id=course.course_id) }}">
+                            <i class="fas fa-pen ui-icon ui-icon--sm"></i> Редактировать
+                        </a>
+                        <a class="neo-button accent" href="{{ url_for('courses.module_new', course_id=course.course_id) }}">
+                            <i class="fas fa-plus ui-icon ui-icon--sm"></i> Модуль
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="progress-row">
+                    <div class="metric">
+                        <div class="label">Всего уроков</div>
+                        <div class="value">{{ total_lessons }}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="label">Проведено</div>
+                        <div class="value" style="color: var(--accent-2);">{{ completed_lessons }}</div>
+                    </div>
+                    <div class="metric">
+                        <div class="label">Запланировано</div>
+                        <div class="value" style="color: var(--accent-1);">{{ planned_lessons }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="module-grid">
+                <div style="display:flex; flex-direction: column; gap: 1rem;">
+                    {% if modules and modules|length > 0 %}
+                        {% for m in modules %}
+                        <section class="module-card" id="module-{{ m.module_id }}">
+                            <div class="module-head">
+                                <div style="min-width: 0;">
+                                    <div class="hero-eyebrow">Модуль {{ loop.index }}</div>
+                                    <h2 class="module-title">{{ m.title }}</h2>
+                                    {% if m.description %}
+                                    <div class="small-muted">{{ m.description }}</div>
+                                    {% endif %}
+                                </div>
+                                {% if not current_user.is_student() and not current_user.is_parent() %}
+                                <a class="neo-button outline" href="{{ url_for('students.lesson_new', student_id=student.student_id, course_module_id=m.module_id, return_to='course') }}">
+                                    <i class="fas fa-plus ui-icon ui-icon--sm"></i> Урок
+                                </a>
+                                {% endif %}
+                            </div>
+
+                            {% set mod_lessons = lessons_by_module.get(m.module_id, []) %}
+                            {% if mod_lessons and mod_lessons|length > 0 %}
+                                <div style="display:flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem;">
+                                    {% for l in mod_lessons %}
+                                    <a class="lesson-chip" href="{{ url_for('lessons.lesson_homework_view', lesson_id=l.lesson_id) }}">
+                                        <div class="left">
+                                            <div class="topic">{{ l.topic or 'Урок' }}</div>
+                                            <div class="sub">
+                                                <span><i class="far fa-calendar"></i> {{ l.lesson_date.strftime('%d.%m.%Y %H:%M') if l.lesson_date else '—' }}</span>
+                                                <span><i class="far fa-clock"></i> {{ l.duration }} мин</span>
+                                            </div>
+                                        </div>
+                                        <div style="display:flex; gap: 0.5rem; align-items: center;">
+                                            <span class="status-badge status-info" style="opacity: 0.9;">
+                                                {% if (l.status or '').lower() == 'planned' %}Запланирован
+                                                {% elif (l.status or '').lower() == 'in_progress' %}Идёт
+                                                {% elif (l.status or '').lower() == 'completed' %}Проведён
+                                                {% elif (l.status or '').lower() == 'cancelled' %}Отменён
+                                                {% else %}{{ l.status }}{% endif %}
+                                            </span>
+                                            <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
+                                        </div>
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="glass-panel" style="margin-top: 0.75rem; padding: 1rem;">
+                                    <div style="font-weight: 800;">Пока нет уроков в модуле</div>
+                                    <div class="small-muted">Добавь урок прямо в этот модуль или привяжи уже существующий урок справа.</div>
+                                </div>
+                            {% endif %}
+                        </section>
+                        {% endfor %}
+                    {% else %}
+                        <div class="glass-panel" style="padding: 2rem;">
+                            <div style="font-size: 1.3rem; font-weight: 900;">Модули ещё не созданы</div>
+                            <div class="small-muted" style="margin-top: 0.5rem;">
+                                Модуль — это раздел курса (например “Алгоритмы”, “SQL”, “Теория графов”). Внутрь добавляются уроки.
+                            </div>
+                            {% if not current_user.is_student() and not current_user.is_parent() %}
+                            <div style="margin-top: 1.25rem; display:flex; gap: 0.75rem; flex-wrap: wrap;">
+                                <a class="neo-button accent" href="{{ url_for('courses.module_new', course_id=course.course_id) }}">
+                                    <i class="fas fa-plus ui-icon ui-icon--sm"></i> Добавить первый модуль
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <aside class="assign-box">
+                    <h3 class="assign-box-title">Привязать существующий урок к модулю</h3>
+                    <div class="small-muted">Это быстро структурирует текущую историю уроков по разделам курса.</div>
+
+                    {% if not current_user.is_student() and not current_user.is_parent() %}
+                    <form method="POST" action="{{ url_for('courses.course_assign_lesson', course_id=course.course_id) }}" style="margin-top: 1rem;">
+                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                        <div class="assign-row">
+                            <div>
+                                <label style="display:block; font-weight: 800; color: var(--text-muted); margin-bottom: 0.35rem;">Урок</label>
+                                <select class="neo-select" name="lesson_id" required>
+                                    <option value="" selected disabled>Выберите урок…</option>
+                                    {% for l in unassigned_lessons %}
+                                    <option value="{{ l.lesson_id }}">
+                                        {{ l.lesson_date.strftime('%d.%m.%Y') if l.lesson_date else '—' }} · {{ l.topic or 'Урок' }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if not unassigned_lessons or unassigned_lessons|length == 0 %}
+                                <div class="small-muted">Нет непривязанных уроков.</div>
+                                {% endif %}
+                            </div>
+
+                            <div>
+                                <label style="display:block; font-weight: 800; color: var(--text-muted); margin-bottom: 0.35rem;">Модуль</label>
+                                <select class="neo-select" name="module_id" required>
+                                    <option value="" selected disabled>Выберите модуль…</option>
+                                    {% for m in modules %}
+                                    <option value="{{ m.module_id }}">{{ m.title }}</option>
+                                    {% endfor %}
+                                </select>
+                                {% if not modules or modules|length == 0 %}
+                                <div class="small-muted">Сначала создайте модуль.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="assign-actions">
+                            <button type="submit" class="neo-button accent" {% if (not unassigned_lessons or unassigned_lessons|length == 0) or (not modules or modules|length == 0) %}disabled{% endif %}>
+                                <i class="fas fa-link ui-icon ui-icon--sm"></i> Привязать
+                            </button>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;">
+                        <div style="font-weight: 800;">Только просмотр</div>
+                        <div class="small-muted">Создание модулей и привязка уроков доступны преподавателю.</div>
+                    </div>
+                    {% endif %}
+                </aside>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
+

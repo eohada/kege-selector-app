@@ -4,7 +4,7 @@
 import logging
 from sqlalchemy import inspect, text
 from app.models import db
-from core.db_models import Tester, AuditLog, RolePermission, User, LessonTaskTeacherComment, TaskReview
+from core.db_models import Tester, AuditLog, RolePermission, User, LessonTaskTeacherComment, TaskReview, Course, CourseModule
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
 
 logger = logging.getLogger(__name__)
@@ -199,6 +199,23 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create TaskReviews table: {e}")
                     db.session.rollback()
+
+            # Фундамент: курсы и модули (курс → модуль → урок)
+            if 'Courses' not in table_names and 'courses' not in table_names:
+                try:
+                    Course.__table__.create(db.engine)
+                    logger.info("Courses table created")
+                except Exception as e:
+                    logger.warning(f"Could not create Courses table: {e}")
+                    db.session.rollback()
+
+            if 'CourseModules' not in table_names and 'coursemodules' not in table_names:
+                try:
+                    CourseModule.__table__.create(db.engine)
+                    logger.info("CourseModules table created")
+                except Exception as e:
+                    logger.warning(f"Could not create CourseModules table: {e}")
+                    db.session.rollback()
             lessons_table = 'Lessons' if 'Lessons' in table_names else ('lessons' if 'lessons' in table_names else None)
             students_table = 'Students' if 'Students' in table_names else ('students' if 'students' in table_names else None)
             lesson_tasks_table = 'LessonTasks' if 'LessonTasks' in table_names else ('lessontasks' if 'lessontasks' in table_names else None)
@@ -231,6 +248,7 @@ def ensure_schema_columns(app):
             safe_add_column('content', 'TEXT')
             safe_add_column('student_notes', 'TEXT')
             safe_add_column('materials', 'JSON')
+            safe_add_column('course_module_id', 'INTEGER')
 
             if lesson_tasks_table:
                 lesson_task_columns = {col['name'] for col in inspector.get_columns(lesson_tasks_table)}

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} · {{ course.title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .form-card {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.75rem;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+        .field-label {
+            display: block;
+            margin-bottom: 0.4rem;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+        .field-help {
+            margin-top: 0.35rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        .form-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            margin-top: 1.25rem;
+        }
+        .error-text { margin-top: 0.35rem; color: var(--danger); font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'students' %}
+        {% include '_primary_nav.html' %}
+
+        <main style="margin-top: 1.25rem;">
+            <div class="page-header" style="display:flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+                <div>
+                    <div class="hero-eyebrow">Курс → модули</div>
+                    <h1 style="margin: 0.35rem 0 0 0; font-size: 2.1rem; font-weight: 900;">{{ title }}</h1>
+                    <p style="margin: 0.65rem 0 0 0; color: var(--text-muted);">
+                        Курс: <strong>{{ course.title }}</strong> · Ученик: <strong>{{ student.name }}</strong>
+                    </p>
+                </div>
+                <div style="display:flex; gap: 0.75rem; flex-wrap: wrap;">
+                    <a class="neo-button ghost" href="{{ url_for('courses.course_view', course_id=course.course_id) }}">
+                        <i class="fas fa-arrow-left ui-icon ui-icon--sm"></i> В курс
+                    </a>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+
+                    <div class="form-row">
+                        <div>
+                            <label class="field-label" for="title">{{ form.title.label.text }}</label>
+                            {{ form.title(class_="neo-input", id="title", placeholder="Например: Алгоритмы и структуры данных") }}
+                            {% if form.title.errors %}
+                                <div class="error-text">{{ form.title.errors[0] }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div>
+                            <label class="field-label" for="order_index">{{ form.order_index.label.text }}</label>
+                            {{ form.order_index(class_="neo-input", id="order_index") }}
+                            {% if form.order_index.errors %}
+                                <div class="error-text">{{ form.order_index.errors[0] }}</div>
+                            {% endif %}
+                            <div class="field-help">Чем меньше число — тем выше модуль в списке.</div>
+                        </div>
+
+                        <div>
+                            <label class="field-label" for="description">{{ form.description.label.text }}</label>
+                            {{ form.description(class_="neo-input", id="description", rows="4", style="min-height: 110px;", placeholder="Кратко: что внутри, требования, результат…") }}
+                            {% if form.description.errors %}
+                                <div class="error-text">{{ form.description.errors[0] }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="neo-button accent">
+                            <i class="fas fa-save ui-icon ui-icon--sm"></i> Сохранить
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
+

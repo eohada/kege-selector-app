@@ -144,10 +144,48 @@ class StudentTaskStatistics(db.Model):
     
     student = db.relationship('Student', back_populates='task_statistics')
 
+
+class Course(db.Model):
+    """Курс (программа обучения) для конкретного ученика: курс → модули → уроки."""
+    __tablename__ = 'Courses'
+    course_id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    title = db.Column(db.String(200), nullable=False)
+    subject = db.Column(db.String(100), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+
+    status = db.Column(db.String(30), default='active', nullable=False, index=True)  # active|archived
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+    modules = db.relationship('CourseModule', back_populates='course', lazy=True, cascade='all, delete-orphan')
+
+
+class CourseModule(db.Model):
+    """Модуль курса (раздел/тема)."""
+    __tablename__ = 'CourseModules'
+    module_id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('Courses.course_id'), nullable=False, index=True)
+
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    order_index = db.Column(db.Integer, default=0, nullable=False, index=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    course = db.relationship('Course', back_populates='modules')
+    lessons = db.relationship('Lesson', back_populates='course_module', lazy=True)
+
 class Lesson(db.Model):
     __tablename__ = 'Lessons'
     lesson_id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False)
+    course_module_id = db.Column(db.Integer, db.ForeignKey('CourseModules.module_id'), nullable=True, index=True)
     lesson_type = db.Column(db.String(50), default='regular')
     lesson_date = db.Column(db.DateTime, nullable=False)
     duration = db.Column(db.Integer, default=60)
@@ -166,6 +204,7 @@ class Lesson(db.Model):
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
 
     student = db.relationship('Student', back_populates='lessons')
+    course_module = db.relationship('CourseModule', foreign_keys=[course_module_id], back_populates='lessons')
     homework_tasks = db.relationship('LessonTask', back_populates='lesson', lazy=True, cascade='all, delete-orphan')
 
     @property

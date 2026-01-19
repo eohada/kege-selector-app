@@ -173,6 +173,7 @@ def create_app(config_name=None):
     from app.designer import designer_bp
     from app.assignments import assignments_bp
     from app.remote_admin import remote_admin_bp
+    from app.courses import courses_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -188,6 +189,7 @@ def create_app(config_name=None):
     app.register_blueprint(designer_bp)
     app.register_blueprint(assignments_bp)
     app.register_blueprint(remote_admin_bp)
+    app.register_blueprint(courses_bp)
     
     # Исключаем logout из CSRF защиты
     from app.auth.routes import logout

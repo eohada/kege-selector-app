@@ -875,6 +875,24 @@ def lesson_new(student_id):
     
     student = Student.query.get_or_404(student_id)
     form = LessonForm()
+    course_module_id = request.args.get('course_module_id', type=int)
+    return_to = (request.args.get('return_to') or '').strip().lower()
+
+    # Если пришёл course_module_id — проверяем, что модуль действительно относится к этому ученику
+    if course_module_id:
+        try:
+            from app.models import CourseModule, Course
+            module = CourseModule.query.filter_by(module_id=course_module_id).first()
+            if not module:
+                flash('Модуль курса не найден. Урок будет создан без привязки к модулю.', 'warning')
+                course_module_id = None
+            else:
+                course = Course.query.filter_by(course_id=module.course_id).first()
+                if not course or course.student_id != student.student_id:
+                    flash('Модуль курса не относится к этому ученику. Урок будет создан без привязки к модулю.', 'warning')
+                    course_module_id = None
+        except Exception:
+            course_module_id = None
 
     if form.validate_on_submit():
         ensure_introductory_without_homework(form)
@@ -906,6 +924,7 @@ def lesson_new(student_id):
         
         lesson = Lesson(
             student_id=student_id,
+            course_module_id=course_module_id,
             lesson_type=form.lesson_type.data,
             lesson_date=lesson_date_utc,
             duration=form.duration.data,
@@ -960,6 +979,14 @@ def lesson_new(student_id):
             return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id, open_create=1))  # Открываем страницу КР и автозапуск модалки
         if next_action == 'exam':  # Проверочная работа
             return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson.lesson_id, open_create=1))  # Открываем страницу проверочной и автозапуск модалки
+        if return_to == 'course' and course_module_id:
+            try:
+                from app.models import CourseModule
+                module = CourseModule.query.filter_by(module_id=course_module_id).first()
+                if module:
+                    return redirect(url_for('courses.course_view', course_id=module.course_id, _anchor=f'module-{course_module_id}'))
+            except Exception:
+                pass
         return redirect(url_for('students.student_profile', student_id=student_id))  # Дефолт: возвращаемся в профиль
 
     return render_template('lesson_form.html', form=form, student=student, title='Добавить урок', is_new=True)
