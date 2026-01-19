@@ -10,9 +10,20 @@ from app.auth.rbac_utils import get_user_scope
 
 
 def _get_student_user(student: Student) -> User | None:
-    if not student or not getattr(student, 'email', None):
+    if not student:
         return None
-    return User.query.filter_by(email=student.email).first()
+    if getattr(student, 'email', None):
+        u = User.query.filter_by(email=student.email).first()
+        if u:
+            return u
+    # В некоторых окружениях email может быть пустым. Часто student_id совпадает с User.id студента.
+    try:
+        u = User.query.get(student.student_id)
+        if u and u.role == 'student':
+            return u
+    except Exception:
+        pass
+    return None
 
 
 def _can_access_student(student: Student) -> bool:
@@ -25,16 +36,31 @@ def _can_access_student(student: Student) -> bool:
         return True
 
     if getattr(current_user, 'is_student', None) and current_user.is_student():
-        return bool(student.email and current_user.email and student.email.strip().lower() == current_user.email.strip().lower())
+        # Студент видит свои курсы.
+        # Основной способ — по email, но в sandbox окружениях email может быть пустым,
+        # при этом часто Student.student_id совпадает с User.id.
+        if student.email and current_user.email and student.email.strip().lower() == current_user.email.strip().lower():
+            return True
+        if student.student_id == current_user.id:
+            return True
+        if getattr(student, 'platform_id', None) and current_user.username and str(student.platform_id).strip() == str(current_user.username).strip():
+            return True
+        return False
 
     # Tutor/прочие роли — через data scope (по user_id ученика)
     scope = get_user_scope(current_user)
     if getattr(scope, 'can_see_all', False):
         return True
     st_user = _get_student_user(student)
-    if not st_user:
+    if st_user and st_user.id in getattr(scope, 'student_ids', []):
+        return True
+
+    # Если Student не удалось сопоставить по email, пробуем безопасный fallback:
+    # если student.student_id совпадает с User.id ученика в Enrollment/FamilyTie.
+    try:
+        return student.student_id in getattr(scope, 'student_ids', [])
+    except Exception:
         return False
-    return st_user.id in getattr(scope, 'student_ids', set())
 
 
 def _guard_student(student_id: int) -> Student:
