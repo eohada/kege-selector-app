@@ -106,6 +106,15 @@
             </span>
         </a>
         {% endif %}
+
+        {% if current_user.is_authenticated and has_permission(current_user, 'assignment.grade') %}
+        <a href="{{ url_for('lessons.review_queue') }}" class="nav-link {% if active_page == 'review_queue' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проверка" class="nav-link-icon">
+                <span class="nav-link-label">Проверка</span>
+            </span>
+        </a>
+        {% endif %}
         {% endif %}
 
         {% if not current_user.is_parent() and not current_user.is_student() %}

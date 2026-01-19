@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проверка · Журнал</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .queue-hero {
+            background: linear-gradient(135deg, rgba(0, 255, 213, 0.06), rgba(31, 123, 255, 0.06));
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .queue-title {
+            font-size: 2.15rem;
+            font-weight: 900;
+            margin: 0.4rem 0 0 0;
+        }
+        .queue-sub {
+            color: var(--text-muted);
+            margin-top: 0.65rem;
+            line-height: 1.45;
+        }
+        .filters {
+            display: grid;
+            grid-template-columns: 1.1fr 1fr 1.4fr auto;
+            gap: 0.75rem;
+            align-items: end;
+            margin-top: 1.1rem;
+        }
+        @media (max-width: 980px) {
+            .filters { grid-template-columns: 1fr; }
+        }
+        .filter-label {
+            color: var(--text-muted);
+            font-weight: 800;
+            font-size: 0.9rem;
+            margin-bottom: 0.35rem;
+            display: block;
+        }
+        .card {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+        }
+        .lesson-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+        .lesson-title {
+            font-size: 1.2rem;
+            font-weight: 900;
+            margin: 0;
+        }
+        .lesson-meta {
+            color: var(--text-muted);
+            margin-top: 0.4rem;
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: center;
+            font-size: 0.92rem;
+        }
+        .tasks-grid {
+            margin-top: 0.9rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 0.65rem;
+        }
+        .task-chip {
+            border: 1px solid var(--stroke-1);
+            background: var(--surface-2);
+            border-radius: var(--radius-sm);
+            padding: 0.75rem 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.2s, background 0.2s, border-color 0.2s;
+        }
+        .task-chip:hover {
+            transform: translateY(-1px);
+            background: rgba(255,255,255,0.04);
+            border-color: rgba(0,255,213,0.35);
+        }
+        .task-left { min-width: 0; }
+        .task-name {
+            font-weight: 900;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .task-sub {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+        .right-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-end;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'review_queue' %}
+        {% include '_primary_nav.html' %}
+
+        <main style="margin-top: 1.25rem;">
+            <section class="queue-hero">
+                <div class="hero-eyebrow">Домашка/проверка</div>
+                <h1 class="queue-title">Журнал проверок</h1>
+                <div class="queue-sub">Единая очередь «что проверить» по задачам из классной комнаты. Фильтруй и переходи в урок в режиме проверки.</div>
+
+                <form method="GET" class="filters">
+                    <div>
+                        <label class="filter-label" for="status">Статус</label>
+                        <select class="neo-select" id="status" name="status">
+                            <option value="submitted" {% if status == 'submitted' %}selected{% endif %}>Сдано (на проверку)</option>
+                            <option value="returned" {% if status == 'returned' %}selected{% endif %}>На доработку</option>
+                            <option value="graded" {% if status == 'graded' %}selected{% endif %}>Проверено</option>
+                            <option value="pending" {% if status == 'pending' %}selected{% endif %}>Черновики</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="filter-label" for="assignment_type">Тип</label>
+                        <select class="neo-select" id="assignment_type" name="assignment_type">
+                            <option value="" {% if not assignment_type %}selected{% endif %}>Все</option>
+                            <option value="homework" {% if assignment_type == 'homework' %}selected{% endif %}>ДЗ</option>
+                            <option value="classwork" {% if assignment_type == 'classwork' %}selected{% endif %}>КР</option>
+                            <option value="exam" {% if assignment_type == 'exam' %}selected{% endif %}>Проверочная</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="filter-label" for="student">Ученик</label>
+                        <input class="neo-input" id="student" name="student" value="{{ student_query }}" placeholder="Поиск по имени…">
+                    </div>
+
+                    <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end;">
+                        <button type="submit" class="neo-button accent">
+                            <i class="fas fa-filter ui-icon ui-icon--sm"></i> Применить
+                        </button>
+                        <a href="{{ url_for('lessons.review_queue') }}" class="neo-button outline">
+                            <i class="fas fa-rotate-left ui-icon ui-icon--sm"></i> Сброс
+                        </a>
+                    </div>
+                </form>
+            </section>
+
+            {% if lesson_cards and lesson_cards|length > 0 %}
+                <div style="display:flex; flex-direction: column; gap: 0.9rem;">
+                    {% for item in lesson_cards %}
+                        {% set lesson = item.lesson %}
+                        {% set student = item.student %}
+                        {% set tasks = item.tasks %}
+                        <section class="card">
+                            <div class="lesson-head">
+                                <div style="min-width: 0;">
+                                    <h2 class="lesson-title">{{ lesson.topic or 'Урок' }}</h2>
+                                    <div class="lesson-meta">
+                                        <span><i class="fas fa-user-graduate"></i> <strong>{{ student.name if student else '—' }}</strong></span>
+                                        <span><i class="far fa-calendar"></i> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else '—' }}</span>
+                                        <span class="status-badge status-info" style="opacity: 0.95;">{{ tasks|length }} задач</span>
+                                    </div>
+                                </div>
+                                <div class="right-actions">
+                                    <a class="neo-button outline" href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}">
+                                        <i class="fas fa-door-open ui-icon ui-icon--sm"></i> Открыть урок
+                                    </a>
+                                    {% if status == 'submitted' %}
+                                    <form method="POST" action="{{ url_for('lessons.review_bulk_update_lesson', lesson_id=lesson.lesson_id) }}" style="display:inline;">
+                                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                        <input type="hidden" name="action" value="mark_graded">
+                                        <input type="hidden" name="status" value="{{ status }}">
+                                        <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
+                                        <input type="hidden" name="student" value="{{ student_query }}">
+                                        <button type="submit" class="neo-button accent">
+                                            <i class="fas fa-check ui-icon ui-icon--sm"></i> Всё проверено
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('lessons.review_bulk_update_lesson', lesson_id=lesson.lesson_id) }}" style="display:inline;">
+                                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                        <input type="hidden" name="action" value="mark_returned">
+                                        <input type="hidden" name="status" value="{{ status }}">
+                                        <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
+                                        <input type="hidden" name="student" value="{{ student_query }}">
+                                        <button type="submit" class="neo-button outline">
+                                            <i class="fas fa-rotate-left ui-icon ui-icon--sm"></i> На доработку
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="tasks-grid">
+                                {% for lt in tasks %}
+                                    {% set tnum = lt.task.task_number if lt.task and lt.task.task_number else None %}
+                                    {% set label = ('№' ~ tnum) if tnum else ('ID ' ~ lt.lesson_task_id) %}
+                                    <a class="task-chip" href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}#task-{{ lt.lesson_task_id }}">
+                                        <div class="task-left">
+                                            <div class="task-name">{{ label }}</div>
+                                            <div class="task-sub">
+                                                {% if lt.assignment_type == 'classwork' %}КР{% elif lt.assignment_type == 'exam' %}Проверочная{% else %}ДЗ{% endif %}
+                                                ·
+                                                {% if lt.student_submission %}есть ответ{% else %}без ответа{% endif %}
+                                            </div>
+                                        </div>
+                                        <span class="status-badge status-info" style="opacity: 0.9;">
+                                            {% if (lt.status or '').lower() == 'submitted' %}Сдано
+                                            {% elif (lt.status or '').lower() == 'graded' %}Проверено
+                                            {% elif (lt.status or '').lower() == 'returned' %}На доработку
+                                            {% elif (lt.status or '').lower() == 'pending' %}Черновик
+                                            {% else %}{{ lt.status }}{% endif %}
+                                        </span>
+                                    </a>
+                                {% endfor %}
+                            </div>
+                        </section>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="glass-panel" style="padding: 2rem; text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 0.75rem;">✅</div>
+                    <div style="font-size: 1.25rem; font-weight: 900;">Очередь пуста</div>
+                    <div style="color: var(--text-muted); margin-top: 0.5rem;">По текущим фильтрам нет задач.</div>
+                </div>
+            {% endif %}
+        </main>
+    </div>
+</body>
+</html>
+

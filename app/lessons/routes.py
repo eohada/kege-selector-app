@@ -7,17 +7,59 @@ import json
 from werkzeug.utils import secure_filename
 from flask import render_template, request, redirect, url_for, flash, jsonify, make_response, current_app  # current_app нужен для определения типа БД (Postgres)
 from flask_login import login_required, current_user  # comment
-from sqlalchemy import text  # text нужен для setval(pg_get_serial_sequence(...)) при сбитых sequences
+from sqlalchemy import text, or_  # text нужен для setval(pg_get_serial_sequence(...)) при сбитых sequences
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from app.utils.db_migrations import ensure_schema_columns
+from app.auth.rbac_utils import check_access, get_user_scope
 
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, perform_auto_check, normalize_answer_value  # comment
-from app.models import Lesson, LessonTask, Student, Tasks, LessonTaskTeacherComment, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, LessonTask, Student, Tasks, LessonTaskTeacherComment, User, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_accessible_student_ids(scope: dict) -> list[int]:
+    """
+    Приводим data-scope к Student.student_id (потому что Lesson.student_id указывает на Students.student_id).
+    В Enrollment/FamilyTie у нас хранятся User.id ученика, поэтому маппим через email,
+    а также держим fallback для окружений, где Student.student_id совпадает с User.id.
+    """
+    if not scope or scope.get('can_see_all'):
+        return []
+
+    user_ids = scope.get('student_ids') or []
+    if not user_ids:
+        return []
+
+    student_ids: list[int] = []
+
+    try:
+        student_users = User.query.filter(User.id.in_(user_ids)).all()
+        emails = [u.email for u in student_users if u and u.email]
+        if emails:
+            students_by_email = Student.query.filter(Student.email.in_(emails)).all()
+            student_ids.extend([s.student_id for s in students_by_email if s])
+    except Exception as e:
+        logger.warning(f"Failed to map scope user_ids->student_ids via email: {e}")
+
+    # Fallback: если в окружении Student.student_id == User.id
+    try:
+        students_by_id = Student.query.filter(Student.student_id.in_(user_ids)).all()
+        student_ids.extend([s.student_id for s in students_by_id if s])
+    except Exception as e:
+        logger.warning(f"Failed to map scope user_ids->student_ids via id fallback: {e}")
+
+    # unique, stable order
+    seen = set()
+    out: list[int] = []
+    for sid in student_ids:
+        if sid not in seen:
+            seen.add(sid)
+            out.append(sid)
+    return out
 
 @lessons_bp.route('/lesson/<int:lesson_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -295,6 +337,128 @@ def lesson_exam_view(lesson_id):
                            is_parent_view=is_parent_view,  # comment
                            is_read_only=is_read_only,  # comment
                            viewer_timezone=viewer_timezone)  # comment
+
+
+@lessons_bp.route('/reviews/queue')
+@login_required
+@check_access('assignment.grade')
+def review_queue():
+    """
+    Единый журнал проверок преподавателя по задачам в классной комнате (LessonTask).
+    Показывает очередь "что проверить" с фильтрами.
+    """
+    # Параметры фильтров
+    status = (request.args.get('status') or 'submitted').strip().lower()
+    assignment_type = (request.args.get('assignment_type') or '').strip().lower()  # homework|classwork|exam
+    student_query = (request.args.get('student') or '').strip()
+
+    allowed_statuses = {'submitted', 'returned', 'graded', 'pending'}
+    if status not in allowed_statuses:
+        status = 'submitted'
+
+    allowed_types = {'homework', 'classwork', 'exam'}
+    if assignment_type and assignment_type not in allowed_types:
+        assignment_type = ''
+
+    q = LessonTask.query.options(
+        db.joinedload(LessonTask.lesson).joinedload(Lesson.student),
+        db.joinedload(LessonTask.task),
+    ).join(Lesson, Lesson.lesson_id == LessonTask.lesson_id).join(Student, Student.student_id == Lesson.student_id)
+
+    q = q.filter(LessonTask.status == status)
+    if assignment_type:
+        q = q.filter((LessonTask.assignment_type == assignment_type) | (LessonTask.assignment_type.is_(None) if assignment_type == 'homework' else False))
+
+    if student_query:
+        q = q.filter(Student.name.ilike(f'%{student_query}%'))
+
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all'):
+        accessible_student_ids = _resolve_accessible_student_ids(scope)
+        if not accessible_student_ids:
+            q = q.filter(False)
+        else:
+            q = q.filter(Lesson.student_id.in_(accessible_student_ids))
+
+    lesson_cards = []
+    by_lesson = {}
+    tasks = q.order_by(Lesson.lesson_date.desc(), LessonTask.lesson_task_id.asc()).all()
+    for lt in tasks:
+        if not lt.lesson:
+            continue
+        lid = lt.lesson.lesson_id
+        if lid not in by_lesson:
+            by_lesson[lid] = {
+                'lesson': lt.lesson,
+                'student': lt.lesson.student,
+                'tasks': []
+            }
+        by_lesson[lid]['tasks'].append(lt)
+
+    # сохраняем порядок по дате урока
+    for item in by_lesson.values():
+        lesson_cards.append(item)
+    lesson_cards.sort(key=lambda x: (x['lesson'].lesson_date or moscow_now()), reverse=True)
+
+    return render_template(
+        'review_queue.html',
+        lesson_cards=lesson_cards,
+        status=status,
+        assignment_type=assignment_type,
+        student_query=student_query
+    )
+
+
+@lessons_bp.route('/reviews/lesson/<int:lesson_id>/bulk', methods=['POST'])
+@login_required
+@check_access('assignment.grade')
+def review_bulk_update_lesson(lesson_id: int):
+    """
+    Быстрые массовые действия по уроку: отметить все сданные задачи как проверенные или вернуть на доработку.
+    """
+    action = (request.form.get('action') or '').strip().lower()
+    assignment_type = (request.form.get('assignment_type') or '').strip().lower()
+    status_filter = (request.form.get('status') or 'submitted').strip().lower()
+    student_query = (request.form.get('student') or '').strip()
+
+    if action not in {'mark_graded', 'mark_returned'}:
+        flash('Некорректное действие.', 'danger')
+        return redirect(url_for('lessons.review_queue', status=status_filter, assignment_type=assignment_type, student=student_query))
+
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+
+    # RBAC: проверяем доступ к ученику урока
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all'):
+        accessible_student_ids = _resolve_accessible_student_ids(scope)
+        if lesson.student_id not in accessible_student_ids:
+            return make_response('Forbidden', 403)
+
+    q = LessonTask.query.filter(LessonTask.lesson_id == lesson_id, LessonTask.status == 'submitted')
+    if assignment_type in {'homework', 'classwork', 'exam'}:
+        q = q.filter(LessonTask.assignment_type == assignment_type)
+
+    tasks = q.all()
+    if not tasks:
+        flash('Нет сданных задач для массового действия.', 'info')
+        return redirect(url_for('lessons.review_queue', status=status_filter, assignment_type=assignment_type, student=student_query))
+
+    new_status = 'graded' if action == 'mark_graded' else 'returned'
+    for lt in tasks:
+        lt.status = new_status
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Bulk update failed for lesson {lesson_id}: {e}", exc_info=True)
+        flash('Ошибка при массовом обновлении статуса.', 'danger')
+        return redirect(url_for('lessons.review_queue', status=status_filter, assignment_type=assignment_type, student=student_query))
+
+    if new_status == 'graded':
+        flash('Отмечено как «Проверено».', 'success')
+    else:
+        flash('Отмечено как «На доработку».', 'success')
+    return redirect(url_for('lessons.review_queue', status=status_filter, assignment_type=assignment_type, student=student_query))
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/task/<int:lesson_task_id>/teacher-comment/add', methods=['POST'])  # comment
