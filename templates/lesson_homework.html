@@ -428,11 +428,14 @@
                             {% endif %}
                         </span>
                         
-                        <!-- Индикатор статуса -->
-                        {% if hw_task.submission_correct == true %}
-                            <span class="status-indicator correct"><i class="fas fa-check-circle"></i> Верно</span>
-                        {% elif hw_task.submission_correct == false %}
-                            <span class="status-indicator incorrect"><i class="fas fa-times-circle"></i> Неверно</span>
+                        <!-- Индикатор результата (показываем ученику только после сдачи/проверки/возврата) -->
+                        {% set show_result_for_student = is_student_view and ((hw_task.status or '') in ['submitted','graded','returned']) %}
+                        {% if (not is_student_view and not is_parent_view) or show_result_for_student %}
+                            {% if hw_task.submission_correct == true %}
+                                <span class="status-indicator correct"><i class="fas fa-check-circle"></i> Верно</span>
+                            {% elif hw_task.submission_correct == false %}
+                                <span class="status-indicator incorrect"><i class="fas fa-times-circle"></i> Неверно</span>
+                            {% endif %}
                         {% endif %}
 
                         {% if is_student_view %}
@@ -490,8 +493,9 @@
                         {% endif %}
                     </div>
 
-                    <!-- Блок с правильным ответом (показываем ученику, если проверено/завершено, и всегда учителю) -->
-                    {% if (is_student_view and (is_read_only or hw_task.submission_correct is not none)) or (not is_student_view and not is_parent_view) %}
+                    <!-- Блок с правильным ответом: ученику только после сдачи/проверки/возврата; учителю всегда -->
+                    {% set can_show_answer_to_student = is_student_view and ((hw_task.status or '') in ['submitted','graded','returned']) and is_read_only %}
+                    {% if can_show_answer_to_student or (not is_student_view and not is_parent_view) %}
                         {% set correct_val = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}
                         {% if correct_val %}
                         <div class="auto-check-result" style="margin-top: 1rem; padding: 1rem; background: rgba(0, 254, 202, 0.05); border: 1px solid rgba(0, 254, 202, 0.2); border-radius: var(--radius-sm);">
@@ -705,13 +709,18 @@
         const LESSON_ID = {{ lesson.lesson_id }};
         const CSRF_TOKEN = "{{ csrf_token() if csrf_token else '' }}";
         
-        // Tabs Logic
+        // Tabs Logic (с сохранением выбранной вкладки)
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
             
             document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
             document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            try {
+                localStorage.setItem(`lesson_${LESSON_ID}_active_tab`, tabName);
+                history.replaceState(null, '', `#tab=${tabName}`);
+            } catch (e) {}
             
             // Refresh editors if needed (codemirror sometimes needs refresh on visible)
             if (tabName === 'theory' && window.theoryEditor) window.theoryEditor.codemirror.refresh();
@@ -720,6 +729,18 @@
 
         // Initialize Editors
         document.addEventListener('DOMContentLoaded', () => {
+            // restore tab from hash/localStorage
+            try {
+                const hash = (location.hash || '').trim();
+                const match = hash.match(/tab=([a-z_]+)/i);
+                const fromHash = match ? match[1] : null;
+                const fromStore = localStorage.getItem(`lesson_${LESSON_ID}_active_tab`);
+                const tab = fromHash || fromStore;
+                if (tab && document.getElementById(`tab-${tab}`)) {
+                    switchTab(tab);
+                }
+            } catch (e) {}
+
             {% if not is_student_view and not is_parent_view %}
             window.theoryEditor = new EasyMDE({
                 element: document.getElementById('theory-editor'),

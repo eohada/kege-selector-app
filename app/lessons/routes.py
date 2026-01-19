@@ -424,7 +424,7 @@ def _is_task_editable_for_student(lesson, tasks, task):  # comment
 
 
 def _save_student_submissions(lesson, assignment_type):  # comment
-    """Сохраняем ответы ученика и считаем статус автопроверки"""  # comment
+    """Сохраняем ответы ученика (черновик). НЕ считаем автопроверку и не выставляем submission_correct."""  # comment
     tasks = get_sorted_assignments(lesson, assignment_type)  # comment
     is_finalized = _is_submission_finalized(lesson, tasks)  # comment
     for task in tasks:  # comment
@@ -435,32 +435,28 @@ def _save_student_submissions(lesson, assignment_type):  # comment
         if field_name in request.form:  # comment
             value = request.form.get(field_name, '').strip()  # comment
             task.student_submission = value if value else None  # comment
-        if not task.student_submission:  # comment
-            task.submission_correct = None  # comment
-            continue  # comment
-        expected = (task.student_answer if task.student_answer else (task.task.answer if task.task and task.task.answer else '')) or ''  # comment
-        if not expected:  # comment
-            task.submission_correct = None  # comment
-            continue  # comment
-        normalized_value = normalize_answer_value(task.student_submission)  # comment
-        normalized_expected = normalize_answer_value(expected)  # comment
-        task.submission_correct = normalized_value == normalized_expected and normalized_expected != ''  # comment
     return tasks  # comment
 
 
 def _submit_student_submissions(lesson, assignment_type):  # comment
     """Фиксируем ответы ученика и запускаем авто-проверку"""  # comment
     tasks = get_sorted_assignments(lesson, assignment_type)  # comment
+    is_finalized = _is_submission_finalized(lesson, tasks)  # comment
     for task in tasks:  # comment
+        # После сдачи повторно "сдаем" только возвращенные задачи
+        if is_finalized and (task.status or '').lower() != 'returned':  # comment
+            continue  # comment
         field_name = f'submission_{task.lesson_task_id}'  # comment
         value = request.form.get(field_name, '').strip()  # comment
         task.student_submission = value if value else None  # comment
         expected = (task.student_answer if task.student_answer else (task.task.answer if task.task and task.task.answer else '')) or ''  # comment
         if not expected:  # comment
             task.submission_correct = False  # comment
+            task.status = 'submitted'  # comment
             continue  # comment
         if not value:  # comment
             task.submission_correct = False  # comment
+            task.status = 'submitted'  # comment
             continue  # comment
         normalized_value = normalize_answer_value(value)  # comment
         normalized_expected = normalize_answer_value(expected)  # comment
@@ -534,7 +530,7 @@ def lesson_homework_student_submit(lesson_id):  # comment
         flash('Доступ запрещен', 'danger')  # comment
         return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
     tasks = get_sorted_assignments(lesson, 'homework')  # comment
-    if _is_submission_finalized(lesson, tasks):  # comment
+    if _is_submission_finalized(lesson, tasks) and not any((t.status or '').lower() == 'returned' for t in tasks):  # comment
         flash('Работа уже сдана. Повторная сдача заблокирована.', 'warning')  # comment
         return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
     _submit_student_submissions(lesson, 'homework')  # comment
@@ -552,7 +548,7 @@ def lesson_classwork_student_submit(lesson_id):  # comment
         flash('Доступ запрещен', 'danger')  # comment
         return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
     tasks = get_sorted_assignments(lesson, 'classwork')  # comment
-    if _is_submission_finalized(lesson, tasks):  # comment
+    if _is_submission_finalized(lesson, tasks) and not any((t.status or '').lower() == 'returned' for t in tasks):  # comment
         flash('Работа уже сдана. Повторная сдача заблокирована.', 'warning')  # comment
         return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
     _submit_student_submissions(lesson, 'classwork')  # comment
@@ -570,7 +566,7 @@ def lesson_exam_student_submit(lesson_id):  # comment
         flash('Доступ запрещен', 'danger')  # comment
         return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson_id))  # comment
     tasks = get_sorted_assignments(lesson, 'exam')  # comment
-    if _is_submission_finalized(lesson, tasks):  # comment
+    if _is_submission_finalized(lesson, tasks) and not any((t.status or '').lower() == 'returned' for t in tasks):  # comment
         flash('Работа уже сдана. Повторная сдача заблокирована.', 'warning')  # comment
         return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson_id))  # comment
     _submit_student_submissions(lesson, 'exam')  # comment
