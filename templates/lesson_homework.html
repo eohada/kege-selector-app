@@ -246,9 +246,10 @@
         background: var(--surface-2);
         border-radius: var(--radius-md);
         border: 1px solid var(--stroke-1);
-        position: sticky;
-        top: 1rem; /* Sticky offset */
-        z-index: 90;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        position: relative;
     }
     
     .task-nav-btn {
@@ -287,10 +288,9 @@
     </style>
 </head>
 <body>
-    {% include '_primary_nav.html' %}
-    {% include '_mobile_menu.html' %}
-
-    <div class="container">
+    <div class="app-shell">
+        {% set active_page = None %}
+        {% include '_primary_nav.html' %}
         <!-- Header -->
         <header class="lesson-header glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
@@ -353,7 +353,7 @@
         <div id="tab-tasks" class="tab-pane">
             <!-- Вставка существующего контента задач -->
             <div class="tasks-container">
-                 <form id="homework-form" method="POST" action="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_save', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_save', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_save', lesson_id=lesson.lesson_id) }}{% endif %}">
+                 <form id="homework-form" method="POST" action="{% if is_student_view %}{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_save', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_save', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_save', lesson_id=lesson.lesson_id) }}{% endif %}{% else %}{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_save', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_save', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_save', lesson_id=lesson.lesson_id) }}{% endif %}{% endif %}">
                 
                 {% if csrf_token %}
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -420,14 +420,19 @@
                     <!-- Блок ввода ответа -->
                     <div class="answer-section" style="margin-top: 1.5rem;">
                         <label class="neo-label" for="submission_{{ hw_task.lesson_task_id }}">
-                            <i class="fas fa-pen"></i> Твой ответ:
+                            <i class="fas fa-pen"></i> Ответ ученика:
                         </label>
                         
-                        {% if not is_read_only %}
-                            <input type="text" class="neo-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_submission or '' }}" placeholder="Введи ответ..." autocomplete="off">
+                        {% if is_student_view %}
+                            {% if not is_read_only %}
+                                <input type="text" class="neo-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_submission or '' }}" placeholder="Введи ответ..." autocomplete="off">
+                            {% else %}
+                                <div class="neo-input" style="background: rgba(0,0,0,0.2); border-color: transparent; cursor: not-allowed; opacity: 0.8;">
+                                    {{ hw_task.student_submission or '—' }}
+                                </div>
+                            {% endif %}
                         {% else %}
-                            <!-- Read-only view -->
-                            <div class="neo-input" style="background: rgba(0,0,0,0.2); border-color: transparent; cursor: not-allowed; opacity: 0.8;">
+                            <div class="neo-input" style="background: rgba(0,0,0,0.2); border-color: transparent; cursor: default; opacity: 0.95;">
                                 {{ hw_task.student_submission or '—' }}
                             </div>
                         {% endif %}
@@ -444,6 +449,44 @@
                             </div>
                         </div>
                         {% endif %}
+                    {% endif %}
+
+                    {% if not is_student_view and not is_parent_view %}
+                    <div style="margin-top: 1.25rem; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); background: var(--surface-2);">
+                        <div class="hero-eyebrow" style="margin-bottom: 0.8rem;">проверка преподавателем</div>
+                        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="neo-field">
+                                <label class="neo-label">Ключ (переопределение)</label>
+                                <input type="text" class="neo-input" id="answer_key_{{ hw_task.lesson_task_id }}" name="answer_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_answer or '' }}" placeholder="Если нужен отдельный ключ для урока">
+                            </div>
+                            <div class="neo-field">
+                                <label class="neo-label">Статус</label>
+                                <select class="neo-select" id="status_{{ hw_task.lesson_task_id }}" name="status_{{ hw_task.lesson_task_id }}">
+                                    {% set st = (hw_task.status or 'pending') %}
+                                    <option value="pending" {% if st == 'pending' %}selected{% endif %}>pending</option>
+                                    <option value="in_progress" {% if st == 'in_progress' %}selected{% endif %}>in_progress</option>
+                                    <option value="submitted" {% if st == 'submitted' %}selected{% endif %}>submitted</option>
+                                    <option value="graded" {% if st == 'graded' %}selected{% endif %}>graded</option>
+                                    <option value="returned" {% if st == 'returned' %}selected{% endif %}>returned</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="neo-field" style="margin-top: 1rem;">
+                            <label class="neo-label">Комментарий преподавателя</label>
+                            <textarea class="neo-textarea" id="teacher_comment_{{ hw_task.lesson_task_id }}" name="teacher_comment_{{ hw_task.lesson_task_id }}" placeholder="Что исправить / почему неверно / подсказка...">{{ hw_task.teacher_comment or '' }}</textarea>
+                        </div>
+                        <div class="hero-actions" style="margin-top: 1rem;">
+                            <button type="button" class="neo-button accent sm" onclick="saveTeacherFeedback({{ hw_task.lesson_task_id }})">
+                                <i class="fas fa-save"></i> Сохранить проверку
+                            </button>
+                            <button type="button" class="neo-button outline sm" onclick="markReturned({{ hw_task.lesson_task_id }})">
+                                <i class="fas fa-undo"></i> Вернуть на доработку
+                            </button>
+                            <button type="button" class="neo-button ghost sm" onclick="markGraded({{ hw_task.lesson_task_id }})">
+                                <i class="fas fa-check-double"></i> Отметить как проверено
+                            </button>
+                        </div>
+                    </div>
                     {% endif %}
                     
                     <!-- Teacher Controls: Status Toggle -->
@@ -718,6 +761,76 @@
         function handleDeleteTask(taskId, type) {
              if(!confirm('Удалить задание?')) return;
              document.getElementById(`delete-form-${taskId}`).submit();
+        }
+
+        async function saveTeacherFeedback(taskId) {
+            const answerKeyEl = document.getElementById(`answer_key_${taskId}`);
+            const statusEl = document.getElementById(`status_${taskId}`);
+            const commentEl = document.getElementById(`teacher_comment_${taskId}`);
+            const payload = {
+                answer_key: answerKeyEl ? answerKeyEl.value : '',
+                status: statusEl ? statusEl.value : 'pending',
+                teacher_comment: commentEl ? commentEl.value : ''
+            };
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/task/${taskId}/teacher-feedback/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    toast.success('Проверка сохранена');
+                } else {
+                    toast.error(data.error || 'Ошибка сохранения');
+                }
+            } catch (e) {
+                toast.error('Ошибка сети');
+            }
+        }
+
+        async function markReturned(taskId) {
+            const commentEl = document.getElementById(`teacher_comment_${taskId}`);
+            const payload = {
+                status: 'returned',
+                teacher_comment: commentEl ? commentEl.value : ''
+            };
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/task/${taskId}/teacher-feedback/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    toast.success('Отправлено на доработку');
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    toast.error(data.error || 'Ошибка');
+                }
+            } catch (e) {
+                toast.error('Ошибка сети');
+            }
+        }
+
+        async function markGraded(taskId) {
+            const payload = { status: 'graded' };
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/task/${taskId}/teacher-feedback/save`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    toast.success('Отмечено как проверено');
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    toast.error(data.error || 'Ошибка');
+                }
+            } catch (e) {
+                toast.error('Ошибка сети');
+            }
         }
     </script>
 </body>

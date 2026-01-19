@@ -218,12 +218,28 @@ def ensure_schema_columns(app):
 
             if lesson_tasks_table:
                 lesson_task_columns = {col['name'] for col in inspector.get_columns(lesson_tasks_table)}
+                def safe_add_lesson_task_column(col_name, col_type):  # comment
+                    if col_name in lesson_task_columns:  # comment
+                        return  # comment
+                    try:  # comment
+                        if is_postgres:  # comment
+                            db.session.execute(text(f'ALTER TABLE "{lesson_tasks_table}" ADD COLUMN {col_name} {col_type}'))  # comment
+                        else:  # comment
+                            db.session.execute(text(f'ALTER TABLE {lesson_tasks_table} ADD COLUMN {col_name} {col_type}'))  # comment
+                        logger.info(f"Added column {col_name} to {lesson_tasks_table}")  # comment
+                    except Exception as e:  # comment
+                        logger.warning(f"Could not add column {col_name} to {lesson_tasks_table}: {e}")  # comment
+                        db.session.rollback()  # comment
+
                 if 'assignment_type' not in lesson_task_columns:
                     db.session.execute(text(f'ALTER TABLE "{lesson_tasks_table}" ADD COLUMN assignment_type TEXT DEFAULT \'homework\''))
                 if 'student_submission' not in lesson_task_columns:
                     db.session.execute(text(f'ALTER TABLE "{lesson_tasks_table}" ADD COLUMN student_submission TEXT'))
                 if 'submission_correct' not in lesson_task_columns:
                     db.session.execute(text(f'ALTER TABLE "{lesson_tasks_table}" ADD COLUMN submission_correct INTEGER'))
+                safe_add_lesson_task_column('status', 'TEXT DEFAULT \'pending\'')  # comment
+                safe_add_lesson_task_column('submission_files', 'JSON')  # comment
+                safe_add_lesson_task_column('teacher_comment', 'TEXT')  # comment
 
             if students_table:
                 student_columns = {col['name'] for col in inspector.get_columns(students_table)}
