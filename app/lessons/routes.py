@@ -336,6 +336,64 @@ def lesson_task_teacher_comment_add(lesson_id, lesson_task_id):  # comment
     })  # comment
 
 
+@lessons_bp.route('/lesson/teacher-comment/<int:comment_id>/update', methods=['POST'])  # comment
+@login_required  # comment
+def lesson_task_teacher_comment_update(comment_id):  # comment
+    """Редактировать комментарий преподавателя (только автор)."""  # comment
+    if current_user.is_student() or current_user.is_parent():  # comment
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403  # comment
+    comment = LessonTaskTeacherComment.query.filter_by(comment_id=comment_id).first_or_404()  # comment
+    if comment.author_user_id and getattr(current_user, 'id', None) != comment.author_user_id:  # comment
+        return jsonify({'success': False, 'error': 'Можно редактировать только свои комментарии'}), 403  # comment
+    data = request.get_json(silent=True) or {}  # comment
+    body = (data.get('body') or '').strip()  # comment
+    if not body:  # comment
+        return jsonify({'success': False, 'error': 'Пустой комментарий'}), 400  # comment
+    comment.body = body  # comment
+    # sync last comment to LessonTask.teacher_comment if this comment is latest
+    try:  # comment
+        lesson_task = LessonTask.query.filter_by(lesson_task_id=comment.lesson_task_id).first()  # comment
+        if lesson_task:  # comment
+            latest = LessonTaskTeacherComment.query.filter_by(lesson_task_id=lesson_task.lesson_task_id).order_by(LessonTaskTeacherComment.created_at.asc(), LessonTaskTeacherComment.comment_id.asc()).all()  # comment
+            if latest and latest[-1].comment_id == comment.comment_id:  # comment
+                lesson_task.teacher_comment = body  # comment
+        db.session.commit()  # comment
+    except Exception as e:  # comment
+        db.session.rollback()  # comment
+        logger.error(f"Failed to update teacher comment: {e}", exc_info=True)  # comment
+        return jsonify({'success': False, 'error': 'Ошибка сохранения'}), 500  # comment
+    return jsonify({'success': True, 'comment_id': comment.comment_id, 'body': comment.body})  # comment
+
+
+@lessons_bp.route('/lesson/teacher-comment/<int:comment_id>/delete', methods=['POST'])  # comment
+@login_required  # comment
+def lesson_task_teacher_comment_delete(comment_id):  # comment
+    """Удалить комментарий преподавателя (только автор)."""  # comment
+    if current_user.is_student() or current_user.is_parent():  # comment
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403  # comment
+    comment = LessonTaskTeacherComment.query.filter_by(comment_id=comment_id).first_or_404()  # comment
+    if comment.author_user_id and getattr(current_user, 'id', None) != comment.author_user_id:  # comment
+        return jsonify({'success': False, 'error': 'Можно удалять только свои комментарии'}), 403  # comment
+    lesson_task_id = comment.lesson_task_id  # comment
+    try:  # comment
+        db.session.delete(comment)  # comment
+        db.session.commit()  # comment
+    except Exception as e:  # comment
+        db.session.rollback()  # comment
+        logger.error(f"Failed to delete teacher comment: {e}", exc_info=True)  # comment
+        return jsonify({'success': False, 'error': 'Ошибка удаления'}), 500  # comment
+    # Re-sync latest to LessonTask.teacher_comment
+    try:  # comment
+        lesson_task = LessonTask.query.filter_by(lesson_task_id=lesson_task_id).first()  # comment
+        if lesson_task:  # comment
+            remaining = LessonTaskTeacherComment.query.filter_by(lesson_task_id=lesson_task_id).order_by(LessonTaskTeacherComment.created_at.asc(), LessonTaskTeacherComment.comment_id.asc()).all()  # comment
+            lesson_task.teacher_comment = (remaining[-1].body if remaining else None)  # comment
+            db.session.commit()  # comment
+    except Exception:  # comment
+        db.session.rollback()  # comment
+    return jsonify({'success': True})  # comment
+
+
 def _get_current_lesson_student(lesson):  # comment
     """Проверяем, что текущий пользователь - ученик этого урока"""  # comment
     if not current_user.is_student():  # comment

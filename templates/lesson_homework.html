@@ -305,6 +305,15 @@
         border: 1px solid var(--stroke-1);
         background: var(--surface-2);
     }
+
+    .teacher-feedback-student select.neo-select {
+        background: var(--surface-1);
+        border-color: rgba(255,255,255,0.14);
+    }
+
+    .teacher-feedback-student select.neo-select:hover {
+        border-color: rgba(0, 255, 213, 0.35);
+    }
     </style>
 </head>
 <body>
@@ -434,7 +443,11 @@
                             {% elif (hw_task.status or '') == 'returned' %}
                                 <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-warning">На доработку</span>
                             {% else %}
-                                <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-info" style="opacity: 0.6;">Не начато</span>
+                                {% if hw_task.student_submission %}
+                                    <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-info" style="opacity: 0.85;">Черновик</span>
+                                {% else %}
+                                    <span id="student-status-{{ hw_task.lesson_task_id }}" class="status-badge status-info" style="opacity: 0.6;">Не начато</span>
+                                {% endif %}
                             {% endif %}
                         {% endif %}
 
@@ -497,7 +510,7 @@
                                 <div class="hero-eyebrow" style="margin-bottom: 0.6rem;">комментарии преподавателя</div>
                                 <select class="neo-select" id="teacher-comments-select-{{ hw_task.lesson_task_id }}" onchange="onTeacherCommentSelect({{ hw_task.lesson_task_id }})">
                                     {% for c in comments %}
-                                        <option value="{{ c.comment_id }}" data-body="{{ c.body|e }}">{{ c.created_at|format_dt_tz(viewer_timezone) }}</option>
+                                        <option value="{{ c.comment_id }}" data-body="{{ c.body|e }}" data-created-utc="{{ c.created_at.isoformat() if c.created_at else '' }}">{{ c.created_at.isoformat() if c.created_at else '' }}</option>
                                     {% endfor %}
                                 </select>
                                 <div id="teacher-comments-body-{{ hw_task.lesson_task_id }}" style="margin-top: 0.8rem; white-space: pre-wrap; line-height: 1.6; color: var(--text-primary);">
@@ -537,11 +550,19 @@
                             {% if tcomments|length > 0 %}
                                 <select class="neo-select" id="teacher-comments-select-teacher-{{ hw_task.lesson_task_id }}" onchange="onTeacherCommentSelectTeacher({{ hw_task.lesson_task_id }})">
                                     {% for c in tcomments %}
-                                        <option value="{{ c.comment_id }}" data-body="{{ c.body|e }}">{{ c.created_at|format_dt_tz(viewer_timezone) }}</option>
+                                        <option value="{{ c.comment_id }}" data-body="{{ c.body|e }}" data-created-utc="{{ c.created_at.isoformat() if c.created_at else '' }}">{{ c.created_at.isoformat() if c.created_at else '' }}</option>
                                     {% endfor %}
                                 </select>
                                 <div id="teacher-comments-body-teacher-{{ hw_task.lesson_task_id }}" style="margin-top: 0.8rem; white-space: pre-wrap; line-height: 1.6; color: var(--text-primary);">
                                     {{ tcomments[-1].body }}
+                                </div>
+                                <div class="hero-actions" style="margin-top: 0.8rem;">
+                                    <button type="button" class="neo-button ghost sm" onclick="updateTeacherComment(parseInt(document.getElementById('teacher-comments-select-teacher-{{ hw_task.lesson_task_id }}').value, 10), {{ hw_task.lesson_task_id }})">
+                                        <i class="fas fa-pen"></i> Редактировать
+                                    </button>
+                                    <button type="button" class="neo-button danger sm" onclick="deleteTeacherComment(parseInt(document.getElementById('teacher-comments-select-teacher-{{ hw_task.lesson_task_id }}').value, 10), {{ hw_task.lesson_task_id }})">
+                                        <i class="fas fa-trash"></i> Удалить
+                                    </button>
                                 </div>
                             {% else %}
                                 <div style="color: var(--text-muted); font-size: 0.9rem;">Пока нет комментариев.</div>
@@ -974,6 +995,35 @@
             body.textContent = opt ? (opt.getAttribute('data-body') || '') : '';
         }
 
+        function formatUtcIsoToDevice(utcIso) {
+            try {
+                if (!utcIso) return '';
+                // Если ISO без зоны — считаем, что это время в MSK и добавляем смещение +03:00
+                const hasZone = utcIso.endsWith('Z') || /[+-]\d\d:\d\d$/.test(utcIso);
+                const iso = hasZone ? utcIso : `${utcIso}+03:00`;
+                const d = new Date(iso);
+                if (Number.isNaN(d.getTime())) return utcIso;
+                const pad = (n) => String(n).padStart(2, '0');
+                return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            } catch (e) {
+                return utcIso || '';
+            }
+        }
+
+        function decorateCommentSelect(selectEl) {
+            if (!selectEl) return;
+            for (const opt of Array.from(selectEl.options)) {
+                const raw = opt.getAttribute('data-created-utc') || opt.textContent || '';
+                opt.textContent = formatUtcIsoToDevice(raw);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Декорируем все select с комментариями под таймзону устройства
+            document.querySelectorAll('select[id^="teacher-comments-select-"]').forEach(decorateCommentSelect);
+            document.querySelectorAll('select[id^="teacher-comments-select-teacher-"]').forEach(decorateCommentSelect);
+        });
+
         async function addTeacherComment(taskId) {
             const input = document.getElementById(`teacher_comment_new_${taskId}`);
             const text = input ? (input.value || '').trim() : '';
@@ -1000,13 +1050,78 @@
                 if (teacherSelect && data.comment) {
                     const opt = document.createElement('option');
                     // В live-режиме показываем ISO (время будет корректно у ученика при его рендере)
-                    const label = (data.comment.created_at || '').replace('T', ' ').slice(0, 16);
+                    const label = formatUtcIsoToDevice(data.comment.created_at || '');
                     opt.value = String(data.comment.comment_id);
                     opt.textContent = label;
                     opt.setAttribute('data-body', data.comment.body || '');
+                    opt.setAttribute('data-created-utc', data.comment.created_at || '');
                     teacherSelect.appendChild(opt);
                     teacherSelect.value = opt.value;
                     if (teacherBody) teacherBody.textContent = data.comment.body || '';
+                }
+            } catch (e) {
+                toast.error('Ошибка сети');
+            }
+        }
+
+        async function updateTeacherComment(commentId, taskId) {
+            const sel = document.getElementById(`teacher-comments-select-teacher-${taskId}`);
+            if (!sel) return;
+            const opt = sel.options[sel.selectedIndex];
+            if (!opt) return;
+            const existingBody = opt.getAttribute('data-body') || '';
+            const next = prompt('Редактировать комментарий:', existingBody);
+            if (next === null) return;
+            const body = String(next).trim();
+            if (!body) {
+                toast.warning('Комментарий пустой');
+                return;
+            }
+            try {
+                const res = await fetch(`/lesson/teacher-comment/${commentId}/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({ body })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    toast.error(data.error || 'Ошибка');
+                    return;
+                }
+                toast.success('Комментарий обновлён');
+                opt.setAttribute('data-body', body);
+                const bodyEl = document.getElementById(`teacher-comments-body-teacher-${taskId}`);
+                if (bodyEl) bodyEl.textContent = body;
+            } catch (e) {
+                toast.error('Ошибка сети');
+            }
+        }
+
+        async function deleteTeacherComment(commentId, taskId) {
+            if (!confirm('Удалить комментарий?')) return;
+            try {
+                const res = await fetch(`/lesson/teacher-comment/${commentId}/delete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    toast.error(data.error || 'Ошибка');
+                    return;
+                }
+                toast.success('Комментарий удалён');
+                const sel = document.getElementById(`teacher-comments-select-teacher-${taskId}`);
+                const bodyEl = document.getElementById(`teacher-comments-body-teacher-${taskId}`);
+                if (sel) {
+                    const idx = sel.selectedIndex;
+                    sel.remove(idx);
+                    const newOpt = sel.options[sel.selectedIndex] || sel.options[sel.options.length - 1];
+                    if (newOpt) {
+                        if (bodyEl) bodyEl.textContent = newOpt.getAttribute('data-body') || '';
+                    } else {
+                        if (bodyEl) bodyEl.textContent = '';
+                    }
                 }
             } catch (e) {
                 toast.error('Ошибка сети');
