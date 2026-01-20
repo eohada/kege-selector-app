@@ -103,45 +103,39 @@
             </span>
         </a>
 
-        <a href="{{ url_for('reminders.reminders_list') }}" class="nav-link {% if active_page == 'reminders' %}active{% endif %}">
-            <span class="nav-link-content">
-                <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" alt="Напоминания" class="nav-link-icon">
-                <span class="nav-link-label">Напоминания</span>
-            </span>
-        </a>
-
-        {% if current_user.is_authenticated and has_permission(current_user, 'assets.manage') %}
-        <a href="{{ url_for('designer.assets_manager') }}" class="nav-link {% if active_page == 'assets' %}active{% endif %}">
-            <span class="nav-link-content">
-                <img src="{{ url_for('static', filename='icons/icons8-image-100.png') }}" alt="Ассеты" class="nav-link-icon">
-                <span class="nav-link-label">Ассеты</span>
-            </span>
-        </a>
-        {% endif %}
-        
-        {% if current_user.is_authenticated and has_permission(current_user, 'assignment.view') %}
-        <a href="{% if current_user.is_student() %}{{ url_for('assignments.submissions_list') }}{% else %}{{ url_for('assignments.assignments_list') }}{% endif %}" class="nav-link {% if active_page == 'assignments' %}active{% endif %}">
-            <span class="nav-link-content">
-                <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Работы" class="nav-link-icon">
-                <span class="nav-link-label">{% if current_user.is_student() %}Мои работы{% else %}Работы{% endif %}</span>
-            </span>
-        </a>
-        {% endif %}
-
-        {% if current_user.is_authenticated and has_permission(current_user, 'assignment.grade') %}
-        <a href="{{ url_for('lessons.review_queue') }}" class="nav-link {% if active_page == 'review_queue' %}active{% endif %}">
-            <span class="nav-link-content">
-                <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проверка" class="nav-link-icon">
-                <span class="nav-link-label">Проверка</span>
-            </span>
-        </a>
-        {% endif %}
+        {# Группируем часто используемые разделы, чтобы не перегружать верхнее меню #}
+        <div class="nav-dropdown">
+            <div class="nav-link nav-dropdown-trigger {% if active_page in ['assignments', 'review_queue', 'reminders'] %}active{% endif %}">
+                <span class="nav-link-content">
+                    <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Учёба" class="nav-link-icon">
+                    <span class="nav-link-label">Учёба</span>
+                </span>
+            </div>
+            <div class="nav-dropdown-content">
+                {% if current_user.is_authenticated and has_permission(current_user, 'assignment.view') %}
+                <a href="{{ url_for('assignments.assignments_list') }}" class="dropdown-item {% if active_page == 'assignments' %}active{% endif %}">
+                    <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" class="nav-link-icon">
+                    <span>Работы</span>
+                </a>
+                {% endif %}
+                {% if current_user.is_authenticated and has_permission(current_user, 'assignment.grade') %}
+                <a href="{{ url_for('lessons.review_queue') }}" class="dropdown-item {% if active_page == 'review_queue' %}active{% endif %}">
+                    <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" class="nav-link-icon">
+                    <span>Проверка</span>
+                </a>
+                {% endif %}
+                <a href="{{ url_for('reminders.reminders_list') }}" class="dropdown-item {% if active_page == 'reminders' %}active{% endif %}">
+                    <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" class="nav-link-icon">
+                    <span>Напоминания</span>
+                </a>
+            </div>
+        </div>
         {% endif %}
 
         {% if not current_user.is_parent() and not current_user.is_student() %}
         {# Выпадающее меню для инструментов (только для админа, тьютора и старых ролей) #}
         <div class="nav-dropdown">
-            <div class="nav-link nav-dropdown-trigger {% if active_page in ['generator', 'plans', 'templates'] %}active{% endif %}">
+            <div class="nav-link nav-dropdown-trigger {% if active_page in ['generator', 'plans', 'templates', 'groups', 'onboarding', 'rubrics', 'library', 'billing', 'assets'] %}active{% endif %}">
                 <span class="nav-link-content">
                     <img src="{{ url_for('static', filename='icons/icons8-меню-100.png') }}" alt="Инструменты" class="nav-link-icon">
                     <span class="nav-link-label">Инструменты</span>
@@ -182,6 +176,12 @@
                 <a href="{{ url_for('library.materials_library') }}" class="dropdown-item {% if active_page == 'library' %}active{% endif %}">
                     <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" class="nav-link-icon">
                     <span>Библиотека</span>
+                </a>
+                {% endif %}
+                {% if current_user.is_authenticated and has_permission(current_user, 'assets.manage') %}
+                <a href="{{ url_for('designer.assets_manager') }}" class="dropdown-item {% if active_page == 'assets' %}active{% endif %}">
+                    <img src="{{ url_for('static', filename='icons/icons8-image-100.png') }}" class="nav-link-icon">
+                    <span>Ассеты</span>
                 </a>
                 {% endif %}
                 {% if current_user.is_authenticated and has_permission(current_user, 'billing.manage') %}

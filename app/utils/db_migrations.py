@@ -241,22 +241,33 @@ def check_and_fix_rbac_schema(app):
                         db.session.rollback()
                         logger.error(f"Error initializing default permissions: {init_error}", exc_info=True)
                 else:
-                    # Таблица не пустая: докидываем новые дефолтные права, которые могли появиться позже.
-                    # Это важно для "самовосстановления" при релизах: новые permission'ы не должны давать 403 из-за пустых строк.
+                    # Таблица не пустая: докидываем новые права так, чтобы RBAC был полностью консистентен:
+                    # - для каждой роли из DEFAULT_ROLE_PERMISSIONS должны существовать записи по ВСЕМ permission'ам
+                    # - если записи не было, ставим is_enabled как в DEFAULT_ROLE_PERMISSIONS
+                    # Это убирает "скрытые дефолты" (fallback) и делает управление правами через админку/remote admin детерминированным.
                     try:
                         from app.auth.permissions import ALL_PERMISSIONS
+                        all_perm_keys = list(ALL_PERMISSIONS.keys())
+                        # Собираем существующие пары (role, permission_name) одним запросом
+                        try:
+                            existing_pairs = set(
+                                (rp.role, rp.permission_name)
+                                for rp in RolePermission.query.with_entities(RolePermission.role, RolePermission.permission_name).all()
+                            )
+                        except Exception:
+                            existing_pairs = set()
+
                         added = 0
                         for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
-                            for perm_name in perms:
-                                if perm_name not in ALL_PERMISSIONS:
+                            defaults = set(perms or [])
+                            for perm_name in all_perm_keys:
+                                if (role, perm_name) in existing_pairs:
                                     continue
-                                exists = RolePermission.query.filter_by(role=role, permission_name=perm_name).first()
-                                if not exists:
-                                    db.session.add(RolePermission(role=role, permission_name=perm_name, is_enabled=True))
-                                    added += 1
+                                db.session.add(RolePermission(role=role, permission_name=perm_name, is_enabled=(perm_name in defaults)))
+                                added += 1
                         if added:
                             db.session.commit()
-                            logger.info(f"Backfilled {added} missing RolePermission records")
+                            logger.info(f"Backfilled {added} missing RolePermission records (full matrix)")
                     except Exception as backfill_err:
                         db.session.rollback()
                         logger.warning(f"Could not backfill RolePermissions: {backfill_err}")

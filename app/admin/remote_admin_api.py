@@ -1323,16 +1323,17 @@ def remote_admin_api_permissions():
             if not role:
                 return jsonify({'error': 'role is required'}), 400
                 
+            # Полная матрица прав для роли:
+            # - удалённая админка передаёт список ВКЛЮЧЕННЫХ прав
+            # - но в БД мы храним и выключенные тоже, чтобы убрать "скрытые дефолты" (fallback)
+            enabled = set(p for p in (permissions or []) if p in ALL_PERMISSIONS)
+
             # Удаляем старые права для роли
-            db.session.execute(
-                delete(RolePermission).where(RolePermission.role == role)
-            )
-            
-            # Добавляем новые
-            for perm in permissions:
-                if perm in ALL_PERMISSIONS:
-                    rp = RolePermission(role=role, permission_name=perm, is_enabled=True)
-                    db.session.add(rp)
+            db.session.execute(delete(RolePermission).where(RolePermission.role == role))
+
+            # Добавляем все права (вкл/выкл)
+            for perm_key in ALL_PERMISSIONS.keys():
+                db.session.add(RolePermission(role=role, permission_name=perm_key, is_enabled=(perm_key in enabled)))
             
             db.session.commit()
             
@@ -1341,7 +1342,7 @@ def remote_admin_api_permissions():
                 entity='RolePermission',
                 entity_id=None,
                 status='success',
-                metadata={'role': role, 'count': len(permissions), 'source': 'remote_admin'}
+                metadata={'role': role, 'enabled_count': len(enabled), 'source': 'remote_admin'}
             )
             
             return jsonify({'success': True})
