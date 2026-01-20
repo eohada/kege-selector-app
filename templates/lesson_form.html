@@ -138,7 +138,9 @@
         {% if active_lesson.topic %}
         <p style="margin: 0 0 0.4rem 0;"><strong>Тема:</strong> {{ active_lesson.topic }}</p>
         {% endif %}
-        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</p>
+        {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
+        {% set active_local = (active_lesson.lesson_date|to_tz(tz_name)) %}
+        <p style="margin: 0 0 0.4rem 0;"><strong>Дата:</strong> {{ active_local.strftime('%d.%m.%Y %H:%M') if active_local else '—' }}</p>
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">

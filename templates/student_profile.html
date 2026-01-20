@@ -267,6 +267,7 @@
         </div>
 
         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;" class="profile-grid-responsive">
+            {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
             <!-- Left Column: Learning Process -->
             <div style="display: flex; flex-direction: column; gap: 2rem;">
                 
@@ -282,7 +283,8 @@
                     </div>
                     
                     <div style="display: flex; gap: 2rem; margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
-                        <div><i class="far fa-clock"></i> Начало: {{ in_progress_lesson.lesson_date.strftime('%H:%M') }}</div>
+                        {% set in_progress_local = (in_progress_lesson.lesson_date|to_tz(tz_name)) %}
+                        <div><i class="far fa-clock"></i> Начало: {{ in_progress_local.strftime('%H:%M') if in_progress_local else '—' }}</div>
                         <div><i class="fas fa-hourglass-half"></i> Длительность: {{ in_progress_lesson.duration }} мин</div>
                     </div>
 
@@ -334,10 +336,11 @@
 
                     <div id="lessonsContainer">
                         {% for lesson in lessons %}
+                        {% set lesson_local = (lesson.lesson_date|to_tz(tz_name)) %}
                         <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="lesson-feed-item" data-status="{{ lesson.status }}">
                             <div class="lesson-date-badge">
-                                <span class="lesson-date-day">{{ lesson.lesson_date.strftime('%d') }}</span>
-                                <span class="lesson-date-month">{{ lesson.lesson_date.strftime('%b') }}</span>
+                                <span class="lesson-date-day">{{ lesson_local.strftime('%d') if lesson_local else '—' }}</span>
+                                <span class="lesson-date-month">{{ lesson_local.strftime('%b') if lesson_local else '—' }}</span>
                             </div>
                             <div class="lesson-info">
                                 <div class="lesson-title">{{ lesson.topic or 'Тема не определена' }}</div>
@@ -346,7 +349,7 @@
                                         <span class="status-dot {{ lesson.status }}"></span>
                                         {% if lesson.status == 'completed' %}Проведён{% elif lesson.status == 'in_progress' %}Идёт{% else %}Запланирован{% endif %}
                                     </span>
-                                    <span><i class="far fa-clock"></i> {{ lesson.lesson_date.strftime('%H:%M') }}</span>
+                                    <span><i class="far fa-clock"></i> {{ lesson_local.strftime('%H:%M') if lesson_local else '—' }}</span>
                                     {% if lesson.content %}<span><i class="fas fa-book"></i> Конспект</span>{% endif %}
                                 </div>
                             </div>

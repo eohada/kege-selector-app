@@ -176,7 +176,9 @@
     <div class="lesson-menu-header">Текущий урок</div>
     <form id="lessonDataForm" method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
         <div class="lesson-menu-info" style="margin-bottom: 1em;"><strong>Ученик:</strong> {{ active_student.name }}</div>
-        <div class="lesson-menu-info" style="margin-bottom: 0.5em;"><strong>Дата:</strong> {{ active_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
+        {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
+        {% set active_local = (active_lesson.lesson_date|to_tz(tz_name)) %}
+        <div class="lesson-menu-info" style="margin-bottom: 0.5em;"><strong>Дата:</strong> {{ active_local.strftime('%d.%m.%Y %H:%M') if active_local else '—' }}</div>
         <div class="lesson-menu-info" style="margin-bottom: 1em;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</div>
 
         <div style="margin-top: 1em; padding-top: 1em; border-top: 1px solid rgba(16, 185, 129, 0.3);">

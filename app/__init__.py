@@ -98,6 +98,26 @@ def create_app(config_name=None):
             # Добавляем краткое обозначение зоны, чтобы не было двусмысленности
             return value_local.strftime('%d.%m.%Y %H:%M') + f" ({value_local.tzname() or ''})"  # comment
         return str(value)  # comment
+
+    @app.template_filter('to_tz')  # comment
+    def to_tz(dt, tz_name='Europe/Moscow'):  # comment
+        """
+        Переводим datetime в заданную таймзону и возвращаем timezone-aware datetime.
+        У нас в БД `Lesson.lesson_date` обычно хранится как naive MSK.
+        Это нужно, чтобы в шаблонах можно было безопасно делать `.strftime()` уже в локальном времени.
+        """  # comment
+        if not dt:  # comment
+            return None  # comment
+        try:  # comment
+            tz = ZoneInfo(tz_name or 'Europe/Moscow')  # comment
+        except Exception:  # comment
+            tz = ZoneInfo('Europe/Moscow')  # comment
+        value = dt  # comment
+        if isinstance(value, datetime):  # comment
+            if value.tzinfo is None:  # comment
+                value = value.replace(tzinfo=MOSCOW_TZ)  # comment
+            return value.astimezone(tz)  # comment
+        return dt  # comment
     
     # Настройка логирования
     log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'

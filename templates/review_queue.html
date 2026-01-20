@@ -176,18 +176,20 @@
             </section>
 
             {% if (source != 'assignments') and lesson_cards and lesson_cards|length > 0 %}
+                {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
                 <div style="display:flex; flex-direction: column; gap: 0.9rem;">
                     {% for item in lesson_cards %}
                         {% set lesson = item.lesson %}
                         {% set student = item.student %}
                         {% set tasks = item.tasks %}
+                        {% set lesson_local = (lesson.lesson_date|to_tz(tz_name)) %}
                         <section class="card">
                             <div class="lesson-head">
                                 <div style="min-width: 0;">
                                     <h2 class="lesson-title">{{ lesson.topic or 'Урок' }}</h2>
                                     <div class="lesson-meta">
                                         <span><i class="fas fa-user-graduate"></i> <strong>{{ student.name if student else '—' }}</strong></span>
-                                        <span><i class="far fa-calendar"></i> {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else '—' }}</span>
+                                        <span><i class="far fa-calendar"></i> {{ lesson_local.strftime('%d.%m.%Y %H:%M') if lesson_local else '—' }}</span>
                                         <span class="status-badge status-info" style="opacity: 0.95;">{{ tasks|length }} задач</span>
                                     </div>
                                 </div>
