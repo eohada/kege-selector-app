@@ -112,73 +112,113 @@
             </details>
           </div>
 
-          <div style="display:grid; gap:.75rem; margin-top: 1rem;">
-            {% for p in plans %}
-              <div style="padding:.9rem 1rem; border-radius: var(--radius-lg); border:1px solid var(--stroke-1); background: rgba(255,255,255,0.02); display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap;">
-                <div style="min-width:0;">
-                  <div style="font-weight: 900;">{{ p.title }}</div>
-                  <div style="color: var(--text-muted); font-size:.92rem; margin-top:.25rem;">
-                    {% if p.price_rub is not none %}{{ p.price_rub }} ₽{% endif %}
-                    {% if p.period_days is not none %} · {{ p.period_days }} дней{% endif %}
-                    · статус: <strong>{{ 'active' if p.is_active else 'inactive' }}</strong>
-                  </div>
-                  {% if p.description %}
-                  <div style="color: var(--text-muted); margin-top:.4rem; white-space: pre-line;">{{ p.description }}</div>
+          {% macro plan_card(p) -%}
+            <div style="padding:.9rem 1rem; border-radius: var(--radius-lg); border:1px solid var(--stroke-1); background: rgba(255,255,255,0.02); display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap;">
+              <div style="min-width:0;">
+                <div style="font-weight: 900; display:flex; gap:.5rem; align-items: center; flex-wrap: wrap;">
+                  <span>{{ p.title }}</span>
+                  <span class="status-badge status-info" style="font-weight:800;">#{{ p.order_index or 0 }}</span>
+                  {% if not p.is_active %}
+                    <span class="status-badge" style="background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); color: var(--text-muted);">inactive</span>
                   {% endif %}
                 </div>
-                <div style="display:flex; gap:.5rem; flex-wrap: wrap;">
-                  <a class="neo-button ghost sm" href="{{ url_for('billing.billing_subscriptions', plan_id=p.plan_id) }}" style="text-decoration:none;">Назначить</a>
-                  <form method="POST" action="{{ url_for('billing.billing_plan_toggle', plan_id=p.plan_id) }}">
-                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                    <button class="neo-button outline sm" type="submit">Вкл/выкл</button>
-                  </form>
+                <div style="color: var(--text-muted); font-size:.92rem; margin-top:.25rem;">
+                  {% if p.price_rub is not none %}{{ p.price_rub }} ₽{% endif %}
+                  {% if p.period_days is not none %} · {{ p.period_days }} дней{% endif %}
+                  · статус: <strong>{{ 'active' if p.is_active else 'inactive' }}</strong>
                 </div>
+                {% if p.description %}
+                <div style="color: var(--text-muted); margin-top:.4rem; white-space: pre-line;">{{ p.description }}</div>
+                {% endif %}
               </div>
-              <details style="margin-top: -0.25rem;">
-                <summary style="cursor:pointer; color: var(--text-muted); font-weight: 800;">Редактировать</summary>
-                <form method="POST" action="{{ url_for('billing.billing_plan_update', plan_id=p.plan_id) }}" style="margin-top:.75rem; padding:.9rem 1rem; border-radius: var(--radius-lg); border:1px solid var(--stroke-1); background: rgba(0,0,0,0.15);">
+              <div style="display:flex; gap:.5rem; flex-wrap: wrap;">
+                <a class="neo-button ghost sm" href="{{ url_for('billing.billing_subscriptions', plan_id=p.plan_id) }}" style="text-decoration:none;">Назначить</a>
+                <form method="POST" action="{{ url_for('billing.billing_plan_toggle', plan_id=p.plan_id) }}">
                   {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:.75rem;">
-                    <div class="neo-field">
-                      <label class="neo-label">Название</label>
-                      <input class="neo-input" name="title" value="{{ p.title }}">
-                    </div>
-                    <div class="neo-field">
-                      <label class="neo-label">Группа</label>
-                      <select class="neo-select" name="group_id">
-                        <option value="">—</option>
-                        {% for g in groups %}
-                          <option value="{{ g.group_id }}" {% if p.group_id == g.group_id %}selected{% endif %}>{{ g.title }}</option>
-                        {% endfor %}
-                      </select>
-                    </div>
-                  </div>
-                  <div class="neo-field" style="margin-top:.75rem;">
-                    <label class="neo-label">Описание</label>
-                    <textarea class="neo-input" name="description" style="min-height: 90px;">{{ p.description or '' }}</textarea>
-                  </div>
-                  <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:.75rem; margin-top:.75rem;">
-                    <div class="neo-field">
-                      <label class="neo-label">Цена (₽)</label>
-                      <input class="neo-input" name="price_rub" type="number" min="0" value="{{ p.price_rub if p.price_rub is not none else '' }}">
-                    </div>
-                    <div class="neo-field">
-                      <label class="neo-label">Период (дней)</label>
-                      <input class="neo-input" name="period_days" type="number" min="1" value="{{ p.period_days if p.period_days is not none else '' }}">
-                    </div>
-                    <div class="neo-field">
-                      <label class="neo-label">Порядок</label>
-                      <input class="neo-input" name="order_index" type="number" value="{{ p.order_index or 0 }}">
-                    </div>
-                  </div>
-                  <div style="display:flex; justify-content:flex-end; margin-top: .9rem;">
-                    <button class="neo-button outline" type="submit">Сохранить</button>
-                  </div>
+                  <button class="neo-button outline sm" type="submit">Вкл/выкл</button>
                 </form>
-              </details>
-            {% else %}
-              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Тарифов пока нет.</p></div>
+              </div>
+            </div>
+            <details style="margin-top: -0.25rem;">
+              <summary style="cursor:pointer; color: var(--text-muted); font-weight: 800;">Редактировать</summary>
+              <form method="POST" action="{{ url_for('billing.billing_plan_update', plan_id=p.plan_id) }}" style="margin-top:.75rem; padding:.9rem 1rem; border-radius: var(--radius-lg); border:1px solid var(--stroke-1); background: rgba(0,0,0,0.15);">
+                {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:.75rem;">
+                  <div class="neo-field">
+                    <label class="neo-label">Название</label>
+                    <input class="neo-input" name="title" value="{{ p.title }}">
+                  </div>
+                  <div class="neo-field">
+                    <label class="neo-label">Группа</label>
+                    <select class="neo-select" name="group_id">
+                      <option value="">—</option>
+                      {% for g in groups %}
+                        <option value="{{ g.group_id }}" {% if p.group_id == g.group_id %}selected{% endif %}>{{ g.title }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+                <div class="neo-field" style="margin-top:.75rem;">
+                  <label class="neo-label">Описание</label>
+                  <textarea class="neo-input" name="description" style="min-height: 90px;">{{ p.description or '' }}</textarea>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:.75rem; margin-top:.75rem;">
+                  <div class="neo-field">
+                    <label class="neo-label">Цена (₽)</label>
+                    <input class="neo-input" name="price_rub" type="number" min="0" value="{{ p.price_rub if p.price_rub is not none else '' }}">
+                  </div>
+                  <div class="neo-field">
+                    <label class="neo-label">Период (дней)</label>
+                    <input class="neo-input" name="period_days" type="number" min="1" value="{{ p.period_days if p.period_days is not none else '' }}">
+                  </div>
+                  <div class="neo-field">
+                    <label class="neo-label">Порядок</label>
+                    <input class="neo-input" name="order_index" type="number" value="{{ p.order_index or 0 }}">
+                  </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; margin-top: .9rem;">
+                  <button class="neo-button outline" type="submit">Сохранить</button>
+                </div>
+              </form>
+            </details>
+          {%- endmacro %}
+
+          <div style="display:grid; gap: 1.25rem; margin-top: 1rem;">
+            {% for g, items in plans_by_group %}
+              <section style="border:1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1rem; background: rgba(255,255,255,0.015);">
+                <div style="display:flex; justify-content: space-between; align-items: baseline; gap: .75rem; flex-wrap: wrap;">
+                  <div style="font-weight: 900; font-size: 1.05rem;">{{ g.title }}</div>
+                  <div style="color: var(--text-muted); font-size: .9rem;">{{ items|length }} тарифов</div>
+                </div>
+                {% if items and items|length > 0 %}
+                  <div style="display:grid; gap:.75rem; margin-top: .75rem;">
+                    {% for p in items %}
+                      {{ plan_card(p) }}
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div style="color: var(--text-muted); margin-top: .75rem;">В группе пока нет тарифов.</div>
+                {% endif %}
+              </section>
             {% endfor %}
+
+            {% if ungrouped_plans and ungrouped_plans|length > 0 %}
+              <section style="border:1px dashed rgba(255,255,255,0.18); border-radius: var(--radius-lg); padding: 1rem; background: rgba(255,255,255,0.01);">
+                <div style="display:flex; justify-content: space-between; align-items: baseline; gap: .75rem; flex-wrap: wrap;">
+                  <div style="font-weight: 900; font-size: 1.05rem; color: var(--text-muted);">Без группы</div>
+                  <div style="color: var(--text-muted); font-size: .9rem;">{{ ungrouped_plans|length }} тарифов</div>
+                </div>
+                <div style="display:grid; gap:.75rem; margin-top: .75rem;">
+                  {% for p in ungrouped_plans %}
+                    {{ plan_card(p) }}
+                  {% endfor %}
+                </div>
+              </section>
+            {% endif %}
+
+            {% if (plans_by_group|length == 0) and (not ungrouped_plans or ungrouped_plans|length == 0) %}
+              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Тарифов пока нет.</p></div>
+            {% endif %}
           </div>
         </section>
       </div>

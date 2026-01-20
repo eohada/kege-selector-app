@@ -31,7 +31,12 @@ def billing_plans():
         TariffPlan.updated_at.desc(),
         TariffPlan.plan_id.desc(),
     ).all()
-    return render_template('billing_plans.html', plans=plans, groups=groups)
+    plans_by_group: list[tuple[TariffGroup, list[TariffPlan]]] = []
+    for g in groups:
+        items = [p for p in plans if p.group_id == g.group_id]
+        plans_by_group.append((g, items))
+    ungrouped_plans = [p for p in plans if not p.group_id]
+    return render_template('billing_plans.html', groups=groups, plans_by_group=plans_by_group, ungrouped_plans=ungrouped_plans)
 
 
 @billing_bp.route('/billing/plans/new', methods=['POST'])
@@ -158,14 +163,26 @@ def billing_subscriptions():
     _require_admin()
     preselect_plan_id = request.args.get('plan_id', type=int)
     subs = UserSubscription.query.options(db.joinedload(UserSubscription.user), db.joinedload(UserSubscription.plan)).order_by(UserSubscription.updated_at.desc(), UserSubscription.subscription_id.desc()).limit(300).all()
-    plans = TariffPlan.query.filter_by(is_active=True).order_by(TariffPlan.title.asc()).all()
+    groups = TariffGroup.query.filter_by(is_active=True).order_by(TariffGroup.order_index.asc(), TariffGroup.group_id.asc()).all()
+    plans = TariffPlan.query.filter_by(is_active=True).order_by(
+        TariffPlan.group_id.asc().nullsfirst(),
+        TariffPlan.order_index.asc(),
+        TariffPlan.title.asc(),
+        TariffPlan.plan_id.asc(),
+    ).all()
+    plans_by_group: list[tuple[TariffGroup, list[TariffPlan]]] = []
+    for g in groups:
+        items = [p for p in plans if p.group_id == g.group_id]
+        if items:
+            plans_by_group.append((g, items))
+    ungrouped_plans = [p for p in plans if not p.group_id]
     q = (request.args.get('q') or '').strip()
     users_q = User.query
     if q:
         like = f"%{q}%"
         users_q = users_q.filter((User.username.ilike(like)) | (User.email.ilike(like)))
     users = users_q.order_by(User.id.desc()).limit(200).all()
-    return render_template('billing_subscriptions.html', subs=subs, plans=plans, users=users, q=q, preselect_plan_id=preselect_plan_id)
+    return render_template('billing_subscriptions.html', subs=subs, groups=groups, plans=plans, plans_by_group=plans_by_group, ungrouped_plans=ungrouped_plans, users=users, q=q, preselect_plan_id=preselect_plan_id)
 
 
 @billing_bp.route('/billing/subscriptions/assign', methods=['POST'])

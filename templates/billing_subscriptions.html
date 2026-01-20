@@ -47,11 +47,24 @@
               <label class="neo-label">Тариф (опц.)</label>
               <select class="neo-select" name="plan_id">
                 <option value="">—</option>
-                {% for p in plans %}
-                  <option value="{{ p.plan_id }}" {% if preselect_plan_id and preselect_plan_id == p.plan_id %}selected{% endif %}>
-                    {{ p.title }}{% if p.description %} — {{ p.description[:60] }}{% if p.description|length > 60 %}…{% endif %}{% endif %}
-                  </option>
+                {% for g, items in plans_by_group %}
+                  <optgroup label="{{ g.title }}">
+                    {% for p in items %}
+                      <option value="{{ p.plan_id }}" {% if preselect_plan_id and preselect_plan_id == p.plan_id %}selected{% endif %}>
+                        {{ p.title }}{% if p.description %} — {{ p.description[:60] }}{% if p.description|length > 60 %}…{% endif %}{% endif %}
+                      </option>
+                    {% endfor %}
+                  </optgroup>
                 {% endfor %}
+                {% if ungrouped_plans and ungrouped_plans|length > 0 %}
+                  <optgroup label="Без группы">
+                    {% for p in ungrouped_plans %}
+                      <option value="{{ p.plan_id }}" {% if preselect_plan_id and preselect_plan_id == p.plan_id %}selected{% endif %}>
+                        {{ p.title }}{% if p.description %} — {{ p.description[:60] }}{% if p.description|length > 60 %}…{% endif %}{% endif %}
+                      </option>
+                    {% endfor %}
+                  </optgroup>
+                {% endif %}
               </select>
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:.75rem; margin-top:.75rem;">
