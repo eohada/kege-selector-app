@@ -7,15 +7,73 @@ from flask_login import login_required, current_user
 from sqlalchemy import text  # text нужен для setval(pg_get_serial_sequence(...)) при сбитых sequences
 
 from app.templates_manager import templates_bp
-from app.models import TaskTemplate, TemplateTask, Lesson, LessonTask, UsageHistory, Tasks, db, moscow_now
+from app.models import TaskTemplate, TemplateTask, Lesson, LessonTask, UsageHistory, Tasks, Student, User, db, moscow_now
+from app.auth.rbac_utils import has_permission, get_user_scope
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
+
+
+def _can_manage_templates() -> bool:
+    if not current_user.is_authenticated:
+        return False
+    if current_user.is_admin() or current_user.is_creator():
+        return True
+    return bool(has_permission(current_user, 'task.manage'))
+
+
+def _deny_templates_access():
+    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    flash('Доступ запрещен', 'danger')
+    return redirect(url_for('main.dashboard'))
+
+
+def _resolve_accessible_student_ids(scope: dict) -> list[int] | None:
+    """Приводим data-scope к Student.student_id (Lesson.student_id хранит Student.student_id)."""
+    if not scope or scope.get('can_see_all'):
+        return None
+    user_ids = scope.get('student_ids') or []
+    if not user_ids:
+        return []
+    student_ids: list[int] = []
+    try:
+        student_users = User.query.filter(User.id.in_(user_ids)).all()
+        emails = [u.email for u in student_users if u and u.email]
+        if emails:
+            students_by_email = Student.query.filter(Student.email.in_(emails)).all()
+            student_ids.extend([s.student_id for s in students_by_email if s])
+    except Exception:
+        pass
+    try:
+        students_by_id = Student.query.filter(Student.student_id.in_(user_ids)).all()
+        student_ids.extend([s.student_id for s in students_by_id if s])
+    except Exception:
+        pass
+    seen = set()
+    out: list[int] = []
+    for sid in student_ids:
+        if sid not in seen:
+            seen.add(sid)
+            out.append(sid)
+    return out
+
+
+def _can_access_lesson(lesson: Lesson) -> bool:
+    if current_user.is_admin() or current_user.is_creator():
+        return True
+    scope = get_user_scope(current_user)
+    allowed = _resolve_accessible_student_ids(scope)
+    if allowed is None:
+        return True
+    return bool(allowed and lesson.student_id in allowed)
 
 @templates_bp.route('/templates')
 @login_required
 def templates_list():
     """Список всех шаблонов с фильтрацией по типу"""
+    if not _can_manage_templates():
+        return _deny_templates_access()
     template_type = request.args.get('type', '')
     category = request.args.get('category', '')
     
@@ -50,6 +108,8 @@ def templates_list():
 @login_required
 def template_new():
     """Создание нового шаблона"""
+    if not _can_manage_templates():
+        return _deny_templates_access()
     if request.method == 'POST':
         try:
             data = request.get_json() if request.is_json else request.form.to_dict()
@@ -118,6 +178,8 @@ def template_new():
 @login_required
 def template_view(template_id):
     """Просмотр шаблона"""
+    if not _can_manage_templates():
+        return _deny_templates_access()
     template = TaskTemplate.query.options(
         db.joinedload(TaskTemplate.template_tasks).joinedload(TemplateTask.task)
     ).get_or_404(template_id)
@@ -132,6 +194,8 @@ def template_view(template_id):
 @login_required
 def template_edit(template_id):
     """Редактирование шаблона"""
+    if not _can_manage_templates():
+        return _deny_templates_access()
     template = TaskTemplate.query.options(
         db.joinedload(TaskTemplate.template_tasks).joinedload(TemplateTask.task)
     ).get_or_404(template_id)
@@ -195,6 +259,8 @@ def template_edit(template_id):
 @login_required
 def template_delete(template_id):
     """Удаление шаблона (мягкое удаление - is_active=False)"""
+    if not _can_manage_templates():
+        return _deny_templates_access()
     template = TaskTemplate.query.get_or_404(template_id)
     
     template.is_active = False
@@ -220,6 +286,8 @@ def template_delete(template_id):
 @login_required
 def template_manual_create():
     """Ручное создание шаблона с заданиями"""
+    if not _can_manage_templates():
+        return _deny_templates_access()
     if request.method == 'POST':
         try:
             data = request.get_json()
@@ -306,6 +374,8 @@ def template_manual_create():
 @login_required
 def template_apply(template_id):
     """Применение шаблона к уроку"""
+    if not _can_manage_templates():
+        return _deny_templates_access()
     try:
         data = request.get_json() if request.is_json else request.form.to_dict()
         lesson_id = data.get('lesson_id')
@@ -315,6 +385,8 @@ def template_apply(template_id):
             return jsonify({'success': False, 'error': 'ID урока обязателен'}), 400
         
         lesson = Lesson.query.get_or_404(lesson_id)
+        if not _can_access_lesson(lesson):
+            return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
         template = TaskTemplate.query.options(
             db.joinedload(TaskTemplate.template_tasks).joinedload(TemplateTask.task)
         ).get_or_404(template_id)

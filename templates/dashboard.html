@@ -64,6 +64,7 @@
                     и с визуальными акцентами на то, что важно прямо сейчас.
                 </p>
                 <div class="hero-actions">
+                    {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
                     <a href="{{ url_for('main.export_data') }}" class="neo-button accent">
                         <img src="{{ url_for('static', filename='icons/EKSPORT.png') }}" alt="Экспорт" class="ui-icon ui-icon--md">
                         Экспорт
@@ -76,6 +77,7 @@
                         <img src="{{ url_for('static', filename='icons/BACKUP.png') }}" alt="Бэкап БД" class="ui-icon ui-icon--md">
                         Бэкап БД
                     </a>
+                    {% endif %}
                 </div>
             </div>
             <div class="hero-pane">

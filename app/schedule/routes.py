@@ -141,10 +141,33 @@ def _dt_to_ics_utc(dt_naive_msk: datetime) -> str:
     """Lessons.lesson_date хранится naive как MSK. Конвертим в UTC для .ics."""
     try:
         from zoneinfo import ZoneInfo
-        dt = dt_naive_msk.replace(tzinfo=MOSCOW_TZ).astimezone(ZoneInfo("UTC"))
+        if getattr(dt_naive_msk, 'tzinfo', None) is None:
+            dt = dt_naive_msk.replace(tzinfo=MOSCOW_TZ).astimezone(ZoneInfo("UTC"))
+        else:
+            dt = dt_naive_msk.astimezone(ZoneInfo("UTC"))
     except Exception:
-        dt = dt_naive_msk.replace(tzinfo=MOSCOW_TZ)
+        if getattr(dt_naive_msk, 'tzinfo', None) is None:
+            dt = dt_naive_msk.replace(tzinfo=MOSCOW_TZ)
+        else:
+            dt = dt_naive_msk
     return dt.strftime('%Y%m%dT%H%M%SZ')
+
+
+def _dt_to_ics_local(dt_naive_msk: datetime, tz) -> str:
+    """
+    Возвращаем datetime в локальной таймзоне (без 'Z'), чтобы импорт в Google Calendar
+    совпадал с отображением в UI (wall time).
+    """
+    try:
+        if getattr(dt_naive_msk, 'tzinfo', None) is None:
+            aware = dt_naive_msk.replace(tzinfo=MOSCOW_TZ)
+        else:
+            aware = dt_naive_msk
+        local = aware.astimezone(tz)
+    except Exception:
+        # fallback: считаем, что dt уже в нужной зоне как naive
+        local = dt_naive_msk
+    return local.strftime('%Y%m%dT%H%M%S')
 
 
 def _parse_local_datetime(date_str: str, time_str: str, timezone: str):
@@ -928,6 +951,13 @@ def schedule_export_ics():
         flash('У вас недостаточно прав для экспорта расписания.', 'danger')
         return redirect(url_for('schedule.schedule'))
 
+    # Экспортируем в выбранной таймзоне (как в UI), чтобы Google Calendar не "раскидывал" события.
+    tz_param = (request.args.get('timezone') or '').strip().lower()
+    if tz_param not in ('moscow', 'tomsk'):
+        tz_param = 'moscow'
+    export_tz = TOMSK_TZ if tz_param == 'tomsk' else MOSCOW_TZ
+    export_tzid = 'Asia/Tomsk' if tz_param == 'tomsk' else 'Europe/Moscow'
+
     # диапазон: от сегодня-14 до сегодня+60
     today = moscow_now().date()
     start_dt = datetime.combine(today - timedelta(days=14), time.min)
@@ -948,12 +978,13 @@ def schedule_export_ics():
         "PRODID:-//BlackNeon//Schedule//RU",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
+        f"X-WR-TIMEZONE:{export_tzid}",
     ]
     for l in lessons:
         if not l.student:
             continue
-        dt_start_utc = _dt_to_ics_utc(l.lesson_date)
-        dt_end_utc = _dt_to_ics_utc(l.lesson_date + timedelta(minutes=int(l.duration or 60)))
+        dt_start_local = _dt_to_ics_local(l.lesson_date, export_tz)
+        dt_end_local = _dt_to_ics_local(l.lesson_date + timedelta(minutes=int(l.duration or 60)), export_tz)
         summary = f"Урок: {l.student.name}"
         if l.topic:
             summary = f"{summary} · {l.topic}"
@@ -962,8 +993,8 @@ def schedule_export_ics():
             "BEGIN:VEVENT",
             f"UID:{uid}",
             f"DTSTAMP:{_dt_to_ics_utc(moscow_now().replace(tzinfo=None))}",
-            f"DTSTART:{dt_start_utc}",
-            f"DTEND:{dt_end_utc}",
+            f"DTSTART;TZID={export_tzid}:{dt_start_local}",
+            f"DTEND;TZID={export_tzid}:{dt_end_local}",
             f"SUMMARY:{summary}",
             "END:VEVENT",
         ])
@@ -991,6 +1022,12 @@ def schedule_export_ics_by_token(token: str):
         from flask import abort
         abort(404)
 
+    tz_param = (request.args.get('timezone') or '').strip().lower()
+    if tz_param not in ('moscow', 'tomsk'):
+        tz_param = 'moscow'
+    export_tz = TOMSK_TZ if tz_param == 'tomsk' else MOSCOW_TZ
+    export_tzid = 'Asia/Tomsk' if tz_param == 'tomsk' else 'Europe/Moscow'
+
     # диапазон: от сегодня-14 до сегодня+60
     today = moscow_now().date()
     start_dt = datetime.combine(today - timedelta(days=14), time.min)
@@ -1011,12 +1048,13 @@ def schedule_export_ics_by_token(token: str):
         "PRODID:-//BlackNeon//Schedule//RU",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
+        f"X-WR-TIMEZONE:{export_tzid}",
     ]
     for l in lessons:
         if not l.student:
             continue
-        dt_start_utc = _dt_to_ics_utc(l.lesson_date)
-        dt_end_utc = _dt_to_ics_utc(l.lesson_date + timedelta(minutes=int(l.duration or 60)))
+        dt_start_local = _dt_to_ics_local(l.lesson_date, export_tz)
+        dt_end_local = _dt_to_ics_local(l.lesson_date + timedelta(minutes=int(l.duration or 60)), export_tz)
         summary = f"Урок: {l.student.name}"
         if l.topic:
             summary = f"{summary} · {l.topic}"
@@ -1025,8 +1063,8 @@ def schedule_export_ics_by_token(token: str):
             "BEGIN:VEVENT",
             f"UID:{uid}",
             f"DTSTAMP:{_dt_to_ics_utc(moscow_now().replace(tzinfo=None))}",
-            f"DTSTART:{dt_start_utc}",
-            f"DTEND:{dt_end_utc}",
+            f"DTSTART;TZID={export_tzid}:{dt_start_local}",
+            f"DTEND;TZID={export_tzid}:{dt_end_local}",
             f"SUMMARY:{summary}",
             "END:VEVENT",
         ])

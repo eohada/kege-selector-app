@@ -26,6 +26,16 @@ def _guard_groups_manage():
         abort(403)
 
 
+def _can_access_group(group: SchoolGroup) -> bool:
+    """Ограничиваем доступ к группам: админ/создатель видит всё, остальные — только свои группы."""
+    try:
+        if current_user.is_admin() or current_user.is_creator():
+            return True
+    except Exception:
+        pass
+    return bool(group and getattr(group, 'owner_user_id', None) == getattr(current_user, 'id', None))
+
+
 def _can_access_student_id(student_id: int) -> bool:
     scope = get_user_scope(current_user)
     if scope.get('can_see_all'):
@@ -86,6 +96,8 @@ def _filter_students_query(q):
 def groups_list():
     _guard_groups_view()
     q = SchoolGroup.query.order_by(SchoolGroup.updated_at.desc(), SchoolGroup.created_at.desc())
+    if not (current_user.is_admin() or current_user.is_creator()):
+        q = q.filter(SchoolGroup.owner_user_id == current_user.id)
     groups = q.all()
     return render_template('groups_list.html', groups=groups)
 
@@ -143,6 +155,8 @@ def group_new():
 def group_view(group_id: int):
     _guard_groups_view()
     group = SchoolGroup.query.get_or_404(group_id)
+    if not _can_access_group(group):
+        abort(403)
     members = GroupStudent.query.filter_by(group_id=group.group_id).join(Student, Student.student_id == GroupStudent.student_id).order_by(Student.name.asc()).all()
 
     can_manage = has_permission(current_user, 'groups.manage')
@@ -161,6 +175,8 @@ def group_view(group_id: int):
 def group_edit(group_id: int):
     _guard_groups_manage()
     group = SchoolGroup.query.get_or_404(group_id)
+    if not _can_access_group(group):
+        abort(403)
     if request.method == 'POST':
         title = (request.form.get('title') or '').strip()
         if not title:
@@ -205,6 +221,8 @@ def group_edit(group_id: int):
 def group_member_add(group_id: int):
     _guard_groups_manage()
     group = SchoolGroup.query.get_or_404(group_id)
+    if not _can_access_group(group):
+        abort(403)
     student_id = request.form.get('student_id', type=int)
     if not student_id:
         flash('Выберите ученика.', 'danger')
@@ -250,6 +268,8 @@ def group_member_add(group_id: int):
 def group_member_remove(group_id: int, member_id: int):
     _guard_groups_manage()
     group = SchoolGroup.query.get_or_404(group_id)
+    if not _can_access_group(group):
+        abort(403)
     member = GroupStudent.query.filter_by(id=member_id, group_id=group.group_id).first_or_404()
 
     if not _can_access_student_id(member.student_id):
@@ -288,6 +308,8 @@ def group_member_remove(group_id: int, member_id: int):
 def group_export_csv(group_id: int):
     _guard_groups_view()
     group = SchoolGroup.query.get_or_404(group_id)
+    if not _can_access_group(group):
+        abort(403)
     members = GroupStudent.query.filter_by(group_id=group.group_id).join(Student, Student.student_id == GroupStudent.student_id).order_by(Student.name.asc()).all()
 
     try:
@@ -322,6 +344,8 @@ def group_export_csv(group_id: int):
 def group_export_pdf(group_id: int):
     _guard_groups_view()
     group = SchoolGroup.query.get_or_404(group_id)
+    if not _can_access_group(group):
+        abort(403)
     members = GroupStudent.query.filter_by(group_id=group.group_id).join(Student, Student.student_id == GroupStudent.student_id).order_by(Student.name.asc()).all()
 
     html = render_template('group_roster_print.html', group=group, members=members)

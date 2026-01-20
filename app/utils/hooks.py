@@ -65,10 +65,16 @@ def register_hooks(app):
         try:
             # Проверяем не чаще чем раз в минуту
             now = moscow_now()
-            if _last_lesson_check and (now - _last_lesson_check) < _lesson_check_interval:
+            # В БД lesson_date хранится как naive MSK; а moscow_now() может быть aware.
+            # Храним и сравниваем _last_lesson_check как naive, чтобы не ловить
+            # "can't compare offset-naive and offset-aware datetimes".
+            now_naive = now.replace(tzinfo=None) if getattr(now, 'tzinfo', None) else now
+            last = _last_lesson_check
+            last_naive = last.replace(tzinfo=None) if (last and getattr(last, 'tzinfo', None)) else last
+            if last_naive and (now_naive - last_naive) < _lesson_check_interval:
                 return
             
-            _last_lesson_check = now
+            _last_lesson_check = now_naive
             
             # Оптимизация: обновляем статусы напрямую через SQL, без загрузки всех уроков
             # Находим уроки, которые должны быть завершены (время окончания прошло)
@@ -78,9 +84,7 @@ def register_hooks(app):
                 # Проверяем тип БД и используем соответствующий синтаксис
                 db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
                 
-                # Конвертируем now в naive datetime для сравнения с lesson_date в БД
-                # lesson_date хранится как naive datetime в московском времени
-                now_naive = now.replace(tzinfo=None) if now.tzinfo else now
+                # now_naive уже подготовлен выше
                 
                 if 'postgresql' in db_url or 'postgres' in db_url:
                     # PostgreSQL синтаксис
@@ -113,7 +117,6 @@ def register_hooks(app):
                 try:
                     # Фильтруем только уроки, которые могли закончиться (за последние 24 часа)
                     # Конвертируем now в naive для сравнения с lesson_date в БД
-                    now_naive = now.replace(tzinfo=None) if now.tzinfo else now
                     yesterday = now_naive - timedelta(days=1)
                     
                     planned_lessons = Lesson.query.filter(
@@ -125,6 +128,7 @@ def register_hooks(app):
                         return
                     
                     updated_count = 0
+                    now_with_tz = now if getattr(now, 'tzinfo', None) else now.replace(tzinfo=MOSCOW_TZ)
                     for lesson in planned_lessons:
                         # lesson.lesson_date может быть naive, нужно добавить timezone для сравнения
                         lesson_date_with_tz = lesson.lesson_date
@@ -133,7 +137,7 @@ def register_hooks(app):
                             lesson_date_with_tz = lesson_date_with_tz.replace(tzinfo=MOSCOW_TZ)
                         
                         lesson_end_time = lesson_date_with_tz + timedelta(minutes=lesson.duration)
-                        if now >= lesson_end_time:
+                        if now_with_tz >= lesson_end_time:
                             lesson.status = 'completed'
                             lesson.updated_at = now_naive
                             updated_count += 1

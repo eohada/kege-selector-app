@@ -734,6 +734,9 @@ logger = logging.getLogger(__name__)
 @login_required
 def export_data():
     """Экспорт данных в JSON"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен. Экспорт доступен только администратору/создателю.', 'danger')
+        return redirect(url_for('main.dashboard'))
     try:
         logger.info('Начало экспорта данных')
         export_data_dict = {
@@ -799,6 +802,9 @@ def export_data():
 @login_required
 def import_data():
     """Импорт данных из JSON"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен. Импорт доступен только администратору/создателю.', 'danger')
+        return redirect(url_for('main.dashboard'))
     if request.method == 'GET':
         return render_template('import_data.html')
     try:
@@ -898,6 +904,9 @@ def import_data():
 @login_required
 def backup_db():
     """Создание резервной копии базы данных"""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен. Резервное копирование доступно только администратору/создателю.', 'danger')
+        return redirect(url_for('main.dashboard'))
     try:
         # Для PostgreSQL на Railway резервное копирование должно выполняться через pg_dump
         # или через интерфейс Railway. Здесь просто логируем попытку.

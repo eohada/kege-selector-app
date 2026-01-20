@@ -1988,6 +1988,13 @@ def lesson_homework_export_md(lesson_id):
     if current_user.is_student() or current_user.is_parent():  # comment
         flash('Доступ запрещен', 'danger')  # comment
         return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))  # comment
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all'):
+        accessible_student_ids = _resolve_accessible_student_ids(scope)
+        if lesson.student_id not in accessible_student_ids:
+            flash('Доступ запрещен', 'danger')
+            return redirect(url_for('main.dashboard'))
     from app.lessons.export import lesson_export_md
     return lesson_export_md(lesson_id, 'homework')
 
@@ -1998,6 +2005,13 @@ def lesson_classwork_export_md(lesson_id):
     if current_user.is_student() or current_user.is_parent():  # comment
         flash('Доступ запрещен', 'danger')  # comment
         return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))  # comment
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all'):
+        accessible_student_ids = _resolve_accessible_student_ids(scope)
+        if lesson.student_id not in accessible_student_ids:
+            flash('Доступ запрещен', 'danger')
+            return redirect(url_for('main.dashboard'))
     from app.lessons.export import lesson_export_md
     return lesson_export_md(lesson_id, 'classwork')
 
@@ -2008,6 +2022,13 @@ def lesson_exam_export_md(lesson_id):
     if current_user.is_student() or current_user.is_parent():  # comment
         flash('Доступ запрещен', 'danger')  # comment
         return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson_id))  # comment
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all'):
+        accessible_student_ids = _resolve_accessible_student_ids(scope)
+        if lesson.student_id not in accessible_student_ids:
+            flash('Доступ запрещен', 'danger')
+            return redirect(url_for('main.dashboard'))
     from app.lessons.export import lesson_export_md
     return lesson_export_md(lesson_id, 'exam')
 

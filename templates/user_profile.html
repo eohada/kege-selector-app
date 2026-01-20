@@ -55,6 +55,7 @@
                     <!-- Сетка контента -->
                     <div style="padding: 0 2.5rem 2.5rem;">
                         {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
+                                {% set ics_tz_param = ('tomsk' if tz_name == 'Asia/Tomsk' else 'moscow') %}
                         <div class="profile-content-grid">
                             <!-- Левая колонка: Данные -->
                             <div class="profile-section">
@@ -184,7 +185,7 @@
                                             (function() {
                                                 const origin = window.location.origin;
                                                 const token = {{ (('"' ~ current_user.schedule_ics_token ~ '"') if current_user.schedule_ics_token else 'null')|safe }};
-                                                const link = token ? `${origin}/schedule/ics/${token}` : '';
+                                                const link = token ? `${origin}/schedule/ics/${token}?timezone={{ ics_tz_param }}` : '';
                                                 const el = document.getElementById('icsLink');
                                                 if (el) el.value = link || '(нажмите “Обновить ссылку”)';
                                                 window.copyIcsLink = async function() {
@@ -204,7 +205,7 @@
                                                         });
                                                         const data = await resp.json().catch(() => ({}));
                                                         if (!resp.ok || data.success === false) throw new Error(data.error || `HTTP ${resp.status}`);
-                                                        const newLink = `${origin}/schedule/ics/${data.token}`;
+                                                        const newLink = `${origin}/schedule/ics/${data.token}?timezone={{ ics_tz_param }}`;
                                                         if (el) el.value = newLink;
                                                         if (window.toast) window.toast.success('Ссылка обновлена');
                                                     } catch (e) {
@@ -330,7 +331,7 @@
                                     (function() {
                                         const origin = window.location.origin;
                                         const token = {{ (('"' ~ current_user.schedule_ics_token ~ '"') if current_user.schedule_ics_token else 'null')|safe }};
-                                        const link = token ? `${origin}/schedule/ics/${token}` : '';
+                                        const link = token ? `${origin}/schedule/ics/${token}?timezone={{ ics_tz_param }}` : '';
                                         const el = document.getElementById('icsLink');
                                         if (el) el.value = link || '(нажмите “Обновить ссылку”)';
                                         window.copyIcsLink = async function() {
@@ -350,7 +351,7 @@
                                                 });
                                                 const data = await resp.json().catch(() => ({}));
                                                 if (!resp.ok || data.success === false) throw new Error(data.error || `HTTP ${resp.status}`);
-                                                const newLink = `${origin}/schedule/ics/${data.token}`;
+                                                const newLink = `${origin}/schedule/ics/${data.token}?timezone={{ ics_tz_param }}`;
                                                 if (el) el.value = newLink;
                                                 if (window.toast) window.toast.success('Ссылка обновлена');
                                             } catch (e) {

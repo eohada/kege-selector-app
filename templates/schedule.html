@@ -492,7 +492,7 @@
                     <details class="actions-menu">
                         <summary class="neo-button outline" style="height: 44px; display:inline-flex; align-items:center;">Действия</summary>
                         <div class="actions-menu-panel">
-                            <a href="{{ url_for('schedule.schedule_export_ics') }}" class="neo-button outline sm" style="justify-content: center; text-decoration:none;">
+                            <a href="{{ url_for('schedule.schedule_export_ics', timezone=timezone) }}" class="neo-button outline sm" style="justify-content: center; text-decoration:none;">
                                 Экспорт .ics
                             </a>
                             {% if can_manage_schedule %}

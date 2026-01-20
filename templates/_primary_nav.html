@@ -174,10 +174,12 @@
                     <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" class="nav-link-icon">
                     <span>Планы</span>
                 </a>
+                {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or has_permission(current_user, 'task.manage')) %}
                 <a href="{{ url_for('templates.templates_list') }}" class="dropdown-item {% if active_page == 'templates' %}active{% endif %}">
                     <img src="{{ url_for('static', filename='icons/SHABL.png') }}" class="nav-link-icon">
                     <span>Шаблоны</span>
                 </a>
+                {% endif %}
                 {% if current_user.is_authenticated and has_permission(current_user, 'lesson.edit') %}
                 <a href="{{ url_for('library.materials_library') }}" class="dropdown-item {% if active_page == 'library' %}active{% endif %}">
                     <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" class="nav-link-icon">
