@@ -1523,6 +1523,29 @@ def lesson_messages_send(lesson_id: int):
             if lesson.student_id not in accessible_student_ids:
                 return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
+    # Дедуп: если пользователь много раз нажал "Отправить" (лаг/двойной клик),
+    # не плодим одинаковые сообщения.
+    # Окно маленькое, чтобы не мешать реальному повтору.
+    try:
+        from datetime import timedelta
+        now_dt = moscow_now().replace(tzinfo=None)
+        cutoff = now_dt - timedelta(seconds=4)
+        prev = (
+            LessonMessage.query
+            .filter(
+                LessonMessage.lesson_id == lesson.lesson_id,
+                LessonMessage.author_user_id == current_user.id,
+                LessonMessage.body == body,
+                LessonMessage.created_at >= cutoff,
+            )
+            .order_by(LessonMessage.created_at.desc(), LessonMessage.message_id.desc())
+            .first()
+        )
+        if prev:
+            return jsonify({'success': True, 'message_id': prev.message_id, 'deduped': True})
+    except Exception:
+        pass
+
     msg = LessonMessage(lesson_id=lesson.lesson_id, author_user_id=current_user.id, body=body)
     db.session.add(msg)
 

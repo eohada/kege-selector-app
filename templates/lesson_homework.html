@@ -1024,7 +1024,7 @@
                 <div style="margin-top: 1rem; border-top: 1px solid var(--stroke-1); padding-top: 1rem;">
                     <textarea class="neo-textarea" id="lessonChatText" placeholder="Напиши сообщение..." style="min-height: 110px;"></textarea>
                     <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end; margin-top: 0.75rem;">
-                        <button class="neo-button accent sm" type="button" onclick="sendLessonChatMessage()"><i class="fas fa-paper-plane"></i> Отправить</button>
+                        <button class="neo-button accent sm" id="lessonChatSendBtn" type="button" onclick="sendLessonChatMessage()"><i class="fas fa-paper-plane"></i> Отправить</button>
                     </div>
                 </div>
                 {% endif %}
@@ -1469,11 +1469,16 @@
 
         async function sendLessonChatMessage() {
             const ta = document.getElementById('lessonChatText');
+            const btn = document.getElementById('lessonChatSendBtn');
             const text = ta ? String(ta.value || '').trim() : '';
             if (!text) {
                 toast.info('Пустое сообщение');
                 return;
             }
+            // Защита от "спама кликами": пока отправка не завершилась — блокируем повтор.
+            if (window.__lessonChatSending) return;
+            window.__lessonChatSending = true;
+            if (btn) btn.disabled = true;
             try {
                 const res = await fetch(`/lesson/${LESSON_ID}/messages/send`, {
                     method: 'POST',
@@ -1490,6 +1495,9 @@
                 await reloadLessonChat();
             } catch (e) {
                 toast.error('Ошибка сети');
+            } finally {
+                window.__lessonChatSending = false;
+                if (btn) btn.disabled = false;
             }
         }
 
