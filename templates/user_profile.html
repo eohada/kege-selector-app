@@ -54,6 +54,7 @@
 
                     <!-- Сетка контента -->
                     <div style="padding: 0 2.5rem 2.5rem;">
+                        {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
                         <div class="profile-content-grid">
                             <!-- Левая колонка: Данные -->
                             <div class="profile-section">
@@ -225,13 +226,14 @@
                                     <h3>Лента уроков</h3>
                                     <div style="display:flex; flex-direction: column; gap: 0.75rem;">
                                         {% for l in recent_lessons %}
+                                        {% set l_local = (l.lesson_date|to_tz(tz_name)) %}
                                         <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=l.lesson_id) }}" class="glass-panel" style="text-decoration:none; padding: 0.9rem; display:flex; justify-content: space-between; gap: 1rem; align-items: center;">
                                             <div style="min-width: 0;">
                                                 <div style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                     {{ l.topic or 'Урок' }}
                                                 </div>
                                                 <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
-                                                    {{ l.lesson_date.strftime('%d.%m.%Y %H:%M') if l.lesson_date else '—' }}
+                                                    {{ l_local.strftime('%d.%m.%Y %H:%M') if l_local else '—' }}
                                                 </div>
                                             </div>
                                             <span class="status-badge status-info" style="white-space: nowrap;">
@@ -241,6 +243,123 @@
                                         {% endfor %}
                                     </div>
                                 </div>
+                                {% endif %}
+                                {% endif %}
+                                {% else %}
+                                <div class="profile-section">
+                                    <h3>Быстрые действия</h3>
+                                    <div style="display:flex; gap: 0.75rem; flex-wrap: wrap;">
+                                        {% if has_permission(current_user, 'tools.schedule') or has_permission(current_user, 'schedule.view') %}
+                                        <a href="{{ url_for('schedule.schedule') }}" class="neo-button accent" style="text-decoration:none;">
+                                            <img src="{{ url_for('static', filename='icons/icons8-календарь-96.png') }}" class="ui-icon ui-icon--sm">
+                                            Расписание
+                                        </a>
+                                        {% endif %}
+                                        <a href="{{ url_for('students.students_list') }}" class="neo-button outline" style="text-decoration:none;">
+                                            <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" class="ui-icon ui-icon--sm">
+                                            Ученики
+                                        </a>
+                                        {% if has_permission(current_user, 'assignment.view') %}
+                                        <a href="{{ url_for('assignments.assignments_list') }}" class="neo-button outline" style="text-decoration:none;">
+                                            <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" class="ui-icon ui-icon--sm">
+                                            Работы
+                                        </a>
+                                        {% endif %}
+                                        {% if has_permission(current_user, 'assignment.grade') %}
+                                        <a href="{{ url_for('lessons.review_queue') }}" class="neo-button outline" style="text-decoration:none;">
+                                            <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" class="ui-icon ui-icon--sm">
+                                            Проверка
+                                        </a>
+                                        {% endif %}
+                                        <a href="{{ url_for('reminders.reminders_list') }}" class="neo-button ghost" style="text-decoration:none;">
+                                            <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" class="ui-icon ui-icon--sm">
+                                            Напоминания
+                                        </a>
+                                        {% if has_permission(current_user, 'lesson.edit') %}
+                                        <a href="{{ url_for('library.materials_library') }}" class="neo-button ghost" style="text-decoration:none;">
+                                            <img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" class="ui-icon ui-icon--sm">
+                                            Библиотека
+                                        </a>
+                                        {% endif %}
+                                        {% if has_permission(current_user, 'trainer.use') %}
+                                        <a href="{{ url_for('trainer.trainer_embed') }}" class="neo-button ghost" style="text-decoration:none;">
+                                            <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" class="ui-icon ui-icon--sm">
+                                            Тренажёр
+                                        </a>
+                                        {% endif %}
+                                        {% if has_permission(current_user, 'rubrics.manage') %}
+                                        <a href="{{ url_for('rubrics.rubrics_list') }}" class="neo-button ghost" style="text-decoration:none;">
+                                            <img src="{{ url_for('static', filename='icons/icons8-тест-100.png') }}" class="ui-icon ui-icon--sm">
+                                            Рубрики
+                                        </a>
+                                        {% endif %}
+                                        {% if has_permission(current_user, 'billing.manage') %}
+                                        <a href="{{ url_for('billing.billing_plans') }}" class="neo-button ghost" style="text-decoration:none;">
+                                            <img src="{{ url_for('static', filename='icons/icons8-банкнота-100.png') }}" class="ui-icon ui-icon--sm">
+                                            Тарифы
+                                        </a>
+                                        {% endif %}
+                                        {% if current_user.is_admin() or current_user.is_creator() %}
+                                        <a href="{{ url_for('admin.admin_panel') }}" class="neo-button danger" style="text-decoration:none;">
+                                            <img src="{{ url_for('static', filename='icons/icons8-настройки-100.png') }}" class="ui-icon ui-icon--sm">
+                                            Админка
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
+                                <div class="profile-section">
+                                    <details>
+                                        <summary style="cursor:pointer; font-weight: 900;">Синхронизация календаря</summary>
+                                        <div style="margin-top: .75rem;">
+                                            <p style="color: var(--text-muted); margin-top: 0;">
+                                                Приватная ссылка для внешних календарей (.ics). Не передавайте её другим.
+                                            </p>
+                                            <div style="display:flex; gap: .6rem; flex-wrap: wrap; align-items: center;">
+                                                <input class="neo-input" id="icsLink" readonly style="flex:1; min-width: 260px;" value="">
+                                                <button class="neo-button outline" type="button" onclick="copyIcsLink()">Копировать</button>
+                                                <button class="neo-button ghost" type="button" onclick="regenerateIcsToken()">Обновить ссылку</button>
+                                            </div>
+                                            <div style="color: var(--text-muted); font-size: .9rem; margin-top: .5rem;">
+                                                Вставьте ссылку в Google Calendar / Apple Calendar как “Подписка по URL”.
+                                            </div>
+                                        </div>
+                                    </details>
+                                </div>
+                                <script>
+                                    (function() {
+                                        const origin = window.location.origin;
+                                        const token = {{ (('"' ~ current_user.schedule_ics_token ~ '"') if current_user.schedule_ics_token else 'null')|safe }};
+                                        const link = token ? `${origin}/schedule/ics/${token}` : '';
+                                        const el = document.getElementById('icsLink');
+                                        if (el) el.value = link || '(нажмите “Обновить ссылку”)';
+                                        window.copyIcsLink = async function() {
+                                            const v = el?.value || '';
+                                            if (!v || v.startsWith('(')) return;
+                                            try { await navigator.clipboard.writeText(v); if (window.toast) window.toast.success('Скопировано'); } catch(e) { if (window.toast) window.toast.error('Не удалось скопировать'); }
+                                        }
+                                        window.regenerateIcsToken = async function() {
+                                            try {
+                                                const resp = await fetch(`{{ url_for('schedule.schedule_regenerate_ics_token') }}`, {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                                                    },
+                                                    body: JSON.stringify({})
+                                                });
+                                                const data = await resp.json().catch(() => ({}));
+                                                if (!resp.ok || data.success === false) throw new Error(data.error || `HTTP ${resp.status}`);
+                                                const newLink = `${origin}/schedule/ics/${data.token}`;
+                                                if (el) el.value = newLink;
+                                                if (window.toast) window.toast.success('Ссылка обновлена');
+                                            } catch (e) {
+                                                if (window.toast) window.toast.error(e.message || 'Ошибка');
+                                            }
+                                        }
+                                    })();
+                                </script>
                                 {% endif %}
                                 {% endif %}
 
