@@ -14,6 +14,10 @@
     <style>
         .schedule-hero { margin-bottom: 2rem; }
 
+        /* Prevent dropdown clipping inside glass panels */
+        .schedule-shell { overflow: visible; }
+        .schedule-controls, .schedule-filters, .actions-menu { overflow: visible; }
+
         .schedule-controls {
             display: flex;
             flex-wrap: wrap;
@@ -71,6 +75,7 @@
         /* Page actions dropdown (reduce button overload) */
         .actions-menu {
             position: relative;
+            display: inline-block;
         }
         .actions-menu > summary {
             list-style: none;
@@ -81,7 +86,7 @@
             position: absolute;
             right: 0;
             top: calc(100% + 8px);
-            z-index: 50;
+            z-index: 10000;
             min-width: 240px;
             padding: 0.6rem;
             border-radius: var(--radius-lg);
@@ -90,6 +95,20 @@
             box-shadow: var(--shadow-soft);
             display: grid;
             gap: 0.5rem;
+        }
+
+        /* Autoplan modal layout */
+        .tpl-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: .75rem;
+            align-items: start;
+        }
+        .tpl-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: .6rem;
+            margin-top: .75rem;
         }
 
         .timezone-toggle button {
@@ -455,7 +474,7 @@
             </div>
         </section>
 
-        <section class="glass-panel">
+        <section class="glass-panel schedule-shell">
             <div class="schedule-controls">
                 <div class="week-range">{{ week_label }}</div>
                 <div class="nav-buttons">
@@ -701,48 +720,48 @@
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;" class="profile-grid-responsive">
                     <div>
                         <div style="font-weight: 900; margin-bottom: .5rem;">Новый слот</div>
-                        <div class="form-group">
-                            <label>Ученик</label>
-                            <select id="tplStudent" class="neo-select">
+                        <div class="neo-field">
+                            <label class="neo-label">Ученик</label>
+                            <select id="tplStudent" class="neo-select" style="width:100%;">
                                 {% for s in students %}
                                 <option value="{{ s.student_id }}">{{ s.name }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .75rem;">
-                            <div class="form-group">
-                                <label>День недели</label>
-                                <select id="tplWeekday" class="neo-select">
+                        <div class="tpl-grid-2">
+                            <div class="neo-field">
+                                <label class="neo-label">День недели</label>
+                                <select id="tplWeekday" class="neo-select" style="width:100%;">
                                     <option value="0">Пн</option><option value="1">Вт</option><option value="2">Ср</option><option value="3">Чт</option><option value="4">Пт</option><option value="5">Сб</option><option value="6">Вс</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label>Время</label>
-                                <input id="tplTime" class="neo-input" type="time" value="18:00">
+                            <div class="neo-field">
+                                <label class="neo-label">Время</label>
+                                <input id="tplTime" class="neo-input" style="width:100%;" type="time" value="18:00">
                             </div>
                         </div>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .75rem;">
-                            <div class="form-group">
-                                <label>Длительность</label>
-                                <input id="tplDuration" class="neo-input" type="number" min="30" step="30" value="60">
+                        <div class="tpl-grid-2">
+                            <div class="neo-field">
+                                <label class="neo-label">Длительность</label>
+                                <input id="tplDuration" class="neo-input" style="width:100%;" type="number" min="30" step="30" value="60">
                             </div>
-                            <div class="form-group">
-                                <label>Тип</label>
-                                <select id="tplType" class="neo-select">
+                            <div class="neo-field">
+                                <label class="neo-label">Тип</label>
+                                <select id="tplType" class="neo-select" style="width:100%;">
                                     <option value="regular">Обычный</option>
                                     <option value="exam">Проверочный</option>
                                     <option value="introductory">Вводный</option>
                                 </select>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label>Таймзона слота</label>
-                            <select id="tplTimezone" class="neo-select">
+                        <div class="neo-field">
+                            <label class="neo-label">Таймзона слота</label>
+                            <select id="tplTimezone" class="neo-select" style="width:100%;">
                                 <option value="moscow">МСК</option>
                                 <option value="tomsk">Томск</option>
                             </select>
                         </div>
-                        <div style="display:flex; justify-content:flex-end; margin-top: .75rem;">
+                        <div class="tpl-actions">
                             <button class="neo-button accent" type="button" onclick="createTemplate()">Добавить слот</button>
                         </div>
                     </div>
