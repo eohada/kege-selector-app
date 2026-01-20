@@ -21,6 +21,10 @@
         <p class="hero-eyebrow">биллинг</p>
         <h1 class="hero-title" style="margin-bottom:.25rem;">Тарифы</h1>
         <div style="color: var(--text-muted);">MVP без платежных интеграций: тарифы и подписки выдаются вручную.</div>
+        <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top: .9rem;">
+          <a class="neo-button accent sm" href="{{ url_for('billing.billing_plans') }}" style="text-decoration:none;">Тарифы</a>
+          <a class="neo-button outline sm" href="{{ url_for('billing.billing_subscriptions') }}" style="text-decoration:none;">Подписки</a>
+        </div>
       </section>
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;" class="profile-grid-responsive">
@@ -63,6 +67,10 @@
                 <input class="neo-input" name="period_days" type="number" min="1">
               </div>
             </div>
+            <div class="neo-field" style="margin-top:.75rem;">
+              <label class="neo-label">Цена за урок (₽)</label>
+              <input class="neo-input" name="price_per_lesson_rub" type="number" min="0">
+            </div>
             <div style="margin-top: 1rem; display:flex; justify-content:flex-end;">
               <button class="neo-button accent" type="submit">Создать</button>
             </div>
@@ -74,7 +82,7 @@
             <div><p class="eyebrow">список</p><h2>Тарифы</h2></div>
           </div>
           <div style="margin-top: .75rem;">
-            <details>
+            <details open>
               <summary style="cursor:pointer; font-weight: 900;">Группы тарифов</summary>
               <div style="margin-top: .75rem; display:grid; gap:.75rem;">
                 <form method="POST" action="{{ url_for('billing.billing_group_create') }}" style="display:grid; grid-template-columns: 1fr 140px 140px; gap:.6rem; align-items:end;">
@@ -124,6 +132,7 @@
                 </div>
                 <div style="color: var(--text-muted); font-size:.92rem; margin-top:.25rem;">
                   {% if p.price_rub is not none %}{{ p.price_rub }} ₽{% endif %}
+                  {% if p.price_per_lesson_rub is not none %}{% if p.price_rub is not none %} · {% endif %}{{ p.price_per_lesson_rub }} ₽/урок{% endif %}
                   {% if p.period_days is not none %} · {{ p.period_days }} дней{% endif %}
                   · статус: <strong>{{ 'active' if p.is_active else 'inactive' }}</strong>
                 </div>
@@ -168,13 +177,17 @@
                     <input class="neo-input" name="price_rub" type="number" min="0" value="{{ p.price_rub if p.price_rub is not none else '' }}">
                   </div>
                   <div class="neo-field">
+                    <label class="neo-label">Цена за урок (₽)</label>
+                    <input class="neo-input" name="price_per_lesson_rub" type="number" min="0" value="{{ p.price_per_lesson_rub if p.price_per_lesson_rub is not none else '' }}">
+                  </div>
+                  <div class="neo-field">
                     <label class="neo-label">Период (дней)</label>
                     <input class="neo-input" name="period_days" type="number" min="1" value="{{ p.period_days if p.period_days is not none else '' }}">
                   </div>
-                  <div class="neo-field">
-                    <label class="neo-label">Порядок</label>
-                    <input class="neo-input" name="order_index" type="number" value="{{ p.order_index or 0 }}">
-                  </div>
+                </div>
+                <div class="neo-field" style="margin-top:.75rem;">
+                  <label class="neo-label">Порядок</label>
+                  <input class="neo-input" name="order_index" type="number" value="{{ p.order_index or 0 }}">
                 </div>
                 <div style="display:flex; justify-content:flex-end; margin-top: .9rem;">
                   <button class="neo-button outline" type="submit">Сохранить</button>

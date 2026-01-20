@@ -932,6 +932,7 @@ class TariffPlan(db.Model):
     order_index = db.Column(db.Integer, default=0, nullable=False, index=True)
 
     price_rub = db.Column(db.Integer, nullable=True)     # цена в рублях (информативно)
+    price_per_lesson_rub = db.Column(db.Integer, nullable=True)  # цена за урок (информативно)
     period_days = db.Column(db.Integer, nullable=True)   # длительность доступа (информативно)
 
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)

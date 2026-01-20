@@ -54,6 +54,7 @@ def billing_plan_create():
         group_id=request.form.get('group_id', type=int) or None,
         order_index=request.form.get('order_index', type=int) or 0,
         price_rub=request.form.get('price_rub', type=int),
+        price_per_lesson_rub=request.form.get('price_per_lesson_rub', type=int),
         period_days=request.form.get('period_days', type=int),
         is_active=True,
     )
@@ -101,6 +102,7 @@ def billing_plan_update(plan_id: int):
         plan.title = title
     plan.description = (request.form.get('description') or '').strip() or None
     plan.price_rub = request.form.get('price_rub', type=int)
+    plan.price_per_lesson_rub = request.form.get('price_per_lesson_rub', type=int)
     plan.period_days = request.form.get('period_days', type=int)
     plan.group_id = request.form.get('group_id', type=int) or None
     plan.order_index = request.form.get('order_index', type=int) or 0

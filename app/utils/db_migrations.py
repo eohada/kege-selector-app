@@ -519,6 +519,13 @@ def ensure_schema_columns(app):
                             except Exception as e:
                                 logger.warning(f"Could not add order_index to {tp_table}: {e}")
                                 db.session.rollback()
+                        if 'price_per_lesson_rub' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{tp_table}" ADD COLUMN price_per_lesson_rub INTEGER'))
+                                logger.info(f"Added price_per_lesson_rub to {tp_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add price_per_lesson_rub to {tp_table}: {e}")
+                                db.session.rollback()
                 except Exception:
                     pass
 

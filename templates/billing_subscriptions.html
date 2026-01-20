@@ -21,6 +21,10 @@
         <p class="hero-eyebrow">биллинг</p>
         <h1 class="hero-title" style="margin-bottom:.25rem;">Подписки</h1>
         <div style="color: var(--text-muted);">Выдача доступа вручную (без платежного провайдера).</div>
+        <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top: .9rem;">
+          <a class="neo-button outline sm" href="{{ url_for('billing.billing_plans') }}" style="text-decoration:none;">Тарифы</a>
+          <a class="neo-button accent sm" href="{{ url_for('billing.billing_subscriptions', plan_id=preselect_plan_id) }}" style="text-decoration:none;">Подписки</a>
+        </div>
       </section>
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;" class="profile-grid-responsive">
