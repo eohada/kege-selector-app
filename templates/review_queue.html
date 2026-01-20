@@ -191,6 +191,12 @@
                                         <span><i class="fas fa-user-graduate"></i> <strong>{{ student.name if student else '—' }}</strong></span>
                                         <span><i class="far fa-calendar"></i> {{ lesson_local.strftime('%d.%m.%Y %H:%M') if lesson_local else '—' }}</span>
                                         <span class="status-badge status-info" style="opacity: 0.95;">{{ tasks|length }} задач</span>
+                                        {% set summary_type = (assignment_type if assignment_type else ((tasks[0].assignment_type or 'homework') if tasks and tasks|length > 0 else 'homework')) %}
+                                        {% set sums = (lesson.review_summaries or {}) %}
+                                        {% set sum = sums.get(summary_type, {}) if sums else {} %}
+                                        {% if sum and (sum.get('percent') is not none) %}
+                                        <span class="status-badge status-success" style="opacity: 0.95;">Итог {{ sum.get('percent') }}%</span>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 <div class="right-actions">
@@ -235,8 +241,6 @@
                                     {% set label = ('№' ~ tnum) if tnum else ('ID ' ~ lt.lesson_task_id) %}
                                     {% set lt_type = (lt.assignment_type or 'homework') %}
                                     {% set view_url = url_for('lessons.lesson_exam_view', lesson_id=lesson.lesson_id) if lt_type == 'exam' else (url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) if lt_type == 'classwork' else url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id)) %}
-                                    {% set sums = (lesson.review_summaries or {}) %}
-                                    {% set sum = sums.get(lt_type, {}) if sums else {} %}
                                     <a class="task-chip" href="{{ view_url }}#task-{{ lt.lesson_task_id }}">
                                         <div class="task-left">
                                             <div class="task-name">{{ label }}</div>
@@ -244,9 +248,7 @@
                                                 {% if lt.assignment_type == 'classwork' %}КР{% elif lt.assignment_type == 'exam' %}Проверочная{% else %}ДЗ{% endif %}
                                                 ·
                                                 {% if lt.student_submission %}есть ответ{% else %}без ответа{% endif %}
-                                                {% if sum and (sum.get('percent') is not none) %}
-                                                · итог {{ sum.get('percent') }}%
-                                                {% endif %}
+                                                · #{{ lt.lesson_task_id }}
                                             </div>
                                         </div>
                                         <span class="status-badge status-info" style="opacity: 0.9;">

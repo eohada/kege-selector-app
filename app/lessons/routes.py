@@ -769,12 +769,27 @@ def review_queue():
                 by_lesson[lid] = {
                     'lesson': lt.lesson,
                     'student': lt.lesson.student,
-                    'tasks': []
+                    'tasks': [],
+                    '_seen_task_ids': set(),
                 }
+            # safety: не допускаем дублей задач в одной карточке (на случай странных JOIN/данных)
+            try:
+                tid = int(getattr(lt, 'lesson_task_id', 0) or 0)
+            except Exception:
+                tid = 0
+            if tid and tid in by_lesson[lid]['_seen_task_ids']:
+                continue
+            if tid:
+                by_lesson[lid]['_seen_task_ids'].add(tid)
             by_lesson[lid]['tasks'].append(lt)
 
         # сохраняем порядок по дате урока
         for item in by_lesson.values():
+            # чистим служебное поле
+            try:
+                item.pop('_seen_task_ids', None)
+            except Exception:
+                pass
             lesson_cards.append(item)
         lesson_cards.sort(key=lambda x: (x['lesson'].lesson_date or moscow_now()), reverse=True)
 
