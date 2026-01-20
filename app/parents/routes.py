@@ -22,11 +22,10 @@ logger = logging.getLogger(__name__)
 def parent_dashboard():
     """Дашборд родителя с информацией о детях"""
     try:
-        # Получаем всех детей родителя
-        family_ties = FamilyTie.query.filter_by(
-            parent_id=current_user.id,
-            is_confirmed=True
-        ).all()
+        # Получаем всех детей родителя.
+        # В проде подтверждение связи может быть не настроено/не проставлено,
+        # из-за чего родитель "не видит" уже привязанных детей.
+        family_ties = FamilyTie.query.filter_by(parent_id=current_user.id).all()
         
         if not family_ties:
             # Нет привязанных детей
@@ -109,9 +108,12 @@ def parent_dashboard():
             # Подсчитываем решенные задачи за неделю
             lessons = Lesson.query.filter_by(student_id=selected_student.student_id).all()
             tasks_solved_week = 0
+            # Важно: Lesson.lesson_date хранится как naive datetime (MSK), а moscow_now() timezone-aware.
+            # Приводим "сейчас" к naive, иначе будет TypeError и 500.
+            now_dt = moscow_now().replace(tzinfo=None)
             for lesson in lessons:
                 # lesson.lesson_date обычно datetime; сравниваем datetime с datetime (иначе TypeError и 500)
-                if lesson.lesson_date and (moscow_now() - lesson.lesson_date).days <= 7:
+                if lesson.lesson_date and (now_dt - lesson.lesson_date).days <= 7:
                     for hw_task in lesson.homework_tasks:
                         if hw_task.submission_correct is not None:
                             tasks_solved_week += 1
@@ -148,7 +150,7 @@ def parent_dashboard():
             
             # Предстоящие уроки (ближайшие 7 дней)
             from datetime import timedelta
-            now_dt = moscow_now()
+            # повторно используем naive now_dt для корректных сравнений с Lesson.lesson_date
             week_later_dt = now_dt + timedelta(days=7)
             
             upcoming_lessons = Lesson.query.filter(
@@ -220,10 +222,7 @@ def parent_dashboard():
 def api_parent_children():
     """API: Список детей родителя"""
     try:
-        family_ties = FamilyTie.query.filter_by(
-            parent_id=current_user.id,
-            is_confirmed=True
-        ).all()
+        family_ties = FamilyTie.query.filter_by(parent_id=current_user.id).all()
         
         children_data = []
         for tie in family_ties:

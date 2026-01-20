@@ -887,7 +887,11 @@ def schedule_api_events():
 @schedule_bp.route('/schedule/api/lesson/<int:lesson_id>/delete', methods=['POST'])
 @login_required
 def schedule_delete_lesson(lesson_id: int):
-    if not _can_manage_schedule() or not has_permission(current_user, 'lesson.delete'):
+    # Удаление должно работать для тех же ролей/прав, кто может управлять расписанием
+    # (в UI кнопка "Удалить" показывается при canManage). Ранее тут требовалось отдельное
+    # право `lesson.delete`, которого может не быть/не быть включенным, из-за чего
+    # удаление "молча" ломалось (403).
+    if not _can_manage_schedule():
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
     lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)

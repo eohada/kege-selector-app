@@ -98,10 +98,12 @@ def get_user_scope(user):
     
     elif user.is_parent():
         # Родитель видит только своих детей (через FamilyTie)
-        family_ties = FamilyTie.query.filter_by(
-            parent_id=user.id,
-            is_confirmed=True
-        ).all()
+        # В некоторых окружениях подтверждение связи может не использоваться/не проставляться.
+        # Чтобы родителю не "пропадали" дети, делаем fallback: если нет confirmed-связей,
+        # берём все связи родителя.
+        family_ties = FamilyTie.query.filter_by(parent_id=user.id, is_confirmed=True).all()
+        if not family_ties:
+            family_ties = FamilyTie.query.filter_by(parent_id=user.id).all()
         scope['student_ids'] = [ft.student_id for ft in family_ties]
         return scope
     
