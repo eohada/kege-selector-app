@@ -942,7 +942,7 @@ def student_gradebook_export_pdf(student_id: int):
 def student_diagnostics(student_id: int):
     """Диагностика ученика: слабые темы + сохранённые контрольные точки."""
     student = _guard_student_access(student_id)
-    if not has_permission(current_user, 'plan.view'):
+    if not has_permission(current_user, 'plan.view') or not has_permission(current_user, 'diagnostics.view'):
         from flask import abort
         abort(403)
 
@@ -970,7 +970,7 @@ def student_diagnostics(student_id: int):
     except Exception:
         checkpoints = []
 
-    can_save = (not current_user.is_student()) and (not current_user.is_parent()) and has_permission(current_user, 'plan.edit')
+    can_save = (not current_user.is_student()) and (not current_user.is_parent()) and has_permission(current_user, 'diagnostics.checkpoints')
 
     # простые рекомендации MVP: топ-3 слабых темы → "сделать 2 урока + 10 задач"
     recommendations = []
@@ -999,7 +999,7 @@ def student_diagnostics(student_id: int):
 def student_diagnostics_checkpoint_create(student_id: int):
     """Сохранить контрольную точку диагностики (учитель/админ)."""
     student = _guard_student_access(student_id)
-    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'plan.edit')):
+    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'diagnostics.checkpoints')):
         from flask import abort
         abort(403)
 

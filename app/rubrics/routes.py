@@ -69,7 +69,7 @@ def _parse_items(raw: str) -> list[dict]:
 
 @rubrics_bp.route('/rubrics')
 @login_required
-@check_access('assignment.grade')
+@check_access('rubrics.manage')
 def rubrics_list():
     q = (request.args.get('q') or '').strip()
     assignment_type = (request.args.get('assignment_type') or '').strip().lower()
@@ -89,7 +89,7 @@ def rubrics_list():
 
 @rubrics_bp.route('/rubrics/new', methods=['GET', 'POST'])
 @login_required
-@check_access('assignment.grade')
+@check_access('rubrics.manage')
 def rubric_new():
     if request.method == 'GET':
         return render_template('rubric_form.html', rubric=None, items_json='[]', is_new=True)
@@ -134,7 +134,7 @@ def rubric_new():
 
 @rubrics_bp.route('/rubrics/<int:rubric_id>/edit', methods=['GET', 'POST'])
 @login_required
-@check_access('assignment.grade')
+@check_access('rubrics.manage')
 def rubric_edit(rubric_id: int):
     rubric = RubricTemplate.query.get_or_404(rubric_id)
     if not _can_manage_all() and rubric.owner_user_id != current_user.id:
@@ -179,7 +179,7 @@ def rubric_edit(rubric_id: int):
 
 @rubrics_bp.route('/rubrics/<int:rubric_id>/delete', methods=['POST'])
 @login_required
-@check_access('assignment.grade')
+@check_access('rubrics.manage')
 def rubric_delete(rubric_id: int):
     rubric = RubricTemplate.query.get_or_404(rubric_id)
     if not _can_manage_all() and rubric.owner_user_id != current_user.id:

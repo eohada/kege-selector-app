@@ -1256,6 +1256,26 @@ def remote_admin_api_permissions():
                         db.session.rollback()
                         logger.error(f"Error initializing default permissions: {init_error}", exc_info=True)
                         # Продолжаем работу, даже если инициализация не удалась
+                else:
+                    # Таблица не пустая: докидываем новые дефолтные права, которые могли появиться позже.
+                    # Важно для релизов: новые permissions должны появляться в удаленной админке сразу включенными (если они дефолтные).
+                    try:
+                        added = 0
+                        for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
+                            for perm_name in perms:
+                                if perm_name not in ALL_PERMISSIONS:
+                                    continue
+                                exists = RolePermission.query.filter_by(role=role, permission_name=perm_name).first()
+                                if not exists:
+                                    db.session.add(RolePermission(role=role, permission_name=perm_name, is_enabled=True))
+                                    added += 1
+                        if added:
+                            db.session.commit()
+                            logger.info(f"Backfilled {added} missing RolePermission records (defaults) for remote admin")
+                            role_permissions = RolePermission.query.all()
+                    except Exception as backfill_err:
+                        db.session.rollback()
+                        logger.warning(f"Could not backfill missing RolePermissions for remote admin: {backfill_err}")
                 
                 permissions_map = {}
                 

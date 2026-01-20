@@ -27,17 +27,87 @@
                 <p class="hero-eyebrow">администрирование</p>
                 <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Админ" class="ui-icon ui-icon--md">Админ панель</h1>
                 <p class="hero-subtitle">Минималистичная панель управления системой и пользователями.</p>
-                <div class="hero-actions">
-                    <a href="{{ url_for('admin.admin_users') }}" class="neo-button accent" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Пользователи" class="ui-icon ui-icon--sm"> Управление пользователями</a>
-                    {% if current_user.is_creator() %}
-                    <a href="{{ url_for('admin.admin_permissions') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-settings-100.png') }}" alt="Права" class="ui-icon ui-icon--sm"> Права доступа</a>
-                    {% endif %}
-                    <a href="{{ url_for('admin.admin_task_formator') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-лупа-100-2.png') }}" alt="Формироватор" class="ui-icon ui-icon--sm"> Формироватор банка заданий</a>
-                    <a href="{{ url_for('admin.admin_testers') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Тестировщики" class="ui-icon ui-icon--sm"> Тестировщики</a>
-                    <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Tester entities" class="ui-icon ui-icon--sm"> Tester entities</a>
-                    <a href="{{ url_for('admin.admin_topics') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Темы" class="ui-icon ui-icon--sm"> Темы</a>
-                    <a href="{{ url_for('admin.admin_audit') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Аудит" class="ui-icon ui-icon--sm"> Аудит</a>
-                    <a href="{{ url_for('admin.diagnostics') }}" class="neo-button outline" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-лупа-100-2.png') }}" alt="Диагностика" class="ui-icon ui-icon--sm"> Диагностика</a>
+                <style>
+                    .admin-actions-row { display:flex; gap:.6rem; flex-wrap: wrap; align-items: center; }
+                    .admin-actions-sep { width: 1px; height: 34px; background: var(--stroke-1); opacity: .9; margin: 0 .2rem; }
+                    .admin-actions details { position: relative; }
+                    .admin-actions summary { list-style: none; cursor: pointer; }
+                    .admin-actions summary::-webkit-details-marker { display: none; }
+                    .admin-actions .menu {
+                        position: absolute;
+                        left: 0;
+                        top: calc(100% + 8px);
+                        z-index: 40;
+                        min-width: 320px;
+                        padding: .6rem;
+                        border-radius: var(--radius-lg);
+                        border: 1px solid var(--stroke-1);
+                        background: var(--surface-1);
+                        box-shadow: var(--shadow-soft);
+                        display: grid;
+                        gap: .5rem;
+                    }
+                    .admin-actions .menu a { justify-content: flex-start; text-decoration: none; }
+                    .admin-actions .menu .neo-button { width: 100%; }
+                </style>
+                <div class="hero-actions admin-actions">
+                    <div class="admin-actions-row">
+                        <a href="{{ url_for('admin.admin_users') }}" class="neo-button accent" style="text-decoration: none;">
+                            <img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Пользователи" class="ui-icon ui-icon--sm">
+                            Пользователи
+                        </a>
+
+                        <span class="admin-actions-sep" aria-hidden="true"></span>
+
+                        {% if current_user.is_creator() %}
+                        <a href="{{ url_for('admin.admin_permissions') }}" class="neo-button outline" style="text-decoration: none;">
+                            <img src="{{ url_for('static', filename='icons/icons8-settings-100.png') }}" alt="Права" class="ui-icon ui-icon--sm">
+                            Права доступа
+                        </a>
+                        {% endif %}
+
+                        <details>
+                            <summary class="neo-button ghost">Инструменты</summary>
+                            <div class="menu">
+                                <a href="{{ url_for('admin.admin_task_formator') }}" class="neo-button outline">
+                                    <img src="{{ url_for('static', filename='icons/icons8-лупа-100-2.png') }}" alt="Формироватор" class="ui-icon ui-icon--sm">
+                                    Формироватор банка заданий
+                                </a>
+                                <a href="{{ url_for('admin.admin_topics') }}" class="neo-button outline">
+                                    <img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Темы" class="ui-icon ui-icon--sm">
+                                    Темы
+                                </a>
+                                <a href="{{ url_for('admin.diagnostics') }}" class="neo-button outline">
+                                    <img src="{{ url_for('static', filename='icons/icons8-лупа-100-2.png') }}" alt="Диагностика" class="ui-icon ui-icon--sm">
+                                    Диагностика
+                                </a>
+                            </div>
+                        </details>
+
+                        <details>
+                            <summary class="neo-button ghost">Sandbox/тесты</summary>
+                            <div class="menu">
+                                <a href="{{ url_for('admin.admin_testers') }}" class="neo-button outline">
+                                    <img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Тестировщики" class="ui-icon ui-icon--sm">
+                                    Тестировщики
+                                </a>
+                                <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button outline">
+                                    <img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Tester entities" class="ui-icon ui-icon--sm">
+                                    Tester entities
+                                </a>
+                            </div>
+                        </details>
+
+                        <details>
+                            <summary class="neo-button ghost">Система</summary>
+                            <div class="menu">
+                                <a href="{{ url_for('admin.admin_audit') }}" class="neo-button outline">
+                                    <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Аудит" class="ui-icon ui-icon--sm">
+                                    Аудит
+                                </a>
+                            </div>
+                        </details>
+                    </div>
                 </div>
             </div>
             <div class="hero-pane">

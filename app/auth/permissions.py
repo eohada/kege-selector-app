@@ -12,7 +12,9 @@ PERMISSION_CATEGORIES = {
     'tools': 'Инструменты',
     'design': 'Дизайн и ассеты',
     'groups': 'Группы/классы',
-    'onboarding': 'Онбординг'
+    'onboarding': 'Онбординг',
+    'diagnostics': 'Диагностика',
+    'billing': 'Тарифы и подписки'
 }
 
 # Список всех прав с описанием и категорией
@@ -34,6 +36,7 @@ ALL_PERMISSIONS = {
     'assignment.create': {'name': 'Создание и распределение работ', 'category': 'content'},
     'assignment.grade': {'name': 'Проверка работ', 'category': 'content'},
     'assignment.view': {'name': 'Просмотр работ', 'category': 'content'},
+    'rubrics.manage': {'name': 'Управление рубриками проверки', 'category': 'content'},
 
     # Оценки/журнал
     'gradebook.view': {'name': 'Просмотр журнала оценок', 'category': 'finance'},
@@ -49,6 +52,7 @@ ALL_PERMISSIONS = {
     
     # Финансы
     'finance.view_stats': {'name': 'Просмотр общей статистики', 'category': 'finance'},
+    'billing.manage': {'name': 'Управление тарифами и подписками', 'category': 'billing'},
     
     # Дизайн
     'assets.manage': {'name': 'Управление графикой и иконками', 'category': 'design'},
@@ -57,6 +61,10 @@ ALL_PERMISSIONS = {
     'tools.testers': {'name': 'Управление тестировщиками', 'category': 'tools'},
     'tools.schedule': {'name': 'Управление расписанием', 'category': 'tools'},
     'schedule.view': {'name': 'Просмотр расписания', 'category': 'tools'},
+
+    # Диагностика
+    'diagnostics.view': {'name': 'Просмотр диагностики ученика', 'category': 'diagnostics'},
+    'diagnostics.checkpoints': {'name': 'Сохранение контрольных точек диагностики', 'category': 'diagnostics'},
     
     # Система
     'system.logs': {'name': 'Просмотр логов', 'category': 'system'},
@@ -69,8 +77,8 @@ DEFAULT_ROLE_PERMISSIONS = {
     'admin': list(ALL_PERMISSIONS.keys()),   # Все права
     'chief_tester': ['tools.testers', 'task.manage', 'user.view_list'],
     'designer': ['assets.manage'],
-    'tutor': ['lesson.create', 'lesson.edit', 'plan.view', 'plan.edit', 'gradebook.view', 'gradebook.edit', 'groups.view', 'groups.manage', 'onboarding.view', 'onboarding.invite', 'user.view_list', 'tools.schedule', 'schedule.view', 'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view'],
-    'student': ['plan.view', 'gradebook.view', 'assignment.view', 'schedule.view'],
-    'parent': ['plan.view', 'gradebook.view', 'assignment.view', 'schedule.view'],
+    'tutor': ['lesson.create', 'lesson.edit', 'plan.view', 'plan.edit', 'gradebook.view', 'gradebook.edit', 'groups.view', 'groups.manage', 'onboarding.view', 'onboarding.invite', 'user.view_list', 'tools.schedule', 'schedule.view', 'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view', 'rubrics.manage', 'diagnostics.view', 'diagnostics.checkpoints'],
+    'student': ['plan.view', 'gradebook.view', 'assignment.view', 'schedule.view', 'diagnostics.view'],
+    'parent': ['plan.view', 'gradebook.view', 'assignment.view', 'schedule.view', 'diagnostics.view'],
     'tester': []
 }

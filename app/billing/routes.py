@@ -8,12 +8,15 @@ from flask_login import login_required, current_user
 
 from app.billing import billing_bp
 from app.models import db, TariffPlan, UserSubscription, User
+from app.auth.rbac_utils import has_permission
 from core.audit_logger import audit_logger
 
 logger = logging.getLogger(__name__)
 
 
 def _require_admin():
+    if has_permission(current_user, 'billing.manage'):
+        return
     if not (getattr(current_user, 'is_creator', None) and current_user.is_creator()) and not (getattr(current_user, 'is_admin', None) and current_user.is_admin()):
         abort(403)
 
