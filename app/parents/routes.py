@@ -3,7 +3,7 @@
 Дашборд с информацией о детях, статистикой и финансами
 """
 import logging
-from flask import render_template, request, jsonify
+from flask import render_template, request, jsonify, flash
 from flask_login import login_required, current_user
 
 from app.parents import parents_bp
@@ -110,7 +110,8 @@ def parent_dashboard():
             lessons = Lesson.query.filter_by(student_id=selected_student.student_id).all()
             tasks_solved_week = 0
             for lesson in lessons:
-                if lesson.lesson_date and (moscow_now().date() - lesson.lesson_date).days <= 7:
+                # lesson.lesson_date обычно datetime; сравниваем datetime с datetime (иначе TypeError и 500)
+                if lesson.lesson_date and (moscow_now() - lesson.lesson_date).days <= 7:
                     for hw_task in lesson.homework_tasks:
                         if hw_task.submission_correct is not None:
                             tasks_solved_week += 1
@@ -147,21 +148,21 @@ def parent_dashboard():
             
             # Предстоящие уроки (ближайшие 7 дней)
             from datetime import timedelta
-            today = moscow_now().date()
-            week_later = today + timedelta(days=7)
+            now_dt = moscow_now()
+            week_later_dt = now_dt + timedelta(days=7)
             
             upcoming_lessons = Lesson.query.filter(
                 Lesson.student_id == selected_student.student_id,
-                Lesson.lesson_date >= today,
-                Lesson.lesson_date <= week_later
+                Lesson.lesson_date >= now_dt,
+                Lesson.lesson_date <= week_later_dt
             ).order_by(Lesson.lesson_date.asc()).all()
             
             # Последние уроки (за последние 30 дней)
-            month_ago = today - timedelta(days=30)
+            month_ago_dt = now_dt - timedelta(days=30)
             recent_lessons = Lesson.query.filter(
                 Lesson.student_id == selected_student.student_id,
-                Lesson.lesson_date >= month_ago,
-                Lesson.lesson_date < today
+                Lesson.lesson_date >= month_ago_dt,
+                Lesson.lesson_date < now_dt
             ).order_by(Lesson.lesson_date.desc()).limit(10).all()
         
         # Финансы (пока заглушка - нужно будет добавить модель для баланса)
@@ -200,7 +201,10 @@ def parent_dashboard():
         
     except Exception as e:
         logger.error(f"Error in parent_dashboard: {e}", exc_info=True)
-        flash('Ошибка при загрузке дашборда', 'error')
+        try:
+            flash('Ошибка при загрузке дашборда', 'error')
+        except Exception:
+            pass
         return render_template('parent_dashboard.html',
                              children=[],
                              selected_child=None,
