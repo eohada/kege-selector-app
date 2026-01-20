@@ -16,6 +16,7 @@ from app.library import library_bp
 from app.auth.rbac_utils import check_access, get_user_scope
 from app.models import db, User, Student, Lesson, MaterialAsset, LessonMaterialLink, LessonRoomTemplate, moscow_now
 from sqlalchemy.orm.attributes import flag_modified
+from app.uploads.service import save_uploaded_file
 
 logger = logging.getLogger(__name__)
 
@@ -154,27 +155,22 @@ def materials_upload():
     description = (request.form.get('description') or '').strip() or None
     tags = _normalize_tags((request.form.get('tags') or '').strip())
 
-    orig = secure_filename(file.filename)
-    if not orig:
-        flash('Некорректное имя файла.', 'danger')
-        return redirect(url_for('library.materials_library'))
-
     # Хранилище: static/uploads/library/<user_id>/
     folder = os.path.join(current_app.root_path, 'static', 'uploads', 'library', str(current_user.id))
-    os.makedirs(folder, exist_ok=True)
-
-    ts = int(time.time())
-    stored_name = f"{ts}_{orig}"
-    path = os.path.join(folder, stored_name)
-    file.save(path)
-
-    file_url = url_for('static', filename=f"uploads/library/{current_user.id}/{stored_name}")
-    mime = getattr(file, 'mimetype', None)
-    size = None
     try:
-        size = os.path.getsize(path)
-    except Exception:
-        size = None
+        orig, abs_path, size = save_uploaded_file(
+            file=file,
+            base_folder=folder,
+            allowed_exts={'pdf', 'png', 'jpg', 'jpeg', 'webp', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'txt'},
+            max_bytes=20 * 1024 * 1024,
+        )
+    except Exception as e:
+        flash(f'Не удалось загрузить файл: {e}', 'danger')
+        return redirect(url_for('library.materials_library'))
+
+    storage_path = os.path.relpath(abs_path, current_app.root_path).replace('\\', '/')
+    mime = getattr(file, 'mimetype', None)
+    # file_url будет защищённым endpoint'ом (после flush)
 
     asset = MaterialAsset(
         owner_user_id=current_user.id,
@@ -182,13 +178,16 @@ def materials_upload():
         description=description,
         tags=tags,
         file_name=orig,
-        file_url=file_url,
+        file_url='',
+        storage_path=storage_path,
         file_mime=mime,
         file_size=size,
         visibility='private',
         is_active=True
     )
     db.session.add(asset)
+    db.session.flush()
+    asset.file_url = url_for('uploads.library_file', asset_id=asset.asset_id)
     try:
         db.session.commit()
     except Exception as e:

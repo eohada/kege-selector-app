@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Оферта</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  {% include '_ux_enhancements.html' %}
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+</head>
+<body>
+  <div class="app-shell">
+    {% include '_primary_nav.html' %}
+    <main style="margin-top: 1.25rem;">
+      <section class="glass-panel">
+        <p class="hero-eyebrow">юридическое</p>
+        <h1 class="hero-title" style="margin-bottom:.25rem;">Публичная оферта (MVP)</h1>
+        <div style="color: var(--text-muted); margin-top:.5rem;">
+          Здесь можно разместить полный текст оферты. Сейчас — заглушка для продакшн-структуры.
+        </div>
+        <div style="margin-top: 1rem; white-space: pre-line; color: var(--text-primary); line-height: 1.6;">
+          1) Предмет: оказание образовательных услуг.
+          2) Стоимость/период: определяется тарифом.
+          3) Порядок оказания: через личный кабинет.
+          4) Возвраты/расторжение: по согласованию.
+        </div>
+
+        {% if current_user.is_authenticated %}
+        <form method="POST" action="{{ url_for('main.legal_accept') }}" style="margin-top: 1.25rem;">
+          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+          <input type="hidden" name="document_key" value="offer">
+          <input type="hidden" name="version" value="1">
+          <button type="submit" class="neo-button accent">Я принимаю оферту</button>
+        </form>
+        {% endif %}
+      </section>
+    </main>
+  </div>
+</body>
+</html>
+

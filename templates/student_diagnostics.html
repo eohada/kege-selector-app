@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Диагностика · {{ student.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+  {% include '_ux_enhancements.html' %}
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+</head>
+<body>
+  <div class="app-shell">
+    {% set active_page = 'student' %}
+    {% include '_primary_nav.html' %}
+
+    <main style="margin-top: 1.25rem;">
+      <section class="glass-panel" style="margin-bottom: 1.25rem;">
+        <p class="hero-eyebrow">диагностика</p>
+        <h1 class="hero-title" style="margin-bottom:.25rem;">{{ student.name }}</h1>
+        <div style="color: var(--text-muted);">Слабые темы и контрольные точки (baseline/промежуточные).</div>
+        <div class="hero-actions" style="margin-top: 1rem;">
+          <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Профиль</a>
+          <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button outline">Аналитика</a>
+        </div>
+      </section>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;" class="profile-grid-responsive">
+        <section class="glass-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">риски</p>
+              <h2>Слабые темы (авто)</h2>
+            </div>
+          </div>
+
+          <div style="display:grid; gap:.65rem; margin-top: 1rem;">
+            {% for t in problem_topics %}
+              {% set name = t.name if t.name is defined else t.get('name') %}
+              {% set avg = t.avg_score if t.avg_score is defined else t.get('avg_score') %}
+              <div style="padding:.85rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
+                <div style="font-weight: 900;">{{ name }}</div>
+                <div style="color: var(--text-muted); margin-top:.35rem; font-size:.92rem;">Средний результат: <strong>{{ avg }}%</strong></div>
+              </div>
+            {% else %}
+              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Пока недостаточно данных.</p></div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="glass-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">рекомендации</p>
+              <h2>Что делать дальше (MVP)</h2>
+            </div>
+          </div>
+          <div style="display:grid; gap:.65rem; margin-top: 1rem;">
+            {% for r in recommendations %}
+              <div style="padding:.85rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
+                <div style="font-weight: 900;">{{ r.topic }}</div>
+                <div style="color: var(--text-muted); margin-top:.35rem; font-size:.92rem;">{{ r.plan }}</div>
+              </div>
+            {% else %}
+              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Рекомендации появятся, когда накопится статистика.</p></div>
+            {% endfor %}
+          </div>
+
+          {% if can_save %}
+          <div style="margin-top: 1rem; border-top: 1px solid var(--stroke-1); padding-top: 1rem;">
+            <form method="POST" action="{{ url_for('students.student_diagnostics_checkpoint_create', student_id=student.student_id) }}" data-no-ajax="1">
+              {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+              <div class="neo-field">
+                <label class="neo-label">Тип точки</label>
+                <select class="neo-select" name="kind">
+                  <option value="checkpoint">Промежуточная</option>
+                  <option value="baseline">Входная (baseline)</option>
+                </select>
+              </div>
+              <div class="neo-field" style="margin-top: .75rem;">
+                <label class="neo-label">Заметка (опц.)</label>
+                <textarea class="neo-input" name="note" style="min-height: 90px;" placeholder="Что заметили? На чём фокусируемся?"></textarea>
+              </div>
+              <div style="margin-top: .75rem; display:flex; justify-content:flex-end;">
+                <button type="submit" class="neo-button accent">Сохранить контрольную точку</button>
+              </div>
+            </form>
+          </div>
+          {% endif %}
+        </section>
+      </div>
+
+      <section class="glass-panel" style="margin-top: 1.25rem;">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">история</p>
+            <h2>Контрольные точки</h2>
+          </div>
+        </div>
+        <div style="display:grid; gap:.75rem; margin-top: 1rem;">
+          {% for c in checkpoints %}
+            <div style="padding: .95rem 1rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02);">
+              <div style="display:flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                <div style="font-weight: 900;">
+                  {% if c.kind == 'baseline' %}Входная диагностика{% else %}Контрольная точка{% endif %}
+                </div>
+                <div style="color: var(--text-muted);">
+                  {% if c.created_at %}{{ c.created_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}
+                </div>
+              </div>
+              {% if c.note %}
+                <div style="color: var(--text-muted); margin-top: .5rem; white-space: pre-line;">{{ c.note }}</div>
+              {% endif %}
+              {% if c.problem_topics %}
+                <div style="margin-top:.65rem; color: var(--text-muted); font-size: .92rem;">
+                  Топ слабых тем: <strong>{{ (c.problem_topics|length) if c.problem_topics else 0 }}</strong>
+                </div>
+              {% endif %}
+            </div>
+          {% else %}
+            <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Пока нет сохранённых точек.</p></div>
+          {% endfor %}
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
+

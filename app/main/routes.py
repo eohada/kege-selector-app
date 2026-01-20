@@ -11,7 +11,7 @@ from datetime import datetime
 
 from app.main import main_bp
 from app.models import Student, Lesson, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, db, moscow_now
-from app.models import User, Enrollment, FamilyTie
+from app.models import User, Enrollment, FamilyTie, UserConsent
 from app.students.forms import normalize_school_class
 from app.auth.rbac_utils import get_user_scope, apply_data_scope
 from sqlalchemy import func, or_
@@ -22,6 +22,43 @@ from app import csrf
 
 # Базовая директория проекта
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
+
+@main_bp.route('/legal/offer')
+def legal_offer():
+    return render_template('legal_offer.html')
+
+
+@main_bp.route('/legal/privacy')
+def legal_privacy():
+    return render_template('legal_privacy.html')
+
+
+@main_bp.route('/legal/accept', methods=['POST'])
+@login_required
+def legal_accept():
+    """Зафиксировать согласие пользователя с документом (MVP)."""
+    doc = (request.form.get('document_key') or '').strip().lower()
+    version = (request.form.get('version') or '1').strip()
+    if doc not in {'offer', 'privacy'}:
+        flash('Некорректный документ.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    try:
+        consent = UserConsent(
+            user_id=current_user.id,
+            document_key=doc,
+            version=version,
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get('User-Agent'),
+        )
+        db.session.add(consent)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    flash('Согласие сохранено.', 'success')
+    return redirect(url_for('main.dashboard'))
 
 @main_bp.route('/health')
 def health_check():
@@ -180,15 +217,9 @@ def dashboard():
     if current_user.is_parent():
         return redirect(url_for('parents.parent_dashboard'))
     
-    # Редирект для ученика на его профиль
+    # Редирект для ученика на его дашборд
     if current_user.is_student():
-        # Находим связанного Student по email
-        student = None
-        if current_user.email:
-            student = Student.query.filter_by(email=current_user.email).first()
-        if student:
-            return redirect(url_for('students.student_profile', student_id=student.student_id))
-        # Если Student не найден, показываем пустой dashboard
+        return redirect(url_for('main.student_dashboard'))
     
     # Для ролей designer и tester - редирект на соответствующие страницы или пустой dashboard
     if current_user.is_designer():
@@ -456,6 +487,52 @@ def dashboard():
         recent_lessons = 0
         lessons_with_homework = 0
 
+    # Teacher overview: очередь проверки + группы (не зависит от фильтров UI)
+    review_lesson_tasks_count = 0
+    review_submissions_count = 0
+    groups_count = 0
+    try:
+        from app.models import LessonTask, Submission, Assignment, SchoolGroup
+
+        accessible_ids = None
+        if not scope.get('can_see_all'):
+            accessible_ids = []
+            try:
+                user_ids = scope.get('student_ids') or []
+                if user_ids:
+                    student_users = User.query.filter(User.id.in_(user_ids)).all()
+                    emails = [u.email for u in student_users if u and u.email]
+                    if emails:
+                        st = Student.query.filter(Student.email.in_(emails)).all()
+                        accessible_ids = [s.student_id for s in st if s]
+            except Exception:
+                accessible_ids = []
+
+        qlt = LessonTask.query.join(Lesson, Lesson.lesson_id == LessonTask.lesson_id).filter(LessonTask.status == 'submitted')
+        if accessible_ids is not None:
+            if not accessible_ids:
+                qlt = qlt.filter(False)
+            else:
+                qlt = qlt.filter(Lesson.student_id.in_(accessible_ids))
+        review_lesson_tasks_count = qlt.count()
+
+        qs = Submission.query.join(Assignment, Assignment.assignment_id == Submission.assignment_id).filter(Submission.status.in_(['SUBMITTED', 'LATE']))
+        if not scope.get('can_see_all'):
+            qs = qs.filter(Assignment.created_by_id == current_user.id)
+        if accessible_ids is not None:
+            if not accessible_ids:
+                qs = qs.filter(False)
+            else:
+                qs = qs.filter(Submission.student_id.in_(accessible_ids))
+        review_submissions_count = qs.count()
+
+        qg = SchoolGroup.query
+        if not scope.get('can_see_all'):
+            qg = qg.filter(SchoolGroup.owner_user_id == current_user.id)
+        groups_count = qg.count()
+    except Exception as e:
+        logger.warning(f"Failed to build teacher overview counters: {e}")
+
     return render_template('dashboard.html',
                          students=students,
                          pagination=pagination,
@@ -478,7 +555,86 @@ def dashboard():
                          skipped_tasks_count=skipped_tasks_count,
                          blacklisted_tasks_count=blacklisted_tasks_count,
                          lessons_with_homework=lessons_with_homework,
-                         recent_lessons=recent_lessons)
+                         recent_lessons=recent_lessons,
+                         review_lesson_tasks_count=review_lesson_tasks_count,
+                         review_submissions_count=review_submissions_count,
+                         groups_count=groups_count)
+
+
+@main_bp.route('/student/dashboard')
+@login_required
+def student_dashboard():
+    """Дашборд ученика: план, задания, риски по темам."""
+    if not current_user.is_student():
+        return redirect(url_for('main.dashboard'))
+
+    # Пытаемся найти связанного Student
+    student = None
+    try:
+        if current_user.email:
+            student = Student.query.filter_by(email=current_user.email).first()
+    except Exception:
+        student = None
+    if not student:
+        # fallback: иногда student_id == User.id
+        try:
+            student = Student.query.get(current_user.id)
+        except Exception:
+            student = None
+
+    if not student:
+        flash('Профиль ученика не найден.', 'warning')
+        return render_template('student_dashboard.html', student=None, plan_items=[], pending_submissions=[], unread_notifications=0, problem_topics=[])
+
+    from app.students.stats_service import StatsService
+    from app.models import StudentLearningPlanItem, Submission, UserNotification, GradebookEntry
+    try:
+        plan_items = StudentLearningPlanItem.query.filter_by(student_id=student.student_id).order_by(
+            StudentLearningPlanItem.due_date.asc().nullslast(),
+            StudentLearningPlanItem.priority.desc(),
+            StudentLearningPlanItem.item_id.desc(),
+        ).limit(12).all()
+    except Exception:
+        plan_items = []
+
+    try:
+        pending_submissions = Submission.query.filter(
+            Submission.student_id == student.student_id,
+            Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED'])
+        ).options(db.joinedload(Submission.assignment)).order_by(Submission.assigned_at.desc()).limit(12).all()
+    except Exception:
+        pending_submissions = []
+
+    try:
+        unread_notifications = UserNotification.query.filter_by(user_id=current_user.id, is_read=False).count()
+    except Exception:
+        unread_notifications = 0
+
+    problem_topics = []
+    try:
+        stats = StatsService(student.student_id)
+        problem_topics = stats.get_problem_topics(threshold=60)[:6]
+    except Exception:
+        problem_topics = []
+
+    # Последние оценки из журнала (MVP, для мотивации)
+    try:
+        recent_grades = GradebookEntry.query.filter_by(student_id=student.student_id).order_by(
+            GradebookEntry.created_at.desc(),
+            GradebookEntry.entry_id.desc()
+        ).limit(8).all()
+    except Exception:
+        recent_grades = []
+
+    return render_template(
+        'student_dashboard.html',
+        student=student,
+        plan_items=plan_items,
+        pending_submissions=pending_submissions,
+        unread_notifications=unread_notifications,
+        problem_topics=problem_topics,
+        recent_grades=recent_grades,
+    )
 
 @main_bp.route('/update-plans')
 @login_required

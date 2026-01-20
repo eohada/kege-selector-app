@@ -5,6 +5,7 @@ import logging
 import os
 import json
 from werkzeug.utils import secure_filename
+from app.uploads.service import save_uploaded_file
 from flask import render_template, request, redirect, url_for, flash, jsonify, make_response, current_app  # current_app нужен для определения типа БД (Postgres)
 from flask_login import login_required, current_user  # comment
 from sqlalchemy import text, or_  # text нужен для setval(pg_get_serial_sequence(...)) при сбитых sequences
@@ -2118,12 +2119,17 @@ def lesson_upload_material(lesson_id):
         return jsonify({'success': False, 'error': 'No selected file'}), 400
         
     if file:
-        filename = secure_filename(file.filename)
         # Create folder: static/uploads/lessons/<lesson_id>/
         upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'lessons', str(lesson_id))
-        os.makedirs(upload_folder, exist_ok=True)
-        file_path = os.path.join(upload_folder, filename)
-        file.save(file_path)
+        try:
+            filename, file_path, _size = save_uploaded_file(
+                file=file,
+                base_folder=upload_folder,
+                allowed_exts={'pdf', 'png', 'jpg', 'jpeg', 'webp', 'doc', 'docx', 'ppt', 'pptx', 'xlsx', 'xls', 'txt'},
+                max_bytes=20 * 1024 * 1024,
+            )
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'Не удалось загрузить файл: {e}'}), 400
         
         # Update JSON materials
         materials = lesson.materials or []
@@ -2134,10 +2140,12 @@ def lesson_upload_material(lesson_id):
             except:
                 materials = []
         
+        stored_name = os.path.basename(file_path)
         new_material = {
             'name': filename,
-            'url': url_for('static', filename=f'uploads/lessons/{lesson_id}/{filename}'),
-            'type': filename.split('.')[-1].lower() if '.' in filename else 'file'
+            'url': url_for('uploads.lesson_file', lesson_id=lesson_id, stored_name=stored_name),
+            'type': filename.split('.')[-1].lower() if '.' in filename else 'file',
+            'storage_path': f"static/uploads/lessons/{lesson_id}/{stored_name}",
         }
         materials.append(new_material)
         lesson.materials = materials 
@@ -2180,7 +2188,8 @@ def lesson_delete_material(lesson_id):
         
         try:
              # Удаляем файл физически
-             filename = url_to_delete.split('/')[-1]
+             # Удаляем файл физически (берём последнюю часть URL, поддерживаем и /static/ и /files/)
+             filename = (url_to_delete.split('?')[0] or '').split('/')[-1]
              file_path = os.path.join(current_app.root_path, 'static', 'uploads', 'lessons', str(lesson_id), secure_filename(filename))
              if os.path.exists(file_path):
                  os.remove(file_path)

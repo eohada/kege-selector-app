@@ -284,3 +284,42 @@ def group_export_csv(group_id: int):
         headers={'Content-Disposition': f'attachment; filename="{filename}"'}
     )
 
+
+@groups_bp.route('/groups/<int:group_id>/export.pdf')
+@login_required
+def group_export_pdf(group_id: int):
+    _guard_groups_view()
+    group = SchoolGroup.query.get_or_404(group_id)
+    members = GroupStudent.query.filter_by(group_id=group.group_id).join(Student, Student.student_id == GroupStudent.student_id).order_by(Student.name.asc()).all()
+
+    html = render_template('group_roster_print.html', group=group, members=members)
+    filename = f'group-{group.group_id}.pdf'
+
+    try:
+        from app.utils.pdf_export import html_to_pdf_bytes
+        pdf_bytes = html_to_pdf_bytes(html)
+    except Exception as e:
+        logger.warning(f"PDF export not available, fallback to HTML: {e}")
+        return Response(
+            html,
+            mimetype='text/html; charset=utf-8',
+            headers={'Content-Disposition': f'inline; filename=\"{filename}.html\"'}
+        )
+
+    try:
+        audit_logger.log(
+            action='export_group_pdf',
+            entity='SchoolGroup',
+            entity_id=group.group_id,
+            status='success',
+            metadata={'members_count': len(members)},
+        )
+    except Exception:
+        pass
+
+    return Response(
+        pdf_bytes,
+        mimetype='application/pdf',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )
+

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Группа · {{ group.title }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #111; }
+    h1 { margin: 0 0 6px 0; font-size: 20px; }
+    .meta { color: #444; font-size: 12px; margin-bottom: 14px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; font-size: 12px; vertical-align: top; }
+    th { background: #f3f3f3; text-align: left; }
+    .muted { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Состав группы · {{ group.title }}</h1>
+  <div class="meta">Group ID: {{ group.group_id }}{% if group.subject %} · Предмет: {{ group.subject }}{% endif %} · Сформировано: {{ (moscow_now().strftime('%d.%m.%Y %H:%M') if moscow_now is defined else '') }}</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Ученик</th>
+        <th>Student ID</th>
+        <th>Email</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in members %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ m.student.name if m.student else '' }}</td>
+        <td>{{ m.student_id }}</td>
+        <td>{{ (m.student.email if m.student else '') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
+

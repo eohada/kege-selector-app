@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% if is_new %}Новая рубрика{% else %}Рубрика · {{ rubric.title }}{% endif %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+  {% include '_ux_enhancements.html' %}
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+  <style>
+    .crit-row{border:1px solid var(--stroke-1); background: rgba(255,255,255,0.02); border-radius: var(--radius-lg); padding: .9rem 1rem;}
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    {% set active_page = 'rubrics' %}
+    {% include '_primary_nav.html' %}
+
+    <main style="margin-top: 1.25rem;">
+      <section class="glass-panel" style="margin-bottom: 1.25rem;">
+        <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+          <div>
+            <p class="hero-eyebrow">домашка/проверка</p>
+            <h1 class="hero-title" style="margin-bottom:.25rem;">{% if is_new %}Новая рубрика{% else %}Редактировать рубрику{% endif %}</h1>
+            <div style="color: var(--text-muted);">Критерии хранятся как шаблон и подставляются на странице проверки.</div>
+          </div>
+          <div class="hero-actions">
+            <a href="{{ url_for('rubrics.rubrics_list') }}" class="neo-button ghost">← Все рубрики</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="glass-panel">
+        <form method="POST" data-no-ajax="1" onsubmit="return beforeSubmit();">
+          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+          <input type="hidden" id="items_json" name="items_json" value="{{ items_json|e }}">
+
+          <div style="display:grid; grid-template-columns: 1.2fr .8fr; gap: 1.25rem;" class="profile-grid-responsive">
+            <div>
+              <div class="neo-field">
+                <label class="neo-label">Название *</label>
+                <input class="neo-input" name="title" value="{{ rubric.title if rubric else '' }}" required>
+              </div>
+              <div class="neo-field" style="margin-top: 1rem;">
+                <label class="neo-label">Описание</label>
+                <textarea class="neo-input" name="description" style="min-height: 110px;">{{ rubric.description if rubric and rubric.description else '' }}</textarea>
+              </div>
+            </div>
+            <div>
+              <div class="neo-field">
+                <label class="neo-label">Тип (опционально)</label>
+                {% set at = (rubric.assignment_type if rubric else '') %}
+                <select class="neo-select" name="assignment_type">
+                  <option value="" {% if not at %}selected{% endif %}>—</option>
+                  <option value="homework" {% if at == 'homework' %}selected{% endif %}>ДЗ</option>
+                  <option value="classwork" {% if at == 'classwork' %}selected{% endif %}>КР</option>
+                  <option value="exam" {% if at == 'exam' %}selected{% endif %}>Проверочная</option>
+                  <option value="test" {% if at == 'test' %}selected{% endif %}>Тест</option>
+                  <option value="diagnostic" {% if at == 'diagnostic' %}selected{% endif %}>Диагностика</option>
+                </select>
+              </div>
+              <div style="margin-top: 1rem; display:flex; gap:.6rem; flex-wrap: wrap; justify-content:flex-end;">
+                <button type="button" class="neo-button outline" onclick="addCriterion()">+ Критерий</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 1.25rem;">
+            <div style="display:flex; justify-content: space-between; align-items:center; gap:1rem; flex-wrap: wrap;">
+              <h2 style="margin:0;">Критерии</h2>
+              <div style="color: var(--text-muted); font-size: .95rem;">Рекомендуем 4–8 пунктов, чтобы проверка была быстрой.</div>
+            </div>
+            <div id="criteria" style="display:grid; gap:.75rem; margin-top: .9rem;"></div>
+          </div>
+
+          <div style="margin-top: 1.25rem; display:flex; justify-content:flex-end; gap:.6rem; flex-wrap: wrap;">
+            <button type="submit" class="neo-button accent">Сохранить</button>
+            <a href="{{ url_for('rubrics.rubrics_list') }}" class="neo-button outline">Отмена</a>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+  <script>
+    const initialItems = (() => {
+      try { return JSON.parse(document.getElementById('items_json').value || '[]') || []; } catch(e) { return []; }
+    })();
+
+    function render() {
+      const root = document.getElementById('criteria');
+      root.innerHTML = '';
+      if (!initialItems.length) {
+        initialItems.push({ key: 'c1', title: 'Критерий 1', max_score: 1, description: '' });
+      }
+      initialItems.forEach((it, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'crit-row';
+        wrap.innerHTML = `
+          <div style="display:flex; justify-content: space-between; gap: 1rem; align-items:flex-start; flex-wrap: wrap;">
+            <div style="flex:1; min-width: 240px;">
+              <div class="neo-field">
+                <label class="neo-label">Название</label>
+                <input class="neo-input" data-k="title" data-i="${idx}" value="${escapeHtml(it.title || '')}">
+              </div>
+              <div class="neo-field" style="margin-top:.65rem;">
+                <label class="neo-label">Описание (опц.)</label>
+                <textarea class="neo-input" data-k="description" data-i="${idx}" style="min-height: 80px;">${escapeHtml(it.description || '')}</textarea>
+              </div>
+            </div>
+            <div style="min-width: 180px;">
+              <div class="neo-field">
+                <label class="neo-label">Ключ</label>
+                <input class="neo-input" data-k="key" data-i="${idx}" value="${escapeHtml(it.key || '')}" placeholder="например: crit1">
+              </div>
+              <div class="neo-field" style="margin-top:.65rem;">
+                <label class="neo-label">Макс. балл (опц.)</label>
+                <input class="neo-input" data-k="max_score" data-i="${idx}" type="number" min="0" value="${(it.max_score === null || it.max_score === undefined) ? '' : it.max_score}">
+              </div>
+              <div style="margin-top:.65rem; display:flex; justify-content:flex-end;">
+                <button type="button" class="neo-button danger sm" onclick="removeCriterion(${idx})">Удалить</button>
+              </div>
+            </div>
+          </div>
+        `;
+        root.appendChild(wrap);
+      });
+
+      root.querySelectorAll('[data-i]').forEach(el => {
+        el.addEventListener('input', () => {
+          const idx = parseInt(el.getAttribute('data-i'));
+          const key = el.getAttribute('data-k');
+          let val = el.value;
+          if (key === 'max_score') {
+            val = (val === '') ? null : parseInt(val, 10);
+            if (Number.isNaN(val)) val = null;
+            if (val !== null && val < 0) val = 0;
+          }
+          initialItems[idx][key] = val;
+        });
+      });
+    }
+
+    function addCriterion() {
+      const n = initialItems.length + 1;
+      initialItems.push({ key: `c${n}`, title: `Критерий ${n}`, max_score: 1, description: '' });
+      render();
+    }
+
+    function removeCriterion(i) {
+      initialItems.splice(i, 1);
+      render();
+    }
+
+    function beforeSubmit() {
+      document.getElementById('items_json').value = JSON.stringify(initialItems || []);
+      return true;
+    }
+
+    function escapeHtml(s) {
+      return String(s || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    render();
+  </script>
+</body>
+</html>
+

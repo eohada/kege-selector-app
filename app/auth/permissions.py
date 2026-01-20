@@ -56,6 +56,7 @@ ALL_PERMISSIONS = {
     # Инструменты
     'tools.testers': {'name': 'Управление тестировщиками', 'category': 'tools'},
     'tools.schedule': {'name': 'Управление расписанием', 'category': 'tools'},
+    'schedule.view': {'name': 'Просмотр расписания', 'category': 'tools'},
     
     # Система
     'system.logs': {'name': 'Просмотр логов', 'category': 'system'},
@@ -68,8 +69,8 @@ DEFAULT_ROLE_PERMISSIONS = {
     'admin': list(ALL_PERMISSIONS.keys()),   # Все права
     'chief_tester': ['tools.testers', 'task.manage', 'user.view_list'],
     'designer': ['assets.manage'],
-    'tutor': ['lesson.create', 'lesson.edit', 'plan.view', 'plan.edit', 'gradebook.view', 'gradebook.edit', 'groups.view', 'groups.manage', 'onboarding.view', 'onboarding.invite', 'user.view_list', 'tools.schedule', 'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view'],
-    'student': ['plan.view', 'gradebook.view', 'assignment.view'],
-    'parent': ['plan.view', 'gradebook.view', 'assignment.view'],
+    'tutor': ['lesson.create', 'lesson.edit', 'plan.view', 'plan.edit', 'gradebook.view', 'gradebook.edit', 'groups.view', 'groups.manage', 'onboarding.view', 'onboarding.invite', 'user.view_list', 'tools.schedule', 'schedule.view', 'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view'],
+    'student': ['plan.view', 'gradebook.view', 'assignment.view', 'schedule.view'],
+    'parent': ['plan.view', 'gradebook.view', 'assignment.view', 'schedule.view'],
     'tester': []
 }

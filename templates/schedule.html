@@ -68,6 +68,30 @@
             border-radius: var(--radius-sm);
         }
 
+        /* Page actions dropdown (reduce button overload) */
+        .actions-menu {
+            position: relative;
+        }
+        .actions-menu > summary {
+            list-style: none;
+            cursor: pointer;
+        }
+        .actions-menu > summary::-webkit-details-marker { display: none; }
+        .actions-menu-panel {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 8px);
+            z-index: 50;
+            min-width: 240px;
+            padding: 0.6rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--stroke-1);
+            background: var(--surface-1);
+            box-shadow: var(--shadow-soft);
+            display: grid;
+            gap: 0.5rem;
+        }
+
         .timezone-toggle button {
             padding: 0.5rem 0.9rem;
             border-radius: 0.6rem;
@@ -263,6 +287,11 @@
         .lesson-chip.status-cancelled { border-color: rgba(255, 77, 109, 0.65); background: rgba(255, 77, 109, 0.12); }
         .lesson-chip.status-cancelled::before { background: rgba(255, 77, 109, 0.95); }
 
+        /* Конфликт (наложение уроков) — подсветка */
+        .lesson-chip.is-conflict {
+            box-shadow: 0 0 0 2px rgba(255, 77, 109, 0.55), var(--shadow-soft);
+        }
+
         .now-line {
             position: absolute;
             left: 0;
@@ -417,7 +446,11 @@
                 <p class="hero-eyebrow">календарь занятий</p>
                 <h1 class="hero-title">Расписание</h1>
                 <p class="hero-subtitle">
+                    {% if can_manage_schedule %}
                     Клик по сетке — создать урок. Перетащи урок — перенести. В инспекторе — быстрые статусы.
+                    {% else %}
+                    Просмотр уроков по вашим правам (ученик — свои, родитель — дети, преподаватель — свои ученики).
+                    {% endif %}
                 </p>
             </div>
         </section>
@@ -429,11 +462,30 @@
                     <button class="round-btn" data-week-offset="{{ week_offset - 1 }}" onclick="navigateWeek(this.dataset.weekOffset)" title="Предыдущая неделя">
                         <span style="font-weight:900;">‹</span>
                     </button>
+                    <button class="round-btn" onclick="navigateWeek(0)" title="Текущая неделя">
+                        <span style="font-weight:900;">•</span>
+                    </button>
                     <button class="round-btn" data-week-offset="{{ week_offset + 1 }}" onclick="navigateWeek(this.dataset.weekOffset)" title="Следующая неделя">
                         <span style="font-weight:900;">›</span>
                     </button>
                 </div>
                 <div class="schedule-filters">
+                    <details class="actions-menu">
+                        <summary class="neo-button outline" style="height: 44px; display:inline-flex; align-items:center;">Действия</summary>
+                        <div class="actions-menu-panel">
+                            <a href="{{ url_for('schedule.schedule_export_ics') }}" class="neo-button outline sm" style="justify-content: center; text-decoration:none;">
+                                Экспорт .ics
+                            </a>
+                            {% if can_manage_schedule %}
+                            <button class="neo-button outline sm" type="button" onclick="openTemplatesModal()">Автоплан</button>
+                            <button class="neo-button accent sm" type="button" onclick="applyTemplates()">Сгенерировать неделю</button>
+                            {% endif %}
+                        </div>
+                    </details>
+                    <div class="timezone-toggle" style="gap:.25rem;">
+                        <button class="{% if view_mode == 'week' %}active{% endif %}" onclick="switchView('week')">Неделя</button>
+                        <button class="{% if view_mode == 'agenda' %}active{% endif %}" onclick="switchView('agenda')">Список</button>
+                    </div>
                     <div class="timezone-toggle">
                         <button class="{% if timezone == 'moscow' %}active{% endif %}" onclick="switchTimezone('moscow')">МСК</button>
                         <button class="{% if timezone == 'tomsk' %}active{% endif %}" onclick="switchTimezone('tomsk')">Томск</button>
@@ -452,15 +504,47 @@
                         <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>{{ category }}</option>
                         {% endfor %}
                     </select>
+                    {% if students and students|length > 1 %}
                     <select id="studentFilter" class="neo-select" onchange="applyFilters()" style="min-width: 220px;">
                         <option value="">Все ученики</option>
                         {% for s in students %}
                         <option value="{{ s.student_id }}" {% if student_filter and student_filter == s.student_id %}selected{% endif %}>{{ s.name }}</option>
                         {% endfor %}
                     </select>
+                    {% endif %}
                 </div>
             </div>
 
+            {% if view_mode == 'agenda' %}
+            <div class="glass-panel" style="margin-top: 1rem;">
+                <div class="panel-head">
+                    <div>
+                        <div class="hero-eyebrow">список</div>
+                        <div style="font-size:1.15rem; font-weight:900;">Уроки недели</div>
+                    </div>
+                </div>
+                <div style="display:grid; gap:.75rem; margin-top: 1rem;">
+                    {% for a in agenda %}
+                    <div style="padding:.9rem 1rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02); display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap; align-items: center;">
+                        <div style="min-width:0;">
+                            <div style="font-weight:900;">{{ a.date_human }} · {{ a.time }}</div>
+                            <div style="color: var(--text-muted); margin-top:.25rem;">
+                                <strong>{{ a.student_name }}</strong>
+                                {% if a.topic %} · {{ a.topic }}{% endif %}
+                                · {{ a.duration }} мин
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:.5rem; flex-wrap: wrap;">
+                            <a class="neo-button outline sm" href="{{ a.lesson_url }}">Открыть урок</a>
+                            <a class="neo-button ghost sm" href="{{ a.profile_url }}">Профиль</a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-state" style="padding: 2rem 1rem;"><p>На этой неделе нет уроков.</p></div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
             <div class="schedule-layout" data-schedule-root
                  data-slot-minutes="{{ slot_minutes }}"
                  data-start-hour="{{ day_start_hour }}"
@@ -469,9 +553,11 @@
                  data-px-per-slot="28"
                  data-timezone="{{ timezone }}"
                  data-week-offset="{{ week_offset }}"
+                 data-can-manage="{{ '1' if can_manage_schedule else '0' }}"
                  data-reschedule-url-tpl="{{ url_for('schedule.schedule_reschedule_lesson', lesson_id=0) }}"
                  data-set-status-url-tpl="{{ url_for('schedule.schedule_set_status', lesson_id=0) }}"
                  data-update-url-tpl="{{ url_for('schedule.schedule_update_lesson', lesson_id=0) }}"
+                 data-delete-url-tpl="{{ url_for('schedule.schedule_delete_lesson', lesson_id=0) }}"
                  data-icon-regular="{{ url_for('static', filename='icons/icons8-урок-100.png') }}"
                  data-icon-exam="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}"
                  data-icon-intro="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}">
@@ -510,13 +596,40 @@
                         <button class="neo-button ghost" type="button" id="lessonInspectorClose">Закрыть</button>
                     </div>
                     <div class="schedule-inspector__body" id="lessonInspectorBody">
-                        Кликни по уроку, чтобы увидеть детали и быстрые действия. Перетаскивание работает прямо на сетке.
+                        <div style="display:grid; gap: .85rem;">
+                            <div style="color: var(--text-muted);">
+                                {% if can_manage_schedule %}
+                                Кликни по уроку, чтобы увидеть детали и быстрые действия. Перетаскивание работает прямо на сетке.
+                                {% else %}
+                                Кликни по уроку, чтобы увидеть детали.
+                                {% endif %}
+                            </div>
+                            <div style="border-top: 1px solid var(--stroke-1); padding-top: .85rem;">
+                                <div class="hero-eyebrow">на этой неделе</div>
+                                <div style="display:grid; gap:.6rem; margin-top:.6rem;">
+                                    {% for a in agenda %}
+                                      <a href="{{ a.lesson_url }}" style="text-decoration:none; color:inherit;">
+                                        <div style="padding:.75rem .85rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02);">
+                                          <div style="font-weight:900;">{{ a.date_human }} · {{ a.time }}</div>
+                                          <div style="color: var(--text-muted); margin-top:.25rem; font-size:.92rem;">
+                                            {{ a.student_name }}{% if a.topic %} · {{ a.topic }}{% endif %}
+                                          </div>
+                                        </div>
+                                      </a>
+                                    {% else %}
+                                      <div class="empty-state" style="padding: 1rem;"><p>Нет уроков.</p></div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </aside>
             </div>
+            {% endif %}
         </section>
     </div>
 
+    {% if can_manage_schedule %}
     <div class="modal" id="createLessonModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -572,6 +685,76 @@
             </form>
         </div>
     </div>
+    {% endif %}
+
+    {% if can_manage_schedule %}
+    <div class="modal" id="templatesModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Автоплан (повторяющиеся слоты)</div>
+                <button class="modal-close" type="button" onclick="closeTemplatesModal()">&times;</button>
+            </div>
+            <div style="padding: 1rem;">
+                <div style="color: var(--text-muted); margin-bottom: .75rem;">
+                    Создавай шаблоны разово (или прямо из урока через инспектор) и генерируй неделю в один клик.
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem;" class="profile-grid-responsive">
+                    <div>
+                        <div style="font-weight: 900; margin-bottom: .5rem;">Новый слот</div>
+                        <div class="form-group">
+                            <label>Ученик</label>
+                            <select id="tplStudent" class="neo-select">
+                                {% for s in students %}
+                                <option value="{{ s.student_id }}">{{ s.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .75rem;">
+                            <div class="form-group">
+                                <label>День недели</label>
+                                <select id="tplWeekday" class="neo-select">
+                                    <option value="0">Пн</option><option value="1">Вт</option><option value="2">Ср</option><option value="3">Чт</option><option value="4">Пт</option><option value="5">Сб</option><option value="6">Вс</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Время</label>
+                                <input id="tplTime" class="neo-input" type="time" value="18:00">
+                            </div>
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .75rem;">
+                            <div class="form-group">
+                                <label>Длительность</label>
+                                <input id="tplDuration" class="neo-input" type="number" min="30" step="30" value="60">
+                            </div>
+                            <div class="form-group">
+                                <label>Тип</label>
+                                <select id="tplType" class="neo-select">
+                                    <option value="regular">Обычный</option>
+                                    <option value="exam">Проверочный</option>
+                                    <option value="introductory">Вводный</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Таймзона слота</label>
+                            <select id="tplTimezone" class="neo-select">
+                                <option value="moscow">МСК</option>
+                                <option value="tomsk">Томск</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; justify-content:flex-end; margin-top: .75rem;">
+                            <button class="neo-button accent" type="button" onclick="createTemplate()">Добавить слот</button>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-weight: 900; margin-bottom: .5rem;">Текущие слоты</div>
+                        <div id="tplList" style="display:grid; gap: .6rem; max-height: 52vh; overflow:auto;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <script>
         const currentTimezone = '{{ timezone }}';
@@ -580,9 +763,11 @@
             const params = new URLSearchParams();
             params.set('week', {{ week_offset }});
             params.set('timezone', currentTimezone);
+            params.set('view', '{{ view_mode }}');
             const status = document.getElementById('statusFilter').value;
             const category = document.getElementById('categoryFilter').value;
-            const studentId = document.getElementById('studentFilter').value;
+            const studentIdEl = document.getElementById('studentFilter');
+            const studentId = studentIdEl ? studentIdEl.value : '';
             if (status) params.set('status', status);
             if (category) params.set('category', category);
             if (studentId) params.set('student_id', studentId);
@@ -593,9 +778,11 @@
             const params = new URLSearchParams(window.location.search);
             params.set('week', offset);
             params.set('timezone', currentTimezone);
+            params.set('view', '{{ view_mode }}');
             const status = document.getElementById('statusFilter').value;
             const category = document.getElementById('categoryFilter').value;
-            const studentId = document.getElementById('studentFilter').value;
+            const studentIdEl = document.getElementById('studentFilter');
+            const studentId = studentIdEl ? studentIdEl.value : '';
             if (status) params.set('status', status);
             if (category) params.set('category', category);
             if (studentId) params.set('student_id', studentId);
@@ -606,9 +793,26 @@
             const params = new URLSearchParams(window.location.search);
             params.set('timezone', tz);
             params.set('week', {{ week_offset }});
+            params.set('view', '{{ view_mode }}');
             const status = document.getElementById('statusFilter').value;
             const category = document.getElementById('categoryFilter').value;
-            const studentId = document.getElementById('studentFilter').value;
+            const studentIdEl = document.getElementById('studentFilter');
+            const studentId = studentIdEl ? studentIdEl.value : '';
+            if (status) params.set('status', status);
+            if (category) params.set('category', category);
+            if (studentId) params.set('student_id', studentId);
+            window.location.href = '{{ url_for('schedule.schedule') }}' + '?' + params.toString();
+        }
+
+        function switchView(view) {
+            const params = new URLSearchParams(window.location.search);
+            params.set('view', view);
+            params.set('week', {{ week_offset }});
+            params.set('timezone', currentTimezone);
+            const status = document.getElementById('statusFilter').value;
+            const category = document.getElementById('categoryFilter').value;
+            const studentIdEl = document.getElementById('studentFilter');
+            const studentId = studentIdEl ? studentIdEl.value : '';
             if (status) params.set('status', status);
             if (category) params.set('category', category);
             if (studentId) params.set('student_id', studentId);
@@ -620,6 +824,101 @@
             const repeatGroup = document.getElementById('repeatCountGroup');
             repeatGroup.style.display = (mode === 'recurring') ? 'block' : 'none';
         }
+
+        {% if can_manage_schedule %}
+        function openTemplatesModal() {
+            document.getElementById('templatesModal')?.classList.add('active');
+            loadTemplates();
+        }
+        function closeTemplatesModal() {
+            document.getElementById('templatesModal')?.classList.remove('active');
+        }
+        async function loadTemplates() {
+            const list = document.getElementById('tplList');
+            if (!list) return;
+            list.innerHTML = '<div style="color: var(--text-muted);">Загрузка…</div>';
+            try {
+                const resp = await fetch('{{ url_for("schedule.schedule_templates_list") }}');
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok || data.success === false) throw new Error(data.error || `HTTP ${resp.status}`);
+                const items = data.templates || [];
+                if (!items.length) {
+                    list.innerHTML = '<div class="empty-state" style="padding: 1rem;"><p>Шаблонов нет.</p></div>';
+                    return;
+                }
+                const wd = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+                list.innerHTML = '';
+                items.forEach(t => {
+                    const el = document.createElement('div');
+                    el.style.cssText = 'padding:.75rem .85rem; border:1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02); display:flex; justify-content: space-between; gap:.75rem; flex-wrap:wrap; align-items:center;';
+                    el.innerHTML = `
+                      <div style="min-width:0;">
+                        <div style="font-weight:900;">${t.student_name}</div>
+                        <div style="color:var(--text-muted); font-size:.92rem; margin-top:.2rem;">
+                          ${wd[t.weekday] || ''} · ${t.time_hhmm} · ${t.duration} мин · ${t.lesson_type} · ${t.timezone}
+                        </div>
+                      </div>
+                      <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+                        <button class="neo-button danger sm" type="button" data-id="${t.slot_id}">Удалить</button>
+                      </div>
+                    `;
+                    el.querySelector('button')?.addEventListener('click', async () => {
+                        if (!confirm('Удалить слот?')) return;
+                        const r = await fetch(`{{ url_for('schedule.schedule_templates_delete', slot_id=0) }}`.replace('0', String(t.slot_id)), {
+                            method: 'POST',
+                            headers: {'Content-Type':'application/json','X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
+                            body: JSON.stringify({})
+                        });
+                        const d = await r.json().catch(() => ({}));
+                        if (!r.ok || d.success === false) { if (window.toast) window.toast.error(d.error || 'Ошибка'); return; }
+                        if (window.toast) window.toast.success('Удалено');
+                        loadTemplates();
+                    });
+                    list.appendChild(el);
+                });
+            } catch (e) {
+                list.innerHTML = `<div style="color: var(--danger);">Ошибка: ${e.message || e}</div>`;
+            }
+        }
+        async function createTemplate() {
+            try {
+                const payload = {
+                    student_id: parseInt(document.getElementById('tplStudent').value, 10),
+                    weekday: parseInt(document.getElementById('tplWeekday').value, 10),
+                    time_hhmm: document.getElementById('tplTime').value,
+                    duration: parseInt(document.getElementById('tplDuration').value, 10),
+                    lesson_type: document.getElementById('tplType').value,
+                    timezone: document.getElementById('tplTimezone').value,
+                };
+                const resp = await fetch('{{ url_for("schedule.schedule_templates_create") }}', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json','X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
+                    body: JSON.stringify(payload)
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok || data.success === false) throw new Error(data.error || `HTTP ${resp.status}`);
+                if (window.toast) window.toast.success('Слот добавлен');
+                loadTemplates();
+            } catch (e) {
+                if (window.toast) window.toast.error(e.message || 'Ошибка');
+            }
+        }
+        async function applyTemplates() {
+            try {
+                const resp = await fetch('{{ url_for("schedule.schedule_templates_apply_week") }}', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json','X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
+                    body: JSON.stringify({ week_offset: {{ week_offset }}, timezone: currentTimezone })
+                });
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok || data.success === false) throw new Error(data.error || `HTTP ${resp.status}`);
+                if (window.toast) window.toast.success(`Добавлено уроков: ${(data.created_lessons||[]).length}`);
+                setTimeout(() => window.location.reload(), 250);
+            } catch (e) {
+                if (window.toast) window.toast.error(e.message || 'Ошибка');
+            }
+        }
+        {% endif %}
     </script>
 
     <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Дашборд ученика</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+  {% include '_ux_enhancements.html' %}
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+</head>
+<body>
+  <div class="app-shell">
+    {% set active_page = 'dashboard' %}
+    {% include '_primary_nav.html' %}
+
+    <main style="margin-top: 1.25rem;">
+      <section class="glass-panel" style="margin-bottom: 1.25rem;">
+        <p class="hero-eyebrow">ученик</p>
+        <h1 class="hero-title" style="margin-bottom:.25rem;">Дашборд</h1>
+        {% if student %}
+          <div style="color: var(--text-muted);">{{ student.name }}</div>
+        {% else %}
+          <div style="color: var(--text-muted);">Профиль ученика не найден.</div>
+        {% endif %}
+        <div class="hero-actions" style="margin-top: 1rem;">
+          <a href="{{ url_for('notifications.notifications_list') }}" class="neo-button outline">Уведомления{% if unread_notifications %} ({{ unread_notifications }}){% endif %}</a>
+          {% if student %}
+          <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button ghost">Аналитика</a>
+          {% endif %}
+        </div>
+      </section>
+
+      {% if student %}
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;" class="profile-grid-responsive">
+        <section class="glass-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">план</p>
+              <h2>Траектория (ближайшее)</h2>
+            </div>
+            <div>
+              <a class="neo-button outline sm" href="{{ url_for('students.student_learning_plan', student_id=student.student_id) }}">Открыть</a>
+            </div>
+          </div>
+          <div style="display:grid; gap:.65rem; margin-top: 1rem;">
+            {% for it in plan_items %}
+              <div style="padding:.85rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
+                <div style="display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap;">
+                  <div style="font-weight: 900;">{{ it.title }}</div>
+                  <div class="status-badge status-info" style="opacity:.9;">{{ it.status }}</div>
+                </div>
+                <div style="color: var(--text-muted); margin-top:.35rem; font-size:.92rem;">
+                  {% if it.due_date %}Дедлайн: <strong>{{ it.due_date.strftime('%d.%m.%Y %H:%M') }}</strong>{% else %}Без дедлайна{% endif %}
+                </div>
+              </div>
+            {% else %}
+              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Пока нет пунктов траектории.</p></div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="glass-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">задания</p>
+              <h2>Активные работы</h2>
+            </div>
+            <div>
+              <a class="neo-button outline sm" href="{{ url_for('assignments.submissions_list') }}">Все</a>
+            </div>
+          </div>
+          <div style="display:grid; gap:.65rem; margin-top: 1rem;">
+            {% for s in pending_submissions %}
+              <a href="{{ url_for('assignments.submission_view', submission_id=s.submission_id) }}" style="text-decoration:none; color: inherit;">
+                <div style="padding:.85rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
+                  <div style="display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap;">
+                    <div style="font-weight: 900;">{{ s.assignment.title if s.assignment else ('Работа #' ~ s.submission_id) }}</div>
+                    <div class="status-badge status-info" style="opacity:.9;">{{ s.status }}</div>
+                  </div>
+                  <div style="color: var(--text-muted); margin-top:.35rem; font-size:.92rem;">
+                    {% if s.assignment and s.assignment.deadline %}Дедлайн: <strong>{{ s.assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</strong>{% endif %}
+                  </div>
+                </div>
+              </a>
+            {% else %}
+              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Нет активных работ.</p></div>
+            {% endfor %}
+          </div>
+        </section>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 1.25rem;" class="profile-grid-responsive">
+        <section class="glass-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">риски</p>
+              <h2>Слабые темы</h2>
+            </div>
+          </div>
+          <div style="display:grid; gap:.6rem; margin-top: 1rem;">
+            {% for t in problem_topics %}
+              <div style="padding:.85rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
+                <div style="font-weight: 900;">{{ t.name }}</div>
+                <div style="color: var(--text-muted); font-size:.92rem; margin-top:.35rem;">Средний результат: <strong>{{ t.avg_score }}%</strong></div>
+              </div>
+            {% else %}
+              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Пока недостаточно данных.</p></div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="glass-panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">журнал</p>
+              <h2>Последние оценки</h2>
+            </div>
+            <div>
+              <a class="neo-button outline sm" href="{{ url_for('students.student_gradebook', student_id=student.student_id) }}">Открыть</a>
+            </div>
+          </div>
+          <div style="display:grid; gap:.6rem; margin-top: 1rem;">
+            {% for e in recent_grades %}
+              <div style="padding:.85rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
+                <div style="display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap;">
+                  <div style="font-weight: 900;">{{ e.title }}</div>
+                  <div class="status-badge status-info" style="opacity:.9;">
+                    {% if e.score is not none and e.max_score is not none %}{{ e.score }}/{{ e.max_score }}{% else %}—{% endif %}
+                  </div>
+                </div>
+                <div style="color: var(--text-muted); font-size:.92rem; margin-top:.35rem;">
+                  {% if e.created_at %}{{ e.created_at.strftime('%d.%m.%Y') }}{% endif %}
+                </div>
+              </div>
+            {% else %}
+              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Пока нет записей.</p></div>
+            {% endfor %}
+          </div>
+        </section>
+      </div>
+      {% endif %}
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
+

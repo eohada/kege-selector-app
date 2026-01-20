@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тарифы</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+  {% include '_ux_enhancements.html' %}
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+</head>
+<body>
+  <div class="app-shell">
+    {% set active_page = '' %}
+    {% include '_primary_nav.html' %}
+
+    <main style="margin-top: 1.25rem;">
+      <section class="glass-panel" style="margin-bottom: 1.25rem;">
+        <p class="hero-eyebrow">биллинг</p>
+        <h1 class="hero-title" style="margin-bottom:.25rem;">Тарифы</h1>
+        <div style="color: var(--text-muted);">MVP без платежных интеграций: тарифы и подписки выдаются вручную.</div>
+      </section>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;" class="profile-grid-responsive">
+        <section class="glass-panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">создать</p><h2>Новый тариф</h2></div>
+          </div>
+          <form method="POST" action="{{ url_for('billing.billing_plan_create') }}" style="margin-top: 1rem;">
+            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+            <div class="neo-field">
+              <label class="neo-label">Название *</label>
+              <input class="neo-input" name="title" required>
+            </div>
+            <div class="neo-field" style="margin-top:.75rem;">
+              <label class="neo-label">Описание</label>
+              <textarea class="neo-input" name="description" style="min-height: 90px;"></textarea>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top:.75rem;">
+              <div class="neo-field">
+                <label class="neo-label">Цена (₽)</label>
+                <input class="neo-input" name="price_rub" type="number" min="0">
+              </div>
+              <div class="neo-field">
+                <label class="neo-label">Период (дней)</label>
+                <input class="neo-input" name="period_days" type="number" min="1">
+              </div>
+            </div>
+            <div style="margin-top: 1rem; display:flex; justify-content:flex-end;">
+              <button class="neo-button accent" type="submit">Создать</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="glass-panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">список</p><h2>Тарифы</h2></div>
+          </div>
+          <div style="display:grid; gap:.75rem; margin-top: 1rem;">
+            {% for p in plans %}
+              <div style="padding:.9rem 1rem; border-radius: var(--radius-lg); border:1px solid var(--stroke-1); background: rgba(255,255,255,0.02); display:flex; justify-content: space-between; gap:1rem; flex-wrap: wrap;">
+                <div style="min-width:0;">
+                  <div style="font-weight: 900;">{{ p.title }}</div>
+                  <div style="color: var(--text-muted); font-size:.92rem; margin-top:.25rem;">
+                    {% if p.price_rub is not none %}{{ p.price_rub }} ₽{% endif %}
+                    {% if p.period_days is not none %} · {{ p.period_days }} дней{% endif %}
+                    · статус: <strong>{{ 'active' if p.is_active else 'inactive' }}</strong>
+                  </div>
+                </div>
+                <div style="display:flex; gap:.5rem; flex-wrap: wrap;">
+                  <form method="POST" action="{{ url_for('billing.billing_plan_toggle', plan_id=p.plan_id) }}">
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <button class="neo-button outline sm" type="submit">Вкл/выкл</button>
+                  </form>
+                </div>
+              </div>
+            {% else %}
+              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Тарифов пока нет.</p></div>
+            {% endfor %}
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
+

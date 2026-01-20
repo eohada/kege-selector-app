@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload
 from app.assignments import assignments_bp
 from app.models import (
     db, Assignment, AssignmentTask, Submission, Answer,
-    Student, User, Tasks, Lesson, Enrollment, GradebookEntry, SubmissionAttempt
+    Student, User, Tasks, Lesson, Enrollment, GradebookEntry, SubmissionAttempt, RubricTemplate
 )
 from app.students.utils import get_sorted_assignments
 from core.db_models import SubmissionComment
@@ -21,6 +21,13 @@ from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents
 
 logger = logging.getLogger(__name__)
+
+
+def _can_manage_all_rubrics() -> bool:
+    try:
+        return bool(getattr(current_user, 'is_creator', None) and current_user.is_creator()) or bool(getattr(current_user, 'is_admin', None) and current_user.is_admin())
+    except Exception:
+        return False
 
 @assignments_bp.route('/assignments/<int:assignment_id>/reviews/bulk', methods=['POST'])
 @login_required
@@ -39,7 +46,7 @@ def assignment_review_bulk_update(assignment_id: int):
     assignment_type = (request.form.get('assignment_type') or '').strip().lower()
     student_query = (request.form.get('student') or '').strip()
 
-    if action not in {'mark_returned'}:
+    if action not in {'mark_returned', 'mark_graded'}:
         flash('Некорректное действие.', 'danger')
         return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
 
@@ -51,14 +58,8 @@ def assignment_review_bulk_update(assignment_id: int):
         return redirect(url_for('assignments.assignments_list'))
 
     q = Submission.query.options(joinedload(Submission.student)).filter(Submission.assignment_id == assignment.assignment_id)
-    # Для массового действия "вернуть" берём только реально сданные
+    # Массовые действия применяем только к реально сданным
     q = q.filter(Submission.status.in_(['SUBMITTED', 'LATE']))
-
-    # Доп. скоуп по ученикам (если окружение не "все видят")
-    if not scope.get('can_see_all'):
-        accessible_student_ids = scope.get('student_ids') or []
-        if accessible_student_ids:
-            q = q.filter(Submission.student_id.in_(accessible_student_ids))
 
     subs = q.all()
     if not subs:
@@ -66,8 +67,17 @@ def assignment_review_bulk_update(assignment_id: int):
         return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
 
     updated = 0
+    skipped = 0
     for sub in subs:
-        sub.status = 'RETURNED'
+        if action == 'mark_returned':
+            sub.status = 'RETURNED'
+        else:
+            # mark_graded: только если есть итоговые баллы
+            if sub.total_score is None or sub.max_score is None:
+                skipped += 1
+                continue
+            sub.status = 'GRADED'
+            sub.graded_at = moscow_now()
         try:
             # Снимок попытки: полезно для истории пересдач (returned тоже важен)
             _record_submission_attempt(sub)
@@ -77,39 +87,61 @@ def assignment_review_bulk_update(assignment_id: int):
         # Уведомления: только внутренние (email не используем)
         try:
             if sub.student:
-                notify_student_and_parents(
-                    sub.student,
-                    kind='assignment_returned',
-                    title='Работа возвращена на доработку',
-                    body=None,
-                    link_url=url_for('assignments.submission_view', submission_id=sub.submission_id),
-                    meta={'assignment_id': assignment.assignment_id, 'submission_id': sub.submission_id, 'status': 'RETURNED'},
-                )
+                if action == 'mark_returned':
+                    notify_student_and_parents(
+                        sub.student,
+                        kind='assignment_returned',
+                        title='Работа возвращена на доработку',
+                        body=None,
+                        link_url=url_for('assignments.submission_view', submission_id=sub.submission_id),
+                        meta={'assignment_id': assignment.assignment_id, 'submission_id': sub.submission_id, 'status': 'RETURNED'},
+                    )
+                else:
+                    notify_student_and_parents(
+                        sub.student,
+                        kind='assignment_graded',
+                        title='Работа проверена',
+                        body=(sub.teacher_feedback or '').strip() or None,
+                        link_url=url_for('assignments.submission_view', submission_id=sub.submission_id),
+                        meta={'assignment_id': assignment.assignment_id, 'submission_id': sub.submission_id, 'status': 'GRADED'},
+                    )
         except Exception:
             pass
         updated += 1
+
+        if action == 'mark_graded':
+            try:
+                _upsert_gradebook_from_submission(sub, actor_user_id=current_user.id)
+            except Exception:
+                pass
 
     try:
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Bulk return failed for assignment {assignment_id}: {e}", exc_info=True)
-        audit_logger.log_error(action='assignment_bulk_returned', entity='Assignment', entity_id=assignment_id, error=str(e))
+        logger.error(f"Bulk review failed for assignment {assignment_id}: {e}", exc_info=True)
+        audit_logger.log_error(action=f'assignment_bulk_{action}', entity='Assignment', entity_id=assignment_id, error=str(e))
         flash('Ошибка при массовом обновлении статуса.', 'danger')
         return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
 
     try:
         audit_logger.log(
-            action='assignment_bulk_returned',
+            action=f'assignment_bulk_{action}',
             entity='Assignment',
             entity_id=assignment.assignment_id,
             status='success',
-            metadata={'updated': updated},
+            metadata={'updated': updated, 'skipped': skipped},
         )
     except Exception:
         pass
 
-    flash('Сданные работы возвращены на доработку.', 'success')
+    if action == 'mark_returned':
+        flash('Сданные работы возвращены на доработку.', 'success')
+    else:
+        if skipped:
+            flash(f'Отмечено как «Проверено»: {updated}. Пропущено без итоговых баллов: {skipped}.', 'warning')
+        else:
+            flash('Сданные работы отмечены как «Проверено».', 'success')
     return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
 
 
@@ -896,11 +928,33 @@ def submission_grade_view(submission_id):
             'task': assignment_task.task,
             'answer': answer
         })
-    
+
+    rubric_template = None
+    rubric_templates = []
+    try:
+        rid = submission.rubric_template_id or assignment.rubric_template_id
+        if rid:
+            rubric_template = RubricTemplate.query.filter_by(rubric_id=rid, is_active=True).first()
+    except Exception:
+        rubric_template = None
+
+    try:
+        base = RubricTemplate.query.filter(RubricTemplate.is_active.is_(True))
+        if not _can_manage_all_rubrics():
+            base = base.filter(RubricTemplate.owner_user_id == current_user.id)
+        at = (assignment.assignment_type or '').strip().lower()
+        if at:
+            base = base.filter((db.func.lower(RubricTemplate.assignment_type) == at) | (RubricTemplate.assignment_type.is_(None)))
+        rubric_templates = base.order_by(RubricTemplate.updated_at.desc(), RubricTemplate.created_at.desc(), RubricTemplate.rubric_id.desc()).limit(200).all()
+    except Exception:
+        rubric_templates = []
+
     return render_template('submission_grade.html',
                          submission=submission,
                          assignment=assignment,
-                         tasks_data=tasks_data)
+                         tasks_data=tasks_data,
+                         rubric_template=rubric_template,
+                         rubric_templates=rubric_templates)
 
 
 @assignments_bp.route('/submissions/<int:submission_id>/grade', methods=['POST'])
@@ -941,6 +995,8 @@ def submission_grade_save(submission_id):
         scores_data = data.get('scores', [])
         teacher_feedback = data.get('teacher_feedback', '').strip()
         status = data.get('status', 'GRADED')  # GRADED или RETURNED
+        rubric_template_id = data.get('rubric_template_id', None)
+        rubric_scores = data.get('rubric_scores', None)
         
         if status not in ['GRADED', 'RETURNED']:
             status = 'GRADED'
@@ -990,6 +1046,62 @@ def submission_grade_save(submission_id):
         submission.max_score = max_score
         submission.percentage = (total_score / max_score * 100) if max_score > 0 else 0
         submission.teacher_feedback = teacher_feedback
+
+        # Рубрика/критерии (чек-лист)
+        try:
+            selected_rubric = None
+            # 1) берём выбранную в UI (если есть)
+            if rubric_template_id is not None and str(rubric_template_id).strip() != '':
+                rid = int(rubric_template_id)
+                q = RubricTemplate.query.filter_by(rubric_id=rid, is_active=True)
+                if not _can_manage_all_rubrics():
+                    q = q.filter(RubricTemplate.owner_user_id == current_user.id)
+                selected_rubric = q.first()
+            # 2) иначе — текущая закреплённая на работе
+            if not selected_rubric and assignment.rubric_template_id:
+                selected_rubric = RubricTemplate.query.filter_by(rubric_id=assignment.rubric_template_id, is_active=True).first()
+
+            if selected_rubric:
+                # закрепляем на Assignment (чтобы все проверки были консистентны)
+                if not assignment.rubric_template_id:
+                    assignment.rubric_template_id = selected_rubric.rubric_id
+                submission.rubric_template_id = selected_rubric.rubric_id
+
+                cleaned = {}
+                if isinstance(rubric_scores, dict):
+                    items = selected_rubric.items if isinstance(selected_rubric.items, list) else []
+                    max_map = {}
+                    for it in items:
+                        if isinstance(it, dict) and it.get('key'):
+                            k = str(it.get('key'))
+                            try:
+                                ms = it.get('max_score', None)
+                                ms = int(ms) if ms is not None and str(ms) != '' else None
+                            except Exception:
+                                ms = None
+                            max_map[k] = ms
+
+                    for k, v in list(rubric_scores.items())[:120]:
+                        key = str(k).strip()
+                        if not key or not isinstance(v, dict):
+                            continue
+                        sc = v.get('score', None)
+                        try:
+                            sc = int(sc) if sc is not None and str(sc) != '' else None
+                        except Exception:
+                            sc = None
+                        if sc is not None and sc < 0:
+                            sc = 0
+                        mx = max_map.get(key)
+                        if mx is not None and sc is not None and sc > mx:
+                            sc = mx
+                        comment = str((v.get('comment') or '')).strip() or None
+                        cleaned[key] = {'score': sc, 'comment': comment}
+
+                submission.rubric_scores = cleaned if cleaned else None
+        except Exception as e:
+            logger.warning(f"Failed to save rubric data for submission {submission_id}: {e}")
+
         submission.status = status
         submission.graded_at = moscow_now()
 

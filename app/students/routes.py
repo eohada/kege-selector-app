@@ -890,6 +890,170 @@ def student_gradebook_export_csv(student_id: int):
     )
 
 
+@students_bp.route('/student/<int:student_id>/gradebook.pdf')
+@login_required
+def student_gradebook_export_pdf(student_id: int):
+    """Экспорт журнала ученика в PDF (через Playwright)."""
+    student = _guard_student_access(student_id)
+    if not has_permission(current_user, 'gradebook.view'):
+        from flask import abort
+        abort(403)
+
+    entries = GradebookEntry.query.filter_by(student_id=student.student_id).order_by(
+        GradebookEntry.created_at.asc(),
+        GradebookEntry.entry_id.asc(),
+    ).all()
+
+    html = render_template('student_gradebook_print.html', student=student, entries=entries)
+    filename = f'gradebook-student-{student.student_id}.pdf'
+
+    try:
+        from app.utils.pdf_export import html_to_pdf_bytes
+        pdf_bytes = html_to_pdf_bytes(html)
+    except Exception as e:
+        logger.warning(f"PDF export not available, fallback to HTML: {e}")
+        # fallback: printable HTML
+        return Response(
+            html,
+            mimetype='text/html; charset=utf-8',
+            headers={'Content-Disposition': f'inline; filename="{filename}.html"'}
+        )
+
+    try:
+        audit_logger.log(
+            action='export_gradebook_pdf',
+            entity='Student',
+            entity_id=student.student_id,
+            status='success',
+            metadata={'entries_count': len(entries)},
+        )
+    except Exception:
+        pass
+
+    return Response(
+        pdf_bytes,
+        mimetype='application/pdf',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )
+
+
+@students_bp.route('/student/<int:student_id>/diagnostics')
+@login_required
+def student_diagnostics(student_id: int):
+    """Диагностика ученика: слабые темы + сохранённые контрольные точки."""
+    student = _guard_student_access(student_id)
+    if not has_permission(current_user, 'plan.view'):
+        from flask import abort
+        abort(403)
+
+    from app.students.stats_service import StatsService
+    from app.models import StudentDiagnosticCheckpoint
+
+    stats = None
+    metrics = {}
+    problem_topics = []
+    try:
+        stats = StatsService(student.student_id)
+        metrics = stats.get_summary_metrics()
+        problem_topics = stats.get_problem_topics(threshold=60)
+    except Exception as e:
+        logger.warning(f"Failed to compute diagnostics for student {student.student_id}: {e}")
+        metrics = {}
+        problem_topics = []
+
+    checkpoints = []
+    try:
+        checkpoints = StudentDiagnosticCheckpoint.query.filter_by(student_id=student.student_id).order_by(
+            StudentDiagnosticCheckpoint.created_at.desc(),
+            StudentDiagnosticCheckpoint.checkpoint_id.desc(),
+        ).limit(50).all()
+    except Exception:
+        checkpoints = []
+
+    can_save = (not current_user.is_student()) and (not current_user.is_parent()) and has_permission(current_user, 'plan.edit')
+
+    # простые рекомендации MVP: топ-3 слабых темы → "сделать 2 урока + 10 задач"
+    recommendations = []
+    try:
+        for t in problem_topics[:3]:
+            recommendations.append({
+                'topic': getattr(t, 'name', None) or (t.get('name') if isinstance(t, dict) else None),
+                'plan': '2 урока по теме + 10 задач (с разбором ошибок)',
+            })
+    except Exception:
+        recommendations = []
+
+    return render_template(
+        'student_diagnostics.html',
+        student=student,
+        metrics=metrics,
+        problem_topics=problem_topics,
+        recommendations=recommendations,
+        checkpoints=checkpoints,
+        can_save=can_save,
+    )
+
+
+@students_bp.route('/student/<int:student_id>/diagnostics/checkpoints/create', methods=['POST'])
+@login_required
+def student_diagnostics_checkpoint_create(student_id: int):
+    """Сохранить контрольную точку диагностики (учитель/админ)."""
+    student = _guard_student_access(student_id)
+    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'plan.edit')):
+        from flask import abort
+        abort(403)
+
+    from app.students.stats_service import StatsService
+    from app.models import StudentDiagnosticCheckpoint
+
+    kind = (request.form.get('kind') or 'checkpoint').strip().lower()
+    if kind not in {'baseline', 'checkpoint'}:
+        kind = 'checkpoint'
+    note = (request.form.get('note') or '').strip() or None
+
+    metrics = None
+    problem_topics = None
+    recommendations = None
+    try:
+        stats = StatsService(student.student_id)
+        metrics = stats.get_summary_metrics()
+        problem_topics = stats.get_problem_topics(threshold=60)[:10]
+        recs = []
+        for t in problem_topics[:3]:
+            name = getattr(t, 'name', None) or (t.get('name') if isinstance(t, dict) else None)
+            if name:
+                recs.append({'topic': name, 'plan': '2 урока по теме + 10 задач (с разбором ошибок)'})
+        recommendations = recs
+    except Exception as e:
+        logger.warning(f"Failed to compute diagnostics snapshot for student {student.student_id}: {e}")
+
+    cp = StudentDiagnosticCheckpoint(
+        student_id=student.student_id,
+        created_by_user_id=current_user.id,
+        kind=kind,
+        note=note,
+        metrics=metrics,
+        problem_topics=problem_topics,
+        recommendations=recommendations,
+    )
+    db.session.add(cp)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        audit_logger.log_error(action='diagnostics_checkpoint_create', entity='StudentDiagnosticCheckpoint', error=str(e))
+        flash('Не удалось сохранить контрольную точку.', 'danger')
+        return redirect(url_for('students.student_diagnostics', student_id=student.student_id))
+
+    try:
+        audit_logger.log(action='diagnostics_checkpoint_create', entity='StudentDiagnosticCheckpoint', entity_id=cp.checkpoint_id, status='success', metadata={'student_id': student.student_id, 'kind': kind})
+    except Exception:
+        pass
+
+    flash('Контрольная точка сохранена.', 'success')
+    return redirect(url_for('students.student_diagnostics', student_id=student.student_id))
+
+
 @students_bp.route('/student/<int:student_id>/statistics')
 @login_required
 def student_statistics(student_id):
@@ -1448,11 +1612,16 @@ def student_archive(student_id):
 @login_required
 def lesson_new(student_id):
     """Создание нового урока для студента"""
-    if current_user.is_student():
-        flash('Ученики не могут создавать уроки.', 'danger')
+    if current_user.is_student() or current_user.is_parent():
+        flash('У вас недостаточно прав для создания уроков.', 'danger')
         return redirect(url_for('students.student_profile', student_id=student_id))
-    
-    student = Student.query.get_or_404(student_id)
+
+    if not has_permission(current_user, 'lesson.create'):
+        flash('У вас недостаточно прав для создания уроков.', 'danger')
+        return redirect(url_for('students.student_profile', student_id=student_id))
+
+    # RBAC/Data-scope: тьютор видит только своих учеников, родитель/ученик — только себя/детей
+    student = _guard_student_access(student_id)
     form = LessonForm()
     course_module_id = request.args.get('course_module_id', type=int)
     return_to = (request.args.get('return_to') or '').strip().lower()

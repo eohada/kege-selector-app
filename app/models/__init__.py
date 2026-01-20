@@ -12,6 +12,7 @@ from core.db_models import (
     Student,
     StudentTaskStatistics,
     StudentLearningPlanItem,
+    StudentDiagnosticCheckpoint,
     SchoolGroup,
     GroupStudent,
     Course,
@@ -19,6 +20,8 @@ from core.db_models import (
     MaterialAsset,
     LessonMaterialLink,
     LessonRoomTemplate,
+    RubricTemplate,
+    RecurringLessonSlot,
     Lesson,
     LessonTask,
     User,
@@ -48,7 +51,10 @@ from core.db_models import (
     LessonTaskTeacherComment,
     GradebookEntry,
     LessonTaskAttempt,
-    SubmissionAttempt
+    SubmissionAttempt,
+    TariffPlan,
+    UserSubscription,
+    UserConsent
 )
 
 __all__ = [
@@ -61,6 +67,7 @@ __all__ = [
     'Student',
     'StudentTaskStatistics',
     'StudentLearningPlanItem',
+    'StudentDiagnosticCheckpoint',
     'SchoolGroup',
     'GroupStudent',
     'Course',
@@ -68,6 +75,8 @@ __all__ = [
     'MaterialAsset',
     'LessonMaterialLink',
     'LessonRoomTemplate',
+    'RubricTemplate',
+    'RecurringLessonSlot',
     'Lesson',
     'LessonTask',
     'User',
@@ -97,5 +106,8 @@ __all__ = [
     'LessonTaskTeacherComment',
     'GradebookEntry',
     'LessonTaskAttempt',
-    'SubmissionAttempt'
+    'SubmissionAttempt',
+    'TariffPlan',
+    'UserSubscription',
+    'UserConsent'
 ]

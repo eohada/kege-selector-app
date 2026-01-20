@@ -159,6 +159,60 @@
                                                 Мои работы
                                             </a>
                                         </div>
+
+                                        {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
+                                        <div class="profile-section" style="margin-top: 1rem;">
+                                            <details>
+                                                <summary style="cursor:pointer; font-weight: 900;">Синхронизация календаря</summary>
+                                                <div style="margin-top: .75rem;">
+                                                    <p style="color: var(--text-muted); margin-top: 0;">
+                                                        Приватная ссылка для внешних календарей (.ics). Не передавайте её другим.
+                                                    </p>
+                                                    <div style="display:flex; gap: .6rem; flex-wrap: wrap; align-items: center;">
+                                                        <input class="neo-input" id="icsLink" readonly style="flex:1; min-width: 260px;" value="">
+                                                        <button class="neo-button outline" type="button" onclick="copyIcsLink()">Копировать</button>
+                                                        <button class="neo-button ghost" type="button" onclick="regenerateIcsToken()">Обновить ссылку</button>
+                                                    </div>
+                                                    <div style="color: var(--text-muted); font-size: .9rem; margin-top: .5rem;">
+                                                        Вставьте ссылку в Google Calendar / Apple Calendar как “Подписка по URL”.
+                                                    </div>
+                                                </div>
+                                            </details>
+                                        </div>
+                                        <script>
+                                            (function() {
+                                                const origin = window.location.origin;
+                                                const token = {{ (('"' ~ current_user.schedule_ics_token ~ '"') if current_user.schedule_ics_token else 'null')|safe }};
+                                                const link = token ? `${origin}/schedule/ics/${token}` : '';
+                                                const el = document.getElementById('icsLink');
+                                                if (el) el.value = link || '(нажмите “Обновить ссылку”)';
+                                                window.copyIcsLink = async function() {
+                                                    const v = el?.value || '';
+                                                    if (!v || v.startsWith('(')) return;
+                                                    try { await navigator.clipboard.writeText(v); if (window.toast) window.toast.success('Скопировано'); } catch(e) { if (window.toast) window.toast.error('Не удалось скопировать'); }
+                                                }
+                                                window.regenerateIcsToken = async function() {
+                                                    try {
+                                                        const resp = await fetch(`{{ url_for('schedule.schedule_regenerate_ics_token') }}`, {
+                                                            method: 'POST',
+                                                            headers: {
+                                                                'Content-Type': 'application/json',
+                                                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                                                            },
+                                                            body: JSON.stringify({})
+                                                        });
+                                                        const data = await resp.json().catch(() => ({}));
+                                                        if (!resp.ok || data.success === false) throw new Error(data.error || `HTTP ${resp.status}`);
+                                                        const newLink = `${origin}/schedule/ics/${data.token}`;
+                                                        if (el) el.value = newLink;
+                                                        if (window.toast) window.toast.success('Ссылка обновлена');
+                                                    } catch (e) {
+                                                        if (window.toast) window.toast.error(e.message || 'Ошибка');
+                                                    }
+                                                }
+                                            })();
+                                        </script>
+                                        {% endif %}
                                     {% else %}
                                         <p style="color: var(--text-muted); margin: 0;">
                                             Учебный профиль ещё не привязан к аккаунту. Сообщите преподавателю/администратору, чтобы связать ваш аккаунт по email.

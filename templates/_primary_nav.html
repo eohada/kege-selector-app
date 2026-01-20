@@ -55,6 +55,14 @@
                 <span class="nav-link-label">Мои дети</span>
             </span>
         </a>
+        {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
+        <a href="{{ url_for('schedule.schedule') }}" class="nav-link {% if active_page == 'schedule' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="nav-link-icon">
+                <span class="nav-link-label">Расписание</span>
+            </span>
+        </a>
+        {% endif %}
         {% elif current_user.is_student() %}
         {# Навигация для ученика #}
         {% if current_student %}
@@ -70,6 +78,14 @@
                 <span class="nav-link-label">Статистика</span>
             </span>
         </a>
+        {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
+        <a href="{{ url_for('schedule.schedule') }}" class="nav-link {% if active_page == 'schedule' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="nav-link-icon">
+                <span class="nav-link-label">Расписание</span>
+            </span>
+        </a>
+        {% endif %}
         {% endif %}
         {% else %}
         {# Навигация для админа, тьютора и остальных #}
@@ -144,6 +160,12 @@
                     <span>Приглашения</span>
                 </a>
                 {% endif %}
+                {% if current_user.is_authenticated and has_permission(current_user, 'assignment.grade') %}
+                <a href="{{ url_for('rubrics.rubrics_list') }}" class="dropdown-item {% if active_page == 'rubrics' %}active{% endif %}">
+                    <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" class="nav-link-icon">
+                    <span>Рубрики</span>
+                </a>
+                {% endif %}
                 <a href="{{ url_for('kege_generator.kege_generator') }}" class="dropdown-item {% if active_page == 'generator' %}active{% endif %}">
                     <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" class="nav-link-icon">
                     <span>Генератор</span>
@@ -160,6 +182,12 @@
                 <a href="{{ url_for('library.materials_library') }}" class="dropdown-item {% if active_page == 'library' %}active{% endif %}">
                     <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" class="nav-link-icon">
                     <span>Библиотека</span>
+                </a>
+                {% endif %}
+                {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
+                <a href="{{ url_for('billing.billing_plans') }}" class="dropdown-item {% if active_page == 'billing' %}active{% endif %}">
+                    <img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" class="nav-link-icon">
+                    <span>Тарифы/подписки</span>
                 </a>
                 {% endif %}
             </div>

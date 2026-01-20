@@ -196,26 +196,31 @@
                                         <i class="fas fa-door-open ui-icon ui-icon--sm"></i> Открыть урок
                                     </a>
                                     {% if status == 'submitted' %}
-                                    <form method="POST" action="{{ url_for('lessons.review_bulk_update_lesson', lesson_id=lesson.lesson_id) }}" style="display:inline;">
-                                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                                        <input type="hidden" name="action" value="mark_graded">
-                                        <input type="hidden" name="status" value="{{ status }}">
-                                        <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
-                                        <input type="hidden" name="student" value="{{ student_query }}">
-                                        <button type="submit" class="neo-button accent">
-                                            <i class="fas fa-check ui-icon ui-icon--sm"></i> Всё проверено
-                                        </button>
-                                    </form>
-                                    <form method="POST" action="{{ url_for('lessons.review_bulk_update_lesson', lesson_id=lesson.lesson_id) }}" style="display:inline;">
-                                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                                        <input type="hidden" name="action" value="mark_returned">
-                                        <input type="hidden" name="status" value="{{ status }}">
-                                        <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
-                                        <input type="hidden" name="student" value="{{ student_query }}">
-                                        <button type="submit" class="neo-button outline">
-                                            <i class="fas fa-rotate-left ui-icon ui-icon--sm"></i> На доработку
-                                        </button>
-                                    </form>
+                                    <details style="position: relative;">
+                                        <summary class="neo-button ghost" style="list-style:none; cursor:pointer;">Ещё</summary>
+                                        <div style="position:absolute; right:0; top:calc(100% + 8px); z-index: 20; min-width: 220px; padding: .6rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: var(--surface-1); box-shadow: var(--shadow-soft); display:grid; gap:.5rem;">
+                                            <form method="POST" action="{{ url_for('lessons.review_bulk_update_lesson', lesson_id=lesson.lesson_id) }}">
+                                                {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                                <input type="hidden" name="action" value="mark_graded">
+                                                <input type="hidden" name="status" value="{{ status }}">
+                                                <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
+                                                <input type="hidden" name="student" value="{{ student_query }}">
+                                                <button type="submit" class="neo-button accent sm" style="width:100%;">
+                                                    <i class="fas fa-check ui-icon ui-icon--sm"></i> Всё проверено
+                                                </button>
+                                            </form>
+                                            <form method="POST" action="{{ url_for('lessons.review_bulk_update_lesson', lesson_id=lesson.lesson_id) }}">
+                                                {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                                <input type="hidden" name="action" value="mark_returned">
+                                                <input type="hidden" name="status" value="{{ status }}">
+                                                <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
+                                                <input type="hidden" name="student" value="{{ student_query }}">
+                                                <button type="submit" class="neo-button outline sm" style="width:100%;">
+                                                    <i class="fas fa-rotate-left ui-icon ui-icon--sm"></i> На доработку
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </details>
                                     {% endif %}
                                 </div>
                             </div>
@@ -276,17 +281,33 @@
                                         <i class="fas fa-folder-open ui-icon ui-icon--sm"></i> Открыть работу
                                     </a>
                                     {% if status == 'submitted' %}
-                                    <form method="POST" action="{{ url_for('assignments.assignment_review_bulk_update', assignment_id=a.assignment_id) }}" style="display:inline;">
-                                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-                                        <input type="hidden" name="action" value="mark_returned">
-                                        <input type="hidden" name="status" value="{{ status }}">
-                                        <input type="hidden" name="source" value="{{ source }}">
-                                        <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
-                                        <input type="hidden" name="student" value="{{ student_query }}">
-                                        <button type="submit" class="neo-button outline" onclick="return confirm('Вернуть на доработку ВСЕ сданные работы по этой задаче?')">
-                                            <i class="fas fa-rotate-left ui-icon ui-icon--sm"></i> Вернуть всем
-                                        </button>
-                                    </form>
+                                    <details style="position: relative;">
+                                        <summary class="neo-button ghost" style="list-style:none; cursor:pointer;">Ещё</summary>
+                                        <div style="position:absolute; right:0; top:calc(100% + 8px); z-index: 20; min-width: 240px; padding: .6rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: var(--surface-1); box-shadow: var(--shadow-soft); display:grid; gap:.5rem;">
+                                            <form method="POST" action="{{ url_for('assignments.assignment_review_bulk_update', assignment_id=a.assignment_id) }}">
+                                                {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                                <input type="hidden" name="action" value="mark_graded">
+                                                <input type="hidden" name="status" value="{{ status }}">
+                                                <input type="hidden" name="source" value="{{ source }}">
+                                                <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
+                                                <input type="hidden" name="student" value="{{ student_query }}">
+                                                <button type="submit" class="neo-button accent sm" style="width:100%;" onclick="return confirm('Отметить как «Проверено» ВСЕ сданные работы, где уже есть итоговые баллы?')">
+                                                    <i class="fas fa-check ui-icon ui-icon--sm"></i> Проверено всем
+                                                </button>
+                                            </form>
+                                            <form method="POST" action="{{ url_for('assignments.assignment_review_bulk_update', assignment_id=a.assignment_id) }}">
+                                                {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                                <input type="hidden" name="action" value="mark_returned">
+                                                <input type="hidden" name="status" value="{{ status }}">
+                                                <input type="hidden" name="source" value="{{ source }}">
+                                                <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
+                                                <input type="hidden" name="student" value="{{ student_query }}">
+                                                <button type="submit" class="neo-button outline sm" style="width:100%;" onclick="return confirm('Вернуть на доработку ВСЕ сданные работы по этой задаче?')">
+                                                    <i class="fas fa-rotate-left ui-icon ui-icon--sm"></i> Вернуть всем
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </details>
                                     {% endif %}
                                 </div>
                             </div>

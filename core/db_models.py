@@ -128,6 +128,7 @@ class Student(db.Model):
     lessons = db.relationship('Lesson', back_populates='student', lazy=True, cascade='all, delete-orphan')
     task_statistics = db.relationship('StudentTaskStatistics', back_populates='student', lazy=True, cascade='all, delete-orphan')
     learning_plan_items = db.relationship('StudentLearningPlanItem', back_populates='student', lazy=True, cascade='all, delete-orphan')
+    diagnostic_checkpoints = db.relationship('StudentDiagnosticCheckpoint', back_populates='student', lazy=True, cascade='all, delete-orphan')
 
 class StudentTaskStatistics(db.Model):
     """Ручные изменения статистики выполнения заданий для ученика"""
@@ -175,6 +176,30 @@ class StudentLearningPlanItem(db.Model):
     student = db.relationship('Student', back_populates='learning_plan_items')
     topic = db.relationship('Topic', foreign_keys=[topic_id])
     course_module = db.relationship('CourseModule', foreign_keys=[course_module_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+
+class StudentDiagnosticCheckpoint(db.Model):
+    """
+    Контрольная точка диагностики ученика (входная/промежуточная).
+
+    MVP: сохраняем снимок "дыр" по темам + заметки/рекомендации от преподавателя.
+    """
+    __tablename__ = 'StudentDiagnosticCheckpoints'
+
+    checkpoint_id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    kind = db.Column(db.String(30), default='checkpoint', nullable=False, index=True)  # baseline|checkpoint
+    note = db.Column(db.Text, nullable=True)
+    metrics = db.Column(db.JSON, nullable=True)        # summary_metrics (как есть)
+    problem_topics = db.Column(db.JSON, nullable=True) # список слабых тем
+    recommendations = db.Column(db.JSON, nullable=True)  # список рекомендаций/шагов
+
+    created_at = db.Column(db.DateTime, default=moscow_now, index=True)
+
+    student = db.relationship('Student', back_populates='diagnostic_checkpoints')
     created_by = db.relationship('User', foreign_keys=[created_by_user_id])
 
 
@@ -269,6 +294,7 @@ class MaterialAsset(db.Model):
 
     file_name = db.Column(db.String(300), nullable=False)
     file_url = db.Column(db.Text, nullable=False)  # публичный URL (через static)
+    storage_path = db.Column(db.Text, nullable=True)  # относительный путь на диске (для защищенной отдачи)
     file_mime = db.Column(db.String(120), nullable=True)
     file_size = db.Column(db.Integer, nullable=True)
 
@@ -313,6 +339,57 @@ class LessonRoomTemplate(db.Model):
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
 
     created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+
+class RecurringLessonSlot(db.Model):
+    """
+    Шаблон повторяющегося слота урока (автоплан).
+
+    Пример: каждый вторник 18:00 (Tomsk), 60 минут, regular.
+    На основе слотов можно “сгенерировать” уроки на неделю/месяц.
+    """
+    __tablename__ = 'RecurringLessonSlots'
+
+    slot_id = db.Column(db.Integer, primary_key=True)
+    owner_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)  # кто создал (обычно тьютор)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+
+    weekday = db.Column(db.Integer, nullable=False, index=True)  # 0=Mon..6=Sun
+    time_hhmm = db.Column(db.String(5), nullable=False)          # "HH:MM" в выбранной timezone
+    duration = db.Column(db.Integer, default=60, nullable=False) # minutes
+    lesson_type = db.Column(db.String(50), default='regular', nullable=False)
+    timezone = db.Column(db.String(20), default='moscow', nullable=False)  # moscow|tomsk
+
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    owner = db.relationship('User', foreign_keys=[owner_user_id])
+    student = db.relationship('Student', foreign_keys=[student_id])
+
+
+class RubricTemplate(db.Model):
+    """
+    Шаблон рубрики/критериев для проверки.
+
+    items хранится как JSON-список:
+    [{"key":"crit1","title":"Критерий 1","max_score":2,"description":"..."}, ...]
+    """
+    __tablename__ = 'RubricTemplates'
+
+    rubric_id = db.Column(db.Integer, primary_key=True)
+    owner_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    assignment_type = db.Column(db.String(50), nullable=True, index=True)  # homework|classwork|exam|test|...
+
+    items = db.Column(db.JSON, nullable=False, default=list)
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    owner = db.relationship('User', foreign_keys=[owner_user_id])
 
 
 class Lesson(db.Model):
@@ -499,6 +576,9 @@ class User(db.Model):
 
     # JSON поле для индивидуальных прав пользователя
     custom_permissions = db.Column(db.JSON, nullable=True)
+
+    # Приватная ссылка для синхронизации календаря (iCalendar .ics)
+    schedule_ics_token = db.Column(db.String(120), nullable=True, unique=True, index=True)
 
 # Новая модель для хранения настроек ролей
 class RolePermission(db.Model):
@@ -824,6 +904,63 @@ class Enrollment(db.Model):
 
 
 # ============================================================================
+# БИЛЛИНГ + ЮРИДИЧЕСКИЙ СЛОЙ (MVP, без платежных интеграций)
+# ============================================================================
+
+class TariffPlan(db.Model):
+    """Тариф/план (оплата и доступ управляются вручную админом)."""
+    __tablename__ = 'TariffPlans'
+
+    plan_id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+
+    price_rub = db.Column(db.Integer, nullable=True)     # цена в рублях (информативно)
+    period_days = db.Column(db.Integer, nullable=True)   # длительность доступа (информативно)
+
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+
+class UserSubscription(db.Model):
+    """Подписка пользователя на тариф (выдача доступа вручную)."""
+    __tablename__ = 'UserSubscriptions'
+
+    subscription_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    plan_id = db.Column(db.Integer, db.ForeignKey('TariffPlans.plan_id'), nullable=True, index=True)
+
+    status = db.Column(db.String(30), default='active', nullable=False, index=True)  # active|expired|cancelled|paused
+    started_at = db.Column(db.DateTime, nullable=True)
+    ends_at = db.Column(db.DateTime, nullable=True)
+    note = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    plan = db.relationship('TariffPlan', foreign_keys=[plan_id])
+
+
+class UserConsent(db.Model):
+    """Лог согласий (оферта/политика)."""
+    __tablename__ = 'UserConsents'
+
+    consent_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+
+    document_key = db.Column(db.String(60), nullable=False, index=True)  # offer|privacy|...
+    version = db.Column(db.String(40), nullable=False, default='1', index=True)
+    accepted_at = db.Column(db.DateTime, default=moscow_now, index=True)
+
+    ip_address = db.Column(db.Text, nullable=True)
+    user_agent = db.Column(db.Text, nullable=True)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+
+
+# ============================================================================
 # СИСТЕМА ЗАДАНИЙ И СДАЧИ РАБОТ (ASSIGNMENT/SUBMISSION)
 # ============================================================================
 
@@ -847,6 +984,9 @@ class Assignment(db.Model):
     # Создатель и связь с уроком (опционально)
     created_by_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)  # Учитель, создавший работу
     lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=True)  # Связь с уроком (если есть)
+
+    # Рубрика/критерии проверки (опционально)
+    rubric_template_id = db.Column(db.Integer, db.ForeignKey('RubricTemplates.rubric_id'), nullable=True, index=True)
     
     # Метаданные
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
@@ -858,6 +998,7 @@ class Assignment(db.Model):
     lesson = db.relationship('Lesson', backref='assignments')
     tasks = db.relationship('AssignmentTask', back_populates='assignment', lazy=True, cascade='all, delete-orphan')
     submissions = db.relationship('Submission', back_populates='assignment', lazy=True, cascade='all, delete-orphan')
+    rubric_template = db.relationship('RubricTemplate', foreign_keys=[rubric_template_id])
     
     def __repr__(self):
         return f'<Assignment {self.assignment_id}: {self.title} ({self.assignment_type})>'
@@ -926,6 +1067,10 @@ class Submission(db.Model):
     
     # Комментарий учителя
     teacher_feedback = db.Column(db.Text, nullable=True)
+
+    # Рубрика: снимок выбранной рубрики и заполненные значения
+    rubric_template_id = db.Column(db.Integer, db.ForeignKey('RubricTemplates.rubric_id'), nullable=True, index=True)
+    rubric_scores = db.Column(db.JSON, nullable=True)  # {"crit1": {"score": 1, "comment": "..."}, ...}
     
     # Метаданные
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
@@ -936,6 +1081,7 @@ class Submission(db.Model):
     student = db.relationship('Student', backref='submissions')
     answers = db.relationship('Answer', back_populates='submission', lazy=True, cascade='all, delete-orphan')
     attempts = db.relationship('SubmissionAttempt', back_populates='submission', lazy=True, cascade='all, delete-orphan')
+    rubric_template = db.relationship('RubricTemplate', foreign_keys=[rubric_template_id])
     
     def __repr__(self):
         return f'<Submission {self.submission_id}: student {self.student_id}, assignment {self.assignment_id}, status {self.status}>'

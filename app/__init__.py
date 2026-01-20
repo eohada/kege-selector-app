@@ -178,6 +178,9 @@ def create_app(config_name=None):
     from app.groups import groups_bp
     from app.notifications import notifications_bp
     from app.onboarding import onboarding_bp
+    from app.rubrics import rubrics_bp
+    from app.billing import billing_bp
+    from app.uploads import uploads_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -198,6 +201,9 @@ def create_app(config_name=None):
     app.register_blueprint(groups_bp)
     app.register_blueprint(notifications_bp)
     app.register_blueprint(onboarding_bp)
+    app.register_blueprint(rubrics_bp)
+    app.register_blueprint(billing_bp)
+    app.register_blueprint(uploads_bp)
     
     # Исключаем logout из CSRF защиты
     from app.auth.routes import logout

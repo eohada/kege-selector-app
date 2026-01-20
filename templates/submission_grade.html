@@ -159,6 +159,22 @@
                     <div style="font-weight: 700;">{{ submission.submitted_at.strftime('%d.%m.%Y %H:%M') }}</div>
                 </div>
                 {% endif %}
+                {% if submission.status == 'SUBMITTED' and rubric_templates is defined and rubric_templates %}
+                <div style="min-width: 240px;">
+                    <div style="font-size: 0.9em; color: var(--text-muted);">Рубрика</div>
+                    <select id="rubric-template" class="neo-select" style="margin-top: .25rem;">
+                        <option value="">— без рубрики —</option>
+                        {% for rt in rubric_templates %}
+                          <option value="{{ rt.rubric_id }}" {% if rubric_template and rt.rubric_id == rubric_template.rubric_id %}selected{% endif %}>
+                            {{ rt.title }}
+                          </option>
+                        {% endfor %}
+                    </select>
+                    <div style="margin-top:.35rem;">
+                        <a href="{{ url_for('rubrics.rubrics_list') }}" class="neo-button ghost sm">Управлять рубриками</a>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
         
@@ -241,6 +257,56 @@
                     placeholder="Напишите общий комментарий к работе ученика..."
                 >{{ submission.teacher_feedback if submission.teacher_feedback else '' }}</textarea>
             </div>
+
+            {% if rubric_template %}
+            {% set rsc = submission.rubric_scores if submission.rubric_scores else {} %}
+            <div class="feedback-section">
+                <div style="display:flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                    <div style="font-weight: 800; font-size: 1.1em;">Рубрика: {{ rubric_template.title }}</div>
+                    <div style="color: var(--text-muted);">Критерии для единообразной проверки (чек-лист).</div>
+                </div>
+                <div style="display:grid; gap: .75rem; margin-top: .9rem;">
+                    {% for it in (rubric_template.items or []) %}
+                      {% if it and it.get('key') %}
+                        {% set key = it.get('key') %}
+                        {% set val = rsc.get(key, {}) if rsc else {} %}
+                        <div style="padding: 1rem; border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
+                            <div style="display:flex; justify-content: space-between; gap: 1rem; align-items: flex-start; flex-wrap: wrap;">
+                                <div style="min-width: 0;">
+                                    <div style="font-weight: 800;">{{ it.get('title') }}</div>
+                                    {% if it.get('description') %}
+                                      <div style="color: var(--text-muted); margin-top: .25rem; white-space: pre-line;">{{ it.get('description') }}</div>
+                                    {% endif %}
+                                </div>
+                                <div style="display:flex; gap: .5rem; align-items: center; flex-wrap: wrap;">
+                                    {% if it.get('max_score') is not none %}
+                                      <span style="color: var(--text-muted);">макс: {{ it.get('max_score') }}</span>
+                                    {% endif %}
+                                    <input
+                                      class="neo-input rubric-score-input"
+                                      style="width: 110px;"
+                                      type="number"
+                                      min="0"
+                                      {% if it.get('max_score') is not none %}max="{{ it.get('max_score') }}"{% endif %}
+                                      data-key="{{ key }}"
+                                      data-max="{{ it.get('max_score') if it.get('max_score') is not none else '' }}"
+                                      value="{{ val.get('score') if val and val.get('score') is not none else '' }}"
+                                      placeholder="балл">
+                                </div>
+                            </div>
+                            <div style="margin-top: .75rem;">
+                                <textarea
+                                  class="comment-input rubric-comment-input"
+                                  data-key="{{ key }}"
+                                  placeholder="Комментарий по критерию (опционально)"
+                                >{{ val.get('comment') if val and val.get('comment') else '' }}</textarea>
+                            </div>
+                        </div>
+                      {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
             
             <div class="submit-section">
                 <div>
@@ -355,6 +421,24 @@
         
         updateTotalScore();
         
+        function collectRubricScores() {
+            const out = {};
+            document.querySelectorAll('.rubric-score-input').forEach(input => {
+                const key = input.dataset.key;
+                if (!key) return;
+                let score = input.value;
+                score = (score === '' || score === null || score === undefined) ? null : parseInt(score, 10);
+                if (Number.isNaN(score)) score = null;
+                if (score !== null && score < 0) score = 0;
+                const maxRaw = input.dataset.max;
+                const max = (maxRaw === '' || maxRaw === null || maxRaw === undefined) ? null : parseInt(maxRaw, 10);
+                if (max !== null && !Number.isNaN(max) && score !== null && score > max) score = max;
+                const comment = document.querySelector(`.rubric-comment-input[data-key="${CSS.escape(key)}"]`)?.value || '';
+                out[key] = { score: score, comment: comment };
+            });
+            return out;
+        }
+
         // Сохранение оценки
         document.getElementById('grade-btn')?.addEventListener('click', function() {
             const scores = [];
@@ -369,7 +453,9 @@
             const data = {
                 scores: scores,
                 teacher_feedback: document.getElementById('teacher-feedback').value,
-                status: 'GRADED'
+                status: 'GRADED',
+                rubric_template_id: document.getElementById('rubric-template') ? document.getElementById('rubric-template').value : null,
+                rubric_scores: collectRubricScores()
             };
             
             fetch(`{{ url_for('assignments.submission_grade_save', submission_id=submission.submission_id) }}`, {
@@ -409,7 +495,9 @@
             const data = {
                 scores: scores,
                 teacher_feedback: document.getElementById('teacher-feedback').value,
-                status: 'RETURNED'
+                status: 'RETURNED',
+                rubric_template_id: document.getElementById('rubric-template') ? document.getElementById('rubric-template').value : null,
+                rubric_scores: collectRubricScores()
             };
             
             fetch(`{{ url_for('assignments.submission_grade_save', submission_id=submission.submission_id) }}`, {

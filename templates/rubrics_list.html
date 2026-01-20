@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Рубрики проверки</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+  {% include '_ux_enhancements.html' %}
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+</head>
+<body>
+  <div class="app-shell">
+    {% set active_page = 'rubrics' %}
+    {% include '_primary_nav.html' %}
+
+    <main style="margin-top: 1.25rem;">
+      <section class="glass-panel" style="margin-bottom: 1.25rem;">
+        <p class="hero-eyebrow">домашка/проверка</p>
+        <h1 class="hero-title" style="margin-bottom:.25rem;">Рубрики (критерии)</h1>
+        <div style="color: var(--text-muted);">Шаблоны чек-листов/критериев для быстрой и единообразной проверки.</div>
+
+        <div class="hero-actions" style="margin-top: 1rem;">
+          <a href="{{ url_for('rubrics.rubric_new') }}" class="neo-button accent">+ Новая рубрика</a>
+        </div>
+      </section>
+
+      <section class="glass-panel">
+        <form method="GET" style="display:flex; gap:.75rem; flex-wrap: wrap; align-items: end;">
+          <div class="neo-field" style="min-width: 240px; flex: 1;">
+            <label class="neo-label">Поиск</label>
+            <input class="neo-input" name="q" value="{{ q or '' }}" placeholder="Название…">
+          </div>
+          <div class="neo-field" style="min-width: 200px;">
+            <label class="neo-label">Тип</label>
+            <select class="neo-select" name="assignment_type">
+              <option value="" {% if not assignment_type %}selected{% endif %}>Все</option>
+              <option value="homework" {% if assignment_type == 'homework' %}selected{% endif %}>ДЗ</option>
+              <option value="classwork" {% if assignment_type == 'classwork' %}selected{% endif %}>КР</option>
+              <option value="exam" {% if assignment_type == 'exam' %}selected{% endif %}>Проверочная</option>
+              <option value="test" {% if assignment_type == 'test' %}selected{% endif %}>Тест</option>
+              <option value="diagnostic" {% if assignment_type == 'diagnostic' %}selected{% endif %}>Диагностика</option>
+            </select>
+          </div>
+          <div style="display:flex; gap:.5rem;">
+            <button class="neo-button outline" type="submit">Фильтр</button>
+            <a class="neo-button ghost" href="{{ url_for('rubrics.rubrics_list') }}">Сброс</a>
+          </div>
+        </form>
+
+        <div style="margin-top: 1rem; display:grid; gap: .75rem;">
+          {% for r in templates %}
+            <div style="padding: .9rem 1rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02); display:flex; justify-content: space-between; gap: 1rem; align-items: flex-start; flex-wrap: wrap;">
+              <div style="min-width: 0;">
+                <div style="font-weight: 900;">{{ r.title }}</div>
+                <div style="color: var(--text-muted); font-size: .92rem; margin-top: .25rem;">
+                  {% if r.assignment_type %}Тип: <strong>{{ r.assignment_type }}</strong> · {% endif %}
+                  Критериев: <strong>{{ (r.items|length) if r.items else 0 }}</strong>
+                </div>
+                {% if r.description %}
+                  <div style="color: var(--text-muted); margin-top: .45rem; white-space: pre-line;">{{ r.description }}</div>
+                {% endif %}
+              </div>
+              <div style="display:flex; gap:.5rem; flex-wrap: wrap; justify-content:flex-end;">
+                <a href="{{ url_for('rubrics.rubric_edit', rubric_id=r.rubric_id) }}" class="neo-button outline sm">Редактировать</a>
+                <form method="POST" action="{{ url_for('rubrics.rubric_delete', rubric_id=r.rubric_id) }}" style="display:inline;">
+                  {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                  <button type="submit" class="neo-button danger sm" onclick="return confirm('Удалить рубрику?')">Удалить</button>
+                </form>
+              </div>
+            </div>
+          {% else %}
+            <div class="empty-state" style="padding: 2rem 1rem;">
+              <p>Рубрик пока нет.</p>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
+

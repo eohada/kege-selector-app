@@ -2,6 +2,8 @@
 Функции для миграций базы данных
 """
 import logging
+import os
+import json
 from sqlalchemy import inspect, text
 from app.models import db
 from core.db_models import (
@@ -12,16 +14,98 @@ from core.db_models import (
     LessonTaskTeacherComment, TaskReview,
     Course, CourseModule,
     StudentLearningPlanItem,
+    StudentDiagnosticCheckpoint,
     GradebookEntry,
     SchoolGroup,
     GroupStudent,
     LessonTaskAttempt,
     SubmissionAttempt,
-    MaterialAsset, LessonMaterialLink, LessonRoomTemplate
+    MaterialAsset, LessonMaterialLink, LessonRoomTemplate, RubricTemplate,
+    RecurringLessonSlot,
+    TariffPlan, UserSubscription, UserConsent
 )
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
 
 logger = logging.getLogger(__name__)
+
+def _backfill_lesson_materials_to_protected_urls(app, inspector, table_names, limit: int = 1000):
+    """
+    Best-effort backfill:
+    - старые lesson.materials со ссылками вида /static/uploads/lessons/<lesson_id>/<file>
+      переводим на /files/lessons/<lesson_id>/<stored_name>
+    - делаем только если файл реально существует на диске
+    """
+    try:
+        lessons_table = _resolve_table_name(table_names, 'Lessons')
+        if not lessons_table:
+            return
+        cols = {c['name'] for c in inspector.get_columns(lessons_table)}
+        if 'materials' not in cols:
+            return
+
+        from app.models import Lesson  # локальный импорт чтобы не ловить циклы
+
+        # Быстрый отбор: только где materials не пустой
+        q = Lesson.query.filter(Lesson.materials.isnot(None)).order_by(Lesson.lesson_id.desc()).limit(int(limit))
+        lessons = q.all()
+        if not lessons:
+            return
+
+        changed = 0
+        for lesson in lessons:
+            mats = lesson.materials or []
+            if isinstance(mats, str):
+                try:
+                    mats = json.loads(mats) or []
+                except Exception:
+                    mats = []
+            if not isinstance(mats, list) or not mats:
+                continue
+
+            updated_any = False
+            new_mats = []
+            for m in mats:
+                if not isinstance(m, dict):
+                    new_mats.append(m)
+                    continue
+                url = (m.get('url') or '').strip()
+                if not url:
+                    new_mats.append(m)
+                    continue
+                if '/files/lessons/' in url:
+                    new_mats.append(m)
+                    continue
+
+                marker = '/static/uploads/lessons/'
+                if marker in url:
+                    stored_name = os.path.basename((url.split('?')[0] or '').strip())
+                    if stored_name:
+                        abs_path = os.path.join(app.root_path, 'static', 'uploads', 'lessons', str(lesson.lesson_id), stored_name)
+                        if os.path.exists(abs_path):
+                            m = dict(m)
+                            m['url'] = f"/files/lessons/{lesson.lesson_id}/{stored_name}"
+                            m['storage_path'] = f"static/uploads/lessons/{lesson.lesson_id}/{stored_name}"
+                            updated_any = True
+                new_mats.append(m)
+
+            if updated_any:
+                lesson.materials = new_mats
+                try:
+                    from sqlalchemy.orm.attributes import flag_modified
+                    flag_modified(lesson, 'materials')
+                except Exception:
+                    pass
+                changed += 1
+
+        if changed:
+            try:
+                db.session.commit()
+                logger.info(f"Backfilled protected lesson material URLs for {changed} lessons")
+            except Exception as e:
+                db.session.rollback()
+                logger.warning(f"Could not commit lesson materials backfill: {e}")
+    except Exception as e:
+        logger.warning(f"Lesson materials backfill skipped due to error: {e}")
 
 def _is_postgres(app):
     try:
@@ -260,6 +344,15 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create StudentLearningPlanItems table: {e}")
                     db.session.rollback()
 
+            # Фундамент: диагностические контрольные точки
+            if 'StudentDiagnosticCheckpoints' not in table_names and 'studentdiagnosticcheckpoints' not in table_names:
+                try:
+                    StudentDiagnosticCheckpoint.__table__.create(db.engine)
+                    logger.info("StudentDiagnosticCheckpoints table created")
+                except Exception as e:
+                    logger.warning(f"Could not create StudentDiagnosticCheckpoints table: {e}")
+                    db.session.rollback()
+
             # Фундамент: журнал оценок
             if 'GradebookEntries' not in table_names and 'gradebookentries' not in table_names:
                 try:
@@ -338,6 +431,21 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create MaterialAssets table: {e}")
                     db.session.rollback()
+            else:
+                # добавляем storage_path, если таблица уже есть
+                try:
+                    assets_table = _resolve_table_name(table_names, 'MaterialAssets')
+                    if assets_table:
+                        cols = {c['name'] for c in inspector.get_columns(assets_table)}
+                        if 'storage_path' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{assets_table}" ADD COLUMN storage_path TEXT'))
+                                logger.info(f"Added storage_path to {assets_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add storage_path to {assets_table}: {e}")
+                                db.session.rollback()
+                except Exception:
+                    pass
 
             if 'LessonMaterialLinks' not in table_names and 'lessonmateriallinks' not in table_names:
                 try:
@@ -353,6 +461,40 @@ def ensure_schema_columns(app):
                     logger.info("LessonRoomTemplates table created")
                 except Exception as e:
                     logger.warning(f"Could not create LessonRoomTemplates table: {e}")
+                    db.session.rollback()
+
+            # Фундамент: автоплан расписания (RecurringLessonSlots)
+            if 'RecurringLessonSlots' not in table_names and 'recurringlessonslots' not in table_names:
+                try:
+                    RecurringLessonSlot.__table__.create(db.engine)
+                    logger.info("RecurringLessonSlots table created")
+                except Exception as e:
+                    logger.warning(f"Could not create RecurringLessonSlots table: {e}")
+                    db.session.rollback()
+
+            # Фундамент: биллинг/юридический слой
+            if 'TariffPlans' not in table_names and 'tariffplans' not in table_names:
+                try:
+                    TariffPlan.__table__.create(db.engine)
+                    logger.info("TariffPlans table created")
+                except Exception as e:
+                    logger.warning(f"Could not create TariffPlans table: {e}")
+                    db.session.rollback()
+
+            if 'UserSubscriptions' not in table_names and 'usersubscriptions' not in table_names:
+                try:
+                    UserSubscription.__table__.create(db.engine)
+                    logger.info("UserSubscriptions table created")
+                except Exception as e:
+                    logger.warning(f"Could not create UserSubscriptions table: {e}")
+                    db.session.rollback()
+
+            if 'UserConsents' not in table_names and 'userconsents' not in table_names:
+                try:
+                    UserConsent.__table__.create(db.engine)
+                    logger.info("UserConsents table created")
+                except Exception as e:
+                    logger.warning(f"Could not create UserConsents table: {e}")
                     db.session.rollback()
             lessons_table = 'Lessons' if 'Lessons' in table_names else ('lessons' if 'lessons' in table_names else None)
             students_table = 'Students' if 'Students' in table_names else ('students' if 'students' in table_names else None)
@@ -389,6 +531,9 @@ def ensure_schema_columns(app):
             safe_add_column('student_notes', 'TEXT')
             safe_add_column('materials', 'JSON')
             safe_add_column('course_module_id', 'INTEGER')
+
+            # Backfill: старые материалы уроков -> защищенные ссылки
+            _backfill_lesson_materials_to_protected_urls(app, inspector, table_names, limit=2000)
 
             if lesson_tasks_table:
                 lesson_task_columns = {col['name'] for col in inspector.get_columns(lesson_tasks_table)}
@@ -729,6 +874,18 @@ def ensure_schema_columns(app):
                     except Exception as e:
                         logger.warning(f"Could not add email to Users: {e}")
                         db.session.rollback()
+
+                # schedule_ics_token для приватного экспорта календаря
+                if 'schedule_ics_token' not in users_columns:
+                    try:
+                        if _is_postgres(app):
+                            db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN schedule_ics_token VARCHAR(120)'))
+                        else:
+                            db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN schedule_ics_token VARCHAR(120)'))
+                        logger.info("Added schedule_ics_token column to Users table")
+                    except Exception as e:
+                        logger.warning(f"Could not add schedule_ics_token to Users: {e}")
+                        db.session.rollback()
             
             # 2. Создаем таблицу UserProfiles (если её нет)
             profiles_table = _resolve_table_name(table_names, 'UserProfiles')
@@ -765,6 +922,52 @@ def ensure_schema_columns(app):
                     logger.info("Created Assignments system tables (Assignments, AssignmentTasks, Submissions, Answers)")
                 except Exception as e:
                     logger.warning(f"Could not create Assignments system tables: {e}")
+
+            # 5.1 Создаем таблицу RubricTemplates (если её нет)
+            rubric_templates_table = _resolve_table_name(table_names, 'RubricTemplates')
+            if not rubric_templates_table:
+                try:
+                    db.create_all()
+                    logger.info("Created RubricTemplates table")
+                except Exception as e:
+                    logger.warning(f"Could not create RubricTemplates table: {e}")
+
+            # 5.2 Добавляем недостающие колонки для Rubrics в Assignments/Submissions
+            try:
+                assignments_table = _resolve_table_name(table_names, 'Assignments')
+                submissions_table = _resolve_table_name(table_names, 'Submissions')
+                if assignments_table:
+                    cols = {c['name'] for c in inspector.get_columns(assignments_table)}
+                    if 'rubric_template_id' not in cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{assignments_table}" ADD COLUMN rubric_template_id INTEGER'))
+                            logger.info(f"Added rubric_template_id to {assignments_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add rubric_template_id to {assignments_table}: {e}")
+                            db.session.rollback()
+                if submissions_table:
+                    cols = {c['name'] for c in inspector.get_columns(submissions_table)}
+                    if 'rubric_template_id' not in cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{submissions_table}" ADD COLUMN rubric_template_id INTEGER'))
+                            logger.info(f"Added rubric_template_id to {submissions_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add rubric_template_id to {submissions_table}: {e}")
+                            db.session.rollback()
+                    if 'rubric_scores' not in cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{submissions_table}" ADD COLUMN rubric_scores JSON'))
+                            logger.info(f"Added rubric_scores to {submissions_table}")
+                        except Exception as e:
+                            # sqlite может не поддержать JSON тип — пробуем TEXT
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{submissions_table}" ADD COLUMN rubric_scores TEXT'))
+                                logger.info(f"Added rubric_scores (TEXT) to {submissions_table}")
+                            except Exception as e2:
+                                logger.warning(f"Could not add rubric_scores to {submissions_table}: {e} / {e2}")
+                                db.session.rollback()
+            except Exception as e:
+                logger.warning(f"Could not ensure rubric columns: {e}")
             
             # 6. Создаем таблицу комментариев к заданиям (SubmissionComments)
             comments_table = _resolve_table_name(table_names, 'SubmissionComments')

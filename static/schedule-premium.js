@@ -36,7 +36,9 @@
   const rescheduleUrlTpl = scheduleRoot.dataset.rescheduleUrlTpl || '';
   const setStatusUrlTpl = scheduleRoot.dataset.setStatusUrlTpl || '';
   const updateUrlTpl = scheduleRoot.dataset.updateUrlTpl || '';
+  const deleteUrlTpl = scheduleRoot.dataset.deleteUrlTpl || '';
   const weekOffset = parseInt(scheduleRoot.dataset.weekOffset || '0', 10);
+  const canManage = (scheduleRoot.dataset.canManage || '0') === '1';
 
   const iconRegular = scheduleRoot.dataset.iconRegular || '';
   const iconExam = scheduleRoot.dataset.iconExam || '';
@@ -81,6 +83,37 @@
     };
 
     const lt = meta.lesson_type || 'regular';
+    if (!canManage) {
+      const lt = meta.lesson_type || 'regular';
+      inspectorBody.innerHTML = `
+        <div style="display:grid; gap:0.85rem;">
+          <div style="display:grid; gap:0.4rem;">
+            <div style="color:var(--text-muted); font-size:0.9rem;">Время</div>
+            <div style="font-weight:900; font-size:1.1rem; color:var(--text-primary);">${meta.start_time || ''}</div>
+          </div>
+          <div style="display:grid; gap:0.4rem;">
+            <div style="color:var(--text-muted); font-size:0.9rem;">Статус</div>
+            <div style="font-weight:800;">${statusMap[meta.status_code] || meta.status_code || ''}</div>
+          </div>
+          <div style="display:grid; gap:0.4rem;">
+            <div style="color:var(--text-muted); font-size:0.9rem;">Длительность</div>
+            <div style="font-weight:800;">${meta.duration_minutes || 60} мин</div>
+          </div>
+          <div style="display:grid; gap:0.4rem;">
+            <div style="color:var(--text-muted); font-size:0.9rem;">Тип</div>
+            <div style="font-weight:800;">${lt}</div>
+          </div>
+          ${meta.topic ? `<div style="display:grid; gap:0.4rem;"><div style="color:var(--text-muted); font-size:0.9rem;">Тема</div><div style="font-weight:800;">${String(meta.topic)}</div></div>` : ''}
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            ${meta.profile_url ? `<a class="neo-button ghost" href="${meta.profile_url}" style="text-decoration:none;">Профиль</a>` : ''}
+            ${meta.lesson_url ? `<a class="neo-button accent" href="${meta.lesson_url}" style="text-decoration:none;">Открыть урок</a>` : ''}
+          </div>
+        </div>
+      `;
+      inspector.classList.add('is-open');
+      return;
+    }
+
     inspectorBody.innerHTML = `
       <div style="display:grid; gap:0.85rem;">
         <div style="display:grid; gap:0.4rem;">
@@ -121,6 +154,8 @@
           <a class="neo-button ghost" href="${meta.profile_url || '#'}" style="text-decoration:none;">Профиль</a>
           <a class="neo-button accent" href="${meta.lesson_url || '#'}" style="text-decoration:none;">Открыть урок</a>
           <button class="neo-button ghost" type="button" id="inspectorSave">Сохранить</button>
+          <button class="neo-button danger" type="button" id="inspectorDelete">Удалить</button>
+          <button class="neo-button outline" type="button" id="inspectorMakeRecurring">Сделать еженедельным</button>
         </div>
 
         <div style="color:var(--text-muted); font-size:0.9rem;">
@@ -134,6 +169,8 @@
     const lessonTypeSel = qs('#inspectorLessonType', inspectorBody);
     const topicInput = qs('#inspectorTopic', inspectorBody);
     const saveBtn = qs('#inspectorSave', inspectorBody);
+    const deleteBtn = qs('#inspectorDelete', inspectorBody);
+    const recurringBtn = qs('#inspectorMakeRecurring', inspectorBody);
 
     saveBtn?.addEventListener('click', async () => {
       const nextStatus = statusSel?.value || meta.status_code;
@@ -179,6 +216,31 @@
       }
     });
 
+    deleteBtn?.addEventListener('click', async () => {
+      if (!confirm('Удалить урок? Это действие нельзя отменить.')) return;
+      try {
+        if (!deleteUrlTpl) throw new Error('delete url not configured');
+        const url = deleteUrlTpl.replace('0', String(meta.lesson_id));
+        await postJSON(url, {});
+        // remove chip
+        lessonEl.remove();
+        closeInspector();
+        if (window.toast) window.toast.success('Урок удалён');
+      } catch (e) {
+        if (window.toast) window.toast.error(e.message || 'Ошибка удаления');
+      }
+    });
+
+    recurringBtn?.addEventListener('click', async () => {
+      try {
+        const url = `/schedule/templates/api/from-lesson/${meta.lesson_id}`;
+        await postJSON(url, { timezone: tz });
+        if (window.toast) window.toast.success('Добавлено в автоплан');
+      } catch (e) {
+        if (window.toast) window.toast.error(e.message || 'Ошибка');
+      }
+    });
+
     inspector.classList.add('is-open');
   };
 
@@ -193,7 +255,7 @@
 
   const renderLessonChip = (dayCol, ev) => {
     const el = document.createElement('div');
-    el.className = `lesson-chip status-${ev.status_code || 'planned'}`;
+    el.className = `lesson-chip status-${ev.status_code || 'planned'}${ev.is_conflict ? ' is-conflict' : ''}`;
     el.style.left = `calc(${ev.left_percent || 0}% + 2px)`;
     el.style.width = `calc(${ev.width_percent || 100}% - 4px)`;
     el.dataset.statusCode = ev.status_code || 'planned';
@@ -236,6 +298,15 @@
     `;
 
     dayCol.querySelector('.day-col__body')?.appendChild(el);
+
+    // View-only: click to open inspector (no drag)
+    if (!canManage) {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openInspector(el);
+      });
+    }
   };
 
   qsa('.day-col').forEach((dayCol) => {
@@ -248,7 +319,7 @@
     } catch (_) {}
   });
 
-  // Click on grid -> create lesson at snapped time
+  // Click on grid -> create lesson at snapped time (only for managers)
   const createModal = qs('#createLessonModal');
   const createForm = qs('#createLessonForm');
   const modalDate = qs('#modalLessonDate');
@@ -266,20 +337,22 @@
     if (e.target === createModal) closeCreateModal();
   });
 
-  qsa('.day-col__body').forEach((bodyEl) => {
-    bodyEl.addEventListener('click', (e) => {
-      if (e.target.closest('.lesson-chip')) return;
-      const dayCol = e.currentTarget.closest('.day-col');
-      if (!dayCol) return;
-      const rect = bodyEl.getBoundingClientRect();
-      const y = e.clientY - rect.top;
-      const mins = yToMinutes(Math.max(0, y));
-      openCreateModal(dayCol.dataset.day, formatMinutes(mins));
+  if (canManage) {
+    qsa('.day-col__body').forEach((bodyEl) => {
+      bodyEl.addEventListener('click', (e) => {
+        if (e.target.closest('.lesson-chip')) return;
+        const dayCol = e.currentTarget.closest('.day-col');
+        if (!dayCol) return;
+        const rect = bodyEl.getBoundingClientRect();
+        const y = e.clientY - rect.top;
+        const mins = yToMinutes(Math.max(0, y));
+        openCreateModal(dayCol.dataset.day, formatMinutes(mins));
+      });
     });
-  });
+  }
 
   // Create lesson without reload
-  createForm?.addEventListener('submit', async (e) => {
+  if (canManage) createForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(createForm);
     const headers = { 'X-Requested-With': 'XMLHttpRequest' };
@@ -312,7 +385,7 @@
     }
   });
 
-  // Drag & drop reschedule
+  // Drag & drop reschedule (only for managers)
   let drag = null;
 
   const onPointerDown = (e) => {
@@ -398,10 +471,12 @@
     try { el.releasePointerCapture?.(e.pointerId); } catch (_) {}
   };
 
-  document.addEventListener('pointerdown', onPointerDown, true);
-  document.addEventListener('pointermove', onPointerMove, true);
-  document.addEventListener('pointerup', onPointerUp, true);
-  document.addEventListener('pointercancel', onPointerCancel, true);
+  if (canManage) {
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('pointermove', onPointerMove, true);
+    document.addEventListener('pointerup', onPointerUp, true);
+    document.addEventListener('pointercancel', onPointerCancel, true);
+  }
 
   // Линия текущего времени + автоскролл
   const tzName = tz === 'tomsk' ? 'Asia/Tomsk' : 'Europe/Moscow';

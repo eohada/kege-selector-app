@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Журнал · {{ student.name }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #111; }
+    h1 { margin: 0 0 6px 0; font-size: 20px; }
+    .meta { color: #444; font-size: 12px; margin-bottom: 14px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; font-size: 12px; vertical-align: top; }
+    th { background: #f3f3f3; text-align: left; }
+    .muted { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>Журнал оценок · {{ student.name }}</h1>
+  <div class="meta">Student ID: {{ student.student_id }} · Сформировано: {{ (moscow_now().strftime('%d.%m.%Y %H:%M') if moscow_now is defined else '') }}</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Дата</th>
+        <th>Тип</th>
+        <th>Категория</th>
+        <th>Название</th>
+        <th>Баллы</th>
+        <th>Комментарий</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in entries %}
+      <tr>
+        <td>{{ e.created_at.strftime('%d.%m.%Y %H:%M') if e.created_at else '' }}</td>
+        <td>{{ (e.kind or '') }}</td>
+        <td>{{ (e.category or '') }}</td>
+        <td>{{ (e.title or '') }}</td>
+        <td>
+          {% if e.score is not none and e.max_score is not none %}
+            {{ e.score }}/{{ e.max_score }}
+          {% elif e.score is not none %}
+            {{ e.score }}
+          {% else %}
+            <span class="muted">—</span>
+          {% endif %}
+        </td>
+        <td>{{ (e.comment or '') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
+

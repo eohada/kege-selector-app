@@ -94,6 +94,38 @@
             </div>
         </section>
 
+        <section class="glass-panel" style="margin-top: 1rem;">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">быстрые действия</p>
+                    <h2>Сегодня</h2>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                <div style="padding: 1rem; border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
+                    <div style="color: var(--text-muted); font-size: .9rem;">На проверку (классная)</div>
+                    <div style="font-size: 2rem; font-weight: 900; margin-top:.25rem;">{{ review_lesson_tasks_count }}</div>
+                    <div style="margin-top:.75rem;">
+                        <a href="{{ url_for('lessons.review_queue', source='lessons', status='submitted') }}" class="neo-button outline sm">Открыть</a>
+                    </div>
+                </div>
+                <div style="padding: 1rem; border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
+                    <div style="color: var(--text-muted); font-size: .9rem;">На проверку (работы)</div>
+                    <div style="font-size: 2rem; font-weight: 900; margin-top:.25rem;">{{ review_submissions_count }}</div>
+                    <div style="margin-top:.75rem;">
+                        <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="neo-button outline sm">Открыть</a>
+                    </div>
+                </div>
+                <div style="padding: 1rem; border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
+                    <div style="color: var(--text-muted); font-size: .9rem;">Группы</div>
+                    <div style="font-size: 2rem; font-weight: 900; margin-top:.25rem;">{{ groups_count }}</div>
+                    <div style="margin-top:.75rem;">
+                        <a href="{{ url_for('groups.groups_list') }}" class="neo-button outline sm">Открыть</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         {# Flash messages будут показаны через toast #}
 
         <section class="glass-panel filters-panel">
