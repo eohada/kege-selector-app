@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Журнал · {{ student.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+  {% include '_ux_enhancements.html' %}
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+  <style>
+    .grid { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 1.25rem; }
+    @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+    .entry { padding: 1rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02); display: grid; gap: .6rem; }
+    .entry:hover { border-color: rgba(0,255,213,0.35); box-shadow: var(--shadow-soft); }
+    .badge { display: inline-flex; align-items: center; gap: .4rem; padding: .25rem .6rem; border-radius: 999px; font-size: .85rem; border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.04); }
+    .mini { font-size: .9rem; color: var(--text-muted); }
+    details > summary { cursor: pointer; list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    .summary-btn { display: inline-flex; gap: .5rem; align-items: center; padding: .55rem .8rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.03); color: var(--text-primary); }
+    .summary-btn:hover { border-color: rgba(0,255,213,0.35); }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    {% set active_page = 'students' %}
+    {% include '_primary_nav.html' %}
+
+    <section class="glass-panel" style="margin-bottom: 1.25rem;">
+      <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+        <div>
+          <p class="hero-eyebrow">оценивание</p>
+          <h1 class="hero-title" style="margin-bottom: .25rem;">Журнал · {{ student.name }}</h1>
+          <div class="mini">Единая лента оценок (уроки / работы / ручные записи).</div>
+        </div>
+        <div class="hero-actions">
+          <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Профиль</a>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="glass-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">записи</p>
+            <h2>История оценок</h2>
+          </div>
+        </div>
+
+        {% if entries and entries|length > 0 %}
+          <div style="display:grid; gap: 1rem; margin-top: 1rem;">
+            {% for e in entries %}
+              {% set kind = (e.kind or 'manual')|lower %}
+              <div class="entry">
+                <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: .75rem; flex-wrap: wrap;">
+                  <div style="display:flex; gap: .6rem; align-items: center; flex-wrap: wrap;">
+                    <span class="badge">{{ kind }}</span>
+                    {% if e.category %}<span class="badge">{{ e.category }}</span>{% endif %}
+                    <span class="badge">{{ e.created_at.strftime('%d.%m.%Y %H:%M') if e.created_at else '—' }}</span>
+                  </div>
+                  <div style="display:flex; gap: .6rem; align-items: center; flex-wrap: wrap;">
+                    {% if e.score is not none and e.max_score %}
+                      <span class="badge">Баллы: {{ e.score }}/{{ e.max_score }}</span>
+                      <span class="badge">
+                        {% set pct = (100 * e.score / e.max_score) %}
+                        {{ pct|round(0) }}%
+                      </span>
+                    {% elif e.score is not none %}
+                      <span class="badge">Баллы: {{ e.score }}</span>
+                    {% endif %}
+                    {% if e.grade_text %}<span class="badge">Оценка: {{ e.grade_text }}</span>{% endif %}
+                  </div>
+                </div>
+
+                <div style="font-weight: 800;">{{ e.title }}</div>
+                {% if e.comment %}
+                  <div class="mini" style="white-space: pre-line;">{{ e.comment }}</div>
+                {% endif %}
+
+                {% if can_edit %}
+                  <details>
+                    <summary class="summary-btn">Редактировать / удалить</summary>
+                    <div style="margin-top: .75rem; padding: 1rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: var(--surface-2);">
+                      <form method="POST" action="{{ url_for('students.student_gradebook_update', student_id=student.student_id, entry_id=e.entry_id) }}" data-no-ajax="1">
+                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                        <div class="neo-field">
+                          <label class="neo-label">Название *</label>
+                          <input class="neo-input" name="title" value="{{ e.title }}" required>
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-top: .9rem;">
+                          <div class="neo-field">
+                            <label class="neo-label">Категория</label>
+                            <input class="neo-input" name="category" value="{{ e.category or '' }}" placeholder="homework / exam / ...">
+                          </div>
+                          <div class="neo-field">
+                            <label class="neo-label">Вес</label>
+                            <input class="neo-input" type="number" name="weight" value="{{ e.weight or 1 }}">
+                          </div>
+                          <div class="neo-field">
+                            <label class="neo-label">Баллы</label>
+                            <input class="neo-input" type="number" name="score" value="{% if e.score is not none %}{{ e.score }}{% endif %}">
+                          </div>
+                          <div class="neo-field">
+                            <label class="neo-label">Макс. балл</label>
+                            <input class="neo-input" type="number" name="max_score" value="{% if e.max_score is not none %}{{ e.max_score }}{% endif %}">
+                          </div>
+                          <div class="neo-field" style="grid-column: 1 / -1;">
+                            <label class="neo-label">Оценка (текст)</label>
+                            <input class="neo-input" name="grade_text" value="{{ e.grade_text or '' }}" placeholder="5 / зачёт / A ...">
+                          </div>
+                          {% if kind == 'lesson' %}
+                          <div class="neo-field" style="grid-column: 1 / -1;">
+                            <label class="neo-label">Привязка к уроку</label>
+                            <select class="neo-select" name="lesson_id">
+                              <option value="">—</option>
+                              {% for l in lessons %}
+                                <option value="{{ l.lesson_id }}" {% if e.lesson_id == l.lesson_id %}selected{% endif %}>
+                                  {{ l.lesson_date.strftime('%d.%m.%Y') if l.lesson_date else '—' }} · {{ l.topic or 'Урок' }}
+                                </option>
+                              {% endfor %}
+                            </select>
+                          </div>
+                          {% endif %}
+                          {% if kind == 'assignment' %}
+                          <div class="neo-field" style="grid-column: 1 / -1;">
+                            <label class="neo-label">Привязка к сдаче</label>
+                            <select class="neo-select" name="submission_id">
+                              <option value="">—</option>
+                              {% for s in submissions %}
+                                <option value="{{ s.submission_id }}" {% if e.submission_id == s.submission_id %}selected{% endif %}>
+                                  {{ s.assignment.title if s.assignment else 'Работа' }} · {{ s.status }}
+                                </option>
+                              {% endfor %}
+                            </select>
+                          </div>
+                          {% endif %}
+                        </div>
+                        <div class="neo-field" style="margin-top: .9rem;">
+                          <label class="neo-label">Комментарий</label>
+                          <textarea class="neo-input" name="comment" rows="3">{{ e.comment or '' }}</textarea>
+                        </div>
+                        <div style="display:flex; gap: .6rem; margin-top: 1rem; flex-wrap: wrap;">
+                          <button type="submit" class="neo-button accent">Сохранить</button>
+                        </div>
+                      </form>
+                      <form method="POST" action="{{ url_for('students.student_gradebook_delete', student_id=student.student_id, entry_id=e.entry_id) }}" data-no-ajax="1" style="margin-top: .75rem;">
+                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                        <button type="submit" class="neo-button danger" onclick="return confirm('Удалить запись журнала?')">Удалить</button>
+                      </form>
+                    </div>
+                  </details>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state" style="padding: 2.5rem 1rem;">
+            <p>Записей пока нет.</p>
+          </div>
+        {% endif %}
+      </section>
+
+      <aside class="glass-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">добавление</p>
+            <h2>Новая запись</h2>
+          </div>
+        </div>
+
+        {% if can_edit %}
+          <form method="POST" action="{{ url_for('students.student_gradebook_create', student_id=student.student_id) }}" data-no-ajax="1" style="margin-top: 1rem;">
+            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+            <div class="neo-field">
+              <label class="neo-label">Тип</label>
+              <select class="neo-select" name="kind">
+                <option value="manual">manual</option>
+                <option value="lesson">lesson</option>
+                <option value="assignment">assignment</option>
+              </select>
+            </div>
+            <div class="neo-field" style="margin-top: .9rem;">
+              <label class="neo-label">Название *</label>
+              <input class="neo-input" name="title" placeholder="Например: Итог за модуль 1" required>
+            </div>
+            <div class="neo-field" style="margin-top: .9rem;">
+              <label class="neo-label">Категория</label>
+              <input class="neo-input" name="category" placeholder="homework / classwork / exam / ...">
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-top: .9rem;">
+              <div class="neo-field">
+                <label class="neo-label">Баллы</label>
+                <input class="neo-input" type="number" name="score">
+              </div>
+              <div class="neo-field">
+                <label class="neo-label">Макс. балл</label>
+                <input class="neo-input" type="number" name="max_score">
+              </div>
+              <div class="neo-field" style="grid-column: 1 / -1;">
+                <label class="neo-label">Оценка (текст)</label>
+                <input class="neo-input" name="grade_text" placeholder="5 / зачёт / A ...">
+              </div>
+              <div class="neo-field">
+                <label class="neo-label">Вес</label>
+                <input class="neo-input" type="number" name="weight" value="1">
+              </div>
+            </div>
+            <div class="neo-field" style="margin-top: .9rem;">
+              <label class="neo-label">Комментарий</label>
+              <textarea class="neo-input" name="comment" rows="4" placeholder="Критерии, что улучшить, типичные ошибки..."></textarea>
+            </div>
+
+            <div class="neo-field" style="margin-top: .9rem;">
+              <label class="neo-label">Привязка к уроку (опционально)</label>
+              <select class="neo-select" name="lesson_id">
+                <option value="">—</option>
+                {% for l in lessons %}
+                  <option value="{{ l.lesson_id }}">{{ l.lesson_date.strftime('%d.%m.%Y') if l.lesson_date else '—' }} · {{ l.topic or 'Урок' }}</option>
+                {% endfor %}
+              </select>
+              <div class="mini" style="margin-top: .35rem;">Если выбрано — лучше ставить тип `lesson`.</div>
+            </div>
+
+            <div class="neo-field" style="margin-top: .9rem;">
+              <label class="neo-label">Привязка к сдаче (опционально)</label>
+              <select class="neo-select" name="submission_id">
+                <option value="">—</option>
+                {% for s in submissions %}
+                  <option value="{{ s.submission_id }}">{{ s.assignment.title if s.assignment else 'Работа' }} · {{ s.status }}</option>
+                {% endfor %}
+              </select>
+              <div class="mini" style="margin-top: .35rem;">Если выбрано — лучше ставить тип `assignment`.</div>
+            </div>
+
+            <div style="margin-top: 1rem;">
+              <button type="submit" class="neo-button accent" style="width: 100%;">Добавить</button>
+            </div>
+          </form>
+        {% else %}
+          <div style="padding: 1rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: var(--surface-2); margin-top: 1rem;">
+            <div class="mini">Редактирование журнала доступно только преподавателю/админу.</div>
+          </div>
+        {% endif %}
+      </aside>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
+

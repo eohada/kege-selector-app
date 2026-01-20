@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Уведомления</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+  {% include '_ux_enhancements.html' %}
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+  <style>
+    .notif { border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02); border-radius: var(--radius-lg); padding: 1rem; display: grid; gap: .5rem; }
+    .notif:hover { border-color: rgba(0,255,213,0.35); box-shadow: var(--shadow-soft); }
+    .meta { color: var(--text-muted); font-size: .9rem; display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
+    .badge { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .55rem; border-radius: 999px; border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.04); font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    {% set active_page = 'notifications' %}
+    {% include '_primary_nav.html' %}
+
+    <section class="glass-panel" style="margin-bottom: 1.25rem;">
+      <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+        <div>
+          <p class="hero-eyebrow">коммуникации</p>
+          <h1 class="hero-title" style="margin-bottom: .25rem;">Уведомления</h1>
+          <div style="color: var(--text-muted);">Непрочитанных: <strong>{{ unread_count }}</strong></div>
+        </div>
+        <div class="hero-actions" style="display:flex; gap:.6rem; flex-wrap: wrap;">
+          <a href="{{ url_for('notifications.notifications_list', all=('0' if show_all else '1')) }}" class="neo-button outline">
+            {% if show_all %}Показать только непрочитанные{% else %}Показать все{% endif %}
+          </a>
+          <form method="POST" action="{{ url_for('notifications.notifications_mark_all_read') }}" data-no-ajax="1" style="display:inline;">
+            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+            <button type="submit" class="neo-button accent">Отметить все прочитанными</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="glass-panel">
+      {% if notifications and notifications|length > 0 %}
+        <div style="display:grid; gap: .85rem;">
+          {% for n in notifications %}
+            <div class="notif" data-id="{{ n.notification_id }}">
+              <div class="meta">
+                <span class="badge">{{ n.kind }}</span>
+                <span class="badge">{{ n.created_at.strftime('%d.%m.%Y %H:%M') if n.created_at else '—' }}</span>
+                {% if not n.is_read %}<span class="badge" style="color: var(--accent-1); border-color: rgba(0,255,213,0.35);">new</span>{% endif %}
+              </div>
+              <div style="font-weight: 900;">{{ n.title }}</div>
+              {% if n.body %}<div style="color: var(--text-muted); white-space: pre-line;">{{ n.body }}</div>{% endif %}
+              <div style="display:flex; gap:.6rem; flex-wrap: wrap;">
+                {% if n.link_url %}
+                <a class="neo-button outline sm" href="{{ n.link_url }}">Открыть</a>
+                {% endif %}
+                {% if not n.is_read %}
+                <button class="neo-button ghost sm" type="button" onclick="markRead({{ n.notification_id }})">Отметить прочитанным</button>
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding: 2.5rem 1rem;">
+          <p>Пока нет уведомлений.</p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+  <script>
+    const CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+    async function markRead(id) {
+      try {
+        const res = await fetch(`/notifications/${id}/read`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (!data || !data.success) {
+          toast.error((data && data.error) ? data.error : 'Ошибка');
+          return;
+        }
+        const el = document.querySelector(`.notif[data-id="${id}"]`);
+        if (el) el.style.opacity = '0.65';
+        toast.success('Готово');
+      } catch (e) {
+        toast.error('Ошибка сети');
+      }
+    }
+  </script>
+</body>
+</html>
+

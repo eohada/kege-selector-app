@@ -10,7 +10,8 @@ PERMISSION_CATEGORIES = {
     'system': 'Системные настройки',
     'finance': 'Финансы и статистика',
     'tools': 'Инструменты',
-    'design': 'Дизайн и ассеты'
+    'design': 'Дизайн и ассеты',
+    'groups': 'Группы/классы'
 }
 
 # Список всех прав с описанием и категорией
@@ -26,10 +27,20 @@ ALL_PERMISSIONS = {
     'lesson.create': {'name': 'Создание уроков', 'category': 'content'},
     'lesson.edit': {'name': 'Редактирование уроков', 'category': 'content'},
     'lesson.delete': {'name': 'Удаление уроков', 'category': 'content'},
+    'plan.view': {'name': 'Просмотр траектории ученика', 'category': 'content'},
+    'plan.edit': {'name': 'Редактирование траектории ученика', 'category': 'content'},
     'task.manage': {'name': 'Управление банком заданий', 'category': 'content'},
     'assignment.create': {'name': 'Создание и распределение работ', 'category': 'content'},
     'assignment.grade': {'name': 'Проверка работ', 'category': 'content'},
     'assignment.view': {'name': 'Просмотр работ', 'category': 'content'},
+
+    # Оценки/журнал
+    'gradebook.view': {'name': 'Просмотр журнала оценок', 'category': 'finance'},
+    'gradebook.edit': {'name': 'Редактирование журнала оценок', 'category': 'finance'},
+
+    # Группы/классы
+    'groups.view': {'name': 'Просмотр групп/классов', 'category': 'groups'},
+    'groups.manage': {'name': 'Управление группами/классами', 'category': 'groups'},
     
     # Финансы
     'finance.view_stats': {'name': 'Просмотр общей статистики', 'category': 'finance'},
@@ -52,8 +63,8 @@ DEFAULT_ROLE_PERMISSIONS = {
     'admin': list(ALL_PERMISSIONS.keys()),   # Все права
     'chief_tester': ['tools.testers', 'task.manage', 'user.view_list'],
     'designer': ['assets.manage'],
-    'tutor': ['lesson.create', 'lesson.edit', 'user.view_list', 'tools.schedule', 'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view'],
-    'student': ['assignment.view'],
-    'parent': ['assignment.view'],
+    'tutor': ['lesson.create', 'lesson.edit', 'plan.view', 'plan.edit', 'gradebook.view', 'gradebook.edit', 'groups.view', 'groups.manage', 'user.view_list', 'tools.schedule', 'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view'],
+    'student': ['plan.view', 'gradebook.view', 'assignment.view'],
+    'parent': ['plan.view', 'gradebook.view', 'assignment.view'],
     'tester': []
 }

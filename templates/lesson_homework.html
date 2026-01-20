@@ -356,6 +356,7 @@
             </button>
             <button class="tab-btn" onclick="switchTab('materials')"><i class="fas fa-paperclip"></i> Материалы</button>
             <button class="tab-btn" onclick="switchTab('notes')"><i class="fas fa-sticky-note"></i> Заметки {{ 'ученика' if not is_student_view else '' }}</button>
+            <button class="tab-btn" onclick="switchTab('chat')"><i class="fas fa-comments"></i> Диалог</button>
         </div>
 
         <!-- TAB: THEORY -->
@@ -525,6 +526,25 @@
                             </div>
                         </div>
                     </div>
+
+                    <div style="margin-top: 0.75rem; display:grid; grid-template-columns: 180px 180px 200px 180px; gap: 0.75rem; align-items: start;" class="profile-grid-responsive">
+                        <div>
+                            <label class="neo-label">Баллы</label>
+                            <input class="neo-input" id="lesson-review-score" type="number" min="0" value="{{ review_summary.get('score') if review_summary and review_summary.get('score') is not none else '' }}" placeholder="Напр. 17">
+                        </div>
+                        <div>
+                            <label class="neo-label">Макс. балл</label>
+                            <input class="neo-input" id="lesson-review-max-score" type="number" min="0" value="{{ review_summary.get('max_score') if review_summary and review_summary.get('max_score') is not none else '' }}" placeholder="Напр. 20">
+                        </div>
+                        <div>
+                            <label class="neo-label">Оценка (текст)</label>
+                            <input class="neo-input" id="lesson-review-grade-text" value="{{ review_summary.get('grade_text') if review_summary and review_summary.get('grade_text') else '' }}" placeholder="5 / зачёт / A">
+                        </div>
+                        <div>
+                            <label class="neo-label">Вес (1..10)</label>
+                            <input class="neo-input" id="lesson-review-weight" type="number" min="1" max="10" value="{{ review_summary.get('weight') if review_summary and review_summary.get('weight') else '' }}" placeholder="1">
+                        </div>
+                    </div>
                     {% endif %}
                 </div>
                 {% endif %}
@@ -615,6 +635,10 @@
                             <span style="font-weight: 400; opacity: 0.7; font-size: 0.9em; margin-left: 0.5rem;">(из базы #{{ hw_task.task.task_number }})</span>
                             {% endif %}
                         </span>
+
+                        {% if hw_task.attempts and hw_task.attempts|length > 0 %}
+                            <span class="status-badge status-info" style="opacity: 0.85;">Попыток: {{ hw_task.attempts|length }}</span>
+                        {% endif %}
                         
                         {% set task_status = ((hw_task.status or 'pending')|lower) %}
                         <!-- Индикатор результата (показываем ученику только после сдачи/проверки/возврата) -->
@@ -970,6 +994,43 @@
             </div>
         </div>
 
+        <!-- TAB: CHAT -->
+        <div id="tab-chat" class="tab-pane">
+            <div class="glass-panel">
+                <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+                    <div>
+                        <div class="hero-eyebrow">диалог по уроку</div>
+                        <h3 style="margin: 0.35rem 0 0 0;">Сообщения</h3>
+                        <div style="color: var(--text-muted); margin-top: 0.35rem; line-height: 1.45;">
+                            {% if is_parent_view %}
+                                Родитель видит диалог, но не пишет.
+                            {% elif is_student_view %}
+                                Можно задать вопрос по уроку и получить ответ.
+                            {% else %}
+                                Ответь ученику — ему придет уведомление.
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end;">
+                        <button class="neo-button outline sm" type="button" onclick="reloadLessonChat()"><i class="fas fa-rotate"></i> Обновить</button>
+                    </div>
+                </div>
+
+                <div id="lessonChatList" style="margin-top: 1rem; display:flex; flex-direction: column; gap: 0.75rem;">
+                    <!-- messages injected by JS -->
+                </div>
+
+                {% if not is_parent_view %}
+                <div style="margin-top: 1rem; border-top: 1px solid var(--stroke-1); padding-top: 1rem;">
+                    <textarea class="neo-textarea" id="lessonChatText" placeholder="Напиши сообщение..." style="min-height: 110px;"></textarea>
+                    <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end; margin-top: 0.75rem;">
+                        <button class="neo-button accent sm" type="button" onclick="sendLessonChatMessage()"><i class="fas fa-paper-plane"></i> Отправить</button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
     </div>
 
     <!-- HIDDEN FORMS FOR JS -->
@@ -1289,15 +1350,26 @@
                 const percentEl = document.getElementById('lesson-review-percent');
                 const notesEl = document.getElementById('lesson-review-notes');
                 const statusEl = document.getElementById('lesson-review-status');
+                const scoreEl = document.getElementById('lesson-review-score');
+                const maxScoreEl = document.getElementById('lesson-review-max-score');
+                const gradeTextEl = document.getElementById('lesson-review-grade-text');
+                const weightEl = document.getElementById('lesson-review-weight');
                 const percentRaw = percentEl ? String(percentEl.value || '').trim() : '';
                 const percent = percentRaw === '' ? null : parseInt(percentRaw, 10);
                 const notes = notesEl ? (notesEl.value || '') : '';
                 const status = statusEl ? (statusEl.value || '') : '';
+                const scoreRaw = scoreEl ? String(scoreEl.value || '').trim() : '';
+                const maxScoreRaw = maxScoreEl ? String(maxScoreEl.value || '').trim() : '';
+                const score = scoreRaw === '' ? null : parseInt(scoreRaw, 10);
+                const max_score = maxScoreRaw === '' ? null : parseInt(maxScoreRaw, 10);
+                const grade_text = gradeTextEl ? (gradeTextEl.value || '') : '';
+                const weightRaw = weightEl ? String(weightEl.value || '').trim() : '';
+                const weight = weightRaw === '' ? null : parseInt(weightRaw, 10);
 
                 const res = await fetch(`/lesson/${LESSON_ID}/review-summary/${ASSIGNMENT_TYPE}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-                    body: JSON.stringify({ percent, notes, status })
+                    body: JSON.stringify({ percent, notes, status, score, max_score, grade_text, weight })
                 });
                 const data = await res.json();
                 if (!data || !data.success) {
@@ -1345,6 +1417,86 @@
                 toast.error('Ошибка сети');
             }
         }
+
+        // ===== Lesson Chat =====
+        function escapeHtml(str) {
+            return String(str || '')
+              .replaceAll('&', '&amp;')
+              .replaceAll('<', '&lt;')
+              .replaceAll('>', '&gt;')
+              .replaceAll('"', '&quot;')
+              .replaceAll("'", '&#039;');
+        }
+
+        async function reloadLessonChat() {
+            const host = document.getElementById('lessonChatList');
+            if (!host) return;
+            host.innerHTML = `<div style="color: var(--text-muted);">Загрузка…</div>`;
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/messages`, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+                const data = await res.json();
+                if (!data || !data.success) {
+                    host.innerHTML = `<div style="color: var(--danger);">Ошибка загрузки</div>`;
+                    return;
+                }
+                const msgs = Array.isArray(data.messages) ? data.messages : [];
+                if (!msgs.length) {
+                    host.innerHTML = `<div style="color: var(--text-muted);">Сообщений пока нет.</div>`;
+                    return;
+                }
+                host.innerHTML = '';
+                msgs.forEach(m => {
+                    const mine = (m.author_user_id === {{ current_user.id }});
+                    const wrap = document.createElement('div');
+                    wrap.style.border = '1px solid var(--stroke-1)';
+                    wrap.style.background = mine ? 'rgba(0,255,213,0.06)' : 'rgba(255,255,255,0.02)';
+                    wrap.style.borderRadius = 'var(--radius-lg)';
+                    wrap.style.padding = '0.85rem 1rem';
+                    wrap.style.alignSelf = mine ? 'flex-end' : 'flex-start';
+                    wrap.style.maxWidth = '820px';
+                    wrap.innerHTML = `
+                        <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.35rem;">
+                            ${mine ? 'Вы' : 'Сообщение'} · ${escapeHtml(m.created_at || '')}
+                        </div>
+                        <div style="white-space: pre-wrap; line-height: 1.55;">${escapeHtml(m.body || '')}</div>
+                    `;
+                    host.appendChild(wrap);
+                });
+            } catch (e) {
+                host.innerHTML = `<div style="color: var(--danger);">Ошибка сети</div>`;
+            }
+        }
+
+        async function sendLessonChatMessage() {
+            const ta = document.getElementById('lessonChatText');
+            const text = ta ? String(ta.value || '').trim() : '';
+            if (!text) {
+                toast.info('Пустое сообщение');
+                return;
+            }
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/messages/send`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                    body: JSON.stringify({ body: text })
+                });
+                const data = await res.json();
+                if (!data || !data.success) {
+                    toast.error((data && data.error) ? data.error : 'Ошибка отправки');
+                    return;
+                }
+                if (ta) ta.value = '';
+                toast.success('Отправлено');
+                await reloadLessonChat();
+            } catch (e) {
+                toast.error('Ошибка сети');
+            }
+        }
+
+        // Подгружаем чат при первом входе в комнату
+        document.addEventListener('DOMContentLoaded', () => {
+            try { reloadLessonChat(); } catch (e) {}
+        });
 
         // Helper for setting task status via AJAX (Teacher only)
         async function setTaskStatus(lessonId, taskId, status) {

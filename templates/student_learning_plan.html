@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Траектория · {{ student.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+  {% include '_ux_enhancements.html' %}
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+  <style>
+    .plan-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1.25rem; }
+    @media (max-width: 980px) { .plan-grid { grid-template-columns: 1fr; } }
+    .plan-card { background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1rem; }
+    .plan-item { display: grid; gap: 0.6rem; padding: 1rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02); }
+    .plan-item:hover { border-color: rgba(0,255,213,0.35); box-shadow: var(--shadow-soft); }
+    .badge { display: inline-flex; align-items: center; gap: .4rem; padding: .25rem .6rem; border-radius: 999px; font-size: .85rem; border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.04); }
+    .b-planned { color: var(--text-muted); }
+    .b-in_progress { color: var(--accent-2); border-color: rgba(185, 114, 255, 0.35); background: rgba(185, 114, 255, 0.08); }
+    .b-done { color: var(--success); border-color: rgba(0,255,135,0.25); background: rgba(0,255,135,0.08); }
+    .b-failed { color: var(--danger); border-color: rgba(255,76,110,0.25); background: rgba(255,76,110,0.08); }
+    .mini { font-size: .9rem; color: var(--text-muted); }
+    details > summary { cursor: pointer; list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    .summary-btn { display: inline-flex; gap: .5rem; align-items: center; padding: .55rem .8rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.03); color: var(--text-primary); }
+    .summary-btn:hover { border-color: rgba(0,255,213,0.35); }
+  </style>
+</head>
+<body class="{% if active_lesson %}lesson-active{% endif %}">
+  <div class="app-shell">
+    {% set active_page = 'students' %}
+    {% include '_primary_nav.html' %}
+
+    <section class="glass-panel" style="margin-bottom: 1.25rem;">
+      <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+        <div>
+          <p class="hero-eyebrow">учебный план</p>
+          <h1 class="hero-title" style="margin-bottom: .25rem;">Траектория · {{ student.name }}</h1>
+          <div class="mini">
+            <span class="badge b-planned">План: {{ status_counts.planned }}</span>
+            <span class="badge b-in_progress">В работе: {{ status_counts.in_progress }}</span>
+            <span class="badge b-done">Пройдено: {{ status_counts.done }}</span>
+            <span class="badge b-failed">Провалено: {{ status_counts.failed }}</span>
+          </div>
+        </div>
+        <div class="hero-actions">
+          <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Профиль</a>
+        </div>
+      </div>
+    </section>
+
+    <div class="plan-grid">
+      <section class="glass-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">пункты</p>
+            <h2>Что делаем дальше</h2>
+          </div>
+        </div>
+
+        {% if items %}
+          <div style="display:grid; gap: 1rem; margin-top: 1rem;">
+            {% for it in items %}
+            <div class="plan-item">
+              <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: .75rem; flex-wrap: wrap;">
+                <div style="display:flex; gap: .6rem; align-items: center; flex-wrap: wrap;">
+                  <span class="badge b-{{ (it.status or 'planned')|lower }}">{{ (it.status or 'planned') }}</span>
+                  {% if it.due_date %}
+                    <span class="badge">Дедлайн: {{ it.due_date.strftime('%d.%m.%Y %H:%M') }}</span>
+                  {% endif %}
+                  {% if it.priority %}
+                    <span class="badge">Приоритет: {{ it.priority }}</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div style="font-weight: 700; font-size: 1.05rem;">{{ it.title }}</div>
+
+              {% if it.topic or it.course_module %}
+              <div class="mini">
+                {% if it.topic %}<span class="badge">Тема: {{ it.topic.name }}</span>{% endif %}
+                {% if it.course_module %}<span class="badge">Модуль: {{ it.course_module.title }}</span>{% endif %}
+              </div>
+              {% endif %}
+
+              {% if it.notes %}
+                <div class="mini" style="white-space: pre-line;">{{ it.notes }}</div>
+              {% endif %}
+
+              {% if can_edit %}
+              <details>
+                <summary class="summary-btn">Редактировать / удалить</summary>
+                <div class="plan-card" style="margin-top: .75rem;">
+                  <form method="POST" action="{{ url_for('students.student_learning_plan_item_update', student_id=student.student_id, item_id=it.item_id) }}" data-no-ajax="1">
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <div class="neo-field">
+                      <label class="neo-label">Название *</label>
+                      <input class="neo-input" name="title" value="{{ it.title }}" required>
+                    </div>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-top: .9rem;">
+                      <div class="neo-field">
+                        <label class="neo-label">Статус</label>
+                        <select class="neo-select" name="status">
+                          <option value="planned" {% if (it.status or 'planned') == 'planned' %}selected{% endif %}>planned</option>
+                          <option value="in_progress" {% if (it.status or '') == 'in_progress' %}selected{% endif %}>in_progress</option>
+                          <option value="done" {% if (it.status or '') == 'done' %}selected{% endif %}>done</option>
+                          <option value="failed" {% if (it.status or '') == 'failed' %}selected{% endif %}>failed</option>
+                        </select>
+                      </div>
+                      <div class="neo-field">
+                        <label class="neo-label">Дедлайн</label>
+                        <input class="neo-input" type="datetime-local" name="due_date" value="{% if it.due_date %}{{ it.due_date.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+                      </div>
+                      <div class="neo-field">
+                        <label class="neo-label">Приоритет</label>
+                        <input class="neo-input" type="number" name="priority" value="{{ it.priority or 0 }}">
+                      </div>
+                      <div class="neo-field">
+                        <label class="neo-label">Тема (Topic)</label>
+                        <select class="neo-select" name="topic_id">
+                          <option value="">—</option>
+                          {% for t in topics %}
+                            <option value="{{ t.topic_id }}" {% if it.topic_id == t.topic_id %}selected{% endif %}>{{ t.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                      <div class="neo-field" style="grid-column: 1 / -1;">
+                        <label class="neo-label">Модуль курса</label>
+                        <select class="neo-select" name="course_module_id">
+                          <option value="">—</option>
+                          {% for m in modules %}
+                            <option value="{{ m.module_id }}" {% if it.course_module_id == m.module_id %}selected{% endif %}>{{ m.title }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                    </div>
+                    <div class="neo-field" style="margin-top: .9rem;">
+                      <label class="neo-label">Заметки</label>
+                      <textarea class="neo-input" name="notes" rows="3">{{ it.notes or '' }}</textarea>
+                    </div>
+                    <div style="display:flex; gap: .6rem; margin-top: 1rem; flex-wrap: wrap;">
+                      <button type="submit" class="neo-button accent">Сохранить</button>
+                    </div>
+                  </form>
+                  <form method="POST" action="{{ url_for('students.student_learning_plan_item_delete', student_id=student.student_id, item_id=it.item_id) }}" data-no-ajax="1" style="margin-top: .75rem;">
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <button type="submit" class="neo-button danger" onclick="return confirm('Удалить пункт траектории?')">Удалить</button>
+                  </form>
+                </div>
+              </details>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state" style="padding: 2.5rem 1rem;">
+            <p>Пока нет пунктов траектории.</p>
+          </div>
+        {% endif %}
+      </section>
+
+      <aside class="glass-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">управление</p>
+            <h2>Добавить пункт</h2>
+          </div>
+        </div>
+
+        {% if can_edit %}
+          <form method="POST" action="{{ url_for('students.student_learning_plan_item_create', student_id=student.student_id) }}" data-no-ajax="1" style="margin-top: 1rem;">
+            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+            <div class="neo-field">
+              <label class="neo-label">Название *</label>
+              <input class="neo-input" name="title" placeholder="Например: Закрыть пробелы по теме X" required>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-top: .9rem;">
+              <div class="neo-field">
+                <label class="neo-label">Статус</label>
+                <select class="neo-select" name="status">
+                  <option value="planned">planned</option>
+                  <option value="in_progress">in_progress</option>
+                  <option value="done">done</option>
+                  <option value="failed">failed</option>
+                </select>
+              </div>
+              <div class="neo-field">
+                <label class="neo-label">Дедлайн</label>
+                <input class="neo-input" type="datetime-local" name="due_date">
+              </div>
+              <div class="neo-field">
+                <label class="neo-label">Приоритет</label>
+                <input class="neo-input" type="number" name="priority" value="0">
+              </div>
+              <div class="neo-field">
+                <label class="neo-label">Тема (Topic)</label>
+                <select class="neo-select" name="topic_id">
+                  <option value="">—</option>
+                  {% for t in topics %}
+                    <option value="{{ t.topic_id }}">{{ t.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="neo-field" style="grid-column: 1 / -1;">
+                <label class="neo-label">Модуль курса</label>
+                <select class="neo-select" name="course_module_id">
+                  <option value="">—</option>
+                  {% for m in modules %}
+                    <option value="{{ m.module_id }}">{{ m.title }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="neo-field" style="margin-top: .9rem;">
+              <label class="neo-label">Заметки</label>
+              <textarea class="neo-input" name="notes" rows="4" placeholder="Критерии успеха, ссылки, типичные ошибки..."></textarea>
+            </div>
+            <div style="margin-top: 1rem;">
+              <button type="submit" class="neo-button accent" style="width: 100%;">Добавить</button>
+            </div>
+          </form>
+        {% else %}
+          <div class="plan-card" style="margin-top: 1rem;">
+            <div class="mini">Редактирование доступно только преподавателю/админу.</div>
+          </div>
+        {% endif %}
+      </aside>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
+

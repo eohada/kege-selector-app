@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Группы</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+  {% include '_ux_enhancements.html' %}
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+</head>
+<body>
+  <div class="app-shell">
+    {% set active_page = 'groups' %}
+    {% include '_primary_nav.html' %}
+
+    <section class="glass-panel" style="margin-bottom: 1.25rem;">
+      <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+        <div>
+          <p class="hero-eyebrow">операционка</p>
+          <h1 class="hero-title" style="margin-bottom: .25rem;">Группы/классы</h1>
+          <div style="color: var(--text-muted);">Сущность “группа” для массовых действий и отчётов (без расписания).</div>
+        </div>
+        <div class="hero-actions">
+          {% if has_permission and has_permission(current_user, 'groups.manage') %}
+          <a href="{{ url_for('groups.group_new') }}" class="neo-button accent">+ Создать группу</a>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    <section class="glass-panel">
+      {% if groups and groups|length > 0 %}
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem;">
+          {% for g in groups %}
+          <a href="{{ url_for('groups.group_view', group_id=g.group_id) }}" class="glass-panel" style="text-decoration:none; display:block;">
+            <div class="hero-eyebrow">{{ g.status }}</div>
+            <div style="font-weight: 900; font-size: 1.2rem; margin-top: .25rem;">{{ g.title }}</div>
+            {% if g.subject %}<div style="color: var(--text-muted); margin-top: .35rem;">Предмет: {{ g.subject }}</div>{% endif %}
+            {% if g.description %}<div style="color: var(--text-muted); margin-top: .35rem; white-space: pre-line;">{{ g.description }}</div>{% endif %}
+          </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding: 2.5rem 1rem;">
+          <p>Групп пока нет.</p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
+

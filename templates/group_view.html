@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Группа · {{ group.title }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+  {% include '_ux_enhancements.html' %}
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+</head>
+<body>
+  <div class="app-shell">
+    {% set active_page = 'groups' %}
+    {% include '_primary_nav.html' %}
+
+    <section class="glass-panel" style="margin-bottom: 1.25rem;">
+      <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+        <div>
+          <p class="hero-eyebrow">группа</p>
+          <h1 class="hero-title" style="margin-bottom: .25rem;">{{ group.title }}</h1>
+          <div style="color: var(--text-muted);">
+            Статус: <strong>{{ group.status }}</strong>
+            {% if group.subject %} · Предмет: <strong>{{ group.subject }}</strong>{% endif %}
+          </div>
+          {% if group.description %}
+          <div style="color: var(--text-muted); margin-top: .6rem; white-space: pre-line;">{{ group.description }}</div>
+          {% endif %}
+        </div>
+        <div class="hero-actions">
+          <a href="{{ url_for('groups.groups_list') }}" class="neo-button ghost">← Все группы</a>
+          {% if can_manage %}
+          <a href="{{ url_for('groups.group_edit', group_id=group.group_id) }}" class="neo-button outline">Редактировать</a>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap: 1.25rem;" class="profile-grid-responsive">
+      <section class="glass-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">состав</p>
+            <h2>Участники ({{ members|length }})</h2>
+          </div>
+        </div>
+
+        {% if members and members|length > 0 %}
+          <div style="display:grid; gap: .75rem; margin-top: 1rem;">
+            {% for m in members %}
+              <div style="display:flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap; padding: .9rem 1rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02);">
+                <div style="min-width: 0;">
+                  <div style="font-weight: 800;">{{ m.student.name if m.student else ('Student #' ~ m.student_id) }}</div>
+                  <div style="color: var(--text-muted); font-size: .9rem;">ID: {{ m.student_id }}</div>
+                </div>
+                <div style="display:flex; gap: .5rem; align-items: center; flex-wrap: wrap;">
+                  {% if m.student %}
+                  <a class="neo-button ghost sm" href="{{ url_for('students.student_profile', student_id=m.student.student_id) }}">Профиль</a>
+                  {% endif %}
+                  {% if can_manage %}
+                  <form method="POST" action="{{ url_for('groups.group_member_remove', group_id=group.group_id, member_id=m.id) }}" data-no-ajax="1" style="display:inline;">
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <button type="submit" class="neo-button danger sm" onclick="return confirm('Удалить ученика из группы?')">Удалить</button>
+                  </form>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state" style="padding: 2.5rem 1rem;">
+            <p>В группе пока нет учеников.</p>
+          </div>
+        {% endif %}
+      </section>
+
+      <aside class="glass-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">управление</p>
+            <h2>Добавить ученика</h2>
+          </div>
+        </div>
+
+        {% if can_manage %}
+          <form method="POST" action="{{ url_for('groups.group_member_add', group_id=group.group_id) }}" data-no-ajax="1" style="margin-top: 1rem;">
+            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+            <div class="neo-field">
+              <label class="neo-label">Ученик</label>
+              <select class="neo-select" name="student_id">
+                <option value="">—</option>
+                {% for s in available_students %}
+                  <option value="{{ s.student_id }}">{{ s.name }} ({{ s.student_id }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div style="margin-top: 1rem;">
+              <button type="submit" class="neo-button accent" style="width: 100%;">Добавить</button>
+            </div>
+          </form>
+        {% else %}
+          <div style="padding: 1rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: var(--surface-2); margin-top: 1rem;">
+            <div style="color: var(--text-muted);">Нет прав на управление группой.</div>
+          </div>
+        {% endif %}
+      </aside>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
+

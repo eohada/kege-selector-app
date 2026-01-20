@@ -241,6 +241,14 @@
                     <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button ghost">
                         <i class="fas fa-chart-line ui-icon ui-icon--sm"></i> Статистика
                     </a>
+                    {% if has_permission and has_permission(current_user, 'gradebook.view') %}
+                    <a href="{{ url_for('students.student_gradebook', student_id=student.student_id) }}" class="neo-button ghost">
+                        <i class="fas fa-clipboard-list ui-icon ui-icon--sm"></i> Журнал
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('students.student_learning_plan', student_id=student.student_id) }}" class="neo-button ghost">
+                        <i class="fas fa-route ui-icon ui-icon--sm"></i> Траектория
+                    </a>
                     <a href="{{ url_for('courses.student_courses', student_id=student.student_id) }}" class="neo-button ghost">
                         <i class="fas fa-layer-group ui-icon ui-icon--sm"></i> Курсы
                     </a>

@@ -15,11 +15,77 @@ from app.auth.rbac_utils import check_access, get_user_scope
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, perform_auto_check, normalize_answer_value  # comment
-from app.models import Lesson, LessonTask, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
+from app.notifications.service import notify_student_and_parents
+from app.models import FamilyTie  # для доступа родителя к диалогам
 
 logger = logging.getLogger(__name__)
+
+def _record_lesson_task_attempt(lesson_task: LessonTask) -> None:
+    """Записываем попытку сдачи (снимок) для LessonTask."""
+    if not lesson_task:
+        return
+    try:
+        last_no = (
+            db.session.query(db.func.max(LessonTaskAttempt.attempt_no))
+            .filter(LessonTaskAttempt.lesson_task_id == lesson_task.lesson_task_id)
+            .scalar()
+        )
+        next_no = int(last_no or 0) + 1
+    except Exception:
+        next_no = 1
+
+    attempt = LessonTaskAttempt(
+        lesson_task_id=lesson_task.lesson_task_id,
+        attempt_no=next_no,
+        student_submission=lesson_task.student_submission,
+        submission_files=lesson_task.submission_files,
+        submission_correct=lesson_task.submission_correct,
+        status=(lesson_task.status or 'submitted'),
+    )
+    db.session.add(attempt)
+
+def _upsert_gradebook_from_lesson_review(lesson: Lesson, assignment_type: str, payload: dict, actor_user_id: int | None = None) -> None:
+    """
+    Создаём/обновляем запись журнала по итогу проверки урока (классная комната).
+    Создаём только если итоговый статус = graded.
+    """
+    if not lesson:
+        return
+    if (payload.get('status') or '').strip().lower() != 'graded':
+        return
+
+    # Upsert по (student_id, kind=lesson, lesson_id, category)
+    entry = GradebookEntry.query.filter_by(
+        student_id=lesson.student_id,
+        kind='lesson',
+        lesson_id=lesson.lesson_id,
+        category=(assignment_type or '').strip().lower() or None,
+    ).first()
+
+    title = lesson.topic or 'Урок'
+    if assignment_type:
+        title = f"{title} · {assignment_type}"
+
+    if not entry:
+        entry = GradebookEntry(
+            student_id=lesson.student_id,
+            kind='lesson',
+            lesson_id=lesson.lesson_id,
+            category=(assignment_type or '').strip().lower() or None,
+            created_by_user_id=actor_user_id,
+            title=title,
+        )
+        db.session.add(entry)
+
+    entry.title = title
+    entry.comment = (payload.get('notes') or '').strip() or None
+    entry.score = payload.get('score', None)
+    entry.max_score = payload.get('max_score', None)
+    entry.grade_text = (payload.get('grade_text') or '').strip() or None
+    entry.weight = payload.get('weight', 1) or 1
 
 
 def _resolve_accessible_student_ids(scope: dict) -> list[int]:
@@ -444,7 +510,10 @@ def lesson_review_summary_save(lesson_id: int, assignment_type: str):
     if assignment_type not in {'homework', 'classwork', 'exam'}:
         return jsonify({'success': False, 'error': 'Некорректный тип'}), 400
 
-    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    lesson = Lesson.query.options(
+        db.joinedload(Lesson.student),
+        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.attempts),
+    ).get_or_404(lesson_id)
 
     # RBAC: проверяем доступ к ученику урока
     scope = get_user_scope(current_user)
@@ -457,6 +526,10 @@ def lesson_review_summary_save(lesson_id: int, assignment_type: str):
     percent = data.get('percent', None)
     notes = (data.get('notes') or '').strip()
     summary_status = (data.get('status') or '').strip().lower()
+    score = data.get('score', None)
+    max_score = data.get('max_score', None)
+    grade_text = (data.get('grade_text') or '').strip()
+    weight = data.get('weight', None)
 
     if percent is not None:
         try:
@@ -469,17 +542,75 @@ def lesson_review_summary_save(lesson_id: int, assignment_type: str):
     if summary_status and summary_status not in {'graded', 'returned', 'submitted'}:
         return jsonify({'success': False, 'error': 'Некорректный статус'}), 400
 
+    if score is not None:
+        try:
+            score = int(score)
+        except Exception:
+            return jsonify({'success': False, 'error': 'score должен быть числом'}), 400
+        if score < 0:
+            return jsonify({'success': False, 'error': 'score должен быть >= 0'}), 400
+
+    if max_score is not None:
+        try:
+            max_score = int(max_score)
+        except Exception:
+            return jsonify({'success': False, 'error': 'max_score должен быть числом'}), 400
+        if max_score < 0:
+            return jsonify({'success': False, 'error': 'max_score должен быть >= 0'}), 400
+        if score is not None and max_score and score > max_score:
+            return jsonify({'success': False, 'error': 'score не может быть больше max_score'}), 400
+
+    if weight is not None:
+        try:
+            weight = int(weight)
+        except Exception:
+            return jsonify({'success': False, 'error': 'weight должен быть числом'}), 400
+        if weight < 1 or weight > 10:
+            return jsonify({'success': False, 'error': 'weight должен быть 1..10'}), 400
+
     summaries = lesson.review_summaries or {}
     if not isinstance(summaries, dict):
         summaries = {}
 
-    summaries[assignment_type] = {
+    payload = {
         'percent': percent,
         'notes': notes,
         'status': summary_status or None,
+        'score': score,
+        'max_score': max_score,
+        'grade_text': grade_text or None,
+        'weight': weight,
         'updated_at': moscow_now().isoformat()
     }
+    summaries[assignment_type] = payload
     lesson.review_summaries = summaries
+
+    # Авто-журнал: создаём/обновляем запись только если итог = graded
+    try:
+        _upsert_gradebook_from_lesson_review(lesson, assignment_type, payload, actor_user_id=current_user.id)
+    except Exception as e:
+        logger.warning(f"Could not upsert gradebook entry from lesson review: {e}")
+
+    # Уведомление ученику/родителю при значимом статусе
+    try:
+        st = lesson.student
+        if st and payload.get('status') in ('graded', 'returned'):
+            if payload.get('status') == 'graded':
+                title = 'Итог по уроку сохранён'
+                kind = 'lesson_review_graded'
+            else:
+                title = 'Урок возвращён на доработку'
+                kind = 'lesson_review_returned'
+            notify_student_and_parents(
+                st,
+                kind=kind,
+                title=title,
+                body=(payload.get('notes') or '').strip() or None,
+                link_url=url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id),
+                meta={'lesson_id': lesson.lesson_id, 'assignment_type': assignment_type, 'status': payload.get('status')},
+            )
+    except Exception as e:
+        logger.warning(f"Failed to notify student about lesson review summary: {e}")
 
     try:
         db.session.commit()
@@ -822,6 +953,11 @@ def _submit_student_submissions(lesson, assignment_type):  # comment
         normalized_expected = normalize_answer_value(expected)  # comment
         task.submission_correct = normalized_value == normalized_expected and normalized_expected != ''  # comment
         task.status = 'submitted'  # comment
+        # Сохраняем попытку сдачи (история)
+        try:
+            _record_lesson_task_attempt(task)
+        except Exception as e:
+            logger.warning(f"Could not record LessonTaskAttempt for {task.lesson_task_id}: {e}")
     if assignment_type == 'homework':  # comment
         lesson.homework_status = 'assigned_done'  # comment
     return tasks  # comment
@@ -1146,6 +1282,28 @@ def lesson_task_teacher_feedback_save(lesson_id, lesson_task_id):  # comment
         db.session.rollback()  # comment
         logger.error(f"Failed to save teacher feedback: {e}", exc_info=True)  # comment
         return jsonify({'success': False, 'error': 'Ошибка сохранения'}), 500  # comment
+
+    # Уведомление ученику/родителю при смене статуса на graded/returned
+    try:
+        if lesson_task.lesson and lesson_task.lesson.student and status in ('graded', 'returned'):
+            if status == 'graded':
+                title = 'Задание проверено'
+                kind = 'lesson_task_graded'
+            else:
+                title = 'Задание возвращено на доработку'
+                kind = 'lesson_task_returned'
+            notify_student_and_parents(
+                lesson_task.lesson.student,
+                kind=kind,
+                title=title,
+                body=(teacher_comment or '').strip() or None,
+                link_url=url_for('lessons.lesson_homework_view', lesson_id=lesson_id) + f"#task-{lesson_task.lesson_task_id}",
+                meta={'lesson_id': lesson_id, 'lesson_task_id': lesson_task.lesson_task_id, 'status': status},
+            )
+            db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.warning(f"Failed to notify about lesson task status change: {e}")
     return jsonify({  # comment
         'success': True,  # comment
         'lesson_task_id': lesson_task.lesson_task_id,  # comment
@@ -1154,6 +1312,96 @@ def lesson_task_teacher_feedback_save(lesson_id, lesson_task_id):  # comment
         'answer_key': lesson_task.student_answer or '',  # comment
         'submission_correct': lesson_task.submission_correct,  # comment
     })  # comment
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/messages')
+@login_required
+def lesson_messages_list(lesson_id: int):
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+
+    # Доступ: студент урока, родитель студента, или преподаватель с доступом к ученику
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all'):
+        if current_user.is_student():
+            if not _get_current_lesson_student(lesson):
+                return jsonify({'success': False, 'error': 'Forbidden'}), 403
+        elif current_user.is_parent():
+            ties = FamilyTie.query.filter_by(parent_id=current_user.id, is_confirmed=True).all()
+            child_user_ids = [t.student_id for t in ties]
+            # fallback: в некоторых окружениях Student.student_id == User.id ученика
+            allowed_students = Student.query.filter(Student.student_id.in_(child_user_ids)).all()
+            if lesson.student_id not in [s.student_id for s in allowed_students]:
+                return jsonify({'success': False, 'error': 'Forbidden'}), 403
+        else:
+            accessible_student_ids = _resolve_accessible_student_ids(scope)
+            if lesson.student_id not in accessible_student_ids:
+                return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
+    msgs = (
+        LessonMessage.query
+        .filter_by(lesson_id=lesson.lesson_id)
+        .order_by(LessonMessage.created_at.asc(), LessonMessage.message_id.asc())
+        .limit(300)
+        .all()
+    )
+    return jsonify({
+        'success': True,
+        'messages': [
+            {
+                'id': m.message_id,
+                'author_user_id': m.author_user_id,
+                'body': m.body,
+                'created_at': m.created_at.isoformat() if m.created_at else None,
+            }
+            for m in msgs
+        ]
+    })
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/messages/send', methods=['POST'])
+@login_required
+def lesson_messages_send(lesson_id: int):
+    lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
+    if current_user.is_parent():
+        return jsonify({'success': False, 'error': 'Родитель не может писать в диалог.'}), 403
+
+    data = request.get_json(silent=True) if request.is_json else None
+    body = (data.get('body') if isinstance(data, dict) else None) if request.is_json else request.form.get('body')
+    body = (body or '').strip()
+    if not body:
+        return jsonify({'success': False, 'error': 'Пустое сообщение'}), 400
+    if len(body) > 4000:
+        return jsonify({'success': False, 'error': 'Слишком длинное сообщение'}), 400
+
+    if current_user.is_student():
+        if not _get_current_lesson_student(lesson):
+            return jsonify({'success': False, 'error': 'Forbidden'}), 403
+    else:
+        scope = get_user_scope(current_user)
+        if not scope.get('can_see_all'):
+            accessible_student_ids = _resolve_accessible_student_ids(scope)
+            if lesson.student_id not in accessible_student_ids:
+                return jsonify({'success': False, 'error': 'Forbidden'}), 403
+
+    msg = LessonMessage(lesson_id=lesson.lesson_id, author_user_id=current_user.id, body=body)
+    db.session.add(msg)
+
+    # Уведомление ученику/родителям, если пишет преподаватель
+    try:
+        if not current_user.is_student():
+            notify_student_and_parents(
+                lesson.student,
+                kind='lesson_message',
+                title='Новое сообщение по уроку',
+                body=body,
+                link_url=url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) + '#tab=chat',
+                meta={'lesson_id': lesson.lesson_id},
+            )
+    except Exception as e:
+        logger.warning(f"Failed to enqueue notification for lesson message: {e}")
+
+    db.session.commit()
+    return jsonify({'success': True, 'message_id': msg.message_id})
 
 @lessons_bp.route('/lesson/<int:lesson_id>/homework-auto-check', methods=['POST'])
 @login_required

@@ -7,20 +7,108 @@ from flask import render_template, request, redirect, url_for, flash, jsonify, c
 from flask_login import login_required
 from sqlalchemy import text  # text нужен для выполнения SQL setval(pg_get_serial_sequence(...)) при сбитых sequences
 from sqlalchemy.exc import OperationalError, ProgrammingError
+from datetime import datetime
 
 from app.students import students_bp
 from app.students.forms import StudentForm, normalize_school_class
 from app.students.utils import get_sorted_assignments
 from app.students.stats_service import StatsService
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
-from app.models import Student, StudentTaskStatistics, Lesson, LessonTask, db, moscow_now, MOSCOW_TZ, TOMSK_TZ, Submission, Assignment
+from app.models import (
+    Student,
+    StudentTaskStatistics,
+    StudentLearningPlanItem,
+    GradebookEntry,
+    Topic,
+    Lesson,
+    LessonTask,
+    Course,
+    CourseModule,
+    db,
+    moscow_now,
+    MOSCOW_TZ,
+    TOMSK_TZ,
+    Submission,
+    Assignment,
+)
 from app.models import User, FamilyTie
 from app.utils.student_id_manager import assign_platform_id_if_needed
 from core.audit_logger import audit_logger
 from flask_login import current_user
 from app.utils.db_migrations import ensure_schema_columns
+from app.auth.rbac_utils import get_user_scope, has_permission
 
 logger = logging.getLogger(__name__)
+
+def _get_student_user_for_scope(student: Student) -> User | None:
+    """Пытаемся сопоставить Student с User (для data-scope)."""
+    if not student:
+        return None
+    if getattr(student, 'email', None):
+        u = User.query.filter_by(email=student.email).first()
+        if u:
+            return u
+    try:
+        u = User.query.get(student.student_id)
+        if u and u.role == 'student':
+            return u
+    except Exception:
+        pass
+    return None
+
+
+def _can_access_student(student: Student) -> bool:
+    """
+    Унифицированная проверка доступа к ученику:
+    - admin/creator: всё
+    - student: только себя (email или fallback student_id==User.id)
+    - tutor/parent: через data scope (Enrollment/FamilyTie)
+    """
+    if not current_user.is_authenticated:
+        return False
+
+    if current_user.is_creator() or current_user.is_admin():
+        return True
+
+    if current_user.is_student():
+        if student.email and current_user.email and student.email.strip().lower() == current_user.email.strip().lower():
+            return True
+        if student.student_id == current_user.id:
+            return True
+        return False
+
+    scope = get_user_scope(current_user)
+    if scope.get('can_see_all'):
+        return True
+
+    st_user = _get_student_user_for_scope(student)
+    if st_user and st_user.id in (scope.get('student_ids') or []):
+        return True
+
+    # Fallback: иногда student_id совпадает с user.id в scope.
+    return student.student_id in (scope.get('student_ids') or [])
+
+
+def _guard_student_access(student_id: int) -> Student:
+    student = Student.query.get_or_404(student_id)
+    if not _can_access_student(student):
+        from flask import abort
+        abort(403)
+    return student
+
+
+def _parse_datetime_local(value: str | None):
+    """Парсим значение из input[type=datetime-local]. Храним как naive (обычно MSK)."""
+    if not value:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    try:
+        # Ожидаем "YYYY-MM-DDTHH:MM" (или с секундами)
+        return datetime.fromisoformat(value)
+    except Exception:
+        return None
 
 @students_bp.route('/students')
 @login_required
@@ -310,6 +398,295 @@ def student_profile(student_id):
         logger.error(f"Critical error in student_profile: {e}", exc_info=True)
         flash('Произошла ошибка при загрузке профиля ученика.', 'danger')
         return redirect(url_for('main.dashboard'))
+
+
+@students_bp.route('/student/<int:student_id>/plan')
+@login_required
+def student_learning_plan(student_id: int):
+    """Учебный план/траектория ученика (просмотр для ученика/родителя, редактирование для преподавателя)."""
+    student = _guard_student_access(student_id)
+    if not has_permission(current_user, 'plan.view'):
+        from flask import abort
+        abort(403)
+
+    can_edit = (not current_user.is_student()) and (not current_user.is_parent()) and has_permission(current_user, 'plan.edit')
+
+    items = StudentLearningPlanItem.query.filter_by(student_id=student.student_id).order_by(
+        StudentLearningPlanItem.priority.desc(),
+        StudentLearningPlanItem.due_date.asc(),
+        StudentLearningPlanItem.item_id.desc(),
+    ).all()
+
+    # Справочники для селектов (только для редактирования, чтобы не делать лишнего)
+    topics = []
+    modules = []
+    if can_edit:
+        topics = Topic.query.order_by(Topic.name.asc()).all()
+        modules = (
+            CourseModule.query.join(Course, CourseModule.course_id == Course.course_id)
+            .filter(Course.student_id == student.student_id)
+            .order_by(CourseModule.order_index.asc(), CourseModule.module_id.asc())
+            .all()
+        )
+
+    status_counts = {'planned': 0, 'in_progress': 0, 'done': 0, 'failed': 0}
+    for it in items:
+        key = (it.status or 'planned').strip().lower()
+        if key not in status_counts:
+            key = 'planned'
+        status_counts[key] += 1
+
+    return render_template(
+        'student_learning_plan.html',
+        student=student,
+        items=items,
+        topics=topics,
+        modules=modules,
+        can_edit=can_edit,
+        status_counts=status_counts,
+    )
+
+
+@students_bp.route('/student/<int:student_id>/plan/items/create', methods=['POST'])
+@login_required
+def student_learning_plan_item_create(student_id: int):
+    student = _guard_student_access(student_id)
+    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'plan.edit')):
+        from flask import abort
+        abort(403)
+
+    title = (request.form.get('title') or '').strip()
+    if not title:
+        flash('Название пункта траектории обязательно.', 'danger')
+        return redirect(url_for('students.student_learning_plan', student_id=student.student_id))
+
+    status = (request.form.get('status') or 'planned').strip().lower()
+    if status not in {'planned', 'in_progress', 'done', 'failed'}:
+        status = 'planned'
+
+    due_date = _parse_datetime_local(request.form.get('due_date'))
+    priority = request.form.get('priority', type=int) or 0
+    notes = (request.form.get('notes') or '').strip() or None
+    topic_id = request.form.get('topic_id', type=int)
+    course_module_id = request.form.get('course_module_id', type=int)
+
+    item = StudentLearningPlanItem(
+        student_id=student.student_id,
+        title=title,
+        status=status,
+        due_date=due_date,
+        priority=priority,
+        notes=notes,
+        topic_id=topic_id or None,
+        course_module_id=course_module_id or None,
+        created_by_user_id=current_user.id,
+    )
+    db.session.add(item)
+    db.session.commit()
+    flash('Пункт траектории добавлен.', 'success')
+    return redirect(url_for('students.student_learning_plan', student_id=student.student_id))
+
+
+@students_bp.route('/student/<int:student_id>/plan/items/<int:item_id>/update', methods=['POST'])
+@login_required
+def student_learning_plan_item_update(student_id: int, item_id: int):
+    student = _guard_student_access(student_id)
+    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'plan.edit')):
+        from flask import abort
+        abort(403)
+
+    item = StudentLearningPlanItem.query.filter_by(item_id=item_id, student_id=student.student_id).first_or_404()
+
+    title = (request.form.get('title') or '').strip()
+    if not title:
+        flash('Название пункта траектории обязательно.', 'danger')
+        return redirect(url_for('students.student_learning_plan', student_id=student.student_id))
+
+    status = (request.form.get('status') or 'planned').strip().lower()
+    if status not in {'planned', 'in_progress', 'done', 'failed'}:
+        status = 'planned'
+
+    item.title = title
+    item.status = status
+    item.due_date = _parse_datetime_local(request.form.get('due_date'))
+    item.priority = request.form.get('priority', type=int) or 0
+    item.notes = (request.form.get('notes') or '').strip() or None
+    item.topic_id = request.form.get('topic_id', type=int) or None
+    item.course_module_id = request.form.get('course_module_id', type=int) or None
+
+    db.session.commit()
+    flash('Пункт траектории обновлён.', 'success')
+    return redirect(url_for('students.student_learning_plan', student_id=student.student_id))
+
+
+@students_bp.route('/student/<int:student_id>/plan/items/<int:item_id>/delete', methods=['POST'])
+@login_required
+def student_learning_plan_item_delete(student_id: int, item_id: int):
+    student = _guard_student_access(student_id)
+    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'plan.edit')):
+        from flask import abort
+        abort(403)
+
+    item = StudentLearningPlanItem.query.filter_by(item_id=item_id, student_id=student.student_id).first_or_404()
+    db.session.delete(item)
+    db.session.commit()
+    flash('Пункт траектории удалён.', 'success')
+    return redirect(url_for('students.student_learning_plan', student_id=student.student_id))
+
+
+@students_bp.route('/student/<int:student_id>/gradebook')
+@login_required
+def student_gradebook(student_id: int):
+    """Единый журнал оценок: ученик/родитель смотрят, преподаватель редактирует."""
+    student = _guard_student_access(student_id)
+    if not has_permission(current_user, 'gradebook.view'):
+        from flask import abort
+        abort(403)
+
+    can_edit = (not current_user.is_student()) and (not current_user.is_parent()) and has_permission(current_user, 'gradebook.edit')
+
+    # Ручные/явные записи журнала
+    entries = GradebookEntry.query.filter_by(student_id=student.student_id).order_by(
+        GradebookEntry.created_at.desc(),
+        GradebookEntry.entry_id.desc(),
+    ).all()
+
+    # Справочник уроков и работ — только преподавателю, чтобы можно было быстро привязывать записи.
+    lessons = []
+    submissions = []
+    if can_edit:
+        lessons = Lesson.query.filter_by(student_id=student.student_id).order_by(Lesson.lesson_date.desc()).all()
+        submissions = (
+            Submission.query.filter_by(student_id=student.student_id)
+            .options(db.joinedload(Submission.assignment))
+            .order_by(Submission.assigned_at.desc())
+            .all()
+        )
+
+    return render_template(
+        'student_gradebook.html',
+        student=student,
+        entries=entries,
+        can_edit=can_edit,
+        lessons=lessons,
+        submissions=submissions,
+    )
+
+
+@students_bp.route('/student/<int:student_id>/gradebook/create', methods=['POST'])
+@login_required
+def student_gradebook_create(student_id: int):
+    student = _guard_student_access(student_id)
+    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'gradebook.edit')):
+        from flask import abort
+        abort(403)
+
+    kind = (request.form.get('kind') or 'manual').strip().lower()
+    if kind not in {'manual', 'lesson', 'assignment'}:
+        kind = 'manual'
+
+    title = (request.form.get('title') or '').strip()
+    category = (request.form.get('category') or '').strip().lower() or None
+    comment = (request.form.get('comment') or '').strip() or None
+    score = request.form.get('score', type=int)
+    max_score = request.form.get('max_score', type=int)
+    grade_text = (request.form.get('grade_text') or '').strip() or None
+    weight = request.form.get('weight', type=int) or 1
+
+    lesson_id = request.form.get('lesson_id', type=int) if kind == 'lesson' else None
+    submission_id = request.form.get('submission_id', type=int) if kind == 'assignment' else None
+
+    if not title:
+        # Автозаголовок для lesson/assignment
+        if kind == 'lesson' and lesson_id:
+            l = Lesson.query.filter_by(lesson_id=lesson_id, student_id=student.student_id).first()
+            title = (l.topic or 'Урок') if l else 'Урок'
+        elif kind == 'assignment' and submission_id:
+            s = Submission.query.filter_by(submission_id=submission_id, student_id=student.student_id).first()
+            title = (s.assignment.title if (s and s.assignment) else 'Работа') if s else 'Работа'
+
+    if not title:
+        flash('Название записи обязательно.', 'danger')
+        return redirect(url_for('students.student_gradebook', student_id=student.student_id))
+
+    entry = GradebookEntry(
+        student_id=student.student_id,
+        kind=kind,
+        category=category,
+        title=title,
+        comment=comment,
+        score=score,
+        max_score=max_score,
+        grade_text=grade_text,
+        weight=weight,
+        lesson_id=lesson_id,
+        submission_id=submission_id,
+        created_by_user_id=current_user.id,
+    )
+    db.session.add(entry)
+    db.session.commit()
+    flash('Запись добавлена.', 'success')
+    return redirect(url_for('students.student_gradebook', student_id=student.student_id))
+
+
+@students_bp.route('/student/<int:student_id>/gradebook/<int:entry_id>/update', methods=['POST'])
+@login_required
+def student_gradebook_update(student_id: int, entry_id: int):
+    student = _guard_student_access(student_id)
+    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'gradebook.edit')):
+        from flask import abort
+        abort(403)
+
+    entry = GradebookEntry.query.filter_by(entry_id=entry_id, student_id=student.student_id).first_or_404()
+
+    title = (request.form.get('title') or '').strip()
+    if not title:
+        flash('Название записи обязательно.', 'danger')
+        return redirect(url_for('students.student_gradebook', student_id=student.student_id))
+
+    entry.title = title
+    entry.category = (request.form.get('category') or '').strip().lower() or None
+    entry.comment = (request.form.get('comment') or '').strip() or None
+    entry.score = request.form.get('score', type=int)
+    entry.max_score = request.form.get('max_score', type=int)
+    entry.grade_text = (request.form.get('grade_text') or '').strip() or None
+    entry.weight = request.form.get('weight', type=int) or 1
+
+    # Для lesson/assignment можно менять привязку, но строго в рамках ученика.
+    if (entry.kind or '').lower() == 'lesson':
+        lesson_id = request.form.get('lesson_id', type=int)
+        if lesson_id:
+            l = Lesson.query.filter_by(lesson_id=lesson_id, student_id=student.student_id).first()
+            entry.lesson_id = l.lesson_id if l else None
+        else:
+            entry.lesson_id = None
+    if (entry.kind or '').lower() == 'assignment':
+        submission_id = request.form.get('submission_id', type=int)
+        if submission_id:
+            s = Submission.query.filter_by(submission_id=submission_id, student_id=student.student_id).first()
+            entry.submission_id = s.submission_id if s else None
+        else:
+            entry.submission_id = None
+
+    db.session.commit()
+    flash('Запись обновлена.', 'success')
+    return redirect(url_for('students.student_gradebook', student_id=student.student_id))
+
+
+@students_bp.route('/student/<int:student_id>/gradebook/<int:entry_id>/delete', methods=['POST'])
+@login_required
+def student_gradebook_delete(student_id: int, entry_id: int):
+    student = _guard_student_access(student_id)
+    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'gradebook.edit')):
+        from flask import abort
+        abort(403)
+
+    entry = GradebookEntry.query.filter_by(entry_id=entry_id, student_id=student.student_id).first_or_404()
+    db.session.delete(entry)
+    db.session.commit()
+    flash('Запись удалена.', 'success')
+    return redirect(url_for('students.student_gradebook', student_id=student.student_id))
+
 
 @students_bp.route('/student/<int:student_id>/statistics')
 @login_required

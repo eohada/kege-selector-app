@@ -127,6 +127,7 @@ class Student(db.Model):
 
     lessons = db.relationship('Lesson', back_populates='student', lazy=True, cascade='all, delete-orphan')
     task_statistics = db.relationship('StudentTaskStatistics', back_populates='student', lazy=True, cascade='all, delete-orphan')
+    learning_plan_items = db.relationship('StudentLearningPlanItem', back_populates='student', lazy=True, cascade='all, delete-orphan')
 
 class StudentTaskStatistics(db.Model):
     """Ручные изменения статистики выполнения заданий для ученика"""
@@ -143,6 +144,80 @@ class StudentTaskStatistics(db.Model):
     __table_args__ = (Index('ix_student_task_statistics', 'student_id', 'task_number', unique=True),)
     
     student = db.relationship('Student', back_populates='task_statistics')
+
+
+class StudentLearningPlanItem(db.Model):
+    """
+    Элемент учебной траектории ученика.
+
+    MVP: привязка к Topic и/или CourseModule + дедлайн + статус + заметки.
+    Статусы: planned | in_progress | done | failed
+    """
+    __tablename__ = 'StudentLearningPlanItems'
+
+    item_id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+
+    # Можно связать с темой (навыком) и/или с модулем курса
+    topic_id = db.Column(db.Integer, db.ForeignKey('Topics.topic_id'), nullable=True, index=True)
+    course_module_id = db.Column(db.Integer, db.ForeignKey('CourseModules.module_id'), nullable=True, index=True)
+
+    title = db.Column(db.String(300), nullable=False)  # человекочитаемое название пункта траектории
+    status = db.Column(db.String(20), default='planned', nullable=False, index=True)
+    due_date = db.Column(db.DateTime, nullable=True, index=True)  # дедлайн (обычно MSK)
+    priority = db.Column(db.Integer, default=0, nullable=False, index=True)  # чем больше — тем выше
+    notes = db.Column(db.Text, nullable=True)
+
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    student = db.relationship('Student', back_populates='learning_plan_items')
+    topic = db.relationship('Topic', foreign_keys=[topic_id])
+    course_module = db.relationship('CourseModule', foreign_keys=[course_module_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+
+class SchoolGroup(db.Model):
+    """
+    Группа/класс как сущность (для массовых действий и отчётов).
+
+    Важно: это НЕ расписание. Это просто состав группы.
+    """
+    __tablename__ = 'SchoolGroups'
+
+    group_id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    subject = db.Column(db.String(100), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+
+    status = db.Column(db.String(30), default='active', nullable=False, index=True)  # active|archived
+    owner_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    owner = db.relationship('User', foreign_keys=[owner_user_id])
+    students = db.relationship('GroupStudent', back_populates='group', lazy=True, cascade='all, delete-orphan')
+
+
+class GroupStudent(db.Model):
+    """Участник группы (связь группа → Student)."""
+    __tablename__ = 'GroupStudents'
+
+    id = db.Column(db.Integer, primary_key=True)
+    group_id = db.Column(db.Integer, db.ForeignKey('SchoolGroups.group_id'), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    added_at = db.Column(db.DateTime, default=moscow_now)
+    added_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+
+    group = db.relationship('SchoolGroup', back_populates='students')
+    student = db.relationship('Student', foreign_keys=[student_id])
+    added_by = db.relationship('User', foreign_keys=[added_by_user_id])
+
+    __table_args__ = (
+        Index('ix_group_students_unique', 'group_id', 'student_id', unique=True),
+    )
 
 
 class Course(db.Model):
@@ -300,6 +375,7 @@ class LessonTask(db.Model):
     lesson = db.relationship('Lesson', back_populates='homework_tasks')
     task = db.relationship('Tasks')
     teacher_comments = db.relationship('LessonTaskTeacherComment', back_populates='lesson_task', lazy=True, cascade='all, delete-orphan')  # comment
+    attempts = db.relationship('LessonTaskAttempt', back_populates='lesson_task', lazy=True, cascade='all, delete-orphan')
 
 
 class LessonTaskTeacherComment(db.Model):  # comment
@@ -313,6 +389,33 @@ class LessonTaskTeacherComment(db.Model):  # comment
 
     lesson_task = db.relationship('LessonTask', back_populates='teacher_comments')  # comment
     author = db.relationship('User', foreign_keys=[author_user_id])  # comment
+
+
+class LessonTaskAttempt(db.Model):
+    """
+    Попытка сдачи конкретного задания в классной комнате (LessonTask).
+
+    Создаётся при нажатии "Сдать работу" (и при пересдаче после returned).
+    Хранит снимок ответа и результата автопроверки на момент сдачи.
+    """
+    __tablename__ = 'LessonTaskAttempts'
+
+    attempt_id = db.Column(db.Integer, primary_key=True)
+    lesson_task_id = db.Column(db.Integer, db.ForeignKey('LessonTasks.lesson_task_id'), nullable=False, index=True)
+    attempt_no = db.Column(db.Integer, nullable=False, default=1, index=True)
+
+    submitted_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    student_submission = db.Column(db.Text, nullable=True)
+    submission_files = db.Column(db.JSON, nullable=True)
+    submission_correct = db.Column(db.Boolean, nullable=True)
+
+    status = db.Column(db.String(20), nullable=True)  # submitted/graded/returned
+
+    lesson_task = db.relationship('LessonTask', back_populates='attempts')
+
+    __table_args__ = (
+        Index('ix_lesson_task_attempt_unique', 'lesson_task_id', 'attempt_no', unique=True),
+    )
 
 class User(db.Model):
     """Модель пользователя для авторизации (расширенная для RBAC)"""
@@ -408,6 +511,41 @@ class RolePermission(db.Model):
     __table_args__ = (
         db.UniqueConstraint('role', 'permission_name', name='uq_role_permission'),
     )
+
+
+class UserNotification(db.Model):
+    """Внутреннее уведомление (in-app)."""
+    __tablename__ = 'UserNotifications'
+
+    notification_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+
+    kind = db.Column(db.String(50), nullable=False, default='generic', index=True)
+    title = db.Column(db.String(300), nullable=False)
+    body = db.Column(db.Text, nullable=True)
+    link_url = db.Column(db.Text, nullable=True)
+    meta = db.Column(db.JSON, nullable=True)
+
+    is_read = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('notifications', lazy=True, cascade='all, delete-orphan'))
+
+
+class LessonMessage(db.Model):
+    """Сообщение в диалоге по уроку (ученик ↔ преподаватель)."""
+    __tablename__ = 'LessonMessages'
+
+    message_id = db.Column(db.Integer, primary_key=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=False, index=True)
+    author_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id], backref=db.backref('messages', lazy=True, cascade='all, delete-orphan'))
+    author = db.relationship('User', foreign_keys=[author_user_id])
+
 
 class Tester(db.Model):
 
@@ -764,6 +902,7 @@ class Submission(db.Model):
     assignment = db.relationship('Assignment', back_populates='submissions')
     student = db.relationship('Student', backref='submissions')
     answers = db.relationship('Answer', back_populates='submission', lazy=True, cascade='all, delete-orphan')
+    attempts = db.relationship('SubmissionAttempt', back_populates='submission', lazy=True, cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Submission {self.submission_id}: student {self.student_id}, assignment {self.assignment_id}, status {self.status}>'
@@ -808,6 +947,34 @@ class Answer(db.Model):
         return f'<Answer {self.answer_id}: submission {self.submission_id}, task {self.assignment_task_id}, score {self.score}>'
 
 
+class SubmissionAttempt(db.Model):
+    """
+    Попытка сдачи работы (Submission) в новой системе Assignments.
+
+    MVP: фиксируем факт сдачи и итог (когда есть), чтобы пересдачи не затирали историю.
+    """
+    __tablename__ = 'SubmissionAttempts'
+
+    attempt_id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id'), nullable=False, index=True)
+    attempt_no = db.Column(db.Integer, nullable=False, default=1, index=True)
+
+    submitted_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    graded_at = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(50), nullable=True)  # SUBMITTED/GRADED/RETURNED/LATE
+
+    total_score = db.Column(db.Integer, nullable=True)
+    max_score = db.Column(db.Integer, nullable=True)
+    percentage = db.Column(db.Float, nullable=True)
+    teacher_feedback = db.Column(db.Text, nullable=True)
+
+    submission = db.relationship('Submission', back_populates='attempts')
+
+    __table_args__ = (
+        Index('ix_submission_attempt_unique', 'submission_id', 'attempt_no', unique=True),
+    )
+
+
 class SubmissionComment(db.Model):
     """
     Комментарии к сдаче работы (чат учитель-ученик)
@@ -829,3 +996,51 @@ class SubmissionComment(db.Model):
     
     def __repr__(self):
         return f'<Comment {self.comment_id}: submission {self.submission_id} by {self.author_id}>'
+
+
+# ============================================================================
+# ЕДИНАЯ СИСТЕМА ОЦЕНИВАНИЯ (ЖУРНАЛ)
+# ============================================================================
+
+class GradebookEntry(db.Model):
+    """
+    Запись журнала оценок (единая сущность).
+
+    Использование:
+    - manual: ручная запись (без привязки)
+    - lesson: итог по уроку (lesson_id)
+    - assignment: итог по работе/сдаче (submission_id)
+
+    score/max_score можно хранить как баллы; percentage — вычислять на UI.
+    """
+    __tablename__ = 'GradebookEntries'
+
+    entry_id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+
+    kind = db.Column(db.String(20), nullable=False, default='manual', index=True)  # manual|lesson|assignment
+    category = db.Column(db.String(50), nullable=True, index=True)  # homework|classwork|exam|test|...
+
+    title = db.Column(db.String(500), nullable=False)
+    comment = db.Column(db.Text, nullable=True)
+
+    score = db.Column(db.Integer, nullable=True)
+    max_score = db.Column(db.Integer, nullable=True)
+    grade_text = db.Column(db.String(50), nullable=True)  # например "5", "зачёт", "A"
+    weight = db.Column(db.Integer, default=1, nullable=False)
+
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=True, index=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id'), nullable=True, index=True)
+
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    student = db.relationship('Student', foreign_keys=[student_id], backref=db.backref('gradebook_entries', lazy=True, cascade='all, delete-orphan'))
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id])
+    submission = db.relationship('Submission', foreign_keys=[submission_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+    __table_args__ = (
+        Index('ix_gradebook_student_kind', 'student_id', 'kind'),
+    )

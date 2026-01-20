@@ -11,6 +11,9 @@ from core.db_models import (
     BlacklistTasks,
     Student,
     StudentTaskStatistics,
+    StudentLearningPlanItem,
+    SchoolGroup,
+    GroupStudent,
     Course,
     CourseModule,
     MaterialAsset,
@@ -34,12 +37,17 @@ from core.db_models import (
     MOSCOW_TZ,
     TOMSK_TZ,
     RolePermission,
+    UserNotification,
+    LessonMessage,
     Assignment,
     AssignmentTask,
     Submission,
     Answer,
     SubmissionComment,
-    LessonTaskTeacherComment
+    LessonTaskTeacherComment,
+    GradebookEntry,
+    LessonTaskAttempt,
+    SubmissionAttempt
 )
 
 __all__ = [
@@ -51,6 +59,9 @@ __all__ = [
     'BlacklistTasks',
     'Student',
     'StudentTaskStatistics',
+    'StudentLearningPlanItem',
+    'SchoolGroup',
+    'GroupStudent',
     'Course',
     'CourseModule',
     'MaterialAsset',
@@ -74,10 +85,15 @@ __all__ = [
     'MOSCOW_TZ',
     'TOMSK_TZ',
     'RolePermission',
+    'UserNotification',
+    'LessonMessage',
     'Assignment',
     'AssignmentTask',
     'Submission',
     'Answer',
     'SubmissionComment',
-    'LessonTaskTeacherComment'
+    'LessonTaskTeacherComment',
+    'GradebookEntry',
+    'LessonTaskAttempt',
+    'SubmissionAttempt'
 ]

@@ -6,8 +6,16 @@ from sqlalchemy import inspect, text
 from app.models import db
 from core.db_models import (
     Tester, AuditLog, RolePermission, User,
+    UserNotification,
+    LessonMessage,
     LessonTaskTeacherComment, TaskReview,
     Course, CourseModule,
+    StudentLearningPlanItem,
+    GradebookEntry,
+    SchoolGroup,
+    GroupStudent,
+    LessonTaskAttempt,
+    SubmissionAttempt,
     MaterialAsset, LessonMaterialLink, LessonRoomTemplate
 )
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
@@ -147,6 +155,26 @@ def check_and_fix_rbac_schema(app):
                     except Exception as init_error:
                         db.session.rollback()
                         logger.error(f"Error initializing default permissions: {init_error}", exc_info=True)
+                else:
+                    # Таблица не пустая: докидываем новые дефолтные права, которые могли появиться позже.
+                    # Это важно для "самовосстановления" при релизах: новые permission'ы не должны давать 403 из-за пустых строк.
+                    try:
+                        from app.auth.permissions import ALL_PERMISSIONS
+                        added = 0
+                        for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
+                            for perm_name in perms:
+                                if perm_name not in ALL_PERMISSIONS:
+                                    continue
+                                exists = RolePermission.query.filter_by(role=role, permission_name=perm_name).first()
+                                if not exists:
+                                    db.session.add(RolePermission(role=role, permission_name=perm_name, is_enabled=True))
+                                    added += 1
+                        if added:
+                            db.session.commit()
+                            logger.info(f"Backfilled {added} missing RolePermission records")
+                    except Exception as backfill_err:
+                        db.session.rollback()
+                        logger.warning(f"Could not backfill RolePermissions: {backfill_err}")
             
             # 2. Ensure custom_permissions column in Users
             users_table = _resolve_table_name(table_names, 'Users')
@@ -220,6 +248,76 @@ def ensure_schema_columns(app):
                     logger.info("CourseModules table created")
                 except Exception as e:
                     logger.warning(f"Could not create CourseModules table: {e}")
+                    db.session.rollback()
+
+            # Фундамент: учебная траектория (план) ученика
+            if 'StudentLearningPlanItems' not in table_names and 'studentlearningplanitems' not in table_names:
+                try:
+                    StudentLearningPlanItem.__table__.create(db.engine)
+                    logger.info("StudentLearningPlanItems table created")
+                except Exception as e:
+                    logger.warning(f"Could not create StudentLearningPlanItems table: {e}")
+                    db.session.rollback()
+
+            # Фундамент: журнал оценок
+            if 'GradebookEntries' not in table_names and 'gradebookentries' not in table_names:
+                try:
+                    GradebookEntry.__table__.create(db.engine)
+                    logger.info("GradebookEntries table created")
+                except Exception as e:
+                    logger.warning(f"Could not create GradebookEntries table: {e}")
+                    db.session.rollback()
+
+            # Фундамент: попытки сдачи (пересдачи)
+            if 'LessonTaskAttempts' not in table_names and 'lessontaskattempts' not in table_names:
+                try:
+                    LessonTaskAttempt.__table__.create(db.engine)
+                    logger.info("LessonTaskAttempts table created")
+                except Exception as e:
+                    logger.warning(f"Could not create LessonTaskAttempts table: {e}")
+                    db.session.rollback()
+
+            if 'SubmissionAttempts' not in table_names and 'submissionattempts' not in table_names:
+                try:
+                    SubmissionAttempt.__table__.create(db.engine)
+                    logger.info("SubmissionAttempts table created")
+                except Exception as e:
+                    logger.warning(f"Could not create SubmissionAttempts table: {e}")
+                    db.session.rollback()
+
+            # Фундамент: группы/классы
+            if 'SchoolGroups' not in table_names and 'schoolgroups' not in table_names:
+                try:
+                    SchoolGroup.__table__.create(db.engine)
+                    logger.info("SchoolGroups table created")
+                except Exception as e:
+                    logger.warning(f"Could not create SchoolGroups table: {e}")
+                    db.session.rollback()
+
+            if 'GroupStudents' not in table_names and 'groupstudents' not in table_names:
+                try:
+                    GroupStudent.__table__.create(db.engine)
+                    logger.info("GroupStudents table created")
+                except Exception as e:
+                    logger.warning(f"Could not create GroupStudents table: {e}")
+                    db.session.rollback()
+
+            # Фундамент: внутренние уведомления
+            if 'UserNotifications' not in table_names and 'usernotifications' not in table_names:
+                try:
+                    UserNotification.__table__.create(db.engine)
+                    logger.info("UserNotifications table created")
+                except Exception as e:
+                    logger.warning(f"Could not create UserNotifications table: {e}")
+                    db.session.rollback()
+
+            # Фундамент: диалоги по уроку
+            if 'LessonMessages' not in table_names and 'lessonmessages' not in table_names:
+                try:
+                    LessonMessage.__table__.create(db.engine)
+                    logger.info("LessonMessages table created")
+                except Exception as e:
+                    logger.warning(f"Could not create LessonMessages table: {e}")
                     db.session.rollback()
 
             # Фундамент: библиотека материалов и шаблоны комнат/уроков

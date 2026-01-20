@@ -11,15 +11,77 @@ from sqlalchemy.orm import joinedload
 from app.assignments import assignments_bp
 from app.models import (
     db, Assignment, AssignmentTask, Submission, Answer,
-    Student, User, Tasks, Lesson, Enrollment
+    Student, User, Tasks, Lesson, Enrollment, GradebookEntry, SubmissionAttempt
 )
 from app.students.utils import get_sorted_assignments
 from core.db_models import SubmissionComment
 from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 from core.db_models import moscow_now
 from core.audit_logger import audit_logger
+from app.notifications.service import notify_student_and_parents
 
 logger = logging.getLogger(__name__)
+
+def _upsert_gradebook_from_submission(submission: Submission, actor_user_id: int | None = None) -> None:
+    """Создаёт/обновляет запись в журнале по результату проверенной работы."""
+    if not submission:
+        return
+    if (submission.status or '').upper() != 'GRADED':
+        return
+    if not submission.assignment:
+        return
+
+    entry = GradebookEntry.query.filter_by(
+        student_id=submission.student_id,
+        kind='assignment',
+        submission_id=submission.submission_id,
+    ).first()
+
+    if not entry:
+        entry = GradebookEntry(
+            student_id=submission.student_id,
+            kind='assignment',
+            submission_id=submission.submission_id,
+            created_by_user_id=actor_user_id,
+            title=submission.assignment.title or 'Работа',
+        )
+        db.session.add(entry)
+
+    entry.category = (submission.assignment.assignment_type or '').strip().lower() or None
+    entry.title = submission.assignment.title or entry.title or 'Работа'
+    entry.comment = (submission.teacher_feedback or '').strip() or None
+    entry.score = submission.total_score
+    entry.max_score = submission.max_score
+    entry.grade_text = None
+    entry.weight = 1
+
+
+def _record_submission_attempt(submission: Submission) -> None:
+    """Записываем попытку сдачи для Submission (история пересдач)."""
+    if not submission:
+        return
+    try:
+        last_no = (
+            db.session.query(db.func.max(SubmissionAttempt.attempt_no))
+            .filter(SubmissionAttempt.submission_id == submission.submission_id)
+            .scalar()
+        )
+        next_no = int(last_no or 0) + 1
+    except Exception:
+        next_no = 1
+
+    attempt = SubmissionAttempt(
+        submission_id=submission.submission_id,
+        attempt_no=next_no,
+        submitted_at=submission.submitted_at or moscow_now(),
+        graded_at=submission.graded_at,
+        status=submission.status,
+        total_score=submission.total_score,
+        max_score=submission.max_score,
+        percentage=submission.percentage,
+        teacher_feedback=submission.teacher_feedback,
+    )
+    db.session.add(attempt)
 
 
 # ============================================================================
@@ -467,7 +529,7 @@ def submission_autosave(submission_id):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
     # Проверка статуса
-    if submission.status not in ['IN_PROGRESS', 'ASSIGNED']:
+    if submission.status not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
         return jsonify({'success': False, 'error': 'Нельзя сохранять ответы для этой работы'}), 400
     
     try:
@@ -507,8 +569,8 @@ def submission_autosave(submission_id):
             answer.value = value
             answer.updated_at = moscow_now()
         
-        # Обновляем статус, если еще не начата
-        if submission.status == 'ASSIGNED':
+        # Обновляем статус, если еще не начата или возвращена на доработку
+        if submission.status in ['ASSIGNED', 'RETURNED']:
             submission.status = 'IN_PROGRESS'
             if not submission.started_at:
                 submission.started_at = moscow_now()
@@ -600,6 +662,14 @@ def submission_submit(submission_id):
     if all_auto_graded:
         submission.status = 'GRADED'
         submission.graded_at = now
+        # Авто-добавление в журнал
+        _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
+
+    # Фиксируем попытку сдачи (для истории пересдач)
+    try:
+        _record_submission_attempt(submission)
+    except Exception as e:
+        logger.warning(f"Could not record SubmissionAttempt for {submission.submission_id}: {e}")
     
     db.session.commit()
     
@@ -755,6 +825,40 @@ def submission_grade_save(submission_id):
         submission.teacher_feedback = teacher_feedback
         submission.status = status
         submission.graded_at = moscow_now()
+
+        # Авто-добавление/обновление записи журнала при проверке
+        if status == 'GRADED':
+            _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
+        # История попыток: фиксируем результат проверки для текущей попытки
+        try:
+            _record_submission_attempt(submission)
+        except Exception as e:
+            logger.warning(f"Could not record SubmissionAttempt (grade) for {submission.submission_id}: {e}")
+
+        # Уведомление ученику/родителю
+        try:
+            student = Student.query.get(submission.student_id)
+            if student:
+                if status == 'GRADED':
+                    notify_student_and_parents(
+                        student,
+                        kind='assignment_graded',
+                        title='Работа проверена',
+                        body=(teacher_feedback or '').strip() or None,
+                        link_url=url_for('assignments.submission_view', submission_id=submission.submission_id),
+                        meta={'submission_id': submission.submission_id, 'assignment_id': assignment.assignment_id, 'status': status},
+                    )
+                else:
+                    notify_student_and_parents(
+                        student,
+                        kind='assignment_returned',
+                        title='Работа возвращена на доработку',
+                        body=(teacher_feedback or '').strip() or None,
+                        link_url=url_for('assignments.submission_view', submission_id=submission.submission_id),
+                        meta={'submission_id': submission.submission_id, 'assignment_id': assignment.assignment_id, 'status': status},
+                    )
+        except Exception as e:
+            logger.warning(f"Failed to notify student about submission grade: {e}")
         
         db.session.commit()
         
