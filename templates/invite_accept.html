@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Принять приглашение</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+  {% include '_ux_enhancements.html' %}
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+</head>
+<body>
+  <div class="app-shell">
+    <section class="glass-panel" style="margin-top: 1.5rem;">
+      <p class="hero-eyebrow">онбординг</p>
+      <h1 class="hero-title" style="margin-bottom:.25rem;">Принять приглашение</h1>
+      {% if not invite %}
+        <div style="color: var(--text-muted);">Ссылка недействительна или истекла.</div>
+        <div style="margin-top: 1rem;">
+          <a href="{{ url_for('auth.login') }}" class="neo-button outline">На страницу входа</a>
+        </div>
+      {% else %}
+        <div style="color: var(--text-muted);">
+          Email: <strong>{{ invite.email }}</strong> · роль: <strong>{{ invite.role }}</strong>
+        </div>
+        <form method="POST" action="{{ url_for('onboarding.invite_accept', token=token) }}" data-no-ajax="1" style="margin-top: 1rem;">
+          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+          <div class="neo-field">
+            <label class="neo-label">Логин (опционально)</label>
+            <input class="neo-input" name="username" placeholder="По умолчанию будет взят из email">
+          </div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;" class="profile-grid-responsive">
+            <div class="neo-field">
+              <label class="neo-label">Пароль *</label>
+              <input class="neo-input" type="password" name="password" required>
+            </div>
+            <div class="neo-field">
+              <label class="neo-label">Повтор пароля *</label>
+              <input class="neo-input" type="password" name="password2" required>
+            </div>
+          </div>
+          <div style="margin-top: 1rem; display:flex; justify-content:flex-end; gap:.6rem; flex-wrap: wrap;">
+            <button type="submit" class="neo-button accent">Создать аккаунт</button>
+            <a href="{{ url_for('auth.login') }}" class="neo-button outline">Отмена</a>
+          </div>
+        </form>
+      {% endif %}
+    </section>
+  </div>
+  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
+

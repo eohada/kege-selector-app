@@ -31,7 +31,7 @@
         }
         .filters {
             display: grid;
-            grid-template-columns: 1.1fr 1fr 1.4fr auto;
+            grid-template-columns: 1.1fr 1fr 1fr 1.4fr auto;
             gap: 0.75rem;
             align-items: end;
             margin-top: 1.1rem;
@@ -127,16 +127,25 @@
             <section class="queue-hero">
                 <div class="hero-eyebrow">Домашка/проверка</div>
                 <h1 class="queue-title">Журнал проверок</h1>
-                <div class="queue-sub">Единая очередь «что проверить» по задачам из классной комнаты. Фильтруй и переходи в урок в режиме проверки.</div>
+                <div class="queue-sub">Единая очередь «что проверить» по классной комнате и работам. Фильтруй и переходи в нужную проверку.</div>
 
                 <form method="GET" class="filters">
                     <div>
                         <label class="filter-label" for="status">Статус</label>
                         <select class="neo-select" id="status" name="status">
-                            <option value="submitted" {% if status == 'submitted' %}selected{% endif %}>Сдано (на проверку)</option>
-                            <option value="returned" {% if status == 'returned' %}selected{% endif %}>На доработку</option>
-                            <option value="graded" {% if status == 'graded' %}selected{% endif %}>Проверено</option>
-                            <option value="pending" {% if status == 'pending' %}selected{% endif %}>Черновики</option>
+                            <option value="submitted" {% if status == 'submitted' %}selected{% endif %}>Сдано ({{ (status_counts.submitted if status_counts else 0) }})</option>
+                            <option value="returned" {% if status == 'returned' %}selected{% endif %}>На доработку ({{ (status_counts.returned if status_counts else 0) }})</option>
+                            <option value="graded" {% if status == 'graded' %}selected{% endif %}>Проверено ({{ (status_counts.graded if status_counts else 0) }})</option>
+                            <option value="pending" {% if status == 'pending' %}selected{% endif %}>Черновики ({{ (status_counts.pending if status_counts else 0) }})</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="filter-label" for="source">Источник</label>
+                        <select class="neo-select" id="source" name="source">
+                            <option value="all" {% if source == 'all' %}selected{% endif %}>Все</option>
+                            <option value="lessons" {% if source == 'lessons' %}selected{% endif %}>Классная комната</option>
+                            <option value="assignments" {% if source == 'assignments' %}selected{% endif %}>Работы</option>
                         </select>
                     </div>
 
@@ -166,7 +175,7 @@
                 </form>
             </section>
 
-            {% if lesson_cards and lesson_cards|length > 0 %}
+            {% if (source != 'assignments') and lesson_cards and lesson_cards|length > 0 %}
                 <div style="display:flex; flex-direction: column; gap: 0.9rem;">
                     {% for item in lesson_cards %}
                         {% set lesson = item.lesson %}
@@ -237,11 +246,93 @@
                         </section>
                     {% endfor %}
                 </div>
-            {% else %}
+            {% elif (source != 'assignments') %}
                 <div class="glass-panel" style="padding: 2rem; text-align: center;">
                     <div style="font-size: 3rem; margin-bottom: 0.75rem;">✅</div>
                     <div style="font-size: 1.25rem; font-weight: 900;">Очередь пуста</div>
                     <div style="color: var(--text-muted); margin-top: 0.5rem;">По текущим фильтрам нет задач.</div>
+                </div>
+            {% endif %}
+
+            {% if (source != 'lessons') and assignment_cards and assignment_cards|length > 0 %}
+                <div style="display:flex; flex-direction: column; gap: 0.9rem; margin-top: 1rem;">
+                    {% for item in assignment_cards %}
+                        {% set a = item.assignment %}
+                        {% set subs = item.submissions %}
+                        <section class="card">
+                            <div class="lesson-head">
+                                <div style="min-width: 0;">
+                                    <h2 class="lesson-title">{{ a.title }}</h2>
+                                    <div class="lesson-meta">
+                                        <span class="status-badge status-info" style="opacity: 0.95;">
+                                            {% if a.assignment_type == 'classwork' %}КР{% elif a.assignment_type == 'exam' %}Проверочная{% else %}ДЗ{% endif %}
+                                        </span>
+                                        <span><i class="far fa-calendar"></i> дедлайн: {{ a.deadline.strftime('%d.%m.%Y %H:%M') if a.deadline else '—' }}</span>
+                                        <span class="status-badge status-info" style="opacity: 0.95;">{{ subs|length }} сдач</span>
+                                    </div>
+                                </div>
+                                <div class="right-actions">
+                                    <a class="neo-button outline" href="{{ url_for('assignments.assignment_view', assignment_id=a.assignment_id) }}">
+                                        <i class="fas fa-folder-open ui-icon ui-icon--sm"></i> Открыть работу
+                                    </a>
+                                    {% if status == 'submitted' %}
+                                    <form method="POST" action="{{ url_for('assignments.assignment_review_bulk_update', assignment_id=a.assignment_id) }}" style="display:inline;">
+                                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                        <input type="hidden" name="action" value="mark_returned">
+                                        <input type="hidden" name="status" value="{{ status }}">
+                                        <input type="hidden" name="source" value="{{ source }}">
+                                        <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
+                                        <input type="hidden" name="student" value="{{ student_query }}">
+                                        <button type="submit" class="neo-button outline" onclick="return confirm('Вернуть на доработку ВСЕ сданные работы по этой задаче?')">
+                                            <i class="fas fa-rotate-left ui-icon ui-icon--sm"></i> Вернуть всем
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="tasks-grid">
+                                {% for s in subs %}
+                                    <div class="task-chip" style="cursor: default;">
+                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=s.submission_id) }}" style="display:flex; justify-content: space-between; align-items: center; gap: .75rem; text-decoration:none; color:inherit; flex: 1; min-width: 0;">
+                                            <div class="task-left">
+                                                <div class="task-name">{{ s.student.name if s.student else ('Student #' ~ s.student_id) }}</div>
+                                                <div class="task-sub">
+                                                    {% if s.submitted_at %}сдано: {{ s.submitted_at.strftime('%d.%m.%Y %H:%M') }}{% elif s.assigned_at %}назначено: {{ s.assigned_at.strftime('%d.%m.%Y %H:%M') }}{% else %}—{% endif %}
+                                                </div>
+                                            </div>
+                                            <span class="status-badge status-info" style="opacity: 0.9; white-space: nowrap;">
+                                                {% if (s.status or '').upper() in ['SUBMITTED', 'LATE'] %}Сдано
+                                                {% elif (s.status or '').upper() == 'GRADED' %}Проверено
+                                                {% elif (s.status or '').upper() == 'RETURNED' %}На доработку
+                                                {% elif (s.status or '').upper() in ['ASSIGNED', 'IN_PROGRESS'] %}Черновик
+                                                {% else %}{{ s.status }}{% endif %}
+                                            </span>
+                                        </a>
+
+                                        {% if (s.status or '').upper() in ['SUBMITTED', 'LATE'] %}
+                                        <form method="POST" action="{{ url_for('assignments.submission_quick_return', submission_id=s.submission_id) }}" style="display:inline; flex: 0 0 auto;">
+                                            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                            <input type="hidden" name="status" value="{{ status }}">
+                                            <input type="hidden" name="source" value="{{ source }}">
+                                            <input type="hidden" name="assignment_type" value="{{ assignment_type }}">
+                                            <input type="hidden" name="student" value="{{ student_query }}">
+                                            <button type="submit" class="neo-button outline sm" onclick="return confirm('Вернуть на доработку эту сдачу?')">
+                                                ↩ вернуть
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </section>
+                    {% endfor %}
+                </div>
+            {% elif (source != 'lessons') %}
+                <div class="glass-panel" style="padding: 2rem; text-align: center; margin-top: 1rem;">
+                    <div style="font-size: 3rem; margin-bottom: 0.75rem;">✅</div>
+                    <div style="font-size: 1.25rem; font-weight: 900;">Очередь пуста</div>
+                    <div style="color: var(--text-muted); margin-top: 0.5rem;">По текущим фильтрам нет работ.</div>
                 </div>
             {% endif %}
         </main>

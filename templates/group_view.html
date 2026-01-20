@@ -31,6 +31,7 @@
         </div>
         <div class="hero-actions">
           <a href="{{ url_for('groups.groups_list') }}" class="neo-button ghost">← Все группы</a>
+          <a href="{{ url_for('groups.group_export_csv', group_id=group.group_id) }}" class="neo-button outline">Экспорт CSV</a>
           {% if can_manage %}
           <a href="{{ url_for('groups.group_edit', group_id=group.group_id) }}" class="neo-button outline">Редактировать</a>
           {% endif %}

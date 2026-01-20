@@ -15,7 +15,7 @@ from app.auth.rbac_utils import check_access, get_user_scope
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, perform_auto_check, normalize_answer_value  # comment
-from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents
@@ -627,11 +627,14 @@ def lesson_review_summary_save(lesson_id: int, assignment_type: str):
 @check_access('assignment.grade')
 def review_queue():
     """
-    Единый журнал проверок преподавателя по задачам в классной комнате (LessonTask).
+    Единый журнал проверок преподавателя:
+    - задачи в классной комнате (LessonTask)
+    - работы новой системы (Submission/Assignment)
     Показывает очередь "что проверить" с фильтрами.
     """
     # Параметры фильтров
     status = (request.args.get('status') or 'submitted').strip().lower()
+    source = (request.args.get('source') or 'all').strip().lower()  # all|lessons|assignments
     assignment_type = (request.args.get('assignment_type') or '').strip().lower()  # homework|classwork|exam
     student_query = (request.args.get('student') or '').strip()
 
@@ -639,56 +642,192 @@ def review_queue():
     if status not in allowed_statuses:
         status = 'submitted'
 
+    if source not in {'all', 'lessons', 'assignments'}:
+        source = 'all'
+
     allowed_types = {'homework', 'classwork', 'exam'}
     if assignment_type and assignment_type not in allowed_types:
         assignment_type = ''
 
-    q = LessonTask.query.options(
-        db.joinedload(LessonTask.lesson).joinedload(Lesson.student),
-        db.joinedload(LessonTask.task),
-    ).join(Lesson, Lesson.lesson_id == LessonTask.lesson_id).join(Student, Student.student_id == Lesson.student_id)
-
-    q = q.filter(LessonTask.status == status)
-    if assignment_type:
-        q = q.filter((LessonTask.assignment_type == assignment_type) | (LessonTask.assignment_type.is_(None) if assignment_type == 'homework' else False))
-
-    if student_query:
-        q = q.filter(Student.name.ilike(f'%{student_query}%'))
-
     scope = get_user_scope(current_user)
+    accessible_student_ids = None
     if not scope.get('can_see_all'):
-        accessible_student_ids = _resolve_accessible_student_ids(scope)
-        if not accessible_student_ids:
-            q = q.filter(False)
-        else:
-            q = q.filter(Lesson.student_id.in_(accessible_student_ids))
+        accessible_student_ids = _resolve_accessible_student_ids(scope) or []
+
+    # Счётчики для фильтра статуса (в пределах текущих фильтров type/student/source)
+    status_counts_lessons = {'submitted': 0, 'returned': 0, 'graded': 0, 'pending': 0}
+    status_counts_assignments = {'submitted': 0, 'returned': 0, 'graded': 0, 'pending': 0}
+
+    try:
+        ql = LessonTask.query.join(Lesson, Lesson.lesson_id == LessonTask.lesson_id).join(Student, Student.student_id == Lesson.student_id)
+        if assignment_type:
+            ql = ql.filter((LessonTask.assignment_type == assignment_type) | (LessonTask.assignment_type.is_(None) if assignment_type == 'homework' else False))
+        if student_query:
+            ql = ql.filter(Student.name.ilike(f'%{student_query}%'))
+        if accessible_student_ids is not None:
+            if not accessible_student_ids:
+                ql = ql.filter(False)
+            else:
+                ql = ql.filter(Lesson.student_id.in_(accessible_student_ids))
+        rows = ql.with_entities(LessonTask.status, db.func.count(LessonTask.lesson_task_id)).group_by(LessonTask.status).all()
+        for st, cnt in rows:
+            key = (st or '').strip().lower()
+            if key in status_counts_lessons:
+                status_counts_lessons[key] = int(cnt or 0)
+    except Exception:
+        pass
+
+    try:
+        qs0 = Submission.query.join(Student, Student.student_id == Submission.student_id).join(Assignment, Assignment.assignment_id == Submission.assignment_id)
+        if assignment_type:
+            qs0 = qs0.filter(Assignment.assignment_type == assignment_type)
+        if student_query:
+            qs0 = qs0.filter(Student.name.ilike(f'%{student_query}%'))
+        if not scope.get('can_see_all'):
+            qs0 = qs0.filter(Assignment.created_by_id == current_user.id)
+            if accessible_student_ids is not None:
+                if not accessible_student_ids:
+                    qs0 = qs0.filter(False)
+                else:
+                    qs0 = qs0.filter(Submission.student_id.in_(accessible_student_ids))
+        rows2 = qs0.with_entities(Submission.status, db.func.count(Submission.submission_id)).group_by(Submission.status).all()
+        raw = { (s or '').upper(): int(c or 0) for s, c in rows2 }
+        status_counts_assignments['submitted'] = raw.get('SUBMITTED', 0) + raw.get('LATE', 0)
+        status_counts_assignments['returned'] = raw.get('RETURNED', 0)
+        status_counts_assignments['graded'] = raw.get('GRADED', 0)
+        status_counts_assignments['pending'] = raw.get('ASSIGNED', 0) + raw.get('IN_PROGRESS', 0)
+    except Exception:
+        pass
+
+    if source == 'lessons':
+        status_counts = status_counts_lessons
+    elif source == 'assignments':
+        status_counts = status_counts_assignments
+    else:
+        status_counts = {
+            k: int(status_counts_lessons.get(k, 0)) + int(status_counts_assignments.get(k, 0))
+            for k in ['submitted', 'returned', 'graded', 'pending']
+        }
 
     lesson_cards = []
-    by_lesson = {}
-    tasks = q.order_by(Lesson.lesson_date.desc(), LessonTask.lesson_task_id.asc()).all()
-    for lt in tasks:
-        if not lt.lesson:
-            continue
-        lid = lt.lesson.lesson_id
-        if lid not in by_lesson:
-            by_lesson[lid] = {
-                'lesson': lt.lesson,
-                'student': lt.lesson.student,
-                'tasks': []
-            }
-        by_lesson[lid]['tasks'].append(lt)
+    if source in {'all', 'lessons'}:
+        q = LessonTask.query.options(
+            db.joinedload(LessonTask.lesson).joinedload(Lesson.student),
+            db.joinedload(LessonTask.task),
+        ).join(Lesson, Lesson.lesson_id == LessonTask.lesson_id).join(Student, Student.student_id == Lesson.student_id)
 
-    # сохраняем порядок по дате урока
-    for item in by_lesson.values():
-        lesson_cards.append(item)
-    lesson_cards.sort(key=lambda x: (x['lesson'].lesson_date or moscow_now()), reverse=True)
+        q = q.filter(LessonTask.status == status)
+        if assignment_type:
+            q = q.filter((LessonTask.assignment_type == assignment_type) | (LessonTask.assignment_type.is_(None) if assignment_type == 'homework' else False))
+
+        if student_query:
+            q = q.filter(Student.name.ilike(f'%{student_query}%'))
+
+        if accessible_student_ids is not None:
+            if not accessible_student_ids:
+                q = q.filter(False)
+            else:
+                q = q.filter(Lesson.student_id.in_(accessible_student_ids))
+
+        by_lesson = {}
+        tasks = q.order_by(Lesson.lesson_date.desc(), LessonTask.lesson_task_id.asc()).all()
+        for lt in tasks:
+            if not lt.lesson:
+                continue
+            lid = lt.lesson.lesson_id
+            if lid not in by_lesson:
+                by_lesson[lid] = {
+                    'lesson': lt.lesson,
+                    'student': lt.lesson.student,
+                    'tasks': []
+                }
+            by_lesson[lid]['tasks'].append(lt)
+
+        # сохраняем порядок по дате урока
+        for item in by_lesson.values():
+            lesson_cards.append(item)
+        lesson_cards.sort(key=lambda x: (x['lesson'].lesson_date or moscow_now()), reverse=True)
+
+    assignment_cards = []
+    if source in {'all', 'assignments'}:
+        # mapping фильтра статуса с UI -> Submission.status
+        status_map = {
+            'submitted': ['SUBMITTED', 'LATE'],
+            'returned': ['RETURNED'],
+            'graded': ['GRADED'],
+            'pending': ['ASSIGNED', 'IN_PROGRESS'],
+        }
+        statuses = status_map.get(status, ['SUBMITTED', 'LATE'])
+
+        qs = Submission.query.options(
+            db.joinedload(Submission.assignment),
+            db.joinedload(Submission.student),
+        ).join(Student, Student.student_id == Submission.student_id).join(Assignment, Assignment.assignment_id == Submission.assignment_id)
+
+        qs = qs.filter(Submission.status.in_(statuses))
+        if assignment_type:
+            qs = qs.filter(Assignment.assignment_type == assignment_type)
+        if student_query:
+            qs = qs.filter(or_(
+                Student.name.ilike(f'%{student_query}%'),
+                Assignment.title.ilike(f'%{student_query}%'),
+            ))
+
+        # доступ в assignments.submission_grade_view дополнительно ограничен created_by_id
+        if not scope.get('can_see_all'):
+            qs = qs.filter(Assignment.created_by_id == current_user.id)
+            if accessible_student_ids is not None:
+                if not accessible_student_ids:
+                    qs = qs.filter(False)
+                else:
+                    qs = qs.filter(Submission.student_id.in_(accessible_student_ids))
+
+        now_local = moscow_now()
+
+        def _sub_key(s: Submission):
+            # приоритет: просрочено по дедлайну > LATE > время сдачи/обновления
+            try:
+                deadline = s.assignment.deadline if (s and s.assignment) else None
+            except Exception:
+                deadline = None
+            overdue_flag = 1 if (deadline and now_local > deadline and (s.status or '').upper() in ['SUBMITTED', 'LATE']) else 0
+            late_flag = 1 if (s.status or '').upper() == 'LATE' else 0
+            dt = (s.submitted_at or s.updated_at or s.assigned_at or now_local)
+            return (overdue_flag, late_flag, dt)
+
+        by_assignment = {}
+        subs = qs.order_by(Submission.submitted_at.desc().nullslast(), Submission.assigned_at.desc()).limit(400).all()
+        for sub in subs:
+            a = sub.assignment
+            if not a:
+                continue
+            aid = a.assignment_id
+            if aid not in by_assignment:
+                by_assignment[aid] = {
+                    'assignment': a,
+                    'submissions': [],
+                    '_sort_key': _sub_key(sub),
+                }
+            by_assignment[aid]['submissions'].append(sub)
+            # обновляем sort_key по самой свежей сдаче
+            if _sub_key(sub) > by_assignment[aid]['_sort_key']:
+                by_assignment[aid]['_sort_key'] = _sub_key(sub)
+
+        assignment_cards = list(by_assignment.values())
+        assignment_cards.sort(key=lambda x: x.get('_sort_key') or (0, 0, now_local), reverse=True)
+        # чистим служебное поле
+        for c in assignment_cards:
+            c.pop('_sort_key', None)
 
     return render_template(
         'review_queue.html',
         lesson_cards=lesson_cards,
+        assignment_cards=assignment_cards,
         status=status,
+        source=source,
         assignment_type=assignment_type,
-        student_query=student_query
+        student_query=student_query,
+        status_counts=status_counts,
     )
 
 
@@ -1401,6 +1540,22 @@ def lesson_messages_send(lesson_id: int):
         logger.warning(f"Failed to enqueue notification for lesson message: {e}")
 
     db.session.commit()
+
+    try:
+        audit_logger.log(
+            action='lesson_message_send',
+            entity='Lesson',
+            entity_id=lesson.lesson_id,
+            status='success',
+            metadata={
+                'message_id': msg.message_id,
+                'author_user_id': current_user.id,
+                'student_id': lesson.student_id,
+                'body_len': len(body),
+            },
+        )
+    except Exception:
+        pass
     return jsonify({'success': True, 'message_id': msg.message_id})
 
 @lessons_bp.route('/lesson/<int:lesson_id>/homework-auto-check', methods=['POST'])
@@ -1933,6 +2088,19 @@ def lesson_student_notes_save(lesson_id):
     if data and 'notes' in data:
         lesson.student_notes = data['notes']
         db.session.commit()
+        try:
+            audit_logger.log(
+                action='lesson_student_notes_save',
+                entity='Lesson',
+                entity_id=lesson.lesson_id,
+                status='success',
+                metadata={
+                    'student_id': lesson.student_id,
+                    'notes_len': len((data.get('notes') or '')),
+                },
+            )
+        except Exception:
+            pass
         return jsonify({'success': True})
     return jsonify({'success': False, 'error': 'No notes provided'}), 400
 

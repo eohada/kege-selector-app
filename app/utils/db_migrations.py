@@ -8,6 +8,7 @@ from core.db_models import (
     Tester, AuditLog, RolePermission, User,
     UserNotification,
     LessonMessage,
+    InviteLink,
     LessonTaskTeacherComment, TaskReview,
     Course, CourseModule,
     StudentLearningPlanItem,
@@ -318,6 +319,15 @@ def ensure_schema_columns(app):
                     logger.info("LessonMessages table created")
                 except Exception as e:
                     logger.warning(f"Could not create LessonMessages table: {e}")
+                    db.session.rollback()
+
+            # Фундамент: приглашения (онбординг)
+            if 'InviteLinks' not in table_names and 'invitelinks' not in table_names:
+                try:
+                    InviteLink.__table__.create(db.engine)
+                    logger.info("InviteLinks table created")
+                except Exception as e:
+                    logger.warning(f"Could not create InviteLinks table: {e}")
                     db.session.rollback()
 
             # Фундамент: библиотека материалов и шаблоны комнат/уроков

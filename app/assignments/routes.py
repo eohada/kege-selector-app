@@ -22,6 +22,173 @@ from app.notifications.service import notify_student_and_parents
 
 logger = logging.getLogger(__name__)
 
+@assignments_bp.route('/assignments/<int:assignment_id>/reviews/bulk', methods=['POST'])
+@login_required
+@check_access('assignment.grade')
+def assignment_review_bulk_update(assignment_id: int):
+    """
+    Массовые действия по сдачам конкретной работы (Submission).
+    Сейчас используем в "Журнале проверок": быстро вернуть все сданные работы на доработку.
+    """
+    if current_user.is_student() or current_user.is_parent():  # comment
+        return redirect(url_for('main.dashboard'))  # comment
+
+    action = (request.form.get('action') or '').strip().lower()
+    status_filter = (request.form.get('status') or 'submitted').strip().lower()
+    source = (request.form.get('source') or 'all').strip().lower()
+    assignment_type = (request.form.get('assignment_type') or '').strip().lower()
+    student_query = (request.form.get('student') or '').strip()
+
+    if action not in {'mark_returned'}:
+        flash('Некорректное действие.', 'danger')
+        return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
+
+    assignment = Assignment.query.get_or_404(assignment_id)
+
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all') and assignment.created_by_id != current_user.id:
+        flash('Доступ запрещен', 'danger')
+        return redirect(url_for('assignments.assignments_list'))
+
+    q = Submission.query.options(joinedload(Submission.student)).filter(Submission.assignment_id == assignment.assignment_id)
+    # Для массового действия "вернуть" берём только реально сданные
+    q = q.filter(Submission.status.in_(['SUBMITTED', 'LATE']))
+
+    # Доп. скоуп по ученикам (если окружение не "все видят")
+    if not scope.get('can_see_all'):
+        accessible_student_ids = scope.get('student_ids') or []
+        if accessible_student_ids:
+            q = q.filter(Submission.student_id.in_(accessible_student_ids))
+
+    subs = q.all()
+    if not subs:
+        flash('Нет сданных работ для массового действия.', 'info')
+        return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
+
+    updated = 0
+    for sub in subs:
+        sub.status = 'RETURNED'
+        try:
+            # Снимок попытки: полезно для истории пересдач (returned тоже важен)
+            _record_submission_attempt(sub)
+        except Exception:
+            pass
+
+        # Уведомления: только внутренние (email не используем)
+        try:
+            if sub.student:
+                notify_student_and_parents(
+                    sub.student,
+                    kind='assignment_returned',
+                    title='Работа возвращена на доработку',
+                    body=None,
+                    link_url=url_for('assignments.submission_view', submission_id=sub.submission_id),
+                    meta={'assignment_id': assignment.assignment_id, 'submission_id': sub.submission_id, 'status': 'RETURNED'},
+                )
+        except Exception:
+            pass
+        updated += 1
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Bulk return failed for assignment {assignment_id}: {e}", exc_info=True)
+        audit_logger.log_error(action='assignment_bulk_returned', entity='Assignment', entity_id=assignment_id, error=str(e))
+        flash('Ошибка при массовом обновлении статуса.', 'danger')
+        return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
+
+    try:
+        audit_logger.log(
+            action='assignment_bulk_returned',
+            entity='Assignment',
+            entity_id=assignment.assignment_id,
+            status='success',
+            metadata={'updated': updated},
+        )
+    except Exception:
+        pass
+
+    flash('Сданные работы возвращены на доработку.', 'success')
+    return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
+
+
+@assignments_bp.route('/submissions/<int:submission_id>/quick-return', methods=['POST'])
+@login_required
+@check_access('assignment.grade')
+def submission_quick_return(submission_id: int):
+    """Быстро вернуть 1 сдачу на доработку прямо из очереди проверок."""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        return redirect(url_for('main.dashboard'))  # comment
+
+    status_filter = (request.form.get('status') or 'submitted').strip().lower()
+    source = (request.form.get('source') or 'all').strip().lower()
+    assignment_type = (request.form.get('assignment_type') or '').strip().lower()
+    student_query = (request.form.get('student') or '').strip()
+
+    submission = Submission.query.options(
+        joinedload(Submission.assignment),
+        joinedload(Submission.student),
+    ).get_or_404(submission_id)
+
+    assignment = submission.assignment
+    if not assignment:
+        flash('Работа не найдена.', 'danger')
+        return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
+
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all') and assignment.created_by_id != current_user.id:
+        flash('Доступ запрещен', 'danger')
+        return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
+
+    # Возвращать можно только из "сдано" (SUBMITTED/LATE)
+    if (submission.status or '').upper() not in {'SUBMITTED', 'LATE'}:
+        flash('Эту сдачу нельзя вернуть из текущего статуса.', 'warning')
+        return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
+
+    submission.status = 'RETURNED'
+    try:
+        _record_submission_attempt(submission)
+    except Exception:
+        pass
+
+    try:
+        if submission.student:
+            notify_student_and_parents(
+                submission.student,
+                kind='assignment_returned',
+                title='Работа возвращена на доработку',
+                body=None,
+                link_url=url_for('assignments.submission_view', submission_id=submission.submission_id),
+                meta={'assignment_id': assignment.assignment_id, 'submission_id': submission.submission_id, 'status': 'RETURNED'},
+            )
+    except Exception:
+        pass
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Quick return failed for submission {submission_id}: {e}", exc_info=True)
+        audit_logger.log_error(action='submission_quick_returned', entity='Submission', entity_id=submission_id, error=str(e))
+        flash('Ошибка при возврате на доработку.', 'danger')
+        return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
+
+    try:
+        audit_logger.log(
+            action='submission_quick_returned',
+            entity='Submission',
+            entity_id=submission.submission_id,
+            status='success',
+            metadata={'assignment_id': assignment.assignment_id, 'student_id': submission.student_id},
+        )
+    except Exception:
+        pass
+
+    flash('Сдача возвращена на доработку.', 'success')
+    return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
+
+
 def _upsert_gradebook_from_submission(submission: Submission, actor_user_id: int | None = None) -> None:
     """Создаёт/обновляет запись в журнале по результату проверенной работы."""
     if not submission:

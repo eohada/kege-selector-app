@@ -138,6 +138,12 @@
                     <span>Группы</span>
                 </a>
                 {% endif %}
+                {% if current_user.is_authenticated and has_permission(current_user, 'onboarding.view') %}
+                <a href="{{ url_for('onboarding.invites_list') }}" class="dropdown-item {% if active_page == 'onboarding' %}active{% endif %}">
+                    <img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" class="nav-link-icon">
+                    <span>Приглашения</span>
+                </a>
+                {% endif %}
                 <a href="{{ url_for('kege_generator.kege_generator') }}" class="dropdown-item {% if active_page == 'generator' %}active{% endif %}">
                     <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" class="nav-link-icon">
                     <span>Генератор</span>

@@ -177,6 +177,7 @@ def create_app(config_name=None):
     from app.library import library_bp
     from app.groups import groups_bp
     from app.notifications import notifications_bp
+    from app.onboarding import onboarding_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -196,6 +197,7 @@ def create_app(config_name=None):
     app.register_blueprint(library_bp)
     app.register_blueprint(groups_bp)
     app.register_blueprint(notifications_bp)
+    app.register_blueprint(onboarding_bp)
     
     # Исключаем logout из CSRF защиты
     from app.auth.routes import logout

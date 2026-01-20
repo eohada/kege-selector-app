@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Приглашения</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+  {% include '_ux_enhancements.html' %}
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+</head>
+<body>
+  <div class="app-shell">
+    {% set active_page = 'onboarding' %}
+    {% include '_primary_nav.html' %}
+
+    <section class="glass-panel" style="margin-bottom: 1.25rem;">
+      <p class="hero-eyebrow">онбординг</p>
+      <h1 class="hero-title" style="margin-bottom:.25rem;">Приглашения</h1>
+      <div style="color: var(--text-muted);">Создай ссылку-приглашение и передай пользователю. Без email/Telegram — просто копипаст ссылки.</div>
+    </section>
+
+    {% if has_permission and has_permission(current_user, 'onboarding.invite') %}
+    <section class="glass-panel" style="margin-bottom: 1.25rem;">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">создать</p>
+          <h2>Новое приглашение</h2>
+        </div>
+      </div>
+      <form method="POST" action="{{ url_for('onboarding.invites_create') }}" data-no-ajax="1" style="margin-top: 1rem;">
+        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+        <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap: 1rem;" class="profile-grid-responsive">
+          <div class="neo-field">
+            <label class="neo-label">Email *</label>
+            <input class="neo-input" name="email" placeholder="user@example.com" required>
+          </div>
+          <div class="neo-field">
+            <label class="neo-label">Роль</label>
+            <select class="neo-select" name="role">
+              <option value="student">student</option>
+              <option value="parent">parent</option>
+              <option value="tutor">tutor</option>
+            </select>
+          </div>
+          <div class="neo-field" style="grid-column: 1 / -1;">
+            <label class="neo-label">Примечание</label>
+            <input class="neo-input" name="note" placeholder="Например: мама Ивана, доступ full / ученик 10А">
+          </div>
+          <div class="neo-field" style="grid-column: 1 / -1;">
+            <label class="neo-label">Student ID (опционально, только для student)</label>
+            <input class="neo-input" type="number" name="student_id" placeholder="Например: 28">
+          </div>
+        </div>
+        <div style="margin-top: 1rem; display:flex; justify-content: flex-end;">
+          <button type="submit" class="neo-button accent">Создать приглашение</button>
+        </div>
+      </form>
+    </section>
+    {% endif %}
+
+    <section class="glass-panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">история</p>
+          <h2>Последние приглашения</h2>
+        </div>
+      </div>
+
+      {% if invites and invites|length > 0 %}
+        <div style="display:grid; gap:.85rem; margin-top: 1rem;">
+          {% for i in invites %}
+            <div style="border:1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1rem; background: rgba(255,255,255,0.02);">
+              <div style="display:flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                <div>
+                  <div style="font-weight: 900;">{{ i.email }} · <span style="color: var(--accent-1);">{{ i.role }}</span></div>
+                  <div style="color: var(--text-muted); font-size: .9rem; margin-top: .25rem;">
+                    Создано: {{ i.created_at.strftime('%d.%m.%Y %H:%M') if i.created_at else '—' }}
+                    {% if i.expires_at %} · истекает: {{ i.expires_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}
+                  </div>
+                  {% if i.note %}<div style="color: var(--text-muted); margin-top: .35rem; white-space: pre-line;">{{ i.note }}</div>{% endif %}
+                </div>
+                <div style="display:flex; gap:.6rem; align-items:center; flex-wrap: wrap;">
+                  {% if i.used_at %}
+                    <span class="status-badge status-success">использовано</span>
+                  {% else %}
+                    <span class="status-badge status-warning">не использовано</span>
+                  {% endif %}
+                </div>
+              </div>
+              <div style="margin-top: .75rem; color: var(--text-muted); font-size: .9rem;">
+                Токен хранится только в хэше (ссылку показываем только в момент создания через flash).
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state" style="padding: 2.5rem 1rem;">
+          <p>Приглашений пока нет.</p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
+

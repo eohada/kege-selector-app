@@ -5,6 +5,7 @@
 import logging
 import hmac
 import os
+from datetime import datetime
 from flask import request, jsonify
 from sqlalchemy import func, delete
 from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -941,19 +942,72 @@ def remote_admin_api_audit_logs():
     try:
         page = int(request.args.get('page', 1))
         per_page = int(request.args.get('per_page', 50))
-        action_filter = request.args.get('action')
+        if per_page < 1:
+            per_page = 50
+        if per_page > 200:
+            per_page = 200
+
+        action_filter = (request.args.get('action') or '').strip() or None
+        entity_filter = (request.args.get('entity') or '').strip() or None
+        status_filter = (request.args.get('status') or '').strip() or None
         user_id_filter = request.args.get('user_id')
+        date_from_raw = (request.args.get('date_from') or '').strip()
+        date_to_raw = (request.args.get('date_to') or '').strip()
+
+        def _parse_dt(s: str) -> datetime | None:
+            if not s:
+                return None
+            try:
+                # поддерживаем ISO и datetime-local; 'Z' -> +00:00
+                dt = datetime.fromisoformat(s.replace('Z', '+00:00'))
+                return dt.replace(tzinfo=None)
+            except Exception:
+                return None
+
+        date_from = _parse_dt(date_from_raw)
+        date_to = _parse_dt(date_to_raw)
         
         query = AuditLog.query
         
         if action_filter:
             query = query.filter(AuditLog.action == action_filter)
+        if entity_filter:
+            query = query.filter(AuditLog.entity == entity_filter)
+        if status_filter:
+            query = query.filter(AuditLog.status == status_filter)
         if user_id_filter:
             query = query.filter(AuditLog.user_id == int(user_id_filter))
+        if date_from:
+            query = query.filter(AuditLog.timestamp >= date_from)
+        if date_to:
+            query = query.filter(AuditLog.timestamp <= date_to)
         
         logs = query.order_by(AuditLog.timestamp.desc()).paginate(
             page=page, per_page=per_page, error_out=False
         )
+
+        # Справочники для UI (ограничены, чтобы не грузить БД)
+        try:
+            available_actions = [
+                r[0] for r in AuditLog.query.with_entities(AuditLog.action).distinct().order_by(AuditLog.action.asc()).limit(500).all()
+                if r and r[0]
+            ]
+        except Exception:
+            available_actions = []
+        try:
+            available_entities = [
+                r[0] for r in AuditLog.query.with_entities(AuditLog.entity).distinct().order_by(AuditLog.entity.asc()).limit(500).all()
+                if r and r[0]
+            ]
+        except Exception:
+            available_entities = []
+        try:
+            available_statuses = [
+                r[0] for r in AuditLog.query.with_entities(AuditLog.status).distinct().order_by(AuditLog.status.asc()).limit(50).all()
+                if r and r[0]
+            ]
+        except Exception:
+            available_statuses = ['success', 'error', 'warning', 'info']
         
         return jsonify({
             'success': True,
@@ -967,6 +1021,20 @@ def remote_admin_api_audit_logs():
                 'status': log.status,
                 'metadata': log.metadata
             } for log in logs.items],
+            'filters': {
+                'action': action_filter or '',
+                'entity': entity_filter or '',
+                'status': status_filter or '',
+                'user_id': int(user_id_filter) if user_id_filter else None,
+                'date_from': date_from_raw,
+                'date_to': date_to_raw,
+                'per_page': per_page,
+            },
+            'meta': {
+                'actions': available_actions,
+                'entities': available_entities,
+                'statuses': available_statuses,
+            },
             'pagination': {
                 'page': logs.page,
                 'per_page': logs.per_page,

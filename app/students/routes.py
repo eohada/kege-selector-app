@@ -8,6 +8,9 @@ from flask_login import login_required
 from sqlalchemy import text  # text нужен для выполнения SQL setval(pg_get_serial_sequence(...)) при сбитых sequences
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from datetime import datetime
+import csv
+import io
+from flask import Response
 
 from app.students import students_bp
 from app.students.forms import StudentForm, normalize_school_class
@@ -482,7 +485,30 @@ def student_learning_plan_item_create(student_id: int):
         created_by_user_id=current_user.id,
     )
     db.session.add(item)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        audit_logger.log_error(action='plan_item_create', entity='StudentLearningPlanItem', error=str(e))
+        flash('Не удалось добавить пункт траектории.', 'danger')
+        return redirect(url_for('students.student_learning_plan', student_id=student.student_id))
+
+    try:
+        audit_logger.log(
+            action='plan_item_create',
+            entity='StudentLearningPlanItem',
+            entity_id=item.item_id,
+            status='success',
+            metadata={
+                'student_id': student.student_id,
+                'title': item.title,
+                'status': item.status,
+                'due_date': item.due_date.isoformat() if item.due_date else None,
+                'priority': item.priority,
+            },
+        )
+    except Exception:
+        pass
     flash('Пункт траектории добавлен.', 'success')
     return redirect(url_for('students.student_learning_plan', student_id=student.student_id))
 
@@ -514,7 +540,30 @@ def student_learning_plan_item_update(student_id: int, item_id: int):
     item.topic_id = request.form.get('topic_id', type=int) or None
     item.course_module_id = request.form.get('course_module_id', type=int) or None
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        audit_logger.log_error(action='plan_item_update', entity='StudentLearningPlanItem', entity_id=item.item_id, error=str(e))
+        flash('Не удалось обновить пункт траектории.', 'danger')
+        return redirect(url_for('students.student_learning_plan', student_id=student.student_id))
+
+    try:
+        audit_logger.log(
+            action='plan_item_update',
+            entity='StudentLearningPlanItem',
+            entity_id=item.item_id,
+            status='success',
+            metadata={
+                'student_id': student.student_id,
+                'title': item.title,
+                'status': item.status,
+                'due_date': item.due_date.isoformat() if item.due_date else None,
+                'priority': item.priority,
+            },
+        )
+    except Exception:
+        pass
     flash('Пункт траектории обновлён.', 'success')
     return redirect(url_for('students.student_learning_plan', student_id=student.student_id))
 
@@ -528,8 +577,26 @@ def student_learning_plan_item_delete(student_id: int, item_id: int):
         abort(403)
 
     item = StudentLearningPlanItem.query.filter_by(item_id=item_id, student_id=student.student_id).first_or_404()
+    meta = {'student_id': student.student_id, 'title': item.title, 'status': item.status}
     db.session.delete(item)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        audit_logger.log_error(action='plan_item_delete', entity='StudentLearningPlanItem', entity_id=item_id, error=str(e))
+        flash('Не удалось удалить пункт траектории.', 'danger')
+        return redirect(url_for('students.student_learning_plan', student_id=student.student_id))
+
+    try:
+        audit_logger.log(
+            action='plan_item_delete',
+            entity='StudentLearningPlanItem',
+            entity_id=item_id,
+            status='success',
+            metadata=meta,
+        )
+    except Exception:
+        pass
     flash('Пункт траектории удалён.', 'success')
     return redirect(url_for('students.student_learning_plan', student_id=student.student_id))
 
@@ -624,7 +691,35 @@ def student_gradebook_create(student_id: int):
         created_by_user_id=current_user.id,
     )
     db.session.add(entry)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        audit_logger.log_error(action='gradebook_create', entity='GradebookEntry', error=str(e))
+        flash('Не удалось добавить запись в журнал.', 'danger')
+        return redirect(url_for('students.student_gradebook', student_id=student.student_id))
+
+    try:
+        audit_logger.log(
+            action='gradebook_create',
+            entity='GradebookEntry',
+            entity_id=entry.entry_id,
+            status='success',
+            metadata={
+                'student_id': student.student_id,
+                'kind': entry.kind,
+                'category': entry.category,
+                'title': entry.title,
+                'score': entry.score,
+                'max_score': entry.max_score,
+                'grade_text': entry.grade_text,
+                'weight': entry.weight,
+                'lesson_id': entry.lesson_id,
+                'submission_id': entry.submission_id,
+            },
+        )
+    except Exception:
+        pass
     flash('Запись добавлена.', 'success')
     return redirect(url_for('students.student_gradebook', student_id=student.student_id))
 
@@ -668,7 +763,35 @@ def student_gradebook_update(student_id: int, entry_id: int):
         else:
             entry.submission_id = None
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        audit_logger.log_error(action='gradebook_update', entity='GradebookEntry', entity_id=entry.entry_id, error=str(e))
+        flash('Не удалось обновить запись в журнале.', 'danger')
+        return redirect(url_for('students.student_gradebook', student_id=student.student_id))
+
+    try:
+        audit_logger.log(
+            action='gradebook_update',
+            entity='GradebookEntry',
+            entity_id=entry.entry_id,
+            status='success',
+            metadata={
+                'student_id': student.student_id,
+                'kind': entry.kind,
+                'category': entry.category,
+                'title': entry.title,
+                'score': entry.score,
+                'max_score': entry.max_score,
+                'grade_text': entry.grade_text,
+                'weight': entry.weight,
+                'lesson_id': entry.lesson_id,
+                'submission_id': entry.submission_id,
+            },
+        )
+    except Exception:
+        pass
     flash('Запись обновлена.', 'success')
     return redirect(url_for('students.student_gradebook', student_id=student.student_id))
 
@@ -682,10 +805,89 @@ def student_gradebook_delete(student_id: int, entry_id: int):
         abort(403)
 
     entry = GradebookEntry.query.filter_by(entry_id=entry_id, student_id=student.student_id).first_or_404()
+    meta = {
+        'student_id': student.student_id,
+        'kind': entry.kind,
+        'category': entry.category,
+        'title': entry.title,
+        'score': entry.score,
+        'max_score': entry.max_score,
+        'grade_text': entry.grade_text,
+        'weight': entry.weight,
+        'lesson_id': entry.lesson_id,
+        'submission_id': entry.submission_id,
+    }
     db.session.delete(entry)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        audit_logger.log_error(action='gradebook_delete', entity='GradebookEntry', entity_id=entry_id, error=str(e))
+        flash('Не удалось удалить запись из журнала.', 'danger')
+        return redirect(url_for('students.student_gradebook', student_id=student.student_id))
+
+    try:
+        audit_logger.log(
+            action='gradebook_delete',
+            entity='GradebookEntry',
+            entity_id=entry_id,
+            status='success',
+            metadata=meta,
+        )
+    except Exception:
+        pass
     flash('Запись удалена.', 'success')
     return redirect(url_for('students.student_gradebook', student_id=student.student_id))
+
+
+@students_bp.route('/student/<int:student_id>/gradebook.csv')
+@login_required
+def student_gradebook_export_csv(student_id: int):
+    """Экспорт журнала ученика в CSV."""
+    student = _guard_student_access(student_id)
+    if not has_permission(current_user, 'gradebook.view'):
+        from flask import abort
+        abort(403)
+
+    entries = GradebookEntry.query.filter_by(student_id=student.student_id).order_by(
+        GradebookEntry.created_at.asc(),
+        GradebookEntry.entry_id.asc(),
+    ).all()
+
+    try:
+        audit_logger.log(
+            action='export_gradebook_csv',
+            entity='Student',
+            entity_id=student.student_id,
+            status='success',
+            metadata={'entries_count': len(entries)},
+        )
+    except Exception:
+        pass
+
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(['created_at', 'kind', 'category', 'title', 'score', 'max_score', 'grade_text', 'weight', 'comment'])
+    for e in entries:
+        w.writerow([
+            e.created_at.isoformat() if e.created_at else '',
+            e.kind or '',
+            e.category or '',
+            e.title or '',
+            '' if e.score is None else e.score,
+            '' if e.max_score is None else e.max_score,
+            e.grade_text or '',
+            e.weight if e.weight is not None else '',
+            (e.comment or '').replace('\r', '').replace('\n', ' ').strip(),
+        ])
+
+    csv_bytes = buf.getvalue().encode('utf-8-sig')
+    filename = f'gradebook-student-{student.student_id}.csv'
+    return Response(
+        csv_bytes,
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )
 
 
 @students_bp.route('/student/<int:student_id>/statistics')

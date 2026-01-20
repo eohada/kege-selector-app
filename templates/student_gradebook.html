@@ -37,6 +37,7 @@
         </div>
         <div class="hero-actions">
           <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Профиль</a>
+          <a href="{{ url_for('students.student_gradebook_export_csv', student_id=student.student_id) }}" class="neo-button outline">Экспорт CSV</a>
         </div>
       </div>
     </section>

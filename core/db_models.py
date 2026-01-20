@@ -547,6 +547,39 @@ class LessonMessage(db.Model):
     author = db.relationship('User', foreign_keys=[author_user_id])
 
 
+class InviteLink(db.Model):
+    """
+    Приглашение в систему (онбординг).
+
+    Flow:
+    - тьютор/админ создаёт invite (email + role + optional student_id)
+    - пользователь открывает /invite/<token> и задаёт пароль
+    - invite становится used
+    """
+    __tablename__ = 'InviteLinks'
+
+    invite_id = db.Column(db.Integer, primary_key=True)
+    token_hash = db.Column(db.String(128), nullable=False, unique=True, index=True)
+
+    email = db.Column(db.String(200), nullable=False, index=True)
+    role = db.Column(db.String(50), nullable=False, index=True)  # student|parent|tutor|...
+    note = db.Column(db.Text, nullable=True)
+
+    # Если это приглашение ученика — можно привязать к Students.student_id, чтобы заполнить email
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
+
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+    expires_at = db.Column(db.DateTime, nullable=True, index=True)
+
+    used_at = db.Column(db.DateTime, nullable=True, index=True)
+    used_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+    used_by = db.relationship('User', foreign_keys=[used_by_user_id])
+    student = db.relationship('Student', foreign_keys=[student_id])
+
+
 class Tester(db.Model):
 
     __tablename__ = 'Testers'

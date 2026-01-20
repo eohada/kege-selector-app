@@ -394,15 +394,28 @@ def audit_logs():
         return redirect(url_for('remote_admin.dashboard'))
     
     page = request.args.get('page', 1, type=int)
-    action = request.args.get('action', '').strip()
+    per_page = request.args.get('per_page', 50, type=int)
+    action = (request.args.get('action') or '').strip()
+    entity = (request.args.get('entity') or '').strip()
+    status = (request.args.get('status') or '').strip()
+    date_from = (request.args.get('date_from') or '').strip()
+    date_to = (request.args.get('date_to') or '').strip()
     user_id = request.args.get('user_id', type=int)
     
     try:
-        query_params = f"?page={page}"
+        query_params = f"?page={page}&per_page={per_page}"
         if action:
             query_params += f"&action={action}"
+        if entity:
+            query_params += f"&entity={entity}"
+        if status:
+            query_params += f"&status={status}"
         if user_id:
             query_params += f"&user_id={user_id}"
+        if date_from:
+            query_params += f"&date_from={date_from}"
+        if date_to:
+            query_params += f"&date_to={date_to}"
             
         resp = make_remote_request('GET', f'/internal/remote-admin/api/audit-logs{query_params}')
         
@@ -410,23 +423,41 @@ def audit_logs():
             data = resp.json()
             logs = data.get('logs', [])
             pagination = data.get('pagination', {})
+            meta = data.get('meta', {}) or {}
+            actions = meta.get('actions', []) or []
+            entities = meta.get('entities', []) or []
+            statuses = meta.get('statuses', []) or []
         else:
             logs = []
             pagination = {}
+            actions = []
+            entities = []
+            statuses = []
             flash(f'Ошибка загрузки логов: {resp.status_code}', 'error')
             
     except Exception as e:
         logger.error(f"Error loading audit logs: {e}", exc_info=True)
         logs = []
         pagination = {}
+        actions = []
+        entities = []
+        statuses = []
         flash(f'Ошибка загрузки логов: {str(e)}', 'error')
     
     return render_template('remote_admin/audit_logs.html',
                          logs=logs,
                          pagination=pagination,
+                         actions=actions,
+                         entities=entities,
+                         statuses=statuses,
                          current_environment=current_env,
                          environment_name=environments.get(current_env, {}).get('name', current_env),
                          filter_action=action,
+                         filter_entity=entity,
+                         filter_status=status,
+                         filter_date_from=date_from,
+                         filter_date_to=date_to,
+                         filter_per_page=per_page,
                          filter_user_id=user_id)
 
 

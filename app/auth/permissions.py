@@ -11,7 +11,8 @@ PERMISSION_CATEGORIES = {
     'finance': 'Финансы и статистика',
     'tools': 'Инструменты',
     'design': 'Дизайн и ассеты',
-    'groups': 'Группы/классы'
+    'groups': 'Группы/классы',
+    'onboarding': 'Онбординг'
 }
 
 # Список всех прав с описанием и категорией
@@ -41,6 +42,10 @@ ALL_PERMISSIONS = {
     # Группы/классы
     'groups.view': {'name': 'Просмотр групп/классов', 'category': 'groups'},
     'groups.manage': {'name': 'Управление группами/классами', 'category': 'groups'},
+
+    # Онбординг
+    'onboarding.view': {'name': 'Просмотр приглашений', 'category': 'onboarding'},
+    'onboarding.invite': {'name': 'Создание приглашений', 'category': 'onboarding'},
     
     # Финансы
     'finance.view_stats': {'name': 'Просмотр общей статистики', 'category': 'finance'},
@@ -63,7 +68,7 @@ DEFAULT_ROLE_PERMISSIONS = {
     'admin': list(ALL_PERMISSIONS.keys()),   # Все права
     'chief_tester': ['tools.testers', 'task.manage', 'user.view_list'],
     'designer': ['assets.manage'],
-    'tutor': ['lesson.create', 'lesson.edit', 'plan.view', 'plan.edit', 'gradebook.view', 'gradebook.edit', 'groups.view', 'groups.manage', 'user.view_list', 'tools.schedule', 'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view'],
+    'tutor': ['lesson.create', 'lesson.edit', 'plan.view', 'plan.edit', 'gradebook.view', 'gradebook.edit', 'groups.view', 'groups.manage', 'onboarding.view', 'onboarding.invite', 'user.view_list', 'tools.schedule', 'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view'],
     'student': ['plan.view', 'gradebook.view', 'assignment.view'],
     'parent': ['plan.view', 'gradebook.view', 'assignment.view'],
     'tester': []

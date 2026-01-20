@@ -97,28 +97,67 @@
                 </p>
             </div>
 
-            <form method="GET" class="filters-bar">
-                <div class="neo-field" style="margin: 0; flex: 1; max-width: 200px;">
-                    <select name="action" class="neo-input" onchange="this.form.submit()">
-                        <option value="">Все действия</option>
-                        <option value="login" {% if filter_action == 'login' %}selected{% endif %}>Вход в систему</option>
-                        <option value="logout" {% if filter_action == 'logout' %}selected{% endif %}>Выход</option>
-                        <option value="create_user" {% if filter_action == 'create_user' %}selected{% endif %}>Создание пользователя</option>
-                        <option value="delete_user" {% if filter_action == 'delete_user' %}selected{% endif %}>Удаление пользователя</option>
-                        <option value="toggle_maintenance" {% if filter_action == 'toggle_maintenance' %}selected{% endif %}>Режим обслуживания</option>
-                        <option value="admin_access" {% if filter_action == 'admin_access' %}selected{% endif %}>Доступ к админке</option>
+            <form method="GET" class="filters-bar" style="flex-wrap: wrap;">
+                <div class="neo-field" style="margin: 0; flex: 1; min-width: 220px; max-width: 320px;">
+                    <label class="neo-label" style="margin-bottom: .25rem;">Действие</label>
+                    <input name="action" class="neo-input" list="actions-list" placeholder="например: gradebook_update" value="{{ filter_action or '' }}">
+                    <datalist id="actions-list">
+                        {% for a in actions or [] %}
+                        <option value="{{ a }}"></option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+
+                <div class="neo-field" style="margin: 0; flex: 1; min-width: 220px; max-width: 320px;">
+                    <label class="neo-label" style="margin-bottom: .25rem;">Сущность</label>
+                    <input name="entity" class="neo-input" list="entities-list" placeholder="например: GradebookEntry" value="{{ filter_entity or '' }}">
+                    <datalist id="entities-list">
+                        {% for e in entities or [] %}
+                        <option value="{{ e }}"></option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+
+                <div class="neo-field" style="margin: 0; flex: 1; min-width: 160px; max-width: 200px;">
+                    <label class="neo-label" style="margin-bottom: .25rem;">Статус</label>
+                    <select name="status" class="neo-input">
+                        <option value="">Все</option>
+                        {% for s in (statuses or ['success','error','warning','info']) %}
+                        <option value="{{ s }}" {% if filter_status == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
                     </select>
                 </div>
-                
-                <div class="neo-field" style="margin: 0; flex: 1; max-width: 150px;">
+
+                <div class="neo-field" style="margin: 0; flex: 1; min-width: 140px; max-width: 160px;">
+                    <label class="neo-label" style="margin-bottom: .25rem;">User ID</label>
                     <input type="number" name="user_id" class="neo-input" placeholder="User ID" value="{{ filter_user_id or '' }}">
                 </div>
 
-                <button type="submit" class="neo-button">Фильтр</button>
-                
-                {% if filter_action or filter_user_id %}
-                <a href="{{ url_for('remote_admin.audit_logs') }}" class="neo-button ghost">Сбросить</a>
-                {% endif %}
+                <div class="neo-field" style="margin: 0; flex: 1; min-width: 220px; max-width: 260px;">
+                    <label class="neo-label" style="margin-bottom: .25rem;">Дата от</label>
+                    <input type="datetime-local" name="date_from" class="neo-input" value="{{ filter_date_from or '' }}">
+                </div>
+
+                <div class="neo-field" style="margin: 0; flex: 1; min-width: 220px; max-width: 260px;">
+                    <label class="neo-label" style="margin-bottom: .25rem;">Дата до</label>
+                    <input type="datetime-local" name="date_to" class="neo-input" value="{{ filter_date_to or '' }}">
+                </div>
+
+                <div class="neo-field" style="margin: 0; flex: 1; min-width: 120px; max-width: 140px;">
+                    <label class="neo-label" style="margin-bottom: .25rem;">На стр.</label>
+                    <select name="per_page" class="neo-input">
+                        {% for n in [25, 50, 100, 200] %}
+                        <option value="{{ n }}" {% if (filter_per_page or 50) == n %}selected{% endif %}>{{ n }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="neo-field" style="margin: 0; display:flex; align-items:flex-end; gap:.5rem;">
+                    <button type="submit" class="neo-button">Фильтр</button>
+                    {% if filter_action or filter_entity or filter_status or filter_user_id or filter_date_from or filter_date_to or (filter_per_page and filter_per_page != 50) %}
+                    <a href="{{ url_for('remote_admin.audit_logs') }}" class="neo-button ghost">Сбросить</a>
+                    {% endif %}
+                </div>
             </form>
 
             {% if logs %}
@@ -175,12 +214,12 @@
             {% if pagination.pages > 1 %}
             <div class="pagination">
                 {% if pagination.has_prev %}
-                <a href="{{ url_for('remote_admin.audit_logs', page=pagination.prev_num, action=filter_action, user_id=filter_user_id) }}" class="page-link">←</a>
+                <a href="{{ url_for('remote_admin.audit_logs', page=pagination.prev_num, per_page=filter_per_page, action=filter_action, entity=filter_entity, status=filter_status, user_id=filter_user_id, date_from=filter_date_from, date_to=filter_date_to) }}" class="page-link">←</a>
                 {% endif %}
                 
                 {% for p in pagination.iter_pages %}
                     {% if p %}
-                        <a href="{{ url_for('remote_admin.audit_logs', page=p, action=filter_action, user_id=filter_user_id) }}" class="page-link {% if p == pagination.page %}active{% endif %}">
+                        <a href="{{ url_for('remote_admin.audit_logs', page=p, per_page=filter_per_page, action=filter_action, entity=filter_entity, status=filter_status, user_id=filter_user_id, date_from=filter_date_from, date_to=filter_date_to) }}" class="page-link {% if p == pagination.page %}active{% endif %}">
                             {{ p }}
                         </a>
                     {% else %}
@@ -189,7 +228,7 @@
                 {% endfor %}
                 
                 {% if pagination.has_next %}
-                <a href="{{ url_for('remote_admin.audit_logs', page=pagination.next_num, action=filter_action, user_id=filter_user_id) }}" class="page-link">→</a>
+                <a href="{{ url_for('remote_admin.audit_logs', page=pagination.next_num, per_page=filter_per_page, action=filter_action, entity=filter_entity, status=filter_status, user_id=filter_user_id, date_from=filter_date_from, date_to=filter_date_to) }}" class="page-link">→</a>
                 {% endif %}
             </div>
             {% endif %}

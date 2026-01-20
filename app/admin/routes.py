@@ -839,6 +839,10 @@ def admin_audit():
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
+    # Аудит перенесён в удалённую админку (remote_admin сервис).
+    flash('Журнал аудита перенесён в «Удалённую админку» → «Логи действий».', 'info')
+    return redirect(url_for('remote_admin.audit_logs'))
+
     try:
         # Проверяем, существует ли таблица AuditLog
         try:
