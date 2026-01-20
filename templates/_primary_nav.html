@@ -124,6 +124,12 @@
                     <span>Проверка</span>
                 </a>
                 {% endif %}
+                {% if current_user.is_authenticated and has_permission(current_user, 'trainer.use') %}
+                <a href="{{ url_for('trainer.trainer_embed') }}" class="dropdown-item {% if active_page == 'trainer' %}active{% endif %}">
+                    <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" class="nav-link-icon">
+                    <span>Тренажёр</span>
+                </a>
+                {% endif %}
                 <a href="{{ url_for('reminders.reminders_list') }}" class="dropdown-item {% if active_page == 'reminders' %}active{% endif %}">
                     <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" class="nav-link-icon">
                     <span>Напоминания</span>

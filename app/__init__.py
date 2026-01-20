@@ -59,6 +59,8 @@ def create_app(config_name=None):
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'local-dev-key-12345')
     app.config['WTF_CSRF_ENABLED'] = True
     app.config['WTF_CSRF_TIME_LIMIT'] = None
+    app.config['TRAINER_URL'] = (os.environ.get('TRAINER_URL') or '').strip() or None
+    app.config['TRAINER_SHARED_SECRET'] = (os.environ.get('TRAINER_SHARED_SECRET') or '').strip() or None
     
     # Определение окружения (production, sandbox, local)
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
@@ -180,6 +182,7 @@ def create_app(config_name=None):
     from app.onboarding import onboarding_bp
     from app.rubrics import rubrics_bp
     from app.billing import billing_bp
+    from app.trainer import trainer_bp
     from app.uploads import uploads_bp
     
     app.register_blueprint(auth_bp)
@@ -203,6 +206,7 @@ def create_app(config_name=None):
     app.register_blueprint(onboarding_bp)
     app.register_blueprint(rubrics_bp)
     app.register_blueprint(billing_bp)
+    app.register_blueprint(trainer_bp)
     app.register_blueprint(uploads_bp)
     
     # Исключаем logout из CSRF защиты

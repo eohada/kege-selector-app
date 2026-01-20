@@ -1,0 +1,23 @@
+{
+  "task_id": 5164,
+  "task_number": 24,
+  "language": "python",
+  "title": "Максимальная длина подряд идущих одинаковых букв",
+  "reference_solution": "def solve(s: str) -> int:\n    if not s:\n        return 0\n    best = 1\n    cur = 1\n    for i in range(1, len(s)):\n        if s[i] == s[i-1]:\n            cur += 1\n        else:\n            if cur > best:\n                best = cur\n            cur = 1\n    if cur > best:\n        best = cur\n    return best\n\nif __name__ == '__main__':\n    with open('24.txt', 'r', encoding='utf-8') as f:\n        s = f.read().strip()\n    print(solve(s))\n",
+  "common_mistakes": [
+    "Начинать счётчики с 0, из-за чего ответ на строку из 1 символа становится 0.",
+    "Не обновлять максимум в конце.",
+    "Сравнивать с неправильным индексом (например, s[i] с s[i+1])."
+  ],
+  "hint_ladder": [
+    { "level": 1, "hint": "Это классическая задача про длину серии одинаковых символов." },
+    { "level": 2, "hint": "Если символ равен предыдущему — увеличь текущую серию, иначе начни новую." },
+    { "level": 3, "hint": "Максимум обновляй каждый раз, когда серия заканчивается (и после цикла тоже)." }
+  ],
+  "tests": [
+    { "name": "single", "input": "A", "expected": "1" },
+    { "name": "runs", "input": "AAABBBCCDDDD", "expected": "4" },
+    { "name": "no_runs", "input": "FAIL", "expected": "1" }
+  ]
+}
+

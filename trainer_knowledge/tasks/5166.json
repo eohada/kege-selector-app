@@ -1,0 +1,33 @@
+{
+  "task_id": 5166,
+  "task_number": 24,
+  "language": "python",
+  "title": "Максимальная длина участка без одинаковых соседей",
+  "reference_solution": "def solve(s: str) -> int:\n    # Ищем максимальную длину подряд идущих символов,\n    # где любые два соседних различны.\n    if not s:\n        return 0\n    best = 1\n    cur = 1\n    for i in range(1, len(s)):\n        if s[i] != s[i-1]:\n            cur += 1\n        else:\n            if cur > best:\n                best = cur\n            cur = 1\n    if cur > best:\n        best = cur\n    return best\n\nif __name__ == '__main__':\n    with open('24.txt', 'r', encoding='utf-8') as f:\n        s = f.read().strip()\n    print(solve(s))\n",
+  "common_mistakes": [
+    "Сбрасывать счётчик не на 1, а на 0 после одинаковых соседей.",
+    "Забыть обновить максимум после цикла (последний участок).",
+    "Читать файл построчно и терять символы перевода строки/пробелы без понимания, что именно нужно считать."
+  ],
+  "hint_ladder": [
+    {
+      "level": 1,
+      "hint": "Попробуй пройти по строке слева направо и вести длину текущего подходящего участка."
+    },
+    {
+      "level": 2,
+      "hint": "Текущий участок продолжается, если текущий символ не равен предыдущему."
+    },
+    {
+      "level": 3,
+      "hint": "При равных соседях нужно «закрыть» текущий участок: обновить максимум и начать новый с длиной 1."
+    }
+  ],
+  "tests": [
+    { "name": "empty", "input": "", "expected": "0" },
+    { "name": "all_same", "input": "XXXXXX", "expected": "1" },
+    { "name": "alternating", "input": "XYZXYZ", "expected": "6" },
+    { "name": "breaks", "input": "XYZZY", "expected": "3" }
+  ]
+}
+

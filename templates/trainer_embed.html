@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тренажёр</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+  {% include '_ux_enhancements.html' %}
+  {% if csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  {% endif %}
+  <style>
+    .iframe-wrap {
+      margin-top: 1.25rem;
+      border: 1px solid var(--stroke-1);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      background: rgba(255,255,255,0.02);
+    }
+    .iframe-wrap iframe {
+      width: 100%;
+      height: calc(100vh - 190px);
+      border: 0;
+      display: block;
+      background: transparent;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    {% set active_page = 'trainer' %}
+    {% include '_primary_nav.html' %}
+
+    <main style="margin-top: 1.25rem;">
+      <section class="glass-panel" style="margin-bottom: 1.25rem;">
+        <p class="hero-eyebrow">тренажёр</p>
+        <h1 class="hero-title" style="margin-bottom:.25rem;">Виртуальный помощник</h1>
+        <div style="color: var(--text-muted);">
+          Помощник анализирует ваш код и задаёт наводящие вопросы, помогая дойти до решения.
+        </div>
+      </section>
+
+      {% if not trainer_url or not iframe_url %}
+        <section class="glass-panel" style="padding: 1.5rem;">
+          <div style="font-weight: 900; font-size: 1.1rem;">Тренажёр не настроен</div>
+          <div style="color: var(--text-muted); margin-top:.35rem;">
+            {% if config_error %}
+              {{ config_error }}
+            {% else %}
+              Не задана переменная окружения <code>TRAINER_URL</code> (URL Streamlit-сервиса).
+            {% endif %}
+          </div>
+        </section>
+      {% else %}
+        <div class="iframe-wrap">
+          <iframe src="{{ iframe_url }}" allow="clipboard-write"></iframe>
+        </div>
+      {% endif %}
+    </main>
+  </div>
+  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
+

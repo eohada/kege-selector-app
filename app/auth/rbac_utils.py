@@ -26,8 +26,15 @@ def has_permission(user, permission_name):
         return True
         
     # 1. Индивидуальные права (User override)
-    if user.custom_permissions and permission_name in user.custom_permissions:
-        return user.custom_permissions[permission_name]
+    # Важно: custom_permissions может быть повреждён/не тем типом (например, строка/лист),
+    # тогда не должны падать страницы (это может ломать вход только у одного пользователя).
+    try:
+        cp = getattr(user, 'custom_permissions', None)
+        if isinstance(cp, dict) and (permission_name in cp):
+            return bool(cp.get(permission_name))
+    except Exception:
+        # игнорируем повреждённые custom_permissions
+        pass
         
     # 2. Права роли из базы
     try:
