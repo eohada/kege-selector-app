@@ -9,7 +9,7 @@ import io
 from flask import Response
 
 from app.groups import groups_bp
-from app.models import db, SchoolGroup, GroupStudent, Student
+from app.models import db, SchoolGroup, GroupStudent, Student, User
 from app.auth.rbac_utils import has_permission, get_user_scope
 from core.audit_logger import audit_logger
 
@@ -30,23 +30,55 @@ def _can_access_student_id(student_id: int) -> bool:
     scope = get_user_scope(current_user)
     if scope.get('can_see_all'):
         return True
-    # scope.student_ids содержит User.id учеников, но у нас группы на Student.student_id.
-    # Делаем мягкий fallback: разрешаем тьютору управлять только своими активными Students
-    # по прямому совпадению student_id (в окружениях, где Student.student_id == User.id).
+    allowed = _resolve_accessible_student_ids(scope)
+    return bool(allowed and student_id in allowed)
+
+
+def _resolve_accessible_student_ids(scope: dict) -> list[int]:
+    """
+    scope.student_ids хранит User.id учеников.
+    Здесь приводим к Student.student_id (потому что группы оперируют Students.student_id).
+    """
+    if not scope or scope.get('can_see_all'):
+        return []
+    user_ids = scope.get('student_ids') or []
+    if not user_ids:
+        return []
+
+    student_ids: list[int] = []
     try:
-        return student_id in (scope.get('student_ids') or [])
-    except Exception:
-        return False
+        student_users = User.query.filter(User.id.in_(user_ids)).all()
+        emails = [u.email for u in student_users if u and u.email]
+        if emails:
+            students_by_email = Student.query.filter(Student.email.in_(emails)).all()
+            student_ids.extend([s.student_id for s in students_by_email if s])
+    except Exception as e:
+        logger.warning(f"Groups: failed map user_ids->student_ids via email: {e}")
+
+    # fallback: иногда Student.student_id == User.id
+    try:
+        students_by_id = Student.query.filter(Student.student_id.in_(user_ids)).all()
+        student_ids.extend([s.student_id for s in students_by_id if s])
+    except Exception as e:
+        logger.warning(f"Groups: failed map user_ids->student_ids via id fallback: {e}")
+
+    seen = set()
+    out: list[int] = []
+    for sid in student_ids:
+        if sid not in seen:
+            seen.add(sid)
+            out.append(sid)
+    return out
 
 
 def _filter_students_query(q):
     scope = get_user_scope(current_user)
     if scope.get('can_see_all'):
         return q
-    ids = scope.get('student_ids') or []
-    if not ids:
+    allowed = _resolve_accessible_student_ids(scope)
+    if not allowed:
         return q.filter(False)
-    return q.filter(Student.student_id.in_(ids))
+    return q.filter(Student.student_id.in_(allowed))
 
 
 @groups_bp.route('/groups')

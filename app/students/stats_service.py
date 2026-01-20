@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, and_, case
 from app.models import (
     db, Student, Lesson, LessonTask, Tasks, Topic, task_topics,
-    StudentTaskStatistics, moscow_now
+    StudentTaskStatistics, moscow_now, Submission, Answer, AssignmentTask, Assignment
 )
 from app.students.utils import get_sorted_assignments
 
@@ -29,6 +29,79 @@ class StatsService:
                 db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
             ).all()
         return self._lessons_cache
+
+    def _get_submissions(self):
+        """Кэшированная загрузка работ (Assignments/Submissions) с ответами."""
+        if getattr(self, '_submissions_cache', None) is None:
+            self._submissions_cache = (
+                Submission.query
+                .filter(Submission.student_id == self.student_id)
+                .options(
+                    db.joinedload(Submission.assignment),
+                    db.joinedload(Submission.answers)
+                      .joinedload(Answer.assignment_task)
+                      .joinedload(AssignmentTask.task)
+                      .joinedload(Tasks.topics),
+                )
+                .all()
+            )
+        return self._submissions_cache
+
+    def _iter_scored_items(self):
+        """
+        Унифицированный поток "проверенных" элементов для метрик/навыков:
+        - LessonTask (классная комната)
+        - Answer внутри Submission (работы)
+        Yields: (is_correct: bool|None, score_ratio: float|None, weight: float, topics: list[Topic])
+        """
+        lessons = self._get_lessons()
+        for lesson in lessons:
+            for assignment_type in ['homework', 'classwork', 'exam']:
+                assignments = get_sorted_assignments(lesson, assignment_type)
+                weight = 2.0 if assignment_type == 'exam' else 1.0
+                for lt in assignments:
+                    st = (getattr(lt, 'status', None) or '').lower()
+                    if lt.submission_correct is None:
+                        continue
+                    if st not in ['submitted', 'graded', 'returned', '']:
+                        continue
+                    topics = []
+                    try:
+                        topics = list(lt.task.topics) if (lt.task and hasattr(lt.task, 'topics') and lt.task.topics) else []
+                    except Exception:
+                        topics = []
+                    yield (bool(lt.submission_correct), None, weight, topics)
+
+        subs = self._get_submissions()
+        for sub in subs:
+            # Считаем только те ответы, где есть результат проверки
+            try:
+                atype = (sub.assignment.assignment_type if sub.assignment else None) or 'homework'
+            except Exception:
+                atype = 'homework'
+            weight = 2.0 if atype == 'exam' else 1.0
+            for ans in (sub.answers or []):
+                if ans is None:
+                    continue
+                if ans.is_correct is None and ans.score is None:
+                    continue
+                topics = []
+                try:
+                    t = ans.assignment_task.task if ans.assignment_task else None
+                    topics = list(t.topics) if (t and hasattr(t, 'topics') and t.topics) else []
+                except Exception:
+                    topics = []
+                if ans.is_correct is not None:
+                    yield (bool(ans.is_correct), None, weight, topics)
+                else:
+                    # если есть баллы — считаем "правильно" только при 100% на задачу
+                    try:
+                        mx = int(ans.max_score or 0)
+                        sc = int(ans.score or 0)
+                        ratio = (sc / mx) if mx > 0 else 0.0
+                        yield (sc == mx and mx > 0, ratio, weight, topics)
+                    except Exception:
+                        yield (None, None, weight, topics)
     
     def get_gpa_trend(self, period_days=90):
         """
@@ -100,42 +173,23 @@ class StatsService:
         Получить карту навыков (радар-чарт)
         Возвращает: {'labels': [...], 'values': [...]}
         """
-        lessons = self._get_lessons()
-        
         # Собираем статистику по темам
         topic_stats = {}  # {topic_id: {'correct': 0, 'total': 0, 'name': ''}}
-        
-        for lesson in lessons:
-            # Обрабатываем все типы заданий
-            for assignment_type in ['homework', 'classwork', 'exam']:
-                assignments = get_sorted_assignments(lesson, assignment_type)
-                weight = 2 if assignment_type == 'exam' else 1
-                
-                for lt in assignments:
-                    if not lt.task or lt.submission_correct is None:
-                        continue
-                    
-                    # Получаем темы задания
-                    task_topics_list = lt.task.topics if hasattr(lt.task, 'topics') else []
-                    
-                    if not task_topics_list:
-                        # Если у задания нет тем, пропускаем
-                        continue
-                    
-                    for topic in task_topics_list:
-                        topic_id = topic.topic_id
-                        topic_name = topic.name
-                        
-                        if topic_id not in topic_stats:
-                            topic_stats[topic_id] = {
-                                'name': topic_name,
-                                'correct': 0,
-                                'total': 0
-                            }
-                        
-                        topic_stats[topic_id]['total'] += weight
-                        if lt.submission_correct:
-                            topic_stats[topic_id]['correct'] += weight
+
+        for is_correct, _ratio, weight, topics in self._iter_scored_items():
+            if not topics:
+                continue
+            for topic in topics:
+                try:
+                    topic_id = topic.topic_id
+                    topic_name = topic.name
+                except Exception:
+                    continue
+                if topic_id not in topic_stats:
+                    topic_stats[topic_id] = {'name': topic_name, 'correct': 0, 'total': 0}
+                topic_stats[topic_id]['total'] += weight
+                if is_correct is True:
+                    topic_stats[topic_id]['correct'] += weight
         
         # Вычисляем проценты
         labels = []
@@ -373,25 +427,21 @@ class StatsService:
         Возвращает словарь с метриками
         """
         lessons = self._get_lessons()
-        
-        # Общий GPA (процент выполнения работ)
-        total_score = 0
-        total_weight = 0
-        
-        for lesson in lessons:
-            for assignment_type in ['homework', 'classwork', 'exam']:
-                assignments = get_sorted_assignments(lesson, assignment_type)
-                weight = 2 if assignment_type == 'exam' else 1
-                
-                for lt in assignments:
-                    if lt.submission_correct is not None:
-                        total_weight += weight
-                        if lt.submission_correct:
-                            total_score += weight
+
+        # Общий GPA (процент выполнения работ) — учитываем и уроки, и "работы" (Submissions)
+        total_score = 0.0
+        total_weight = 0.0
+
+        for is_correct, _ratio, weight, _topics in self._iter_scored_items():
+            if is_correct is None:
+                continue
+            total_weight += float(weight or 1.0)
+            if is_correct:
+                total_score += float(weight or 1.0)
         
         current_gpa = round((total_score / total_weight * 100), 1) if total_weight > 0 else 0
         
-        # Процент сданных ДЗ
+        # Процент сданных ДЗ (классная комната)
         total_hw = 0
         submitted_hw = 0
         

@@ -34,7 +34,10 @@
       </section>
 
       <section class="glass-panel">
-        <form method="POST" data-no-ajax="1" onsubmit="return beforeSubmit();">
+        <form method="POST"
+              action="{% if is_new %}{{ url_for('rubrics.rubric_new') }}{% else %}{{ url_for('rubrics.rubric_edit', rubric_id=rubric.rubric_id) }}{% endif %}"
+              data-no-ajax="1"
+              onsubmit="return beforeSubmit();">
           {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
           <input type="hidden" id="items_json" name="items_json" value="{{ items_json|e }}">
 
@@ -91,6 +94,25 @@
       try { return JSON.parse(document.getElementById('items_json').value || '[]') || []; } catch(e) { return []; }
     })();
 
+    function syncFromDom() {
+      const root = document.getElementById('criteria');
+      if (!root) return;
+      // Синхронизируем текущее состояние полей в массив (на случай, если браузер/IME
+      // не успел триггернуть input-event перед кликом "+ Критерий").
+      root.querySelectorAll('[data-i][data-k]').forEach(el => {
+        const idx = parseInt(el.getAttribute('data-i') || '-1', 10);
+        const key = el.getAttribute('data-k');
+        if (!Number.isFinite(idx) || idx < 0 || idx >= initialItems.length) return;
+        let val = el.value;
+        if (key === 'max_score') {
+          val = (val === '') ? null : parseInt(val, 10);
+          if (Number.isNaN(val)) val = null;
+          if (val !== null && val < 0) val = 0;
+        }
+        initialItems[idx][key] = val;
+      });
+    }
+
     function render() {
       const root = document.getElementById('criteria');
       root.innerHTML = '';
@@ -146,17 +168,22 @@
     }
 
     function addCriterion() {
+      syncFromDom();
       const n = initialItems.length + 1;
-      initialItems.push({ key: `c${n}`, title: `Критерий ${n}`, max_score: 1, description: '' });
+      // Ключ должен быть стабилен и уникален, иначе при правках/удалениях легко получить дубли
+      const uniq = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+      initialItems.push({ key: `c_${uniq}`, title: `Критерий ${n}`, max_score: 1, description: '' });
       render();
     }
 
     function removeCriterion(i) {
+      syncFromDom();
       initialItems.splice(i, 1);
       render();
     }
 
     function beforeSubmit() {
+      syncFromDom();
       document.getElementById('items_json').value = JSON.stringify(initialItems || []);
       return true;
     }
