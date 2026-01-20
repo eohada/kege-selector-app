@@ -15,9 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def _require_admin():
-    if has_permission(current_user, 'billing.manage'):
-        return
-    if not (getattr(current_user, 'is_creator', None) and current_user.is_creator()) and not (getattr(current_user, 'is_admin', None) and current_user.is_admin()):
+    if not has_permission(current_user, 'billing.manage'):
         abort(403)
 
 
