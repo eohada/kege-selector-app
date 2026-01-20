@@ -351,7 +351,10 @@ def lesson_homework_view(lesson_id):
     if is_parent_view:  # comment
         is_read_only = True  # comment
     elif is_student_view:  # comment
-        is_read_only = _is_submission_finalized(lesson, homework_tasks)  # comment
+        # Если есть задачи "на доработку" — разрешаем редактирование/пересдачу даже после общей финализации.
+        finalized = _is_submission_finalized(lesson, homework_tasks)  # comment
+        has_returned = any((t.status or '').lower() == 'returned' for t in (homework_tasks or []))  # comment
+        is_read_only = bool(finalized and (not has_returned))  # comment
     viewer_timezone = 'Europe/Moscow'  # comment
     try:  # comment
         if current_user and getattr(current_user, 'profile', None) and current_user.profile.timezone:  # comment
@@ -416,7 +419,9 @@ def lesson_classwork_view(lesson_id):
     if is_parent_view:  # comment
         is_read_only = True  # comment
     elif is_student_view:  # comment
-        is_read_only = _is_submission_finalized(lesson, classwork_tasks)  # comment
+        finalized = _is_submission_finalized(lesson, classwork_tasks)  # comment
+        has_returned = any((t.status or '').lower() == 'returned' for t in (classwork_tasks or []))  # comment
+        is_read_only = bool(finalized and (not has_returned))  # comment
     viewer_timezone = 'Europe/Moscow'  # comment
     try:  # comment
         if current_user and getattr(current_user, 'profile', None) and current_user.profile.timezone:  # comment
@@ -481,7 +486,9 @@ def lesson_exam_view(lesson_id):
     if is_parent_view:  # comment
         is_read_only = True  # comment
     elif is_student_view:  # comment
-        is_read_only = _is_submission_finalized(lesson, exam_tasks)  # comment
+        finalized = _is_submission_finalized(lesson, exam_tasks)  # comment
+        has_returned = any((t.status or '').lower() == 'returned' for t in (exam_tasks or []))  # comment
+        is_read_only = bool(finalized and (not has_returned))  # comment
     viewer_timezone = 'Europe/Moscow'  # comment
     try:  # comment
         if current_user and getattr(current_user, 'profile', None) and current_user.profile.timezone:  # comment
@@ -585,6 +592,28 @@ def lesson_review_summary_save(lesson_id: int, assignment_type: str):
     }
     summaries[assignment_type] = payload
     lesson.review_summaries = summaries
+
+    # Важно: очередь "Проверка" работает по LessonTask.status.
+    # Если учитель сохранил итог (graded/returned), то логично массово обновить статусы задач,
+    # иначе в "Проверке" визуально ничего не меняется.
+    try:
+        if payload.get('status') in ('graded', 'returned'):
+            q = LessonTask.query.filter(LessonTask.lesson_id == lesson.lesson_id)
+            if assignment_type == 'homework':
+                q = q.filter((LessonTask.assignment_type == 'homework') | (LessonTask.assignment_type.is_(None)))
+            else:
+                q = q.filter(LessonTask.assignment_type == assignment_type)
+
+            if payload.get('status') == 'graded':
+                # Отмечаем сданные/возвращённые как проверенные
+                q = q.filter(LessonTask.status.in_(['submitted', 'returned']))
+                q.update({'status': 'graded'}, synchronize_session=False)
+            elif payload.get('status') == 'returned':
+                # Возвращаем сданные на доработку
+                q = q.filter(LessonTask.status.in_(['submitted']))
+                q.update({'status': 'returned'}, synchronize_session=False)
+    except Exception as e:
+        logger.warning(f"Could not bulk update LessonTask statuses from review summary: {e}")
 
     # Авто-журнал: создаём/обновляем запись только если итог = graded
     try:
