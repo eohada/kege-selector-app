@@ -53,6 +53,7 @@ from core.db_models import (
     LessonTaskAttempt,
     SubmissionAttempt,
     TariffPlan,
+    TariffGroup,
     UserSubscription,
     UserConsent
 )
@@ -108,6 +109,7 @@ __all__ = [
     'LessonTaskAttempt',
     'SubmissionAttempt',
     'TariffPlan',
+    'TariffGroup',
     'UserSubscription',
     'UserConsent'
 ]

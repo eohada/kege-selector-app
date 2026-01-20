@@ -26,7 +26,13 @@
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;" class="profile-grid-responsive">
         <section class="glass-panel">
           <div class="panel-head"><div><p class="eyebrow">создать</p><h2>Новая подписка</h2></div></div>
-          <form method="POST" action="{{ url_for('billing.billing_subscription_create') }}" style="margin-top: 1rem;">
+          <form method="GET" action="{{ url_for('billing.billing_subscriptions') }}" style="margin-top: .75rem; display:flex; gap:.6rem; flex-wrap: wrap; align-items: center;">
+            <input class="neo-input" name="q" value="{{ q or '' }}" placeholder="Поиск пользователя (логин/email)…" style="min-width: 280px;">
+            <button class="neo-button outline sm" type="submit">Найти</button>
+            <a class="neo-button ghost sm" href="{{ url_for('billing.billing_subscriptions', plan_id=preselect_plan_id) }}" style="text-decoration:none;">Сброс</a>
+          </form>
+
+          <form method="POST" action="{{ url_for('billing.billing_subscription_assign') }}" style="margin-top: 1rem;">
             {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
             <div class="neo-field">
               <label class="neo-label">Пользователь</label>
@@ -42,7 +48,9 @@
               <select class="neo-select" name="plan_id">
                 <option value="">—</option>
                 {% for p in plans %}
-                  <option value="{{ p.plan_id }}">{{ p.title }}</option>
+                  <option value="{{ p.plan_id }}" {% if preselect_plan_id and preselect_plan_id == p.plan_id %}selected{% endif %}>
+                    {{ p.title }}{% if p.description %} — {{ p.description[:60] }}{% if p.description|length > 60 %}…{% endif %}{% endif %}
+                  </option>
                 {% endfor %}
               </select>
             </div>
@@ -57,7 +65,7 @@
               </div>
             </div>
             <div style="margin-top: 1rem; display:flex; justify-content:flex-end;">
-              <button class="neo-button accent" type="submit">Создать</button>
+              <button class="neo-button accent" type="submit">Назначить / продлить</button>
             </div>
           </form>
         </section>

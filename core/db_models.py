@@ -907,6 +907,19 @@ class Enrollment(db.Model):
 # БИЛЛИНГ + ЮРИДИЧЕСКИЙ СЛОЙ (MVP, без платежных интеграций)
 # ============================================================================
 
+class TariffGroup(db.Model):
+    """Группа тарифов для ручной сортировки/группировки в UI."""
+    __tablename__ = 'TariffGroups'
+
+    group_id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    order_index = db.Column(db.Integer, default=0, nullable=False, index=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+
 class TariffPlan(db.Model):
     """Тариф/план (оплата и доступ управляются вручную админом)."""
     __tablename__ = 'TariffPlans'
@@ -915,12 +928,17 @@ class TariffPlan(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
 
+    group_id = db.Column(db.Integer, db.ForeignKey('TariffGroups.group_id'), nullable=True, index=True)
+    order_index = db.Column(db.Integer, default=0, nullable=False, index=True)
+
     price_rub = db.Column(db.Integer, nullable=True)     # цена в рублях (информативно)
     period_days = db.Column(db.Integer, nullable=True)   # длительность доступа (информативно)
 
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    group = db.relationship('TariffGroup', foreign_keys=[group_id])
 
 
 class UserSubscription(db.Model):

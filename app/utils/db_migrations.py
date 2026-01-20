@@ -22,7 +22,7 @@ from core.db_models import (
     SubmissionAttempt,
     MaterialAsset, LessonMaterialLink, LessonRoomTemplate, RubricTemplate,
     RecurringLessonSlot,
-    TariffPlan, UserSubscription, UserConsent
+    TariffPlan, TariffGroup, UserSubscription, UserConsent
 )
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
 
@@ -484,6 +484,14 @@ def ensure_schema_columns(app):
                     db.session.rollback()
 
             # Фундамент: биллинг/юридический слой
+            if 'TariffGroups' not in table_names and 'tariffgroups' not in table_names:
+                try:
+                    TariffGroup.__table__.create(db.engine)
+                    logger.info("TariffGroups table created")
+                except Exception as e:
+                    logger.warning(f"Could not create TariffGroups table: {e}")
+                    db.session.rollback()
+
             if 'TariffPlans' not in table_names and 'tariffplans' not in table_names:
                 try:
                     TariffPlan.__table__.create(db.engine)
@@ -491,6 +499,28 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create TariffPlans table: {e}")
                     db.session.rollback()
+            else:
+                # добавляем колонки группировки/сортировки тарифов, если таблица уже есть
+                try:
+                    tp_table = _resolve_table_name(table_names, 'TariffPlans')
+                    if tp_table:
+                        cols = {c['name'] for c in inspector.get_columns(tp_table)}
+                        if 'group_id' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{tp_table}" ADD COLUMN group_id INTEGER'))
+                                logger.info(f"Added group_id to {tp_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add group_id to {tp_table}: {e}")
+                                db.session.rollback()
+                        if 'order_index' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{tp_table}" ADD COLUMN order_index INTEGER DEFAULT 0'))
+                                logger.info(f"Added order_index to {tp_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add order_index to {tp_table}: {e}")
+                                db.session.rollback()
+                except Exception:
+                    pass
 
             if 'UserSubscriptions' not in table_names and 'usersubscriptions' not in table_names:
                 try:
