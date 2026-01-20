@@ -670,6 +670,12 @@
                         {% endif %}
 
                         <div class="task-meta" style="margin-left: auto;">
+                            {% if (not is_student_view) and (not is_parent_view) and hw_task.task and hw_task.task.source_url %}
+                            <a class="neo-button ghost sm" href="{{ hw_task.task.source_url }}" target="_blank" rel="noopener noreferrer"
+                               title="Открыть источник задачи" style="text-decoration:none;">
+                                <i class="fas fa-external-link-alt"></i> Источник
+                            </a>
+                            {% endif %}
                             {% if not is_student_view and not is_parent_view %}
                             <button type="button" class="neo-button ghost sm" style="color: var(--danger); border-color: var(--danger);" onclick="handleDeleteTask({{ hw_task.lesson_task_id }}, '{{ assignment_type }}')" title="Удалить задание"><i class="fas fa-trash"></i></button>
                             {% endif %}
