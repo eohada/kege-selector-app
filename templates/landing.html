@@ -3,739 +3,475 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Чёрный неон · Платформа для онлайн-школы</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <title>Чёрный неон | Экосистема образования</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap" rel="stylesheet">
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg-color: #050507;
+            --surface-glass: rgba(255, 255, 255, 0.03);
+            --surface-glass-hover: rgba(255, 255, 255, 0.06);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            
+            --accent-primary: #00ffd5;
+            --accent-secondary: #7000ff;
+            --accent-gradient: linear-gradient(135deg, #00ffd5 0%, #7000ff 100%);
+            
+            --text-main: #ffffff;
+            --text-muted: #888899;
+            
+            --glow: 0 0 120px -20px rgba(0, 255, 213, 0.15);
         }
 
+        /* --- Базовые стили --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
             overflow-x: hidden;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Hero Section */
-        .landing-hero {
+        /* Эффект зернистости для текстуры */
+        .noise-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 999;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* --- Типографика --- */
+        h1, h2, h3 { font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+        
+        .gradient-text {
+            background: linear-gradient(to right, #fff, #b4b4b4);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .accent-text {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        /* --- Анимированный фон (Orbs) --- */
+        .ambient-light {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: float-orb 20s infinite ease-in-out;
+        }
+        .orb-1 { width: 600px; height: 600px; background: #00ffd5; top: -10%; left: -10%; animation-delay: 0s; }
+        .orb-2 { width: 500px; height: 500px; background: #7000ff; bottom: 20%; right: -5%; animation-delay: -5s; }
+        .orb-3 { width: 300px; height: 300px; background: #2b5aff; top: 40%; left: 30%; animation-delay: -10s; opacity: 0.2; }
+
+        @keyframes float-orb {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(30px, -50px); }
+        }
+
+        /* --- Компоненты --- */
+        .container {
+            max-width: 1240px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 2.5rem;
+            border-radius: 100px;
+            font-weight: 600;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: #fff;
+            color: #000;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-glass {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .btn-glass:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.3);
+        }
+
+        /* --- Hero Section --- */
+        .hero {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-            overflow: hidden;
-            padding: 4rem 2rem;
-            background: radial-gradient(circle at 20% 30%, rgba(0, 255, 213, 0.2) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 70%, rgba(31, 123, 255, 0.2) 0%, transparent 50%),
-                        var(--page-bg);
-        }
-
-        .hero-content {
-            position: relative;
-            z-index: 1;
             text-align: center;
-            max-width: 1000px;
-            animation: fade-in-up 1s ease-out;
+            padding-top: 4rem;
+        }
+        
+        .hero-content {
+            max-width: 900px;
+            z-index: 2;
         }
 
-        @keyframes fade-in-up {
-            from {
-                opacity: 0;
-                transform: translateY(50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .hero-eyebrow {
-            font-size: 0.95rem;
-            color: var(--accent-1);
+        .badge-new {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 50px;
+            background: rgba(0, 255, 213, 0.1);
+            border: 1px solid rgba(0, 255, 213, 0.3);
+            color: var(--accent-primary);
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 2rem;
+            letter-spacing: 0.05em;
             text-transform: uppercase;
-            letter-spacing: 0.2em;
-            margin-bottom: 1.5rem;
-            font-weight: 600;
-            animation: fade-in 1.2s ease-out;
+            animation: fade-in-up 1s ease forwards;
         }
 
         .hero-title {
-            font-size: clamp(3rem, 8vw, 6rem);
-            font-weight: 900;
-            line-height: 1.05;
-            margin: 0 0 2rem 0;
-            background: linear-gradient(135deg, #ffffff 0%, var(--accent-1) 30%, var(--accent-2) 70%, #ffffff 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: fade-in-up 1s ease-out 0.2s both;
-            text-shadow: 0 0 80px rgba(0, 255, 213, 0.3);
+            font-size: clamp(3rem, 7vw, 6rem);
+            margin-bottom: 1.5rem;
+            opacity: 0;
+            animation: fade-in-up 1s 0.2s ease forwards;
         }
 
-        .hero-subtitle {
-            font-size: clamp(1.2rem, 2.5vw, 1.6rem);
+        .hero-desc {
+            font-size: clamp(1.1rem, 2vw, 1.4rem);
             color: var(--text-muted);
-            line-height: 1.8;
-            margin: 0 0 3rem 0;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-            animation: fade-in-up 1s ease-out 0.4s both;
+            max-width: 600px;
+            margin: 0 auto 3rem;
+            opacity: 0;
+            animation: fade-in-up 1s 0.4s ease forwards;
         }
 
-        .hero-actions {
+        .hero-buttons {
             display: flex;
             gap: 1.5rem;
             justify-content: center;
-            flex-wrap: wrap;
-            animation: fade-in-up 1s ease-out 0.6s both;
+            opacity: 0;
+            animation: fade-in-up 1s 0.6s ease forwards;
         }
 
-        .hero-actions .neo-button {
-            font-size: 1.2rem;
-            padding: 1.2rem 2.5rem;
-            border-radius: var(--radius-md);
-            transition: all 0.3s ease;
+        /* --- Features Section --- */
+        .features { padding: 10rem 0; }
+        
+        .section-header { text-align: center; margin-bottom: 8rem; }
+        .section-label { 
+            color: var(--accent-secondary); 
+            font-weight: 600; 
+            letter-spacing: 0.1em; 
+            text-transform: uppercase; 
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            display: block;
         }
 
-        .hero-actions .neo-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 20px 40px rgba(0, 255, 213, 0.3);
-        }
-
-        /* Floating Background Elements */
-        .floating-elements {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .floating-circle {
-            position: absolute;
-            border-radius: 50%;
-            background: var(--accent-1);
-            opacity: 0.08;
-            animation: float 25s infinite ease-in-out;
-            filter: blur(40px);
-        }
-
-        .floating-circle:nth-child(1) {
-            width: 500px;
-            height: 500px;
-            top: 10%;
-            left: 5%;
-            animation-delay: 0s;
-        }
-
-        .floating-circle:nth-child(2) {
-            width: 400px;
-            height: 400px;
-            top: 50%;
-            right: 10%;
-            animation-delay: 8s;
-        }
-
-        .floating-circle:nth-child(3) {
-            width: 300px;
-            height: 300px;
-            bottom: 15%;
-            left: 20%;
-            animation-delay: 16s;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(50px, -50px) scale(1.1); }
-            66% { transform: translate(-30px, 30px) scale(0.9); }
-        }
-
-        /* Scroll Indicator */
-        .scroll-indicator {
-            position: absolute;
-            bottom: 3rem;
-            left: 50%;
-            transform: translateX(-50%);
-            animation: bounce 2s infinite;
-            color: var(--accent-1);
-            opacity: 0.7;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateX(-50%) translateY(0); }
-            50% { transform: translateX(-50%) translateY(-15px); }
-        }
-
-        /* Feature Showcase Sections */
-        .feature-showcase {
-            padding: 8rem 2rem;
-            max-width: 1400px;
-            margin: 0 auto;
-            position: relative;
-        }
-
-        .feature-showcase:nth-child(even) {
-            background: var(--surface-1);
-        }
-
-        .feature-block {
+        .feature-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 6rem;
             align-items: center;
-            margin-bottom: 8rem;
-            opacity: 0;
-            transform: translateY(80px);
-            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-bottom: 10rem;
         }
+        
+        .feature-row.reverse { direction: rtl; }
+        .feature-row.reverse .feature-info { direction: ltr; }
 
-        .feature-block.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .feature-block.reverse {
-            direction: rtl;
-        }
-
-        .feature-block.reverse > * {
-            direction: ltr;
-        }
-
-        .feature-content {
-            padding: 2rem;
-        }
-
-        .feature-badge {
-            display: inline-block;
-            padding: 0.5rem 1.2rem;
-            background: rgba(0, 255, 213, 0.15);
-            color: var(--accent-1);
-            border-radius: 50px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 1.5rem;
-        }
-
-        .feature-title {
-            font-size: clamp(2rem, 4vw, 3.5rem);
-            font-weight: 800;
-            margin: 0 0 1.5rem 0;
-            line-height: 1.2;
-            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-1) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .feature-description {
-            font-size: clamp(1.1rem, 1.5vw, 1.3rem);
-            color: var(--text-muted);
-            line-height: 1.8;
-            margin: 0 0 2rem 0;
-        }
-
-        .feature-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .feature-list li {
-            padding: 0.8rem 0;
-            font-size: 1.1rem;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .feature-list li::before {
-            content: '✓';
-            color: var(--accent-1);
-            font-weight: 700;
-            font-size: 1.3rem;
-            flex-shrink: 0;
-        }
-
-        .feature-visual {
-            position: relative;
+        .feature-card-visual {
             height: 500px;
-            border-radius: var(--radius-lg);
+            background: var(--surface-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 24px;
+            backdrop-filter: blur(20px);
+            position: relative;
             overflow: hidden;
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-            box-shadow: 0 30px 100px rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.5s ease;
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 40px 100px -20px rgba(0,0,0,0.5);
         }
-
-        .feature-visual:hover {
+        
+        .feature-card-visual:hover {
             transform: scale(1.02);
+            border-color: rgba(255,255,255,0.2);
         }
 
-        .feature-visual img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .feature-placeholder {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, var(--surface-3) 0%, var(--surface-2) 100%);
-            color: var(--text-muted);
-            font-size: 1.2rem;
-            text-align: center;
-            padding: 2rem;
-        }
-
-        .feature-placeholder-icon {
-            font-size: 4rem;
-            margin-bottom: 1rem;
+        .feature-card-visual::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.1), transparent 70%);
             opacity: 0.5;
         }
 
-        /* Section Titles */
-        .section-header {
-            text-align: center;
-            margin-bottom: 6rem;
-            opacity: 0;
-            transform: translateY(50px);
-            transition: all 0.8s ease;
+        .mockup-content {
+            width: 100%; height: 100%;
+            display: flex;
+            align-items: center; 
+            justify-content: center;
+            font-size: 4rem;
+            color: rgba(255,255,255,0.05);
         }
 
-        .section-header.visible {
-            opacity: 1;
-            transform: translateY(0);
+        .feature-info h3 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            color: #fff;
         }
-
-        .section-eyebrow {
-            font-size: 0.9rem;
-            color: var(--accent-1);
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
-            margin-bottom: 1rem;
-            font-weight: 600;
-        }
-
-        .section-title {
-            font-size: clamp(2.5rem, 5vw, 4rem);
-            font-weight: 900;
-            margin: 0 0 1.5rem 0;
-            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-1) 50%, var(--accent-2) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .section-subtitle {
-            font-size: clamp(1.2rem, 2vw, 1.5rem);
+        
+        .feature-info p {
             color: var(--text-muted);
-            max-width: 700px;
-            margin: 0 auto;
-            line-height: 1.7;
+            font-size: 1.15rem;
+            margin-bottom: 2rem;
         }
 
-        /* Stats Section */
+        .feature-list li {
+            list-style: none;
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            color: var(--text-main);
+            font-weight: 500;
+        }
+        .feature-list li::before {
+            content: "✦";
+            color: var(--accent-primary);
+            margin-right: 12px;
+            font-size: 1.2rem;
+        }
+
+        /* --- Stats Grid --- */
         .stats-section {
-            padding: 8rem 2rem;
-            background: var(--surface-2);
-            position: relative;
-            overflow: hidden;
+            background: linear-gradient(180deg, transparent, rgba(255,255,255,0.02) 50%, transparent);
+            padding: 8rem 0;
+            border-top: 1px solid var(--border-glass);
+            border-bottom: 1px solid var(--border-glass);
         }
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 3rem;
-            max-width: 1200px;
-            margin: 0 auto;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 2rem;
         }
 
-        .stat-card {
+        .stat-item {
+            padding: 2rem;
             text-align: center;
-            padding: 3rem 2rem;
-            background: var(--surface-1);
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--stroke-1);
-            transition: all 0.4s ease;
-            opacity: 0;
-            transform: translateY(50px);
+            transition: transform 0.3s;
+        }
+        .stat-item:hover { transform: translateY(-5px); }
+
+        .stat-val {
+            font-size: 3.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+        .stat-label { color: var(--text-muted); font-size: 1rem; }
+
+        /* --- Animations --- */
+        @keyframes fade-in-up {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .stat-card.visible {
+        .reveal-on-scroll {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal-on-scroll.visible {
             opacity: 1;
             transform: translateY(0);
         }
 
-        .stat-card:hover {
-            transform: translateY(-10px);
-            border-color: var(--accent-1);
-            box-shadow: 0 20px 60px rgba(0, 255, 213, 0.2);
-        }
-
-        .stat-number {
-            font-size: clamp(2.5rem, 5vw, 4rem);
-            font-weight: 900;
-            color: var(--accent-1);
-            margin: 0;
-            line-height: 1;
-            margin-bottom: 1rem;
-        }
-
-        .stat-label {
-            font-size: 1.1rem;
-            color: var(--text-muted);
-            font-weight: 500;
-        }
-
-        /* CTA Section */
-        .cta-section {
-            padding: 10rem 2rem;
-            text-align: center;
-            background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-1) 100%);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .cta-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at 50% 50%, rgba(0, 255, 213, 0.1) 0%, transparent 70%);
-            pointer-events: none;
-        }
-
-        .cta-content {
-            position: relative;
-            z-index: 1;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .cta-title {
-            font-size: clamp(2.5rem, 5vw, 4rem);
-            font-weight: 900;
-            margin: 0 0 1.5rem 0;
-            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-1) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .cta-subtitle {
-            font-size: clamp(1.2rem, 2vw, 1.5rem);
-            color: var(--text-muted);
-            margin: 0 0 3rem 0;
-            line-height: 1.8;
-        }
-
-        /* Responsive */
+        /* --- Mobile --- */
         @media (max-width: 968px) {
-            .feature-block {
-                grid-template-columns: 1fr;
-                gap: 3rem;
-            }
-
-            .feature-block.reverse {
-                direction: ltr;
-            }
-
-            .feature-visual {
-                height: 400px;
-            }
-
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 640px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .hero-actions {
-                flex-direction: column;
-            }
-
-            .hero-actions .neo-button {
-                width: 100%;
-            }
+            .feature-row { grid-template-columns: 1fr; gap: 4rem; margin-bottom: 6rem; }
+            .feature-row.reverse { direction: ltr; }
+            .hero-title { font-size: 3.5rem; }
         }
     </style>
 </head>
 <body>
-    <div class="app-shell">
-        <!-- Hero Section -->
-        <section class="landing-hero">
-            <div class="floating-elements">
-                <div class="floating-circle"></div>
-                <div class="floating-circle"></div>
-                <div class="floating-circle"></div>
-            </div>
-            
-            <div class="hero-content">
-                <p class="hero-eyebrow">Современная платформа для онлайн-обучения</p>
-                <h1 class="hero-title">Чёрный неон</h1>
-                <p class="hero-subtitle">
-                    Все инструменты для эффективной работы преподавателя в едином пространстве.
-                    Управление учениками, расписание, генератор заданий ЕГЭ, проверка работ и многое другое.
-                </p>
-                <div class="hero-actions">
-                    <a href="{{ url_for('auth.login') }}" class="neo-button accent">
-                        Войти в систему
-                    </a>
-                    <a href="#features" class="neo-button outline">
-                        Узнать больше
-                    </a>
-                </div>
-            </div>
-            
-            <div class="scroll-indicator">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 5v14M5 12l7 7 7-7"/>
-                </svg>
-            </div>
-        </section>
 
-        <!-- Features Showcase -->
-        <section id="features" class="feature-showcase">
-            <div class="section-header">
-                <p class="section-eyebrow">Возможности платформы</p>
-                <h2 class="section-title">Всё необходимое для эффективного обучения</h2>
-                <p class="section-subtitle">
-                    Современные инструменты, которые помогут вам организовать учебный процесс на новом уровне
-                </p>
-            </div>
+    <div class="noise-overlay"></div>
 
-            <!-- Классная комната -->
-            <div class="feature-block">
-                <div class="feature-content">
-                    <span class="feature-badge">Интерактивное обучение</span>
-                    <h3 class="feature-title">Классная комната</h3>
-                    <p class="feature-description">
-                        Полноценное интерактивное пространство для проведения уроков с богатыми возможностями
-                        для взаимодействия преподавателя и ученика.
-                    </p>
-                    <ul class="feature-list">
-                        <li>Конспекты с форматированием и вложениями</li>
-                        <li>Заметки с фото и медиа-контентом</li>
-                        <li>Домашние задания с автоматической проверкой</li>
-                        <li>Красиво оформленные итоги уроков</li>
-                        <li>Заполнение ответов прямо во время урока</li>
-                    </ul>
-                </div>
-                <div class="feature-visual">
-                    <div class="feature-placeholder">
-                        <div class="feature-placeholder-icon">📚</div>
-                        <div>Скриншот классной комнаты</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Расписание -->
-            <div class="feature-block reverse">
-                <div class="feature-content">
-                    <span class="feature-badge">Планирование</span>
-                    <h3 class="feature-title">Умное расписание</h3>
-                    <p class="feature-description">
-                        Интеллектуальная система планирования занятий с поддержкой множества функций
-                        для удобной организации учебного процесса.
-                    </p>
-                    <ul class="feature-list">
-                        <li>Календарное расписание с несколькими часовыми поясами</li>
-                        <li>Автоплан для регулярных занятий</li>
-                        <li>Массовое создание уроков</li>
-                        <li>Синхронизация с внешними календарями</li>
-                        <li>Удобное перетаскивание и фильтрация</li>
-                    </ul>
-                </div>
-                <div class="feature-visual">
-                    <div class="feature-placeholder">
-                        <div class="feature-placeholder-icon">📅</div>
-                        <div>Скриншот расписания</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Генератор заданий -->
-            <div class="feature-block">
-                <div class="feature-content">
-                    <span class="feature-badge">База знаний</span>
-                    <h3 class="feature-title">Генератор заданий ЕГЭ</h3>
-                    <p class="feature-description">
-                        Обширная база заданий КЕГЭ с интеллектуальным подбором и автоматическим
-                        исключением уже использованных вариантов.
-                    </p>
-                    <ul class="feature-list">
-                        <li>Тысячи заданий в базе данных</li>
-                        <li>Умный подбор с исключением использованных</li>
-                        <li>Поиск по уникальному ID</li>
-                        <li>Фильтрация по типам и темам</li>
-                        <li>Быстрое формирование работ</li>
-                    </ul>
-                </div>
-                <div class="feature-visual">
-                    <div class="feature-placeholder">
-                        <div class="feature-placeholder-icon">🎯</div>
-                        <div>Скриншот генератора</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- AI Тренажёр -->
-            <div class="feature-block reverse">
-                <div class="feature-content">
-                    <span class="feature-badge">Искусственный интеллект</span>
-                    <h3 class="feature-title">AI Тренажёр</h3>
-                    <p class="feature-description">
-                        Виртуальный помощник для обучения программированию с интеграцией языковых моделей
-                        для персонализированной помощи каждому ученику.
-                    </p>
-                    <ul class="feature-list">
-                        <li>Анализ кода ученика в реальном времени</li>
-                        <li>Наводящие вопросы и подсказки</li>
-                        <li>Интеграция с языковыми моделями</li>
-                        <li>Персонализированная помощь</li>
-                        <li>Автоматическая проверка решений</li>
-                    </ul>
-                </div>
-                <div class="feature-visual">
-                    <div class="feature-placeholder">
-                        <div class="feature-placeholder-icon">🤖</div>
-                        <div>Скриншот тренажёра</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Система проверки -->
-            <div class="feature-block">
-                <div class="feature-content">
-                    <span class="feature-badge">Оценивание</span>
-                    <h3 class="feature-title">Система проверки</h3>
-                    <p class="feature-description">
-                        Удобная и эффективная система проверки работ с поддержкой рубрик, критериев
-                        и детальной обратной связи для учеников.
-                    </p>
-                    <ul class="feature-list">
-                        <li>Очередь проверки с фильтрами</li>
-                        <li>Рубрики и критерии оценки</li>
-                        <li>Комментарии к заданиям</li>
-                        <li>Возврат на доработку</li>
-                        <li>Автоматический подсчёт баллов</li>
-                    </ul>
-                </div>
-                <div class="feature-visual">
-                    <div class="feature-placeholder">
-                        <div class="feature-placeholder-icon">✅</div>
-                        <div>Скриншот проверки</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Stats Section -->
-        <section class="stats-section">
-            <div class="section-header">
-                <p class="section-eyebrow">Почему выбирают нас</p>
-                <h2 class="section-title">Цифры говорят сами за себя</h2>
-            </div>
-            
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <p class="stat-number">1000+</p>
-                    <p class="stat-label">Заданий в базе</p>
-                </div>
-                <div class="stat-card">
-                    <p class="stat-number">24/7</p>
-                    <p class="stat-label">Доступность</p>
-                </div>
-                <div class="stat-card">
-                    <p class="stat-number">100%</p>
-                    <p class="stat-label">Безопасность данных</p>
-                </div>
-                <div class="stat-card">
-                    <p class="stat-number">AI</p>
-                    <p class="stat-label">Умный помощник</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- CTA Section -->
-        <section class="cta-section">
-            <div class="cta-content">
-                <h2 class="cta-title">Готовы начать?</h2>
-                <p class="cta-subtitle">
-                    Присоединяйтесь к платформе и начните эффективно организовывать онлайн-обучение.
-                    Все инструменты уже готовы к использованию.
-                </p>
-                <div class="hero-actions">
-                    <a href="{{ url_for('auth.login') }}" class="neo-button accent" style="font-size: 1.2rem; padding: 1.2rem 2.5rem;">
-                        Войти в систему
-                    </a>
-                </div>
-            </div>
-        </section>
+    <div class="ambient-light">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
     </div>
 
-    <script>
-        // Smooth scroll for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-            });
-        });
+    <section class="hero">
+        <div class="container hero-content">
+            <span class="badge-new">Платформа 2.0</span>
+            <h1 class="hero-title">
+                Ваша школа.<br>
+                <span class="gradient-text">В новом свете.</span>
+            </h1>
+            <p class="hero-desc">
+                Чёрный неон — это единая экосистема для репетиторов. 
+                Управление учениками, умное расписание и AI-инструменты в одном безупречном интерфейсе.
+            </p>
+            <div class="hero-buttons">
+                <a href="#login" class="btn btn-primary">Начать бесплатно</a>
+                <a href="#features" class="btn btn-glass">Тур по платформе</a>
+            </div>
+        </div>
+    </section>
 
-        // Intersection Observer for scroll animations
+    <section id="features" class="features">
+        <div class="container">
+            <div class="section-header reveal-on-scroll">
+                <span class="section-label">Возможности</span>
+                <h2 style="font-size: 3rem;">Инструменты будущего</h2>
+            </div>
+
+            <div class="feature-row reveal-on-scroll">
+                <div class="feature-info">
+                    <h3>Классная комната</h3>
+                    <p>Интерактивное пространство, где обучение становится живым. Забудьте про демонстрацию экрана — работайте с учеником в реальном времени.</p>
+                    <ul class="feature-list">
+                        <li>Синхронный редактор кода и текста</li>
+                        <li>Медиа-вложения Drag & Drop</li>
+                        <li>Автопроверка домашних заданий</li>
+                    </ul>
+                </div>
+                <div class="feature-card-visual">
+                    <div class="mockup-content">💻</div>
+                </div>
+            </div>
+
+            <div class="feature-row reverse reveal-on-scroll">
+                <div class="feature-info">
+                    <h3>Умное расписание</h3>
+                    <p>Система, которая бережет ваше время. Автоматический учет часовых поясов, переносы занятий в один клик и синхронизация с Google Calendar.</p>
+                    <ul class="feature-list">
+                        <li>Автопланирование регулярных встреч</li>
+                        <li>Уведомления для учеников</li>
+                        <li>Учет оплат и баланса</li>
+                    </ul>
+                </div>
+                <div class="feature-card-visual">
+                    <div class="mockup-content">📅</div>
+                </div>
+            </div>
+
+            <div class="feature-row reveal-on-scroll">
+                <div class="feature-info">
+                    <h3>AI-Ассистент <span style="color:var(--accent-primary); font-size:0.7em; vertical-align: super;">BETA</span></h3>
+                    <p>Ваш персональный методист. Нейросеть анализирует ошибки ученика, предлагает подсказки и даже генерирует уникальные варианты заданий ЕГЭ.</p>
+                    <ul class="feature-list">
+                        <li>Генерация заданий по ID темы</li>
+                        <li>Умный анализ кода (Code Review)</li>
+                        <li>Персонализированные рекомендации</li>
+                    </ul>
+                </div>
+                <div class="feature-card-visual">
+                    <div class="mockup-content">🤖</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="stats-section">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item reveal-on-scroll">
+                    <span class="stat-val">1000+</span>
+                    <span class="stat-label">Заданий в базе</span>
+                </div>
+                <div class="stat-item reveal-on-scroll">
+                    <span class="stat-val">0.1s</span>
+                    <span class="stat-label">Задержка синхронизации</span>
+                </div>
+                <div class="stat-item reveal-on-scroll">
+                    <span class="stat-val">100%</span>
+                    <span class="stat-label">Защита данных</span>
+                </div>
+                <div class="stat-item reveal-on-scroll">
+                    <span class="stat-val">24/7</span>
+                    <span class="stat-label">Поддержка</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section style="padding: 10rem 0; text-align: center;">
+        <div class="container reveal-on-scroll">
+            <h2 style="font-size: clamp(2.5rem, 5vw, 4rem); margin-bottom: 2rem;">
+                Готовы <span class="accent-text">трансформировать</span><br>процесс обучения?
+            </h2>
+            <a href="#" class="btn btn-primary" style="padding: 1.2rem 3rem; font-size: 1.2rem;">Создать аккаунт</a>
+        </div>
+    </section>
+
+    <script>
+        // Анимация появления при скролле
         const observerOptions = {
             threshold: 0.15,
-            rootMargin: '0px 0px -100px 0px'
+            rootMargin: "0px 0px -50px 0px"
         };
 
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     entry.target.classList.add('visible');
+                    // Опционально: перестать отслеживать после появления
+                    // observer.unobserve(entry.target); 
                 }
             });
         }, observerOptions);
 
-        // Observe all animated elements
-        document.querySelectorAll('.feature-block, .section-header, .stat-card').forEach(el => {
+        document.querySelectorAll('.reveal-on-scroll').forEach(el => {
             observer.observe(el);
         });
 
-        // Parallax effect for hero section
-        let lastScroll = 0;
-        window.addEventListener('scroll', () => {
-            const scrolled = window.pageYOffset;
-            const hero = document.querySelector('.landing-hero');
-            if (hero && scrolled < window.innerHeight) {
-                hero.style.transform = `translateY(${scrolled * 0.5}px)`;
-            }
+        // Параллакс эффект для "шаров" на фоне
+        document.addEventListener('mousemove', (e) => {
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            const orbs = document.querySelectorAll('.orb');
+            orbs.forEach((orb, index) => {
+                const speed = (index + 1) * 20;
+                const xOffset = (0.5 - x) * speed;
+                const yOffset = (0.5 - y) * speed;
+                orb.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
+            });
         });
     </script>
 </body>
