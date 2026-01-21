@@ -340,8 +340,13 @@
                         </div>
                     </div>
                 </div>
-                <div>
-                     <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button outline sm">
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                    {% if not is_student_view and not is_parent_view %}
+                    <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button accent sm">
+                        <i class="fas fa-edit"></i> Редактировать урок
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button outline sm">
                         <i class="fas fa-arrow-left"></i> Назад в профиль
                     </a>
                 </div>
