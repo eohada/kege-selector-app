@@ -675,11 +675,17 @@
                     const fromEl = getNodeEl(e.from_id);
                     const toEl = getNodeEl(e.to_id);
                     if (!fromEl || !toEl) continue;
-                    const a = pt(fromEl, 'right');
-                    const b = pt(toEl, 'left');
-                    const dx = Math.max(40, (b.x - a.x) * 0.5);
-                    const c1 = { x: a.x + dx, y: a.y };
-                    const c2 = { x: b.x - dx, y: b.y };
+                    const fromRect = fromEl.getBoundingClientRect();
+                    const toRect = toEl.getBoundingClientRect();
+                    const fromCx = (fromRect.left + fromRect.right) / 2;
+                    const toCx = (toRect.left + toRect.right) / 2;
+                    const leftToRight = fromCx <= toCx;
+
+                    const a = pt(fromEl, leftToRight ? 'right' : 'left');
+                    const b = pt(toEl, leftToRight ? 'left' : 'right');
+                    const dx = Math.max(40, Math.abs(b.x - a.x) * 0.5);
+                    const c1 = { x: a.x + (leftToRight ? dx : -dx), y: a.y };
+                    const c2 = { x: b.x - (leftToRight ? dx : -dx), y: b.y };
 
                     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                     path.setAttribute('d', `M ${a.x} ${a.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${b.x} ${b.y}`);

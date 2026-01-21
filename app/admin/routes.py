@@ -2020,6 +2020,7 @@ def admin_users_graph_data():
 
     try:
         include_inactive = str(request.args.get('include_inactive', 'true')).lower() == 'true'
+        all_enrollments = str(request.args.get('all_enrollments', 'false')).lower() == 'true'
         roles_raw = (request.args.get('roles') or '').strip()
         roles = [r.strip() for r in roles_raw.split(',') if r.strip()] if roles_raw else ['tutor', 'student', 'parent']
         roles = [r for r in roles if r in ('creator', 'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer')]
@@ -2049,14 +2050,52 @@ def admin_users_graph_data():
                 'timezone': (p.timezone if p else None),
             })
 
-        enrollments = Enrollment.query.all()
-        enrollment_edges = [{
-            'enrollment_id': e.enrollment_id,
-            'from_id': e.tutor_id,
-            'to_id': e.student_id,
-            'subject': e.subject,
-            'status': getattr(e, 'status', None) or 'active',
-        } for e in enrollments if (e.tutor_id in user_ids and e.student_id in user_ids)]
+        def _enr_rank(status: str) -> int:
+            s = (status or '').strip().lower()
+            if s == 'active':
+                return 2
+            if s == 'paused':
+                return 1
+            if s == 'archived':
+                return 0
+            return 1
+
+        enr_q = Enrollment.query
+        try:
+            enr_q = enr_q.filter(Enrollment.status != 'archived')
+        except Exception:
+            pass
+        enrollments = enr_q.all()
+
+        if all_enrollments:
+            enrollment_edges = [{
+                'enrollment_id': e.enrollment_id,
+                'from_id': e.tutor_id,
+                'to_id': e.student_id,
+                'subject': e.subject,
+                'status': getattr(e, 'status', None) or 'active',
+            } for e in enrollments if (e.tutor_id in user_ids and e.student_id in user_ids)]
+        else:
+            best_by_pair = {}
+            for e in enrollments:
+                if e.tutor_id not in user_ids or e.student_id not in user_ids:
+                    continue
+                key = (e.tutor_id, e.student_id)
+                cur = best_by_pair.get(key)
+                if not cur:
+                    best_by_pair[key] = e
+                    continue
+                e_score = (_enr_rank(getattr(e, 'status', None)), getattr(e, 'updated_at', None) or getattr(e, 'created_at', None))
+                c_score = (_enr_rank(getattr(cur, 'status', None)), getattr(cur, 'updated_at', None) or getattr(cur, 'created_at', None))
+                if e_score > c_score:
+                    best_by_pair[key] = e
+            enrollment_edges = [{
+                'enrollment_id': e.enrollment_id,
+                'from_id': e.tutor_id,
+                'to_id': e.student_id,
+                'subject': e.subject,
+                'status': getattr(e, 'status', None) or 'active',
+            } for e in best_by_pair.values()]
 
         ties = FamilyTie.query.all()
         family_edges = [{
