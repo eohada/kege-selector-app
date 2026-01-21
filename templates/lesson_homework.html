@@ -887,6 +887,13 @@
                     {% if not is_student_view and not is_parent_view %}
                         <button type="submit" class="neo-button accent"><i class="fas fa-save"></i> Сохранить изменения</button>
                         <a href="{{ url_for('kege_generator.kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button outline"><i class="fas fa-plus"></i> Добавить задания</a>
+                        {% if assignment_type == 'homework' %}
+                        <a href="{{ url_for('lessons.lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" target="_blank"><i class="fas fa-download"></i> Экспорт ДЗ</a>
+                        {% elif assignment_type == 'classwork' %}
+                        <a href="{{ url_for('lessons.lesson_classwork_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" target="_blank"><i class="fas fa-download"></i> Экспорт КР</a>
+                        {% elif assignment_type == 'exam' %}
+                        <a href="{{ url_for('lessons.lesson_exam_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" target="_blank"><i class="fas fa-download"></i> Экспорт Провер.</a>
+                        {% endif %}
                     {% else %}
                         <button type="submit" class="neo-button accent" {% if is_read_only %}disabled{% endif %}><i class="fas fa-save"></i> Сохранить черновик</button>
                         <button type="submit" class="neo-button outline" {% if is_read_only %}disabled{% endif %} formaction="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_submit', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_submit', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_submit', lesson_id=lesson.lesson_id) }}{% endif %}"><i class="fas fa-check-double"></i> Сдать работу</button>
