@@ -141,9 +141,29 @@ def lesson_edit(lesson_id):
     student = lesson.student
     form = LessonForm(obj=lesson)
     
-    # При редактировании устанавливаем московский часовой пояс по умолчанию
+    # При редактировании правильно заполняем дату и часовой пояс
     if request.method == 'GET':
-        form.timezone.data = 'moscow'
+        # Определяем часовой пояс пользователя
+        user_tz = 'moscow'
+        if current_user.profile and current_user.profile.timezone:
+            if 'tomsk' in current_user.profile.timezone.lower() or 'Asia/Tomsk' in current_user.profile.timezone:
+                user_tz = 'tomsk'
+        
+        form.timezone.data = user_tz
+        
+        # Конвертируем lesson_date из БД (naive в московском времени) в локальное время для формы
+        if lesson.lesson_date:
+            # lesson_date в БД хранится как naive datetime в московском времени
+            lesson_date_msk = lesson.lesson_date.replace(tzinfo=MOSCOW_TZ) if lesson.lesson_date.tzinfo is None else lesson.lesson_date
+            
+            # Конвертируем в часовой пояс пользователя
+            if user_tz == 'tomsk':
+                lesson_date_local = lesson_date_msk.astimezone(TOMSK_TZ)
+            else:
+                lesson_date_local = lesson_date_msk
+            
+            # Убираем timezone для DateTimeLocalField (он ожидает naive datetime)
+            form.lesson_date.data = lesson_date_local.replace(tzinfo=None)
 
     if form.validate_on_submit():
         ensure_introductory_without_homework(form)
