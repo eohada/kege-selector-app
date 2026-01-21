@@ -279,7 +279,7 @@ def register_hooks(app):
             logger.info(f"require_login hook: path={request.path}, endpoint={request.endpoint}, authenticated={current_user.is_authenticated if hasattr(current_user, 'is_authenticated') else False}")
         
         # Исключаем маршруты, которые не требуют авторизации
-        excluded_endpoints = ('auth.login', 'auth.logout', 'static', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page', 'main.setup_first_user', 'main.health_check')
+        excluded_endpoints = ('auth.login', 'auth.logout', 'static', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page', 'main.setup_first_user', 'main.health_check', 'main.landing', 'main.index')
         if request.endpoint in excluded_endpoints or request.path.startswith('/static/') or request.path.startswith('/font/'):
             return
 

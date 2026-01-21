@@ -197,6 +197,20 @@ def setup_first_user():
         }), 500
 
 @main_bp.route('/')
+@main_bp.route('/')
+@main_bp.route('/landing')
+def landing():
+    """Гостевая страница (landing page) - доступна без авторизации"""
+    # Если это админ-окружение, сразу редиректим в админку
+    if os.environ.get('ENVIRONMENT') == 'admin':
+        return redirect(url_for('remote_admin.dashboard'))
+    
+    # Если пользователь авторизован, редиректим на дашборд
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+    return render_template('landing.html')
+
+
 @main_bp.route('/index')
 @main_bp.route('/home')
 def index():
@@ -208,16 +222,6 @@ def index():
     if current_user.is_authenticated:
         return redirect(url_for('main.dashboard'))
     return render_template('index.html')
-
-
-@main_bp.route('/')
-@main_bp.route('/landing')
-def landing():
-    """Гостевая страница (landing page) - доступна без авторизации"""
-    # Если пользователь авторизован, редиректим на дашборд
-    if current_user.is_authenticated:
-        return redirect(url_for('main.dashboard'))
-    return render_template('landing.html')
 
 @main_bp.route('/dashboard')
 @login_required
