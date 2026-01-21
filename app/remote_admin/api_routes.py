@@ -171,6 +171,46 @@ def api_enrollment_manage(enrollment_id: int):
         return jsonify({'error': str(e)}), 500
 
 
+@remote_admin_bp.route('/api/family-ties', methods=['POST'])
+@login_required
+def api_family_tie_create():
+    """Proxy: создать FamilyTie (для графа связей)."""
+    if not current_user.is_creator():
+        return jsonify({'error': 'Access denied'}), 403
+
+    try:
+        env = get_current_environment()
+        if not is_environment_configured(env):
+            return jsonify({'error': f'Environment {env} is not configured'}), 400
+
+        payload = _extract_request_data()
+        resp = make_remote_request('POST', '/internal/remote-admin/api/family-ties', payload=payload)
+        return jsonify(resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'error': 'Invalid response'}), resp.status_code
+    except Exception as e:
+        logger.error(f"Error proxying family tie create: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@remote_admin_bp.route('/api/enrollments', methods=['POST'])
+@login_required
+def api_enrollment_create():
+    """Proxy: создать Enrollment (для графа связей)."""
+    if not current_user.is_creator():
+        return jsonify({'error': 'Access denied'}), 403
+
+    try:
+        env = get_current_environment()
+        if not is_environment_configured(env):
+            return jsonify({'error': f'Environment {env} is not configured'}), 400
+
+        payload = _extract_request_data()
+        resp = make_remote_request('POST', '/internal/remote-admin/api/enrollments', payload=payload)
+        return jsonify(resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'error': 'Invalid response'}), resp.status_code
+    except Exception as e:
+        logger.error(f"Error proxying enrollment create: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
 @remote_admin_bp.route('/api/stats')
 @login_required
 def api_stats():

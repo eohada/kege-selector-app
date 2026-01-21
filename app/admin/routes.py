@@ -2185,6 +2185,122 @@ def admin_api_enrollment_manage(enrollment_id: int):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@admin_bp.route('/admin/api/family-ties', methods=['POST'])
+@login_required
+def admin_api_family_tie_create():
+    """AJAX: создать FamilyTie (для графа)."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    try:
+        data = request.get_json(silent=True) or {}
+        parent_id = data.get('parent_id', type=int)
+        student_id = data.get('student_id', type=int)
+        access_level = (data.get('access_level') or 'full').strip()
+        is_confirmed = data.get('is_confirmed', True)
+
+        if not parent_id or not student_id:
+            return jsonify({'success': False, 'error': 'parent_id and student_id are required'}), 400
+
+        parent = User.query.get(parent_id)
+        student = User.query.get(student_id)
+        if not parent or not student:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+        if not parent.is_parent():
+            return jsonify({'success': False, 'error': 'User is not a parent'}), 400
+        if not student.is_student():
+            return jsonify({'success': False, 'error': 'User is not a student'}), 400
+
+        existing = FamilyTie.query.filter_by(parent_id=parent_id, student_id=student_id).first()
+        if existing:
+            return jsonify({'success': False, 'error': 'Family tie already exists'}), 409
+
+        allowed = {'full', 'financial_only', 'schedule_only'}
+        if access_level not in allowed:
+            return jsonify({'success': False, 'error': f'invalid access_level: {access_level}'}), 400
+
+        tie = FamilyTie(
+            parent_id=parent_id,
+            student_id=student_id,
+            access_level=access_level,
+            is_confirmed=bool(is_confirmed)
+        )
+        db.session.add(tie)
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'tie': {
+                'tie_id': tie.tie_id,
+                'parent_id': tie.parent_id,
+                'student_id': tie.student_id,
+                'access_level': tie.access_level,
+                'is_confirmed': bool(tie.is_confirmed),
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in admin_api_family_tie_create: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/admin/api/enrollments', methods=['POST'])
+@login_required
+def admin_api_enrollment_create():
+    """AJAX: создать Enrollment (для графа)."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    try:
+        data = request.get_json(silent=True) or {}
+        tutor_id = data.get('tutor_id', type=int)
+        student_id = data.get('student_id', type=int)
+        subject = (data.get('subject') or 'GENERAL').strip()
+        status = (data.get('status') or 'active').strip()
+
+        if not tutor_id or not student_id:
+            return jsonify({'success': False, 'error': 'tutor_id and student_id are required'}), 400
+
+        tutor = User.query.get(tutor_id)
+        student = User.query.get(student_id)
+        if not tutor or not student:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+        if not tutor.is_tutor():
+            return jsonify({'success': False, 'error': 'User is not a tutor'}), 400
+        if not student.is_student():
+            return jsonify({'success': False, 'error': 'User is not a student'}), 400
+
+        allowed = {'active', 'paused', 'archived'}
+        if status not in allowed:
+            return jsonify({'success': False, 'error': f'invalid status: {status}'}), 400
+
+        enrollment = Enrollment(
+            tutor_id=tutor_id,
+            student_id=student_id,
+            subject=subject,
+            status=status
+        )
+        try:
+            enrollment.is_active = (status == 'active')
+        except Exception:
+            pass
+        db.session.add(enrollment)
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'enrollment': {
+                'enrollment_id': enrollment.enrollment_id,
+                'tutor_id': enrollment.tutor_id,
+                'student_id': enrollment.student_id,
+                'subject': enrollment.subject,
+                'status': getattr(enrollment, 'status', None) or 'active',
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in admin_api_enrollment_create: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @admin_bp.route('/admin/users/<int:user_id>/family-tie/add', methods=['POST'])
 @login_required
 def admin_user_family_tie_add(user_id):

@@ -89,6 +89,7 @@
             <div class="rel-graph-selection">
               <span class="sel-pill">Выбран: <small data-act="selText">—</small></span>
               <button type="button" class="neo-button ghost small" data-act="selClear">Сбросить</button>
+              <button type="button" class="neo-button outline small" data-act="selCreateLink" style="display:none;">Создать связь</button>
               <button type="button" class="neo-button ghost small" data-act="selOpen" style="display:none;">Открыть</button>
             </div>
             <div class="rel-legend">
@@ -112,14 +113,18 @@
       this.nodesWrapEl = this.rootEl.querySelector('[data-act="nodes"]');
       this.selTextEl = this.rootEl.querySelector('[data-act="selText"]');
       this.selClearBtn = this.rootEl.querySelector('[data-act="selClear"]');
+      this.selCreateLinkBtn = this.rootEl.querySelector('[data-act="selCreateLink"]');
       this.selOpenBtn = this.rootEl.querySelector('[data-act="selOpen"]');
 
       // editing dialog (optional)
       this.enableEdgeEdit = !!this.opts.enableEdgeEdit;
       this.ftUrlPrefix = (this.opts.ftUrlPrefix || '').toString();
       this.enrUrlPrefix = (this.opts.enrUrlPrefix || '').toString();
+      this.ftCreateUrl = (this.opts.ftCreateUrl || '').toString();
+      this.enrCreateUrl = (this.opts.enrCreateUrl || '').toString();
       if (this.enableEdgeEdit) {
         this._mountDialog();
+        this._mountCreateDialog();
       }
 
       // svg defs: arrowhead
@@ -198,6 +203,301 @@
       this.dlgDelete.addEventListener('click', () => this._deleteEdge());
     }
 
+    _mountCreateDialog() {
+      const dlg = document.createElement('dialog');
+      dlg.className = 'rel-graph-dialog';
+      dlg.innerHTML = `
+        <div class="rel-graph-dlg-head">
+          <div style="font-weight:800;" data-act="createDlgTitle">Создать связь</div>
+          <button type="button" class="neo-button ghost small" data-act="createDlgClose">Закрыть</button>
+        </div>
+        <div class="rel-graph-dlg-body">
+          <div class="neo-field" data-act="createDlgType" style="display:none;">
+            <label class="neo-label" for="rg-create-type">Тип связи</label>
+            <select id="rg-create-type" class="neo-input" data-act="createDlgTypeSelect">
+              <option value="family">FamilyTie (родитель → ученик)</option>
+              <option value="enrollment">Enrollment (преподаватель → ученик)</option>
+            </select>
+          </div>
+          <div class="neo-field" data-act="createDlgTarget">
+            <label class="neo-label" for="rg-create-target">Выберите пользователя</label>
+            <select id="rg-create-target" class="neo-input" data-act="createDlgTargetSelect">
+              <option value="">— выберите —</option>
+            </select>
+          </div>
+          <div class="neo-field" data-act="createDlgFamily" style="display:none;">
+            <label class="neo-label" for="rg-create-access-level">Уровень доступа (FamilyTie)</label>
+            <select id="rg-create-access-level" class="neo-input" data-act="createDlgAccess">
+              <option value="full">Полный</option>
+              <option value="financial_only">Только финансы</option>
+              <option value="schedule_only">Только расписание</option>
+            </select>
+            <label style="display:flex; gap:0.6rem; align-items:center; margin-top:0.5rem;">
+              <input type="checkbox" data-act="createDlgConfirmed" checked>
+              <span style="color: var(--text-muted);">Подтверждено</span>
+            </label>
+          </div>
+          <div class="neo-field" data-act="createDlgEnrollment" style="display:none;">
+            <label class="neo-label" for="rg-create-enr-subject">Предмет/тэг (Enrollment)</label>
+            <input id="rg-create-enr-subject" class="neo-input" data-act="createDlgSubject" placeholder="например: GENERAL или INFORMATICS_EGE_2026" value="GENERAL">
+            <label class="neo-label" for="rg-create-enr-status" style="margin-top:0.5rem;">Статус</label>
+            <select id="rg-create-enr-status" class="neo-input" data-act="createDlgStatus">
+              <option value="active">active</option>
+              <option value="paused">paused</option>
+              <option value="archived">archived</option>
+            </select>
+          </div>
+          <div style="color: var(--text-muted); font-size:0.9rem;" data-act="createDlgHint"></div>
+        </div>
+        <div class="rel-graph-dlg-actions">
+          <button type="button" class="neo-button outline" data-act="createDlgSave">Создать</button>
+        </div>
+      `;
+      this.rootEl.appendChild(dlg);
+      this.createDialogEl = dlg;
+
+      this.createDlgTitle = dlg.querySelector('[data-act="createDlgTitle"]');
+      this.createDlgClose = dlg.querySelector('[data-act="createDlgClose"]');
+      this.createDlgSave = dlg.querySelector('[data-act="createDlgSave"]');
+      this.createDlgHint = dlg.querySelector('[data-act="createDlgHint"]');
+      this.createDlgType = dlg.querySelector('[data-act="createDlgType"]');
+      this.createDlgTypeSelect = dlg.querySelector('[data-act="createDlgTypeSelect"]');
+      this.createDlgTarget = dlg.querySelector('[data-act="createDlgTarget"]');
+      this.createDlgTargetSelect = dlg.querySelector('[data-act="createDlgTargetSelect"]');
+      this.createDlgFamily = dlg.querySelector('[data-act="createDlgFamily"]');
+      this.createDlgEnrollment = dlg.querySelector('[data-act="createDlgEnrollment"]');
+      this.createDlgAccess = dlg.querySelector('[data-act="createDlgAccess"]');
+      this.createDlgConfirmed = dlg.querySelector('[data-act="createDlgConfirmed"]');
+      this.createDlgSubject = dlg.querySelector('[data-act="createDlgSubject"]');
+      this.createDlgStatus = dlg.querySelector('[data-act="createDlgStatus"]');
+
+      this.createDlgClose.addEventListener('click', () => {
+        this.createDialogEl.close();
+        this._resetCreateDialog();
+      });
+      this.createDlgTypeSelect?.addEventListener('change', () => this._updateCreateDialog());
+      this.createDlgSave.addEventListener('click', () => this._createLink());
+      // Сбрасываем диалог при закрытии через ESC или клик вне диалога
+      this.createDialogEl.addEventListener('close', () => this._resetCreateDialog());
+    }
+
+    _updateCreateDialog() {
+      if (!this.createDialogEl || !this.data) return;
+      const kind = this.createDlgTypeSelect?.value || '';
+      if (kind === 'family') {
+        this.createDlgFamily.style.display = '';
+        this.createDlgEnrollment.style.display = 'none';
+      } else if (kind === 'enrollment') {
+        this.createDlgFamily.style.display = 'none';
+        this.createDlgEnrollment.style.display = '';
+      }
+    }
+
+    _resetCreateDialog() {
+      if (!this.createDialogEl) return;
+      this.createDlgTargetSelect.innerHTML = '<option value="">— выберите —</option>';
+      this.createDlgTypeSelect.value = 'family';
+      this.createDlgAccess.value = 'full';
+      this.createDlgConfirmed.checked = true;
+      this.createDlgSubject.value = 'GENERAL';
+      this.createDlgStatus.value = 'active';
+      this.createDlgHint.textContent = '';
+      this.createDlgType.style.display = 'none';
+      this.createDlgFamily.style.display = 'none';
+      this.createDlgEnrollment.style.display = 'none';
+      this.createDlgTypeSelect.onchange = null;
+    }
+
+    _openCreateLinkDialog() {
+      if (!this.selectedNodeId || !this.data || !this.createDialogEl) return;
+      const selected = (this.data.nodes || []).find(n => n.id === this.selectedNodeId);
+      if (!selected) return;
+
+      this.createDlgHint.textContent = '';
+      const role = selected.role;
+      const nodes = (this.data.nodes || []).filter(n => n.id !== this.selectedNodeId);
+
+      // Заполняем список доступных пользователей
+      this.createDlgTargetSelect.innerHTML = '<option value="">— выберите —</option>';
+      if (role === 'parent') {
+        this.createDlgTitle.textContent = 'Создать FamilyTie: родитель → ученик';
+        this.createDlgType.style.display = 'none';
+        this.createDlgFamily.style.display = '';
+        this.createDlgEnrollment.style.display = 'none';
+        this.createDlgHint.textContent = `Родитель: ${selected.username}. Выберите ученика.`;
+        for (const n of nodes.filter(n => n.role === 'student')) {
+          const opt = document.createElement('option');
+          opt.value = String(n.id);
+          opt.textContent = `${n.username}${n.email ? ' · ' + n.email : ''}`;
+          this.createDlgTargetSelect.appendChild(opt);
+        }
+      } else if (role === 'student') {
+        this.createDlgTitle.textContent = 'Создать связь для ученика';
+        this.createDlgType.style.display = '';
+        this.createDlgFamily.style.display = '';
+        this.createDlgEnrollment.style.display = '';
+        this.createDlgHint.textContent = `Ученик: ${selected.username}. Выберите тип связи и пользователя.`;
+        this.createDlgTypeSelect.value = 'family';
+        this._updateCreateDialog();
+        // Показываем и родителей, и преподавателей
+        const parents = nodes.filter(n => n.role === 'parent');
+        const tutors = nodes.filter(n => n.role === 'tutor');
+        const updateTargetList = () => {
+          this.createDlgTargetSelect.innerHTML = '<option value="">— выберите —</option>';
+          const kind = this.createDlgTypeSelect.value;
+          const list = kind === 'family' ? parents : tutors;
+          for (const n of list) {
+            const opt = document.createElement('option');
+            opt.value = String(n.id);
+            opt.textContent = `${n.username}${n.email ? ' · ' + n.email : ''}`;
+            this.createDlgTargetSelect.appendChild(opt);
+          }
+          this._updateCreateDialog();
+        };
+        // Используем onchange вместо addEventListener, чтобы избежать дублирования
+        this.createDlgTypeSelect.onchange = updateTargetList;
+        // Инициализируем список для начального значения
+        updateTargetList();
+      } else if (role === 'tutor') {
+        this.createDlgTitle.textContent = 'Создать Enrollment: преподаватель → ученик';
+        this.createDlgType.style.display = 'none';
+        this.createDlgFamily.style.display = 'none';
+        this.createDlgEnrollment.style.display = '';
+        this.createDlgHint.textContent = `Преподаватель: ${selected.username}. Выберите ученика.`;
+        for (const n of nodes.filter(n => n.role === 'student')) {
+          const opt = document.createElement('option');
+          opt.value = String(n.id);
+          opt.textContent = `${n.username}${n.email ? ' · ' + n.email : ''}`;
+          this.createDlgTargetSelect.appendChild(opt);
+        }
+      } else {
+        return;
+      }
+
+      this.createDialogEl.showModal();
+    }
+
+    async _createLink() {
+      if (!this.selectedNodeId || !this.data) return;
+      const selected = (this.data.nodes || []).find(n => n.id === this.selectedNodeId);
+      if (!selected) return;
+
+      try {
+        this.createDlgSave.disabled = true;
+        const role = selected.role;
+        let url, payload, kind;
+
+        // Получаем выбранного пользователя из диалога
+        const targetUserId = this.createDlgTargetSelect?.value;
+        if (!targetUserId) {
+          (window.toast || toast)?.error?.('Выберите пользователя');
+          this.createDlgSave.disabled = false;
+          return;
+        }
+        const targetUser = (this.data.nodes || []).find(n => String(n.id) === String(targetUserId));
+        if (!targetUser) {
+          (window.toast || toast)?.error?.('Пользователь не найден');
+          this.createDlgSave.disabled = false;
+          return;
+        }
+
+        if (role === 'parent') {
+          // FamilyTie: parent -> student
+          if (targetUser.role !== 'student') {
+            (window.toast || toast)?.error?.('Выберите ученика');
+            this.createDlgSave.disabled = false;
+            return;
+          }
+          url = this.ftCreateUrl;
+          payload = {
+            parent_id: this.selectedNodeId,
+            student_id: targetUser.id,
+            access_level: this.createDlgAccess.value,
+            is_confirmed: this.createDlgConfirmed.checked,
+          };
+          kind = 'family';
+        } else if (role === 'tutor') {
+          // Enrollment: tutor -> student
+          if (targetUser.role !== 'student') {
+            (window.toast || toast)?.error?.('Выберите ученика');
+            this.createDlgSave.disabled = false;
+            return;
+          }
+          url = this.enrCreateUrl;
+          payload = {
+            tutor_id: this.selectedNodeId,
+            student_id: targetUser.id,
+            subject: this.createDlgSubject.value || 'GENERAL',
+            status: this.createDlgStatus.value || 'active',
+          };
+          kind = 'enrollment';
+        } else if (role === 'student') {
+          // Можем создать либо FamilyTie (нужен parent), либо Enrollment (нужен tutor)
+          const linkType = this.createDlgTypeSelect?.value || 'family';
+          if (linkType === 'family') {
+            if (targetUser.role !== 'parent') {
+              (window.toast || toast)?.error?.('Выберите родителя');
+              this.createDlgSave.disabled = false;
+              return;
+            }
+            url = this.ftCreateUrl;
+            payload = {
+              parent_id: targetUser.id,
+              student_id: this.selectedNodeId,
+              access_level: this.createDlgAccess.value,
+              is_confirmed: this.createDlgConfirmed.checked,
+            };
+            kind = 'family';
+          } else if (linkType === 'enrollment') {
+            if (targetUser.role !== 'tutor') {
+              (window.toast || toast)?.error?.('Выберите преподавателя');
+              this.createDlgSave.disabled = false;
+              return;
+            }
+            url = this.enrCreateUrl;
+            payload = {
+              tutor_id: targetUser.id,
+              student_id: this.selectedNodeId,
+              subject: this.createDlgSubject.value || 'GENERAL',
+              status: this.createDlgStatus.value || 'active',
+            };
+            kind = 'enrollment';
+          } else {
+            (window.toast || toast)?.error?.('Неверный тип связи');
+            this.createDlgSave.disabled = false;
+            return;
+          }
+        } else {
+          (window.toast || toast)?.error?.('Невозможно создать связь для этой роли');
+          this.createDlgSave.disabled = false;
+          return;
+        }
+
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRFToken': this.csrfToken,
+          },
+          body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data || data.success === false) {
+          throw new Error((data && (data.error || data.message)) || `HTTP ${resp.status}`);
+        }
+        (window.toast || toast)?.success?.('Связь создана');
+        this.createDialogEl.close();
+        this._resetCreateDialog();
+        await this.reload();
+      } catch (e) {
+        console.error(e);
+        (window.toast || toast)?.error?.('Не удалось создать связь: ' + (e.message || String(e)));
+      } finally {
+        this.createDlgSave.disabled = false;
+      }
+    }
+
     _bindUI() {
       const btn = (act) => this.rootEl.querySelector(`[data-act="${act}"]`);
       btn('fit')?.addEventListener('click', () => this.fitToContent());
@@ -212,9 +512,11 @@
       focusSelected?.addEventListener('change', () => this.render());
       allEnrollments?.addEventListener('change', () => this.reload());
       this.selClearBtn?.addEventListener('click', () => this._setSelected(null));
+      this.selCreateLinkBtn?.addEventListener('click', () => this._openCreateLinkDialog());
       this.selOpenBtn?.addEventListener('click', () => {
         if (!this.selectedNodeId || !this.userEditUrlPrefix) return;
-        window.open(`${this.userEditUrlPrefix}${this.selectedNodeId}`, '_blank');
+        const url = this.userEditUrlPrefix.replace(/\/$/, '') + '/' + this.selectedNodeId;
+        window.open(url, '_blank');
       });
 
       // Pan (pointer)
@@ -314,7 +616,8 @@
           ev.preventDefault();
           ev.stopPropagation();
           if (this.userEditUrlPrefix) {
-            window.open(`${this.userEditUrlPrefix}${n.id}`, '_blank');
+            const url = this.userEditUrlPrefix.replace(/\/$/, '') + '/' + n.id;
+            window.open(url, '_blank');
           }
         });
         this.nodesWrapEl.appendChild(el);
@@ -443,6 +746,7 @@
       if (!this.data || !this.selectedNodeId) {
         this.selTextEl.textContent = '—';
         if (this.selOpenBtn) this.selOpenBtn.style.display = 'none';
+        if (this.selCreateLinkBtn) this.selCreateLinkBtn.style.display = 'none';
         for (const el of this.nodeEls.values()) el.classList.remove('selected');
         return;
       }
@@ -450,6 +754,10 @@
       const label = node ? `${node.username}${node.role ? ' · ' + defaultRoleLabel(node.role) : ''}` : String(this.selectedNodeId);
       this.selTextEl.textContent = label;
       if (this.selOpenBtn) this.selOpenBtn.style.display = this.userEditUrlPrefix ? '' : 'none';
+      if (this.selCreateLinkBtn) {
+        const canCreate = node && (node.role === 'parent' || node.role === 'tutor' || node.role === 'student');
+        this.selCreateLinkBtn.style.display = (canCreate && this.enableEdgeEdit) ? '' : 'none';
+      }
       for (const [id, el] of this.nodeEls.entries()) {
         el.classList.toggle('selected', id === this.selectedNodeId);
       }
