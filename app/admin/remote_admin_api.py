@@ -711,8 +711,18 @@ def remote_admin_api_family_tie_create():
 
     try:
         data = request.get_json() or {}
-        parent_id = data.get('parent_id', type=int)
-        student_id = data.get('student_id', type=int)
+        parent_id = data.get('parent_id')
+        if parent_id is not None:
+            try:
+                parent_id = int(parent_id)
+            except (ValueError, TypeError):
+                parent_id = None
+        student_id = data.get('student_id')
+        if student_id is not None:
+            try:
+                student_id = int(student_id)
+            except (ValueError, TypeError):
+                student_id = None
         access_level = (data.get('access_level') or 'full').strip()
         is_confirmed = data.get('is_confirmed', True)
 
@@ -769,8 +779,18 @@ def remote_admin_api_enrollment_create():
 
     try:
         data = request.get_json() or {}
-        tutor_id = data.get('tutor_id', type=int)
-        student_id = data.get('student_id', type=int)
+        tutor_id = data.get('tutor_id')
+        if tutor_id is not None:
+            try:
+                tutor_id = int(tutor_id)
+            except (ValueError, TypeError):
+                tutor_id = None
+        student_id = data.get('student_id')
+        if student_id is not None:
+            try:
+                student_id = int(student_id)
+            except (ValueError, TypeError):
+                student_id = None
         subject = (data.get('subject') or 'GENERAL').strip()
         status = (data.get('status') or 'active').strip()
 
