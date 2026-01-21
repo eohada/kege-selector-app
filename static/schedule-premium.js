@@ -74,6 +74,15 @@
 
     const meta = JSON.parse(lessonEl.dataset.meta || '{}');
     inspectorTitle.textContent = meta.student || 'Урок';
+    
+    // Извлекаем дату из родительской колонки дня
+    const dayCol = lessonEl.closest('.day-col');
+    const dayIso = dayCol?.dataset.day || '';
+    
+    // Парсим дату и время из meta или используем значения по умолчанию
+    const startTime = meta.start_time || '';
+    const dateValue = dayIso || '';
+    const timeValue = startTime || '';
 
     const statusMap = {
       planned: 'Запланирован',
@@ -114,11 +123,25 @@
       return;
     }
 
+    // Извлекаем дату из родительской колонки дня
+    const dayCol = lessonEl.closest('.day-col');
+    const dayIso = dayCol?.dataset.day || '';
+    
+    // Парсим дату и время из meta или используем значения по умолчанию
+    const startTime = meta.start_time || '';
+    const dateValue = dayIso || '';
+    const timeValue = startTime || '';
+
     inspectorBody.innerHTML = `
       <div style="display:grid; gap:0.85rem;">
-        <div style="display:grid; gap:0.4rem;">
-          <div style="color:var(--text-muted); font-size:0.9rem;">Время</div>
-          <div style="font-weight:900; font-size:1.1rem; color:var(--text-primary);">${meta.start_time || ''}</div>
+        <div class="neo-field">
+          <label class="neo-label">Дата</label>
+          <input class="neo-input" id="inspectorDate" type="date" value="${dateValue}">
+        </div>
+
+        <div class="neo-field">
+          <label class="neo-label">Время</label>
+          <input class="neo-input" id="inspectorTime" type="time" value="${timeValue}">
         </div>
 
         <div class="neo-field">
@@ -164,6 +187,8 @@
       </div>
     `;
 
+    const dateInput = qs('#inspectorDate', inspectorBody);
+    const timeInput = qs('#inspectorTime', inspectorBody);
     const statusSel = qs('#inspectorStatus', inspectorBody);
     const durationInput = qs('#inspectorDuration', inspectorBody);
     const lessonTypeSel = qs('#inspectorLessonType', inspectorBody);
@@ -171,12 +196,18 @@
     const saveBtn = qs('#inspectorSave', inspectorBody);
     const deleteBtn = qs('#inspectorDelete', inspectorBody);
     const recurringBtn = qs('#inspectorMakeRecurring', inspectorBody);
+    
+    // Сохраняем ссылку на dayCol для использования в обработчике сохранения
+    const currentDayCol = dayCol;
 
     saveBtn?.addEventListener('click', async () => {
       const nextStatus = statusSel?.value || meta.status_code;
       const nextDuration = durationInput?.value ? parseInt(durationInput.value, 10) : meta.duration_minutes;
       const nextType = lessonTypeSel?.value || meta.lesson_type || 'regular';
       const nextTopic = topicInput?.value ?? '';
+      const nextDate = dateInput?.value || '';
+      const nextTime = timeInput?.value || '';
+      const currentTz = document.querySelector('[data-timezone-toggle]')?.dataset.timezone || 'moscow';
 
       try {
         // status
@@ -189,27 +220,72 @@
         }
 
         // other fields
+        let resp = null;
         if (updateUrlTpl) {
           const url = updateUrlTpl.replace('0', String(meta.lesson_id));
-          const resp = await postJSON(url, {
+          const payload = {
             duration: nextDuration,
             lesson_type: nextType,
             topic: nextTopic,
-          });
+          };
+          
+          // Добавляем время, если оно изменилось
+          if (nextDate && nextTime) {
+            payload.lesson_date = nextDate;
+            payload.lesson_time = nextTime;
+            payload.timezone = currentTz;
+          }
+          
+          resp = await postJSON(url, payload);
           meta.duration_minutes = resp?.lesson?.duration_minutes ?? nextDuration;
           meta.lesson_type = resp?.lesson?.lesson_type ?? nextType;
           meta.topic = resp?.lesson?.topic ?? nextTopic;
+          
+          // Обновляем время в meta, если оно изменилось
+          if (nextDate && nextTime) {
+            meta.start_date = nextDate;
+            meta.start_time = nextTime;
+          }
         } else {
           meta.duration_minutes = nextDuration;
           meta.lesson_type = nextType;
           meta.topic = nextTopic;
+          if (nextDate && nextTime) {
+            meta.start_date = nextDate;
+            meta.start_time = nextTime;
+          }
         }
 
         // resize card
         const height = Math.max((parseInt(meta.duration_minutes || '60', 10) / slotMinutes) * pxPerSlot - 4, pxPerSlot * 0.9);
         lessonEl.style.height = `${height}px`;
 
-        lessonEl.dataset.meta = JSON.stringify(meta);
+        // Обновляем время на карточке, если оно изменилось
+        if (nextDate && nextTime) {
+          const timeEl = lessonEl.querySelector('[data-role="time"]');
+          if (timeEl) timeEl.textContent = nextTime;
+          
+          // Если изменилось время, нужно перерисовать карточку в новом месте
+          const [hours, minutes] = nextTime.split(':').map(Number);
+          const newStartTotal = hours * 60 + minutes;
+          
+          meta.start_total = newStartTotal;
+          meta.start_time = nextTime;
+          
+          // Находим новую колонку дня
+          const newDayCol = qs(`.day-col[data-day="${nextDate}"]`);
+          if (newDayCol && newDayCol !== currentDayCol) {
+            // Перемещаем карточку в новую колонку
+            const newTop = minutesToY(newStartTotal);
+            lessonEl.style.top = `${newTop}px`;
+            newDayCol.appendChild(lessonEl);
+          } else if (currentDayCol) {
+            // Обновляем позицию в той же колонке
+            const newTop = minutesToY(newStartTotal);
+            lessonEl.style.top = `${newTop}px`;
+          }
+        }
+
         if (window.toast) window.toast.success('Сохранено');
       } catch (e) {
         if (window.toast) window.toast.error(e.message || 'Ошибка сохранения');

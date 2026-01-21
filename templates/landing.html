@@ -201,21 +201,22 @@
     <nav style="position: fixed; width: 100%; top: 0; z-index: 100; backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.05);">
         <div class="container" style="height: 70px; display: flex; justify-content: space-between; align-items: center;">
             <div style="font-weight: 700; font-size: 1.2rem;">Чёрный неон</div>
-            <a href="#" class="btn-glow" style="padding: 8px 24px; border-radius: 8px; font-size: 0.9rem;">Вход</a>
+            <a href="{{ url_for('auth.login') }}" class="btn-glow" style="padding: 8px 24px; border-radius: 8px; font-size: 0.9rem;">Вход</a>
         </div>
     </nav>
 
     <section class="hero">
         <div class="container">
             <h1 class="hero-title reveal">
-                Будущее <br> <span class="text-gradient">онлайн-обучения</span>
+                Твоё будущее <br> <span class="text-gradient">в обучении</span>
             </h1>
             <p class="hero-subtitle reveal">
-                Профессиональная платформа для репетиторов. От интерактивной доски до генератора заданий ЕГЭ — всё в одной экосистеме.
+                Современная платформа для эффективной подготовки к ЕГЭ. Интерактивные уроки, AI-помощник, 
+                автоматическая проверка заданий и всё необходимое для успешной сдачи экзаменов.
             </p>
             <div style="display: flex; gap: 16px; justify-content: center;" class="reveal">
-                <a href="#" class="btn btn-primary">Начать бесплатно</a>
-                <a href="#demo" class="btn btn-glow">Смотреть демо</a>
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Войти в систему</a>
+                <a href="#features" class="btn btn-glow">Узнать больше</a>
             </div>
         </div>
     </section>
@@ -226,11 +227,12 @@
                 <div class="feature-content reveal">
                     <span style="color: var(--cyan); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: block;">Интерактив</span>
                     <h2>Классная комната</h2>
-                    <p>Больше никаких "расшарьте экран". Полноценное рабочее пространство с синхронным редактором кода, заметок и медиа-файлов.</p>
+                    <p>Твоё личное пространство для обучения. Получай доступ ко всем материалам урока, 
+                    выполняй задания прямо на платформе и получай мгновенную обратную связь.</p>
                     <ul class="feature-list">
-                        <li>Редактор кода с подсветкой синтаксиса</li>
-                        <li>Вложения фото и видео (Drag & Drop)</li>
-                        <li>Автопроверка ответов в реальном времени</li>
+                        <li>Доступ к конспектам и материалам урока</li>
+                        <li>Заметки с фото для лучшего понимания</li>
+                        <li>Мгновенная проверка твоих ответов</li>
                     </ul>
                 </div>
                 <div class="feature-visual reveal">
@@ -245,12 +247,13 @@
             <div class="feature-grid">
                 <div class="feature-content reveal">
                     <span style="color: var(--primary); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: block;">Планирование</span>
-                    <h2>Умное расписание</h2>
-                    <p>Система сама учитывает часовые пояса учеников. Планируйте регулярные занятия и разовые встречи в пару кликов.</p>
+                    <h2>Твоё расписание</h2>
+                    <p>Всегда знай, когда у тебя уроки. Удобный календарь с напоминаниями и синхронизацией 
+                    с твоим личным календарём — никогда не пропусти занятие.</p>
                     <ul class="feature-list">
-                        <li>Автоматическая конвертация часовых поясов</li>
+                        <li>Просмотр всех запланированных уроков</li>
+                        <li>Напоминания о предстоящих занятиях</li>
                         <li>Синхронизация с Google Calendar</li>
-                        <li>Фильтры и удобный Drag & Drop перенос</li>
                     </ul>
                 </div>
                 <div class="feature-visual reveal">
@@ -264,9 +267,10 @@
         <div class="container">
             <div class="reveal" style="max-width: 800px; margin: 0 auto 50px auto;">
                 <span style="background: var(--primary); color: white; padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; margin-bottom: 20px; display: inline-block;">NEW</span>
-                <h2 style="font-size: clamp(2.5rem, 5vw, 4rem);">AI-Ассистент</h2>
+                <h2 style="font-size: clamp(2.5rem, 5vw, 4rem);">AI-Помощник</h2>
                 <p style="font-size: 1.3rem; color: var(--text-muted); margin-top: 20px;">
-                    Персональный методист на базе искусственного интеллекта. Он проверяет код, дает подсказки ученику и помогает вам готовить материалы.
+                    Твой личный помощник в обучении программированию. Получай подсказки, задавай вопросы 
+                    и учись на своих ошибках с помощью искусственного интеллекта.
                 </p>
             </div>
             
@@ -280,13 +284,14 @@
         <div class="container">
             <div class="feature-grid">
                 <div class="feature-content reveal">
-                    <span style="color: var(--cyan); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: block;">База знаний</span>
-                    <h2>Генератор ЕГЭ</h2>
-                    <p>Доступ к тысячам заданий с уникальными ID. Исключайте уже решенные задачи и собирайте индивидуальные варианты за секунды.</p>
+                    <span style="color: var(--cyan); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: block;">Подготовка к ЕГЭ</span>
+                    <h2>Огромная база заданий</h2>
+                    <p>Тысячи заданий ЕГЭ для практики. Решай задачи разных уровней сложности, 
+                    отслеживай свой прогресс и готовься к экзамену эффективно.</p>
                     <ul class="feature-list">
-                        <li>Умный подбор с исключением повторов</li>
-                        <li>Поиск по номеру задания или теме</li>
-                        <li>Мгновенная генерация PDF версий</li>
+                        <li>Тысячи заданий из реальных вариантов ЕГЭ</li>
+                        <li>Разные уровни сложности для постепенной подготовки</li>
+                        <li>Автоматическая проверка ответов</li>
                     </ul>
                 </div>
                 <div class="feature-visual reveal">
@@ -301,15 +306,15 @@
             <div class="stats-flex">
                 <div class="stat-item reveal">
                     <span class="stat-val text-gradient">1000+</span>
-                    <span class="stat-lbl">Заданий в базе</span>
+                    <span class="stat-lbl">Заданий для практики</span>
                 </div>
                 <div class="stat-item reveal">
                     <span class="stat-val text-gradient">24/7</span>
-                    <span class="stat-lbl">Доступность</span>
+                    <span class="stat-lbl">Доступ в любое время</span>
                 </div>
                 <div class="stat-item reveal">
                     <span class="stat-val text-gradient">AI</span>
-                    <span class="stat-lbl">Интеграция</span>
+                    <span class="stat-lbl">Персональный помощник</span>
                 </div>
             </div>
         </div>
@@ -318,9 +323,9 @@
     <section style="padding: 120px 0; text-align: center;">
         <div class="container">
             <h2 class="reveal" style="font-size: clamp(2.5rem, 5vw, 4rem); margin-bottom: 40px;">
-                Готовы к <span class="text-gradient">новому уровню?</span>
+                Готов начать <span class="text-gradient">учиться?</span>
             </h2>
-            <a href="#" class="btn btn-primary reveal" style="padding: 20px 60px; font-size: 1.2rem;">Создать аккаунт</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-primary reveal" style="padding: 20px 60px; font-size: 1.2rem;">Войти в систему</a>
         </div>
     </section>
 

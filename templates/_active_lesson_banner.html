@@ -183,6 +183,18 @@
 
         <div style="margin-top: 1em; padding-top: 1em; border-top: 1px solid rgba(16, 185, 129, 0.3);">
             <div style="margin-bottom: 0.8em;">
+                <label style="display: block; color: #6ee7b7; font-size: 0.9em; margin-bottom: 0.3em;">Дата урока:</label>
+                <input type="date" name="lesson_date" value="{{ active_local.strftime('%Y-%m-%d') if active_local else '' }}" 
+                       style="width: 100%; padding: 0.5em; background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; color: #e0e0e0; font-size: 0.9em;">
+            </div>
+            
+            <div style="margin-bottom: 0.8em;">
+                <label style="display: block; color: #6ee7b7; font-size: 0.9em; margin-bottom: 0.3em;">Время урока:</label>
+                <input type="time" name="lesson_time" value="{{ active_local.strftime('%H:%M') if active_local else '' }}" 
+                       style="width: 100%; padding: 0.5em; background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; color: #e0e0e0; font-size: 0.9em;">
+            </div>
+            
+            <div style="margin-bottom: 0.8em;">
                 <label style="display: block; color: #6ee7b7; font-size: 0.9em; margin-bottom: 0.3em;">Тема урока:</label>
                 <input type="text" name="topic" value="{{ active_lesson.topic or '' }}" 
                        style="width: 100%; padding: 0.5em; background: rgba(20, 20, 30, 0.8); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; color: #e0e0e0; font-size: 0.9em;">

@@ -266,11 +266,31 @@ def lesson_start(lesson_id):
 @login_required
 def lesson_complete(lesson_id):
     """Завершение урока"""
+    from app.schedule.routes import _parse_local_datetime
+    
     lesson = Lesson.query.get_or_404(lesson_id)
 
+    # Обновление темы
     lesson.topic = request.form.get('topic', lesson.topic)
     lesson.notes = request.form.get('notes', lesson.notes)
     lesson.homework = request.form.get('homework', lesson.homework)
+    
+    # Обновление времени урока, если указано
+    lesson_date_str = request.form.get('lesson_date', '').strip()
+    lesson_time_str = request.form.get('lesson_time', '').strip()
+    if lesson_date_str and lesson_time_str:
+        try:
+            # Определяем часовой пояс пользователя
+            user_tz = 'moscow'
+            if current_user.profile and current_user.profile.timezone:
+                if 'tomsk' in current_user.profile.timezone.lower() or 'Asia/Tomsk' in current_user.profile.timezone:
+                    user_tz = 'tomsk'
+            
+            new_lesson_date = _parse_local_datetime(lesson_date_str, lesson_time_str, user_tz)
+            lesson.lesson_date = new_lesson_date
+        except Exception as e:
+            logger.warning(f"Ошибка при обновлении времени урока {lesson_id}: {e}")
+    
     lesson.status = 'completed'
 
     try:

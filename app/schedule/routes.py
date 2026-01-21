@@ -779,6 +779,20 @@ def schedule_update_lesson(lesson_id: int):
     duration = data.get('duration')
     lesson_type = data.get('lesson_type')
     topic = data.get('topic')
+    lesson_date = data.get('lesson_date')
+    lesson_time = data.get('lesson_time')
+    timezone = (data.get('timezone') or 'moscow').strip()
+
+    # Обновление времени урока
+    new_lesson_date = None
+    if lesson_date is not None and lesson_time is not None:
+        date_str = str(lesson_date).strip()
+        time_str = str(lesson_time).strip()
+        if date_str and time_str:
+            try:
+                new_lesson_date = _parse_local_datetime(date_str, time_str, timezone)
+            except Exception as e:
+                return jsonify({'success': False, 'error': f'Ошибка формата даты/времени: {e}'}), 400
 
     # duration
     if duration is not None:
@@ -801,18 +815,26 @@ def schedule_update_lesson(lesson_id: int):
         if len(topic) > 300:
             return jsonify({'success': False, 'error': 'topic слишком длинная'}), 400
 
-    # Пересечение по времени учитываем только если меняется duration
-    if duration is not None:
-        if _student_has_overlap(lesson.student_id, lesson.lesson_date, duration, exclude_lesson_id=lesson.lesson_id):
+    # Проверка пересечений по времени
+    check_date = new_lesson_date if new_lesson_date is not None else lesson.lesson_date
+    check_duration = duration if duration is not None else (lesson.duration or 60)
+    
+    if new_lesson_date is not None or duration is not None:
+        if _student_has_overlap(lesson.student_id, check_date, check_duration, exclude_lesson_id=lesson.lesson_id):
             return jsonify({'success': False, 'error': 'Есть пересечение по времени для этого ученика'}), 409
+        if current_user.is_tutor() and _tutor_has_overlap(current_user.id, check_date, check_duration, exclude_lesson_id=lesson.lesson_id):
+            return jsonify({'success': False, 'error': 'У вас уже есть урок в это время'}), 409
 
     try:
         old = {
             'duration': lesson.duration,
             'lesson_type': lesson.lesson_type,
             'topic': lesson.topic,
+            'lesson_date': str(lesson.lesson_date) if lesson.lesson_date else None,
         }
 
+        if new_lesson_date is not None:
+            lesson.lesson_date = new_lesson_date
         if duration is not None:
             lesson.duration = duration
         if lesson_type is not None:
@@ -839,14 +861,21 @@ def schedule_update_lesson(lesson_id: int):
             }
         )
 
+        # Формируем ответ с обновленными данными
+        response_data = {
+            'lesson_id': lesson.lesson_id,
+            'duration_minutes': int(lesson.duration or 60),
+            'lesson_type': lesson.lesson_type,
+            'topic': lesson.topic,
+        }
+        
+        # Если изменилось время, добавляем его в ответ
+        if new_lesson_date is not None:
+            response_data['lesson_date'] = str(lesson.lesson_date)
+        
         return jsonify({
             'success': True,
-            'lesson': {
-                'lesson_id': lesson.lesson_id,
-                'duration_minutes': int(lesson.duration or 60),
-                'lesson_type': lesson.lesson_type,
-                'topic': lesson.topic,
-            }
+            'lesson': response_data
         }), 200
     except Exception as e:
         db.session.rollback()
