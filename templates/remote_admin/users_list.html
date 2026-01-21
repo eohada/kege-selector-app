@@ -345,7 +345,7 @@
                      data-enr-prefix="{{ url_for('remote_admin.api_enrollment_manage', enrollment_id=1).replace('/1', '/') }}"
                      data-ft-create="{{ url_for('remote_admin.api_family_tie_create') }}"
                      data-enr-create="{{ url_for('remote_admin.api_enrollment_create') }}"
-                     data-user-edit-prefix="{{ url_for('remote_admin.user_edit', user_id=1).replace('/1', '/') }}"
+                     data-user-edit-prefix="{{ url_for('remote_admin.user_edit', user_id=0).replace('/0/edit', '') }}"
                      data-storage-key="relationshipGraph:remote:{{ environment_name|e }}">
                 </div>
             </div>

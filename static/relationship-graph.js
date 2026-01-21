@@ -482,7 +482,21 @@
           },
           body: JSON.stringify(payload),
         });
-        const data = await resp.json();
+        
+        // Проверяем content-type перед парсингом JSON
+        const contentType = resp.headers.get('content-type') || '';
+        let data;
+        if (contentType.includes('application/json')) {
+          try {
+            data = await resp.json();
+          } catch (e) {
+            throw new Error('Invalid JSON response');
+          }
+        } else {
+          const text = await resp.text();
+          throw new Error(`Invalid response format: ${text.substring(0, 100)}`);
+        }
+        
         if (!resp.ok || !data || data.success === false) {
           throw new Error((data && (data.error || data.message)) || `HTTP ${resp.status}`);
         }
@@ -513,11 +527,16 @@
       allEnrollments?.addEventListener('change', () => this.reload());
       this.selClearBtn?.addEventListener('click', () => this._setSelected(null));
       this.selCreateLinkBtn?.addEventListener('click', () => this._openCreateLinkDialog());
-      this.selOpenBtn?.addEventListener('click', () => {
-        if (!this.selectedNodeId || !this.userEditUrlPrefix) return;
-        const url = this.userEditUrlPrefix.replace(/\/$/, '') + '/' + this.selectedNodeId;
-        window.open(url, '_blank');
-      });
+        this.selOpenBtn?.addEventListener('click', () => {
+          if (!this.selectedNodeId || !this.userEditUrlPrefix) return;
+          const baseUrl = this.userEditUrlPrefix.replace(/\/$/, '');
+          const url = baseUrl + '/' + this.selectedNodeId + '/edit';
+          if (!url || url === '/' || url === baseUrl) {
+            (window.toast || toast)?.error?.('Неверный URL для открытия профиля');
+            return;
+          }
+          window.open(url, '_blank');
+        });
 
       // Pan (pointer)
       this.viewportEl.addEventListener('pointerdown', (ev) => {
@@ -616,7 +635,12 @@
           ev.preventDefault();
           ev.stopPropagation();
           if (this.userEditUrlPrefix) {
-            const url = this.userEditUrlPrefix.replace(/\/$/, '') + '/' + n.id;
+            const baseUrl = this.userEditUrlPrefix.replace(/\/$/, '');
+            const url = baseUrl + '/' + n.id + '/edit';
+            if (!url || url === '/' || url === baseUrl) {
+              (window.toast || toast)?.error?.('Неверный URL для открытия профиля');
+              return;
+            }
             window.open(url, '_blank');
           }
         });
