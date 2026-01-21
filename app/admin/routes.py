@@ -2011,6 +2011,141 @@ def admin_users():
         return redirect(url_for('admin.admin_panel'))
 
 
+@admin_bp.route('/admin/users/graph-data')
+@login_required
+def admin_users_graph_data():
+    """JSON: граф связей (tutor->student Enrollment, parent->student FamilyTie) для админки."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    try:
+        include_inactive = str(request.args.get('include_inactive', 'true')).lower() == 'true'
+        roles_raw = (request.args.get('roles') or '').strip()
+        roles = [r.strip() for r in roles_raw.split(',') if r.strip()] if roles_raw else ['tutor', 'student', 'parent']
+        roles = [r for r in roles if r in ('creator', 'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer')]
+        if not roles:
+            roles = ['tutor', 'student', 'parent']
+
+        q = User.query.filter(User.role.in_(roles))
+        if not include_inactive:
+            q = q.filter(User.is_active == True)  # noqa: E712
+        users = q.order_by(User.username.asc()).all()
+        user_ids = [u.id for u in users]
+
+        profiles = UserProfile.query.filter(UserProfile.user_id.in_(user_ids)).all() if user_ids else []
+        profiles_by_user_id = {p.user_id: p for p in profiles}
+
+        nodes = []
+        for u in users:
+            p = profiles_by_user_id.get(u.id)
+            display_name = (f"{(p.first_name or '').strip()} {(p.last_name or '').strip()}").strip() if p else ''
+            nodes.append({
+                'id': u.id,
+                'username': u.username,
+                'email': u.email,
+                'role': u.role,
+                'is_active': bool(u.is_active),
+                'display_name': display_name or None,
+                'timezone': (p.timezone if p else None),
+            })
+
+        enrollments = Enrollment.query.all()
+        enrollment_edges = [{
+            'enrollment_id': e.enrollment_id,
+            'from_id': e.tutor_id,
+            'to_id': e.student_id,
+            'subject': e.subject,
+            'status': getattr(e, 'status', None) or 'active',
+        } for e in enrollments if (e.tutor_id in user_ids and e.student_id in user_ids)]
+
+        ties = FamilyTie.query.all()
+        family_edges = [{
+            'tie_id': t.tie_id,
+            'from_id': t.parent_id,
+            'to_id': t.student_id,
+            'access_level': t.access_level,
+            'is_confirmed': bool(t.is_confirmed),
+        } for t in ties if (t.parent_id in user_ids and t.student_id in user_ids)]
+
+        return jsonify({
+            'success': True,
+            'nodes': nodes,
+            'enrollments': enrollment_edges,
+            'family_ties': family_edges,
+        })
+    except Exception as e:
+        logger.error(f"Error in admin_users_graph_data: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/admin/api/family-ties/<int:tie_id>', methods=['POST', 'DELETE'])
+@login_required
+def admin_api_family_tie_manage(tie_id: int):
+    """AJAX: обновить/удалить FamilyTie (для графа)."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    tie = FamilyTie.query.get_or_404(tie_id)
+    try:
+        if request.method == 'DELETE':
+            db.session.delete(tie)
+            db.session.commit()
+            return jsonify({'success': True})
+
+        data = request.get_json(silent=True) or {}
+        access_level = (data.get('access_level') or '').strip() or None
+        is_confirmed = data.get('is_confirmed')
+        if access_level is not None:
+            allowed = {'full', 'financial_only', 'schedule_only'}
+            if access_level not in allowed:
+                return jsonify({'success': False, 'error': f'invalid access_level: {access_level}'}), 400
+            tie.access_level = access_level
+        if is_confirmed is not None:
+            tie.is_confirmed = bool(is_confirmed)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in admin_api_family_tie_manage: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/admin/api/enrollments/<int:enrollment_id>', methods=['POST', 'DELETE'])
+@login_required
+def admin_api_enrollment_manage(enrollment_id: int):
+    """AJAX: обновить/удалить Enrollment (для графа)."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        return jsonify({'success': False, 'error': 'Access denied'}), 403
+
+    enrollment = Enrollment.query.get_or_404(enrollment_id)
+    try:
+        if request.method == 'DELETE':
+            db.session.delete(enrollment)
+            db.session.commit()
+            return jsonify({'success': True})
+
+        data = request.get_json(silent=True) or {}
+        status = (data.get('status') or '').strip() or None
+        subject = (data.get('subject') or '').strip() or None
+        if subject is not None:
+            enrollment.subject = subject
+        if status is not None:
+            allowed = {'active', 'paused', 'archived'}
+            if status not in allowed:
+                return jsonify({'success': False, 'error': f'invalid status: {status}'}), 400
+            enrollment.status = status
+            try:
+                enrollment.is_active = (status == 'active')
+            except Exception:
+                pass
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in admin_api_enrollment_manage: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @admin_bp.route('/admin/users/<int:user_id>/family-tie/add', methods=['POST'])
 @login_required
 def admin_user_family_tie_add(user_id):

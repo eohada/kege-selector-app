@@ -480,6 +480,187 @@ def remote_admin_api_users():
         return jsonify({'error': str(e)}), 500
 
 
+@admin_bp.route('/internal/remote-admin/api/users/graph', methods=['GET'])
+@csrf.exempt
+def remote_admin_api_users_graph():
+    """
+    API: Граф связей пользователей (для визуализации карточками/стрелками в remote-admin).
+
+    Узлы: Users (по умолчанию tutor/student/parent)
+    Рёбра:
+    - Enrollment (tutor -> student) с subject/status
+    - FamilyTie (parent -> student) с access_level/is_confirmed
+    """
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    try:
+        include_inactive = str(request.args.get('include_inactive', 'true')).lower() == 'true'
+        roles_raw = (request.args.get('roles') or '').strip()
+        roles = [r.strip() for r in roles_raw.split(',') if r.strip()] if roles_raw else ['tutor', 'student', 'parent']
+        roles = [r for r in roles if r in ('creator', 'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer')]
+        if not roles:
+            roles = ['tutor', 'student', 'parent']
+
+        q = User.query.filter(User.role.in_(roles))
+        if not include_inactive:
+            q = q.filter(User.is_active == True)  # noqa: E712
+        users = q.order_by(User.username.asc()).all()
+
+        user_ids = [u.id for u in users]
+        users_by_id = {u.id: u for u in users}
+
+        profiles = UserProfile.query.filter(UserProfile.user_id.in_(user_ids)).all() if user_ids else []
+        profiles_by_user_id = {p.user_id: p for p in profiles}
+
+        nodes = []
+        for u in users:
+            p = profiles_by_user_id.get(u.id)
+            display_name = (f"{(p.first_name or '').strip()} {(p.last_name or '').strip()}").strip() if p else ''
+            nodes.append({
+                'id': u.id,
+                'username': u.username,
+                'email': u.email,
+                'role': u.role,
+                'is_active': bool(u.is_active),
+                'display_name': display_name or None,
+                'timezone': (p.timezone if p else None),
+            })
+
+        enrollments = Enrollment.query.all()
+        enrollment_edges = []
+        for e in enrollments:
+            if e.tutor_id not in users_by_id or e.student_id not in users_by_id:
+                continue
+            enrollment_edges.append({
+                'enrollment_id': e.enrollment_id,
+                'from_id': e.tutor_id,
+                'to_id': e.student_id,
+                'subject': e.subject,
+                'status': getattr(e, 'status', None) or 'active',
+            })
+
+        ties = FamilyTie.query.all()
+        family_edges = []
+        for t in ties:
+            if t.parent_id not in users_by_id or t.student_id not in users_by_id:
+                continue
+            family_edges.append({
+                'tie_id': t.tie_id,
+                'from_id': t.parent_id,
+                'to_id': t.student_id,
+                'access_level': t.access_level,
+                'is_confirmed': bool(t.is_confirmed),
+            })
+
+        return jsonify({
+            'success': True,
+            'nodes': nodes,
+            'enrollments': enrollment_edges,
+            'family_ties': family_edges,
+        })
+    except Exception as e:
+        logger.error(f"Error in remote_admin_api_users_graph: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/family-ties/<int:tie_id>', methods=['POST', 'DELETE'])
+@csrf.exempt
+def remote_admin_api_family_tie_manage(tie_id: int):
+    """API: Обновление/удаление FamilyTie (для графа связей)."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    tie = FamilyTie.query.get(tie_id)
+    if not tie:
+        return jsonify({'success': False, 'error': 'tie not found'}), 404
+
+    try:
+        if request.method == 'DELETE':
+            db.session.delete(tie)
+            db.session.commit()
+            return jsonify({'success': True})
+
+        data = request.get_json() or {}
+        access_level = (data.get('access_level') or '').strip() or None
+        is_confirmed = data.get('is_confirmed')
+
+        if access_level is not None:
+            allowed = {'full', 'financial_only', 'schedule_only'}
+            if access_level not in allowed:
+                return jsonify({'success': False, 'error': f'invalid access_level: {access_level}'}), 400
+            tie.access_level = access_level
+
+        if is_confirmed is not None:
+            tie.is_confirmed = bool(is_confirmed)
+
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'tie': {
+                'tie_id': tie.tie_id,
+                'parent_id': tie.parent_id,
+                'student_id': tie.student_id,
+                'access_level': tie.access_level,
+                'is_confirmed': bool(tie.is_confirmed),
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in remote_admin_api_family_tie_manage: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/enrollments/<int:enrollment_id>', methods=['POST', 'DELETE'])
+@csrf.exempt
+def remote_admin_api_enrollment_manage(enrollment_id: int):
+    """API: Обновление/удаление Enrollment (для графа связей)."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    enrollment = Enrollment.query.get(enrollment_id)
+    if not enrollment:
+        return jsonify({'success': False, 'error': 'enrollment not found'}), 404
+
+    try:
+        if request.method == 'DELETE':
+            db.session.delete(enrollment)
+            db.session.commit()
+            return jsonify({'success': True})
+
+        data = request.get_json() or {}
+        status = (data.get('status') or '').strip() or None
+        subject = (data.get('subject') or '').strip() or None
+
+        if subject is not None:
+            enrollment.subject = subject
+        if status is not None:
+            allowed = {'active', 'paused', 'archived'}
+            if status not in allowed:
+                return jsonify({'success': False, 'error': f'invalid status: {status}'}), 400
+            enrollment.status = status
+            try:
+                enrollment.is_active = (status == 'active')
+            except Exception:
+                pass
+
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'enrollment': {
+                'enrollment_id': enrollment.enrollment_id,
+                'tutor_id': enrollment.tutor_id,
+                'student_id': enrollment.student_id,
+                'subject': enrollment.subject,
+                'status': getattr(enrollment, 'status', None) or 'active',
+            }
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in remote_admin_api_enrollment_manage: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @admin_bp.route('/internal/remote-admin/api/tasks/formator', methods=['GET'])
 @csrf.exempt
 def remote_admin_api_task_formator_list():

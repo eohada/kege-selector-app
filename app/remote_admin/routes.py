@@ -92,7 +92,29 @@ def users_list():
         return redirect(url_for('remote_admin.dashboard'))
     
     try:
-        resp = make_remote_request('GET', '/internal/remote-admin/api/users')
+        # filters (applied client-side/server-side after fetch; remote API supports role/is_active)
+        q = (request.args.get('q') or '').strip().lower()
+        roles_raw = (request.args.get('roles') or '').strip()
+        role_single = (request.args.get('role') or '').strip()
+        is_active_filter = (request.args.get('is_active') or '').strip().lower()
+
+        selected_roles = []
+        if roles_raw:
+            selected_roles = [r.strip() for r in roles_raw.split(',') if r.strip()]
+        elif role_single:
+            selected_roles = [role_single]
+
+        # Build query string for remote API (only single role supported there)
+        api_path = '/internal/remote-admin/api/users'
+        qs_parts = []
+        if len(selected_roles) == 1:
+            qs_parts.append(f"role={selected_roles[0]}")
+        if is_active_filter in ('true', 'false'):
+            qs_parts.append(f"is_active={is_active_filter}")
+        if qs_parts:
+            api_path = api_path + '?' + '&'.join(qs_parts)
+
+        resp = make_remote_request('GET', api_path)
         if resp.status_code == 200:
             data = resp.json()
             users = data.get('users', [])
@@ -103,9 +125,32 @@ def users_list():
         logger.error(f"Error loading users: {e}", exc_info=True)
         users = []
         flash(f'Ошибка загрузки пользователей: {str(e)}', 'error')
-    
+
+    # extra filtering (multi-role and query) on remote-admin side
+    if users:
+        if selected_roles:
+            users = [u for u in users if (u.get('role') in selected_roles)]
+        if q:
+            def _hay(u):
+                return ' '.join([
+                    str(u.get('username') or ''),
+                    str(u.get('email') or ''),
+                    str(u.get('role') or ''),
+                ]).lower()
+            users = [u for u in users if q in _hay(u)]
+
+    # stats for quick role filters (within current result set)
+    role_stats = {}
+    for u in users or []:
+        r = (u.get('role') or 'unknown')
+        role_stats[r] = role_stats.get(r, 0) + 1
+
     return render_template('remote_admin/users_list.html',
                          users=users,
+                         role_stats=role_stats,
+                         selected_roles=selected_roles,
+                         q=(request.args.get('q') or '').strip(),
+                         is_active_filter=(request.args.get('is_active') or '').strip().lower(),
                          current_environment=current_env,
                          environment_name=environments.get(current_env, {}).get('name', current_env))
 

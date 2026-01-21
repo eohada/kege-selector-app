@@ -579,6 +579,7 @@ def ensure_schema_columns(app):
             safe_add_column('student_notes', 'TEXT')
             safe_add_column('materials', 'JSON')
             safe_add_column('course_module_id', 'INTEGER')
+            safe_add_column('published_at', 'TIMESTAMP' if is_postgres else 'DATETIME')
 
             # Backfill: старые материалы уроков -> защищенные ссылки
             _backfill_lesson_materials_to_protected_urls(app, inspector, table_names, limit=2000)

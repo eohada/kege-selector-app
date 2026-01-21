@@ -99,6 +99,78 @@ def api_user_manage(user_id):
         return jsonify({'error': str(e)}), 500
 
 
+@remote_admin_bp.route('/api/users/graph')
+@login_required
+def api_users_graph():
+    """Proxy: граф связей пользователей из выбранного окружения."""
+    if not current_user.is_creator():
+        return jsonify({'error': 'Access denied'}), 403
+
+    try:
+        env = get_current_environment()
+        if not is_environment_configured(env):
+            return jsonify({'error': f'Environment {env} is not configured'}), 400
+
+        qs = request.query_string.decode('utf-8') if request.query_string else ''
+        path = '/internal/remote-admin/api/users/graph'
+        if qs:
+            path = f"{path}?{qs}"
+
+        resp = make_remote_request('GET', path)
+        return jsonify(resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'error': 'Invalid response'}), resp.status_code
+    except Exception as e:
+        logger.error(f"Error proxying users graph: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@remote_admin_bp.route('/api/family-ties/<int:tie_id>', methods=['POST', 'DELETE'])
+@login_required
+def api_family_tie_manage(tie_id: int):
+    """Proxy: управление FamilyTie (для графа связей)."""
+    if not current_user.is_creator():
+        return jsonify({'error': 'Access denied'}), 403
+
+    try:
+        env = get_current_environment()
+        if not is_environment_configured(env):
+            return jsonify({'error': f'Environment {env} is not configured'}), 400
+
+        if request.method == 'DELETE':
+            resp = make_remote_request('DELETE', f'/internal/remote-admin/api/family-ties/{tie_id}')
+        else:
+            payload = _extract_request_data()
+            resp = make_remote_request('POST', f'/internal/remote-admin/api/family-ties/{tie_id}', payload=payload)
+
+        return jsonify(resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'error': 'Invalid response'}), resp.status_code
+    except Exception as e:
+        logger.error(f"Error proxying family tie manage: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@remote_admin_bp.route('/api/enrollments/<int:enrollment_id>', methods=['POST', 'DELETE'])
+@login_required
+def api_enrollment_manage(enrollment_id: int):
+    """Proxy: управление Enrollment (для графа связей)."""
+    if not current_user.is_creator():
+        return jsonify({'error': 'Access denied'}), 403
+
+    try:
+        env = get_current_environment()
+        if not is_environment_configured(env):
+            return jsonify({'error': f'Environment {env} is not configured'}), 400
+
+        if request.method == 'DELETE':
+            resp = make_remote_request('DELETE', f'/internal/remote-admin/api/enrollments/{enrollment_id}')
+        else:
+            payload = _extract_request_data()
+            resp = make_remote_request('POST', f'/internal/remote-admin/api/enrollments/{enrollment_id}', payload=payload)
+
+        return jsonify(resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'error': 'Invalid response'}), resp.status_code
+    except Exception as e:
+        logger.error(f"Error proxying enrollment manage: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
 @remote_admin_bp.route('/api/stats')
 @login_required
 def api_stats():
@@ -126,6 +198,9 @@ def api_stats():
 if csrf:
     csrf.exempt(api_users_list)
     csrf.exempt(api_user_manage)
+    csrf.exempt(api_users_graph)
+    csrf.exempt(api_family_tie_manage)
+    csrf.exempt(api_enrollment_manage)
     csrf.exempt(api_stats)
 
 

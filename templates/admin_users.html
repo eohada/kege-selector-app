@@ -86,6 +86,114 @@
             color: var(--text-muted);
             margin-top: 0.25rem;
         }
+
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin: 1rem 0 0 0;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            border: 1px solid var(--stroke-2);
+            background: var(--surface-2);
+            color: var(--text-primary);
+            padding: 0.55rem 0.9rem;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .tab-btn.active {
+            background: var(--accent-1);
+            color: #000;
+            border-color: rgba(0,0,0,0.15);
+        }
+
+        .graph-shell {
+            margin-top: 1.5rem;
+            border: 1px solid var(--stroke-2);
+            border-radius: var(--radius-md);
+            background: var(--surface-2);
+            overflow: hidden;
+        }
+        .graph-toolbar {
+            padding: 1rem;
+            border-bottom: 1px solid var(--stroke-2);
+            display: grid;
+            grid-template-columns: 1.2fr 1.2fr 1.2fr 1fr;
+            gap: 1rem;
+            align-items: end;
+            background: var(--surface-3);
+        }
+        .graph-stage {
+            position: relative;
+            padding: 1rem;
+            min-height: 520px;
+            overflow: auto;
+        }
+        .graph-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+            min-width: 980px;
+        }
+        .graph-col {
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-md);
+            background: rgba(255,255,255,0.02);
+            padding: 0.75rem;
+        }
+        .graph-col h3 {
+            margin: 0 0 0.75rem 0;
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+        .node-card {
+            border: 1px solid var(--stroke-2);
+            border-radius: var(--radius-md);
+            background: var(--surface-2);
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+        }
+        .node-card:hover { background: var(--surface-3); }
+        .node-title { font-weight: 800; color: var(--text-primary); display:flex; gap:0.5rem; align-items:center; }
+        .node-sub { color: var(--text-muted); font-size: 0.88rem; margin-top: 0.25rem; }
+        .node-dim { opacity: 0.55; }
+        .graph-svg {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+        .graph-svg path {
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        .edge-label {
+            font-size: 12px;
+            fill: var(--text-muted);
+        }
+
+        dialog.link-dialog {
+            border: 1px solid var(--stroke-2);
+            border-radius: var(--radius-md);
+            background: var(--surface-2);
+            color: var(--text-primary);
+            padding: 0;
+            width: min(680px, 92vw);
+        }
+        dialog.link-dialog::backdrop {
+            background: rgba(0,0,0,0.55);
+        }
+        .dlg-head {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--stroke-2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--surface-3);
+        }
+        .dlg-body { padding: 1rem 1.25rem; display: grid; gap: 0.9rem; }
+        .dlg-actions { padding: 1rem 1.25rem; border-top: 1px solid var(--stroke-2); display:flex; justify-content:flex-end; gap:0.6rem; }
     </style>
 </head>
 <body>
@@ -137,6 +245,12 @@
                 </div>
             </div>
 
+            <div class="tabs" role="tablist" aria-label="Users tabs">
+                <button class="tab-btn active" type="button" data-tab="list">Список</button>
+                <button class="tab-btn" type="button" data-tab="graph">Связи (граф)</button>
+            </div>
+
+            <div id="tab-list" role="tabpanel">
             {# Фильтры #}
             <form method="GET" class="filters-grid" style="margin-bottom: 1.5rem;">
                 <div class="neo-field">
@@ -242,6 +356,92 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
+
+            <div id="tab-graph" role="tabpanel" style="display:none;">
+                <p style="color: var(--text-muted); margin-top: 1rem;">
+                    Наглядно показывает связи: <strong>преподаватель → ученик</strong> (Enrollment) и <strong>родитель → ученик</strong> (FamilyTie).
+                    Клик по стрелке — редактирование “настройки” связи.
+                </p>
+
+                <div class="graph-shell">
+                    <div class="graph-toolbar">
+                        <div class="neo-field">
+                            <label class="neo-label" for="graph-focus-tutor">Фокус: преподаватель</label>
+                            <select id="graph-focus-tutor" class="neo-input"></select>
+                        </div>
+                        <div class="neo-field">
+                            <label class="neo-label" for="graph-focus-student">Фокус: ученик</label>
+                            <select id="graph-focus-student" class="neo-input"></select>
+                        </div>
+                        <div class="neo-field">
+                            <label class="neo-label" for="graph-focus-parent">Фокус: родитель</label>
+                            <select id="graph-focus-parent" class="neo-input"></select>
+                        </div>
+                        <div class="neo-field" style="align-items:flex-start;">
+                            <label class="neo-label">Опции</label>
+                            <label style="display:flex; gap:0.6rem; align-items:center; margin-top:0.25rem;">
+                                <input id="graph-include-inactive" type="checkbox" checked>
+                                <span style="color: var(--text-muted);">Показывать неактивных</span>
+                            </label>
+                            <button id="graph-refresh" type="button" class="neo-button outline" style="margin-top:0.55rem;">Обновить</button>
+                        </div>
+                    </div>
+                    <div class="graph-stage" id="graph-stage">
+                        <svg class="graph-svg" id="graph-svg"></svg>
+                        <div class="graph-columns" id="graph-columns">
+                            <div class="graph-col">
+                                <h3>Преподаватели</h3>
+                                <div id="graph-col-tutors"></div>
+                            </div>
+                            <div class="graph-col">
+                                <h3>Ученики</h3>
+                                <div id="graph-col-students"></div>
+                            </div>
+                            <div class="graph-col">
+                                <h3>Родители</h3>
+                                <div id="graph-col-parents"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <dialog class="link-dialog" id="link-dialog">
+                    <div class="dlg-head">
+                        <div style="font-weight:800;" id="dlg-title">Связь</div>
+                        <button type="button" class="neo-button ghost small" id="dlg-close">Закрыть</button>
+                    </div>
+                    <div class="dlg-body" id="dlg-body">
+                        <div class="neo-field" id="dlg-field-access" style="display:none;">
+                            <label class="neo-label" for="dlg-access-level">Уровень доступа (FamilyTie)</label>
+                            <select id="dlg-access-level" class="neo-input">
+                                <option value="full">Полный</option>
+                                <option value="financial_only">Только финансы</option>
+                                <option value="schedule_only">Только расписание</option>
+                            </select>
+                            <label style="display:flex; gap:0.6rem; align-items:center; margin-top:0.5rem;">
+                                <input id="dlg-confirmed" type="checkbox">
+                                <span style="color: var(--text-muted);">Подтверждено</span>
+                            </label>
+                        </div>
+                        <div class="neo-field" id="dlg-field-enr" style="display:none;">
+                            <label class="neo-label" for="dlg-enr-subject">Предмет/тэг (Enrollment)</label>
+                            <input id="dlg-enr-subject" class="neo-input" placeholder="например: GENERAL или INFORMATICS_EGE_2026">
+                            <label class="neo-label" for="dlg-enr-status" style="margin-top:0.5rem;">Статус</label>
+                            <select id="dlg-enr-status" class="neo-input">
+                                <option value="active">active</option>
+                                <option value="paused">paused</option>
+                                <option value="archived">archived</option>
+                            </select>
+                        </div>
+                        <div style="color: var(--text-muted); font-size:0.9rem;" id="dlg-hint"></div>
+                    </div>
+                    <div class="dlg-actions">
+                        <button type="button" class="neo-button danger" id="dlg-delete" style="display:none;">Удалить связь</button>
+                        <button type="button" class="neo-button outline" id="dlg-save">Сохранить</button>
+                    </div>
+                </dialog>
+            </div>
         </section>
     </div>
 
@@ -274,6 +474,324 @@
                 {% endfor %}
             {% endif %}
             {% endwith %}
+
+            // Tabs
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabList = document.getElementById('tab-list');
+            const tabGraph = document.getElementById('tab-graph');
+            function setTab(name) {
+                tabButtons.forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+                tabList.style.display = (name === 'list') ? '' : 'none';
+                tabGraph.style.display = (name === 'graph') ? '' : 'none';
+                if (name === 'graph') {
+                    initGraphOnce();
+                }
+            }
+            tabButtons.forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+
+            // Graph (lazy init)
+            let graphInited = false;
+            let graphData = null;
+            const GRAPH_URL = {{ url_for('admin.admin_users_graph_data')|tojson }};
+            const API_FT = {{ url_for('admin.admin_api_family_tie_manage', tie_id=0)|tojson }}.replace(/0$/, '');
+            const API_ENR = {{ url_for('admin.admin_api_enrollment_manage', enrollment_id=0)|tojson }}.replace(/0$/, '');
+            const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+            const stage = document.getElementById('graph-stage');
+            const svg = document.getElementById('graph-svg');
+            const colTutors = document.getElementById('graph-col-tutors');
+            const colStudents = document.getElementById('graph-col-students');
+            const colParents = document.getElementById('graph-col-parents');
+            const focusTutor = document.getElementById('graph-focus-tutor');
+            const focusStudent = document.getElementById('graph-focus-student');
+            const focusParent = document.getElementById('graph-focus-parent');
+            const includeInactive = document.getElementById('graph-include-inactive');
+            const btnRefresh = document.getElementById('graph-refresh');
+
+            const dlg = document.getElementById('link-dialog');
+            const dlgClose = document.getElementById('dlg-close');
+            const dlgSave = document.getElementById('dlg-save');
+            const dlgDelete = document.getElementById('dlg-delete');
+            const dlgHint = document.getElementById('dlg-hint');
+            const dlgFieldAccess = document.getElementById('dlg-field-access');
+            const dlgAccessLevel = document.getElementById('dlg-access-level');
+            const dlgConfirmed = document.getElementById('dlg-confirmed');
+            const dlgFieldEnr = document.getElementById('dlg-field-enr');
+            const dlgEnrSubject = document.getElementById('dlg-enr-subject');
+            const dlgEnrStatus = document.getElementById('dlg-enr-status');
+
+            let currentEdge = null; // {kind, id}
+
+            function initGraphOnce() {
+                if (graphInited) return;
+                graphInited = true;
+                btnRefresh.addEventListener('click', loadAndRenderGraph);
+                includeInactive.addEventListener('change', renderGraph);
+                focusTutor.addEventListener('change', renderGraph);
+                focusStudent.addEventListener('change', renderGraph);
+                focusParent.addEventListener('change', renderGraph);
+                window.addEventListener('resize', () => drawEdges());
+                stage.addEventListener('scroll', () => drawEdges());
+                dlgClose.addEventListener('click', () => dlg.close());
+                dlgSave.addEventListener('click', saveEdge);
+                dlgDelete.addEventListener('click', deleteEdge);
+                loadAndRenderGraph();
+            }
+
+            async function loadAndRenderGraph() {
+                try {
+                    btnRefresh.disabled = true;
+                    btnRefresh.textContent = 'Загрузка...';
+                    const resp = await fetch(GRAPH_URL + '?roles=tutor,student,parent&include_inactive=true', {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const data = await resp.json();
+                    if (!resp.ok || !data || data.success === false) {
+                        throw new Error((data && (data.error || data.message)) || `HTTP ${resp.status}`);
+                    }
+                    graphData = data;
+                    buildFocusSelectors();
+                    renderGraph();
+                } catch (e) {
+                    console.error(e);
+                    (window.toast || toast)?.error?.('Не удалось загрузить граф связей');
+                } finally {
+                    btnRefresh.disabled = false;
+                    btnRefresh.textContent = 'Обновить';
+                }
+            }
+
+            function buildFocusSelectors() {
+                const nodes = (graphData && graphData.nodes) || [];
+                const byRole = {
+                    tutor: nodes.filter(n => n.role === 'tutor'),
+                    student: nodes.filter(n => n.role === 'student'),
+                    parent: nodes.filter(n => n.role === 'parent'),
+                };
+                function fill(sel, items, label) {
+                    const prev = sel.value;
+                    sel.innerHTML = '';
+                    const opt0 = document.createElement('option');
+                    opt0.value = '';
+                    opt0.textContent = `— любой (${label}) —`;
+                    sel.appendChild(opt0);
+                    for (const n of items) {
+                        const o = document.createElement('option');
+                        o.value = String(n.id);
+                        o.textContent = `${n.username}${n.email ? ' · ' + n.email : ''}`;
+                        sel.appendChild(o);
+                    }
+                    if (prev) sel.value = prev;
+                }
+                fill(focusTutor, byRole.tutor, 'преподаватель');
+                fill(focusStudent, byRole.student, 'ученик');
+                fill(focusParent, byRole.parent, 'родитель');
+            }
+
+            function renderGraph() {
+                if (!graphData) return;
+                const nodes = graphData.nodes || [];
+                const enrollments = graphData.enrollments || [];
+                const family = graphData.family_ties || [];
+
+                const showInactive = !!includeInactive.checked;
+                const fTutor = focusTutor.value ? Number(focusTutor.value) : null;
+                const fStudent = focusStudent.value ? Number(focusStudent.value) : null;
+                const fParent = focusParent.value ? Number(focusParent.value) : null;
+
+                let visibleNodeIds = new Set(nodes.filter(n => showInactive || n.is_active).map(n => n.id));
+                let edges = [];
+                for (const e of enrollments) edges.push({ kind: 'enrollment', ...e });
+                for (const t of family) edges.push({ kind: 'family', ...t });
+
+                const focusSet = new Set([fTutor, fStudent, fParent].filter(Boolean));
+                if (focusSet.size) {
+                    edges = edges.filter(e => focusSet.has(e.from_id) || focusSet.has(e.to_id));
+                    const edgeNodeIds = new Set();
+                    edges.forEach(e => { edgeNodeIds.add(e.from_id); edgeNodeIds.add(e.to_id); });
+                    visibleNodeIds = new Set([...visibleNodeIds].filter(id => edgeNodeIds.has(id)));
+                }
+
+                function renderCol(role, mount, roleLabel) {
+                    mount.innerHTML = '';
+                    const list = nodes
+                        .filter(n => n.role === role)
+                        .filter(n => visibleNodeIds.has(n.id))
+                        .sort((a, b) => (a.username || '').localeCompare((b.username || ''), 'ru'));
+                    for (const n of list) {
+                        const card = document.createElement('div');
+                        card.className = 'node-card' + ((!n.is_active) ? ' node-dim' : '');
+                        card.dataset.nodeId = String(n.id);
+                        card.dataset.role = n.role;
+                        const badge = document.createElement('span');
+                        badge.className = 'role-badge role-' + n.role;
+                        badge.textContent = roleLabel;
+                        const title = document.createElement('div');
+                        title.className = 'node-title';
+                        title.appendChild(badge);
+                        const t = document.createElement('span');
+                        t.textContent = n.username;
+                        title.appendChild(t);
+                        const sub = document.createElement('div');
+                        sub.className = 'node-sub';
+                        sub.textContent = [n.display_name, n.email, n.timezone].filter(Boolean).join(' · ') || '—';
+                        card.appendChild(title);
+                        card.appendChild(sub);
+                        card.addEventListener('click', () => {
+                            if (n.role === 'tutor') { focusTutor.value = String(n.id); focusStudent.value = ''; focusParent.value = ''; }
+                            if (n.role === 'student') { focusStudent.value = String(n.id); focusTutor.value = ''; focusParent.value = ''; }
+                            if (n.role === 'parent') { focusParent.value = String(n.id); focusTutor.value = ''; focusStudent.value = ''; }
+                            renderGraph();
+                        });
+                        mount.appendChild(card);
+                    }
+                }
+                renderCol('tutor', colTutors, 'Преподаватель');
+                renderCol('student', colStudents, 'Ученик');
+                renderCol('parent', colParents, 'Родитель');
+
+                stage.dataset.edges = JSON.stringify(edges);
+                requestAnimationFrame(() => drawEdges());
+            }
+
+            function drawEdges() {
+                if (!graphData) return;
+                const edges = JSON.parse(stage.dataset.edges || '[]');
+                const rectStage = stage.getBoundingClientRect();
+                const scrollLeft = stage.scrollLeft;
+                const scrollTop = stage.scrollTop;
+
+                const getNodeEl = (id) => stage.querySelector(`.node-card[data-node-id="${id}"]`);
+                const pt = (el, side) => {
+                    const r = el.getBoundingClientRect();
+                    const x = (side === 'right') ? (r.right - rectStage.left + scrollLeft) : (r.left - rectStage.left + scrollLeft);
+                    const y = (r.top - rectStage.top + scrollTop) + r.height / 2;
+                    return { x, y };
+                };
+
+                const w = stage.scrollWidth;
+                const h = stage.scrollHeight;
+                svg.setAttribute('width', w);
+                svg.setAttribute('height', h);
+                svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+                svg.innerHTML = '';
+
+                for (const e of edges) {
+                    const fromEl = getNodeEl(e.from_id);
+                    const toEl = getNodeEl(e.to_id);
+                    if (!fromEl || !toEl) continue;
+                    const a = pt(fromEl, 'right');
+                    const b = pt(toEl, 'left');
+                    const dx = Math.max(40, (b.x - a.x) * 0.5);
+                    const c1 = { x: a.x + dx, y: a.y };
+                    const c2 = { x: b.x - dx, y: b.y };
+
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    path.setAttribute('d', `M ${a.x} ${a.y} C ${c1.x} ${c1.y}, ${c2.x} ${c2.y}, ${b.x} ${b.y}`);
+                    path.setAttribute('fill', 'none');
+                    path.setAttribute('stroke', e.kind === 'family' ? 'rgba(255,200,46,0.75)' : 'rgba(46,125,255,0.75)');
+                    path.setAttribute('stroke-width', '2');
+                    path.setAttribute('stroke-linecap', 'round');
+                    path.style.pointerEvents = 'auto';
+                    path.addEventListener('click', () => openEdgeEditor(e));
+                    svg.appendChild(path);
+
+                    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    label.setAttribute('class', 'edge-label');
+                    label.setAttribute('text-anchor', 'middle');
+                    const mx = (a.x + b.x) / 2;
+                    const my = (a.y + b.y) / 2 - 6;
+                    label.setAttribute('x', String(mx));
+                    label.setAttribute('y', String(my));
+                    const text = (e.kind === 'family')
+                        ? `${e.access_level || ''}${e.is_confirmed ? ' · ok' : ' · pending'}`
+                        : `${e.subject || ''} · ${e.status || ''}`;
+                    label.textContent = text.trim() || '—';
+                    svg.appendChild(label);
+                }
+            }
+
+            function openEdgeEditor(e) {
+                currentEdge = { kind: e.kind, id: (e.kind === 'family' ? e.tie_id : e.enrollment_id) };
+                dlgHint.textContent = '';
+                dlgDelete.style.display = '';
+                if (e.kind === 'family') {
+                    dlgFieldAccess.style.display = '';
+                    dlgFieldEnr.style.display = 'none';
+                    dlgAccessLevel.value = e.access_level || 'full';
+                    dlgConfirmed.checked = !!e.is_confirmed;
+                    dlgHint.textContent = 'Настройка: уровень доступа и подтверждение связи.';
+                } else {
+                    dlgFieldAccess.style.display = 'none';
+                    dlgFieldEnr.style.display = '';
+                    dlgEnrSubject.value = e.subject || '';
+                    dlgEnrStatus.value = e.status || 'active';
+                    dlgHint.textContent = 'Настройка: subject/тэг и статус контракта.';
+                }
+                dlg.showModal();
+            }
+
+            async function saveEdge() {
+                if (!currentEdge) return;
+                try {
+                    dlgSave.disabled = true;
+                    const isFamily = currentEdge.kind === 'family';
+                    const url = (isFamily ? (API_FT + currentEdge.id) : (API_ENR + currentEdge.id));
+                    const payload = isFamily
+                        ? { access_level: dlgAccessLevel.value, is_confirmed: dlgConfirmed.checked }
+                        : { subject: dlgEnrSubject.value, status: dlgEnrStatus.value };
+                    const resp = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await resp.json();
+                    if (!resp.ok || !data || data.success === false) {
+                        throw new Error((data && (data.error || data.message)) || `HTTP ${resp.status}`);
+                    }
+                    (window.toast || toast)?.success?.('Связь обновлена');
+                    dlg.close();
+                    await loadAndRenderGraph();
+                } catch (e) {
+                    console.error(e);
+                    (window.toast || toast)?.error?.('Не удалось сохранить связь');
+                } finally {
+                    dlgSave.disabled = false;
+                }
+            }
+
+            async function deleteEdge() {
+                if (!currentEdge) return;
+                if (!confirm('Удалить эту связь?')) return;
+                try {
+                    dlgDelete.disabled = true;
+                    const isFamily = currentEdge.kind === 'family';
+                    const url = (isFamily ? (API_FT + currentEdge.id) : (API_ENR + currentEdge.id));
+                    const resp = await fetch(url, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': CSRF_TOKEN,
+                            'Accept': 'application/json',
+                        }
+                    });
+                    const data = await resp.json();
+                    if (!resp.ok || !data || data.success === false) {
+                        throw new Error((data && (data.error || data.message)) || `HTTP ${resp.status}`);
+                    }
+                    (window.toast || toast)?.success?.('Связь удалена');
+                    dlg.close();
+                    await loadAndRenderGraph();
+                } catch (e) {
+                    console.error(e);
+                    (window.toast || toast)?.error?.('Не удалось удалить связь');
+                } finally {
+                    dlgDelete.disabled = false;
+                }
+            }
         });
     </script>
 </body>
