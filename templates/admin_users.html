@@ -368,6 +368,7 @@
                      data-graph-url="{{ url_for('admin.admin_users_graph_data') }}"
                      data-ft-prefix="{{ url_for('admin.admin_api_family_tie_manage', tie_id=0)[:-1] }}"
                      data-enr-prefix="{{ url_for('admin.admin_api_enrollment_manage', enrollment_id=0)[:-1] }}"
+                     data-user-edit-prefix="{{ url_for('admin.admin_user_edit', user_id=0)[:-1] }}"
                      data-storage-key="relationshipGraph:admin">
                 </div>
             </div>
@@ -428,6 +429,7 @@
                     graphUrl: host.dataset.graphUrl,
                     ftUrlPrefix: host.dataset.ftPrefix,
                     enrUrlPrefix: host.dataset.enrPrefix,
+                    userEditUrlPrefix: host.dataset.userEditPrefix,
                     storageKey: host.dataset.storageKey || 'relationshipGraph:admin',
                     enableEdgeEdit: true,
                 });

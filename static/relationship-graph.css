@@ -98,6 +98,39 @@
   opacity: 0.55;
 }
 
+.rel-node.selected {
+  border-color: rgba(46, 125, 255, 0.75);
+  box-shadow: 0 0 0 2px rgba(46, 125, 255, 0.28), 0 14px 32px rgba(0,0,0,0.35);
+}
+
+.rel-node.selected .rel-node-title {
+  color: #fff;
+}
+
+.rel-graph-selection {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rel-graph-selection .sel-pill {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--stroke-2);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.rel-graph-selection .sel-pill small {
+  opacity: 0.85;
+  font-weight: 700;
+}
+
 .rel-node .rel-node-title {
   font-weight: 800;
   color: var(--text-primary);

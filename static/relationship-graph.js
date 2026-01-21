@@ -52,6 +52,7 @@
       this.nodeEls = new Map();
       this.edgeIndexByPair = new Map();
       this.currentEdge = null; // {kind, id}
+      this.selectedNodeId = null;
 
       this._buildUI();
       this._bindUI();
@@ -60,6 +61,7 @@
     _buildUI() {
       const cs = getCSRFToken(this.opts.csrfToken);
       this.csrfToken = cs;
+      this.userEditUrlPrefix = (this.opts.userEditUrlPrefix || '').toString();
 
       this.rootEl.innerHTML = `
         <div class="rel-graph-shell">
@@ -72,6 +74,10 @@
             </div>
             <div class="rel-graph-filters">
               <label style="display:flex; gap:0.6rem; align-items:center;">
+                <input type="checkbox" data-act="focusSelected" checked>
+                <span style="color: var(--text-muted);">Фокус на выбранном</span>
+              </label>
+              <label style="display:flex; gap:0.6rem; align-items:center;">
                 <input type="checkbox" data-act="includeInactive" checked>
                 <span style="color: var(--text-muted);">Показывать неактивных</span>
               </label>
@@ -79,6 +85,11 @@
                 <input type="checkbox" data-act="allEnrollments">
                 <span style="color: var(--text-muted);">Показывать все контракты (Enrollment)</span>
               </label>
+            </div>
+            <div class="rel-graph-selection">
+              <span class="sel-pill">Выбран: <small data-act="selText">—</small></span>
+              <button type="button" class="neo-button ghost small" data-act="selClear">Сбросить</button>
+              <button type="button" class="neo-button ghost small" data-act="selOpen" style="display:none;">Открыть</button>
             </div>
             <div class="rel-legend">
               <span><span class="rel-dot enr"></span> Enrollment</span>
@@ -99,6 +110,9 @@
       this.worldEl = this.rootEl.querySelector('[data-act="world"]');
       this.svgEl = this.rootEl.querySelector('[data-act="svg"]');
       this.nodesWrapEl = this.rootEl.querySelector('[data-act="nodes"]');
+      this.selTextEl = this.rootEl.querySelector('[data-act="selText"]');
+      this.selClearBtn = this.rootEl.querySelector('[data-act="selClear"]');
+      this.selOpenBtn = this.rootEl.querySelector('[data-act="selOpen"]');
 
       // editing dialog (optional)
       this.enableEdgeEdit = !!this.opts.enableEdgeEdit;
@@ -192,30 +206,40 @@
       btn('refresh')?.addEventListener('click', () => this.reload());
 
       const includeInactive = btn('includeInactive');
+      const focusSelected = btn('focusSelected');
       const allEnrollments = btn('allEnrollments');
       includeInactive?.addEventListener('change', () => this.render());
+      focusSelected?.addEventListener('change', () => this.render());
       allEnrollments?.addEventListener('change', () => this.reload());
+      this.selClearBtn?.addEventListener('click', () => this._setSelected(null));
+      this.selOpenBtn?.addEventListener('click', () => {
+        if (!this.selectedNodeId || !this.userEditUrlPrefix) return;
+        window.open(`${this.userEditUrlPrefix}${this.selectedNodeId}`, '_blank');
+      });
 
       // Pan (pointer)
       this.viewportEl.addEventListener('pointerdown', (ev) => {
         const target = ev.target;
         if (target && target.closest && target.closest('.rel-node')) return;
         this.state.draggingPan = true;
-        this.state.dragStart = { x: ev.clientX, y: ev.clientY, tx: this.state.tx, ty: this.state.ty };
+        this.state.dragStart = { x: ev.clientX, y: ev.clientY, tx: this.state.tx, ty: this.state.ty, moved: false };
         this.viewportEl.setPointerCapture(ev.pointerId);
       });
       this.viewportEl.addEventListener('pointermove', (ev) => {
         if (!this.state.draggingPan || !this.state.dragStart) return;
         const dx = ev.clientX - this.state.dragStart.x;
         const dy = ev.clientY - this.state.dragStart.y;
+        if (Math.abs(dx) + Math.abs(dy) > 3) this.state.dragStart.moved = true;
         this.state.tx = this.state.dragStart.tx + dx;
         this.state.ty = this.state.dragStart.ty + dy;
         this._applyTransform();
       });
       this.viewportEl.addEventListener('pointerup', (ev) => {
+        const wasClick = this.state.dragStart && !this.state.dragStart.moved;
         this.state.draggingPan = false;
         this.state.dragStart = null;
         try { this.viewportEl.releasePointerCapture(ev.pointerId); } catch {}
+        if (wasClick) this._setSelected(null);
       });
 
       // Zoom (wheel)
@@ -286,6 +310,13 @@
         el.style.left = '0px';
         el.style.top = '0px';
         el.addEventListener('pointerdown', (ev) => this._startDragNode(ev, n.id));
+        el.addEventListener('dblclick', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          if (this.userEditUrlPrefix) {
+            window.open(`${this.userEditUrlPrefix}${n.id}`, '_blank');
+          }
+        });
         this.nodesWrapEl.appendChild(el);
         this.nodeEls.set(n.id, el);
       }
@@ -368,6 +399,7 @@
         left: parseFloat(el.style.left || '0') || 0,
         top: parseFloat(el.style.top || '0') || 0,
         scale: this.state.scale,
+        moved: false,
       };
       this.state.dragStart = start;
       el.setPointerCapture(ev.pointerId);
@@ -376,6 +408,7 @@
         if (this.state.draggingNodeId !== nodeId || !this.state.dragStart) return;
         const dx = (e.clientX - start.x) / start.scale;
         const dy = (e.clientY - start.y) / start.scale;
+        if (Math.abs(dx) + Math.abs(dy) > 2) start.moved = true;
         el.style.left = `${start.left + dx}px`;
         el.style.top = `${start.top + dy}px`;
         this._scheduleDraw();
@@ -388,11 +421,48 @@
         el.removeEventListener('pointerup', onUp);
         el.removeEventListener('pointercancel', onUp);
         this._saveState();
+        if (!start.moved) {
+          this._setSelected(nodeId);
+        }
         this._scheduleDraw();
       };
       el.addEventListener('pointermove', onMove);
       el.addEventListener('pointerup', onUp);
       el.addEventListener('pointercancel', onUp);
+    }
+
+    _setSelected(nodeId) {
+      const next = (nodeId && nodeId === this.selectedNodeId) ? null : nodeId;
+      this.selectedNodeId = next;
+      this._updateSelectionUI();
+      this.render();
+    }
+
+    _updateSelectionUI() {
+      if (!this.selTextEl) return;
+      if (!this.data || !this.selectedNodeId) {
+        this.selTextEl.textContent = '—';
+        if (this.selOpenBtn) this.selOpenBtn.style.display = 'none';
+        for (const el of this.nodeEls.values()) el.classList.remove('selected');
+        return;
+      }
+      const node = (this.data.nodes || []).find(n => n.id === this.selectedNodeId);
+      const label = node ? `${node.username}${node.role ? ' · ' + defaultRoleLabel(node.role) : ''}` : String(this.selectedNodeId);
+      this.selTextEl.textContent = label;
+      if (this.selOpenBtn) this.selOpenBtn.style.display = this.userEditUrlPrefix ? '' : 'none';
+      for (const [id, el] of this.nodeEls.entries()) {
+        el.classList.toggle('selected', id === this.selectedNodeId);
+      }
+    }
+
+    _isNodeRelatedToSelected(nodeId) {
+      if (!this.selectedNodeId) return false;
+      for (const e of this._allEdges()) {
+        if ((e.from_id === this.selectedNodeId && e.to_id === nodeId) || (e.to_id === this.selectedNodeId && e.from_id === nodeId)) {
+          return true;
+        }
+      }
+      return false;
     }
 
     _saveState() {
@@ -442,17 +512,36 @@
     render() {
       if (!this.data) return;
       const showInactive = !!this.rootEl.querySelector('[data-act="includeInactive"]')?.checked;
+      const focusSelected = !!this.rootEl.querySelector('[data-act="focusSelected"]')?.checked;
       const nodes = (this.data.nodes || []);
-      const visible = new Set(nodes.filter(n => showInactive || n.is_active).map(n => n.id));
+      this._updateSelectionUI();
+      let visible = new Set(nodes.filter(n => showInactive || n.is_active).map(n => n.id));
+
+      if (this.selectedNodeId && focusSelected) {
+        const keep = new Set([this.selectedNodeId]);
+        for (const e of this._allEdges()) {
+          if (e.from_id === this.selectedNodeId || e.to_id === this.selectedNodeId) {
+            keep.add(e.from_id);
+            keep.add(e.to_id);
+          }
+        }
+        visible = new Set([...visible].filter(id => keep.has(id)));
+      }
 
       // show/hide nodes
       for (const n of nodes) {
         const el = this.nodeEls.get(n.id);
         if (!el) continue;
         el.style.display = visible.has(n.id) ? '' : 'none';
+        if (this.selectedNodeId && !focusSelected) {
+          const related = (n.id === this.selectedNodeId) || this._isNodeRelatedToSelected(n.id);
+          el.classList.toggle('dim', !related);
+        } else {
+          el.classList.toggle('dim', !n.is_active);
+        }
       }
 
-      this._drawEdges(visible);
+      this._drawEdges(visible, { focusSelected });
       this._applyTransform();
       this._saveState();
     }
@@ -475,13 +564,17 @@
       return { x, y, w, h, cx: x + w / 2, cy: y + h / 2 };
     }
 
-    _drawEdges(visibleNodeIds) {
+    _drawEdges(visibleNodeIds, options) {
+      options = options || {};
       // clear everything except defs
       const defs = this.svgEl.querySelector('defs');
       this.svgEl.innerHTML = '';
       if (defs) this.svgEl.appendChild(defs);
 
-      const edges = this._allEdges().filter(e => visibleNodeIds.has(e.from_id) && visibleNodeIds.has(e.to_id));
+      let edges = this._allEdges().filter(e => visibleNodeIds.has(e.from_id) && visibleNodeIds.has(e.to_id));
+      if (this.selectedNodeId && options.focusSelected) {
+        edges = edges.filter(e => e.from_id === this.selectedNodeId || e.to_id === this.selectedNodeId);
+      }
 
       // group by pair to de-overlap via control offset
       const grouped = new Map();
@@ -519,11 +612,16 @@
           const path = createSvgEl('path');
           path.setAttribute('d', `M ${ax} ${ay} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${bx} ${by}`);
           path.setAttribute('fill', 'none');
-          path.setAttribute('stroke', e.kind === 'family' ? 'rgba(255,200,46,0.75)' : 'rgba(46,125,255,0.75)');
+          const isRelated = !this.selectedNodeId || (e.from_id === this.selectedNodeId || e.to_id === this.selectedNodeId);
+          const baseStroke = (e.kind === 'family' ? 'rgba(255,200,46,0.75)' : 'rgba(46,125,255,0.75)');
+          path.setAttribute('stroke', baseStroke);
           path.setAttribute('stroke-width', '2.2');
           path.setAttribute('stroke-linecap', 'round');
           path.setAttribute('marker-end', 'url(#rg-arrow)');
           path.style.pointerEvents = this.enableEdgeEdit ? 'auto' : 'none';
+          if (this.selectedNodeId && !options.focusSelected) {
+            path.setAttribute('opacity', isRelated ? '1' : '0.18');
+          }
           if (this.enableEdgeEdit) {
             path.addEventListener('click', () => this._openEdgeEditor(e));
           }
@@ -541,6 +639,9 @@
             ? `${e.access_level || ''}${e.is_confirmed ? ' · ok' : ' · pending'}`
             : `${e.subject || ''} · ${e.status || ''}`;
           label.textContent = (text || '—').trim();
+          if (this.selectedNodeId && !options.focusSelected) {
+            label.setAttribute('opacity', isRelated ? '1' : '0.18');
+          }
           this.svgEl.appendChild(label);
         }
       }
