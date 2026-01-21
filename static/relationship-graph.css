@@ -1,0 +1,182 @@
+.rel-graph-shell {
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.rel-graph-toolbar {
+  padding: 1rem;
+  border-bottom: 1px solid var(--stroke-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-3);
+}
+
+.rel-graph-toolbar .rel-graph-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.rel-graph-toolbar .rel-graph-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.rel-graph-viewport {
+  position: relative;
+  height: 640px;
+  overflow: hidden;
+  cursor: grab;
+  background: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.09) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.rel-graph-viewport:active {
+  cursor: grabbing;
+}
+
+.rel-graph-world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  width: 3200px;
+  height: 2000px;
+}
+
+.rel-graph-world::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.08) 1px, transparent 1px);
+  background-size: 18px 18px;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.rel-graph-edges {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.rel-graph-edges path {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.rel-node {
+  position: absolute;
+  min-width: 280px;
+  max-width: 340px;
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  padding: 0.75rem;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.25);
+  user-select: none;
+  cursor: grab;
+}
+
+.rel-node:hover {
+  background: var(--surface-3);
+}
+
+.rel-node:active {
+  cursor: grabbing;
+}
+
+.rel-node.dim {
+  opacity: 0.55;
+}
+
+.rel-node .rel-node-title {
+  font-weight: 800;
+  color: var(--text-primary);
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.rel-node .rel-node-sub {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin-top: 0.25rem;
+}
+
+.rel-node .role-badge {
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.rel-legend {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  flex-wrap: wrap;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.rel-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.rel-dot.enr { background: rgba(46,125,255,0.85); }
+.rel-dot.ft { background: rgba(255,200,46,0.85); }
+
+.rel-hint {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: 0.75rem;
+}
+
+dialog.rel-graph-dialog {
+  border: 1px solid var(--stroke-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  padding: 0;
+  width: min(680px, 92vw);
+}
+
+dialog.rel-graph-dialog::backdrop {
+  background: rgba(0,0,0,0.55);
+}
+
+.rel-graph-dlg-head {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--stroke-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface-3);
+}
+
+.rel-graph-dlg-body {
+  padding: 1rem 1.25rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.rel-graph-dlg-actions {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--stroke-2);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
