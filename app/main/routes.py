@@ -197,7 +197,6 @@ def setup_first_user():
         }), 500
 
 @main_bp.route('/')
-@main_bp.route('/')
 @main_bp.route('/landing')
 def landing():
     """Гостевая страница (landing page) - доступна без авторизации"""
@@ -205,9 +204,7 @@ def landing():
     if os.environ.get('ENVIRONMENT') == 'admin':
         return redirect(url_for('remote_admin.dashboard'))
     
-    # Если пользователь авторизован, редиректим на дашборд
-    if current_user.is_authenticated:
-        return redirect(url_for('main.dashboard'))
+    # Страница доступна всем, включая авторизованных пользователей
     return render_template('landing.html')
 
 
