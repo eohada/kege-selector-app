@@ -7,7 +7,17 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <style>
-        /* Landing page specific styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow-x: hidden;
+        }
+
+        /* Hero Section */
         .landing-hero {
             min-height: 100vh;
             display: flex;
@@ -16,38 +26,23 @@
             position: relative;
             overflow: hidden;
             padding: 4rem 2rem;
-        }
-
-        .landing-hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at 20% 30%, rgba(0, 255, 213, 0.15) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 70%, rgba(31, 123, 255, 0.15) 0%, transparent 50%);
-            animation: pulse-glow 8s ease-in-out infinite;
-            z-index: 0;
-        }
-
-        @keyframes pulse-glow {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
+            background: radial-gradient(circle at 20% 30%, rgba(0, 255, 213, 0.2) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 70%, rgba(31, 123, 255, 0.2) 0%, transparent 50%),
+                        var(--page-bg);
         }
 
         .hero-content {
             position: relative;
             z-index: 1;
             text-align: center;
-            max-width: 900px;
+            max-width: 1000px;
             animation: fade-in-up 1s ease-out;
         }
 
         @keyframes fade-in-up {
             from {
                 opacity: 0;
-                transform: translateY(30px);
+                transform: translateY(50px);
             }
             to {
                 opacity: 1;
@@ -56,33 +51,34 @@
         }
 
         .hero-eyebrow {
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: var(--accent-1);
             text-transform: uppercase;
-            letter-spacing: 0.15em;
-            margin-bottom: 1rem;
+            letter-spacing: 0.2em;
+            margin-bottom: 1.5rem;
             font-weight: 600;
             animation: fade-in 1.2s ease-out;
         }
 
         .hero-title {
-            font-size: clamp(2.5rem, 6vw, 4.5rem);
-            font-weight: 800;
-            line-height: 1.1;
-            margin: 0 0 1.5rem 0;
-            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-1) 50%, var(--accent-2) 100%);
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 900;
+            line-height: 1.05;
+            margin: 0 0 2rem 0;
+            background: linear-gradient(135deg, #ffffff 0%, var(--accent-1) 30%, var(--accent-2) 70%, #ffffff 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
             animation: fade-in-up 1s ease-out 0.2s both;
+            text-shadow: 0 0 80px rgba(0, 255, 213, 0.3);
         }
 
         .hero-subtitle {
-            font-size: clamp(1.1rem, 2vw, 1.4rem);
+            font-size: clamp(1.2rem, 2.5vw, 1.6rem);
             color: var(--text-muted);
-            line-height: 1.7;
-            margin: 0 0 2.5rem 0;
-            max-width: 700px;
+            line-height: 1.8;
+            margin: 0 0 3rem 0;
+            max-width: 800px;
             margin-left: auto;
             margin-right: auto;
             animation: fade-in-up 1s ease-out 0.4s both;
@@ -90,183 +86,25 @@
 
         .hero-actions {
             display: flex;
-            gap: 1rem;
+            gap: 1.5rem;
             justify-content: center;
             flex-wrap: wrap;
             animation: fade-in-up 1s ease-out 0.6s both;
         }
 
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 2rem;
-            margin-top: 4rem;
-        }
-
-        .feature-card {
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-            border-radius: var(--radius-md);
-            padding: 2rem;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .feature-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
-            transform: scaleX(0);
-            transition: transform 0.3s ease;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--accent-1);
-            box-shadow: 0 20px 60px rgba(0, 255, 213, 0.15);
-        }
-
-        .feature-card:hover::before {
-            transform: scaleX(1);
-        }
-
-        .feature-icon {
-            width: 64px;
-            height: 64px;
-            margin-bottom: 1.5rem;
-            opacity: 0.9;
-            transition: transform 0.3s ease;
-        }
-
-        .feature-card:hover .feature-icon {
-            transform: scale(1.1) rotate(5deg);
-        }
-
-        .feature-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin: 0 0 1rem 0;
-            color: var(--text-primary);
-        }
-
-        .feature-description {
-            color: var(--text-muted);
-            line-height: 1.7;
-            margin: 0;
-        }
-
-        .section-title {
-            font-size: clamp(2rem, 4vw, 3rem);
-            font-weight: 800;
-            text-align: center;
-            margin: 0 0 1rem 0;
-            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-1) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .section-subtitle {
-            text-align: center;
-            color: var(--text-muted);
+        .hero-actions .neo-button {
             font-size: 1.2rem;
-            margin: 0 0 4rem 0;
-        }
-
-        .image-placeholder {
-            width: 100%;
-            height: 300px;
-            background: var(--surface-3);
+            padding: 1.2rem 2.5rem;
             border-radius: var(--radius-md);
-            border: 2px dashed var(--stroke-2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin: 2rem 0;
             transition: all 0.3s ease;
         }
 
-        .image-placeholder:hover {
-            border-color: var(--accent-1);
-            background: var(--surface-2);
+        .hero-actions .neo-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 40px rgba(0, 255, 213, 0.3);
         }
 
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 2rem;
-            margin: 4rem 0;
-        }
-
-        .stat-item {
-            text-align: center;
-            padding: 2rem;
-            background: var(--surface-2);
-            border-radius: var(--radius-md);
-            border: 1px solid var(--stroke-1);
-            transition: all 0.3s ease;
-        }
-
-        .stat-item:hover {
-            transform: translateY(-5px);
-            border-color: var(--accent-1);
-        }
-
-        .stat-number {
-            font-size: 3rem;
-            font-weight: 800;
-            color: var(--accent-1);
-            margin: 0;
-            line-height: 1;
-        }
-
-        .stat-label {
-            font-size: 1rem;
-            color: var(--text-muted);
-            margin-top: 0.5rem;
-        }
-
-        .cta-section {
-            text-align: center;
-            padding: 6rem 2rem;
-            background: var(--surface-2);
-            border-radius: var(--radius-lg);
-            margin: 4rem 0;
-            border: 1px solid var(--stroke-1);
-        }
-
-        .cta-title {
-            font-size: clamp(2rem, 4vw, 3rem);
-            font-weight: 800;
-            margin: 0 0 1rem 0;
-        }
-
-        .cta-subtitle {
-            font-size: 1.2rem;
-            color: var(--text-muted);
-            margin: 0 0 2rem 0;
-        }
-
-        .scroll-indicator {
-            position: absolute;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
-            animation: bounce 2s infinite;
-        }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateX(-50%) translateY(0); }
-            50% { transform: translateX(-50%) translateY(-10px); }
-        }
-
+        /* Floating Background Elements */
         .floating-elements {
             position: absolute;
             width: 100%;
@@ -280,49 +118,362 @@
             position: absolute;
             border-radius: 50%;
             background: var(--accent-1);
-            opacity: 0.1;
-            animation: float 20s infinite ease-in-out;
+            opacity: 0.08;
+            animation: float 25s infinite ease-in-out;
+            filter: blur(40px);
         }
 
         .floating-circle:nth-child(1) {
-            width: 300px;
-            height: 300px;
+            width: 500px;
+            height: 500px;
             top: 10%;
-            left: 10%;
+            left: 5%;
             animation-delay: 0s;
         }
 
         .floating-circle:nth-child(2) {
-            width: 200px;
-            height: 200px;
-            top: 60%;
-            right: 15%;
-            animation-delay: 5s;
+            width: 400px;
+            height: 400px;
+            top: 50%;
+            right: 10%;
+            animation-delay: 8s;
         }
 
         .floating-circle:nth-child(3) {
-            width: 150px;
-            height: 150px;
-            bottom: 20%;
+            width: 300px;
+            height: 300px;
+            bottom: 15%;
             left: 20%;
-            animation-delay: 10s;
+            animation-delay: 16s;
         }
 
         @keyframes float {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            33% { transform: translate(30px, -30px) rotate(120deg); }
-            66% { transform: translate(-20px, 20px) rotate(240deg); }
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(50px, -50px) scale(1.1); }
+            66% { transform: translate(-30px, 30px) scale(0.9); }
         }
 
-        @media (max-width: 768px) {
-            .feature-grid {
+        /* Scroll Indicator */
+        .scroll-indicator {
+            position: absolute;
+            bottom: 3rem;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: bounce 2s infinite;
+            color: var(--accent-1);
+            opacity: 0.7;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-15px); }
+        }
+
+        /* Feature Showcase Sections */
+        .feature-showcase {
+            padding: 8rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .feature-showcase:nth-child(even) {
+            background: var(--surface-1);
+        }
+
+        .feature-block {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6rem;
+            align-items: center;
+            margin-bottom: 8rem;
+            opacity: 0;
+            transform: translateY(80px);
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .feature-block.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .feature-block.reverse {
+            direction: rtl;
+        }
+
+        .feature-block.reverse > * {
+            direction: ltr;
+        }
+
+        .feature-content {
+            padding: 2rem;
+        }
+
+        .feature-badge {
+            display: inline-block;
+            padding: 0.5rem 1.2rem;
+            background: rgba(0, 255, 213, 0.15);
+            color: var(--accent-1);
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-title {
+            font-size: clamp(2rem, 4vw, 3.5rem);
+            font-weight: 800;
+            margin: 0 0 1.5rem 0;
+            line-height: 1.2;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-1) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .feature-description {
+            font-size: clamp(1.1rem, 1.5vw, 1.3rem);
+            color: var(--text-muted);
+            line-height: 1.8;
+            margin: 0 0 2rem 0;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .feature-list li {
+            padding: 0.8rem 0;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .feature-list li::before {
+            content: '✓';
+            color: var(--accent-1);
+            font-weight: 700;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+
+        .feature-visual {
+            position: relative;
+            height: 500px;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            box-shadow: 0 30px 100px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.5s ease;
+        }
+
+        .feature-visual:hover {
+            transform: scale(1.02);
+        }
+
+        .feature-visual img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .feature-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--surface-3) 0%, var(--surface-2) 100%);
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .feature-placeholder-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Section Titles */
+        .section-header {
+            text-align: center;
+            margin-bottom: 6rem;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.8s ease;
+        }
+
+        .section-header.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .section-eyebrow {
+            font-size: 0.9rem;
+            color: var(--accent-1);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .section-title {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 900;
+            margin: 0 0 1.5rem 0;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-1) 50%, var(--accent-2) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-subtitle {
+            font-size: clamp(1.2rem, 2vw, 1.5rem);
+            color: var(--text-muted);
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.7;
+        }
+
+        /* Stats Section */
+        .stats-section {
+            padding: 8rem 2rem;
+            background: var(--surface-2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 3rem 2rem;
+            background: var(--surface-1);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--stroke-1);
+            transition: all 0.4s ease;
+            opacity: 0;
+            transform: translateY(50px);
+        }
+
+        .stat-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--accent-1);
+            box-shadow: 0 20px 60px rgba(0, 255, 213, 0.2);
+        }
+
+        .stat-number {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 900;
+            color: var(--accent-1);
+            margin: 0;
+            line-height: 1;
+            margin-bottom: 1rem;
+        }
+
+        .stat-label {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 10rem 2rem;
+            text-align: center;
+            background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-1) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 50% 50%, rgba(0, 255, 213, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .cta-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .cta-title {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 900;
+            margin: 0 0 1.5rem 0;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-1) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .cta-subtitle {
+            font-size: clamp(1.2rem, 2vw, 1.5rem);
+            color: var(--text-muted);
+            margin: 0 0 3rem 0;
+            line-height: 1.8;
+        }
+
+        /* Responsive */
+        @media (max-width: 968px) {
+            .feature-block {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+
+            .feature-block.reverse {
+                direction: ltr;
+            }
+
+            .feature-visual {
+                height: 400px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .stats-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .hero-actions {
                 flex-direction: column;
             }
-            
+
             .hero-actions .neo-button {
                 width: 100%;
             }
@@ -347,166 +498,179 @@
                     Управление учениками, расписание, генератор заданий ЕГЭ, проверка работ и многое другое.
                 </p>
                 <div class="hero-actions">
-                    <a href="{{ url_for('auth.login') }}" class="neo-button accent" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                    <a href="{{ url_for('auth.login') }}" class="neo-button accent">
                         Войти в систему
                     </a>
-                    <a href="#features" class="neo-button outline" style="font-size: 1.1rem; padding: 1rem 2rem;">
+                    <a href="#features" class="neo-button outline">
                         Узнать больше
                     </a>
                 </div>
             </div>
             
             <div class="scroll-indicator">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 5v14M5 12l7 7 7-7"/>
                 </svg>
             </div>
         </section>
 
-        <!-- Features Section -->
-        <section id="features" class="glass-panel" style="margin: 4rem auto; max-width: 1400px; padding: 4rem 2rem;">
-            <h2 class="section-title">Возможности платформы</h2>
-            <p class="section-subtitle">Все необходимое для организации эффективного онлайн-обучения</p>
+        <!-- Features Showcase -->
+        <section id="features" class="feature-showcase">
+            <div class="section-header">
+                <p class="section-eyebrow">Возможности платформы</p>
+                <h2 class="section-title">Всё необходимое для эффективного обучения</h2>
+                <p class="section-subtitle">
+                    Современные инструменты, которые помогут вам организовать учебный процесс на новом уровне
+                </p>
+            </div>
 
-            <div class="feature-grid">
-                <!-- Классная комната -->
-                <div class="feature-card">
-                    <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Классная комната" class="feature-icon">
+            <!-- Классная комната -->
+            <div class="feature-block">
+                <div class="feature-content">
+                    <span class="feature-badge">Интерактивное обучение</span>
                     <h3 class="feature-title">Классная комната</h3>
                     <p class="feature-description">
-                        Интерактивное пространство для проведения уроков. Конспекты с форматированием, заметки с фото,
-                        домашние задания с автоматической проверкой. Ученик видит красиво оформленные итоги и может
-                        заполнять ответы прямо во время урока.
+                        Полноценное интерактивное пространство для проведения уроков с богатыми возможностями
+                        для взаимодействия преподавателя и ученика.
                     </p>
-                    <div class="image-placeholder">
-                        📸 Скриншот классной комнаты
+                    <ul class="feature-list">
+                        <li>Конспекты с форматированием и вложениями</li>
+                        <li>Заметки с фото и медиа-контентом</li>
+                        <li>Домашние задания с автоматической проверкой</li>
+                        <li>Красиво оформленные итоги уроков</li>
+                        <li>Заполнение ответов прямо во время урока</li>
+                    </ul>
+                </div>
+                <div class="feature-visual">
+                    <div class="feature-placeholder">
+                        <div class="feature-placeholder-icon">📚</div>
+                        <div>Скриншот классной комнаты</div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Расписание -->
-                <div class="feature-card">
-                    <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="feature-icon">
+            <!-- Расписание -->
+            <div class="feature-block reverse">
+                <div class="feature-content">
+                    <span class="feature-badge">Планирование</span>
                     <h3 class="feature-title">Умное расписание</h3>
                     <p class="feature-description">
-                        Календарное расписание с поддержкой нескольких часовых поясов. Автоплан для регулярных занятий,
-                        массовое создание уроков, синхронизация с внешними календарями. Удобное перетаскивание и фильтрация.
+                        Интеллектуальная система планирования занятий с поддержкой множества функций
+                        для удобной организации учебного процесса.
                     </p>
-                    <div class="image-placeholder">
-                        📸 Скриншот расписания
+                    <ul class="feature-list">
+                        <li>Календарное расписание с несколькими часовыми поясами</li>
+                        <li>Автоплан для регулярных занятий</li>
+                        <li>Массовое создание уроков</li>
+                        <li>Синхронизация с внешними календарями</li>
+                        <li>Удобное перетаскивание и фильтрация</li>
+                    </ul>
+                </div>
+                <div class="feature-visual">
+                    <div class="feature-placeholder">
+                        <div class="feature-placeholder-icon">📅</div>
+                        <div>Скриншот расписания</div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Генератор заданий -->
-                <div class="feature-card">
-                    <img src="{{ url_for('static', filename='icons/icons8-мишень-100.png') }}" alt="Генератор" class="feature-icon">
+            <!-- Генератор заданий -->
+            <div class="feature-block">
+                <div class="feature-content">
+                    <span class="feature-badge">База знаний</span>
                     <h3 class="feature-title">Генератор заданий ЕГЭ</h3>
                     <p class="feature-description">
-                        Обширная база заданий КЕГЭ с умным подбором. Автоматическое исключение использованных заданий,
-                        поиск по ID, фильтрация по типам. Быстрое формирование домашних и классных работ.
+                        Обширная база заданий КЕГЭ с интеллектуальным подбором и автоматическим
+                        исключением уже использованных вариантов.
                     </p>
-                    <div class="image-placeholder">
-                        📸 Скриншот генератора
+                    <ul class="feature-list">
+                        <li>Тысячи заданий в базе данных</li>
+                        <li>Умный подбор с исключением использованных</li>
+                        <li>Поиск по уникальному ID</li>
+                        <li>Фильтрация по типам и темам</li>
+                        <li>Быстрое формирование работ</li>
+                    </ul>
+                </div>
+                <div class="feature-visual">
+                    <div class="feature-placeholder">
+                        <div class="feature-placeholder-icon">🎯</div>
+                        <div>Скриншот генератора</div>
                     </div>
                 </div>
+            </div>
 
-                <!-- AI Тренажёр -->
-                <div class="feature-card">
-                    <img src="{{ url_for('static', filename='icons/icons8-робот-100.png') }}" alt="Тренажёр" class="feature-icon">
+            <!-- AI Тренажёр -->
+            <div class="feature-block reverse">
+                <div class="feature-content">
+                    <span class="feature-badge">Искусственный интеллект</span>
                     <h3 class="feature-title">AI Тренажёр</h3>
                     <p class="feature-description">
-                        Виртуальный помощник для обучения программированию. Анализирует код ученика, задаёт наводящие вопросы,
-                        даёт подсказки. Интеграция с языковыми моделями для персонализированной помощи.
+                        Виртуальный помощник для обучения программированию с интеграцией языковых моделей
+                        для персонализированной помощи каждому ученику.
                     </p>
-                    <div class="image-placeholder">
-                        📸 Скриншот тренажёра
+                    <ul class="feature-list">
+                        <li>Анализ кода ученика в реальном времени</li>
+                        <li>Наводящие вопросы и подсказки</li>
+                        <li>Интеграция с языковыми моделями</li>
+                        <li>Персонализированная помощь</li>
+                        <li>Автоматическая проверка решений</li>
+                    </ul>
+                </div>
+                <div class="feature-visual">
+                    <div class="feature-placeholder">
+                        <div class="feature-placeholder-icon">🤖</div>
+                        <div>Скриншот тренажёра</div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Система проверки -->
-                <div class="feature-card">
-                    <img src="{{ url_for('static', filename='icons/icons8-проверка-100.png') }}" alt="Проверка" class="feature-icon">
+            <!-- Система проверки -->
+            <div class="feature-block">
+                <div class="feature-content">
+                    <span class="feature-badge">Оценивание</span>
                     <h3 class="feature-title">Система проверки</h3>
                     <p class="feature-description">
-                        Удобная очередь проверки работ с фильтрами и сортировкой. Рубрики и критерии оценки,
-                        комментарии к заданиям, возврат на доработку. Автоматический подсчёт баллов.
+                        Удобная и эффективная система проверки работ с поддержкой рубрик, критериев
+                        и детальной обратной связи для учеников.
                     </p>
-                    <div class="image-placeholder">
-                        📸 Скриншот проверки
-                    </div>
+                    <ul class="feature-list">
+                        <li>Очередь проверки с фильтрами</li>
+                        <li>Рубрики и критерии оценки</li>
+                        <li>Комментарии к заданиям</li>
+                        <li>Возврат на доработку</li>
+                        <li>Автоматический подсчёт баллов</li>
+                    </ul>
                 </div>
-
-                <!-- Библиотека материалов -->
-                <div class="feature-card">
-                    <img src="{{ url_for('static', filename='icons/icons8-библиотека-100.png') }}" alt="Библиотека" class="feature-icon">
-                    <h3 class="feature-title">Библиотека материалов</h3>
-                    <p class="feature-description">
-                        Централизованное хранилище учебных материалов. Загрузка файлов различных форматов,
-                        прикрепление к урокам, защищённые ссылки для скачивания с контролем доступа.
-                    </p>
-                    <div class="image-placeholder">
-                        📸 Скриншот библиотеки
-                    </div>
-                </div>
-
-                <!-- Группы и статистика -->
-                <div class="feature-card">
-                    <img src="{{ url_for('static', filename='icons/icons8-группа-100.png') }}" alt="Группы" class="feature-icon">
-                    <h3 class="feature-title">Группы и статистика</h3>
-                    <p class="feature-description">
-                        Создание учебных групп, отслеживание прогресса каждого ученика. Детальная статистика по предметам,
-                        темам и типам заданий. Экспорт отчётов в различных форматах.
-                    </p>
-                    <div class="image-placeholder">
-                        📸 Скриншот статистики
-                    </div>
-                </div>
-
-                <!-- Профили пользователей -->
-                <div class="feature-card">
-                    <img src="{{ url_for('static', filename='icons/icons8-профиль-100.png') }}" alt="Профили" class="feature-icon">
-                    <h3 class="feature-title">Профили пользователей</h3>
-                    <p class="feature-description">
-                        Информативные профили для всех ролей. Социальная сеть внутри платформы с возможностью
-                        просмотра достижений, статистики и связей между пользователями.
-                    </p>
-                    <div class="image-placeholder">
-                        📸 Скриншот профилей
-                    </div>
-                </div>
-
-                <!-- Курсы -->
-                <div class="feature-card">
-                    <img src="{{ url_for('static', filename='icons/icons8-курс-100.png') }}" alt="Курсы" class="feature-icon">
-                    <h3 class="feature-title">Система курсов</h3>
-                    <p class="feature-description">
-                        Создание структурированных курсов с модулями и уроками. Прогресс обучения, привязка к расписанию,
-                        автоматическое отслеживание прохождения материала.
-                    </p>
-                    <div class="image-placeholder">
-                        📸 Скриншот курсов
+                <div class="feature-visual">
+                    <div class="feature-placeholder">
+                        <div class="feature-placeholder-icon">✅</div>
+                        <div>Скриншот проверки</div>
                     </div>
                 </div>
             </div>
         </section>
 
         <!-- Stats Section -->
-        <section class="glass-panel" style="margin: 4rem auto; max-width: 1400px; padding: 4rem 2rem;">
-            <h2 class="section-title">Почему выбирают нас</h2>
+        <section class="stats-section">
+            <div class="section-header">
+                <p class="section-eyebrow">Почему выбирают нас</p>
+                <h2 class="section-title">Цифры говорят сами за себя</h2>
+            </div>
             
             <div class="stats-grid">
-                <div class="stat-item">
+                <div class="stat-card">
                     <p class="stat-number">1000+</p>
                     <p class="stat-label">Заданий в базе</p>
                 </div>
-                <div class="stat-item">
+                <div class="stat-card">
                     <p class="stat-number">24/7</p>
                     <p class="stat-label">Доступность</p>
                 </div>
-                <div class="stat-item">
+                <div class="stat-card">
                     <p class="stat-number">100%</p>
                     <p class="stat-label">Безопасность данных</p>
                 </div>
-                <div class="stat-item">
+                <div class="stat-card">
                     <p class="stat-number">AI</p>
                     <p class="stat-label">Умный помощник</p>
                 </div>
@@ -514,13 +678,18 @@
         </section>
 
         <!-- CTA Section -->
-        <section class="cta-section" style="max-width: 1400px; margin: 4rem auto;">
-            <h2 class="cta-title">Готовы начать?</h2>
-            <p class="cta-subtitle">Присоединяйтесь к платформе и начните эффективно организовывать онлайн-обучение</p>
-            <div class="hero-actions">
-                <a href="{{ url_for('auth.login') }}" class="neo-button accent" style="font-size: 1.1rem; padding: 1rem 2rem;">
-                    Войти в систему
-                </a>
+        <section class="cta-section">
+            <div class="cta-content">
+                <h2 class="cta-title">Готовы начать?</h2>
+                <p class="cta-subtitle">
+                    Присоединяйтесь к платформе и начните эффективно организовывать онлайн-обучение.
+                    Все инструменты уже готовы к использованию.
+                </p>
+                <div class="hero-actions">
+                    <a href="{{ url_for('auth.login') }}" class="neo-button accent" style="font-size: 1.2rem; padding: 1.2rem 2.5rem;">
+                        Войти в систему
+                    </a>
+                </div>
             </div>
         </section>
     </div>
@@ -540,27 +709,33 @@
             });
         });
 
-        // Intersection Observer for fade-in animations
+        // Intersection Observer for scroll animations
         const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
+            threshold: 0.15,
+            rootMargin: '0px 0px -100px 0px'
         };
 
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
+                    entry.target.classList.add('visible');
                 }
             });
         }, observerOptions);
 
-        // Observe feature cards
-        document.querySelectorAll('.feature-card').forEach(card => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(30px)';
-            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            observer.observe(card);
+        // Observe all animated elements
+        document.querySelectorAll('.feature-block, .section-header, .stat-card').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Parallax effect for hero section
+        let lastScroll = 0;
+        window.addEventListener('scroll', () => {
+            const scrolled = window.pageYOffset;
+            const hero = document.querySelector('.landing-hero');
+            if (hero && scrolled < window.innerHeight) {
+                hero.style.transform = `translateY(${scrolled * 0.5}px)`;
+            }
         });
     </script>
 </body>
