@@ -2,477 +2,379 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Чёрный неон | Экосистема образования</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Чёрный неон | Презентация платформы</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --bg-color: #050507;
-            --surface-glass: rgba(255, 255, 255, 0.03);
-            --surface-glass-hover: rgba(255, 255, 255, 0.06);
-            --border-glass: rgba(255, 255, 255, 0.08);
-            
-            --accent-primary: #00ffd5;
-            --accent-secondary: #7000ff;
-            --accent-gradient: linear-gradient(135deg, #00ffd5 0%, #7000ff 100%);
-            
-            --text-main: #ffffff;
-            --text-muted: #888899;
-            
-            --glow: 0 0 120px -20px rgba(0, 255, 213, 0.15);
+            --bg-dark: #050507;
+            --primary: #8F00FF;
+            --cyan: #00F0FF;
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-bg: rgba(255, 255, 255, 0.02);
+            --text-main: #FFFFFF;
+            --text-muted: #94A3B8;
         }
 
-        /* --- Базовые стили --- */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        /* --- BASIC RESET & TYPOGRAPHY --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
+            background-color: var(--bg-dark);
             color: var(--text-main);
+            font-family: 'Inter', sans-serif;
             overflow-x: hidden;
-            line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
         }
 
-        /* Эффект зернистости для текстуры */
-        .noise-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            z-index: 999;
-            opacity: 0.03;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-        }
-
-        /* --- Типографика --- */
-        h1, h2, h3 { font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+        h1, h2, h3 { font-family: 'Space Grotesk', sans-serif; line-height: 1.1; }
         
-        .gradient-text {
-            background: linear-gradient(to right, #fff, #b4b4b4);
+        .text-gradient {
+            background: linear-gradient(135deg, #fff 30%, var(--cyan) 100%);
             -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             background-clip: text;
-            color: transparent;
         }
 
-        .accent-text {
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-
-        /* --- Анимированный фон (Orbs) --- */
-        .ambient-light {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -1;
-            overflow: hidden;
-        }
-        .orb {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(80px);
-            opacity: 0.4;
-            animation: float-orb 20s infinite ease-in-out;
-        }
-        .orb-1 { width: 600px; height: 600px; background: #00ffd5; top: -10%; left: -10%; animation-delay: 0s; }
-        .orb-2 { width: 500px; height: 500px; background: #7000ff; bottom: 20%; right: -5%; animation-delay: -5s; }
-        .orb-3 { width: 300px; height: 300px; background: #2b5aff; top: 40%; left: 30%; animation-delay: -10s; opacity: 0.2; }
-
-        @keyframes float-orb {
-            0%, 100% { transform: translate(0, 0); }
-            50% { transform: translate(30px, -50px); }
-        }
-
-        /* --- Компоненты --- */
         .container {
-            max-width: 1240px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 0 2rem;
+            padding: 0 24px;
         }
 
+        /* --- BACKGROUND FX --- */
+        .noise-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 50; opacity: 0.04;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+        
+        #hero-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1;
+        }
+
+        /* --- BUTTONS --- */
         .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem 2.5rem;
-            border-radius: 100px;
-            font-weight: 600;
-            font-size: 1rem;
-            text-decoration: none;
-            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-            position: relative;
-            overflow: hidden;
+            padding: 16px 32px; border-radius: 50px; font-weight: 600; text-decoration: none;
+            transition: all 0.3s ease; display: inline-flex; justify-content: center; align-items: center;
         }
-
         .btn-primary {
-            background: #fff;
-            color: #000;
+            background: white; color: black;
         }
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 40px rgba(255, 255, 255, 0.2);
+            transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+        }
+        .btn-glow {
+            border: 1px solid rgba(255,255,255,0.2); color: white; backdrop-filter: blur(10px);
+        }
+        .btn-glow:hover {
+            border-color: var(--cyan); color: var(--cyan);
         }
 
-        .btn-glass {
-            background: rgba(255,255,255,0.1);
-            color: #fff;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .btn-glass:hover {
-            background: rgba(255,255,255,0.15);
-            border-color: rgba(255,255,255,0.3);
-        }
-
-        /* --- Hero Section --- */
+        /* --- HERO SECTION --- */
         .hero {
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding-top: 4rem;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
+            padding-top: 80px;
         }
-        
-        .hero-content {
-            max-width: 900px;
-            z-index: 2;
-        }
-
-        .badge-new {
-            display: inline-block;
-            padding: 6px 16px;
-            border-radius: 50px;
-            background: rgba(0, 255, 213, 0.1);
-            border: 1px solid rgba(0, 255, 213, 0.3);
-            color: var(--accent-primary);
-            font-size: 0.85rem;
-            font-weight: 500;
-            margin-bottom: 2rem;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-            animation: fade-in-up 1s ease forwards;
-        }
-
         .hero-title {
-            font-size: clamp(3rem, 7vw, 6rem);
-            margin-bottom: 1.5rem;
-            opacity: 0;
-            animation: fade-in-up 1s 0.2s ease forwards;
+            font-size: clamp(3.5rem, 8vw, 7rem); font-weight: 700; margin-bottom: 24px;
+            letter-spacing: -0.03em;
+        }
+        .hero-subtitle {
+            font-size: clamp(1.1rem, 2vw, 1.5rem); color: var(--text-muted); max-width: 650px; margin: 0 auto 40px;
         }
 
-        .hero-desc {
-            font-size: clamp(1.1rem, 2vw, 1.4rem);
-            color: var(--text-muted);
-            max-width: 600px;
-            margin: 0 auto 3rem;
-            opacity: 0;
-            animation: fade-in-up 1s 0.4s ease forwards;
-        }
-
-        .hero-buttons {
+        /* --- PRESENTATION BLOCKS --- */
+        .feature-block {
+            min-height: 90vh; /* Каждый блок на весь экран */
             display: flex;
-            gap: 1.5rem;
-            justify-content: center;
-            opacity: 0;
-            animation: fade-in-up 1s 0.6s ease forwards;
-        }
-
-        /* --- Features Section --- */
-        .features { padding: 10rem 0; }
-        
-        .section-header { text-align: center; margin-bottom: 8rem; }
-        .section-label { 
-            color: var(--accent-secondary); 
-            font-weight: 600; 
-            letter-spacing: 0.1em; 
-            text-transform: uppercase; 
-            font-size: 0.9rem;
-            margin-bottom: 1rem;
-            display: block;
-        }
-
-        .feature-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6rem;
             align-items: center;
-            margin-bottom: 10rem;
+            position: relative;
+            padding: 60px 0;
+        }
+
+        /* Чередование контента (Zig-Zag) */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr; /* Текст уже, картинка шире */
+            gap: 80px;
+            align-items: center;
+            width: 100%;
+        }
+
+        .feature-block.reversed .feature-grid {
+            grid-template-columns: 1.2fr 1fr;
+            direction: rtl; /* Разворот сетки */
         }
         
-        .feature-row.reverse { direction: rtl; }
-        .feature-row.reverse .feature-info { direction: ltr; }
+        .feature-block.reversed .feature-content {
+            direction: ltr; /* Возврат текста в норму */
+        }
 
-        .feature-card-visual {
-            height: 500px;
-            background: var(--surface-glass);
-            border: 1px solid var(--border-glass);
+        /* Текстовая часть */
+        .feature-content h2 {
+            font-size: clamp(2.5rem, 4vw, 3.5rem);
+            margin-bottom: 24px;
+        }
+        .feature-content p {
+            font-size: 1.2rem; line-height: 1.7; color: var(--text-muted); margin-bottom: 32px;
+        }
+        
+        .feature-list li {
+            list-style: none; margin-bottom: 16px; display: flex; align-items: center;
+            font-size: 1.1rem; color: #fff;
+        }
+        .feature-list li::before {
+            content: ""; width: 8px; height: 8px; background: var(--cyan);
+            border-radius: 50%; margin-right: 16px; box-shadow: 0 0 10px var(--cyan);
+        }
+
+        /* Визуальная часть (Стекло) */
+        .feature-visual {
+            position: relative;
+            aspect-ratio: 16/10;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
             border-radius: 24px;
             backdrop-filter: blur(20px);
-            position: relative;
+            box-shadow: 0 40px 100px -30px rgba(0,0,0,0.5);
+            transition: transform 0.5s ease;
             overflow: hidden;
-            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 40px 100px -20px rgba(0,0,0,0.5);
+            
+            /* Фейковый интерфейс (заглушка) */
+            display: flex; align-items: center; justify-content: center;
         }
         
-        .feature-card-visual:hover {
-            transform: scale(1.02);
+        .feature-visual:hover {
+            transform: scale(1.02) rotateY(2deg);
             border-color: rgba(255,255,255,0.2);
         }
 
-        .feature-card-visual::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.1), transparent 70%);
-            opacity: 0.5;
-        }
-
-        .mockup-content {
-            width: 100%; height: 100%;
-            display: flex;
-            align-items: center; 
-            justify-content: center;
-            font-size: 4rem;
-            color: rgba(255,255,255,0.05);
-        }
-
-        .feature-info h3 {
-            font-size: 2.5rem;
-            margin-bottom: 1.5rem;
-            color: #fff;
+        /* Глоу эффект за картинкой */
+        .feature-visual::before {
+            content: ''; position: absolute; width: 100%; height: 100%; top: 0; left: 0;
+            background: radial-gradient(circle at 50% 50%, var(--primary), transparent 60%);
+            opacity: 0.15; z-index: -1;
         }
         
-        .feature-info p {
-            color: var(--text-muted);
-            font-size: 1.15rem;
-            margin-bottom: 2rem;
-        }
+        .mockup-icon { font-size: 5rem; opacity: 0.8; }
 
-        .feature-list li {
-            list-style: none;
-            display: flex;
-            align-items: center;
-            margin-bottom: 1rem;
-            color: var(--text-main);
-            font-weight: 500;
+        /* --- STATS STRIP --- */
+        .stats-strip {
+            padding: 80px 0; border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border);
+            background: rgba(255,255,255,0.01); margin: 60px 0;
         }
-        .feature-list li::before {
-            content: "✦";
-            color: var(--accent-primary);
-            margin-right: 12px;
-            font-size: 1.2rem;
+        .stats-flex {
+            display: flex; justify-content: space-around; flex-wrap: wrap; gap: 40px;
         }
+        .stat-item { text-align: center; }
+        .stat-val { font-size: 3.5rem; font-weight: 700; font-family: 'Space Grotesk'; display: block; margin-bottom: 8px; }
+        .stat-lbl { color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; }
 
-        /* --- Stats Grid --- */
-        .stats-section {
-            background: linear-gradient(180deg, transparent, rgba(255,255,255,0.02) 50%, transparent);
-            padding: 8rem 0;
-            border-top: 1px solid var(--border-glass);
-            border-bottom: 1px solid var(--border-glass);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 2rem;
-        }
-
-        .stat-item {
-            padding: 2rem;
-            text-align: center;
-            transition: transform 0.3s;
-        }
-        .stat-item:hover { transform: translateY(-5px); }
-
-        .stat-val {
-            font-size: 3.5rem;
-            font-weight: 800;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            margin-bottom: 0.5rem;
-            display: block;
-        }
-        .stat-label { color: var(--text-muted); font-size: 1rem; }
-
-        /* --- Animations --- */
-        @keyframes fade-in-up {
-            from { opacity: 0; transform: translateY(40px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .reveal-on-scroll {
-            opacity: 0;
-            transform: translateY(30px);
-            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .reveal-on-scroll.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        /* --- Mobile --- */
+        /* --- RESPONSIVE --- */
         @media (max-width: 968px) {
-            .feature-row { grid-template-columns: 1fr; gap: 4rem; margin-bottom: 6rem; }
-            .feature-row.reverse { direction: ltr; }
-            .hero-title { font-size: 3.5rem; }
+            .feature-grid, .feature-block.reversed .feature-grid {
+                grid-template-columns: 1fr; /* Одна колонка */
+                direction: ltr;
+                gap: 40px;
+            }
+            .feature-block { padding: 40px 0; min-height: auto; }
+            .feature-visual { order: -1; } /* Картинка всегда сверху на мобилке */
+            .hero-title { font-size: 3rem; }
         }
+
+        /* --- ANIMATIONS --- */
+        .reveal {
+            opacity: 0; transform: translateY(50px); transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal.active { opacity: 1; transform: translateY(0); }
     </style>
 </head>
 <body>
 
     <div class="noise-overlay"></div>
+    <canvas id="hero-canvas"></canvas>
 
-    <div class="ambient-light">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="orb orb-3"></div>
-    </div>
+    <nav style="position: fixed; width: 100%; top: 0; z-index: 100; backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <div class="container" style="height: 70px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-weight: 700; font-size: 1.2rem;">Чёрный неон</div>
+            <a href="#" class="btn-glow" style="padding: 8px 24px; border-radius: 8px; font-size: 0.9rem;">Вход</a>
+        </div>
+    </nav>
 
     <section class="hero">
-        <div class="container hero-content">
-            <span class="badge-new">Платформа 2.0</span>
-            <h1 class="hero-title">
-                Ваша школа.<br>
-                <span class="gradient-text">В новом свете.</span>
+        <div class="container">
+            <h1 class="hero-title reveal">
+                Будущее <br> <span class="text-gradient">онлайн-обучения</span>
             </h1>
-            <p class="hero-desc">
-                Чёрный неон — это единая экосистема для репетиторов. 
-                Управление учениками, умное расписание и AI-инструменты в одном безупречном интерфейсе.
+            <p class="hero-subtitle reveal">
+                Профессиональная платформа для репетиторов. От интерактивной доски до генератора заданий ЕГЭ — всё в одной экосистеме.
             </p>
-            <div class="hero-buttons">
-                <a href="#login" class="btn btn-primary">Начать бесплатно</a>
-                <a href="#features" class="btn btn-glass">Тур по платформе</a>
+            <div style="display: flex; gap: 16px; justify-content: center;" class="reveal">
+                <a href="#" class="btn btn-primary">Начать бесплатно</a>
+                <a href="#demo" class="btn btn-glow">Смотреть демо</a>
             </div>
         </div>
     </section>
 
-    <section id="features" class="features">
+    <section class="feature-block">
         <div class="container">
-            <div class="section-header reveal-on-scroll">
-                <span class="section-label">Возможности</span>
-                <h2 style="font-size: 3rem;">Инструменты будущего</h2>
-            </div>
-
-            <div class="feature-row reveal-on-scroll">
-                <div class="feature-info">
-                    <h3>Классная комната</h3>
-                    <p>Интерактивное пространство, где обучение становится живым. Забудьте про демонстрацию экрана — работайте с учеником в реальном времени.</p>
+            <div class="feature-grid">
+                <div class="feature-content reveal">
+                    <span style="color: var(--cyan); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: block;">Интерактив</span>
+                    <h2>Классная комната</h2>
+                    <p>Больше никаких "расшарьте экран". Полноценное рабочее пространство с синхронным редактором кода, заметок и медиа-файлов.</p>
                     <ul class="feature-list">
-                        <li>Синхронный редактор кода и текста</li>
-                        <li>Медиа-вложения Drag & Drop</li>
-                        <li>Автопроверка домашних заданий</li>
+                        <li>Редактор кода с подсветкой синтаксиса</li>
+                        <li>Вложения фото и видео (Drag & Drop)</li>
+                        <li>Автопроверка ответов в реальном времени</li>
                     </ul>
                 </div>
-                <div class="feature-card-visual">
-                    <div class="mockup-content">💻</div>
-                </div>
-            </div>
-
-            <div class="feature-row reverse reveal-on-scroll">
-                <div class="feature-info">
-                    <h3>Умное расписание</h3>
-                    <p>Система, которая бережет ваше время. Автоматический учет часовых поясов, переносы занятий в один клик и синхронизация с Google Calendar.</p>
-                    <ul class="feature-list">
-                        <li>Автопланирование регулярных встреч</li>
-                        <li>Уведомления для учеников</li>
-                        <li>Учет оплат и баланса</li>
-                    </ul>
-                </div>
-                <div class="feature-card-visual">
-                    <div class="mockup-content">📅</div>
-                </div>
-            </div>
-
-            <div class="feature-row reveal-on-scroll">
-                <div class="feature-info">
-                    <h3>AI-Ассистент <span style="color:var(--accent-primary); font-size:0.7em; vertical-align: super;">BETA</span></h3>
-                    <p>Ваш персональный методист. Нейросеть анализирует ошибки ученика, предлагает подсказки и даже генерирует уникальные варианты заданий ЕГЭ.</p>
-                    <ul class="feature-list">
-                        <li>Генерация заданий по ID темы</li>
-                        <li>Умный анализ кода (Code Review)</li>
-                        <li>Персонализированные рекомендации</li>
-                    </ul>
-                </div>
-                <div class="feature-card-visual">
-                    <div class="mockup-content">🤖</div>
+                <div class="feature-visual reveal">
+                    <div class="mockup-icon">💻</div>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="stats-section">
+    <section class="feature-block reversed">
         <div class="container">
-            <div class="stats-grid">
-                <div class="stat-item reveal-on-scroll">
-                    <span class="stat-val">1000+</span>
-                    <span class="stat-label">Заданий в базе</span>
+            <div class="feature-grid">
+                <div class="feature-content reveal">
+                    <span style="color: var(--primary); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: block;">Планирование</span>
+                    <h2>Умное расписание</h2>
+                    <p>Система сама учитывает часовые пояса учеников. Планируйте регулярные занятия и разовые встречи в пару кликов.</p>
+                    <ul class="feature-list">
+                        <li>Автоматическая конвертация часовых поясов</li>
+                        <li>Синхронизация с Google Calendar</li>
+                        <li>Фильтры и удобный Drag & Drop перенос</li>
+                    </ul>
                 </div>
-                <div class="stat-item reveal-on-scroll">
-                    <span class="stat-val">0.1s</span>
-                    <span class="stat-label">Задержка синхронизации</span>
-                </div>
-                <div class="stat-item reveal-on-scroll">
-                    <span class="stat-val">100%</span>
-                    <span class="stat-label">Защита данных</span>
-                </div>
-                <div class="stat-item reveal-on-scroll">
-                    <span class="stat-val">24/7</span>
-                    <span class="stat-label">Поддержка</span>
+                <div class="feature-visual reveal">
+                    <div class="mockup-icon">📅</div>
                 </div>
             </div>
         </div>
     </section>
 
-    <section style="padding: 10rem 0; text-align: center;">
-        <div class="container reveal-on-scroll">
-            <h2 style="font-size: clamp(2.5rem, 5vw, 4rem); margin-bottom: 2rem;">
-                Готовы <span class="accent-text">трансформировать</span><br>процесс обучения?
+    <section class="feature-block" style="flex-direction: column; text-align: center; justify-content: center;">
+        <div class="container">
+            <div class="reveal" style="max-width: 800px; margin: 0 auto 50px auto;">
+                <span style="background: var(--primary); color: white; padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 0.8rem; margin-bottom: 20px; display: inline-block;">NEW</span>
+                <h2 style="font-size: clamp(2.5rem, 5vw, 4rem);">AI-Ассистент</h2>
+                <p style="font-size: 1.3rem; color: var(--text-muted); margin-top: 20px;">
+                    Персональный методист на базе искусственного интеллекта. Он проверяет код, дает подсказки ученику и помогает вам готовить материалы.
+                </p>
+            </div>
+            
+            <div class="feature-visual reveal" style="max-width: 900px; margin: 0 auto; aspect-ratio: 16/9;">
+                 <div class="mockup-icon">🤖</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="feature-block reversed">
+        <div class="container">
+            <div class="feature-grid">
+                <div class="feature-content reveal">
+                    <span style="color: var(--cyan); font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: block;">База знаний</span>
+                    <h2>Генератор ЕГЭ</h2>
+                    <p>Доступ к тысячам заданий с уникальными ID. Исключайте уже решенные задачи и собирайте индивидуальные варианты за секунды.</p>
+                    <ul class="feature-list">
+                        <li>Умный подбор с исключением повторов</li>
+                        <li>Поиск по номеру задания или теме</li>
+                        <li>Мгновенная генерация PDF версий</li>
+                    </ul>
+                </div>
+                <div class="feature-visual reveal">
+                    <div class="mockup-icon">📝</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="stats-strip">
+        <div class="container">
+            <div class="stats-flex">
+                <div class="stat-item reveal">
+                    <span class="stat-val text-gradient">1000+</span>
+                    <span class="stat-lbl">Заданий в базе</span>
+                </div>
+                <div class="stat-item reveal">
+                    <span class="stat-val text-gradient">24/7</span>
+                    <span class="stat-lbl">Доступность</span>
+                </div>
+                <div class="stat-item reveal">
+                    <span class="stat-val text-gradient">AI</span>
+                    <span class="stat-lbl">Интеграция</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section style="padding: 120px 0; text-align: center;">
+        <div class="container">
+            <h2 class="reveal" style="font-size: clamp(2.5rem, 5vw, 4rem); margin-bottom: 40px;">
+                Готовы к <span class="text-gradient">новому уровню?</span>
             </h2>
-            <a href="#" class="btn btn-primary" style="padding: 1.2rem 3rem; font-size: 1.2rem;">Создать аккаунт</a>
+            <a href="#" class="btn btn-primary reveal" style="padding: 20px 60px; font-size: 1.2rem;">Создать аккаунт</a>
         </div>
     </section>
 
     <script>
-        // Анимация появления при скролле
-        const observerOptions = {
-            threshold: 0.15,
-            rootMargin: "0px 0px -50px 0px"
-        };
-
+        // 1. Scroll Reveal Animation
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                    // Опционально: перестать отслеживать после появления
-                    // observer.unobserve(entry.target); 
+                    entry.target.classList.add('active');
                 }
             });
-        }, observerOptions);
+        }, { threshold: 0.15 });
 
-        document.querySelectorAll('.reveal-on-scroll').forEach(el => {
-            observer.observe(el);
-        });
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-        // Параллакс эффект для "шаров" на фоне
-        document.addEventListener('mousemove', (e) => {
-            const x = e.clientX / window.innerWidth;
-            const y = e.clientY / window.innerHeight;
+        // 2. Simple Particles
+        const canvas = document.getElementById('hero-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const particles = Array.from({length: 50}, () => ({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            size: Math.random() * 2,
+            speedX: (Math.random() - 0.5) * 0.2,
+            speedY: (Math.random() - 0.5) * 0.2
+        }));
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            ctx.fillStyle = "rgba(143, 0, 255, 0.4)";
             
-            const orbs = document.querySelectorAll('.orb');
-            orbs.forEach((orb, index) => {
-                const speed = (index + 1) * 20;
-                const xOffset = (0.5 - x) * speed;
-                const yOffset = (0.5 - y) * speed;
-                orb.style.transform = `translate(${xOffset}px, ${yOffset}px)`;
+            particles.forEach(p => {
+                p.x += p.speedX;
+                p.y += p.speedY;
+                if(p.x < 0) p.x = width;
+                if(p.x > width) p.x = 0;
+                if(p.y < 0) p.y = height;
+                if(p.y > height) p.y = 0;
+                
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
             });
-        });
+            requestAnimationFrame(animate);
+        }
+        animate();
     </script>
 </body>
 </html>
