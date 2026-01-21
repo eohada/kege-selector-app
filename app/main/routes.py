@@ -209,6 +209,16 @@ def index():
         return redirect(url_for('main.dashboard'))
     return render_template('index.html')
 
+
+@main_bp.route('/')
+@main_bp.route('/landing')
+def landing():
+    """Гостевая страница (landing page) - доступна без авторизации"""
+    # Если пользователь авторизован, редиректим на дашборд
+    if current_user.is_authenticated:
+        return redirect(url_for('main.dashboard'))
+    return render_template('landing.html')
+
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
