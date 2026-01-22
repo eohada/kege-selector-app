@@ -23,10 +23,19 @@
         </div>
         
         <div style="margin-bottom: 2rem;">
-            <a href="{{ url_for('kege_generator.kege_generator') }}" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                <span>➕</span>
-                <span>Создать новую работу</span>
-            </a>
+            <div style="display:flex; gap: .75rem; flex-wrap: wrap; align-items: center;">
+                <a href="{{ url_for('kege_generator.show_accepted', create='1', assignment_type='homework') }}" class="btn-primary" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                    <span>📝</span>
+                    <span>Создать работу из принятых</span>
+                </a>
+                <a href="{{ url_for('kege_generator.kege_generator') }}" class="neo-button outline" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration:none;">
+                    <span>⚡</span>
+                    <span>Открыть генератор</span>
+                </a>
+                <div style="color: var(--text-muted); font-size: .95rem;">
+                    Сначала прими задания в генераторе → затем создай работу из списка «Принятые».
+                </div>
+            </div>
         </div>
         
         {% if assignments_data %}
@@ -74,7 +83,10 @@
             <div style="font-size: 4em; margin-bottom: 1rem;">📝</div>
             <h2 style="font-size: 1.5em; margin-bottom: 0.5rem;">Работ пока нет</h2>
             <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Создайте первую работу, используя генератор заданий</p>
-            <a href="{{ url_for('kege_generator.kege_generator') }}" class="btn-primary">Создать работу</a>
+            <div style="display:flex; gap:.75rem; justify-content:center; flex-wrap: wrap;">
+                <a href="{{ url_for('kege_generator.show_accepted', create='1', assignment_type='homework') }}" class="btn-primary">Создать работу из принятых</a>
+                <a href="{{ url_for('kege_generator.kege_generator') }}" class="neo-button outline" style="text-decoration:none;">Открыть генератор</a>
+            </div>
         </div>
         {% endif %}
         </main>
