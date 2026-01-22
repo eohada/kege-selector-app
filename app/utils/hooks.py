@@ -296,6 +296,11 @@ def register_hooks(app):
         # Внутренний remote-admin API — server-to-server по токену, не требует Flask-Login
         if request.path.startswith('/internal/remote-admin/'):
             return
+
+        # Внутренний trainer API — server-to-server по токену, не требует Flask-Login
+        # (Streamlit не имеет Flask-сессии, а использует X-Trainer-Token / query token)
+        if request.path.startswith('/internal/trainer/'):
+            return
         
         # Проверяем авторизацию
         if not current_user.is_authenticated:
