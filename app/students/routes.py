@@ -470,7 +470,10 @@ def student_learning_plan(student_id: int):
         from flask import abort
         abort(403)
 
-    can_edit = (not current_user.is_student()) and (not current_user.is_parent()) and has_permission(current_user, 'plan.edit')
+    # QA/UX: тьютор должен иметь полный функционал траектории даже если RolePermission не заполнены.
+    is_teacher_actor = (not current_user.is_student()) and (not current_user.is_parent())
+    is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
+    can_edit = is_teacher_actor and (has_permission(current_user, 'plan.edit') or is_tutor_actor)
 
     items = StudentLearningPlanItem.query.filter_by(student_id=student.student_id).order_by(
         StudentLearningPlanItem.priority.desc(),
@@ -512,7 +515,8 @@ def student_learning_plan(student_id: int):
 @login_required
 def student_learning_plan_item_create(student_id: int):
     student = _guard_student_access(student_id)
-    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'plan.edit')):
+    is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
+    if current_user.is_student() or current_user.is_parent() or (not (has_permission(current_user, 'plan.edit') or is_tutor_actor)):
         from flask import abort
         abort(403)
 
@@ -575,7 +579,8 @@ def student_learning_plan_item_create(student_id: int):
 @login_required
 def student_learning_plan_item_update(student_id: int, item_id: int):
     student = _guard_student_access(student_id)
-    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'plan.edit')):
+    is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
+    if current_user.is_student() or current_user.is_parent() or (not (has_permission(current_user, 'plan.edit') or is_tutor_actor)):
         from flask import abort
         abort(403)
 
@@ -630,7 +635,8 @@ def student_learning_plan_item_update(student_id: int, item_id: int):
 @login_required
 def student_learning_plan_item_delete(student_id: int, item_id: int):
     student = _guard_student_access(student_id)
-    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'plan.edit')):
+    is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
+    if current_user.is_student() or current_user.is_parent() or (not (has_permission(current_user, 'plan.edit') or is_tutor_actor)):
         from flask import abort
         abort(403)
 
@@ -668,7 +674,10 @@ def student_gradebook(student_id: int):
         from flask import abort
         abort(403)
 
-    can_edit = (not current_user.is_student()) and (not current_user.is_parent()) and has_permission(current_user, 'gradebook.edit')
+    # QA/UX: тьютор должен иметь доступ к журналу (редактирование/добавление), даже если RolePermission не заполнены.
+    is_teacher_actor = (not current_user.is_student()) and (not current_user.is_parent())
+    is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
+    can_edit = is_teacher_actor and (has_permission(current_user, 'gradebook.edit') or is_tutor_actor)
 
     # Ручные/явные записи журнала
     entries = GradebookEntry.query.filter_by(student_id=student.student_id).order_by(
@@ -702,7 +711,8 @@ def student_gradebook(student_id: int):
 @login_required
 def student_gradebook_create(student_id: int):
     student = _guard_student_access(student_id)
-    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'gradebook.edit')):
+    is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
+    if current_user.is_student() or current_user.is_parent() or (not (has_permission(current_user, 'gradebook.edit') or is_tutor_actor)):
         from flask import abort
         abort(403)
 
@@ -786,7 +796,8 @@ def student_gradebook_create(student_id: int):
 @login_required
 def student_gradebook_update(student_id: int, entry_id: int):
     student = _guard_student_access(student_id)
-    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'gradebook.edit')):
+    is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
+    if current_user.is_student() or current_user.is_parent() or (not (has_permission(current_user, 'gradebook.edit') or is_tutor_actor)):
         from flask import abort
         abort(403)
 
@@ -858,7 +869,8 @@ def student_gradebook_update(student_id: int, entry_id: int):
 @login_required
 def student_gradebook_delete(student_id: int, entry_id: int):
     student = _guard_student_access(student_id)
-    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'gradebook.edit')):
+    is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
+    if current_user.is_student() or current_user.is_parent() or (not (has_permission(current_user, 'gradebook.edit') or is_tutor_actor)):
         from flask import abort
         abort(403)
 
@@ -1000,7 +1012,10 @@ def student_gradebook_export_pdf(student_id: int):
 def student_diagnostics(student_id: int):
     """Диагностика ученика: слабые темы + сохранённые контрольные точки."""
     student = _guard_student_access(student_id)
-    if not has_permission(current_user, 'plan.view') or not has_permission(current_user, 'diagnostics.view'):
+    # QA/UX: тьютор должен видеть диагностику и сохранять контрольные точки по требованиям QA,
+    # даже если RolePermission не заполнены.
+    is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
+    if not ((has_permission(current_user, 'plan.view') and has_permission(current_user, 'diagnostics.view')) or is_tutor_actor):
         from flask import abort
         abort(403)
 
@@ -1010,14 +1025,43 @@ def student_diagnostics(student_id: int):
     stats = None
     metrics = {}
     problem_topics = []
+    problem_tasks = []
+    coverage = {'scored_items': 0, 'scored_with_topics': 0, 'unique_topics': 0}
     try:
         stats = StatsService(student.student_id)
         metrics = stats.get_summary_metrics()
         problem_topics = stats.get_problem_topics(threshold=60)
+        # Fallback: если topics пустые/не заполнены, покажем слабые места по номерам заданий
+        try:
+            problem_tasks = stats.get_problem_task_numbers(threshold=60, min_attempts=3)
+        except Exception:
+            problem_tasks = []
+
+        # Диагностическое покрытие: сколько вообще есть проверенных попыток и есть ли темы
+        try:
+            total = 0
+            with_topics = 0
+            uniq_topics = set()
+            for _is_correct, _ratio, _weight, topics in stats._iter_scored_items():
+                total += 1
+                if topics:
+                    with_topics += 1
+                    for t in topics:
+                        try:
+                            name = getattr(t, 'name', None) or (t.get('name') if isinstance(t, dict) else None)
+                        except Exception:
+                            name = None
+                        if name:
+                            uniq_topics.add(str(name))
+            coverage = {'scored_items': int(total), 'scored_with_topics': int(with_topics), 'unique_topics': int(len(uniq_topics))}
+        except Exception:
+            coverage = {'scored_items': 0, 'scored_with_topics': 0, 'unique_topics': 0}
     except Exception as e:
         logger.warning(f"Failed to compute diagnostics for student {student.student_id}: {e}")
         metrics = {}
         problem_topics = []
+        problem_tasks = []
+        coverage = {'scored_items': 0, 'scored_with_topics': 0, 'unique_topics': 0}
 
     checkpoints = []
     try:
@@ -1028,7 +1072,7 @@ def student_diagnostics(student_id: int):
     except Exception:
         checkpoints = []
 
-    can_save = (not current_user.is_student()) and (not current_user.is_parent()) and has_permission(current_user, 'diagnostics.checkpoints')
+    can_save = (not current_user.is_student()) and (not current_user.is_parent()) and (has_permission(current_user, 'diagnostics.checkpoints') or is_tutor_actor)
 
     # простые рекомендации MVP: топ-3 слабых темы → "сделать 2 урока + 10 задач"
     recommendations = []
@@ -1046,6 +1090,8 @@ def student_diagnostics(student_id: int):
         student=student,
         metrics=metrics,
         problem_topics=problem_topics,
+        problem_tasks=problem_tasks,
+        coverage=coverage,
         recommendations=recommendations,
         checkpoints=checkpoints,
         can_save=can_save,
@@ -1057,7 +1103,8 @@ def student_diagnostics(student_id: int):
 def student_diagnostics_checkpoint_create(student_id: int):
     """Сохранить контрольную точку диагностики (учитель/админ)."""
     student = _guard_student_access(student_id)
-    if current_user.is_student() or current_user.is_parent() or (not has_permission(current_user, 'diagnostics.checkpoints')):
+    is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
+    if current_user.is_student() or current_user.is_parent() or (not (has_permission(current_user, 'diagnostics.checkpoints') or is_tutor_actor)):
         from flask import abort
         abort(403)
 

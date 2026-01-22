@@ -21,6 +21,22 @@
         <p class="hero-eyebrow">диагностика</p>
         <h1 class="hero-title" style="margin-bottom:.25rem;">{{ student.name }}</h1>
         <div style="color: var(--text-muted);">Слабые темы и контрольные точки (baseline/промежуточные).</div>
+        <div style="margin-top: .9rem; display:flex; gap:.5rem; flex-wrap: wrap;">
+          <span class="badge" style="display:inline-flex; align-items:center; gap:.4rem; padding:.25rem .6rem; border-radius:999px; border:1px solid var(--stroke-1); background: rgba(255,255,255,0.04);">
+            Проверенных попыток: <strong>{{ (coverage.scored_items if coverage is defined else 0) }}</strong>
+          </span>
+          <span class="badge" style="display:inline-flex; align-items:center; gap:.4rem; padding:.25rem .6rem; border-radius:999px; border:1px solid var(--stroke-1); background: rgba(255,255,255,0.04);">
+            С темами: <strong>{{ (coverage.scored_with_topics if coverage is defined else 0) }}</strong>
+          </span>
+          <span class="badge" style="display:inline-flex; align-items:center; gap:.4rem; padding:.25rem .6rem; border-radius:999px; border:1px solid var(--stroke-1); background: rgba(255,255,255,0.04);">
+            Уникальных тем: <strong>{{ (coverage.unique_topics if coverage is defined else 0) }}</strong>
+          </span>
+          {% if metrics and metrics.current_gpa is defined %}
+          <span class="badge" style="display:inline-flex; align-items:center; gap:.4rem; padding:.25rem .6rem; border-radius:999px; border:1px solid var(--stroke-1); background: rgba(255,255,255,0.04);">
+            Общий результат: <strong>{{ metrics.current_gpa }}%</strong>
+          </span>
+          {% endif %}
+        </div>
         <div class="hero-actions" style="margin-top: 1rem;">
           <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Профиль</a>
           <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button outline">Аналитика</a>
@@ -45,7 +61,25 @@
                 <div style="color: var(--text-muted); margin-top:.35rem; font-size:.92rem;">Средний результат: <strong>{{ avg }}%</strong></div>
               </div>
             {% else %}
-              <div class="empty-state" style="padding: 1.5rem 1rem;"><p>Пока недостаточно данных.</p></div>
+              {% if problem_tasks is defined and problem_tasks and problem_tasks|length > 0 %}
+                {% for p in problem_tasks[:8] %}
+                  <div style="padding:.85rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
+                    <div style="font-weight: 900;">Задание №{{ p.task_number }}</div>
+                    <div style="color: var(--text-muted); margin-top:.35rem; font-size:.92rem;">
+                      Средний результат: <strong>{{ p.avg_score }}%</strong>
+                      {% if p.attempts %}<span style="opacity:.9;">· попыток: {{ p.attempts }}</span>{% endif %}
+                    </div>
+                  </div>
+                {% endfor %}
+              {% else %}
+                <div class="empty-state" style="padding: 1.5rem 1rem;">
+                  <p style="margin-bottom:.5rem;">Пока недостаточно данных для «слабых тем».</p>
+                  <div style="color: var(--text-muted); font-size:.95rem; line-height: 1.55;">
+                    Диагностика строится по <strong>проверенным</strong> попыткам (когда выставлен результат: верно/неверно или баллы).
+                    Если вы видите «мало данных», значит либо задач ещё мало, либо они не проверены, либо у задач не проставлены темы.
+                  </div>
+                </div>
+              {% endif %}
             {% endfor %}
           </div>
         </section>
@@ -127,7 +161,7 @@
     </main>
   </div>
 
-  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+  {# toast.js уже подключается через _ux_enhancements.html #}
 </body>
 </html>
 

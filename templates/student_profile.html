@@ -198,6 +198,24 @@
                 flex-wrap: wrap;
             }
         }
+
+        /* QA: у ученика хотбар не должен "растягиваться" на всю ширину */
+        .profile-header-simple .hero-actions {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
+            max-width: 640px;
+            flex: 0 0 auto;
+        }
+
+        @media (max-width: 768px) {
+            .profile-header-simple .hero-actions {
+                justify-content: center;
+                max-width: 100%;
+            }
+        }
     </style>
 </head>
 <body>

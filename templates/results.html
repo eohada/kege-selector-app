@@ -355,8 +355,76 @@
 
 
     <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    {# toast.js уже подключается через _ux_enhancements.html #}
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
+
+    <!-- Modal: Create Assignment -->
+    <div class="modal-overlay" id="createAssignmentModal" style="display:none; align-items:center; justify-content:center; padding: 2rem; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 1200; backdrop-filter: blur(4px);">
+        <div class="glass-panel" style="width: 100%; max-width: 640px; border-radius: var(--radius-lg);">
+            <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+                <div>
+                    <p class="hero-eyebrow">создание работы</p>
+                    <h2 style="margin: .25rem 0 0 0;">Создать работу из выбранных заданий</h2>
+                    <div style="color: var(--text-muted); margin-top: .5rem; line-height: 1.45;">
+                        Работа появится в разделе <strong>«Работы»</strong> и назначится выбранным ученикам.
+                    </div>
+                </div>
+                <button type="button" class="neo-button ghost" onclick="closeCreateAssignmentModal()" aria-label="Закрыть">✕</button>
+            </div>
+            <form id="createAssignmentForm" style="margin-top: 1.25rem;">
+                <div class="neo-field">
+                    <label class="neo-label" for="ca_title">Название *</label>
+                    <input id="ca_title" class="neo-input" name="title" required placeholder="Например: ДЗ по КЕГЭ №1">
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-top: .9rem;">
+                    <div class="neo-field">
+                        <label class="neo-label" for="ca_type">Тип</label>
+                        <select id="ca_type" class="neo-select" name="type">
+                            <option value="homework">ДЗ</option>
+                            <option value="classwork">КР</option>
+                            <option value="exam">Проверочная</option>
+                        </select>
+                    </div>
+                    <div class="neo-field">
+                        <label class="neo-label" for="ca_deadline">Дедлайн *</label>
+                        <input id="ca_deadline" class="neo-input" type="datetime-local" name="deadline" required>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-top: .9rem;">
+                    <div class="neo-field">
+                        <label class="neo-label" for="ca_time_limit">Лимит времени (мин)</label>
+                        <input id="ca_time_limit" class="neo-input" type="number" name="time_limit_minutes" min="5" step="5" placeholder="например: 60">
+                        <div style="color: var(--text-muted); font-size: .9rem; margin-top: .35rem;">Опционально, для тестов.</div>
+                    </div>
+                    <div class="neo-field">
+                        <label class="neo-label">Жёсткий дедлайн</label>
+                        <label style="display:flex; gap:.6rem; align-items:center; padding:.75rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-md); background: rgba(255,255,255,0.02);">
+                            <input id="ca_hard_deadline" type="checkbox" style="width: 18px; height: 18px;">
+                            <span>Запретить сдачу после дедлайна</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="neo-field" style="margin-top: .9rem;">
+                    <label class="neo-label" for="ca_description">Описание (опц.)</label>
+                    <textarea id="ca_description" class="neo-input" name="description" rows="3" placeholder="Коротко: что важно, критерии, как сдавать..."></textarea>
+                </div>
+                <div class="neo-field" style="margin-top: .9rem;">
+                    <label class="neo-label">Получатели</label>
+                    <label style="display:flex; gap:.6rem; align-items:center; padding:.75rem 1rem; border:1px solid var(--stroke-1); border-radius: var(--radius-md); background: rgba(255,255,255,0.02);">
+                        <input id="ca_group_all" type="radio" name="recipients_mode" value="all" checked style="width: 18px; height: 18px;">
+                        <span>Все мои ученики</span>
+                    </label>
+                    <div style="color: var(--text-muted); font-size: .9rem; margin-top: .35rem;">
+                        В этой версии выбираем «все доступные ученики» (по вашему scope). Точное распределение по списку добавим следующим шагом.
+                    </div>
+                </div>
+                <div style="display:flex; gap:.75rem; justify-content:flex-end; flex-wrap: wrap; margin-top: 1.25rem;">
+                    <button type="button" class="neo-button ghost" onclick="closeCreateAssignmentModal()">Отмена</button>
+                    <button type="submit" class="neo-button accent" id="ca_submit_btn">Создать работу</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <script>
         // Функция для временного уведомления, если toast не загружен
         function showTemporaryNotification(message, type) {
@@ -425,6 +493,156 @@
             REDIRECT_URL = "{{ url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}";
         }
         const CSRF_TOKEN = (document.querySelector('meta[name="csrf-token"]') || {getAttribute: () => null}).getAttribute('content');
+        const ASSIGNMENTS_DISTRIBUTE_URL = "{{ url_for('assignments.distribute_assignment') }}";
+        const ASSIGNMENTS_LIST_URL = "{{ url_for('assignments.assignments_list') }}";
+        const ASSIGNMENT_VIEW_URL_TPL = "{{ url_for('assignments.assignment_view', assignment_id=0) }}";
+
+        let __createAssignmentSelectedTasks = [];
+
+        function showCreateAssignmentModal(selectedTasks) {
+            __createAssignmentSelectedTasks = Array.isArray(selectedTasks) ? selectedTasks.slice(0, 300) : [];
+            const modal = document.getElementById('createAssignmentModal');
+            const form = document.getElementById('createAssignmentForm');
+            if (!modal || !form) return;
+
+            const titleEl = document.getElementById('ca_title');
+            const typeEl = document.getElementById('ca_type');
+            const deadlineEl = document.getElementById('ca_deadline');
+            const submitBtn = document.getElementById('ca_submit_btn');
+
+            if (typeEl) {
+                const t = (ASSIGNMENT_TYPE || 'homework').toLowerCase();
+                if (['homework', 'classwork', 'exam'].includes(t)) typeEl.value = t;
+            }
+
+            if (titleEl) {
+                const t = (ASSIGNMENT_TYPE || 'homework').toLowerCase();
+                const prefix = (t === 'classwork') ? 'КР' : (t === 'exam' ? 'Проверочная' : 'ДЗ');
+                titleEl.value = `${prefix} · ${__createAssignmentSelectedTasks.length} заданий`;
+            }
+
+            if (deadlineEl) {
+                const d = new Date();
+                d.setDate(d.getDate() + 1);
+                d.setHours(23, 59, 0, 0);
+                const pad = (n) => String(n).padStart(2, '0');
+                deadlineEl.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            }
+
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Создать работу';
+            }
+
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeCreateAssignmentModal() {
+            const modal = document.getElementById('createAssignmentModal');
+            if (modal) modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        (function initCreateAssignmentModal() {
+            const modal = document.getElementById('createAssignmentModal');
+            const form = document.getElementById('createAssignmentForm');
+            if (!modal || !form) return;
+
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) closeCreateAssignmentModal();
+            });
+
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const submitBtn = document.getElementById('ca_submit_btn');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Создаём...';
+                }
+
+                const title = (document.getElementById('ca_title')?.value || '').trim();
+                const type = (document.getElementById('ca_type')?.value || 'homework').trim();
+                const deadlineLocal = (document.getElementById('ca_deadline')?.value || '').trim();
+                const hardDeadline = !!document.getElementById('ca_hard_deadline')?.checked;
+                const timeLimitRaw = (document.getElementById('ca_time_limit')?.value || '').trim();
+                const description = (document.getElementById('ca_description')?.value || '').trim();
+
+                if (!title) {
+                    if (window.toast) window.toast.error('Введите название работы');
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
+                    return;
+                }
+                if (!deadlineLocal) {
+                    if (window.toast) window.toast.error('Выберите дедлайн');
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
+                    return;
+                }
+                const deadlineDate = new Date(deadlineLocal);
+                if (!Number.isFinite(deadlineDate.getTime())) {
+                    if (window.toast) window.toast.error('Некорректный дедлайн');
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
+                    return;
+                }
+
+                let timeLimitMinutes = null;
+                if (timeLimitRaw !== '') {
+                    const v = parseInt(timeLimitRaw, 10);
+                    if (Number.isFinite(v) && v > 0) timeLimitMinutes = v;
+                }
+
+                const payload = {
+                    title,
+                    type,
+                    deadline: deadlineDate.toISOString(),
+                    hard_deadline: hardDeadline,
+                    time_limit_minutes: timeLimitMinutes,
+                    description: description || '',
+                    tasks: (__createAssignmentSelectedTasks || []).map((taskId, idx) => ({
+                        task_id: taskId,
+                        max_score: 1,
+                        order: idx
+                    })),
+                    groupId: 'all',
+                };
+
+                if (LESSON_ID) payload.lesson_id = LESSON_ID;
+
+                try {
+                    const resp = await fetch(ASSIGNMENTS_DISTRIBUTE_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN || '',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify(payload),
+                    });
+                    const data = await resp.json().catch(() => ({}));
+                    if (!resp.ok || data.success === false) {
+                        const msg = data.error || `HTTP ${resp.status}`;
+                        if (window.toast) window.toast.error(msg);
+                        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
+                        return;
+                    }
+
+                    const assignmentId = data.assignment_id || data.assignmentId || data.id;
+                    if (window.toast) window.toast.success('Работа создана');
+                    closeCreateAssignmentModal();
+                    setTimeout(() => {
+                        if (assignmentId) {
+                            window.location.href = ASSIGNMENT_VIEW_URL_TPL.replace('/0', '/' + assignmentId);
+                        } else {
+                            window.location.href = ASSIGNMENTS_LIST_URL;
+                        }
+                    }, 350);
+                } catch (err) {
+                    const msg = err?.message || 'Ошибка создания работы';
+                    if (window.toast) window.toast.error(msg);
+                    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
+                }
+            });
+        })();
         
         console.log('Инициализация констант:', {
             LESSON_ID,

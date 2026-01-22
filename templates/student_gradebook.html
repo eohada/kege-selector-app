@@ -54,13 +54,18 @@
 
         {% if entries and entries|length > 0 %}
           <div style="display:grid; gap: 1rem; margin-top: 1rem;">
+            {% set kind_labels = {'manual': 'Ручная', 'lesson': 'Урок', 'assignment': 'Работа'} %}
+            {% set category_labels = {'homework': 'ДЗ', 'classwork': 'КР', 'exam': 'Проверочная', 'test': 'Тест'} %}
             {% for e in entries %}
               {% set kind = (e.kind or 'manual')|lower %}
               <div class="entry">
                 <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: .75rem; flex-wrap: wrap;">
                   <div style="display:flex; gap: .6rem; align-items: center; flex-wrap: wrap;">
-                    <span class="badge">{{ kind }}</span>
-                    {% if e.category %}<span class="badge">{{ e.category }}</span>{% endif %}
+                    <span class="badge">{{ kind_labels.get(kind, kind) }}</span>
+                    {% if e.category %}
+                      {% set cat = (e.category or '')|lower %}
+                      <span class="badge">{{ category_labels.get(cat, e.category) }}</span>
+                    {% endif %}
                     <span class="badge">{{ e.created_at.strftime('%d.%m.%Y %H:%M') if e.created_at else '—' }}</span>
                   </div>
                   <div style="display:flex; gap: .6rem; align-items: center; flex-wrap: wrap;">
@@ -179,9 +184,9 @@
             <div class="neo-field">
               <label class="neo-label">Тип</label>
               <select class="neo-select" name="kind">
-                <option value="manual">manual</option>
-                <option value="lesson">lesson</option>
-                <option value="assignment">assignment</option>
+                <option value="manual">Ручная запись</option>
+                <option value="lesson">Урок</option>
+                <option value="assignment">Работа</option>
               </select>
             </div>
             <div class="neo-field" style="margin-top: .9rem;">
@@ -190,7 +195,13 @@
             </div>
             <div class="neo-field" style="margin-top: .9rem;">
               <label class="neo-label">Категория</label>
-              <input class="neo-input" name="category" placeholder="homework / classwork / exam / ...">
+              <input class="neo-input" name="category" list="gradebookCategoryOptions" placeholder="ДЗ / КР / Проверочная / ...">
+              <datalist id="gradebookCategoryOptions">
+                <option value="homework">ДЗ</option>
+                <option value="classwork">КР</option>
+                <option value="exam">Проверочная</option>
+                <option value="test">Тест</option>
+              </datalist>
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-top: .9rem;">
               <div class="neo-field">
@@ -250,7 +261,7 @@
     </div>
   </div>
 
-  <script src="{{ url_for('static', filename='toast.js') }}"></script>
+  {# toast.js уже подключается через _ux_enhancements.html #}
 </body>
 </html>
 

@@ -520,3 +520,90 @@ class StatsService:
         problem_topics.sort(key=lambda x: x['avg_score'])
         
         return problem_topics
+
+    def get_problem_task_numbers(self, threshold: int = 60, min_attempts: int = 3):
+        """
+        Fallback-диагностика, когда у задач не проставлены Topic-ы:
+        считаем слабые места по номерам заданий (№1..27).
+
+        Возвращает список:
+        [{'task_number': 7, 'avg_score': 42.0, 'attempts': 12}, ...]
+        """
+        # Считаем по весам (exam=2), аналогично другим метрикам.
+        totals = {}   # task_number -> total_weight
+        corrects = {} # task_number -> correct_weight
+
+        # LessonTask (классная комната)
+        lessons = self._get_lessons()
+        for lesson in lessons:
+            for assignment_type in ['homework', 'classwork', 'exam']:
+                assignments = get_sorted_assignments(lesson, assignment_type)
+                weight = 2.0 if assignment_type == 'exam' else 1.0
+                for lt in assignments:
+                    try:
+                        tnum = lt.task.task_number if lt.task else None
+                    except Exception:
+                        tnum = None
+                    if not tnum:
+                        continue
+                    if lt.submission_correct is None:
+                        continue
+                    st = (getattr(lt, 'status', None) or '').lower()
+                    # учитываем только те, которые реально дошли до проверки/сдачи
+                    if st not in ['submitted', 'graded', 'returned', '']:
+                        continue
+
+                    totals[tnum] = float(totals.get(tnum, 0.0)) + float(weight)
+                    if bool(lt.submission_correct):
+                        corrects[tnum] = float(corrects.get(tnum, 0.0)) + float(weight)
+
+        # Answer внутри Submission (работы)
+        subs = self._get_submissions()
+        for sub in subs:
+            try:
+                atype = (sub.assignment.assignment_type if sub.assignment else None) or 'homework'
+            except Exception:
+                atype = 'homework'
+            weight = 2.0 if atype == 'exam' else 1.0
+            for ans in (sub.answers or []):
+                if ans is None:
+                    continue
+                # Берём номер задания из task
+                try:
+                    t = ans.assignment_task.task if ans.assignment_task else None
+                    tnum = t.task_number if t else None
+                except Exception:
+                    tnum = None
+                if not tnum:
+                    continue
+
+                if ans.is_correct is None and ans.score is None:
+                    continue
+
+                totals[tnum] = float(totals.get(tnum, 0.0)) + float(weight)
+                if ans.is_correct is not None:
+                    if bool(ans.is_correct):
+                        corrects[tnum] = float(corrects.get(tnum, 0.0)) + float(weight)
+                else:
+                    try:
+                        mx = int(ans.max_score or 0)
+                        sc = int(ans.score or 0)
+                        if mx > 0 and sc == mx:
+                            corrects[tnum] = float(corrects.get(tnum, 0.0)) + float(weight)
+                    except Exception:
+                        pass
+
+        out = []
+        for tnum, total_w in totals.items():
+            if total_w <= 0:
+                continue
+            attempts = int(round(total_w))
+            if attempts < int(min_attempts or 0):
+                continue
+            corr = float(corrects.get(tnum, 0.0))
+            pct = round((corr / total_w) * 100.0, 1)
+            if pct < float(threshold):
+                out.append({'task_number': int(tnum), 'avg_score': pct, 'attempts': attempts})
+
+        out.sort(key=lambda x: (x.get('avg_score', 0), x.get('task_number', 999)))
+        return out
