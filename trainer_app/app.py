@@ -215,6 +215,7 @@ def _init_state():
     st.session_state.setdefault('history_loaded', False)
     st.session_state.setdefault('history_items', [])
     st.session_state.setdefault('history_selected', None)
+    st.session_state.setdefault('layout_mode', 'Фокус')  # Фокус|Разделить
 
 
 def _render_task_html(task: dict[str, Any]):
@@ -222,11 +223,18 @@ def _render_task_html(task: dict[str, Any]):
     if not html:
         st.info("У условия нет HTML-контента.")
         return
-    components.html(f"""
-    <div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; color: #EAEAEA; line-height:1.6;">
-      {html}
-    </div>
-    """, height=420, scrolling=True)
+    # IMPORTANT: avoid inner iframe scrollbars (components.html) — render directly
+    # so the page scroll is the only scroll.
+    st.markdown(
+        f"""
+<div class="k-card" style="padding: 16px 16px;">
+  <div style="color: rgba(255,255,255,0.92); line-height: 1.65; font-size: 15px;">
+    {html}
+  </div>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def main():
@@ -329,6 +337,15 @@ def main():
         st.session_state['seen_task_ids'].setdefault(int(task_type), [])
         if counts and counts.get(int(task_type), 0) <= 0:
             st.warning("Для этого номера заданий пока нет задач в базе. Выбери другой номер или наполни `Tasks`.")
+
+        st.markdown("")
+        st.radio(
+            "Режим",
+            options=["Фокус", "Разделить"],
+            horizontal=True,
+            key="layout_mode",
+            help="Фокус: рабочая зона на всю ширину, условие сворачивается.\nРазделить: условие слева, код/запуск справа.",
+        )
 
     with right:
         badges = []
@@ -441,27 +458,38 @@ def main():
     knowledge = load_task_knowledge(tid) if tid else None
     tests = (knowledge or {}).get('tests') if isinstance(knowledge, dict) else None
 
-    # Student-first layout: left = statement, right = workbench (code+run together)
-    left_pane, right_pane = st.columns([1.05, 1.25], gap="large")
+    layout_mode = (st.session_state.get("layout_mode") or "Фокус").strip()
 
-    with left_pane:
-        st.markdown("### Условие")
-        src_bits = []
-        if task.get("source_url"):
-            src_bits.append(f"[Источник]({task.get('source_url')})")
-        if task.get("site_task_id"):
-            src_bits.append(f"site_id: `{task.get('site_task_id')}`")
-        st.markdown(
-            "<div class='k-card'>"
-            + _badge(f"№{task.get('task_number')}", "ok")
-            + _badge(f"ID {task.get('task_id')}", "ok")
-            + (" ".join(src_bits) if src_bits else "<span class='k-muted'>Источник не указан.</span>")
-            + "</div>",
-            unsafe_allow_html=True,
-        )
-        _render_task_html(task)
+    # Layout:
+    # - Focus: no empty space; statement collapses into expander above the workbench.
+    # - Split: statement on the left, workbench on the right.
+    if layout_mode == "Разделить":
+        left_pane, right_pane = st.columns([1.05, 1.25], gap="large")
+        with left_pane:
+            st.markdown("### Условие")
+            src_bits = []
+            if task.get("source_url"):
+                src_bits.append(f"[Источник]({task.get('source_url')})")
+            if task.get("site_task_id"):
+                src_bits.append(f"site_id: `{task.get('site_task_id')}`")
+            st.markdown(
+                "<div class='k-card'>"
+                + _badge(f"№{task.get('task_number')}", "ok")
+                + _badge(f"ID {task.get('task_id')}", "ok")
+                + (" ".join(src_bits) if src_bits else "<span class='k-muted'>Источник не указан.</span>")
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+            _render_task_html(task)
+        workbench_container = right_pane
+    else:
+        # Focus mode
+        st.markdown("### Рабочая зона")
+        with st.expander("Условие (свернуть/развернуть)", expanded=False):
+            _render_task_html(task)
+        workbench_container = st.container()
 
-    with right_pane:
+    with workbench_container:
         tab_solve, tab_help, tab_hist = st.tabs(["Решение", "Помощник", "История"])
 
         with tab_solve:
