@@ -10,11 +10,21 @@ import streamlit.components.v1 as components
 from trainer_app.platform_client import PlatformClient, get_platform_base_url
 from trainer_app.analyzers.python_static import analyze_python_code
 from trainer_app.knowledge import load_task_knowledge
-from trainer_app.llm.providers import get_llm_client, build_messages_for_help
+from trainer_app.llm.providers import get_llm_client, get_llm_info, build_messages_for_help
 from trainer_app.runner.sandbox import is_runner_enabled, run_python_solve_tests
 
 
 st.set_page_config(page_title="Тренажёр · AI помощник", layout="wide")
+
+# Optional .env loading (helps local/dev and simple deploys)
+try:
+    from dotenv import load_dotenv  # type: ignore
+    # Load repo root .env and trainer_app/.env if present (best-effort)
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    load_dotenv(os.path.join(repo_root, '.env'), override=False)
+    load_dotenv(os.path.join(os.path.dirname(__file__), '.env'), override=False)
+except Exception:
+    pass
 
 
 def _get_query_param(name: str) -> str:
@@ -84,6 +94,31 @@ def main():
 
     user = (st.session_state['me'] or {}).get('user') or {}
     st.sidebar.success(f"Вход: {user.get('username')} ({user.get('role')})")
+
+    st.sidebar.markdown("### LLM")
+    llm_info = get_llm_info()
+    if llm_info.get('configured') and (llm_info.get('picked') or {}).get('provider'):
+        picked = llm_info.get('picked') or {}
+        st.sidebar.success(f"Подключено: {picked.get('provider')} / {picked.get('model')}")
+    else:
+        st.sidebar.warning("LLM не подключён (нет ключей).")
+        st.sidebar.caption("Нужно: `GROQ_API_KEY` или `GEMINI_API_KEY` (и опционально `TRAINER_LLM_PROVIDER`).")
+
+    if st.sidebar.button("Проверить LLM", use_container_width=True):
+        llm = get_llm_client()
+        if not llm:
+            st.sidebar.error("LLM клиент не создан (проверь env).")
+        else:
+            try:
+                # Minimal diagnostic call
+                ans = llm.chat(
+                    messages=[{'role': 'system', 'content': 'Answer with a single word OK.'}, {'role': 'user', 'content': 'ping'}],
+                    temperature=0.0,
+                    max_tokens=5,
+                )
+                st.sidebar.success(f"Ответ: {str(ans).strip()[:80]}")
+            except Exception as e:
+                st.sidebar.error(f"Ошибка LLM: {e}")
 
     st.sidebar.markdown("### Задание")
     if qp_task_type:

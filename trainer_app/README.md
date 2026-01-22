@@ -13,9 +13,16 @@ pip install -r trainer_app/requirements.txt
 2) Задай переменные окружения:
 
 - `PLATFORM_BASE_URL` — URL платформы (например `http://127.0.0.1:5000`)
-- (опционально) `TRAINER_LLM_PROVIDER=groq|gemini`
-- `GROQ_API_KEY` или `GEMINI_API_KEY`
+- (опционально) `TRAINER_LLM_PROVIDER=groq|gemini` (если не задано — выберем автоматически по ключам)
+- `GROQ_API_KEY` или `GEMINI_API_KEY` / `GOOGLE_AI_STUDIO_API_KEY`
+- (опционально) `GROQ_MODEL` / `GEMINI_MODEL`
+- (опционально) `TRAINER_LLM_TIMEOUT_SECONDS` (по умолчанию 30)
+- (опционально) `TRAINER_LLM_MAX_ATTEMPTS` (ретраи, по умолчанию 3)
 - (опционально) `TRAINER_ENABLE_RUNNER=true` чтобы включить тест-раннер
+
+Поддерживается `.env`:
+- `./.env`
+- `trainer_app/.env`
 
 3) Запусти:
 

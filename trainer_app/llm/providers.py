@@ -29,6 +29,56 @@ class LlmClient:
         raise NotImplementedError
 
 
+def _env_float(name: str, default: float) -> float:
+    v = (os.environ.get(name) or '').strip()
+    if not v:
+        return float(default)
+    try:
+        return float(v)
+    except Exception:
+        return float(default)
+
+
+def _request_with_retries(
+    method: str,
+    url: str,
+    *,
+    headers: dict[str, str] | None = None,
+    json_body: Any | None = None,
+    timeout: float = 30.0,
+    max_attempts: int = 3,
+) -> requests.Response:
+    """
+    Best-effort retry for transient errors (429/5xx, network issues).
+    No external deps; uses a simple incremental backoff.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            r = requests.request(method, url, headers=headers, json=json_body, timeout=timeout)
+            if r.status_code in (429, 500, 502, 503, 504) and attempt < max_attempts:
+                try:
+                    import time
+                    time.sleep(0.6 * attempt)
+                except Exception:
+                    pass
+                continue
+            return r
+        except Exception as e:
+            last_exc = e
+            if attempt < max_attempts:
+                try:
+                    import time
+                    time.sleep(0.6 * attempt)
+                except Exception:
+                    pass
+                continue
+            raise
+    if last_exc:
+        raise last_exc
+    raise RuntimeError("request_failed")
+
+
 class GroqClient(LlmClient):
     provider: ProviderName = 'groq'
 
@@ -44,13 +94,26 @@ class GroqClient(LlmClient):
             'temperature': float(temperature),
             'max_tokens': int(max_tokens),
         }
-        r = requests.post(
+        timeout = _env_float('TRAINER_LLM_TIMEOUT_SECONDS', 30.0)
+        r = _request_with_retries(
+            'POST',
             f'{self.base_url}/chat/completions',
-            json=payload,
-            headers={'Authorization': f'Bearer {self.api_key}'},
-            timeout=30,
+            json_body=payload,
+            headers={
+                'Authorization': f'Bearer {self.api_key}',
+                'Content-Type': 'application/json',
+            },
+            timeout=timeout,
+            max_attempts=int(os.environ.get('TRAINER_LLM_MAX_ATTEMPTS') or 3),
         )
-        r.raise_for_status()
+        if r.status_code >= 400:
+            # surface a compact error for UI
+            try:
+                data = r.json()
+                msg = (data.get('error') or {}).get('message') or data.get('message') or r.text
+            except Exception:
+                msg = r.text
+            raise RuntimeError(f'groq_error {r.status_code}: {str(msg)[:500]}')
         data = r.json()
         try:
             return (data.get('choices') or [{}])[0].get('message', {}).get('content', '') or ''
@@ -66,14 +129,18 @@ class GeminiClient(LlmClient):
         self.model = model
 
     def chat(self, *, messages: list[dict[str, str]], temperature: float = 0.2, max_tokens: int = 800) -> str:
-        # Convert OpenAI-like messages -> Gemini contents
+        # Convert OpenAI-like messages -> Gemini contents (+ systemInstruction)
+        sys_parts: list[str] = []
         contents = []
         for m in messages:
             role = (m.get('role') or 'user').strip().lower()
             txt = m.get('content') or ''
             if not txt:
                 continue
-            gem_role = 'user' if role in ('user', 'system') else 'model'
+            if role == 'system':
+                sys_parts.append(txt)
+                continue
+            gem_role = 'user' if role == 'user' else 'model'
             contents.append({'role': gem_role, 'parts': [{'text': txt}]})
 
         body: dict[str, Any] = {
@@ -83,9 +150,20 @@ class GeminiClient(LlmClient):
                 'maxOutputTokens': int(max_tokens),
             },
         }
+        if sys_parts:
+            body['systemInstruction'] = {'parts': [{'text': '\n\n'.join(sys_parts)}]}
         url = f'https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}'
-        r = requests.post(url, json=body, timeout=30)
-        r.raise_for_status()
+        timeout = _env_float('TRAINER_LLM_TIMEOUT_SECONDS', 30.0)
+        r = _request_with_retries(
+            'POST',
+            url,
+            json_body=body,
+            headers={'Content-Type': 'application/json'},
+            timeout=timeout,
+            max_attempts=int(os.environ.get('TRAINER_LLM_MAX_ATTEMPTS') or 3),
+        )
+        if r.status_code >= 400:
+            raise RuntimeError(f'gemini_error {r.status_code}: {r.text[:500]}')
         data = r.json()
         try:
             cand = (data.get('candidates') or [{}])[0]
@@ -117,6 +195,33 @@ def get_llm_client() -> LlmClient | None:
         return GeminiClient(api_key=gemini_key, model=model)
 
     return None
+
+
+def get_llm_info() -> dict[str, Any]:
+    """
+    For UI/diagnostics only (do not return keys).
+    """
+    provider = (os.environ.get('TRAINER_LLM_PROVIDER') or '').strip().lower()
+    groq_key = (os.environ.get('GROQ_API_KEY') or '').strip()
+    gemini_key = (os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_AI_STUDIO_API_KEY') or '').strip()
+
+    picked = None
+    if provider == 'groq' and groq_key:
+        picked = {'provider': 'groq', 'model': (os.environ.get('GROQ_MODEL') or 'llama-3.1-70b-versatile').strip()}
+    elif provider == 'gemini' and gemini_key:
+        picked = {'provider': 'gemini', 'model': (os.environ.get('GEMINI_MODEL') or 'gemini-1.5-flash').strip()}
+    else:
+        if groq_key:
+            picked = {'provider': 'groq', 'model': (os.environ.get('GROQ_MODEL') or 'llama-3.1-70b-versatile').strip()}
+        elif gemini_key:
+            picked = {'provider': 'gemini', 'model': (os.environ.get('GEMINI_MODEL') or 'gemini-1.5-flash').strip()}
+
+    return {
+        'configured': bool(picked),
+        'picked': picked,
+        'timeout_seconds': _env_float('TRAINER_LLM_TIMEOUT_SECONDS', 30.0),
+        'max_attempts': int(os.environ.get('TRAINER_LLM_MAX_ATTEMPTS') or 3),
+    }
 
 
 def build_messages_for_help(*, task: dict[str, Any], code: str, analysis: dict[str, Any] | None, history: list[dict[str, str]], knowledge: dict[str, Any] | None = None) -> list[dict[str, str]]:
