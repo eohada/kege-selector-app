@@ -1,4 +1,4 @@
-from .db_models import db, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, moscow_now, Lesson, LessonTask
+from .db_models import db, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, moscow_now, Lesson, LessonTask, StudentTaskSeen
 from sqlalchemy import text  # Используем text() для сырого SQL (PostgreSQL setval/pg_get_serial_sequence и выборки) 
 
 def _looks_like_pg_sequence_problem(error):  # Определяем по тексту ошибки, что это сбитая sequence в PostgreSQL
@@ -35,6 +35,11 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
                     AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                     AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
                     AND T.task_id NOT IN (
+                        SELECT STS.task_id
+                        FROM "StudentTaskSeen" AS STS
+                        WHERE STS.student_id = :student_id
+                    )
+                    AND T.task_id NOT IN (
                         SELECT LT.task_id 
                         FROM "LessonTasks" AS LT
                         JOIN "Lessons" AS L ON LT.lesson_id = L.lesson_id
@@ -51,6 +56,11 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
                     AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                     AND T.task_id NOT IN (SELECT task_fk FROM "SkippedTasks")
                     AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
+                    AND T.task_id NOT IN (
+                        SELECT STS.task_id
+                        FROM "StudentTaskSeen" AS STS
+                        WHERE STS.student_id = :student_id
+                    )
                     AND T.task_id NOT IN (
                         SELECT LT.task_id 
                         FROM "LessonTasks" AS LT
@@ -120,6 +130,11 @@ def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_t
                 AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                 AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
                 {skip_where}
+                AND T.task_id NOT IN (
+                    SELECT STS.task_id
+                    FROM "StudentTaskSeen" AS STS
+                    WHERE STS.student_id = :student_id
+                )
                 AND T.task_id NOT IN (
                     SELECT LT.task_id
                     FROM "LessonTasks" AS LT

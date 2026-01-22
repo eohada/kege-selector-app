@@ -71,6 +71,16 @@
               <label class="neo-label">Цена за урок (₽)</label>
               <input class="neo-input" name="price_per_lesson_rub" type="number" min="0">
             </div>
+            <div style="margin-top:.75rem; display:flex; gap: 1rem; flex-wrap: wrap;">
+              <label style="display:flex; align-items:center; gap:.5rem;">
+                <input type="checkbox" name="allow_lessons" checked>
+                <span style="color: var(--text-muted);">Доступ: уроки</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:.5rem;">
+                <input type="checkbox" name="allow_trainer" checked>
+                <span style="color: var(--text-muted);">Доступ: тренажёр</span>
+              </label>
+            </div>
             <div style="margin-top: 1rem; display:flex; justify-content:flex-end;">
               <button class="neo-button accent" type="submit">Создать</button>
             </div>
@@ -184,6 +194,16 @@
                     <label class="neo-label">Период (дней)</label>
                     <input class="neo-input" name="period_days" type="number" min="1" value="{{ p.period_days if p.period_days is not none else '' }}">
                   </div>
+                </div>
+                <div style="margin-top:.75rem; display:flex; gap: 1rem; flex-wrap: wrap;">
+                  <label style="display:flex; align-items:center; gap:.5rem;">
+                    <input type="checkbox" name="allow_lessons" {% if p.allow_lessons %}checked{% endif %}>
+                    <span style="color: var(--text-muted);">Доступ: уроки</span>
+                  </label>
+                  <label style="display:flex; align-items:center; gap:.5rem;">
+                    <input type="checkbox" name="allow_trainer" {% if p.allow_trainer %}checked{% endif %}>
+                    <span style="color: var(--text-muted);">Доступ: тренажёр</span>
+                  </label>
                 </div>
                 <div class="neo-field" style="margin-top:.75rem;">
                   <label class="neo-label">Порядок</label>

@@ -126,7 +126,15 @@ def build_messages_for_help(*, task: dict[str, Any], code: str, analysis: dict[s
             "Ты репетитор. Твоя цель — научить ученика решать задачу. "
             "Не давай готовое решение целиком. Веди диалог через наводящие вопросы, проверку гипотез и короткие подсказки. "
             "Если ученик ошибся — объясни правило и попроси исправить. "
-            "Будь дружелюбным и конкретным."
+            "Будь дружелюбным и конкретным.\n\n"
+            "ФОРМАТ ОТВЕТА (всегда):\n"
+            "1) Вопрос ученику (1-2 предложения)\n"
+            "2) Подсказка (коротко, без полного решения)\n"
+            "3) Проверка понимания (что нужно проверить/какой мини-тест сделать)\n\n"
+            "ОГРАНИЧЕНИЯ:\n"
+            "- НЕЛЬЗЯ выдавать полностью готовое решение.\n"
+            "- НЕЛЬЗЯ давать длинный код (если очень нужно — максимум 8 строк псевдокода/наброска).\n"
+            "- Можно ссылаться на типовые ошибки и hint_ladder, но reference_solution использовать только как внутренний ориентир."
         )
 
     task_text = _strip_html(task.get('content_html') or '')
@@ -148,6 +156,8 @@ def build_messages_for_help(*, task: dict[str, Any], code: str, analysis: dict[s
     if knowledge:
         # Важно: reference_solution существует для ориентирования, но не должен быть выдан ученику целиком.
         ctx.append({'role': 'system', 'content': f"Примеры/знания по задаче: common_mistakes={knowledge.get('common_mistakes')}, hint_ladder={knowledge.get('hint_ladder')}."})
+        if knowledge.get('reference_solution'):
+            ctx.append({'role': 'system', 'content': "reference_solution присутствует, но его НЕЛЬЗЯ выдавать ученику целиком. Используй только для понимания правильной идеи."})
 
     # Keep last 12 messages max
     trimmed = [m for m in (history or []) if (m.get('role') or '').strip().lower() in ('user', 'assistant')][-12:]

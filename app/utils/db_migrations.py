@@ -526,6 +526,20 @@ def ensure_schema_columns(app):
                             except Exception as e:
                                 logger.warning(f"Could not add price_per_lesson_rub to {tp_table}: {e}")
                                 db.session.rollback()
+                        if 'allow_lessons' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{tp_table}" ADD COLUMN allow_lessons BOOLEAN'))
+                                logger.info(f"Added allow_lessons to {tp_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add allow_lessons to {tp_table}: {e}")
+                                db.session.rollback()
+                        if 'allow_trainer' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{tp_table}" ADD COLUMN allow_trainer BOOLEAN'))
+                                logger.info(f"Added allow_trainer to {tp_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add allow_trainer to {tp_table}: {e}")
+                                db.session.rollback()
                 except Exception:
                     pass
 

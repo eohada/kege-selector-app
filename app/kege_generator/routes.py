@@ -9,7 +9,7 @@ from sqlalchemy import or_
 
 from app.kege_generator import kege_generator_bp
 from app.kege_generator.forms import TaskSelectionForm, ResetForm, TaskSearchForm
-from app.models import Lesson, Tasks, LessonTask, db
+from app.models import Lesson, Tasks, LessonTask, StudentTaskSeen, db
 from app.models import TaskTemplate, TemplateTask
 from core.selector_logic import (
     get_unique_tasks, record_usage, record_skipped, record_blacklist,
@@ -340,6 +340,12 @@ def generator_stream_act():
                 existing = LessonTask.query.filter_by(lesson_id=lesson_id, task_id=task_id).first()
                 if not existing:
                     db.session.add(LessonTask(lesson_id=lesson_id, task_id=task_id, assignment_type=assignment_type))
+                    # record global anti-repeat (best-effort)
+                    try:
+                        if lesson.student_id:
+                            db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=task_id, source=f'lesson:{assignment_type}'))
+                    except Exception:
+                        pass
                 if assignment_type == 'homework':
                     lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
                     lesson.homework_result_percent = None
@@ -638,6 +644,12 @@ def task_action():
                     if not existing:
                         lesson_task = LessonTask(lesson_id=lesson_id, task_id=task_id, assignment_type=assignment_type)
                         db.session.add(lesson_task)
+                        # record global anti-repeat (best-effort)
+                        try:
+                            if lesson.student_id:
+                                db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=task_id, source=f'lesson:{assignment_type}'))
+                        except Exception:
+                            pass
                 if assignment_type == 'homework':
                     lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
                     lesson.homework_result_percent = None

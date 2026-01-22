@@ -56,6 +56,8 @@ def billing_plan_create():
         price_rub=request.form.get('price_rub', type=int),
         price_per_lesson_rub=request.form.get('price_per_lesson_rub', type=int),
         period_days=request.form.get('period_days', type=int),
+        allow_lessons=True if (request.form.get('allow_lessons') or 'off') == 'on' else False,
+        allow_trainer=True if (request.form.get('allow_trainer') or 'off') == 'on' else False,
         is_active=True,
     )
     db.session.add(plan)
@@ -106,6 +108,9 @@ def billing_plan_update(plan_id: int):
     plan.period_days = request.form.get('period_days', type=int)
     plan.group_id = request.form.get('group_id', type=int) or None
     plan.order_index = request.form.get('order_index', type=int) or 0
+    # access flags
+    plan.allow_lessons = True if (request.form.get('allow_lessons') or 'off') == 'on' else False
+    plan.allow_trainer = True if (request.form.get('allow_trainer') or 'off') == 'on' else False
     try:
         db.session.commit()
     except Exception as e:

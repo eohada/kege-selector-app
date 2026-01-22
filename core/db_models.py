@@ -455,6 +455,28 @@ class LessonTask(db.Model):
     attempts = db.relationship('LessonTaskAttempt', back_populates='lesson_task', lazy=True, cascade='all, delete-orphan')
 
 
+class StudentTaskSeen(db.Model):
+    """
+    Глобальный анти-повтор для конкретного ученика (Students.student_id):
+    фиксируем факт того, что задача (Tasks.task_id) уже была выдана/прикреплена,
+    чтобы исключать её из других источников (уроки ↔ тренажёр).
+    """
+    __tablename__ = 'StudentTaskSeen'
+
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, index=True)
+    source = db.Column(db.String(40), nullable=True)  # trainer|lesson:homework|lesson:classwork|...
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+    task = db.relationship('Tasks', foreign_keys=[task_id])
+
+    __table_args__ = (
+        Index('ix_student_task_seen_unique', 'student_id', 'task_id', unique=True),
+    )
+
+
 class LessonTaskTeacherComment(db.Model):  # comment
     """Комментарий преподавателя к конкретному заданию урока (мульти-комментарии с таймстампами)."""  # comment
     __tablename__ = 'LessonTaskTeacherComments'  # comment
@@ -935,6 +957,10 @@ class TariffPlan(db.Model):
     price_per_lesson_rub = db.Column(db.Integer, nullable=True)  # цена за урок (информативно)
     period_days = db.Column(db.Integer, nullable=True)   # длительность доступа (информативно)
 
+    # Форматы доступа (для продажи): уроки / тренажёр / уроки+тренажёр
+    allow_lessons = db.Column(db.Boolean, nullable=True)   # None => не ограничиваем (backward compatible)
+    allow_trainer = db.Column(db.Boolean, nullable=True)   # None => не ограничиваем (backward compatible)
+
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
@@ -960,6 +986,43 @@ class UserSubscription(db.Model):
 
     user = db.relationship('User', foreign_keys=[user_id])
     plan = db.relationship('TariffPlan', foreign_keys=[plan_id])
+
+
+class TrainerSession(db.Model):
+    """
+    Сессия/попытка в ИИ-тренажёре.
+
+    Важно: хранится отдельно от LessonTask/Assignments. Используется для истории и (в дальнейшем)
+    для анти-повтора между уроками и тренажёром.
+    """
+    __tablename__ = 'TrainerSessions'
+
+    session_id = db.Column(db.Integer, primary_key=True)
+
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    # Student.student_id (таблица Students) — заполняется, если удалось сопоставить по email или id fallback.
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
+
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=True, index=True)
+    task_type = db.Column(db.Integer, nullable=True, index=True)
+
+    language = db.Column(db.String(50), default='python', nullable=False)
+    code = db.Column(db.Text, nullable=True)
+
+    analysis = db.Column(db.JSON, nullable=True)
+    tests = db.Column(db.JSON, nullable=True)
+    messages = db.Column(db.JSON, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False, index=True)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    student = db.relationship('Student', foreign_keys=[student_id])
+    task = db.relationship('Tasks', foreign_keys=[task_id])
+
+    __table_args__ = (
+        Index('ix_trainer_sessions_user_task_created', 'user_id', 'task_id', 'created_at'),
+    )
 
 
 class UserConsent(db.Model):

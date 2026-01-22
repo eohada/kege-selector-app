@@ -1,0 +1,24 @@
+{
+  "task_id": 0,
+  "task_number": 24,
+  "language": "python",
+  "title": "Короткое название задачи",
+
+  "common_mistakes": [
+    "Типовая ошибка 1",
+    "Типовая ошибка 2"
+  ],
+
+  "hint_ladder": [
+    { "level": 1, "hint": "Подсказка уровня 1: направление/идея." },
+    { "level": 2, "hint": "Подсказка уровня 2: структура решения." },
+    { "level": 3, "hint": "Подсказка уровня 3: наводка/частичный набросок (без полного решения)." }
+  ],
+
+  "reference_solution": "def solve(s: str) -> str:\n    ...\n",
+
+  "tests": [
+    { "name": "basic", "input": "AAA", "expected": "3" }
+  ]
+}
+

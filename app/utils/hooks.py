@@ -8,7 +8,8 @@ from datetime import timedelta
 from flask import request, redirect, url_for
 from flask_login import current_user
 from sqlalchemy import text
-from app.models import db, Lesson, Student, moscow_now, MOSCOW_TZ
+from datetime import datetime
+from app.models import db, Lesson, Student, moscow_now, MOSCOW_TZ, UserSubscription, TariffPlan
 from app.utils.db_migrations import ensure_schema_columns
 from core.audit_logger import audit_logger
 
@@ -302,6 +303,80 @@ def register_hooks(app):
             if request.endpoint and request.endpoint != 'auth.login':
                 logger.info(f"require_login: redirecting unauthenticated user from {request.path} to login")
                 return redirect(url_for('auth.login', next=request.url))
+
+    @app.before_request
+    def enforce_subscription_access():
+        """
+        Продажные форматы доступа (ученик/родитель):
+        - уроки
+        - тренажёр
+        - уроки + тренажёр
+
+        Важно: включаем ограничение только если у активной подписки есть тариф и в нём явно заданы allow_lessons/allow_trainer.
+        Иначе оставляем старое поведение (backward compatible).
+        """
+        try:
+            if not getattr(current_user, 'is_authenticated', False):
+                return None
+            # админ/создатель/преподаватель не ограничиваются подпиской
+            if getattr(current_user, 'is_admin', lambda: False)() or getattr(current_user, 'is_creator', lambda: False)() or getattr(current_user, 'is_tutor', lambda: False)():
+                return None
+
+            if not (getattr(current_user, 'is_student', lambda: False)() or getattr(current_user, 'is_parent', lambda: False)()):
+                return None
+
+            # Skip internal service endpoints that should not be paywalled here
+            if request.path.startswith('/internal/remote-admin/') or request.path.startswith('/internal/sandbox-admin/'):
+                return None
+            if request.path.startswith('/static/') or request.path.startswith('/font/'):
+                return None
+
+            now = datetime.utcnow()
+            sub = UserSubscription.query.filter_by(user_id=current_user.id, status='active').order_by(UserSubscription.ends_at.desc().nullslast(), UserSubscription.subscription_id.desc()).first()
+            if not sub or not sub.plan_id:
+                return None
+            if sub.ends_at and sub.ends_at < now:
+                return None
+            plan = TariffPlan.query.get(sub.plan_id)
+            if not plan:
+                return None
+
+            # Only enforce when plan explicitly defines flags
+            if plan.allow_lessons is None and plan.allow_trainer is None:
+                return None
+
+            allow_lessons = True if plan.allow_lessons is None else bool(plan.allow_lessons)
+            allow_trainer = True if plan.allow_trainer is None else bool(plan.allow_trainer)
+
+            ep = (request.endpoint or '')
+            # trainer endpoints (including internal API)
+            if request.path.startswith('/internal/trainer/') or ep.startswith('trainer.'):
+                if not allow_trainer:
+                    return redirect(url_for('main.dashboard'))
+                return None
+
+            # lesson side (broad)
+            lesson_prefixes = (
+                'lessons.',
+                'schedule.',
+                'students.',
+                'assignments.',
+                'kege_generator.',
+                'diagnostics.',
+                'gradebook.',
+                'groups.',
+            )
+            if any(ep.startswith(pfx) for pfx in lesson_prefixes):
+                if not allow_lessons:
+                    return redirect(url_for('main.dashboard'))
+        except Exception:
+            # never block request on hook failure
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+            return None
+        return None
     
     @app.context_processor
     def inject_current_student():

@@ -24,6 +24,7 @@ from core.db_models import (
     RecurringLessonSlot,
     Lesson,
     LessonTask,
+    StudentTaskSeen,
     User,
     UserProfile,
     FamilyTie,
@@ -55,6 +56,7 @@ from core.db_models import (
     TariffPlan,
     TariffGroup,
     UserSubscription,
+    TrainerSession,
     UserConsent
 )
 
@@ -80,6 +82,7 @@ __all__ = [
     'RecurringLessonSlot',
     'Lesson',
     'LessonTask',
+    'StudentTaskSeen',
     'User',
     'UserProfile',
     'FamilyTie',
@@ -111,5 +114,6 @@ __all__ = [
     'TariffPlan',
     'TariffGroup',
     'UserSubscription',
+    'TrainerSession',
     'UserConsent'
 ]
