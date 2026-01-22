@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from typing import Any
+
+# Ensure repo root is on sys.path (Streamlit may set cwd to trainer_app/)
+_REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
 
 import streamlit as st
 import streamlit.components.v1 as components
