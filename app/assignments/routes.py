@@ -299,30 +299,32 @@ def get_student_by_user_id(user_id):
     if not user:
         return None
 
-    candidates = []
-    if user.email and str(user.email).strip():
-        candidates.append(str(user.email).strip())
-    # В некоторых окружениях логин хранится в username, а email может быть пустым
-    if user.username and str(user.username).strip():
-        candidates.append(str(user.username).strip())
+    email = (str(user.email).strip() if user.email else '')
+    username = (str(user.username).strip() if user.username else '')
 
-    # Удаляем дубли, нормализуем пробелы
-    seen = set()
-    normalized = []
-    for c in candidates:
-        key = c.strip().lower()
-        if key and key not in seen:
-            seen.add(key)
-            normalized.append(c.strip())
-
-    if not normalized:
-        return None
-
-    # Пытаемся найти Student по email (case-insensitive)
-    for c in normalized:
-        st = Student.query.filter(func.lower(Student.email) == c.lower()).first()
+    # 1) email -> Student.email (case-insensitive)
+    if email:
+        st = Student.query.filter(func.lower(Student.email) == email.lower()).first()
         if st:
             return st
+
+    # 2) username -> Student.platform_id (если email пустой/не совпадает)
+    if username:
+        try:
+            st = Student.query.filter(Student.platform_id == username).first()
+            if st:
+                return st
+        except Exception:
+            pass
+
+    # 3) fallback: Student.student_id == User.id — но только если у Student нет email
+    # (чтобы избежать коллизий Users.id vs Students.student_id)
+    try:
+        st = Student.query.filter(Student.student_id == int(user_id), Student.email.is_(None)).first()
+        if st:
+            return st
+    except Exception:
+        pass
 
     return None
 
@@ -334,15 +336,41 @@ def get_students_for_tutor(tutor_user_id):
         status='active'
     ).all()
     
-    student_users = User.query.filter(
-        User.id.in_([e.student_id for e in enrollments])
-    ).all()
-    
-    student_emails = [u.email for u in student_users if u.email]
-    if not student_emails:
+    user_ids = [e.student_id for e in (enrollments or []) if getattr(e, 'student_id', None)]
+    if not user_ids:
         return []
-    
-    return Student.query.filter(Student.email.in_(student_emails)).all()
+
+    student_users = User.query.filter(User.id.in_(user_ids)).all()
+
+    emails = []
+    usernames = []
+    for u in (student_users or []):
+        if not u:
+            continue
+        if u.email and str(u.email).strip():
+            emails.append(str(u.email).strip().lower())
+        if u.username and str(u.username).strip():
+            usernames.append(str(u.username).strip())
+
+    # 1) email -> Student.email (case-insensitive)
+    # 2) username -> Student.platform_id
+    # 3) fallback: Student.student_id in user_ids — но только если Student.email is NULL
+    q = Student.query
+    filters = []
+    if emails:
+        filters.append(func.lower(Student.email).in_(emails))
+    if usernames:
+        filters.append(Student.platform_id.in_(usernames))
+    try:
+        filters.append((Student.student_id.in_([int(x) for x in user_ids])) & (Student.email.is_(None)))
+    except Exception:
+        pass
+
+    if not filters:
+        return []
+
+    # OR по всем вариантам сопоставления
+    return q.filter(or_(*filters)).all()
 
 
 def auto_grade_answer(answer, assignment_task):

@@ -803,6 +803,10 @@ def show_accepted():
     _require_kege_generator_access()
     try:
         task_type = request.args.get('task_type', type=int, default=None)
+        assignment_type = (request.args.get('assignment_type') or 'homework').strip().lower()
+        if assignment_type not in ['homework', 'classwork', 'exam']:
+            assignment_type = 'homework'
+        open_create = (request.args.get('create') or '').strip() == '1'
 
         accepted_tasks = get_accepted_tasks(task_type=task_type)
 
@@ -811,7 +815,42 @@ def show_accepted():
             flash(message, 'info')
             return redirect(url_for('kege_generator.kege_generator'))
 
-        return render_template('accepted.html', tasks=accepted_tasks, task_type=task_type)
+        # Список доступных учеников для назначения работы (для модалки создания работы)
+        recipient_options = []
+        try:
+            from app.models import Student, Enrollment, User
+            from app.auth.rbac_utils import get_user_scope
+            from sqlalchemy import func, or_
+
+            scope = get_user_scope(current_user)
+            if scope.get('can_see_all'):
+                recipient_options = Student.query.filter(Student.is_active.is_(True)).order_by(Student.name.asc(), Student.student_id.asc()).limit(500).all()
+            else:
+                # как минимум для тьютора: берём enrollments и маппим User -> Student так же, как в assignments
+                enrollments = Enrollment.query.filter_by(tutor_id=current_user.id, status='active').all()
+                user_ids = [e.student_id for e in (enrollments or []) if getattr(e, 'student_id', None)]
+                if user_ids:
+                    users = User.query.filter(User.id.in_(user_ids)).all()
+                    emails = [str(u.email).strip().lower() for u in (users or []) if u and u.email and str(u.email).strip()]
+                    usernames = [str(u.username).strip() for u in (users or []) if u and u.username and str(u.username).strip()]
+                    flt = []
+                    if emails:
+                        flt.append(func.lower(Student.email).in_(emails))
+                    if usernames:
+                        flt.append(Student.platform_id.in_(usernames))
+                    flt.append((Student.student_id.in_([int(x) for x in user_ids])) & (Student.email.is_(None)))
+                    recipient_options = Student.query.filter(or_(*flt)).order_by(Student.name.asc(), Student.student_id.asc()).limit(500).all()
+        except Exception:
+            recipient_options = []
+
+        return render_template(
+            'accepted.html',
+            tasks=accepted_tasks,
+            task_type=task_type,
+            assignment_type=assignment_type,
+            open_create=open_create,
+            recipient_options=recipient_options,
+        )
 
     except Exception as e:
         flash(f'Ошибка: {e}', 'danger')

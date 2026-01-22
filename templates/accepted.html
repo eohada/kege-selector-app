@@ -23,10 +23,19 @@
         {% include '_primary_nav.html' %}
 
         <section class="glass-panel" style="margin-bottom: 2rem;">
-            <div>
+            <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+                <div>
                 <p class="hero-eyebrow">принятые задания</p>
                 <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Принято" class="ui-icon ui-icon--sm">Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %}</h1>
                 <p class="hero-subtitle">Всего: {{ tasks|length }} шт.</p>
+            </div>
+                <div class="hero-actions" style="margin-top: 0;">
+                    {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
+                    <button type="button" class="neo-button accent" onclick="openCreateAssignmentFromAccepted()">
+                        📝 Создать работу ({{ tasks|length }})
+                    </button>
+                    {% endif %}
+                </div>
             </div>
         </section>
 
@@ -43,6 +52,69 @@
                 </select>
             </div>
         </section>
+
+        {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
+        <!-- Modal: Create Assignment from accepted -->
+        <div class="modal-overlay" id="createAssignmentModal" style="display:none; align-items:center; justify-content:center; padding: 2rem; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 1200; backdrop-filter: blur(4px);">
+            <div class="glass-panel" style="width: 100%; max-width: 720px; border-radius: var(--radius-lg);">
+                <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
+                    <div>
+                        <p class="hero-eyebrow">создание работы</p>
+                        <h2 style="margin: .25rem 0 0 0;">Создать работу из принятых заданий</h2>
+                        <div style="color: var(--text-muted); margin-top: .5rem; line-height: 1.45;">
+                            Будет создана работа и назначена выбранным ученикам. Заданий: <strong id="ca_task_count">{{ tasks|length }}</strong>.
+                        </div>
+                    </div>
+                    <button type="button" class="neo-button ghost" onclick="closeCreateAssignmentModal()" aria-label="Закрыть">✕</button>
+                </div>
+
+                <form id="createAssignmentForm" style="margin-top: 1.25rem;">
+                    <div class="neo-field">
+                        <label class="neo-label" for="ca_title">Название *</label>
+                        <input id="ca_title" class="neo-input" name="title" required placeholder="Например: ДЗ · принятые задания">
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .9rem; margin-top: .9rem;">
+                        <div class="neo-field">
+                            <label class="neo-label" for="ca_type">Тип</label>
+                            <select id="ca_type" class="neo-select" name="type">
+                                <option value="homework">ДЗ</option>
+                                <option value="classwork">КР</option>
+                                <option value="exam">Проверочная</option>
+                            </select>
+                        </div>
+                        <div class="neo-field">
+                            <label class="neo-label" for="ca_deadline">Дедлайн *</label>
+                            <input id="ca_deadline" class="neo-input" type="datetime-local" name="deadline" required>
+                        </div>
+                    </div>
+
+                    <div class="neo-field" style="margin-top: .9rem;">
+                        <label class="neo-label" for="ca_recipients">Кому назначить</label>
+                        <select id="ca_recipients" class="neo-select" name="recipients" multiple size="8" style="min-height: 220px;">
+                            {% for st in (recipient_options or []) %}
+                                <option value="{{ st.student_id }}">{{ st.name }}{% if st.platform_id %} · {{ st.platform_id }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top: .6rem;">
+                            <button type="button" class="neo-button ghost sm" onclick="selectAllRecipients(true)">Выбрать всех</button>
+                            <button type="button" class="neo-button ghost sm" onclick="selectAllRecipients(false)">Снять выбор</button>
+                        </div>
+                        <div style="color: var(--text-muted); font-size: .9rem; margin-top: .4rem;">
+                            Если список пуст — у тьютора не сопоставились ученики (починил маппинг, после деплоя должно появиться).
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:.75rem; justify-content:flex-end; flex-wrap: wrap; margin-top: 1.25rem;">
+                        <button type="button" class="neo-button ghost" onclick="closeCreateAssignmentModal()">Отмена</button>
+                        <button type="submit" class="neo-button accent" id="ca_submit_btn">Создать работу</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script type="application/json" id="accepted-task-ids-data">{{ tasks|map(attribute='task_id')|list|tojson }}</script>
+        {% endif %}
 
         {% if tasks %}
         <div>
@@ -111,9 +183,9 @@
         
         function filterByTaskType(taskType) {
             if (taskType === '') {
-                window.location.href = '{{ url_for('kege_generator.show_accepted') }}';
+                window.location.href = '{{ url_for('kege_generator.show_accepted', assignment_type=assignment_type) }}';
             } else {
-                window.location.href = '{{ url_for('kege_generator.show_accepted') }}?task_type=' + taskType;
+                window.location.href = '{{ url_for('kege_generator.show_accepted', assignment_type=assignment_type) }}?task_type=' + taskType;
             }
         }
     </script>
@@ -156,5 +228,174 @@
             {% endwith %}
         });
     </script>
+
+    {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
+    <script>
+        const ASSIGNMENTS_DISTRIBUTE_URL = "{{ url_for('assignments.distribute_assignment') }}";
+        const ASSIGNMENTS_LIST_URL = "{{ url_for('assignments.assignments_list') }}";
+        const ASSIGNMENT_VIEW_URL_TPL = "{{ url_for('assignments.assignment_view', assignment_id=0) }}";
+        const CSRF_TOKEN = (document.querySelector('meta[name=\"csrf-token\"]') || {getAttribute: () => null}).getAttribute('content') || '';
+
+        function getAcceptedTaskIds() {
+            try {
+                const el = document.getElementById('accepted-task-ids-data');
+                if (!el) return [];
+                const ids = JSON.parse(el.textContent || '[]');
+                return Array.isArray(ids) ? ids.map(x => parseInt(x, 10)).filter(n => Number.isFinite(n)) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function openCreateAssignmentFromAccepted() {
+            const ids = getAcceptedTaskIds();
+            document.getElementById('ca_task_count').textContent = String(ids.length);
+
+            const typeEl = document.getElementById('ca_type');
+            const titleEl = document.getElementById('ca_title');
+            const deadlineEl = document.getElementById('ca_deadline');
+            const submitBtn = document.getElementById('ca_submit_btn');
+
+            if (typeEl) typeEl.value = "{{ assignment_type or 'homework' }}";
+            if (titleEl) {
+                const prefix = ("{{ assignment_type or 'homework' }}" === 'classwork') ? 'КР' : (("{{ assignment_type or 'homework' }}" === 'exam') ? 'Проверочная' : 'ДЗ');
+                titleEl.value = `${prefix} · принятые (${ids.length})`;
+            }
+            if (deadlineEl) {
+                const d = new Date();
+                d.setDate(d.getDate() + 1);
+                d.setHours(23, 59, 0, 0);
+                const pad = (n) => String(n).padStart(2, '0');
+                deadlineEl.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            }
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
+
+            const modal = document.getElementById('createAssignmentModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeCreateAssignmentModal() {
+            const modal = document.getElementById('createAssignmentModal');
+            if (modal) modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function selectAllRecipients(flag) {
+            const sel = document.getElementById('ca_recipients');
+            if (!sel) return;
+            Array.from(sel.options).forEach(o => { o.selected = !!flag; });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // /accepted?create=1 — открыть модалку создания
+            try {
+                const params = new URLSearchParams(window.location.search || '');
+                if (params.get('create') === '1') {
+                    openCreateAssignmentFromAccepted();
+                    params.delete('create');
+                    const next = window.location.pathname + (params.toString() ? `?${params.toString()}` : '') + (window.location.hash || '');
+                    window.history.replaceState({}, '', next);
+                }
+            } catch (e) {}
+
+            const modal = document.getElementById('createAssignmentModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) closeCreateAssignmentModal();
+                });
+            }
+
+            const form = document.getElementById('createAssignmentForm');
+            if (form) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const ids = getAcceptedTaskIds();
+                    const submitBtn = document.getElementById('ca_submit_btn');
+                    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Создаём...'; }
+
+                    const title = (document.getElementById('ca_title')?.value || '').trim();
+                    const type = (document.getElementById('ca_type')?.value || 'homework').trim();
+                    const deadlineLocal = (document.getElementById('ca_deadline')?.value || '').trim();
+                    const recipientsSel = document.getElementById('ca_recipients');
+                    const recipientIds = recipientsSel ? Array.from(recipientsSel.selectedOptions).map(o => parseInt(o.value, 10)).filter(n => Number.isFinite(n)) : [];
+
+                    if (!ids.length) {
+                        if (window.toast) window.toast.error('Нет принятых заданий для создания работы');
+                        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
+                        return;
+                    }
+                    if (!title) {
+                        if (window.toast) window.toast.error('Введите название');
+                        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
+                        return;
+                    }
+                    if (!deadlineLocal) {
+                        if (window.toast) window.toast.error('Выберите дедлайн');
+                        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
+                        return;
+                    }
+                    const deadlineDate = new Date(deadlineLocal);
+                    if (!Number.isFinite(deadlineDate.getTime())) {
+                        if (window.toast) window.toast.error('Некорректный дедлайн');
+                        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
+                        return;
+                    }
+                    if (!recipientIds.length) {
+                        if (window.toast) window.toast.error('Выберите хотя бы одного ученика');
+                        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
+                        return;
+                    }
+
+                    const payload = {
+                        title,
+                        type,
+                        deadline: deadlineDate.toISOString(),
+                        hard_deadline: false,
+                        time_limit_minutes: null,
+                        description: '',
+                        tasks: ids.slice(0, 300).map((taskId, idx) => ({ task_id: taskId, max_score: 1, order: idx })),
+                        recipientIds: recipientIds,
+                    };
+
+                    try {
+                        const resp = await fetch(ASSIGNMENTS_DISTRIBUTE_URL, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': CSRF_TOKEN || '',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            body: JSON.stringify(payload),
+                        });
+                        const data = await resp.json().catch(() => ({}));
+                        if (!resp.ok || data.success === false) {
+                            const msg = data.error || `HTTP ${resp.status}`;
+                            if (window.toast) window.toast.error(msg);
+                            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
+                            return;
+                        }
+                        const assignmentId = data.assignment_id || data.assignmentId || data.id;
+                        if (window.toast) window.toast.success('Работа создана');
+                        closeCreateAssignmentModal();
+                        setTimeout(() => {
+                            if (assignmentId) {
+                                window.location.href = ASSIGNMENT_VIEW_URL_TPL.replace('/0', '/' + assignmentId);
+                            } else {
+                                window.location.href = ASSIGNMENTS_LIST_URL;
+                            }
+                        }, 350);
+                    } catch (err) {
+                        const msg = err?.message || 'Ошибка создания работы';
+                        if (window.toast) window.toast.error(msg);
+                        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Создать работу'; }
+                    }
+                });
+            }
+        });
+    </script>
+    {% endif %}
 </body>
 </html>
