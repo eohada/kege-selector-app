@@ -69,6 +69,13 @@ def _inject_css():
   .k-badge.ok { border-color: rgba(34,197,94,0.55); background: rgba(34,197,94,0.10); }
   .k-badge.warn { border-color: rgba(245,158,11,0.55); background: rgba(245,158,11,0.10); }
   .k-badge.err { border-color: rgba(239,68,68,0.55); background: rgba(239,68,68,0.10); }
+
+  /* Make code editor (custom component iframe) match style */
+  div[data-testid="stCustomComponentV1"] iframe {
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.25);
+  }
 </style>
         """,
         unsafe_allow_html=True,
@@ -381,196 +388,238 @@ def main():
     knowledge = load_task_knowledge(tid) if tid else None
     tests = (knowledge or {}).get('tests') if isinstance(knowledge, dict) else None
 
-    tab_task, tab_code, tab_run, tab_help, tab_hist = st.tabs(["Задание", "Код", "Запуск", "Помощник", "История"])
+    # Student-first layout: left = statement, right = workbench (code+run together)
+    left_pane, right_pane = st.columns([1.05, 1.25], gap="large")
 
-    with tab_task:
-        m1, m2 = st.columns([1.4, 1.0], gap="small")
-        m1.markdown(
-            "<div class='k-card'>"
-            + _badge(f"№{task.get('task_number')}", "ok")
-            + _badge(f"ID {task.get('task_id')}", "ok")
-            + "<span class='k-muted'>Открой вкладку «Код», чтобы писать решение.</span>"
-            + "</div>",
-            unsafe_allow_html=True,
-        )
+    with left_pane:
+        st.markdown("### Условие")
         src_bits = []
         if task.get("source_url"):
             src_bits.append(f"[Источник]({task.get('source_url')})")
         if task.get("site_task_id"):
             src_bits.append(f"site_id: `{task.get('site_task_id')}`")
-        m2.markdown(" ".join(src_bits) if src_bits else "<div class='k-muted'>Источник не указан.</div>", unsafe_allow_html=True)
-        st.markdown("### Условие")
+        st.markdown(
+            "<div class='k-card'>"
+            + _badge(f"№{task.get('task_number')}", "ok")
+            + _badge(f"ID {task.get('task_id')}", "ok")
+            + (" ".join(src_bits) if src_bits else "<span class='k-muted'>Источник не указан.</span>")
+            + "</div>",
+            unsafe_allow_html=True,
+        )
         _render_task_html(task)
 
-    with tab_code:
-        st.markdown("### Редактор")
-        st.caption("Во время набора текст не должен «мигать». Код подхватывается при любом действии (запуск/анализ/подсказка/сохранение).")
+    with right_pane:
+        tab_solve, tab_help, tab_hist = st.tabs(["Решение", "Помощник", "История"])
 
-        code_val = ""
-        try:
-            from streamlit_ace import st_ace  # type: ignore
-            code_val = st_ace(
-                key="code_editor",
-                value=st.session_state.get("code") or "",
-                language="python",
-                theme="monokai",
-                keybinding="vscode",
-                height=440,
-                min_lines=22,
-                font_size=14,
-                tab_size=4,
-                show_gutter=True,
-                wrap=True,
-                auto_update=False,  # critical: no rerun on each keystroke
-            ) or ""
-        except Exception:
-            code_val = st.text_area(
-                "Код",
-                value=st.session_state.get('code') or "",
-                height=440,
-                placeholder="print('hello')",
-            ) or ""
+        with tab_solve:
+            st.markdown("### Код")
+            st.caption("Пишешь код здесь и запускаешь ниже — без переключения вкладок.")
 
-        if len(code_val) > 20000:
-            st.warning("Код слишком большой, обрезаю до 20 000 символов.")
-            code_val = code_val[:20000]
-        st.session_state["code"] = code_val
+            code_val = ""
+            try:
+                from streamlit_ace import st_ace  # type: ignore
+                code_val = st_ace(
+                    key="code_editor",
+                    value=st.session_state.get("code") or "",
+                    language="python",
+                    theme="dracula",
+                    keybinding="vscode",
+                    height=420,
+                    min_lines=20,
+                    font_size=14,
+                    tab_size=4,
+                    show_gutter=True,
+                    wrap=True,
+                    auto_update=False,  # no rerun while typing
+                ) or ""
+            except Exception:
+                code_val = st.text_area(
+                    "Код",
+                    value=st.session_state.get('code') or "",
+                    height=420,
+                    placeholder="print('hello')",
+                ) or ""
 
-        c1, c2, c3 = st.columns([1, 1, 1], gap="small")
-        if c1.button("Проанализировать", use_container_width=True):
-            st.session_state['analysis'] = analyze_python_code(st.session_state.get('code') or '')
-            hints = (st.session_state['analysis'] or {}).get('hints') or []
-            if hints:
-                st.session_state['messages'].append({'role': 'assistant', 'content': 'Что я заметил в коде:\n\n- ' + '\n- '.join(hints[:4])})
-        if c2.button("Очистить код", use_container_width=True):
-            st.session_state['code'] = ''
-            st.session_state['analysis'] = None
-            st.session_state['tests'] = None
-        if c3.button("Сбросить чат/подсказки", use_container_width=True):
-            st.session_state['messages'] = []
-            if tid:
-                st.session_state['hint_level_by_task'][tid] = 0
+            if len(code_val) > 20000:
+                st.warning("Код слишком большой, обрезаю до 20 000 символов.")
+                code_val = code_val[:20000]
+            st.session_state["code"] = code_val
 
-        if st.session_state.get('analysis') is not None:
-            with st.expander("Анализ (MVP)", expanded=False):
-                st.code(json.dumps(st.session_state['analysis'], ensure_ascii=False, indent=2), language="json")
+            c1, c2, c3 = st.columns([1, 1, 1], gap="small")
+            if c1.button("Проанализировать", use_container_width=True, key="btn_analyze"):
+                st.session_state['analysis'] = analyze_python_code(st.session_state.get('code') or '')
+                hints = (st.session_state['analysis'] or {}).get('hints') or []
+                if hints:
+                    st.session_state['messages'].append({'role': 'assistant', 'content': 'Что я заметил в коде:\n\n- ' + '\n- '.join(hints[:4])})
+            if c2.button("Очистить код", use_container_width=True, key="btn_clear_code"):
+                st.session_state['code'] = ''
+                st.session_state['analysis'] = None
+                st.session_state['tests'] = None
+            if c3.button("Сбросить чат/подсказки", use_container_width=True, key="btn_reset_help"):
+                st.session_state['messages'] = []
+                if tid:
+                    st.session_state['hint_level_by_task'][tid] = 0
 
-    with tab_run:
-        st.markdown("### Запуск и проверка")
-        if not is_runner_enabled():
-            st.warning("Запуск кода выключен на сервере. Включи `TRAINER_ENABLE_RUNNER=1` в сервисе тренажёра.")
-        else:
-            rt1, rt2 = st.tabs(["Запустить (stdin → stdout)", "Проверить тестами"])
-            with rt1:
-                stdin_val = st.text_area(
-                    "Ввод (stdin)",
-                    value=st.session_state.get('run_stdin') or "",
-                    height=140,
-                    placeholder="Например:\n5\n1 2 3 4 5\n",
-                )
-                st.session_state['run_stdin'] = stdin_val
-                expect = st.text_area(
-                    "Ожидаемый вывод (необязательно)",
-                    value=st.session_state.get('run_expected') or "",
-                    height=90,
-                    placeholder="Если заполнишь — я сравню stdout (по .strip()).",
-                )
-                st.session_state['run_expected'] = expect
+            if st.session_state.get('analysis') is not None:
+                with st.expander("Анализ (MVP)", expanded=False):
+                    st.code(json.dumps(st.session_state['analysis'], ensure_ascii=False, indent=2), language="json")
 
-                if st.button("▶ Запустить", use_container_width=True):
-                    res = run_python_program(code=st.session_state.get('code') or '', stdin=stdin_val, timeout_seconds=2.0)
-                    st.session_state['run_result'] = res
+            st.markdown("### Запуск и проверка")
+            if not is_runner_enabled():
+                st.warning("Запуск кода выключен на сервере. Включи `TRAINER_ENABLE_RUNNER=1` в сервисе тренажёра.")
+            else:
+                rt1, rt2 = st.tabs(["Запустить (stdin → stdout)", "Проверить тестами"])
+                with rt1:
+                    stdin_val = st.text_area(
+                        "Ввод (stdin)",
+                        value=st.session_state.get('run_stdin') or "",
+                        height=130,
+                        placeholder="Например:\n5\n1 2 3 4 5\n",
+                        key="run_stdin",
+                    )
+                    st.session_state['run_stdin'] = stdin_val
+                    expect = st.text_area(
+                        "Ожидаемый вывод (необязательно)",
+                        value=st.session_state.get('run_expected') or "",
+                        height=90,
+                        placeholder="Если заполнишь — я сравню stdout (по .strip()).",
+                        key="run_expected",
+                    )
+                    st.session_state['run_expected'] = expect
 
-                res = st.session_state.get('run_result')
-                if isinstance(res, dict):
-                    if res.get('ok'):
-                        st.success("Код выполнился.")
-                    else:
-                        st.error(f"Ошибка запуска: {res.get('error')}")
-                        if res.get('details'):
-                            st.code(str(res.get('details'))[:4000])
+                    if st.button("▶ Запустить", use_container_width=True, key="btn_run_program"):
+                        res = run_python_program(code=st.session_state.get('code') or '', stdin=stdin_val, timeout_seconds=2.0)
+                        st.session_state['run_result'] = res
 
-                    out_col, err_col = st.columns(2, gap="small")
-                    out_col.markdown("**stdout**")
-                    out_col.code((res.get('stdout') or '')[:12000])
-                    err_txt = (res.get('stderr') or '')
-                    if err_txt:
-                        err_col.markdown("**stderr**")
-                        err_col.code(err_txt[:6000])
-
-                    if (expect or '').strip():
-                        got = (res.get('stdout') or '').strip()
-                        exp = (expect or '').strip()
-                        if got == exp:
-                            st.success("stdout совпал с ожидаемым.")
+                    res = st.session_state.get('run_result')
+                    if isinstance(res, dict):
+                        if res.get('ok'):
+                            st.success("Код выполнился.")
                         else:
-                            st.warning("stdout НЕ совпал с ожидаемым.")
+                            st.error(f"Ошибка запуска: {res.get('error')}")
+                            if res.get('details'):
+                                st.code(str(res.get('details'))[:4000])
 
-            with rt2:
-                if not tests:
-                    st.info("Для этой задачи пока нет тестов в knowledge. Добавим позже при наполнении данных.")
-                else:
-                    st.caption("Для тестов добавь функцию `solve(s)`; раннер вызовет её на тестовых input и сравнит expected.")
-                    if st.button("🧪 Запустить тесты", use_container_width=True):
-                        st.session_state['tests'] = run_python_solve_tests(code=st.session_state.get('code') or '', tests=tests)
-                    if st.session_state.get('tests') is not None:
-                        _render_tests_block(st.session_state.get('tests'))
+                        out_col, err_col = st.columns(2, gap="small")
+                        out_col.markdown("**stdout**")
+                        out_col.code((res.get('stdout') or '')[:12000])
+                        err_txt = (res.get('stderr') or '')
+                        if err_txt:
+                            err_col.markdown("**stderr**")
+                            err_col.code(err_txt[:6000])
 
-    with tab_help:
-        # Hint progress
-        ladder = (knowledge or {}).get('hint_ladder') if isinstance(knowledge, dict) else None
-        max_lvl = 0
-        if isinstance(ladder, list):
-            for it in ladder:
-                if isinstance(it, dict) and it.get('level') is not None:
-                    try:
-                        max_lvl = max(max_lvl, int(it.get('level') or 0))
-                    except Exception:
-                        continue
-            if max_lvl <= 0:
-                max_lvl = len([it for it in ladder if isinstance(it, dict) and it.get('hint')])
-        cur_lvl = int((st.session_state.get('hint_level_by_task') or {}).get(tid, 0) or 0)
-        if max_lvl > 0:
-            st.progress(min(1.0, float(cur_lvl) / float(max_lvl)))
-            st.caption(f"Подсказки: уровень {cur_lvl}/{max_lvl}")
+                        if (expect or '').strip():
+                            got = (res.get('stdout') or '').strip()
+                            exp = (expect or '').strip()
+                            if got == exp:
+                                st.success("stdout совпал с ожидаемым.")
+                            else:
+                                st.warning("stdout НЕ совпал с ожидаемым.")
 
-        h1, h2 = st.columns([1.0, 1.0], gap="large")
-        with h1:
-            st.markdown("### Подсказки")
-            if st.button("Получить следующую подсказку", use_container_width=True):
-                t = st.session_state.get('task') or {}
-                current_level = int((st.session_state.get('hint_level_by_task') or {}).get(tid, 0) or 0)
-                next_hint = None
-                next_level = current_level
-                if isinstance(ladder, list) and ladder:
-                    sorted_ladder = []
-                    for item in ladder:
-                        if isinstance(item, dict) and item.get('hint'):
+                with rt2:
+                    if not tests:
+                        st.info("Для этой задачи пока нет тестов в knowledge. Добавим позже при наполнении данных.")
+                    else:
+                        st.caption("Для тестов добавь функцию `solve(s)`; раннер вызовет её на тестовых input и сравнит expected.")
+                        if st.button("🧪 Запустить тесты", use_container_width=True, key="btn_run_tests"):
+                            st.session_state['tests'] = run_python_solve_tests(code=st.session_state.get('code') or '', tests=tests)
+                        if st.session_state.get('tests') is not None:
+                            _render_tests_block(st.session_state.get('tests'))
+
+        with tab_help:
+            # Hint progress
+            ladder = (knowledge or {}).get('hint_ladder') if isinstance(knowledge, dict) else None
+            max_lvl = 0
+            if isinstance(ladder, list):
+                for it in ladder:
+                    if isinstance(it, dict) and it.get('level') is not None:
+                        try:
+                            max_lvl = max(max_lvl, int(it.get('level') or 0))
+                        except Exception:
+                            continue
+                if max_lvl <= 0:
+                    max_lvl = len([it for it in ladder if isinstance(it, dict) and it.get('hint')])
+            cur_lvl = int((st.session_state.get('hint_level_by_task') or {}).get(tid, 0) or 0)
+            if max_lvl > 0:
+                st.progress(min(1.0, float(cur_lvl) / float(max_lvl)))
+                st.caption(f"Подсказки: уровень {cur_lvl}/{max_lvl}")
+
+            h1, h2 = st.columns([1.0, 1.0], gap="large")
+            with h1:
+                st.markdown("### Подсказки")
+                if st.button("Получить следующую подсказку", use_container_width=True, key="btn_next_hint"):
+                    t = st.session_state.get('task') or {}
+                    current_level = int((st.session_state.get('hint_level_by_task') or {}).get(tid, 0) or 0)
+                    next_hint = None
+                    next_level = current_level
+                    if isinstance(ladder, list) and ladder:
+                        sorted_ladder = []
+                        for item in ladder:
+                            if isinstance(item, dict) and item.get('hint'):
+                                try:
+                                    lvl = int(item.get('level') or 0)
+                                except Exception:
+                                    lvl = 0
+                                sorted_ladder.append((lvl, str(item.get('hint'))))
+                        sorted_ladder.sort(key=lambda x: (x[0] if x[0] else 10**9))
+                        if all(lvl == 0 for (lvl, _) in sorted_ladder):
+                            sorted_ladder = list(enumerate([h for (_, h) in sorted_ladder], start=1))
+                        for (lvl, htxt) in sorted_ladder:
+                            if int(lvl) > int(current_level):
+                                next_level = int(lvl)
+                                next_hint = htxt
+                                break
+
+                    if next_hint:
+                        st.session_state['hint_level_by_task'][tid] = next_level
+                        st.session_state['messages'].append({'role': 'assistant', 'content': f"Подсказка (уровень {next_level}): {next_hint}"})
+                    else:
+                        # fallback: ask LLM for a guided question (without giving full solution)
+                        try:
+                            msgs = build_messages_for_help(
+                                task=t,
+                                code=st.session_state.get('code') or '',
+                                analysis=st.session_state.get('analysis'),
+                                history=(st.session_state.get('messages') or []) + [{'role': 'user', 'content': 'Дай следующую подсказку по шагам (не решение), задай наводящий вопрос.'}],
+                                knowledge=knowledge,
+                            )
+                            answer = None
                             try:
-                                lvl = int(item.get('level') or 0)
+                                pr = client.llm_chat(
+                                    messages=msgs,
+                                    temperature=0.2,
+                                    max_tokens=500,
+                                    task_id=int(t.get('task_id') or 0) if t.get('task_id') else None,
+                                    task_type=int(t.get('task_number') or 0) if t.get('task_number') else None,
+                                )
+                                answer = (pr.get('answer') or '') if isinstance(pr, dict) else None
                             except Exception:
-                                lvl = 0
-                            sorted_ladder.append((lvl, str(item.get('hint'))))
-                    sorted_ladder.sort(key=lambda x: (x[0] if x[0] else 10**9))
-                    if all(lvl == 0 for (lvl, _) in sorted_ladder):
-                        sorted_ladder = list(enumerate([h for (_, h) in sorted_ladder], start=1))
-                    for (lvl, htxt) in sorted_ladder:
-                        if int(lvl) > int(current_level):
-                            next_level = int(lvl)
-                            next_hint = htxt
-                            break
+                                llm = get_llm_client()
+                                if llm:
+                                    answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=500)
+                            answer = (answer or '').strip() or 'Сформулируй, что именно ты считаешь ответом (строка/число) и какие входные данные.'
+                            st.session_state['messages'].append({'role': 'assistant', 'content': answer})
+                        except Exception as e:
+                            st.session_state['messages'].append({'role': 'assistant', 'content': f'Ошибка обращения к LLM: {e}'})
 
-                if next_hint:
-                    st.session_state['hint_level_by_task'][tid] = next_level
-                    st.session_state['messages'].append({'role': 'assistant', 'content': f"Подсказка (уровень {next_level}): {next_hint}"})
-                else:
-                    # fallback: ask LLM for a guided question (without giving full solution)
+                with st.expander("Текущий код (preview)", expanded=False):
+                    st.code((st.session_state.get('code') or '')[:12000], language="python")
+
+            with h2:
+                st.markdown("### Чат помощника")
+                for m in st.session_state.get('messages') or []:
+                    with st.chat_message(m.get('role') or 'assistant'):
+                        st.markdown(m.get('content') or '')
+
+                prompt = st.chat_input("Напиши вопрос помощнику…")
+                if prompt:
+                    st.session_state['messages'].append({'role': 'user', 'content': prompt})
                     try:
                         msgs = build_messages_for_help(
-                            task=t,
+                            task=task,
                             code=st.session_state.get('code') or '',
                             analysis=st.session_state.get('analysis'),
-                            history=(st.session_state.get('messages') or []) + [{'role': 'user', 'content': 'Дай следующую подсказку по шагам (не решение), задай наводящий вопрос.'}],
+                            history=st.session_state.get('messages'),
                             knowledge=knowledge,
                         )
                         answer = None
@@ -578,117 +627,78 @@ def main():
                             pr = client.llm_chat(
                                 messages=msgs,
                                 temperature=0.2,
-                                max_tokens=500,
-                                task_id=int(t.get('task_id') or 0) if t.get('task_id') else None,
-                                task_type=int(t.get('task_number') or 0) if t.get('task_number') else None,
+                                max_tokens=700,
+                                task_id=int(task.get('task_id') or 0) if task.get('task_id') else None,
+                                task_type=int(task.get('task_number') or 0) if task.get('task_number') else None,
                             )
                             answer = (pr.get('answer') or '') if isinstance(pr, dict) else None
                         except Exception:
                             llm = get_llm_client()
                             if llm:
-                                answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=500)
-                        answer = (answer or '').strip() or 'Сформулируй, что именно ты считаешь ответом (строка/число) и какие входные данные.'
-                        st.session_state['messages'].append({'role': 'assistant', 'content': answer})
+                                answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=700)
+                        if not answer:
+                            st.session_state['messages'].append({'role': 'assistant', 'content': 'LLM пока не настроен. Скажи, что ты уже сделал и где застрял.'})
+                        else:
+                            answer = (answer or '').strip() or 'Не смог сформировать ответ. Попробуй переформулировать вопрос.'
+                            st.session_state['messages'].append({'role': 'assistant', 'content': answer})
                     except Exception as e:
                         st.session_state['messages'].append({'role': 'assistant', 'content': f'Ошибка обращения к LLM: {e}'})
+                    st.rerun()
 
-            with st.expander("Текущий код (preview)", expanded=False):
-                st.code((st.session_state.get('code') or '')[:12000], language="python")
-
-        with h2:
-            st.markdown("### Чат помощника")
-            for m in st.session_state.get('messages') or []:
-                with st.chat_message(m.get('role') or 'assistant'):
-                    st.markdown(m.get('content') or '')
-
-            prompt = st.chat_input("Напиши вопрос помощнику…")
-            if prompt:
-                st.session_state['messages'].append({'role': 'user', 'content': prompt})
+        with tab_hist:
+            st.markdown("### История попыток")
+            if st.button("Обновить историю", use_container_width=True, key="btn_hist_refresh"):
+                st.session_state['history_loaded'] = False
+            if not st.session_state.get('history_loaded'):
                 try:
-                    msgs = build_messages_for_help(
-                        task=task,
-                        code=st.session_state.get('code') or '',
-                        analysis=st.session_state.get('analysis'),
-                        history=st.session_state.get('messages'),
-                        knowledge=knowledge,
-                    )
-                    answer = None
+                    h = client.list_sessions(limit=25)
+                    st.session_state['history_items'] = (h.get('sessions') or []) if isinstance(h, dict) else []
+                    st.session_state['history_loaded'] = True
+                except Exception as e:
+                    st.caption(f"История недоступна: {e}")
+                    st.session_state['history_items'] = []
+                    st.session_state['history_loaded'] = True
+
+            items = st.session_state.get('history_items') or []
+            if not items:
+                st.info("Пока нет сохранённых попыток.")
+            else:
+                options = []
+                for it in items:
+                    label = f"#{it.get('session_id')} · №{it.get('task_type')} · {it.get('created_at')}"
+                    options.append((label, it))
+                labels = [o[0] for o in options]
+                sel = st.selectbox("Открыть попытку", options=list(range(len(labels))), format_func=lambda i: labels[i], key="hist_sel")
+                sel_item = options[int(sel)][1]
+                if st.button("Загрузить выбранную", use_container_width=True, key="btn_hist_load"):
                     try:
-                        pr = client.llm_chat(
-                            messages=msgs,
-                            temperature=0.2,
-                            max_tokens=700,
-                            task_id=int(task.get('task_id') or 0) if task.get('task_id') else None,
-                            task_type=int(task.get('task_number') or 0) if task.get('task_number') else None,
-                        )
-                        answer = (pr.get('answer') or '') if isinstance(pr, dict) else None
-                    except Exception:
-                        llm = get_llm_client()
-                        if llm:
-                            answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=700)
-                    if not answer:
-                        st.session_state['messages'].append({'role': 'assistant', 'content': 'LLM пока не настроен. Скажи, что ты уже сделал и где застрял.'})
-                    else:
-                        answer = (answer or '').strip() or 'Не смог сформировать ответ. Попробуй переформулировать вопрос.'
-                        st.session_state['messages'].append({'role': 'assistant', 'content': answer})
-                except Exception as e:
-                    st.session_state['messages'].append({'role': 'assistant', 'content': f'Ошибка обращения к LLM: {e}'})
-                st.rerun()
+                        sid = int(sel_item.get('session_id') or 0)
+                        if sid:
+                            resp = client.get_session(sid)
+                            sess = (resp.get('session') or {}) if isinstance(resp, dict) else {}
+                            task_payload = resp.get('task') if isinstance(resp, dict) else None
 
-    with tab_hist:
-        st.markdown("### История попыток")
-        if st.button("Обновить историю", use_container_width=True):
-            st.session_state['history_loaded'] = False
-        if not st.session_state.get('history_loaded'):
-            try:
-                h = client.list_sessions(limit=25)
-                st.session_state['history_items'] = (h.get('sessions') or []) if isinstance(h, dict) else []
-                st.session_state['history_loaded'] = True
-            except Exception as e:
-                st.caption(f"История недоступна: {e}")
-                st.session_state['history_items'] = []
-                st.session_state['history_loaded'] = True
+                            if task_payload:
+                                st.session_state['task'] = task_payload
+                            else:
+                                tid2 = int(sess.get('task_id') or 0)
+                                if tid2:
+                                    t_resp = client.get_task(tid2)
+                                    tsk2 = t_resp.get('task') if isinstance(t_resp, dict) else None
+                                    if tsk2:
+                                        st.session_state['task'] = tsk2
 
-        items = st.session_state.get('history_items') or []
-        if not items:
-            st.info("Пока нет сохранённых попыток.")
-        else:
-            options = []
-            for it in items:
-                label = f"#{it.get('session_id')} · №{it.get('task_type')} · {it.get('created_at')}"
-                options.append((label, it))
-            labels = [o[0] for o in options]
-            sel = st.selectbox("Открыть попытку", options=list(range(len(labels))), format_func=lambda i: labels[i])
-            sel_item = options[int(sel)][1]
-            if st.button("Загрузить выбранную", use_container_width=True):
-                try:
-                    sid = int(sel_item.get('session_id') or 0)
-                    if sid:
-                        resp = client.get_session(sid)
-                        sess = (resp.get('session') or {}) if isinstance(resp, dict) else {}
-                        task_payload = resp.get('task') if isinstance(resp, dict) else None
+                            st.session_state['code'] = (sess.get('code') or '')
+                            st.session_state['analysis'] = sess.get('analysis')
+                            st.session_state['tests'] = sess.get('tests')
+                            msgs = sess.get('messages')
+                            st.session_state['messages'] = msgs if isinstance(msgs, list) else []
 
-                        if task_payload:
-                            st.session_state['task'] = task_payload
-                        else:
-                            tid2 = int(sess.get('task_id') or 0)
-                            if tid2:
-                                t_resp = client.get_task(tid2)
-                                tsk2 = t_resp.get('task') if isinstance(t_resp, dict) else None
-                                if tsk2:
-                                    st.session_state['task'] = tsk2
-
-                        st.session_state['code'] = (sess.get('code') or '')
-                        st.session_state['analysis'] = sess.get('analysis')
-                        st.session_state['tests'] = sess.get('tests')
-                        msgs = sess.get('messages')
-                        st.session_state['messages'] = msgs if isinstance(msgs, list) else []
-
-                        if st.session_state.get('task') and st.session_state['task'].get('task_id'):
-                            st.session_state['hint_level_by_task'][int(st.session_state['task']['task_id'])] = 0
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"Не удалось открыть: {e}")
+                            if st.session_state.get('task') and st.session_state['task'].get('task_id'):
+                                st.session_state['hint_level_by_task'][int(st.session_state['task']['task_id'])] = 0
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"Не удалось открыть: {e}")
 
 
 if __name__ == '__main__':
