@@ -39,9 +39,12 @@ def _can_access_student(student: Student) -> bool:
         # Студент видит свои курсы.
         # Основной способ — по email, но в sandbox окружениях email может быть пустым,
         # при этом часто Student.student_id совпадает с User.id.
-        if student.email and current_user.email and student.email.strip().lower() == current_user.email.strip().lower():
+        me_email = (current_user.email or '').strip().lower()
+        st_email = (student.email or '').strip().lower() if student.email else ''
+        if me_email and st_email and st_email == me_email:
             return True
-        if student.student_id == current_user.id:
+        # Fallback допустим только если у Student нет email (иначе возможны коллизии User.id vs Student.student_id)
+        if (not st_email) and student.student_id == current_user.id:
             return True
         if getattr(student, 'platform_id', None) and current_user.username and str(student.platform_id).strip() == str(current_user.username).strip():
             return True

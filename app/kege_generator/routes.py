@@ -4,13 +4,14 @@
 import logging
 import os
 from flask import render_template, request, redirect, url_for, flash, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 from sqlalchemy import or_
 
 from app.kege_generator import kege_generator_bp
 from app.kege_generator.forms import TaskSelectionForm, ResetForm, TaskSearchForm
 from app.models import Lesson, Tasks, LessonTask, StudentTaskSeen, db
 from app.models import TaskTemplate, TemplateTask
+from app.auth.rbac_utils import has_permission
 from core.selector_logic import (
     get_unique_tasks, record_usage, record_skipped, record_blacklist,
     reset_history, reset_skipped, reset_blacklist,
@@ -24,11 +25,27 @@ logger = logging.getLogger(__name__)
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 db_path = os.path.join(base_dir, 'data', 'keg_tasks.db')
 
+
+def _require_kege_generator_access() -> None:
+    """
+    Генератор — инструмент управления банком заданий.
+    Должен быть недоступен ученикам/родителям (и всем без права task.manage).
+    """
+    try:
+        if current_user and current_user.is_authenticated and has_permission(current_user, 'task.manage'):
+            return
+    except Exception:
+        pass
+    from flask import abort
+    abort(403)
+
+
 @kege_generator_bp.route('/kege-generator', methods=['GET', 'POST'])
 @kege_generator_bp.route('/kege-generator/<int:lesson_id>', methods=['GET', 'POST'])
 @login_required
 def kege_generator(lesson_id=None):
     """Генератор заданий КЕГЭ"""
+    _require_kege_generator_access()
     lesson = None
     student = None
     # Получаем lesson_id из query-параметров, если не передан в пути
@@ -226,6 +243,7 @@ def _task_to_payload(task: Tasks):
 @login_required
 def generator_stream_start():
     """Старт нового 'по одному заданию' потока."""
+    _require_kege_generator_access()
     data = request.get_json(silent=True) or {}
     if not isinstance(data, dict):
         return jsonify({'success': False, 'error': 'Некорректный формат запроса'}), 400
@@ -286,6 +304,7 @@ def generator_stream_start():
 @login_required
 def generator_stream_act():
     """Совершить действие над текущим заданием и получить следующее."""
+    _require_kege_generator_access()
     data = request.get_json(silent=True) or {}
     if not isinstance(data, dict):
         return jsonify({'success': False, 'error': 'Некорректный формат запроса'}), 400
@@ -420,6 +439,7 @@ def generator_stream_act():
 @login_required
 def generate_results():
     """Результаты генерации заданий"""
+    _require_kege_generator_access()
     try:
         task_type = request.args.get('task_type', type=int)
         limit_count = request.args.get('limit_count', type=int)
@@ -528,6 +548,7 @@ def generate_results():
 @login_required
 def task_action():
     """Действия с заданиями (принять, пропустить, в черный список)"""
+    _require_kege_generator_access()
     try:
         data = request.get_json(silent=True) or {}  # Безопасно парсим JSON (не падаем на пустом/битом теле)
         if not isinstance(data, dict):  # Проверяем, что пришёл объект
@@ -779,6 +800,7 @@ def task_action():
 @login_required
 def show_accepted():
     """Показать принятые задания"""
+    _require_kege_generator_access()
     try:
         task_type = request.args.get('task_type', type=int, default=None)
 
@@ -799,6 +821,7 @@ def show_accepted():
 @login_required
 def show_skipped():
     """Показать пропущенные задания"""
+    _require_kege_generator_access()
     try:
         task_type = request.args.get('task_type', type=int, default=None)
 

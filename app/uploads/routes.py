@@ -57,9 +57,16 @@ def _can_access_lesson(lesson: Lesson) -> bool:
     # student: only own
     try:
         if current_user.is_student():
-            if lesson.student and lesson.student.email and current_user.email and lesson.student.email.strip().lower() == current_user.email.strip().lower():
+            me_email = (current_user.email or '').strip().lower()
+            st_email = ''
+            try:
+                st_email = (lesson.student.email or '').strip().lower() if (lesson.student and lesson.student.email) else ''
+            except Exception:
+                st_email = ''
+            if me_email and st_email and st_email == me_email:
                 return True
-            if lesson.student_id == current_user.id:
+            # Fallback допустим только если у Student нет email (иначе возможны коллизии User.id vs Student.student_id)
+            if (not st_email) and lesson.student_id == current_user.id:
                 return True
             return False
     except Exception:

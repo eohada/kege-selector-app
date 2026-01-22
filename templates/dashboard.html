@@ -243,7 +243,7 @@
                     <h2>{{ students|length }} в подборке</h2>
                 </div>
                 <div class="hero-actions">
-                    {% if not show_archive %}
+                    {% if not show_archive and (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator())) %}
                     <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">Добавить</a>
                     {% endif %}
                 </div>
@@ -251,7 +251,7 @@
 
             {% if students %}
             <div class="students-grid">
-                {% if not show_archive %}
+                {% if not show_archive and (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator())) %}
                 <a href="{{ url_for('students.student_new') }}" class="student-card student-card--cta">
                     <div class="hero-eyebrow">quick action</div>
                     <h3 style="margin: 0;">Создать нового ученика</h3>
@@ -344,7 +344,7 @@
                 <p class="empty-state-description">{% if show_archive %}В архиве пока нет учеников{% else %}Добавьте первого ученика, чтобы начать работу{% endif %}</p>
                 {% if not show_archive %}
                 <div class="empty-state-actions">
-                    {% if not current_user.is_student() and not current_user.is_parent() %}
+                    {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
                     <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">Добавить ученика</a>
                     {% endif %}
                 </div>

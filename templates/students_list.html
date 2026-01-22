@@ -126,7 +126,7 @@
                             </div>
                         </div>
                         <div class="hero-actions">
-                            {% if not current_user.is_student() and not current_user.is_parent() %}
+                            {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
                             <a href="{{ url_for('students.student_new') }}" class="neo-button accent">
                                 <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">
                                 Добавить

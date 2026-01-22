@@ -74,9 +74,12 @@ def _can_access_student(student: Student) -> bool:
         return True
 
     if current_user.is_student():
-        if student.email and current_user.email and student.email.strip().lower() == current_user.email.strip().lower():
+        me_email = (current_user.email or '').strip().lower()
+        st_email = (student.email or '').strip().lower() if student.email else ''
+        if me_email and st_email and st_email == me_email:
             return True
-        if student.student_id == current_user.id:
+        # Fallback допустим только если у Student нет email (иначе возможны коллизии User.id vs Student.student_id)
+        if (not st_email) and student.student_id == current_user.id:
             return True
         return False
 
@@ -165,6 +168,11 @@ def students_list():
 @login_required
 def student_new():
     """Создание нового студента"""
+    # Создание ученика — функция админа/создателя (не доступна тьютору/ученику/родителю).
+    if not (current_user.is_admin() or current_user.is_creator()):
+        from flask import abort
+        abort(403)
+
     form = StudentForm()
 
     if form.validate_on_submit():
@@ -254,6 +262,18 @@ def student_profile(student_id):
     """Профиль студента с уроками"""
     try:
         from app.auth.rbac_utils import get_user_scope
+
+        # UX fix: студент всегда должен попадать в СВОЙ профиль.
+        # Если в URL подставили Users.id вместо Students.student_id — редиректим на реальный student_id по email.
+        if current_user.is_student():
+            try:
+                my_email = (current_user.email or '').strip().lower()
+                if my_email:
+                    me_student = Student.query.filter(func.lower(Student.email) == my_email).first()
+                    if me_student and me_student.student_id != student_id:
+                        return redirect(url_for('students.student_profile', student_id=me_student.student_id))
+            except Exception:
+                pass
         
         # КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: загружаем уроки отдельным запросом с joinedload для homework_tasks
         try:

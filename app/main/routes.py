@@ -82,6 +82,17 @@ def health_check():
             'error': str(e)
         }), 200
 
+
+@main_bp.route('/parent/dashboard')
+@main_bp.route('/parent/parent/dashboard')
+@login_required
+def parent_dashboard_alias():
+    """
+    Alias для родительского дашборда (исторические/короткие URL).
+    Канонический роут живёт в blueprint `parents` (с url_prefix '/parents').
+    """
+    return redirect(url_for('parents.parent_dashboard', **request.args.to_dict(flat=True)))
+
 @main_bp.route('/setup/first-user', methods=['GET', 'POST'])
 @csrf.exempt  # Отключаем CSRF для этого endpoint (работает только если в БД нет пользователей)
 def setup_first_user():
@@ -587,9 +598,14 @@ def student_dashboard():
     except Exception:
         student = None
     if not student:
-        # fallback: иногда student_id == User.id
+        # fallback: иногда Student.student_id == User.id, но только если у Student нет email
         try:
-            student = Student.query.get(current_user.id)
+            candidate = Student.query.get(current_user.id)
+            if candidate:
+                c_email = (candidate.email or '').strip().lower() if candidate.email else ''
+                u_email = (current_user.email or '').strip().lower()
+                if (not c_email) and (not u_email or u_email == c_email):
+                    student = candidate
         except Exception:
             student = None
 

@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 @parents_bp.route('/parent/dashboard')
+@parents_bp.route('/dashboard')
 @require_parent
 def parent_dashboard():
     """Дашборд родителя с информацией о детях"""
