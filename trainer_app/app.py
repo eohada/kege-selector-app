@@ -477,7 +477,6 @@ def main():
                         placeholder="Например:\n5\n1 2 3 4 5\n",
                         key="run_stdin",
                     )
-                    st.session_state['run_stdin'] = stdin_val
                     expect = st.text_area(
                         "Ожидаемый вывод (необязательно)",
                         value=st.session_state.get('run_expected') or "",
@@ -485,7 +484,7 @@ def main():
                         placeholder="Если заполнишь — я сравню stdout (по .strip()).",
                         key="run_expected",
                     )
-                    st.session_state['run_expected'] = expect
+                    # When widgets have keys, Streamlit manages st.session_state for them automatically.
 
                     if st.button("▶ Запустить", use_container_width=True, key="btn_run_program"):
                         res = run_python_program(code=st.session_state.get('code') or '', stdin=stdin_val, timeout_seconds=2.0)
