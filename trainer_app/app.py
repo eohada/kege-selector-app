@@ -33,6 +33,111 @@ except Exception:
     pass
 
 
+def _inject_css():
+    # Streamlit allows limited styling; this keeps UI cleaner and more "product-like".
+    st.markdown(
+        """
+<style>
+  /* Hide default Streamlit chrome */
+  #MainMenu {visibility: hidden;}
+  footer {visibility: hidden;}
+  header {visibility: hidden;}
+
+  /* Reduce top padding */
+  .block-container { padding-top: 1.1rem; padding-bottom: 2rem; }
+
+  /* Make chat/input feel tighter */
+  .stChatInputContainer { padding-top: 0.25rem; }
+
+  /* Card-ish containers */
+  .k-card {
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 14px;
+    padding: 14px 14px;
+    background: rgba(255,255,255,0.03);
+  }
+  .k-muted { color: rgba(255,255,255,0.70); }
+  .k-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.04);
+    margin-right: 6px;
+  }
+  .k-badge.ok { border-color: rgba(34,197,94,0.55); background: rgba(34,197,94,0.10); }
+  .k-badge.warn { border-color: rgba(245,158,11,0.55); background: rgba(245,158,11,0.10); }
+  .k-badge.err { border-color: rgba(239,68,68,0.55); background: rgba(239,68,68,0.10); }
+</style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _badge(text: str, kind: str = "ok") -> str:
+    kind = kind if kind in ("ok", "warn", "err") else "ok"
+    safe = (text or "").replace("<", "&lt;").replace(">", "&gt;")
+    return f'<span class="k-badge {kind}">{safe}</span>'
+
+
+def _render_tests_block(tests_payload: Any):
+    if not isinstance(tests_payload, dict):
+        st.info("Нет результатов тестов.")
+        return
+
+    if not tests_payload.get("ok"):
+        st.error(f"Тесты не запустились: {tests_payload.get('error')}")
+        details = tests_payload.get("details") or ""
+        validation = tests_payload.get("validation")
+        if details:
+            st.code(str(details)[:4000])
+        if validation:
+            st.caption("Диагностика (валидация):")
+            st.code(json.dumps(validation, ensure_ascii=False, indent=2)[:8000], language="json")
+        return
+
+    results = tests_payload.get("results") or []
+    if not isinstance(results, list) or not results:
+        st.warning("Тесты вернули пустой результат.")
+        st.code(json.dumps(tests_payload, ensure_ascii=False, indent=2)[:8000], language="json")
+        return
+
+    ok_cnt = 0
+    rows: list[dict[str, Any]] = []
+    for r in results:
+        if not isinstance(r, dict):
+            continue
+        ok = bool(r.get("ok"))
+        ok_cnt += 1 if ok else 0
+        rows.append(
+            {
+                "OK": "✅" if ok else "❌",
+                "Тест": r.get("name") or "",
+                "Ожидалось": r.get("expected") if r.get("expected") is not None else "",
+                "Получилось": r.get("got") if r.get("got") is not None else "",
+            }
+        )
+
+    total = len(rows)
+    if ok_cnt == total:
+        st.success(f"Все тесты пройдены: {ok_cnt}/{total}")
+    else:
+        st.warning(f"Пройдено тестов: {ok_cnt}/{total}")
+
+    st.dataframe(rows, use_container_width=True, hide_index=True)
+
+    failed_errs = []
+    for r in results:
+        if isinstance(r, dict) and not r.get("ok") and r.get("error"):
+            failed_errs.append({"name": r.get("name"), "error": r.get("error")})
+    if failed_errs:
+        with st.expander("Ошибки в тестах (traceback)", expanded=False):
+            for fe in failed_errs[:20]:
+                st.markdown(f"**{fe.get('name') or 'тест'}**")
+                st.code(str(fe.get("error") or "")[:6000])
+
+
 def _get_query_param(name: str) -> str:
     try:
         # Streamlit >= 1.30

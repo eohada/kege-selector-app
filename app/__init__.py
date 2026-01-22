@@ -9,6 +9,7 @@ from flask_wtf import CSRFProtect
 from sqlalchemy import text
 from zoneinfo import ZoneInfo  # comment
 from datetime import datetime  # comment
+from werkzeug.exceptions import HTTPException
 
 # Импортируем db из models, чтобы он был доступен для инициализации
 from app.models import db
@@ -251,10 +252,14 @@ def create_app(config_name=None):
         from app.auth.rbac_utils import has_permission
         student_data = None
         if current_user.is_authenticated and current_user.is_student():
-            if current_user.email:
-                student = Student.query.filter_by(email=current_user.email).first()
-                if student:
-                    student_data = {'student_id': student.student_id}
+            try:
+                if current_user.email:
+                    student = Student.query.filter_by(email=current_user.email).first()
+                    if student:
+                        student_data = {'student_id': student.student_id}
+            except Exception:
+                # Важно: контекст-процессор не должен ронять страницу (особенно error pages).
+                student_data = None
         return dict(current_student=student_data, has_permission=has_permission)
     
     # Исключаем внутренний sandbox-admin API из CSRF (server-to-server по токену)
@@ -300,6 +305,122 @@ def create_app(config_name=None):
     # Инициализируем Jinja2 фильтры (включая mask_contact)
     from app.utils.jinja_filters import init_jinja_filters
     init_jinja_filters(app)
+
+    # =========================================================================
+    # Красивые страницы ошибок (UI) + JSON для API
+    # =========================================================================
+    def _wants_json_response() -> bool:
+        try:
+            from flask import request
+            if request.path.startswith('/api'):
+                return True
+            if request.is_json:
+                return True
+            best = request.accept_mimetypes.best
+            return best == 'application/json'
+        except Exception:
+            return False
+
+    def _render_error(code: int, headline: str, subtitle: str | None = None):
+        from flask import render_template, jsonify
+
+        if _wants_json_response():
+            payload = {
+                'success': False,
+                'error': headline,
+                'code': code,
+                'message': subtitle or '',
+            }
+            return jsonify(payload), code
+
+        return render_template(
+            'errors/error.html',
+            code=code,
+            headline=headline,
+            subtitle=subtitle,
+        ), code
+
+    @app.errorhandler(400)
+    def bad_request(error):
+        return _render_error(
+            400,
+            'ПЛОХОЙ ЗАПРОС',
+            'Кажется, данные отправлены в неправильном формате. Попробуй обновить страницу и повторить.',
+        )
+
+    @app.errorhandler(401)
+    def unauthorized(error):
+        return _render_error(
+            401,
+            'НУЖНО ВОЙТИ',
+            'Эта страница доступна только после входа в аккаунт.',
+        )
+
+    @app.errorhandler(403)
+    def forbidden(error):
+        return _render_error(
+            403,
+            'ТЕБЕ СЮДА НЕЛЬЗЯ',
+            'У тебя нет прав на доступ к этой странице.',
+        )
+
+    @app.errorhandler(404)
+    def not_found(error):
+        return _render_error(
+            404,
+            'ТУТ НИЧЕГО НЕТ',
+            'Страница не найдена. Возможно, ссылка устарела или была удалена.',
+        )
+
+    @app.errorhandler(429)
+    def too_many_requests(error):
+        return _render_error(
+            429,
+            'СЛИШКОМ ЧАСТО',
+            'Ты делаешь слишком много запросов подряд. Подожди немного и попробуй ещё раз.',
+        )
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        # Важно: 500 часто приходит после exception — пытаемся безопасно откатить транзакцию.
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return _render_error(
+            500,
+            'СТРАНИЦА НЕ ЗАГРУЗИЛАСЬ, ОШИБКА!!',
+            'Что-то пошло не так на сервере. Попробуй обновить страницу. Если повторяется — напиши в поддержку.',
+        )
+
+    # CSRF ошибки показываем как 403 (более понятный UX).
+    try:
+        from flask_wtf.csrf import CSRFError
+
+        @app.errorhandler(CSRFError)
+        def handle_csrf_error(e: CSRFError):
+            return _render_error(
+                403,
+                'ТЕБЕ СЮДА НЕЛЬЗЯ',
+                'Сессия устарела или токен безопасности неверный. Обнови страницу и попробуй снова.',
+            )
+    except Exception:
+        pass
+
+    # Не даём “левым” исключениям превращаться в HTML для API — но и не ломаем HTTPException.
+    @app.errorhandler(Exception)
+    def handle_unexpected_exception(e: Exception):
+        if isinstance(e, HTTPException):
+            return e
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return _render_error(
+            500,
+            'СТРАНИЦА НЕ ЗАГРУЗИЛАСЬ, ОШИБКА!!',
+            'Произошла непредвиденная ошибка. Попробуй обновить страницу.',
+        )
     
     # Регистрация фильтра markdown для Jinja2
     @app.template_filter('markdown')

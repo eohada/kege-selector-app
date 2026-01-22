@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ code }} · Ошибка</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .error-wrap {
+            min-height: calc(100vh - 40px);
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+        .error-card {
+            width: 100%;
+            max-width: 920px;
+            padding: 1.4rem 1.4rem;
+        }
+        .error-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: .55rem;
+            padding: .35rem .7rem;
+            border-radius: 999px;
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.03);
+            color: var(--text-muted);
+            font-weight: 800;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            font-size: .78rem;
+        }
+        .error-kicker__code {
+            display: inline-grid;
+            place-items: center;
+            min-width: 2.4rem;
+            padding: .2rem .55rem;
+            border-radius: 999px;
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.04);
+            color: var(--text-primary);
+            font-weight: 900;
+        }
+        .error-title {
+            margin: 1rem 0 0.6rem 0;
+            font-size: clamp(1.55rem, 3.2vw, 2.45rem);
+            font-weight: 1000;
+            letter-spacing: .02em;
+            line-height: 1.05;
+        }
+        .error-subtitle {
+            margin: 0.25rem 0 0 0;
+            color: var(--text-muted);
+            font-size: 1.02rem;
+            line-height: 1.55;
+            max-width: 70ch;
+        }
+        .error-actions {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            margin-top: 1.25rem;
+        }
+        .error-meta {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--stroke-1);
+            color: var(--text-muted);
+            font-size: .9rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: .75rem 1.2rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .error-meta code {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--stroke-1);
+            padding: 0.2rem 0.45rem;
+            border-radius: 8px;
+            color: var(--text-primary);
+        }
+        .error-soft {
+            width: 100%;
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: var(--radius-lg);
+            border: 1px dashed var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            color: var(--text-muted);
+            font-size: .95rem;
+            line-height: 1.55;
+        }
+        .error-soft strong {
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <div class="error-wrap">
+            <section class="glass-panel error-card">
+                <div class="error-kicker">
+                    <span class="error-kicker__code">{{ code }}</span>
+                    <span>системное сообщение</span>
+                </div>
+
+                <h1 class="error-title">{{ headline }}</h1>
+                {% if subtitle %}
+                <p class="error-subtitle">{{ subtitle }}</p>
+                {% endif %}
+
+                <div class="error-actions">
+                    <a href="{{ url_for('main.index') }}" class="neo-button accent">
+                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Главная" class="ui-icon ui-icon--sm">
+                        На главную
+                    </a>
+                    {% if current_user and current_user.is_authenticated %}
+                    <a href="{{ url_for('main.dashboard') }}" class="neo-button outline">
+                        <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Дашборд" class="ui-icon ui-icon--sm">
+                        В дашборд
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('auth.login') }}" class="neo-button outline">
+                        <img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Войти" class="ui-icon ui-icon--sm">
+                        Войти
+                    </a>
+                    {% endif %}
+                    <button type="button" class="neo-button ghost" onclick="history.back()">
+                        ⟵ Назад
+                    </button>
+                </div>
+
+                <div class="error-soft">
+                    <strong>Подсказка:</strong> если ошибка повторяется, приложи скрин + URL и время — мы быстро найдём причину.
+                </div>
+
+                <div class="error-meta">
+                    <div>
+                        URL: <code>{{ request.path }}</code>
+                    </div>
+                    <div>
+                        Метод: <code>{{ request.method }}</code>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>
+
