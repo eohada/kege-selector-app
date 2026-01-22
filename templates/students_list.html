@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ученики</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .students-columns {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.25rem;
+        }
+        @media (min-width: 980px) {
+            .students-columns {
+                grid-template-columns: 1fr 1fr;
+                align-items: start;
+            }
+        }
+        .students-grid-compact {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .student-card-compact {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            padding: 1rem;
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            background: rgba(255,255,255,0.02);
+            transition: transform .15s ease, border-color .15s ease, background .15s ease;
+        }
+        .student-card-compact:hover {
+            transform: translateY(-2px);
+            border-color: rgba(120, 210, 255, 0.55);
+            background: rgba(255,255,255,0.04);
+        }
+        .student-head {
+            display: flex;
+            gap: 0.85rem;
+            align-items: center;
+        }
+        .student-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: grid;
+            place-items: center;
+            font-weight: 900;
+            background: linear-gradient(135deg, rgba(120,210,255,0.25), rgba(180,120,255,0.18));
+            border: 1px solid var(--stroke-1);
+            flex: 0 0 auto;
+        }
+        .student-name {
+            margin: 0;
+            font-weight: 900;
+            letter-spacing: .01em;
+            line-height: 1.15;
+        }
+        .student-meta {
+            margin-top: .2rem;
+            color: var(--text-muted);
+            font-size: .92rem;
+        }
+        .tags-row {
+            display: flex;
+            gap: .5rem;
+            flex-wrap: wrap;
+            margin-top: .8rem;
+        }
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            padding: .3rem .55rem;
+            border-radius: 999px;
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            color: var(--text-muted);
+            font-size: .85rem;
+            white-space: nowrap;
+        }
+        .tag--archived {
+            border-color: rgba(239, 68, 68, 0.35);
+            color: rgba(239, 68, 68, 0.95);
+            background: rgba(239, 68, 68, 0.06);
+        }
+        .empty-box {
+            padding: 1.25rem;
+            border: 1px dashed var(--stroke-1);
+            border-radius: var(--radius-lg);
+            color: var(--text-muted);
+            margin-top: 1rem;
+            background: rgba(255,255,255,0.01);
+        }
+        .eyebrow-muted {
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            font-size: .78rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = 'dashboard' %}
+        {% include '_primary_nav.html' %}
+
+        <main class="main-content">
+            <div class="content-container">
+                <section class="glass-panel" style="margin-bottom: 1.25rem;">
+                    <div class="panel-head">
+                        <div>
+                            <p class="hero-eyebrow">список</p>
+                            <h1>Ученики</h1>
+                            <div style="color: var(--text-muted); margin-top: .25rem;">
+                                {% if current_user.is_parent() %}Доступны только привязанные дети{% elif current_user.is_student() %}Доступен только ваш профиль{% else %}Список доступных учеников{% endif %}
+                            </div>
+                        </div>
+                        <div class="hero-actions">
+                            {% if not current_user.is_student() and not current_user.is_parent() %}
+                            <a href="{{ url_for('students.student_new') }}" class="neo-button accent">
+                                <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">
+                                Добавить
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </section>
+
+                <div class="students-columns">
+                    <section class="glass-panel">
+                        <div class="panel-head">
+                            <div>
+                                <p class="eyebrow-muted">активные</p>
+                                <h2 style="margin: 0;">{{ active_students|length }}</h2>
+                            </div>
+                        </div>
+
+                        {% if active_students %}
+                        <div class="students-grid-compact">
+                            {% for student in active_students %}
+                            <a class="student-card-compact" href="{{ url_for('students.student_profile', student_id=student.student_id) }}">
+                                <div class="student-head">
+                                    <div class="student-avatar">{{ student.name[0].upper() }}</div>
+                                    <div style="min-width: 0;">
+                                        <p class="student-name">{{ student.name }}</p>
+                                        <div class="student-meta">
+                                            {% if student.platform_id %}ID: {{ student.platform_id }}{% else %}ID: —{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tags-row">
+                                    {% if student.category %}
+                                    <span class="tag">
+                                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="" class="ui-icon ui-icon--sm">
+                                        {{ student.category }}
+                                    </span>
+                                    {% endif %}
+                                    {% if student.school_class %}
+                                    <span class="tag">
+                                        <img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="" class="ui-icon ui-icon--sm">
+                                        {{ student.school_class }} класс
+                                    </span>
+                                    {% endif %}
+                                </div>
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-box">Активных учеников нет.</div>
+                        {% endif %}
+                    </section>
+
+                    <section class="glass-panel">
+                        <div class="panel-head">
+                            <div>
+                                <p class="eyebrow-muted">архив</p>
+                                <h2 style="margin: 0;">{{ archived_students|length }}</h2>
+                            </div>
+                        </div>
+
+                        {% if archived_students %}
+                        <div class="students-grid-compact">
+                            {% for student in archived_students %}
+                            <a class="student-card-compact" href="{{ url_for('students.student_profile', student_id=student.student_id) }}">
+                                <div class="student-head">
+                                    <div class="student-avatar">{{ student.name[0].upper() }}</div>
+                                    <div style="min-width: 0;">
+                                        <p class="student-name">{{ student.name }}</p>
+                                        <div class="student-meta">
+                                            {% if student.platform_id %}ID: {{ student.platform_id }}{% else %}ID: —{% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tags-row">
+                                    <span class="tag tag--archived">Архив</span>
+                                    {% if student.category %}
+                                    <span class="tag">{{ student.category }}</span>
+                                    {% endif %}
+                                    {% if student.school_class %}
+                                    <span class="tag">{{ student.school_class }} класс</span>
+                                    {% endif %}
+                                </div>
+                            </a>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-box">Архив пуст.</div>
+                        {% endif %}
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
+

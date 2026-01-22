@@ -5,7 +5,7 @@ import json
 import logging  # Логирование для отладки и прод-логов
 from flask import render_template, request, redirect, url_for, flash, jsonify, current_app  # current_app нужен для определения типа БД (Postgres)
 from flask_login import login_required
-from sqlalchemy import text  # text нужен для выполнения SQL setval(pg_get_serial_sequence(...)) при сбитых sequences
+from sqlalchemy import text, or_, func  # text нужен для выполнения SQL setval(pg_get_serial_sequence(...)) при сбитых sequences
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from datetime import datetime
 import csv
@@ -117,8 +117,46 @@ def _parse_datetime_local(value: str | None):
 @login_required
 def students_list():
     """Список всех студентов (активных и архивных)"""
-    active_students = Student.query.filter_by(is_active=True).order_by(Student.name).all()
-    archived_students = Student.query.filter_by(is_active=False).order_by(Student.name).all()
+    scope = get_user_scope(current_user)
+
+    base_q = Student.query
+    if scope.get('can_see_all'):
+        active_students = base_q.filter_by(is_active=True).order_by(Student.name).all()
+        archived_students = base_q.filter_by(is_active=False).order_by(Student.name).all()
+    else:
+        allowed_user_ids = list(dict.fromkeys(scope.get('student_ids') or []))
+        if not allowed_user_ids:
+            active_students = []
+            archived_students = []
+        else:
+            # FamilyTie/Enrollment оперируют Users.id, а Student — отдельная таблица.
+            # Маппим доступных student-user → (id/email) и подтягиваем Student по student_id и/или email.
+            student_users = (
+                User.query
+                .filter(User.id.in_(allowed_user_ids), User.role == 'student')
+                .all()
+            )
+            allowed_emails = []
+            for u in student_users:
+                em = (u.email or '').strip().lower()
+                if em:
+                    allowed_emails.append(em)
+
+            allowed_emails = list(dict.fromkeys(allowed_emails))
+
+            if allowed_emails:
+                scoped_q = base_q.filter(
+                    or_(
+                        Student.student_id.in_(allowed_user_ids),
+                        func.lower(Student.email).in_(allowed_emails)
+                    )
+                )
+            else:
+                scoped_q = base_q.filter(Student.student_id.in_(allowed_user_ids))
+
+            active_students = scoped_q.filter(Student.is_active.is_(True)).order_by(Student.name).all()
+            archived_students = scoped_q.filter(Student.is_active.is_(False)).order_by(Student.name).all()
+
     return render_template('students_list.html',
                          active_students=active_students,
                          archived_students=archived_students)

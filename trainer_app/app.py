@@ -101,6 +101,14 @@ def main():
     user = (st.session_state['me'] or {}).get('user') or {}
     st.sidebar.success(f"Вход: {user.get('username')} ({user.get('role')})")
 
+    st.sidebar.markdown("### Запуск кода")
+    env_flag = (os.environ.get('TRAINER_ENABLE_RUNNER') or '').strip()
+    if is_runner_enabled():
+        st.sidebar.success(f"Раннер включён (`TRAINER_ENABLE_RUNNER={env_flag or '1'}`)")
+    else:
+        st.sidebar.warning("Раннер выключен в тренажёре (Streamlit).")
+        st.sidebar.caption(f"Сейчас Streamlit видит `TRAINER_ENABLE_RUNNER={env_flag!r}`. Переменную нужно добавить именно в сервис тренажёра, а не только во Flask.")
+
     st.sidebar.markdown("### LLM")
     # Prefer platform-side LLM proxy (keys live in Flask), fallback to local env-based client.
     llm_info = None
@@ -352,8 +360,14 @@ def main():
         code_val = None
         try:
             from streamlit_ace import st_ace  # type: ignore
+            # IMPORTANT: don't overwrite editor value on every Streamlit rerun.
+            # Use the editor widget state as the source of truth to avoid "rollback while typing".
+            editor_key = "code_editor"
+            if editor_key not in st.session_state:
+                st.session_state[editor_key] = st.session_state.get('code') or ""
             code_val = st_ace(
-                value=st.session_state.get('code') or "",
+                key=editor_key,
+                value=st.session_state.get(editor_key) or "",
                 language="python",
                 theme="monokai",
                 keybinding="vscode",
@@ -363,6 +377,7 @@ def main():
                 tab_size=4,
                 show_gutter=True,
                 wrap=True,
+                # Keep Streamlit state in sync while typing (prevents losing input on reruns).
                 auto_update=True,
             )
             st.caption("Редактор: подсветка синтаксиса + keybindings как в IDE.")
@@ -374,6 +389,10 @@ def main():
                 placeholder="print('hello')",
             )
             st.caption("Подсветка недоступна: установи `streamlit-ace` (или запусти в окружении, где он уже есть).")
+        if code_val is None:
+            code_val = ""
+        # Persist both "editor widget value" and "platform code value"
+        st.session_state['code_editor'] = code_val
         if len(code_val) > 20000:
             st.warning("Код слишком большой, обрезаю до 20 000 символов.")
             code_val = code_val[:20000]
