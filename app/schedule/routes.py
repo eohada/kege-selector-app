@@ -39,19 +39,43 @@ def _resolve_accessible_student_ids_for_current_user() -> list[int] | None:
     student_ids: list[int] = []
     try:
         student_users = User.query.filter(User.id.in_(user_ids)).all()
-        emails = [u.email for u in student_users if u and u.email]
-        if emails:
-            students_by_email = Student.query.filter(Student.email.in_(emails)).all()
-            student_ids.extend([s.student_id for s in students_by_email if s])
-    except Exception as e:
-        logger.warning(f"Schedule: failed map user_ids->student_ids via email: {e}")
 
-    # fallback: иногда student_id совпадает с user.id
-    try:
-        students_by_id = Student.query.filter(Student.student_id.in_(user_ids)).all()
-        student_ids.extend([s.student_id for s in students_by_id if s])
+        # 1) email -> Student.email (case-insensitive)
+        emails = []
+        for u in student_users:
+            em = (u.email or '').strip().lower()
+            if em:
+                emails.append(em)
+
+        # 2) username -> Student.platform_id (частый кейс: логин ученика = platform_id)
+        usernames = []
+        for u in student_users:
+            un = (u.username or '').strip()
+            if un:
+                usernames.append(un)
+
+        emails = list(dict.fromkeys(emails))
+        usernames = list(dict.fromkeys(usernames))
+
+        q = Student.query
+        conds = []
+        if emails:
+            from sqlalchemy import func as _func
+            conds.append(_func.lower(Student.email).in_(emails))
+        if usernames:
+            conds.append(Student.platform_id.in_(usernames))
+
+        # 3) fallback: Student.student_id in user_ids — но только если у Student нет email
+        # (иначе возможны коллизии Users.id vs Students.student_id)
+        if user_ids:
+            conds.append((Student.student_id.in_(user_ids)) & ((Student.email.is_(None)) | (Student.email == '')))
+
+        if conds:
+            from sqlalchemy import or_ as _or
+            mapped = q.filter(_or(*conds)).all()
+            student_ids.extend([s.student_id for s in mapped if s])
     except Exception as e:
-        logger.warning(f"Schedule: failed map user_ids->student_ids via id fallback: {e}")
+        logger.warning(f"Schedule: failed map scope user_ids->student_ids: {e}")
 
     seen = set()
     out: list[int] = []
@@ -111,6 +135,9 @@ def _can_manage_schedule() -> bool:
     # ученику/родителю — только просмотр
     if current_user.is_student() or current_user.is_parent():
         return False
+    # tutor по требованиям QA должен управлять расписанием
+    if getattr(current_user, 'is_tutor', None) and current_user.is_tutor():
+        return True
     # тьютор/прочие: по правам
     return bool(
         has_permission(current_user, 'tools.schedule')
@@ -508,7 +535,8 @@ def schedule():
 @login_required
 def schedule_create_lesson():
     """Создание урока из расписания"""
-    if not _can_manage_schedule() or not has_permission(current_user, 'lesson.create'):
+    # tutor должен иметь возможность создавать уроки из расписания (QA).
+    if not _can_manage_schedule() or (not has_permission(current_user, 'lesson.create') and not current_user.is_tutor()):
         flash('У вас недостаточно прав для создания уроков.', 'danger')
         return redirect(url_for('schedule.schedule'))
         
@@ -678,7 +706,7 @@ def schedule_create_lesson():
 @login_required
 def schedule_reschedule_lesson(lesson_id: int):
     """Перенос урока на другое время (AJAX)."""
-    if not _can_manage_schedule() or not has_permission(current_user, 'lesson.edit'):
+    if not _can_manage_schedule() or (not has_permission(current_user, 'lesson.edit') and not current_user.is_tutor()):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     data = request.get_json(silent=True) or {}
     if not isinstance(data, dict):
@@ -735,7 +763,7 @@ def schedule_reschedule_lesson(lesson_id: int):
 @login_required
 def schedule_set_status(lesson_id: int):
     """Быстрое изменение статуса урока (AJAX)."""
-    if not _can_manage_schedule() or not has_permission(current_user, 'lesson.edit'):
+    if not _can_manage_schedule() or (not has_permission(current_user, 'lesson.edit') and not current_user.is_tutor()):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     data = request.get_json(silent=True) or {}
     if not isinstance(data, dict):
@@ -776,7 +804,7 @@ def schedule_set_status(lesson_id: int):
 @login_required
 def schedule_update_lesson(lesson_id: int):
     """Инлайн-редактирование ключевых полей урока (AJAX)."""
-    if not _can_manage_schedule() or not has_permission(current_user, 'lesson.edit'):
+    if not _can_manage_schedule() or (not has_permission(current_user, 'lesson.edit') and not current_user.is_tutor()):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     data = request.get_json(silent=True) or {}
     if not isinstance(data, dict):
@@ -1171,7 +1199,7 @@ def schedule_templates_list():
 @schedule_bp.route('/schedule/templates/api/create', methods=['POST'])
 @login_required
 def schedule_templates_create():
-    if not _can_manage_schedule() or not has_permission(current_user, 'lesson.create'):
+    if not _can_manage_schedule() or (not has_permission(current_user, 'lesson.create') and not current_user.is_tutor()):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
     data = request.get_json(silent=True) or {}
@@ -1258,7 +1286,7 @@ def schedule_templates_delete(slot_id: int):
 @schedule_bp.route('/schedule/templates/api/from-lesson/<int:lesson_id>', methods=['POST'])
 @login_required
 def schedule_templates_create_from_lesson(lesson_id: int):
-    if not _can_manage_schedule() or not has_permission(current_user, 'lesson.create'):
+    if not _can_manage_schedule() or (not has_permission(current_user, 'lesson.create') and not current_user.is_tutor()):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
     data = request.get_json(silent=True) or {}
@@ -1308,7 +1336,7 @@ def schedule_templates_create_from_lesson(lesson_id: int):
 @login_required
 def schedule_templates_apply_week():
     """Сгенерировать уроки на текущую неделю по шаблонам."""
-    if not _can_manage_schedule() or not has_permission(current_user, 'lesson.create'):
+    if not _can_manage_schedule() or (not has_permission(current_user, 'lesson.create') and not current_user.is_tutor()):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
     data = request.get_json(silent=True) or {}
