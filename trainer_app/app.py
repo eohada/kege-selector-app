@@ -391,8 +391,9 @@ def main():
             st.caption("Подсветка недоступна: установи `streamlit-ace` (или запусти в окружении, где он уже есть).")
         if code_val is None:
             code_val = ""
-        # Persist both "editor widget value" and "platform code value"
-        st.session_state['code_editor'] = code_val
+        # Do NOT write into st.session_state[editor_key] after widget creation (Streamlit запрещает).
+        # Keep a separate mirror value for our app logic.
+        st.session_state['code_editor_value'] = code_val
         if len(code_val) > 20000:
             st.warning("Код слишком большой, обрезаю до 20 000 символов.")
             code_val = code_val[:20000]
