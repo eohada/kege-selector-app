@@ -318,6 +318,12 @@ def schedule():
             return redirect(url_for('schedule.schedule', week=week_offset, timezone=timezone))
         query = query.filter(Lesson.student_id == student_filter)
 
+    # По требованиям QA: в режиме "Неделя" запланированные уроки не показываем по умолчанию
+    # (чтобы не дублировать план в профиле ученика/дашбордах и не засорять недельный вид).
+    # Но если пользователь явно выбрал фильтр статуса — уважаем его.
+    if (not status_filter) and view_mode == 'week' and (current_user.is_student() or current_user.is_tutor()):
+        query = query.filter((Lesson.status.is_(None)) | (Lesson.status != 'planned'))
+
     lessons = query.options(db.joinedload(Lesson.student)).order_by(Lesson.lesson_date).all()
 
     real_events = []

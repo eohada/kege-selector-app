@@ -240,6 +240,31 @@ def lesson_view(lesson_id):
 @login_required
 def lesson_delete(lesson_id):
     """Удаление урока"""
+    # Удаление урока должно быть недоступно ученику/родителю.
+    # Для тьютора разрешаем, если есть хотя бы права управления уроками/расписанием
+    # (т.к. `lesson.delete` может быть не включён в RolePermission/DEFAULT_ROLE_PERMISSIONS).
+    try:
+        if current_user.is_student() or current_user.is_parent():
+            from flask import abort
+            abort(403)
+    except Exception:
+        from flask import abort
+        abort(403)
+
+    try:
+        can_delete = bool(
+            (current_user.is_admin() or current_user.is_creator())
+            or has_permission(current_user, 'tools.schedule')
+            or has_permission(current_user, 'lesson.edit')
+            or has_permission(current_user, 'lesson.create')
+        )
+    except Exception:
+        can_delete = False
+
+    if not can_delete:
+        from flask import abort
+        abort(403)
+
     lesson = Lesson.query.get_or_404(lesson_id)
     student_id = lesson.student_id
     student_name = lesson.student.name if lesson.student else None

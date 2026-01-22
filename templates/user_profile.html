@@ -257,7 +257,7 @@
                                         {% endif %}
                                         <a href="{{ url_for('students.students_list') }}" class="neo-button outline" style="text-decoration:none;">
                                             <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" class="ui-icon ui-icon--sm">
-                                            Ученики
+                                            {{ 'Дети' if current_user.is_parent() else 'Ученики' }}
                                         </a>
                                         {% if has_permission(current_user, 'assignment.view') %}
                                         <a href="{{ url_for('assignments.assignments_list') }}" class="neo-button outline" style="text-decoration:none;">

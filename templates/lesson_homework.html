@@ -345,6 +345,12 @@
                     <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button accent sm">
                         <i class="fas fa-edit"></i> Редактировать урок
                     </a>
+                    <form method="POST" action="{{ url_for('lessons.lesson_delete', lesson_id=lesson.lesson_id) }}" style="display:inline;" onsubmit="return confirm('Удалить урок? Это действие нельзя отменить.');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="neo-button danger sm" title="Удалить урок">
+                            <i class="fas fa-trash"></i> Удалить урок
+                        </button>
+                    </form>
                     {% endif %}
                     <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button outline sm">
                         <i class="fas fa-arrow-left"></i> Назад в профиль
@@ -894,9 +900,13 @@
                         {% elif assignment_type == 'exam' %}
                         <a href="{{ url_for('lessons.lesson_exam_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" target="_blank"><i class="fas fa-download"></i> Экспорт Провер.</a>
                         {% endif %}
-                    {% else %}
+                    {% elif is_student_view %}
                         <button type="submit" class="neo-button accent" {% if is_read_only %}disabled{% endif %}><i class="fas fa-save"></i> Сохранить черновик</button>
                         <button type="submit" class="neo-button outline" {% if is_read_only %}disabled{% endif %} formaction="{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_submit', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_submit', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_submit', lesson_id=lesson.lesson_id) }}{% endif %}"><i class="fas fa-check-double"></i> Сдать работу</button>
+                    {% else %}
+                        <div style="color: var(--text-muted); font-weight: 700;">
+                            Режим просмотра: отправка/черновики доступны только ученику.
+                        </div>
                     {% endif %}
                 </div>
 
