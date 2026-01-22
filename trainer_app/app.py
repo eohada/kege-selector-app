@@ -133,9 +133,40 @@ def main():
         except Exception:
             pass
 
-    task_type = st.sidebar.number_input("Номер задания", min_value=1, max_value=27, step=1, value=int(st.session_state['task_type']))
+    # Load stats so user sees which task numbers exist in DB
+    counts: dict[int, int] = {}
+    try:
+        stats = client.get_task_stats()
+        raw = (stats.get('counts_by_task_number') or {}) if isinstance(stats, dict) else {}
+        if isinstance(raw, dict):
+            for k, v in raw.items():
+                try:
+                    counts[int(k)] = int(v)
+                except Exception:
+                    continue
+    except Exception:
+        counts = {}
+
+    # Pick a reasonable default: first available task_number, otherwise keep existing default
+    if counts and int(st.session_state.get('task_type') or 0) not in counts:
+        st.session_state['task_type'] = int(sorted(counts.keys())[0])
+
+    options = list(range(1, 28))
+    def _fmt(n: int) -> str:
+        c = counts.get(int(n), 0)
+        return f"№{n}  (в базе: {c})"
+
+    task_type = st.sidebar.selectbox(
+        "Номер задания",
+        options=options,
+        index=max(0, min(len(options) - 1, int(st.session_state.get('task_type') or 24) - 1)),
+        format_func=_fmt,
+    )
     st.session_state['task_type'] = int(task_type)
     st.session_state['seen_task_ids'].setdefault(int(task_type), [])
+
+    if counts and counts.get(int(task_type), 0) <= 0:
+        st.sidebar.warning("Для этого номера заданий нет в базе. Нужно сначала наполнить таблицу `Tasks`.")
 
     colA, colB = st.sidebar.columns(2)
     # Optional: pinned task_id from query params

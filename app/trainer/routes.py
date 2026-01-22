@@ -185,6 +185,19 @@ def trainer_task_get(task_id: int):
     return jsonify({'success': True, 'task': _task_to_payload(task)})
 
 
+@trainer_bp.route('/internal/trainer/task/stats', methods=['GET'])
+def trainer_task_stats():
+    _ = _get_trainer_user_from_token(require_permission='trainer.use')
+    rows = (
+        db.session.query(Tasks.task_number, db.func.count(Tasks.task_id))
+        .group_by(Tasks.task_number)
+        .order_by(Tasks.task_number.asc())
+        .all()
+    )
+    counts = {int(n): int(c) for (n, c) in rows if n is not None}
+    return jsonify({'success': True, 'counts_by_task_number': counts})
+
+
 @trainer_bp.route('/internal/trainer/task/stream/start', methods=['POST'])
 @csrf.exempt
 def trainer_stream_start():

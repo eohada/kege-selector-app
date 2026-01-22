@@ -82,7 +82,7 @@ def _request_with_retries(
 class GroqClient(LlmClient):
     provider: ProviderName = 'groq'
 
-    def __init__(self, api_key: str, model: str = 'llama-3.1-70b-versatile', base_url: str = 'https://api.groq.com/openai/v1'):
+    def __init__(self, api_key: str, model: str = 'llama-3.3-70b-versatile', base_url: str = 'https://api.groq.com/openai/v1'):
         self.api_key = api_key
         self.model = model
         self.base_url = base_url.rstrip('/')
@@ -183,12 +183,12 @@ def get_llm_client() -> LlmClient | None:
         model = (os.environ.get('GEMINI_MODEL') or 'gemini-1.5-flash').strip()
         return GeminiClient(api_key=gemini_key, model=model)
     if provider == 'groq' and groq_key:
-        model = (os.environ.get('GROQ_MODEL') or 'llama-3.1-70b-versatile').strip()
+        model = (os.environ.get('GROQ_MODEL') or 'llama-3.3-70b-versatile').strip()
         return GroqClient(api_key=groq_key, model=model)
 
     # Auto pick
     if groq_key:
-        model = (os.environ.get('GROQ_MODEL') or 'llama-3.1-70b-versatile').strip()
+        model = (os.environ.get('GROQ_MODEL') or 'llama-3.3-70b-versatile').strip()
         return GroqClient(api_key=groq_key, model=model)
     if gemini_key:
         model = (os.environ.get('GEMINI_MODEL') or 'gemini-1.5-flash').strip()
@@ -207,12 +207,12 @@ def get_llm_info() -> dict[str, Any]:
 
     picked = None
     if provider == 'groq' and groq_key:
-        picked = {'provider': 'groq', 'model': (os.environ.get('GROQ_MODEL') or 'llama-3.1-70b-versatile').strip()}
+        picked = {'provider': 'groq', 'model': (os.environ.get('GROQ_MODEL') or 'llama-3.3-70b-versatile').strip()}
     elif provider == 'gemini' and gemini_key:
         picked = {'provider': 'gemini', 'model': (os.environ.get('GEMINI_MODEL') or 'gemini-1.5-flash').strip()}
     else:
         if groq_key:
-            picked = {'provider': 'groq', 'model': (os.environ.get('GROQ_MODEL') or 'llama-3.1-70b-versatile').strip()}
+            picked = {'provider': 'groq', 'model': (os.environ.get('GROQ_MODEL') or 'llama-3.3-70b-versatile').strip()}
         elif gemini_key:
             picked = {'provider': 'gemini', 'model': (os.environ.get('GEMINI_MODEL') or 'gemini-1.5-flash').strip()}
 

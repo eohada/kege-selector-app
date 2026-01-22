@@ -29,6 +29,11 @@ class PlatformClient:
         r.raise_for_status()
         return r.json()
 
+    def get_task_stats(self) -> dict[str, Any]:
+        r = requests.get(f'{self.base_url}/internal/trainer/task/stats', headers=self._headers(), timeout=self.timeout_seconds)
+        r.raise_for_status()
+        return r.json()
+
     def stream_start(
         self,
         task_type: int,
