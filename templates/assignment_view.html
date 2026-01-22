@@ -10,6 +10,163 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     {% include '_ux_enhancements.html' %}
+    <style>
+        .page-hero {
+            background: radial-gradient(900px 420px at 14% 10%, rgba(0, 255, 213, 0.10), transparent 60%),
+                        radial-gradient(900px 420px at 85% 20%, rgba(31, 123, 255, 0.10), transparent 55%);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .hero-top {
+            display:flex;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+        .hero-title {
+            font-size: 2.05rem;
+            font-weight: 900;
+            margin: 0.35rem 0 0 0;
+            letter-spacing: -0.01em;
+            line-height: 1.15;
+        }
+        .hero-meta {
+            margin-top: 0.8rem;
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            border-radius: 999px;
+            padding: 0.25rem 0.55rem;
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            font-weight: 900;
+            font-size: 0.82rem;
+            color: var(--text-primary);
+        }
+        .pill--danger { border-color: rgba(255, 77, 107, 0.55); background: rgba(255, 77, 107, 0.10); }
+        .pill--success { border-color: rgba(45, 212, 191, 0.55); background: rgba(45, 212, 191, 0.10); }
+        .pill--warning { border-color: rgba(255, 179, 71, 0.55); background: rgba(255, 179, 71, 0.10); }
+        .pill--accent { border-color: rgba(0, 255, 213, 0.55); background: rgba(0, 255, 213, 0.10); }
+        .meta-strong { color: var(--text-primary); font-weight: 900; }
+
+        .kpi-grid {
+            margin-top: 1.1rem;
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+        @media (max-width: 980px) {
+            .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        .kpi {
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            border-radius: var(--radius-lg);
+            padding: 0.9rem 1rem;
+        }
+        .kpi-label { color: var(--text-muted); font-weight: 800; font-size: 0.9rem; }
+        .kpi-value { margin-top: 0.35rem; font-size: 1.35rem; font-weight: 900; }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1.05fr 0.95fr;
+            gap: 1rem;
+            align-items: start;
+        }
+        @media (max-width: 980px) {
+            .layout { grid-template-columns: 1fr; }
+        }
+
+        .card {
+            border: 1px solid var(--stroke-1);
+            background: var(--surface-1);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+        }
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 900;
+            margin: 0;
+        }
+        .card-sub {
+            color: var(--text-muted);
+            margin-top: 0.4rem;
+            line-height: 1.5;
+        }
+
+        .filters {
+            margin-top: 0.9rem;
+            display: grid;
+            grid-template-columns: 1fr 1.1fr auto;
+            gap: 0.75rem;
+            align-items: end;
+        }
+        @media (max-width: 980px) {
+            .filters { grid-template-columns: 1fr; }
+        }
+        .filter-label { color: var(--text-muted); font-weight: 800; font-size: 0.9rem; margin-bottom: 0.35rem; display:block; }
+
+        .submissions {
+            margin-top: 0.9rem;
+            display: grid;
+            gap: 0.75rem;
+        }
+        .sub-card {
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            border-radius: var(--radius-lg);
+            padding: 0.9rem 1rem;
+        }
+        .sub-head {
+            display:flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+        .sub-name { font-weight: 900; }
+        .sub-meta { margin-top: 0.35rem; color: var(--text-muted); font-size: 0.92rem; display:flex; gap: .65rem; flex-wrap: wrap; align-items: center; }
+        .status-badge { border-radius: 999px; padding: 0.25rem 0.55rem; font-weight: 900; font-size: 0.82rem; border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02); }
+        .status-assigned { border-color: rgba(255,255,255,0.18); }
+        .status-in_progress { border-color: rgba(31,123,255,0.45); background: rgba(31,123,255,0.12); }
+        .status-submitted { border-color: rgba(0,255,213,0.55); background: rgba(0,255,213,0.10); }
+        .status-late { border-color: rgba(255,179,71,0.55); background: rgba(255,179,71,0.10); }
+        .status-graded { border-color: rgba(45,212,191,0.55); background: rgba(45,212,191,0.10); }
+        .status-returned { border-color: rgba(255,179,71,0.55); background: rgba(255,179,71,0.10); }
+
+        .task-list { margin-top: 0.9rem; display: grid; gap: 0.75rem; }
+        .task {
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            border-radius: var(--radius-lg);
+            padding: 0.9rem 1rem;
+        }
+        .task-head { display:flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; align-items: flex-start; }
+        .task-title { font-weight: 900; color: var(--text-primary); }
+        .task-sub { color: var(--text-muted); font-size: 0.92rem; margin-top: 0.3rem; }
+        .task-body { margin-top: 0.75rem; line-height: 1.8; }
+        details.task-details > summary {
+            list-style: none;
+            cursor: pointer;
+            display:flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: .6rem;
+        }
+        details.task-details > summary::-webkit-details-marker { display:none; }
+        .summary-hint { color: var(--text-muted); font-weight: 800; }
+    </style>
 </head>
 <body>
     <div class="app-shell">
@@ -17,106 +174,288 @@
         {% include '_primary_nav.html' %}
 
         <main style="margin-top: 1.25rem;">
-        <div style="margin-bottom: 2rem;">
-            <a href="{{ url_for('assignments.assignments_list') }}" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
-                ← Назад к списку работ
-            </a>
-            <h1 style="font-size: 2.5em; font-weight: 800; margin-bottom: 0.5rem;">{{ assignment.title }}</h1>
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
-                <span class="badge" style="padding: 0.5rem 1rem; border-radius: var(--radius-sm); font-weight: 600;">
-                    {% if assignment.assignment_type == 'homework' %}Домашнее задание
-                    {% elif assignment.assignment_type == 'classwork' %}Классная работа
-                    {% elif assignment.assignment_type == 'exam' %}Проверочная работа
-                    {% else %}{{ assignment.assignment_type }}{% endif %}
-                </span>
-                <span style="color: var(--text-muted);">📅 Дедлайн: {{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</span>
-                <span style="color: var(--text-muted);">📝 Задач: {{ assignment.tasks|length }}</span>
-            </div>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
-            <div>
-                <h2 style="font-size: 1.5em; margin-bottom: 1rem;">Задачи в работе</h2>
-                {% for task in assignment.tasks|sort(attribute='order_index') %}
-                <div style="background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-                        <div>
-                            <div style="font-size: 1.2em; font-weight: 700; color: var(--accent-1);">
-                                Задание {{ task.task.task_number }}
-                            </div>
-                            <div style="font-size: 0.9em; color: var(--text-muted); margin-top: 0.25rem;">
-                                Максимальный балл: {{ task.max_score }}
-                            </div>
+            <section class="page-hero">
+                <div class="hero-top">
+                    <div style="min-width: 0;">
+                        <a href="{{ url_for('assignments.assignments_list') }}" class="neo-button outline" style="text-decoration:none;">
+                            ← Назад к списку
+                        </a>
+                        <h1 class="hero-title">{{ assignment.title }}</h1>
+                        <div class="hero-meta">
+                            <span class="pill">Тип: <span class="meta-strong">
+                                {% if assignment.assignment_type == 'homework' %}ДЗ
+                                {% elif assignment.assignment_type == 'classwork' %}КР
+                                {% elif assignment.assignment_type == 'exam' %}Проверочная
+                                {% elif assignment.assignment_type == 'test' %}Тест
+                                {% else %}{{ assignment.assignment_type }}{% endif %}
+                            </span></span>
+                            <span class="pill">📅 Дедлайн: <span class="meta-strong">{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</span></span>
+                            <span class="pill">🧩 Задач: <span class="meta-strong">{{ assignment.tasks|length }}</span></span>
+                            <span class="pill">👥 Учеников: <span class="meta-strong">{{ counts.total if counts is defined else (submissions|length) }}</span></span>
                         </div>
-                        {% if task.requires_manual_grading %}
-                        <span class="badge" style="background: var(--warning); color: white; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm);">
-                            Ручная проверка
-                        </span>
-                        {% else %}
-                        <span class="badge" style="background: var(--success); color: white; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm);">
-                            Авто-проверка
-                        </span>
-                        {% endif %}
                     </div>
-                    <div style="line-height: 1.8;">
-                        {{ task.task.content_html|safe }}
+
+                    <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items:center; justify-content:flex-end;">
+                        {% if can_manage %}
+                        <button type="button" class="neo-button outline" onclick="duplicateAssignment({{ assignment.assignment_id }})">
+                            <i class="fas fa-clone ui-icon ui-icon--sm"></i> Дублировать
+                        </button>
+                        {% if assignment.is_active %}
+                        <button type="button" class="neo-button ghost" onclick="archiveAssignment({{ assignment.assignment_id }})" style="color: var(--danger);">
+                            <i class="fas fa-archive ui-icon ui-icon--sm"></i> В архив
+                        </button>
+                        {% endif %}
+                        {% endif %}
+                        <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="neo-button ghost" style="text-decoration:none;">
+                            ✅ Очередь проверки
+                        </a>
                     </div>
                 </div>
-                {% endfor %}
-            </div>
-            
-            <div>
-                <h2 style="font-size: 1.5em; margin-bottom: 1rem;">Сдачи работы</h2>
-                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    {% for submission in submissions %}
-                    <div style="background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.75rem;">
-                            <div>
-                                <div style="font-weight: 700; margin-bottom: 0.25rem;">{{ submission.student.name }}</div>
-                                <span class="status-badge status-{{ submission.status.lower() }}" style="padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85em; font-weight: 600;">
-                                    {% if submission.status == 'ASSIGNED' %}Назначено
-                                    {% elif submission.status == 'IN_PROGRESS' %}В процессе
-                                    {% elif submission.status == 'SUBMITTED' %}Сдано
-                                    {% elif submission.status == 'GRADED' %}Проверено
-                                    {% elif submission.status == 'RETURNED' %}На доработку
-                                    {% else %}{{ submission.status }}{% endif %}
-                                </span>
-                                {% if submission.is_late %}
-                                <span class="badge" style="background: var(--danger); color: white; padding: 0.25rem 0.75rem; border-radius: var(--radius-sm); font-size: 0.85em; margin-left: 0.5rem;">
-                                    Опоздание
-                                </span>
-                                {% endif %}
-                            </div>
+
+                <div class="kpi-grid">
+                    <div class="kpi">
+                        <div class="kpi-label">Нужно проверить</div>
+                        <div class="kpi-value">{{ (counts.needs_grading if counts is defined else 0) }}</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">Сдано</div>
+                        <div class="kpi-value">{{ (counts.submitted if counts is defined else 0) }}</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">На доработке</div>
+                        <div class="kpi-value">{{ (counts.returned if counts is defined else 0) }}</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">В процессе</div>
+                        <div class="kpi-value">{{ (counts.in_progress if counts is defined else 0) }}</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">Назначено</div>
+                        <div class="kpi-value">{{ (counts.assigned if counts is defined else 0) }}</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="kpi-label">Проверено</div>
+                        <div class="kpi-value">{{ (counts.graded if counts is defined else 0) }}</div>
+                    </div>
+                </div>
+            </section>
+
+            <div class="layout">
+                <section class="card">
+                    <h2 class="card-title">Сдачи</h2>
+                    <div class="card-sub">Фильтруй по статусу и переходи в проверку конкретной сдачи.</div>
+
+                    <form method="GET" class="filters">
+                        <div>
+                            <label class="filter-label" for="status">Статус</label>
+                            <select class="neo-select" id="status" name="status">
+                                <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Все</option>
+                                <option value="needs_grading" {% if status_filter == 'needs_grading' %}selected{% endif %}>Нужно проверить</option>
+                                <option value="returned" {% if status_filter == 'returned' %}selected{% endif %}>На доработке</option>
+                                <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Не сдано</option>
+                                <option value="graded" {% if status_filter == 'graded' %}selected{% endif %}>Проверено</option>
+                            </select>
                         </div>
-                        {% if submission.status == 'SUBMITTED' or submission.status == 'GRADED' %}
-                        <div style="margin-top: 0.75rem;">
-                            <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="btn-primary" style="display: block; text-align: center; padding: 0.75rem;">
-                                {% if submission.status == 'SUBMITTED' %}Проверить
-                                {% else %}Просмотр проверки{% endif %}
+                        <div>
+                            <label class="filter-label" for="student">Ученик</label>
+                            <input class="neo-input" id="student" name="student" value="{{ student_query }}" placeholder="Поиск по имени…">
+                        </div>
+                        <div style="display:flex; gap:.6rem; justify-content:flex-end; flex-wrap:wrap;">
+                            <button type="submit" class="neo-button accent">
+                                <i class="fas fa-filter ui-icon ui-icon--sm"></i> Применить
+                            </button>
+                            <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button outline" style="text-decoration:none;">
+                                <i class="fas fa-rotate-left ui-icon ui-icon--sm"></i> Сброс
                             </a>
                         </div>
-                        {% endif %}
-                        {% if submission.status == 'GRADED' and submission.total_score is not none %}
-                        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--stroke-1); text-align: center;">
-                            <div style="font-size: 1.2em; font-weight: 700; color: var(--accent-1);">
-                                {{ submission.total_score }}/{{ submission.max_score }} ({{ "%.1f"|format(submission.percentage) }}%)
-                            </div>
+                    </form>
+
+                    {% if can_manage and status_filter in ['all', 'needs_grading'] and (counts.needs_grading if counts is defined else 0) > 0 %}
+                    <div style="margin-top: 0.9rem; display:flex; gap:.6rem; flex-wrap:wrap; align-items:center;">
+                        <form method="POST" action="{{ url_for('assignments.assignment_review_bulk_update', assignment_id=assignment.assignment_id) }}">
+                            {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                            <input type="hidden" name="action" value="mark_returned">
+                            <input type="hidden" name="status" value="submitted">
+                            <input type="hidden" name="source" value="assignments">
+                            <input type="hidden" name="assignment_type" value="{{ assignment.assignment_type }}">
+                            <input type="hidden" name="student" value="">
+                            <button type="submit" class="neo-button ghost" style="color: var(--warning);">
+                                <i class="fas fa-undo ui-icon ui-icon--sm"></i> Вернуть все сданные на доработку
+                            </button>
+                        </form>
+                        <div style="color: var(--text-muted); font-size: 0.92rem; line-height: 1.45;">
+                            Массовое действие применяется только к сдачам со статусом «Сдано».
                         </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="submissions">
+                        {% if submissions and submissions|length > 0 %}
+                            {% for submission in submissions %}
+                            {% set st = (submission.status or '')|lower %}
+                            <div class="sub-card">
+                                <div class="sub-head">
+                                    <div style="min-width: 0;">
+                                        <div class="sub-name">{{ submission.student.name if submission.student else '—' }}</div>
+                                        <div class="sub-meta">
+                                            <span class="status-badge status-{{ st }}">
+                                                {% if submission.status == 'ASSIGNED' %}Назначено
+                                                {% elif submission.status == 'IN_PROGRESS' %}В процессе
+                                                {% elif submission.status == 'SUBMITTED' %}Сдано
+                                                {% elif submission.status == 'LATE' %}Сдано (поздно)
+                                                {% elif submission.status == 'GRADED' %}Проверено
+                                                {% elif submission.status == 'RETURNED' %}На доработку
+                                                {% else %}{{ submission.status }}{% endif %}
+                                            </span>
+                                            {% if submission.submitted_at %}
+                                            <span>🕒 {{ submission.submitted_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; justify-content:flex-end;">
+                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="neo-button outline sm" style="text-decoration:none;">
+                                            Открыть
+                                        </a>
+                                        {% if submission.status in ['SUBMITTED', 'LATE'] %}
+                                        <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="neo-button accent sm" style="text-decoration:none;">
+                                            Проверить
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                {% if submission.status == 'GRADED' and submission.total_score is not none and submission.max_score is not none %}
+                                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--stroke-1); display:flex; justify-content: space-between; gap: .75rem; flex-wrap: wrap; align-items:center;">
+                                    <div style="color: var(--text-muted);">
+                                        Итог:
+                                        <span class="meta-strong">{{ submission.total_score }}/{{ submission.max_score }}</span>
+                                    </div>
+                                    <span class="pill pill--success">
+                                        {{ "%.1f"|format(submission.percentage) }}%
+                                    </span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div style="margin-top: 0.9rem; color: var(--text-muted);">
+                                По текущим фильтрам сдач нет.
+                            </div>
                         {% endif %}
                     </div>
-                    {% endfor %}
-                </div>
+                </section>
+
+                <section class="card">
+                    <h2 class="card-title">Задачи</h2>
+                    <div class="card-sub">Состав работы. Для быстроты разверни нужное задание.</div>
+
+                    <div class="task-list">
+                        {% for task in assignment.tasks|sort(attribute='order_index') %}
+                        <div class="task">
+                            <details class="task-details">
+                                <summary>
+                                    <div style="min-width: 0;">
+                                        <div class="task-title">Задание №{{ task.task.task_number }}</div>
+                                        <div class="task-sub">Максимальный балл: <span class="meta-strong">{{ task.max_score }}</span></div>
+                                    </div>
+                                    <div style="display:flex; gap:.4rem; flex-wrap: wrap; align-items:center; justify-content:flex-end;">
+                                        {% if task.requires_manual_grading %}
+                                        <span class="pill pill--warning">Ручная</span>
+                                        {% else %}
+                                        <span class="pill pill--success">Авто</span>
+                                        {% endif %}
+                                        <span class="summary-hint">Открыть</span>
+                                    </div>
+                                </summary>
+                                <div class="task-body">
+                                    {{ task.task.content_html|safe }}
+                                </div>
+                            </details>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </section>
             </div>
-        </div>
         </main>
     </div>
-    
-    <style>
-        .status-assigned { background: var(--surface-2); color: var(--text-primary); }
-        .status-in_progress { background: var(--accent-2); color: white; }
-        .status-submitted { background: var(--accent-1); color: white; }
-        .status-graded { background: var(--success); color: white; }
-        .status-returned { background: var(--warning); color: white; }
-    </style>
+
+    <script>
+        (function () {
+            'use strict';
+
+            const CSRF_TOKEN = (document.querySelector('meta[name="csrf-token"]') || { getAttribute: () => null }).getAttribute('content') || '';
+
+            function toastAny(type, msg) {
+                try {
+                    const t = (window.toast || (typeof toast !== 'undefined' ? toast : null));
+                    if (!t) return;
+                    if (type === 'success') t.success(msg);
+                    else if (type === 'warning') t.warning(msg);
+                    else if (type === 'info') t.info(msg);
+                    else t.error(msg);
+                } catch (e) {}
+            }
+
+            async function postJson(url, payload) {
+                const headers = { 'Content-Type': 'application/json' };
+                if (CSRF_TOKEN) headers['X-CSRFToken'] = CSRF_TOKEN;
+
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers,
+                    body: payload ? JSON.stringify(payload) : JSON.stringify({}),
+                    credentials: 'same-origin',
+                });
+
+                let data = null;
+                try { data = await res.json(); } catch (e) { data = null; }
+                return { ok: res.ok, status: res.status, data };
+            }
+
+            window.archiveAssignment = async function (assignmentId) {
+                try {
+                    if (!assignmentId) return;
+                    const confirmed = window.confirm('Архивировать работу? Она исчезнет из активного списка (но останется в архиве).');
+                    if (!confirmed) return;
+
+                    const url = '/assignments/' + encodeURIComponent(String(assignmentId)) + '/archive';
+                    const { ok, data } = await postJson(url, {});
+                    if (!ok || !data || !data.success) {
+                        toastAny('error', (data && data.error) ? data.error : 'Не удалось архивировать.');
+                        return;
+                    }
+                    toastAny('success', 'Работа отправлена в архив.');
+                    window.location.href = '/assignments?status=archived&archived=1';
+                } catch (e) {
+                    toastAny('error', 'Ошибка архивации.');
+                }
+            };
+
+            window.duplicateAssignment = async function (assignmentId) {
+                try {
+                    if (!assignmentId) return;
+                    const confirmed = window.confirm('Создать копию работы и назначить тем же ученикам (дедлайн +7 дней)?');
+                    if (!confirmed) return;
+
+                    const url = '/assignments/' + encodeURIComponent(String(assignmentId)) + '/duplicate';
+                    const { ok, data } = await postJson(url, {});
+                    if (!ok || !data || !data.success) {
+                        toastAny('error', (data && data.error) ? data.error : 'Не удалось создать копию.');
+                        return;
+                    }
+                    const newId = data.assignment_id;
+                    toastAny('success', 'Копия создана. Открываю…');
+                    if (newId) {
+                        window.location.href = '/assignments/' + encodeURIComponent(String(newId));
+                    } else {
+                        window.location.reload();
+                    }
+                } catch (e) {
+                    toastAny('error', 'Ошибка при создании копии.');
+                }
+            };
+        })();
+    </script>
 </body>
 </html>

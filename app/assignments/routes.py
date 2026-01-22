@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timedelta
 from flask import render_template, request, jsonify, flash, redirect, url_for
 from flask_login import login_required, current_user
-from sqlalchemy import and_, or_, func
+from sqlalchemy import and_, or_, func, case
 from sqlalchemy.orm import joinedload
 
 from app.assignments import assignments_bp
@@ -21,6 +21,50 @@ from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents
 
 logger = logging.getLogger(__name__)
+
+def _normalize_assignment_type(value: str | None) -> str:
+    v = (value or '').strip().lower()
+    if v in {'homework', 'classwork', 'exam', 'test'}:
+        return v
+    return ''
+
+
+def _assignment_type_label_short(value: str | None) -> str:
+    v = _normalize_assignment_type(value)
+    return {
+        'homework': 'ДЗ',
+        'classwork': 'КР',
+        'exam': 'Проверочная',
+        'test': 'Тест',
+    }.get(v, v or '—')
+
+
+def _assignment_type_label_long(value: str | None) -> str:
+    v = _normalize_assignment_type(value)
+    return {
+        'homework': 'Домашняя работа',
+        'classwork': 'Классная работа',
+        'exam': 'Проверочная работа',
+        'test': 'Тест',
+    }.get(v, v or 'Работа')
+
+
+def _now_naive_msk() -> datetime:
+    now = moscow_now()
+    try:
+        return now.astimezone(moscow_now().tzinfo).replace(tzinfo=None)  # type: ignore[attr-defined]
+    except Exception:
+        try:
+            return now.replace(tzinfo=None)  # type: ignore[call-arg]
+        except Exception:
+            return datetime.now()
+
+
+def _safe_int(value, default: int = 0) -> int:
+    try:
+        return int(value or 0)
+    except Exception:
+        return default
 
 
 def _can_manage_all_rubrics() -> bool:
@@ -565,30 +609,330 @@ def distribute_assignment():
 @login_required
 @check_access('assignment.view')
 def assignments_list():
-    """Список всех работ для учителя"""
+    """
+    Список работ (центр управления):
+    - фильтры/поиск/сортировка
+    - агрегированная статистика по сдачам без N+1
+    - KPI по состояниям (нужно проверить/просрочено/на доработке/готово)
+    """
     scope = get_user_scope(current_user)
-    
-    query = Assignment.query.filter_by(is_active=True).order_by(Assignment.created_at.desc())
-    
-    # Фильтрация по доступу
-    if not scope['can_see_all']:
-        # Только работы, созданные текущим пользователем
-        query = query.filter_by(created_by_id=current_user.id)
-    
-    assignments = query.all()
-    
-    # Добавляем статистику
+
+    q_text = (request.args.get('q') or '').strip()
+    atype = _normalize_assignment_type(request.args.get('type'))
+    status_filter = (request.args.get('status') or 'all').strip().lower()
+    sort = (request.args.get('sort') or 'created_desc').strip().lower()
+    show_archived = (request.args.get('archived') or '').strip() == '1'
+
+    now = _now_naive_msk()
+
+    subq = (
+        db.session.query(
+            Submission.assignment_id.label('assignment_id'),
+            func.count(Submission.submission_id).label('total_students'),
+            func.sum(
+                case(
+                    (Submission.status.in_(['SUBMITTED', 'LATE', 'GRADED', 'RETURNED']), 1),
+                    else_=0,
+                )
+            ).label('submitted'),
+            func.sum(
+                case(
+                    (Submission.status.in_(['SUBMITTED', 'LATE']), 1),
+                    else_=0,
+                )
+            ).label('to_grade'),
+            func.sum(case((Submission.status == 'GRADED', 1), else_=0)).label('graded'),
+            func.sum(case((Submission.status == 'RETURNED', 1), else_=0)).label('returned'),
+            func.sum(case((Submission.status == 'IN_PROGRESS', 1), else_=0)).label('in_progress'),
+            func.sum(case((Submission.status == 'ASSIGNED', 1), else_=0)).label('assigned'),
+        )
+        .group_by(Submission.assignment_id)
+        .subquery()
+    )
+
+    tasks_subq = (
+        db.session.query(
+            AssignmentTask.assignment_id.label('assignment_id'),
+            func.count(AssignmentTask.assignment_task_id).label('tasks_count'),
+        )
+        .group_by(AssignmentTask.assignment_id)
+        .subquery()
+    )
+
+    total_students_col = func.coalesce(subq.c.total_students, 0)
+    submitted_col = func.coalesce(subq.c.submitted, 0)
+    graded_col = func.coalesce(subq.c.graded, 0)
+    to_grade_col = func.coalesce(subq.c.to_grade, 0)
+    returned_col = func.coalesce(subq.c.returned, 0)
+    in_progress_col = func.coalesce(subq.c.in_progress, 0)
+    assigned_col = func.coalesce(subq.c.assigned, 0)
+    pending_col = assigned_col + in_progress_col + returned_col
+    tasks_count_col = func.coalesce(tasks_subq.c.tasks_count, 0)
+
+    base_query = (
+        db.session.query(
+            Assignment,
+            total_students_col.label('total_students'),
+            submitted_col.label('submitted'),
+            graded_col.label('graded'),
+            to_grade_col.label('to_grade'),
+            returned_col.label('returned'),
+            in_progress_col.label('in_progress'),
+            assigned_col.label('assigned'),
+            tasks_count_col.label('tasks_count'),
+        )
+        .outerjoin(subq, subq.c.assignment_id == Assignment.assignment_id)
+        .outerjoin(tasks_subq, tasks_subq.c.assignment_id == Assignment.assignment_id)
+    )
+
+    if not show_archived:
+        base_query = base_query.filter(Assignment.is_active.is_(True))
+
+    if not scope.get('can_see_all'):
+        base_query = base_query.filter(Assignment.created_by_id == current_user.id)
+
+    if atype:
+        base_query = base_query.filter(func.lower(Assignment.assignment_type) == atype)
+
+    if q_text:
+        needle = f"%{q_text.lower()}%"
+        base_query = base_query.filter(func.lower(Assignment.title).like(needle))
+
+    # KPI считаем на "базовом" наборе (без status_filter и sort), чтобы табы были понятными
+    kpi_rows = base_query.all()
+
+    def _derive_flags(a: Assignment, row) -> dict:
+        total_students = _safe_int(getattr(row, 'total_students', 0))
+        to_grade = _safe_int(getattr(row, 'to_grade', 0))
+        returned = _safe_int(getattr(row, 'returned', 0))
+        in_progress = _safe_int(getattr(row, 'in_progress', 0))
+        assigned = _safe_int(getattr(row, 'assigned', 0))
+        pending = assigned + in_progress + returned
+
+        is_overdue = bool(a.deadline and a.deadline < now and pending > 0)
+        is_completed = bool(total_students > 0 and pending == 0 and to_grade == 0)
+        is_active = bool(a.deadline and a.deadline >= now and (pending > 0 or to_grade > 0))
+        return {
+            'total_students': total_students,
+            'to_grade': to_grade,
+            'returned': returned,
+            'in_progress': in_progress,
+            'assigned': assigned,
+            'pending': pending,
+            'is_overdue': is_overdue,
+            'is_completed': is_completed,
+            'is_active': is_active,
+        }
+
+    kpis = {
+        'total': 0,
+        'active': 0,
+        'needs_grading': 0,
+        'overdue': 0,
+        'returned': 0,
+        'completed': 0,
+        'archived': 0,
+    }
+    for row in kpi_rows:
+        a: Assignment = row[0]
+        flags = _derive_flags(a, row)
+        kpis['total'] += 1
+        if not a.is_active:
+            kpis['archived'] += 1
+        if flags['is_active']:
+            kpis['active'] += 1
+        if flags['to_grade'] > 0:
+            kpis['needs_grading'] += 1
+        if flags['is_overdue']:
+            kpis['overdue'] += 1
+        if flags['returned'] > 0:
+            kpis['returned'] += 1
+        if flags['is_completed']:
+            kpis['completed'] += 1
+
+    # Применяем status_filter
+    filtered_query = base_query
+    if status_filter == 'active':
+        filtered_query = filtered_query.filter(Assignment.deadline >= now).filter((pending_col > 0) | (to_grade_col > 0))
+    elif status_filter == 'needs_grading':
+        filtered_query = filtered_query.filter(to_grade_col > 0)
+    elif status_filter == 'overdue':
+        filtered_query = filtered_query.filter(Assignment.deadline < now).filter(pending_col > 0)
+    elif status_filter == 'returned':
+        filtered_query = filtered_query.filter(returned_col > 0)
+    elif status_filter == 'completed':
+        filtered_query = filtered_query.filter(total_students_col > 0).filter(pending_col == 0).filter(to_grade_col == 0)
+    elif status_filter == 'archived':
+        filtered_query = filtered_query.filter(Assignment.is_active.is_(False))
+
+    # Сортировка
+    if sort == 'deadline_asc':
+        filtered_query = filtered_query.order_by(Assignment.deadline.asc(), Assignment.created_at.desc())
+    elif sort == 'deadline_desc':
+        filtered_query = filtered_query.order_by(Assignment.deadline.desc(), Assignment.created_at.desc())
+    elif sort == 'title_asc':
+        filtered_query = filtered_query.order_by(func.lower(Assignment.title).asc(), Assignment.created_at.desc())
+    else:
+        filtered_query = filtered_query.order_by(Assignment.created_at.desc(), Assignment.assignment_id.desc())
+
+    rows = filtered_query.all()
+
     assignments_data = []
-    for assignment in assignments:
-        submissions = Submission.query.filter_by(assignment_id=assignment.assignment_id).all()
+    for row in rows:
+        assignment: Assignment = row[0]
+        total_students = _safe_int(getattr(row, 'total_students', 0))
+        submitted = _safe_int(getattr(row, 'submitted', 0))
+        graded = _safe_int(getattr(row, 'graded', 0))
+        to_grade = _safe_int(getattr(row, 'to_grade', 0))
+        returned = _safe_int(getattr(row, 'returned', 0))
+        in_progress = _safe_int(getattr(row, 'in_progress', 0))
+        assigned = _safe_int(getattr(row, 'assigned', 0))
+        tasks_count = _safe_int(getattr(row, 'tasks_count', 0))
+        pending = assigned + in_progress + returned
+
+        is_overdue = bool(assignment.deadline and assignment.deadline < now and pending > 0)
+        is_completed = bool(total_students > 0 and pending == 0 and to_grade == 0)
+
         assignments_data.append({
             'assignment': assignment,
-            'total_students': len(submissions),
-            'submitted': len([s for s in submissions if s.status in ['SUBMITTED', 'GRADED', 'RETURNED']]),
-            'graded': len([s for s in submissions if s.status == 'GRADED'])
+            'type_short': _assignment_type_label_short(assignment.assignment_type),
+            'type_long': _assignment_type_label_long(assignment.assignment_type),
+            'tasks_count': tasks_count,
+            'total_students': total_students,
+            'submitted': submitted,
+            'graded': graded,
+            'to_grade': to_grade,
+            'returned': returned,
+            'in_progress': in_progress,
+            'assigned': assigned,
+            'pending': pending,
+            'is_overdue': is_overdue,
+            'is_completed': is_completed,
+            'is_archived': bool(not assignment.is_active),
         })
-    
-    return render_template('assignments_list.html', assignments_data=assignments_data)
+
+    return render_template(
+        'assignments_list.html',
+        assignments_data=assignments_data,
+        filters={
+            'q': q_text,
+            'type': atype,
+            'status': status_filter,
+            'sort': sort,
+            'archived': '1' if show_archived else '0',
+        },
+        kpis=kpis,
+        now=now,
+        can_create=has_permission(current_user, 'assignment.create'),
+    )
+
+
+@assignments_bp.route('/assignments/<int:assignment_id>/archive', methods=['POST'])
+@login_required
+@check_access('assignment.create')
+def assignment_archive(assignment_id: int):
+    """Архивирует работу (soft-disable через is_active=False)."""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403  # comment
+
+    assignment = Assignment.query.get_or_404(assignment_id)
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all') and assignment.created_by_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    assignment.is_active = False
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Archive assignment failed: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Ошибка архивации'}), 500
+
+    return jsonify({'success': True}), 200
+
+
+@assignments_bp.route('/assignments/<int:assignment_id>/duplicate', methods=['POST'])
+@login_required
+@check_access('assignment.create')
+def assignment_duplicate(assignment_id: int):
+    """Быстро создаёт копию работы и раздаёт тем же ученикам (с новым дедлайном)."""
+    if current_user.is_student() or current_user.is_parent():  # comment
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403  # comment
+
+    src = Assignment.query.options(
+        joinedload(Assignment.tasks),
+        joinedload(Assignment.submissions),
+    ).get_or_404(assignment_id)
+
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all') and src.created_by_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    now = _now_naive_msk()
+    new_deadline = now + timedelta(days=7)
+
+    max_total = 0
+    try:
+        for t in (src.tasks or []):
+            max_total += int(getattr(t, 'max_score', 0) or 0)
+    except Exception:
+        max_total = None  # type: ignore[assignment]
+
+    new_assignment = Assignment(
+        title=f"{(src.title or 'Работа').strip()} (копия)",
+        description=src.description,
+        assignment_type=src.assignment_type,
+        deadline=new_deadline,
+        hard_deadline=bool(src.hard_deadline),
+        time_limit_minutes=src.time_limit_minutes,
+        created_by_id=current_user.id,
+        lesson_id=None,
+        rubric_template_id=src.rubric_template_id,
+        is_active=True,
+    )
+    db.session.add(new_assignment)
+    db.session.flush()
+
+    # Копируем задачи
+    for t in (src.tasks or []):
+        db.session.add(AssignmentTask(
+            assignment_id=new_assignment.assignment_id,
+            task_id=t.task_id,
+            order_index=t.order_index,
+            max_score=t.max_score,
+            requires_manual_grading=bool(t.requires_manual_grading),
+        ))
+
+    # Копируем получателей (student_id из Submissions)
+    student_ids = []
+    for s in (src.submissions or []):
+        if getattr(s, 'student_id', None):
+            student_ids.append(int(s.student_id))
+    # уникализируем, сохраняя порядок
+    uniq_ids = []
+    seen = set()
+    for sid in student_ids:
+        if sid not in seen:
+            seen.add(sid)
+            uniq_ids.append(sid)
+
+    for sid in uniq_ids:
+        db.session.add(Submission(
+            assignment_id=new_assignment.assignment_id,
+            student_id=sid,
+            status='ASSIGNED',
+            assigned_at=moscow_now(),
+            max_score=max_total,
+        ))
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Duplicate assignment failed: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Ошибка при создании копии'}), 500
+
+    return jsonify({'success': True, 'assignment_id': new_assignment.assignment_id}), 201
 
 
 @assignments_bp.route('/assignments/<int:assignment_id>')
@@ -606,12 +950,97 @@ def assignment_view(assignment_id):
     if not scope['can_see_all'] and assignment.created_by_id != current_user.id:
         flash('Доступ запрещен', 'danger')
         return redirect(url_for('assignments.assignments_list'))
-    
-    submissions = Submission.query.filter_by(assignment_id=assignment_id).all()
-    
-    return render_template('assignment_view.html', 
-                         assignment=assignment, 
-                         submissions=submissions)
+
+    status_filter = (request.args.get('status') or 'all').strip().lower()
+    student_query = (request.args.get('student') or '').strip().lower()
+
+    subs_all = list(assignment.submissions or [])
+
+    counts = {
+        'total': 0,
+        'assigned': 0,
+        'in_progress': 0,
+        'submitted': 0,
+        'late': 0,
+        'returned': 0,
+        'graded': 0,
+        'needs_grading': 0,
+    }
+    for s in subs_all:
+        st = (getattr(s, 'status', '') or '').upper()
+        counts['total'] += 1
+        if st == 'ASSIGNED':
+            counts['assigned'] += 1
+        elif st == 'IN_PROGRESS':
+            counts['in_progress'] += 1
+        elif st == 'RETURNED':
+            counts['returned'] += 1
+        elif st == 'GRADED':
+            counts['graded'] += 1
+        elif st == 'LATE':
+            counts['late'] += 1
+            counts['submitted'] += 1
+            counts['needs_grading'] += 1
+        elif st == 'SUBMITTED':
+            counts['submitted'] += 1
+            counts['needs_grading'] += 1
+
+    def _matches_status(s: Submission) -> bool:
+        if status_filter in {'', 'all'}:
+            return True
+        st = (getattr(s, 'status', '') or '').upper()
+        if status_filter == 'needs_grading':
+            return st in {'SUBMITTED', 'LATE'}
+        if status_filter == 'submitted':
+            return st in {'SUBMITTED', 'LATE', 'GRADED', 'RETURNED'}
+        if status_filter == 'pending':
+            return st in {'ASSIGNED', 'IN_PROGRESS'}
+        return st.lower() == status_filter
+
+    def _matches_student(s: Submission) -> bool:
+        if not student_query:
+            return True
+        name = ''
+        try:
+            if s.student and getattr(s.student, 'name', None):
+                name = str(s.student.name or '').strip().lower()
+        except Exception:
+            name = ''
+        return student_query in name
+
+    submissions = [s for s in subs_all if _matches_status(s) and _matches_student(s)]
+
+    def _sort_key(s: Submission):
+        order = {
+            'SUBMITTED': 0,
+            'LATE': 0,
+            'RETURNED': 1,
+            'IN_PROGRESS': 2,
+            'ASSIGNED': 3,
+            'GRADED': 4,
+        }
+        st = (getattr(s, 'status', '') or '').upper()
+        # сначала то, что проверять; затем по времени сдачи
+        ts = getattr(s, 'submitted_at', None) or getattr(s, 'assigned_at', None) or getattr(s, 'created_at', None)
+        try:
+            ts_val = ts.timestamp() if ts else 0
+        except Exception:
+            ts_val = 0
+        return (order.get(st, 9), -ts_val)
+
+    submissions.sort(key=_sort_key)
+
+    can_manage = bool(has_permission(current_user, 'assignment.create')) and (scope.get('can_see_all') or assignment.created_by_id == current_user.id)
+
+    return render_template(
+        'assignment_view.html',
+        assignment=assignment,
+        submissions=submissions,
+        counts=counts,
+        status_filter=status_filter,
+        student_query=student_query,
+        can_manage=can_manage,
+    )
 
 
 # ============================================================================

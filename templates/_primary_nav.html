@@ -22,7 +22,7 @@
 
                     {% if current_user.is_admin() or current_user.is_creator() %}
                     <a href="{{ url_for('admin.admin_panel') }}" class="profile-item">
-                        <img src="{{ url_for('static', filename='icons/icons8-settings-100.png') }}" alt="Admin">
+                        <img src="{{ url_for('static', filename='icons/icons8-редактировать-100.png') }}" alt="Admin">
                         <span>Админ панель</span>
                     </a>
                     {% endif %}
@@ -30,7 +30,7 @@
                     <div style="border-top: 1px solid var(--stroke-1); margin: 0.4rem 0;"></div>
                     
                     <a href="{{ url_for('auth.logout') }}" class="profile-item" style="color: var(--danger);">
-                        <img src="{{ url_for('static', filename='icons/icons8-выход-100.png') }}" alt="Logout" style="filter: hue-rotate(-150deg);">
+                        <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Logout" style="filter: hue-rotate(-150deg);">
                         <span>Выход</span>
                     </a>
                 </div>
@@ -107,14 +107,14 @@
         <div class="nav-dropdown">
             <div class="nav-link nav-dropdown-trigger {% if active_page in ['assignments', 'review_queue', 'reminders'] %}active{% endif %}">
                 <span class="nav-link-content">
-                    <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Учёба" class="nav-link-icon">
+                    <img src="{{ url_for('static', filename='icons/icons8-merge-documents-100.png') }}" alt="Учёба" class="nav-link-icon">
                     <span class="nav-link-label">Учёба</span>
                 </span>
             </div>
             <div class="nav-dropdown-content">
                 {% if current_user.is_authenticated and has_permission(current_user, 'assignment.view') %}
                 <a href="{{ url_for('assignments.assignments_list') }}" class="dropdown-item {% if active_page == 'assignments' %}active{% endif %}">
-                    <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" class="nav-link-icon">
+                    <img src="{{ url_for('static', filename='icons/icons8-merge-documents-100.png') }}" class="nav-link-icon">
                     <span>Работы</span>
                 </a>
                 {% endif %}
@@ -143,7 +143,7 @@
         <div class="nav-dropdown">
             <div class="nav-link nav-dropdown-trigger {% if active_page in ['generator', 'plans', 'templates', 'groups', 'onboarding', 'rubrics', 'library', 'billing', 'assets'] %}active{% endif %}">
                 <span class="nav-link-content">
-                    <img src="{{ url_for('static', filename='icons/icons8-меню-100.png') }}" alt="Инструменты" class="nav-link-icon">
+                    <img src="{{ url_for('static', filename='icons/icons8-мишень-100.png') }}" alt="Инструменты" class="nav-link-icon">
                     <span class="nav-link-label">Инструменты</span>
                 </span>
             </div>
@@ -162,7 +162,7 @@
                 {% endif %}
                 {% if current_user.is_authenticated and has_permission(current_user, 'rubrics.manage') %}
                 <a href="{{ url_for('rubrics.rubrics_list') }}" class="dropdown-item {% if active_page == 'rubrics' %}active{% endif %}">
-                    <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" class="nav-link-icon">
+                    <img src="{{ url_for('static', filename='icons/icons8-merge-documents-100.png') }}" class="nav-link-icon">
                     <span>Рубрики</span>
                 </a>
                 {% endif %}
@@ -182,7 +182,7 @@
                 {% endif %}
                 {% if current_user.is_authenticated and has_permission(current_user, 'lesson.edit') %}
                 <a href="{{ url_for('library.materials_library') }}" class="dropdown-item {% if active_page == 'library' %}active{% endif %}">
-                    <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" class="nav-link-icon">
+                    <img src="{{ url_for('static', filename='icons/icons8-merge-documents-100.png') }}" class="nav-link-icon">
                     <span>Библиотека</span>
                 </a>
                 {% endif %}
