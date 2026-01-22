@@ -34,6 +34,38 @@ class PlatformClient:
         r.raise_for_status()
         return r.json()
 
+    def llm_info(self) -> dict[str, Any]:
+        r = requests.get(f'{self.base_url}/internal/trainer/llm/info', headers=self._headers(), timeout=self.timeout_seconds)
+        r.raise_for_status()
+        return r.json()
+
+    def llm_ping(self) -> dict[str, Any]:
+        r = requests.post(f'{self.base_url}/internal/trainer/llm/ping', json={}, headers=self._headers(), timeout=self.timeout_seconds)
+        r.raise_for_status()
+        return r.json()
+
+    def llm_chat(
+        self,
+        *,
+        messages: list[dict[str, str]],
+        temperature: float = 0.2,
+        max_tokens: int = 700,
+        task_id: int | None = None,
+        task_type: int | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            'messages': messages,
+            'temperature': float(temperature),
+            'max_tokens': int(max_tokens),
+        }
+        if task_id is not None:
+            payload['task_id'] = int(task_id)
+        if task_type is not None:
+            payload['task_type'] = int(task_type)
+        r = requests.post(f'{self.base_url}/internal/trainer/llm/chat', json=payload, headers=self._headers(), timeout=max(self.timeout_seconds, 30.0))
+        r.raise_for_status()
+        return r.json()
+
     def stream_start(
         self,
         task_type: int,

@@ -17,7 +17,7 @@ from trainer_app.platform_client import PlatformClient, get_platform_base_url
 from trainer_app.analyzers.python_static import analyze_python_code
 from trainer_app.knowledge import load_task_knowledge
 from trainer_app.llm.providers import get_llm_client, get_llm_info, build_messages_for_help
-from trainer_app.runner.sandbox import is_runner_enabled, run_python_solve_tests
+from trainer_app.runner.sandbox import is_runner_enabled, run_python_solve_tests, run_python_program
 
 
 st.set_page_config(page_title="Тренажёр · AI помощник", layout="wide")
@@ -102,29 +102,42 @@ def main():
     st.sidebar.success(f"Вход: {user.get('username')} ({user.get('role')})")
 
     st.sidebar.markdown("### LLM")
-    llm_info = get_llm_info()
-    if llm_info.get('configured') and (llm_info.get('picked') or {}).get('provider'):
+    # Prefer platform-side LLM proxy (keys live in Flask), fallback to local env-based client.
+    llm_info = None
+    try:
+        resp = client.llm_info()
+        llm_info = (resp.get('llm') or {}) if isinstance(resp, dict) else None
+    except Exception:
+        llm_info = get_llm_info()
+
+    if isinstance(llm_info, dict) and llm_info.get('configured') and (llm_info.get('picked') or {}).get('provider'):
         picked = llm_info.get('picked') or {}
         st.sidebar.success(f"Подключено: {picked.get('provider')} / {picked.get('model')}")
     else:
         st.sidebar.warning("LLM не подключён (нет ключей).")
-        st.sidebar.caption("Нужно: `GROQ_API_KEY` или `GEMINI_API_KEY` (и опционально `TRAINER_LLM_PROVIDER`).")
+        st.sidebar.caption("Можно настроить ключи в Flask (прокси) или в Streamlit. Нужны: `GROQ_API_KEY` или `GEMINI_API_KEY`.")
 
     if st.sidebar.button("Проверить LLM", use_container_width=True):
-        llm = get_llm_client()
-        if not llm:
-            st.sidebar.error("LLM клиент не создан (проверь env).")
-        else:
-            try:
-                # Minimal diagnostic call
-                ans = llm.chat(
-                    messages=[{'role': 'system', 'content': 'Answer with a single word OK.'}, {'role': 'user', 'content': 'ping'}],
-                    temperature=0.0,
-                    max_tokens=5,
-                )
-                st.sidebar.success(f"Ответ: {str(ans).strip()[:80]}")
-            except Exception as e:
-                st.sidebar.error(f"Ошибка LLM: {e}")
+        # 1) Try platform proxy
+        try:
+            pr = client.llm_ping()
+            ans = (pr.get('answer') or '') if isinstance(pr, dict) else ''
+            st.sidebar.success(f"Ответ: {str(ans).strip()[:80]}")
+        except Exception:
+            # 2) Fallback to direct LLM from Streamlit env
+            llm = get_llm_client()
+            if not llm:
+                st.sidebar.error("LLM клиент не создан (проверь env).")
+            else:
+                try:
+                    ans = llm.chat(
+                        messages=[{'role': 'system', 'content': 'Answer with a single word OK.'}, {'role': 'user', 'content': 'ping'}],
+                        temperature=0.0,
+                        max_tokens=5,
+                    )
+                    st.sidebar.success(f"Ответ: {str(ans).strip()[:80]}")
+                except Exception as e:
+                    st.sidebar.error(f"Ошибка LLM: {e}")
 
     st.sidebar.markdown("### Задание")
     if qp_task_type:
@@ -334,13 +347,33 @@ def main():
         st.markdown("### Условие")
         _render_task_html(task)
 
-        st.markdown("### Код ученика")
-        code_val = st.text_area(
-            "Вставь/пиши решение здесь",
-            value=st.session_state.get('code') or "",
-            height=260,
-            placeholder="print('hello')",
-        )
+        st.markdown("### Код")
+        # Prefer full-featured editor (Ace/Monaco) if installed
+        code_val = None
+        try:
+            from streamlit_ace import st_ace  # type: ignore
+            code_val = st_ace(
+                value=st.session_state.get('code') or "",
+                language="python",
+                theme="monokai",
+                keybinding="vscode",
+                height=360,
+                min_lines=18,
+                font_size=14,
+                tab_size=4,
+                show_gutter=True,
+                wrap=True,
+                auto_update=True,
+            )
+            st.caption("Редактор: подсветка синтаксиса + keybindings как в IDE.")
+        except Exception:
+            code_val = st.text_area(
+                "Вставь/пиши решение здесь",
+                value=st.session_state.get('code') or "",
+                height=300,
+                placeholder="print('hello')",
+            )
+            st.caption("Подсветка недоступна: установи `streamlit-ace` (или запусти в окружении, где он уже есть).")
         if len(code_val) > 20000:
             st.warning("Код слишком большой, обрезаю до 20 000 символов.")
             code_val = code_val[:20000]
@@ -393,23 +426,33 @@ def main():
                 })
             else:
                 # fallback: ask LLM for a guided question (without giving full solution)
-                llm = get_llm_client()
-                if not llm:
-                    st.session_state['messages'].append({'role': 'assistant', 'content': 'Подсказок по этой задаче пока нет. Опиши: какие входные данные, что надо вывести, и какая у тебя идея решения? Я задам наводящие вопросы.'})
-                else:
+                try:
+                    msgs = build_messages_for_help(
+                        task=t,
+                        code=st.session_state.get('code') or '',
+                        analysis=st.session_state.get('analysis'),
+                        history=(st.session_state.get('messages') or []) + [{'role': 'user', 'content': 'Дай следующую подсказку по шагам (не решение), задай наводящий вопрос.'}],
+                        knowledge=knowledge,
+                    )
+                    # Prefer platform proxy, fallback to direct
+                    answer = None
                     try:
-                        msgs = build_messages_for_help(
-                            task=t,
-                            code=st.session_state.get('code') or '',
-                            analysis=st.session_state.get('analysis'),
-                            history=(st.session_state.get('messages') or []) + [{'role': 'user', 'content': 'Дай следующую подсказку по шагам (не решение), задай наводящий вопрос.'}],
-                            knowledge=knowledge,
+                        pr = client.llm_chat(
+                            messages=msgs,
+                            temperature=0.2,
+                            max_tokens=500,
+                            task_id=int(t.get('task_id') or 0) if t.get('task_id') else None,
+                            task_type=int(t.get('task_number') or 0) if t.get('task_number') else None,
                         )
-                        answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=500)
-                        answer = (answer or '').strip() or 'Сформулируй, что ты читаешь (строка/числа/файл) и что считаешь ответом. Я подстрою подсказку.'
-                        st.session_state['messages'].append({'role': 'assistant', 'content': answer})
-                    except Exception as e:
-                        st.session_state['messages'].append({'role': 'assistant', 'content': f'Ошибка обращения к LLM: {e}'})
+                        answer = (pr.get('answer') or '') if isinstance(pr, dict) else None
+                    except Exception:
+                        llm = get_llm_client()
+                        if llm:
+                            answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=500)
+                    answer = (answer or '').strip() or 'Сформулируй, что ты читаешь (строка/числа/файл) и что считаешь ответом. Я подстрою подсказку.'
+                    st.session_state['messages'].append({'role': 'assistant', 'content': answer})
+                except Exception as e:
+                    st.session_state['messages'].append({'role': 'assistant', 'content': f'Ошибка обращения к LLM: {e}'})
 
         if btns[2].button("Очистить", use_container_width=True):
             st.session_state['code'] = ''
@@ -420,22 +463,59 @@ def main():
             if t.get('task_id'):
                 st.session_state['hint_level_by_task'][int(t['task_id'])] = 0
 
-        # Optional runner (feature-flagged)
+        # Runner (feature-flagged)
         tests = (knowledge or {}).get('tests') if isinstance(knowledge, dict) else None
-        if tests and is_runner_enabled():
-            st.markdown("### Тесты (опционально)")
-            st.caption("Для запуска тестов добавь функцию `solve(s)` и не используй опасные импорты. По умолчанию раннер выключен на сервере.")
-            if st.button("Запустить тесты", use_container_width=True):
-                analysis = st.session_state.get('analysis') or analyze_python_code(st.session_state.get('code') or '')
-                st.session_state['analysis'] = analysis
-                dangerous = [i for i in (analysis.get('issues') or []) if (i.get('kind') == 'security')]
-                if dangerous:
-                    st.session_state['tests'] = {'ok': False, 'error': 'security_block', 'details': 'Есть подозрительные импорты, запуск запрещён.'}
-                else:
-                    st.session_state['tests'] = run_python_solve_tests(code=st.session_state.get('code') or '', tests=tests)
+        if is_runner_enabled():
+            st.markdown("### Запуск")
+            st.caption("Раннер работает в ограниченном режиме (таймаут, лимит вывода, allowlist импортов).")
 
-            if st.session_state.get('tests') is not None:
-                st.code(json.dumps(st.session_state['tests'], ensure_ascii=False, indent=2), language="json")
+            run_tabs = st.tabs(["Запустить (stdin→stdout)", "Проверить тестами"])
+
+            with run_tabs[0]:
+                stdin_val = st.text_area("Ввод (stdin)", value=st.session_state.get('run_stdin') or "", height=140, placeholder="Например:\n5\n1 2 3 4 5\n")
+                st.session_state['run_stdin'] = stdin_val
+                expect = st.text_area("Ожидаемый вывод (необязательно)", value=st.session_state.get('run_expected') or "", height=90, placeholder="Если заполнишь — я сравню stdout.")
+                st.session_state['run_expected'] = expect
+
+                if st.button("▶ Запустить код", use_container_width=True):
+                    res = run_python_program(code=st.session_state.get('code') or '', stdin=stdin_val, timeout_seconds=2.0)
+                    st.session_state['run_result'] = res
+
+                res = st.session_state.get('run_result')
+                if res is not None:
+                    ok = bool(res.get('ok'))
+                    if ok:
+                        st.success("Код выполнился.")
+                    else:
+                        st.error(f"Ошибка запуска: {res.get('error')}")
+                        if res.get('details'):
+                            st.code(str(res.get('details'))[:4000])
+
+                    st.markdown("**stdout**")
+                    st.code((res.get('stdout') or '')[:12000])
+                    if res.get('stderr'):
+                        st.markdown("**stderr**")
+                        st.code((res.get('stderr') or '')[:6000])
+
+                    if expect.strip():
+                        got = (res.get('stdout') or '').strip()
+                        exp = expect.strip()
+                        if got == exp:
+                            st.success("stdout совпал с ожидаемым.")
+                        else:
+                            st.warning("stdout НЕ совпал с ожидаемым (сравнение по `.strip()`).")
+
+            with run_tabs[1]:
+                if not tests:
+                    st.info("Для этой задачи пока нет тестов в knowledge. Добавим позже при наполнении данных.")
+                else:
+                    st.caption("Для тестов добавь функцию `solve(s)`; runner вызовет её на тестовых input и сравнит expected.")
+                    if st.button("🧪 Запустить тесты", use_container_width=True):
+                        st.session_state['tests'] = run_python_solve_tests(code=st.session_state.get('code') or '', tests=tests)
+                    if st.session_state.get('tests') is not None:
+                        st.code(json.dumps(st.session_state['tests'], ensure_ascii=False, indent=2), language="json")
+        else:
+            st.caption("Запуск кода выключен на сервере. Чтобы включить: `TRAINER_ENABLE_RUNNER=1`.")
 
         if st.session_state.get('analysis') is not None:
             st.markdown("### Анализ")
@@ -450,11 +530,6 @@ def main():
         prompt = st.chat_input("Напиши вопрос помощнику…")
         if prompt:
             st.session_state['messages'].append({'role': 'user', 'content': prompt})
-            llm = get_llm_client()
-            if not llm:
-                st.session_state['messages'].append({'role': 'assistant', 'content': 'LLM пока не настроен (нет ключей). Скажи, какую идею ты хочешь реализовать, и я задам уточняющие вопросы.'})
-                st.rerun()
-
             # Добавляем knowledge, если есть
             knowledge = load_task_knowledge(int(task.get('task_id') or 0)) if task.get('task_id') else None
 
@@ -466,9 +541,26 @@ def main():
                     history=st.session_state.get('messages'),
                     knowledge=knowledge,
                 )
-                answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=700)
-                answer = (answer or '').strip() or 'Не смог сформировать ответ. Попробуй переформулировать вопрос.'
-                st.session_state['messages'].append({'role': 'assistant', 'content': answer})
+                # Prefer platform proxy, fallback to direct
+                answer = None
+                try:
+                    pr = client.llm_chat(
+                        messages=msgs,
+                        temperature=0.2,
+                        max_tokens=700,
+                        task_id=int(task.get('task_id') or 0) if task.get('task_id') else None,
+                        task_type=int(task.get('task_number') or 0) if task.get('task_number') else None,
+                    )
+                    answer = (pr.get('answer') or '') if isinstance(pr, dict) else None
+                except Exception:
+                    llm = get_llm_client()
+                    if llm:
+                        answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=700)
+                if not answer:
+                    st.session_state['messages'].append({'role': 'assistant', 'content': 'LLM пока не настроен (нет ключей). Скажи, какую идею ты хочешь реализовать, и я задам уточняющие вопросы.'})
+                else:
+                    answer = (answer or '').strip() or 'Не смог сформировать ответ. Попробуй переформулировать вопрос.'
+                    st.session_state['messages'].append({'role': 'assistant', 'content': answer})
             except Exception as e:
                 st.session_state['messages'].append({'role': 'assistant', 'content': f'Ошибка обращения к LLM: {e}'})
             st.rerun()

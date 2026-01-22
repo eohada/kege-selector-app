@@ -1025,6 +1025,46 @@ class TrainerSession(db.Model):
     )
 
 
+class TrainerLlmLog(db.Model):
+    """
+    Логи обращений к LLM из тренажёра (через platform proxy).
+
+    Зачем:
+    - отладка качества ответов
+    - сбор датасета/промптов (без ключей!)
+    - диагностика таймаутов/ошибок провайдера
+    """
+    __tablename__ = 'TrainerLlmLogs'
+
+    log_id = db.Column(db.Integer, primary_key=True)
+
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
+
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=True, index=True)
+    task_type = db.Column(db.Integer, nullable=True, index=True)
+
+    request_kind = db.Column(db.String(30), default='chat', nullable=False, index=True)  # chat|ping
+    provider = db.Column(db.String(30), nullable=True, index=True)  # groq|gemini
+    model = db.Column(db.String(120), nullable=True)
+
+    # Тело запроса (усеченное/санitized) и ответ
+    messages = db.Column(db.JSON, nullable=True)
+    answer = db.Column(db.Text, nullable=True)
+    error = db.Column(db.Text, nullable=True)
+
+    duration_ms = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    student = db.relationship('Student', foreign_keys=[student_id])
+    task = db.relationship('Tasks', foreign_keys=[task_id])
+
+    __table_args__ = (
+        Index('ix_trainer_llm_user_created', 'user_id', 'created_at'),
+    )
+
+
 class UserConsent(db.Model):
     """Лог согласий (оферта/политика)."""
     __tablename__ = 'UserConsents'

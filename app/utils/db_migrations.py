@@ -22,7 +22,7 @@ from core.db_models import (
     SubmissionAttempt,
     MaterialAsset, LessonMaterialLink, LessonRoomTemplate, RubricTemplate,
     RecurringLessonSlot,
-    TariffPlan, TariffGroup, UserSubscription, UserConsent
+    TariffPlan, TariffGroup, UserSubscription, TrainerSession, TrainerLlmLog, UserConsent
 )
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
 
@@ -146,6 +146,8 @@ def _fix_postgres_sequences(app, inspector):
             'FamilyTies': 'tie_id',
             'Enrollments': 'enrollment_id',
             'RolePermissions': 'id',
+            'TrainerSessions': 'session_id',
+            'TrainerLlmLogs': 'log_id',
         }
 
         for preferred_table, pk_column in sequences_map.items():

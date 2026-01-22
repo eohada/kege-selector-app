@@ -11,7 +11,7 @@ from flask_login import login_required, current_user
 from app.trainer import trainer_bp
 from app.auth.rbac_utils import has_permission
 from app.auth.permissions import ALL_PERMISSIONS
-from app.models import db, User, Tasks, Student, Lesson, LessonTask, TrainerSession, StudentTaskSeen
+from app.models import db, User, Tasks, Student, Lesson, LessonTask, TrainerSession, StudentTaskSeen, AuditLog, TrainerLlmLog, moscow_now
 from app.utils.trainer_tokens import issue_trainer_token, verify_trainer_token, TrainerTokenError
 from core.audit_logger import audit_logger
 from app import csrf
@@ -115,6 +115,48 @@ def _record_student_task_seen(*, student_id: int, task_id: int, source: str) -> 
         return
 
 
+def _audit_log_token_user(
+    user: User,
+    *,
+    action: str,
+    status: str = 'success',
+    entity: str | None = None,
+    entity_id: int | None = None,
+    metadata: dict[str, Any] | None = None,
+    duration_ms: int | None = None,
+) -> None:
+    """
+    Пишем AuditLog напрямую (без Flask-Login), т.к. внутренний trainer API авторизуется токеном.
+    Best-effort: ошибки логирования не должны ломать основной ответ.
+    """
+    try:
+        al = AuditLog()
+        al.timestamp = moscow_now()
+        al.user_id = user.id
+        al.tester_name = user.username
+        al.action = (action or 'unknown')[:50]
+        al.entity = (entity or 'TrainerLLM')[:50] if (entity or 'TrainerLLM') else None
+        al.entity_id = entity_id
+        al.status = (status or 'success')[:20]
+        try:
+            al.set_metadata(metadata or {})
+        except Exception:
+            al.meta_data = None
+        try:
+            al.ip_address = request.remote_addr
+            al.user_agent = request.headers.get('User-Agent')
+            al.url = request.url
+            al.method = request.method
+        except Exception:
+            pass
+        al.duration_ms = duration_ms
+        db.session.add(al)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return
+
+
 @trainer_bp.route('/trainer')
 @login_required
 def trainer_embed():
@@ -174,6 +216,211 @@ def trainer_me():
     # Return only minimal data; permissions are computed on demand.
     perms = [k for k in ALL_PERMISSIONS.keys() if has_permission(user, k)]
     return jsonify({'success': True, 'user': {'id': user.id, 'username': user.username, 'role': user.role}, 'permissions': perms})
+
+
+@trainer_bp.route('/internal/trainer/llm/info', methods=['GET'])
+def trainer_llm_info():
+    _ = _get_trainer_user_from_token(require_permission='trainer.use')
+    try:
+        from trainer_app.llm.providers import get_llm_info
+        return jsonify({'success': True, 'llm': get_llm_info()})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@trainer_bp.route('/internal/trainer/llm/ping', methods=['POST'])
+@csrf.exempt
+def trainer_llm_ping():
+    user = _get_trainer_user_from_token(require_permission='trainer.use')
+    try:
+        from trainer_app.llm.providers import get_llm_client, get_llm_info
+        import time
+
+        started = time.time()
+        info = get_llm_info()
+        llm = get_llm_client()
+        if not llm:
+            _audit_log_token_user(user, action='trainer_llm_ping', status='error', metadata={'error': 'not_configured', 'llm': info})
+            return jsonify({'success': False, 'error': 'not_configured', 'llm': info}), 400
+
+        ans = llm.chat(
+            messages=[{'role': 'system', 'content': 'Answer with a single word OK.'}, {'role': 'user', 'content': 'ping'}],
+            temperature=0.0,
+            max_tokens=5,
+        )
+        duration_ms = int((time.time() - started) * 1000)
+        # Store to DB (best-effort)
+        try:
+            picked = (info.get('picked') or {}) if isinstance(info, dict) else {}
+            st = _map_user_to_student(user) if getattr(user, 'role', None) == 'student' else None
+            rec = TrainerLlmLog(
+                user_id=user.id,
+                student_id=(st.student_id if st else None),
+                task_id=None,
+                task_type=None,
+                request_kind='ping',
+                provider=(picked.get('provider') if isinstance(picked, dict) else None),
+                model=(picked.get('model') if isinstance(picked, dict) else None),
+                messages=[{'role': 'system', 'content': 'Answer with a single word OK.'}, {'role': 'user', 'content': 'ping'}],
+                answer=(str(ans)[:800] if ans is not None else None),
+                error=None,
+                duration_ms=duration_ms,
+            )
+            db.session.add(rec)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        _audit_log_token_user(
+            user,
+            action='trainer_llm_ping',
+            status='success',
+            metadata={'llm': info, 'answer_preview': (str(ans).strip()[:120])},
+            duration_ms=duration_ms,
+        )
+        return jsonify({'success': True, 'answer': (str(ans).strip()[:300]), 'llm': info, 'duration_ms': duration_ms})
+    except Exception as e:
+        try:
+            _audit_log_token_user(user, action='trainer_llm_ping', status='error', metadata={'error': str(e)[:500]})
+        except Exception:
+            pass
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@trainer_bp.route('/internal/trainer/llm/chat', methods=['POST'])
+@csrf.exempt
+def trainer_llm_chat():
+    user = _get_trainer_user_from_token(require_permission='trainer.use')
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'bad_request'}), 400
+
+    raw_msgs = data.get('messages')
+    if not isinstance(raw_msgs, list) or not raw_msgs:
+        return jsonify({'success': False, 'error': 'messages_required'}), 400
+
+    # sanitize / limit
+    messages: list[dict[str, str]] = []
+    for m in raw_msgs[-24:]:
+        if not isinstance(m, dict):
+            continue
+        role = str(m.get('role') or 'user').strip().lower()
+        if role not in ('system', 'user', 'assistant'):
+            role = 'user'
+        content = str(m.get('content') or '')
+        if len(content) > 4000:
+            content = content[:4000] + ' …'
+        if content.strip():
+            messages.append({'role': role, 'content': content})
+    if not messages:
+        return jsonify({'success': False, 'error': 'messages_required'}), 400
+
+    try:
+        temperature = float(data.get('temperature', 0.2))
+    except Exception:
+        temperature = 0.2
+    try:
+        max_tokens = int(data.get('max_tokens', 700))
+    except Exception:
+        max_tokens = 700
+    max_tokens = max(16, min(max_tokens, 1200))
+
+    # Optional task context for logging
+    try:
+        task_id = int(data.get('task_id')) if data.get('task_id') not in (None, '') else None
+    except Exception:
+        task_id = None
+    try:
+        task_type = int(data.get('task_type')) if data.get('task_type') not in (None, '') else None
+    except Exception:
+        task_type = None
+
+    try:
+        from trainer_app.llm.providers import get_llm_client, get_llm_info
+        import time
+
+        info = get_llm_info()
+        llm = get_llm_client()
+        if not llm:
+            _audit_log_token_user(user, action='trainer_llm_chat', status='error', metadata={'error': 'not_configured', 'llm': info})
+            return jsonify({'success': False, 'error': 'not_configured', 'llm': info}), 400
+
+        started = time.time()
+        answer = llm.chat(messages=messages, temperature=temperature, max_tokens=max_tokens)
+        duration_ms = int((time.time() - started) * 1000)
+
+        # Store to DB (best-effort)
+        try:
+            picked = (info.get('picked') or {}) if isinstance(info, dict) else {}
+            st = _map_user_to_student(user) if getattr(user, 'role', None) == 'student' else None
+            ans_txt = (answer or '')
+            if isinstance(ans_txt, str) and len(ans_txt) > 12000:
+                ans_txt = ans_txt[:12000] + ' …'
+            rec = TrainerLlmLog(
+                user_id=user.id,
+                student_id=(st.student_id if st else None),
+                task_id=task_id,
+                task_type=task_type,
+                request_kind='chat',
+                provider=(picked.get('provider') if isinstance(picked, dict) else None),
+                model=(picked.get('model') if isinstance(picked, dict) else None),
+                messages=messages,
+                answer=ans_txt if isinstance(ans_txt, str) else None,
+                error=None,
+                duration_ms=duration_ms,
+            )
+            db.session.add(rec)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        _audit_log_token_user(
+            user,
+            action='trainer_llm_chat',
+            status='success',
+            metadata={
+                'llm': info,
+                'messages_count': len(messages),
+                'chars_in': sum(len(m.get('content') or '') for m in messages),
+                'max_tokens': max_tokens,
+            },
+            duration_ms=duration_ms,
+        )
+        return jsonify({'success': True, 'answer': (answer or ''), 'llm': info, 'duration_ms': duration_ms})
+    except Exception as e:
+        # Store error (best-effort)
+        try:
+            info2 = None
+            try:
+                from trainer_app.llm.providers import get_llm_info as _info
+                info2 = _info()
+            except Exception:
+                info2 = None
+            picked = (info2.get('picked') or {}) if isinstance(info2, dict) else {}
+            st = _map_user_to_student(user) if getattr(user, 'role', None) == 'student' else None
+            rec = TrainerLlmLog(
+                user_id=user.id,
+                student_id=(st.student_id if st else None),
+                task_id=task_id,
+                task_type=task_type,
+                request_kind='chat',
+                provider=(picked.get('provider') if isinstance(picked, dict) else None),
+                model=(picked.get('model') if isinstance(picked, dict) else None),
+                messages=messages,
+                answer=None,
+                error=str(e)[:4000],
+                duration_ms=None,
+            )
+            db.session.add(rec)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+        try:
+            _audit_log_token_user(user, action='trainer_llm_chat', status='error', metadata={'error': str(e)[:500]})
+        except Exception:
+            pass
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @trainer_bp.route('/internal/trainer/task/<int:task_id>', methods=['GET'])

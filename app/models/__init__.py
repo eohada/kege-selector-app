@@ -57,6 +57,7 @@ from core.db_models import (
     TariffGroup,
     UserSubscription,
     TrainerSession,
+    TrainerLlmLog,
     UserConsent
 )
 
@@ -115,5 +116,6 @@ __all__ = [
     'TariffGroup',
     'UserSubscription',
     'TrainerSession',
+    'TrainerLlmLog',
     'UserConsent'
 ]
