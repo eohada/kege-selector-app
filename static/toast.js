@@ -1,4 +1,8 @@
-
+(function () {
+    // Защита от двойного подключения (иначе SyntaxError: already declared)
+    if (window.ToastManager && (typeof window.toast !== 'undefined')) {
+        return;
+    }
 
 class ToastManager {
     constructor() {
@@ -77,9 +81,13 @@ class ToastManager {
     }
 }
 
-const toast = new ToastManager(); 
+const toast = new ToastManager();
+// Делаем доступным через window для кода, который использует window.toast
+try { window.ToastManager = ToastManager; } catch (e) {}
+try { window.toast = toast; } catch (e) {}
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = ToastManager; 
 }
 
+})();

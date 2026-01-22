@@ -123,15 +123,6 @@
       return;
     }
 
-    // Извлекаем дату из родительской колонки дня
-    const dayCol = lessonEl.closest('.day-col');
-    const dayIso = dayCol?.dataset.day || '';
-    
-    // Парсим дату и время из meta или используем значения по умолчанию
-    const startTime = meta.start_time || '';
-    const dateValue = dayIso || '';
-    const timeValue = startTime || '';
-
     inspectorBody.innerHTML = `
       <div style="display:grid; gap:0.85rem;">
         <div class="neo-field">
