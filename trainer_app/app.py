@@ -38,13 +38,24 @@ def _inject_css():
     st.markdown(
         """
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
   /* Hide default Streamlit chrome */
   #MainMenu {visibility: hidden;}
   footer {visibility: hidden;}
   header {visibility: hidden;}
 
-  /* Reduce top padding */
-  .block-container { padding-top: 1.1rem; padding-bottom: 2rem; }
+  html, body, [class*="css"] { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+
+  /* Reduce top padding + add premium background */
+  .stApp {
+    background:
+      radial-gradient(900px 600px at 15% 10%, rgba(99,102,241,0.18), transparent 60%),
+      radial-gradient(900px 600px at 85% 15%, rgba(16,185,129,0.12), transparent 55%),
+      radial-gradient(900px 600px at 50% 85%, rgba(59,130,246,0.10), transparent 55%),
+      linear-gradient(180deg, rgba(10,12,18,1) 0%, rgba(7,9,14,1) 100%);
+  }
+  .block-container { padding-top: 1.05rem; padding-bottom: 2.2rem; }
 
   /* Make chat/input feel tighter */
   .stChatInputContainer { padding-top: 0.25rem; }
@@ -54,9 +65,12 @@ def _inject_css():
     border: 1px solid rgba(255,255,255,0.10);
     border-radius: 14px;
     padding: 14px 14px;
-    background: rgba(255,255,255,0.03);
+    background: rgba(255,255,255,0.035);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+    backdrop-filter: blur(10px);
   }
   .k-muted { color: rgba(255,255,255,0.70); }
+  .k-title { font-weight: 700; letter-spacing: -0.02em; }
   .k-badge {
     display: inline-block;
     padding: 4px 10px;
@@ -73,8 +87,41 @@ def _inject_css():
   /* Make code editor (custom component iframe) match style */
   div[data-testid="stCustomComponentV1"] iframe {
     border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(0,0,0,0.28);
+    box-shadow: 0 14px 34px rgba(0,0,0,0.38);
+  }
+
+  /* Buttons */
+  div.stButton > button {
+    border-radius: 12px !important;
+    border: 1px solid rgba(255,255,255,0.14) !important;
+    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)) !important;
+    color: rgba(255,255,255,0.92) !important;
+    padding: 0.60rem 0.85rem !important;
+    transition: transform .06s ease, background .18s ease, border-color .18s ease;
+  }
+  div.stButton > button:hover {
+    border-color: rgba(255,255,255,0.22) !important;
+    background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03)) !important;
+    transform: translateY(-1px);
+  }
+  div.stButton > button:active { transform: translateY(0px); }
+
+  /* Inputs / selects */
+  div[data-baseweb="input"] input,
+  div[data-baseweb="textarea"] textarea {
+    border-radius: 12px !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    background: rgba(255,255,255,0.03) !important;
+  }
+
+  /* Tabs look */
+  button[data-baseweb="tab"] {
+    border-radius: 999px !important;
+    margin-right: 6px !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
   }
 </style>
         """,
@@ -256,7 +303,13 @@ def main():
     left, mid, right = st.columns([1.35, 1.6, 1.05], gap="large")
     with left:
         st.markdown("## Тренажёр")
-        st.markdown(f"<div class='k-muted'>Привет, <b>{username}</b>. Давай решать аккуратно и по шагам.</div>", unsafe_allow_html=True)
+        st.markdown(
+            "<div class='k-card'>"
+            f"<div class='k-title'>Привет, {username}</div>"
+            "<div class='k-muted' style='margin-top:4px'>Решай спокойно: код → запуск → проверка → подсказки.</div>"
+            "</div>",
+            unsafe_allow_html=True,
+        )
 
     with mid:
         options = list(range(1, 28))
@@ -311,11 +364,11 @@ def main():
                         except Exception as e:
                             st.error(f"Ошибка LLM: {e}")
 
-    st.markdown("---")
+    st.markdown("")
 
     # ===== Task actions =====
     a1, a2, a3, a4 = st.columns([1, 1, 1, 2], gap="small")
-    if a1.button("Получить задание", use_container_width=True):
+    if a1.button("✨ Получить задание", use_container_width=True):
         seen = st.session_state['seen_task_ids'].get(int(task_type), []) or []
         resp = client.stream_start(task_type=int(task_type), exclude_task_ids=seen, task_id=pinned_id)
         st.session_state['task'] = resp.get('task')
@@ -330,7 +383,7 @@ def main():
                 seen.append(int(t['task_id']))
             st.session_state['hint_level_by_task'][int(t['task_id'])] = 0
 
-    if a2.button("Следующее", use_container_width=True):
+    if a2.button("→ Следующее", use_container_width=True):
         seen = st.session_state['seen_task_ids'].get(int(task_type), []) or []
         resp = client.stream_next(task_type=int(task_type), exclude_task_ids=seen)
         st.session_state['task'] = resp.get('task')
@@ -345,7 +398,7 @@ def main():
                 seen.append(int(t['task_id']))
             st.session_state['hint_level_by_task'][int(t['task_id'])] = 0
 
-    if a3.button("Сохранить попытку", use_container_width=True):
+    if a3.button("💾 Сохранить", use_container_width=True):
         task = st.session_state.get('task') or {}
         if not task:
             st.warning("Сначала получи задание.")
@@ -363,7 +416,7 @@ def main():
                 st.toast("Сохранено")
             except Exception as e:
                 st.error(f"Не удалось сохранить: {e}")
-    a4.caption("Подсказки/чат — вкладка **Помощник**. Запуск/проверка — **Запуск**.")
+    a4.markdown("<div class='k-muted' style='padding-top:10px'>Помощник и история — справа. Код и запуск — в «Решение».</div>", unsafe_allow_html=True)
 
     # If task is not started yet but we have pinned task_id: load it once for convenience
     if st.session_state.get('task') is None and pinned_id is not None:
