@@ -68,7 +68,9 @@ def _upsert_gradebook_from_lesson_review(lesson: Lesson, assignment_type: str, p
 
     title = lesson.topic or 'Урок'
     if assignment_type:
-        title = f"{title} · {assignment_type}"
+        at = (assignment_type or '').strip().lower()
+        label_map = {'homework': 'ДЗ', 'classwork': 'КР', 'exam': 'Проверочная'}
+        title = f"{title} · {label_map.get(at, at)}"
 
     if not entry:
         entry = GradebookEntry(
@@ -955,6 +957,11 @@ def review_bulk_update_lesson(lesson_id: int):
 
     if action not in {'mark_graded', 'mark_returned'}:
         flash('Некорректное действие.', 'danger')
+        return redirect(url_for('lessons.review_queue', status=status_filter, assignment_type=assignment_type, student=student_query))
+
+    # QA: массовые действия доступны только из статуса "Сдано"
+    if status_filter != 'submitted':
+        flash('Массовые действия доступны только в статусе «Сдано».', 'warning')
         return redirect(url_for('lessons.review_queue', status=status_filter, assignment_type=assignment_type, student=student_query))
 
     lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)

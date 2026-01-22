@@ -50,6 +50,12 @@ def assignment_review_bulk_update(assignment_id: int):
         flash('Некорректное действие.', 'danger')
         return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
 
+    # QA: массовые действия доступны только из статуса "Сдано",
+    # иначе в списках "на доработку/проверено" это вводит в заблуждение.
+    if status_filter != 'submitted':
+        flash('Массовые действия доступны только в статусе «Сдано».', 'warning')
+        return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
+
     assignment = Assignment.query.get_or_404(assignment_id)
 
     scope = get_user_scope(current_user)
