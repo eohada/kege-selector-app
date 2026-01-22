@@ -367,10 +367,31 @@
         </div>
     </div>
     
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    {# toast.js уже подключается через _ux_enhancements.html #}
     <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
     <script>
+        function parseIsoToDate(value) {
+            if (!value) return null;
+            try {
+                const d = new Date(value);
+                if (!Number.isFinite(d.getTime())) {
+                    // Фоллбек для "YYYY-MM-DD HH:MM(:SS)" -> ISO
+                    let v = String(value).trim();
+                    if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}/.test(v)) {
+                        v = v.replace(' ', 'T');
+                    }
+                    // Если timezone отсутствует, считаем, что это уже локальное время
+                    const d2 = new Date(v);
+                    if (!Number.isFinite(d2.getTime())) return null;
+                    return d2;
+                }
+                return d;
+            } catch (e) {
+                return null;
+            }
+        }
+
         function openCreateModal() {
             document.getElementById('createModal').classList.add('active');
             document.getElementById('createModal').querySelector('.modal-title').textContent = 'Создать напоминание';
@@ -394,13 +415,17 @@
             const timeInput = document.getElementById('modal_reminder_time');
             if (timeIso && timeIso !== 'null') {
                 // Конвертируем ISO строку с timezone в формат для datetime-local
-                const date = new Date(timeIso);
+                const date = parseIsoToDate(timeIso);
+                if (!date) {
+                    timeInput.value = '';
+                } else {
                 const year = date.getFullYear();
                 const month = String(date.getMonth() + 1).padStart(2, '0');
                 const day = String(date.getDate()).padStart(2, '0');
                 const hours = String(date.getHours()).padStart(2, '0');
                 const minutes = String(date.getMinutes()).padStart(2, '0');
                 timeInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+                }
             } else {
                 timeInput.value = '';
             }
@@ -483,6 +508,22 @@
         }
         
         document.addEventListener('DOMContentLoaded', function() {
+            // UX: /reminders?create=1 — открыть модалку "Создать" (и убрать параметр из URL)
+            try {
+                const params = new URLSearchParams(window.location.search || '');
+                if (params.get('create') === '1') {
+                    openCreateModal();
+                    params.delete('create');
+                    const next =
+                        window.location.pathname +
+                        (params.toString() ? `?${params.toString()}` : '') +
+                        (window.location.hash || '');
+                    window.history.replaceState({}, '', next);
+                }
+            } catch (e) {
+                // no-op
+            }
+
             // Конвертируем время напоминаний в локальное время устройства
             const timeDisplays = document.querySelectorAll('.reminder-time[data-time-iso]');
             timeDisplays.forEach(element => {
@@ -490,7 +531,8 @@
                 if (timeIso) {
                     try {
                         // Парсим ISO строку с timezone (например: 2025-12-22T15:00:00+03:00)
-                        const date = new Date(timeIso);
+                        const date = parseIsoToDate(timeIso);
+                        if (!date) return;
                         
                         const timeDisplay = element.querySelector('.time-display');
                         if (timeDisplay) {

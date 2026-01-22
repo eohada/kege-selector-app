@@ -6,6 +6,7 @@ from flask_login import login_required, current_user
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from sqlalchemy import inspect, text
+from sqlalchemy import case
 import json
 import logging
 
@@ -105,6 +106,15 @@ def reminders_list():
                              reminders_data=[],
                              show_completed=False,
                              now=now_naive)
+
+@reminders_bp.route('/reminders/create', methods=['GET'])
+@login_required
+def reminder_create_page():
+    """
+    UX-алиас: прямой заход на /reminders/create должен открывать страницу,
+    а не отдавать 405 (создание выполняется POST-ом из модалки).
+    """
+    return redirect(url_for('reminders.reminders_list', create='1'))
 
 @reminders_bp.route('/reminders/create', methods=['POST'])
 @login_required

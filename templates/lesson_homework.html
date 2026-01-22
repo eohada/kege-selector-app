@@ -336,7 +336,25 @@
                             <i class="fas fa-user-graduate"></i> {{ student.name }}
                         </div>
                         <div class="lesson-meta-item">
-                            <i class="fas fa-folder"></i> {{ assignment_type|capitalize }}
+                            <i class="fas fa-folder"></i>
+                            <span style="color: var(--text-muted); margin-right: 0.35rem;">Формат:</span>
+                            <span style="display:inline-flex; align-items:center; gap:0.25rem; padding:0.2rem; border-radius:999px; border:1px solid var(--stroke-1); background: rgba(255,255,255,0.03);">
+                                <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}#tab=tasks"
+                                   class="neo-button sm {% if assignment_type == 'homework' %}accent{% else %}ghost{% endif %}"
+                                   style="border-radius:999px; padding:0.35rem 0.75rem; text-decoration:none;">
+                                    <i class="fas fa-home"></i> ДЗ
+                                </a>
+                                <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}#tab=tasks"
+                                   class="neo-button sm {% if assignment_type == 'classwork' %}accent{% else %}ghost{% endif %}"
+                                   style="border-radius:999px; padding:0.35rem 0.75rem; text-decoration:none;">
+                                    <i class="fas fa-chalkboard-teacher"></i> КР
+                                </a>
+                                <a href="{{ url_for('lessons.lesson_exam_view', lesson_id=lesson.lesson_id) }}#tab=tasks"
+                                   class="neo-button sm {% if assignment_type == 'exam' %}accent{% else %}ghost{% endif %}"
+                                   style="border-radius:999px; padding:0.35rem 0.75rem; text-decoration:none;">
+                                    <i class="fas fa-tasks"></i> Провер.
+                                </a>
+                            </span>
                         </div>
                     </div>
                 </div>
