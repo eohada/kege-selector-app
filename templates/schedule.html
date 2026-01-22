@@ -626,7 +626,7 @@
                             <div style="border-top: 1px solid var(--stroke-1); padding-top: .85rem;">
                                 <div class="hero-eyebrow">на этой неделе</div>
                                 <div style="display:grid; gap:.6rem; margin-top:.6rem;">
-                                    {% for a in agenda %}
+                                    {% for a in (agenda_week_sidebar if agenda_week_sidebar is defined else agenda) %}
                                       <a href="{{ a.lesson_url }}" style="text-decoration:none; color:inherit;">
                                         <div style="padding:.75rem .85rem; border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02);">
                                           <div style="font-weight:900;">{{ a.date_human }} · {{ a.time }}</div>

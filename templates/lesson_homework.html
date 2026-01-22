@@ -345,12 +345,9 @@
                     <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button accent sm">
                         <i class="fas fa-edit"></i> Редактировать урок
                     </a>
-                    <form method="POST" action="{{ url_for('lessons.lesson_delete', lesson_id=lesson.lesson_id) }}" style="display:inline;" onsubmit="return confirm('Удалить урок? Это действие нельзя отменить.');">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <button type="submit" class="neo-button danger sm" title="Удалить урок">
-                            <i class="fas fa-trash"></i> Удалить урок
-                        </button>
-                    </form>
+                    <button type="button" class="neo-button danger sm" title="Удалить урок" onclick="deleteLesson({{ lesson.lesson_id }}, {{ student.student_id }})">
+                        <i class="fas fa-trash"></i> Удалить урок
+                    </button>
                     {% endif %}
                     <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button outline sm">
                         <i class="fas fa-arrow-left"></i> Назад в профиль
@@ -358,6 +355,37 @@
                 </div>
             </div>
         </header>
+
+        <script>
+            async function deleteLesson(lessonId, studentId) {
+                const ok = confirm('Удалить урок? Это действие нельзя отменить.');
+                if (!ok) return;
+                try {
+                    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+                    const resp = await fetch(`/schedule/api/lesson/${lessonId}/delete`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrf
+                        },
+                        body: JSON.stringify({})
+                    });
+                    const data = await resp.json().catch(() => ({}));
+                    if (!resp.ok || data.success === false) {
+                        const msg = data.error || `HTTP ${resp.status}`;
+                        if (window.toast) window.toast.error(msg);
+                        else alert(msg);
+                        return;
+                    }
+                    if (window.toast) window.toast.success('Урок удалён');
+                    window.location.href = `/student/${studentId}`;
+                } catch (e) {
+                    const msg = e?.message || 'Ошибка удаления';
+                    if (window.toast) window.toast.error(msg);
+                    else alert(msg);
+                }
+            }
+        </script>
 
         <!-- Tabs Navigation -->
         <div class="lesson-tabs">
