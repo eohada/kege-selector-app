@@ -305,8 +305,8 @@
 
                 <div class="hero-actions">
                     {% if can_create %}
-                    <a href="{{ url_for('assignments.assignments_accepted', create='1', assignment_type='homework') }}" class="neo-button accent" style="text-decoration:none;">
-                        📝 Создать работу из принятых
+                    <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="neo-button accent" style="text-decoration:none;">
+                        📝 Создать работу
                     </a>
                     {% endif %}
                     <a href="{{ url_for('kege_generator.kege_generator') }}" class="neo-button outline" style="text-decoration:none;">
@@ -539,8 +539,8 @@
 
                 <div style="display:flex; gap:.75rem; justify-content:center; flex-wrap: wrap; margin-top: 1.2rem;">
                     {% if can_create %}
-                    <a href="{{ url_for('assignments.assignments_accepted', create='1', assignment_type='homework') }}" class="neo-button accent" style="text-decoration:none;">
-                        📝 Создать работу из принятых
+                    <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="neo-button accent" style="text-decoration:none;">
+                        📝 Создать работу
                     </a>
                     {% endif %}
                     <a href="{{ url_for('kege_generator.kege_generator') }}" class="neo-button outline" style="text-decoration:none;">

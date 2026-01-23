@@ -11,7 +11,8 @@ from sqlalchemy.orm import joinedload
 from app.assignments import assignments_bp
 from app.models import (
     db, Assignment, AssignmentTask, Submission, Answer,
-    Student, User, Tasks, Lesson, Enrollment, GradebookEntry, SubmissionAttempt, RubricTemplate
+    Student, User, Tasks, Lesson, Enrollment, GradebookEntry, SubmissionAttempt, RubricTemplate,
+    TaskTemplate, TemplateTask
 )
 from app.students.utils import get_sorted_assignments
 from core.db_models import SubmissionComment
@@ -1052,6 +1053,107 @@ def assignments_generator_results():
         assignment_type=assignment_type,
         template_id=template_id,
         active_page='assignments',
+    )
+
+
+@assignments_bp.route('/assignments/create')
+@login_required
+@check_access('assignment.create')
+def assignment_create():
+    """
+    Единый мастер создания работы.
+
+    Источники:
+    - source=accepted: из буфера принятых (UsageHistory)
+    - source=template: из шаблона (TaskTemplate)
+    - source=manual: вручную (вставить task_id)
+    """
+    source = (request.args.get('source') or 'accepted').strip().lower()
+    if source not in {'accepted', 'template', 'manual'}:
+        source = 'accepted'
+
+    # Prefill assignment type
+    assignment_type = _normalize_assignment_type(request.args.get('assignment_type')) or 'homework'
+    task_type = request.args.get('task_type', type=int, default=None)
+    template_id = request.args.get('template_id', type=int, default=None)
+
+    tasks: list[Tasks] = []
+    source_label = ''
+    source_meta: dict[str, Any] = {}
+
+    if source == 'accepted':
+        tasks = get_accepted_tasks(task_type=task_type)
+        source_label = 'Принятые задания'
+        source_meta = {'task_type': task_type}
+    elif source == 'template':
+        source_label = 'Шаблон'
+        if template_id:
+            tpl = TaskTemplate.query.options(db.joinedload(TaskTemplate.template_tasks).joinedload(TemplateTask.task)).get(template_id)
+            if tpl:
+                tts = sorted((tpl.template_tasks or []), key=lambda x: int(getattr(x, 'order', 0) or 0))
+                tasks = [tt.task for tt in tts if getattr(tt, 'task', None)]
+                source_meta = {'template_id': tpl.template_id, 'template_name': tpl.name, 'template_type': tpl.template_type}
+        else:
+            tpl = None
+        if not template_id:
+            tpl = None
+    else:
+        source_label = 'Вручную'
+
+    # Recipients list (for modal/form)
+    recipient_options: list[Student] = []
+    try:
+        scope = get_user_scope(current_user)
+        if scope.get('can_see_all'):
+            recipient_options = (
+                Student.query.filter(Student.is_active.is_(True))
+                .order_by(Student.name.asc(), Student.student_id.asc())
+                .limit(500)
+                .all()
+            )
+        else:
+            tutor_students = get_students_for_tutor(current_user.id) or []
+            ids = [int(s.student_id) for s in tutor_students if getattr(s, 'student_id', None)]
+            if ids:
+                recipient_options = (
+                    Student.query.filter(Student.student_id.in_(ids))
+                    .order_by(Student.name.asc(), Student.student_id.asc())
+                    .limit(500)
+                    .all()
+                )
+    except Exception:
+        recipient_options = []
+
+    # Templates list for picker
+    templates: list[TaskTemplate] = []
+    try:
+        templates = (
+            TaskTemplate.query.order_by(TaskTemplate.name.asc(), TaskTemplate.template_id.asc())
+            .limit(300)
+            .all()
+        )
+    except Exception:
+        templates = []
+
+    task_ids = []
+    try:
+        task_ids = [int(t.task_id) for t in (tasks or []) if getattr(t, 'task_id', None)]
+    except Exception:
+        task_ids = []
+
+    return render_template(
+        'assignment_create.html',
+        active_page='assignments',
+        source=source,
+        source_label=source_label,
+        source_meta=source_meta,
+        assignment_type=assignment_type,
+        task_type=task_type,
+        template_id=template_id,
+        templates=templates,
+        tasks=tasks,
+        task_ids=task_ids,
+        recipient_options=recipient_options,
     )
 
 

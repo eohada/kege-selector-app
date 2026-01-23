@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создать работу · Чёрный неон</title>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    <style>
+        .hero {
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            background: radial-gradient(900px 420px at 14% 10%, rgba(0, 255, 213, 0.10), transparent 60%),
+                        radial-gradient(900px 420px at 85% 20%, rgba(31, 123, 255, 0.10), transparent 55%),
+                        var(--surface-1);
+            margin-bottom: 1rem;
+        }
+        .title {
+            font-size: 2.0rem;
+            font-weight: 900;
+            margin: 0.35rem 0 0 0;
+        }
+        .subtitle { color: var(--text-muted); margin-top: .65rem; line-height: 1.55; max-width: 980px; }
+        .grid {
+            display: grid;
+            grid-template-columns: 1.05fr 0.95fr;
+            gap: 0.9rem;
+            margin-top: 1rem;
+        }
+        @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+        .panel {
+            border: 1px solid var(--stroke-1);
+            background: var(--surface-1);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+        }
+        .panel h3 { margin: 0 0 .75rem 0; font-weight: 900; }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: .35rem;
+            border-radius: 999px;
+            padding: .25rem .55rem;
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            font-weight: 900;
+            font-size: .82rem;
+            color: var(--text-primary);
+        }
+        .row { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
+        .task-list { margin-top: .75rem; display: grid; gap: .6rem; }
+        .task-item {
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            border-radius: var(--radius-lg);
+            padding: .85rem 1rem;
+        }
+        .task-top { display:flex; justify-content: space-between; gap: .75rem; flex-wrap: wrap; align-items: center; }
+        .task-title { font-weight: 900; }
+        .task-sub { color: var(--text-muted); font-size: .95rem; margin-top: .35rem; line-height: 1.45; }
+        .actions { display:flex; gap:.6rem; justify-content:flex-end; flex-wrap: wrap; margin-top: 1rem; }
+        .hint { color: var(--text-muted); font-size: .95rem; line-height: 1.45; }
+        .source-cards { display:flex; gap:.6rem; flex-wrap: wrap; }
+        .source-card {
+            flex: 1;
+            min-width: 220px;
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            border-radius: var(--radius-lg);
+            padding: .9rem 1rem;
+            text-decoration: none;
+            color: inherit;
+            transition: transform .18s ease, border-color .18s ease;
+        }
+        .source-card:hover { transform: translateY(-1px); border-color: rgba(0,255,213,0.30); }
+        .source-card.active { border-color: rgba(0,255,213,0.55); box-shadow: 0 0 0 3px rgba(0,255,213,0.10); }
+        .source-card .sc-title { font-weight: 900; }
+        .source-card .sc-sub { margin-top: .35rem; color: var(--text-muted); font-size: .95rem; line-height: 1.4; }
+        .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = active_page | default('assignments') %}
+        {% include '_primary_nav.html' %}
+
+        <main style="margin-top: 1.25rem;">
+            <section class="hero">
+                <div class="hero-eyebrow">Учёба</div>
+                <h1 class="title">Создать работу</h1>
+                <div class="subtitle">
+                    Один экран для создания работы: выбери источник заданий → проверь список → выбери учеников → создай.
+                </div>
+                <div class="row" style="margin-top: .9rem;">
+                    <span class="pill">Источник: <span class="mono">{{ source_label }}</span></span>
+                    <span class="pill">Тип: <span class="mono">{{ assignment_type }}</span></span>
+                    <span class="pill">Заданий: <span class="mono">{{ (task_ids|length) if task_ids is defined else 0 }}</span></span>
+                </div>
+            </section>
+
+            <section class="panel">
+                <h3>Источник заданий</h3>
+                <div class="source-cards">
+                    <a class="source-card {% if source=='accepted' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type=assignment_type, task_type=task_type) }}">
+                        <div class="sc-title">Принятые</div>
+                        <div class="sc-sub">Использовать буфер принятых из генератора (лучший поток).</div>
+                    </a>
+                    <a class="source-card {% if source=='template' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='template', assignment_type=assignment_type) }}">
+                        <div class="sc-title">Шаблон</div>
+                        <div class="sc-sub">Создать работу из заранее собранного набора.</div>
+                    </a>
+                    <a class="source-card {% if source=='manual' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='manual', assignment_type=assignment_type) }}">
+                        <div class="sc-title">Вручную</div>
+                        <div class="sc-sub">Вставить список task_id и назначить.</div>
+                    </a>
+                </div>
+
+                {% if source=='template' %}
+                <div style="margin-top: 1rem;">
+                    <label class="neo-label" for="templatePicker">Выбери шаблон</label>
+                    <select id="templatePicker" class="neo-select" onchange="onTemplatePick(this.value)">
+                        <option value="">— выбрать —</option>
+                        {% for tpl in (templates or []) %}
+                            <option value="{{ tpl.template_id }}" {% if template_id and tpl.template_id == template_id %}selected{% endif %}>
+                                {{ tpl.name }} · {{ tpl.template_type }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div class="hint" style="margin-top:.5rem;">После выбора мы покажем задачи и ты сможешь сразу создать работу.</div>
+                </div>
+                {% endif %}
+
+                {% if source=='manual' %}
+                <div style="margin-top: 1rem;">
+                    <label class="neo-label" for="manualTaskIds">Task IDs</label>
+                    <textarea id="manualTaskIds" class="neo-input" style="min-height: 110px;" placeholder="Вставь task_id через запятую/пробел/перенос строки"></textarea>
+                    <div class="hint" style="margin-top:.5rem;">Пример: <span class="mono">123, 124 130</span></div>
+                </div>
+                {% endif %}
+            </section>
+
+            <section class="grid">
+                <div class="panel">
+                    <h3>Задания (превью)</h3>
+                    {% if tasks and tasks|length > 0 %}
+                        <div class="task-list">
+                            {% for t in tasks[:12] %}
+                            <div class="task-item">
+                                <div class="task-top">
+                                    <div class="task-title">#{{ t.task_id }} · №{{ t.task_number }} {% if t.site_task_id %}· site {{ t.site_task_id }}{% endif %}</div>
+                                    {% if t.source_url %}<a class="neo-button ghost sm" style="text-decoration:none;" href="{{ t.source_url }}" target="_blank">Источник</a>{% endif %}
+                                </div>
+                                <div class="task-sub">
+                                    {{ (t.content_html or '')|striptags|truncate(220, True, '…') }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% if tasks|length > 12 %}
+                            <div class="hint" style="margin-top:.75rem;">Показаны первые 12. Всего заданий: <span class="mono">{{ tasks|length }}</span>.</div>
+                        {% endif %}
+                    {% else %}
+                        <div class="hint">
+                            {% if source=='template' and not template_id %}
+                                Выбери шаблон — появится список задач.
+                            {% elif source=='manual' %}
+                                Вставь task_id и нажми «Создать» — мы создадим работу с этими задачами.
+                            {% else %}
+                                Нет задач в выбранном источнике.
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="panel">
+                    <h3>Параметры работы</h3>
+                    <form id="createAssignmentForm">
+                        <div class="neo-field">
+                            <label class="neo-label" for="ca_title">Название *</label>
+                            <input id="ca_title" class="neo-input" name="title" required placeholder="Например: ДЗ · неделя 3">
+                        </div>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: .75rem;">
+                            <div class="neo-field">
+                                <label class="neo-label" for="ca_type">Тип</label>
+                                <select id="ca_type" class="neo-select" name="type">
+                                    <option value="homework" {% if assignment_type=='homework' %}selected{% endif %}>ДЗ</option>
+                                    <option value="classwork" {% if assignment_type=='classwork' %}selected{% endif %}>КР</option>
+                                    <option value="exam" {% if assignment_type=='exam' %}selected{% endif %}>Проверочная</option>
+                                </select>
+                            </div>
+                            <div class="neo-field">
+                                <label class="neo-label" for="ca_deadline">Дедлайн *</label>
+                                <input id="ca_deadline" class="neo-input" type="datetime-local" name="deadline" required>
+                            </div>
+                        </div>
+
+                        <div class="neo-field" style="margin-top: .75rem;">
+                            <label class="neo-label" for="ca_recipients">Кому назначить *</label>
+                            <select id="ca_recipients" class="neo-select" name="recipients" multiple size="10" style="min-height: 260px;">
+                                {% for st in (recipient_options or []) %}
+                                    <option value="{{ st.student_id }}">{{ st.name }}{% if st.platform_id %} · {{ st.platform_id }}{% endif %}</option>
+                                {% endfor %}
+                            </select>
+                            <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top: .6rem;">
+                                <button type="button" class="neo-button ghost sm" onclick="selectAllRecipients(true)">Выбрать всех</button>
+                                <button type="button" class="neo-button ghost sm" onclick="selectAllRecipients(false)">Снять выбор</button>
+                            </div>
+                        </div>
+
+                        <div class="actions">
+                            <a class="neo-button outline" style="text-decoration:none;" href="{{ url_for('assignments.assignments_list') }}">Отмена</a>
+                            <button type="submit" class="neo-button accent" id="ca_submit_btn">Создать работу</button>
+                        </div>
+                        <div class="hint" style="margin-top:.6rem;">
+                            Создание идёт через единый API <span class="mono">/assignments/distribute</span>.
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script type="application/json" id="task-ids-data">{{ (task_ids or [])|tojson }}</script>
+    <script>
+        const ASSIGNMENTS_DISTRIBUTE_URL = "{{ url_for('assignments.distribute_assignment') }}";
+        const ASSIGNMENT_VIEW_URL_TPL = "{{ url_for('assignments.assignment_view', assignment_id=0) }}";
+        const CSRF_TOKEN = (document.querySelector('meta[name=\"csrf-token\"]') || {getAttribute: () => null}).getAttribute('content') || '';
+
+        function getTaskIds() {
+            // Server-provided list
+            try {
+                const el = document.getElementById('task-ids-data');
+                const ids = JSON.parse(el?.textContent || '[]');
+                if (Array.isArray(ids) && ids.length) return ids.map(x => parseInt(x, 10)).filter(Number.isFinite);
+            } catch (e) {}
+
+            // Manual source: parse textarea
+            try {
+                const ta = document.getElementById('manualTaskIds');
+                if (!ta) return [];
+                const raw = (ta.value || '').replace(/\\s+/g, ' ').trim();
+                if (!raw) return [];
+                return raw.split(/[^0-9]+/g).map(x => parseInt(x, 10)).filter(Number.isFinite);
+            } catch (e) {}
+            return [];
+        }
+
+        function selectAllRecipients(flag) {
+            const sel = document.getElementById('ca_recipients');
+            if (!sel) return;
+            Array.from(sel.options).forEach(o => { o.selected = !!flag; });
+        }
+
+        function onTemplatePick(tplId) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('source', 'template');
+            url.searchParams.set('template_id', String(tplId || ''));
+            window.location.href = url.toString();
+        }
+
+        function defaultDeadline() {
+            const d = new Date();
+            d.setDate(d.getDate() + 1);
+            d.setHours(23, 59, 0, 0);
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const deadlineEl = document.getElementById('ca_deadline');
+            if (deadlineEl && !deadlineEl.value) deadlineEl.value = defaultDeadline();
+
+            const titleEl = document.getElementById('ca_title');
+            if (titleEl && !titleEl.value) {
+                const t = document.getElementById('ca_type')?.value || 'homework';
+                const prefix = (t === 'classwork') ? 'КР' : (t === 'exam') ? 'Проверочная' : 'ДЗ';
+                titleEl.value = `${prefix} · работа`;
+            }
+
+            const form = document.getElementById('createAssignmentForm');
+            form?.addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const btn = document.getElementById('ca_submit_btn');
+                if (btn) { btn.disabled = true; btn.textContent = 'Создаём…'; }
+
+                const title = (document.getElementById('ca_title')?.value || '').trim();
+                const type = (document.getElementById('ca_type')?.value || 'homework').trim();
+                const deadlineLocal = (document.getElementById('ca_deadline')?.value || '').trim();
+                const recipientsSel = document.getElementById('ca_recipients');
+                const recipientIds = recipientsSel ? Array.from(recipientsSel.selectedOptions).map(o => parseInt(o.value, 10)).filter(Number.isFinite) : [];
+                const taskIds = getTaskIds();
+
+                if (!title) { window.toast?.error?.('Введите название'); if (btn) { btn.disabled = false; btn.textContent = 'Создать работу'; } return; }
+                if (!deadlineLocal) { window.toast?.error?.('Выберите дедлайн'); if (btn) { btn.disabled = false; btn.textContent = 'Создать работу'; } return; }
+                if (!recipientIds.length) { window.toast?.error?.('Выберите хотя бы одного ученика'); if (btn) { btn.disabled = false; btn.textContent = 'Создать работу'; } return; }
+                if (!taskIds.length) { window.toast?.error?.('Нет заданий для создания работы'); if (btn) { btn.disabled = false; btn.textContent = 'Создать работу'; } return; }
+
+                const deadlineDate = new Date(deadlineLocal);
+                if (!Number.isFinite(deadlineDate.getTime())) { window.toast?.error?.('Некорректный дедлайн'); if (btn) { btn.disabled = false; btn.textContent = 'Создать работу'; } return; }
+
+                const payload = {
+                    title,
+                    type,
+                    deadline: deadlineDate.toISOString(),
+                    hard_deadline: false,
+                    time_limit_minutes: null,
+                    description: '',
+                    tasks: taskIds.slice(0, 500).map((taskId, idx) => ({ task_id: taskId, max_score: 1, order: idx })),
+                    recipientIds: recipientIds,
+                };
+
+                try {
+                    const resp = await fetch(ASSIGNMENTS_DISTRIBUTE_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': CSRF_TOKEN || '',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify(payload),
+                    });
+                    const data = await resp.json().catch(() => ({}));
+                    if (!resp.ok || data.success === false) {
+                        window.toast?.error?.(data.error || `HTTP ${resp.status}`);
+                        if (btn) { btn.disabled = false; btn.textContent = 'Создать работу'; }
+                        return;
+                    }
+                    const assignmentId = data.assignment_id || data.assignmentId || data.id;
+                    window.toast?.success?.('Работа создана');
+                    setTimeout(() => {
+                        if (assignmentId) window.location.href = ASSIGNMENT_VIEW_URL_TPL.replace('/0', '/' + assignmentId);
+                        else window.location.href = "{{ url_for('assignments.assignments_list') }}";
+                    }, 250);
+                } catch (err) {
+                    window.toast?.error?.(err?.message || 'Ошибка создания работы');
+                    if (btn) { btn.disabled = false; btn.textContent = 'Создать работу'; }
+                }
+            });
+        });
+    </script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
+
