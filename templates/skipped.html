@@ -19,7 +19,7 @@
     {% include '_active_lesson_banner.html' %}
     
     <div class="app-shell">
-        {% set active_page = 'generator' %}
+        {% set active_page = active_page | default('generator') %}
         {% include '_primary_nav.html' %}
 
         <section class="glass-panel" style="margin-bottom: 2rem;">
@@ -357,9 +357,9 @@
         
         function filterByTaskType(taskType) {
             if (taskType === '') {
-                window.location.href = '{{ url_for('kege_generator.show_skipped') }}';
+                window.location.href = '{{ skipped_base_url | default(url_for('kege_generator.show_skipped')) }}';
             } else {
-                window.location.href = '{{ url_for('kege_generator.show_skipped') }}?task_type=' + taskType;
+                window.location.href = '{{ skipped_base_url | default(url_for('kege_generator.show_skipped')) }}?task_type=' + taskType;
             }
         }
     </script>

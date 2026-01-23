@@ -438,111 +438,8 @@ def generator_stream_act():
 @kege_generator_bp.route('/results')
 @login_required
 def generate_results():
-    """Результаты генерации заданий"""
-    _require_kege_generator_access()
-    try:
-        task_type = request.args.get('task_type', type=int)
-        limit_count = request.args.get('limit_count', type=int)
-        use_skipped = request.args.get('use_skipped', 'false').lower() == 'true'
-        lesson_id = request.args.get('lesson_id', type=int)
-        assignment_type = request.args.get('assignment_type', default='homework')
-        search_task_id = request.args.get('search_task_id', type=int)
-        template_id = request.args.get('template_id', type=int)  # Получаем template_id из запроса
-        
-        # Валидация assignment_type
-        if assignment_type not in ['homework', 'classwork', 'exam']:
-            assignment_type = 'homework'
-            logger.warning(f"Некорректный assignment_type, установлен 'homework'")
-        
-        # Валидация обязательных параметров
-        if not task_type or not limit_count:
-            logger.error(f"Отсутствуют обязательные параметры: task_type={task_type}, limit_count={limit_count}")
-            flash('Не указаны тип задания или количество заданий.', 'danger')
-            if lesson_id:
-                return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
-            return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
-        
-        logger.info(f"generate_results вызван с параметрами: task_type={task_type}, limit_count={limit_count}, search_task_id={search_task_id}, lesson_id={lesson_id}, assignment_type={assignment_type}, template_id={template_id}")
-    except Exception as e:
-        logger.error(f"Ошибка при получении параметров запроса: {e}", exc_info=True)
-        flash('Неверные параметры запроса.', 'danger')
-        # Получаем assignment_type из запроса для редиректа
-        assignment_type = request.args.get('assignment_type', 'homework')
-        if lesson_id:
-            return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
-        return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
-
-    lesson = None
-    student = None
-    student_id = None
-    if lesson_id:
-        try:
-            lesson = Lesson.query.get_or_404(lesson_id)
-            if lesson:
-                student = lesson.student
-                if student:
-                    student_id = student.student_id
-        except Exception as e:
-            logger.error(f"Error getting lesson {lesson_id}: {e}")
-            flash('Ошибка при получении урока', 'error')
-            return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
-
-    try:
-        if search_task_id:
-            task = Tasks.query.filter_by(task_id=search_task_id).first()
-            if task:
-                tasks = [task]
-                task_type = task.task_number
-            else:
-                logger.error(f"✗ Задание с search_task_id={search_task_id} не найдено в базе данных!")
-                flash(f'Задание с ID {search_task_id} не найдено.', 'warning')
-                tasks = []
-        else:
-            tasks = get_unique_tasks(task_type, limit_count, use_skipped=use_skipped, student_id=student_id)
-    except Exception as e:
-        logger.error(f"Error getting unique tasks: {e}", exc_info=True)
-        flash(f'Ошибка при генерации заданий: {str(e)}', 'error')
-        if lesson_id:
-            return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
-        return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
-    
-    try:
-        audit_logger.log(
-            action='generate_tasks',
-            entity='Generator',
-            entity_id=lesson_id,
-            status='success' if tasks else 'warning',
-            metadata={
-                'task_type': task_type,
-                'limit_count': limit_count,
-                'use_skipped': use_skipped,
-                'tasks_generated': len(tasks) if tasks else 0,
-                'assignment_type': assignment_type,
-                'student_id': student_id,
-                'student_name': student.name if student and hasattr(student, 'name') else None
-            }
-        )
-    except Exception as e:
-        logger.error(f"Error logging task generation: {e}", exc_info=True)
-
-    if not tasks:
-        if use_skipped:
-            flash(f'Задания типа {task_type} закончились! Все доступные задания (включая пропущенные) были использованы.', 'warning')
-        else:
-            flash(f'Задания типа {task_type} закончились! Попробуйте включить пропущенные задания или сбросьте историю.', 'warning')
-        # Сохраняем assignment_type при редиректе
-        if lesson_id:
-            return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
-        return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
-
-    return render_template('results.html',
-                           tasks=tasks,
-                           task_type=task_type,
-                           lesson=lesson,
-                           student=student,
-                           lesson_id=lesson_id,
-                           assignment_type=assignment_type,
-                           template_id=template_id)
+    """Legacy URL (generator era). Kept as alias to /assignments/generator/results."""
+    return redirect(url_for('assignments.assignments_generator_results', **request.args))
 
 @kege_generator_bp.route('/action', methods=['POST'])
 @login_required
@@ -863,20 +760,6 @@ def clear_accepted():
 @kege_generator_bp.route('/skipped')
 @login_required
 def show_skipped():
-    """Показать пропущенные задания"""
-    _require_kege_generator_access()
-    try:
-        task_type = request.args.get('task_type', type=int, default=None)
-
-        skipped_tasks = get_skipped_tasks(task_type=task_type)
-
-        if not skipped_tasks:
-            message = f'Нет пропущенных заданий типа {task_type}.' if task_type else 'Нет пропущенных заданий.'
-            flash(message, 'info')
-            return redirect(url_for('kege_generator.kege_generator'))
-
-        return render_template('skipped.html', tasks=skipped_tasks, task_type=task_type)
-
-    except Exception as e:
-        flash(f'Ошибка: {e}', 'danger')
-        return redirect(url_for('kege_generator.kege_generator'))
+    """Legacy URL (generator era). Kept as alias to /assignments/skipped."""
+    task_type = request.args.get('task_type', type=int, default=None)
+    return redirect(url_for('assignments.assignments_skipped', task_type=task_type))

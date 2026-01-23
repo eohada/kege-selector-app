@@ -233,7 +233,7 @@
     {% endif %}
 
     <div class="app-shell">
-        {% set active_page = 'generator' %}
+        {% set active_page = active_page | default('generator') %}
         {% include '_primary_nav.html' %}
 
         {# Flash messages будут показаны через toast #}
