@@ -2955,6 +2955,11 @@ def admin_user_new():
             role = request.form.get('role', 'student').strip()
             is_active = request.form.get('is_active') == 'on'
             
+            # Формируем списки для выпадающих списков (нужно для всех случаев)
+            all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
+            all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all()
+            all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all()
+            
             if not username:
                 flash('Имя пользователя обязательно.', 'error')
                 # Определяем, находимся ли мы в песочнице
@@ -2962,7 +2967,9 @@ def admin_user_new():
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
                 is_sandbox = _is_sandbox(environment, railway_environment)
                 
-                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox)
+                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
+                                     all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
+                                     family_ties=[], enrollments=[])
             
             if not password:
                 flash('Пароль обязателен.', 'error')
@@ -2971,7 +2978,9 @@ def admin_user_new():
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
                 is_sandbox = _is_sandbox(environment, railway_environment)
                 
-                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox)
+                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
+                                     all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
+                                     family_ties=[], enrollments=[])
             
             # Проверка уникальности
             if User.query.filter_by(username=username).first():
@@ -2981,7 +2990,9 @@ def admin_user_new():
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
                 is_sandbox = _is_sandbox(environment, railway_environment)
                 
-                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox)
+                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
+                                     all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
+                                     family_ties=[], enrollments=[])
             
             if email and User.query.filter_by(email=email).first():
                 flash('Пользователь с таким email уже существует.', 'error')
@@ -2990,7 +3001,9 @@ def admin_user_new():
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
                 is_sandbox = _is_sandbox(environment, railway_environment)
                 
-                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox)
+                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
+                                     all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
+                                     family_ties=[], enrollments=[])
             
             # Создаем пользователя
             user = User(
@@ -3137,7 +3150,19 @@ def admin_user_new():
     railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
     is_sandbox = _is_sandbox(environment, railway_environment)
     
-    return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox)
+    # Формируем списки для выпадающих списков
+    all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
+    all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all()
+    all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all()
+    
+    return render_template('admin_user_edit.html', 
+                         user=None, 
+                         is_sandbox=is_sandbox,
+                         all_tutors=all_tutors,
+                         all_parents=all_parents,
+                         all_students=all_students,
+                         family_ties=[],
+                         enrollments=[])
 
 
 @admin_bp.route('/admin/tasks/<int:task_id>/topics', methods=['GET', 'POST'])
