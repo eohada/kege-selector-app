@@ -1352,7 +1352,9 @@ def assignment_view(assignment_id):
     # Проверка доступа
     try:
         scope = get_user_scope(current_user)
-        if not scope['can_see_all'] and assignment.created_by_id != current_user.id:
+        # Разрешаем доступ если: админ/тьютор видит все ИЛИ пользователь является создателем работы
+        can_access = scope.get('can_see_all', False) or (assignment.created_by_id == current_user.id)
+        if not can_access:
             flash('Доступ запрещен', 'danger')
             return redirect(url_for('assignments.assignments_list'))
     except Exception as e:
@@ -1552,7 +1554,14 @@ def submission_view(submission_id):
     try:
         # Проверка дедлайна
         now = moscow_now()
-        is_deadline_passed = now > assignment.deadline if assignment.deadline else False
+        # Нормализуем datetime для сравнения (убираем timezone если есть)
+        if assignment.deadline:
+            # Если deadline имеет timezone, приводим к naive для сравнения
+            deadline_naive = assignment.deadline.replace(tzinfo=None) if assignment.deadline.tzinfo else assignment.deadline
+            now_naive = now.replace(tzinfo=None) if now.tzinfo else now
+            is_deadline_passed = now_naive > deadline_naive
+        else:
+            is_deadline_passed = False
         can_submit = not (is_deadline_passed and assignment.hard_deadline)
         
         # Подготовка данных для отображения
