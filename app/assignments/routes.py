@@ -1338,108 +1338,123 @@ def assignment_duplicate(assignment_id: int):
 @check_access('assignment.view')
 def assignment_view(assignment_id):
     """Просмотр конкретной работы"""
-    assignment = Assignment.query.options(
-        joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
-        joinedload(Assignment.submissions).joinedload(Submission.student),
-        joinedload(Assignment.created_by)
-    ).get_or_404(assignment_id)
+    try:
+        assignment = Assignment.query.options(
+            joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
+            joinedload(Assignment.submissions).joinedload(Submission.student),
+            joinedload(Assignment.created_by)
+        ).get_or_404(assignment_id)
+    except Exception as e:
+        logger.error(f"Error loading assignment {assignment_id}: {e}", exc_info=True)
+        flash('Ошибка при загрузке работы', 'danger')
+        return redirect(url_for('assignments.assignments_list'))
     
     # Проверка доступа
-    scope = get_user_scope(current_user)
-    if not scope['can_see_all'] and assignment.created_by_id != current_user.id:
-        flash('Доступ запрещен', 'danger')
+    try:
+        scope = get_user_scope(current_user)
+        if not scope['can_see_all'] and assignment.created_by_id != current_user.id:
+            flash('Доступ запрещен', 'danger')
+            return redirect(url_for('assignments.assignments_list'))
+    except Exception as e:
+        logger.error(f"Error checking access for assignment {assignment_id}: {e}", exc_info=True)
+        flash('Ошибка при проверке доступа', 'danger')
         return redirect(url_for('assignments.assignments_list'))
 
-    status_filter = (request.args.get('status') or 'all').strip().lower()
-    student_query = (request.args.get('student') or '').strip().lower()
+    try:
+        status_filter = (request.args.get('status') or 'all').strip().lower()
+        student_query = (request.args.get('student') or '').strip().lower()
 
-    subs_all = list(assignment.submissions or [])
+        subs_all = list(assignment.submissions or [])
 
-    counts = {
-        'total': 0,
-        'assigned': 0,
-        'in_progress': 0,
-        'submitted': 0,
-        'late': 0,
-        'returned': 0,
-        'graded': 0,
-        'needs_grading': 0,
-    }
-    for s in subs_all:
-        st = (getattr(s, 'status', '') or '').upper()
-        counts['total'] += 1
-        if st == 'ASSIGNED':
-            counts['assigned'] += 1
-        elif st == 'IN_PROGRESS':
-            counts['in_progress'] += 1
-        elif st == 'RETURNED':
-            counts['returned'] += 1
-        elif st == 'GRADED':
-            counts['graded'] += 1
-        elif st == 'LATE':
-            counts['late'] += 1
-            counts['submitted'] += 1
-            counts['needs_grading'] += 1
-        elif st == 'SUBMITTED':
-            counts['submitted'] += 1
-            counts['needs_grading'] += 1
-
-    def _matches_status(s: Submission) -> bool:
-        if status_filter in {'', 'all'}:
-            return True
-        st = (getattr(s, 'status', '') or '').upper()
-        if status_filter == 'needs_grading':
-            return st in {'SUBMITTED', 'LATE'}
-        if status_filter == 'submitted':
-            return st in {'SUBMITTED', 'LATE', 'GRADED', 'RETURNED'}
-        if status_filter == 'pending':
-            return st in {'ASSIGNED', 'IN_PROGRESS'}
-        return st.lower() == status_filter
-
-    def _matches_student(s: Submission) -> bool:
-        if not student_query:
-            return True
-        name = ''
-        try:
-            if s.student and getattr(s.student, 'name', None):
-                name = str(s.student.name or '').strip().lower()
-        except Exception:
-            name = ''
-        return student_query in name
-
-    submissions = [s for s in subs_all if _matches_status(s) and _matches_student(s)]
-
-    def _sort_key(s: Submission):
-        order = {
-            'SUBMITTED': 0,
-            'LATE': 0,
-            'RETURNED': 1,
-            'IN_PROGRESS': 2,
-            'ASSIGNED': 3,
-            'GRADED': 4,
+        counts = {
+            'total': 0,
+            'assigned': 0,
+            'in_progress': 0,
+            'submitted': 0,
+            'late': 0,
+            'returned': 0,
+            'graded': 0,
+            'needs_grading': 0,
         }
-        st = (getattr(s, 'status', '') or '').upper()
-        # сначала то, что проверять; затем по времени сдачи
-        ts = getattr(s, 'submitted_at', None) or getattr(s, 'assigned_at', None) or getattr(s, 'created_at', None)
-        try:
-            ts_val = ts.timestamp() if ts else 0
-        except Exception:
-            ts_val = 0
-        return (order.get(st, 9), -ts_val)
+        for s in subs_all:
+            st = (getattr(s, 'status', '') or '').upper()
+            counts['total'] += 1
+            if st == 'ASSIGNED':
+                counts['assigned'] += 1
+            elif st == 'IN_PROGRESS':
+                counts['in_progress'] += 1
+            elif st == 'RETURNED':
+                counts['returned'] += 1
+            elif st == 'GRADED':
+                counts['graded'] += 1
+            elif st == 'LATE':
+                counts['late'] += 1
+                counts['submitted'] += 1
+                counts['needs_grading'] += 1
+            elif st == 'SUBMITTED':
+                counts['submitted'] += 1
+                counts['needs_grading'] += 1
 
-    submissions.sort(key=_sort_key)
+        def _matches_status(s: Submission) -> bool:
+            if status_filter in {'', 'all'}:
+                return True
+            st = (getattr(s, 'status', '') or '').upper()
+            if status_filter == 'needs_grading':
+                return st in {'SUBMITTED', 'LATE'}
+            if status_filter == 'submitted':
+                return st in {'SUBMITTED', 'LATE', 'GRADED', 'RETURNED'}
+            if status_filter == 'pending':
+                return st in {'ASSIGNED', 'IN_PROGRESS'}
+            return st.lower() == status_filter
 
-    can_manage = bool(has_permission(current_user, 'assignment.create')) and (scope.get('can_see_all') or assignment.created_by_id == current_user.id)
+        def _matches_student(s: Submission) -> bool:
+            if not student_query:
+                return True
+            name = ''
+            try:
+                if s.student and getattr(s.student, 'name', None):
+                    name = str(s.student.name or '').strip().lower()
+            except Exception:
+                name = ''
+            return student_query in name
 
-    return render_template(
-        'assignment_view.html',
-        assignment=assignment,
-        submissions=submissions,
-        counts=counts,
-        status_filter=status_filter,
-        student_query=student_query,
-        can_manage=can_manage,
-    )
+        submissions = [s for s in subs_all if _matches_status(s) and _matches_student(s)]
+
+        def _sort_key(s: Submission):
+            order = {
+                'SUBMITTED': 0,
+                'LATE': 0,
+                'RETURNED': 1,
+                'IN_PROGRESS': 2,
+                'ASSIGNED': 3,
+                'GRADED': 4,
+            }
+            st = (getattr(s, 'status', '') or '').upper()
+            # сначала то, что проверять; затем по времени сдачи
+            ts = getattr(s, 'submitted_at', None) or getattr(s, 'assigned_at', None) or getattr(s, 'created_at', None)
+            try:
+                ts_val = ts.timestamp() if ts else 0
+            except Exception:
+                ts_val = 0
+            return (order.get(st, 9), -ts_val)
+
+        submissions.sort(key=_sort_key)
+
+        can_manage = bool(has_permission(current_user, 'assignment.create')) and (scope.get('can_see_all') or assignment.created_by_id == current_user.id)
+
+        return render_template(
+            'assignment_view.html',
+            assignment=assignment,
+            submissions=submissions,
+            counts=counts,
+            status_filter=status_filter,
+            student_query=student_query,
+            can_manage=can_manage,
+        )
+    except Exception as e:
+        logger.error(f"Error processing assignment_view for assignment {assignment_id}: {e}", exc_info=True)
+        flash('Ошибка при обработке данных работы', 'danger')
+        return redirect(url_for('assignments.assignments_list'))
 
 
 # ============================================================================
@@ -1506,42 +1521,60 @@ def submissions_list():
 @login_required
 def submission_view(submission_id):
     """Просмотр и выполнение работы"""
-    submission = Submission.query.options(
-        joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
-        joinedload(Submission.assignment).joinedload(Assignment.created_by),
-        joinedload(Submission.answers),
-        joinedload(Submission.comments).joinedload(SubmissionComment.author)
-    ).get_or_404(submission_id)
+    try:
+        submission = Submission.query.options(
+            joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
+            joinedload(Submission.assignment).joinedload(Assignment.created_by),
+            joinedload(Submission.answers),
+            joinedload(Submission.comments).joinedload(SubmissionComment.author)
+        ).get_or_404(submission_id)
+    except Exception as e:
+        logger.error(f"Error loading submission {submission_id}: {e}", exc_info=True)
+        flash('Ошибка при загрузке работы', 'danger')
+        return redirect(url_for('assignments.submissions_list'))
     
     # Проверка доступа
-    student = get_student_by_user_id(current_user.id)
-    if not student or submission.student_id != student.student_id:
-        flash('Доступ запрещен', 'danger')
+    try:
+        student = get_student_by_user_id(current_user.id)
+        if not student or submission.student_id != student.student_id:
+            flash('Доступ запрещен', 'danger')
+            return redirect(url_for('assignments.submissions_list'))
+    except Exception as e:
+        logger.error(f"Error checking access for submission {submission_id}: {e}", exc_info=True)
+        flash('Ошибка при проверке доступа', 'danger')
         return redirect(url_for('assignments.submissions_list'))
     
     assignment = submission.assignment
+    if not assignment:
+        flash('Работа не найдена', 'danger')
+        return redirect(url_for('assignments.submissions_list'))
     
-    # Проверка дедлайна
-    now = moscow_now()
-    is_deadline_passed = now > assignment.deadline
-    can_submit = not (is_deadline_passed and assignment.hard_deadline)
-    
-    # Подготовка данных для отображения
-    tasks_data = []
-    for assignment_task in sorted(assignment.tasks, key=lambda t: t.order_index):
-        answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
-        tasks_data.append({
-            'assignment_task': assignment_task,
-            'task': assignment_task.task,
-            'answer': answer
-        })
-    
-    return render_template('submission_view.html',
-                         submission=submission,
-                         assignment=assignment,
-                         tasks_data=tasks_data,
-                         is_deadline_passed=is_deadline_passed,
-                         can_submit=can_submit)
+    try:
+        # Проверка дедлайна
+        now = moscow_now()
+        is_deadline_passed = now > assignment.deadline if assignment.deadline else False
+        can_submit = not (is_deadline_passed and assignment.hard_deadline)
+        
+        # Подготовка данных для отображения
+        tasks_data = []
+        for assignment_task in sorted(assignment.tasks, key=lambda t: t.order_index):
+            answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
+            tasks_data.append({
+                'assignment_task': assignment_task,
+                'task': assignment_task.task,
+                'answer': answer
+            })
+        
+        return render_template('submission_view.html',
+                             submission=submission,
+                             assignment=assignment,
+                             tasks_data=tasks_data,
+                             is_deadline_passed=is_deadline_passed,
+                             can_submit=can_submit)
+    except Exception as e:
+        logger.error(f"Error processing submission_view for submission {submission_id}: {e}", exc_info=True)
+        flash('Ошибка при обработке данных работы', 'danger')
+        return redirect(url_for('assignments.submissions_list'))
 
 
 @assignments_bp.route('/submissions/<int:submission_id>/start', methods=['POST'])

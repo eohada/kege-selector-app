@@ -1451,128 +1451,206 @@ def student_analytics(student_id):
     """Единая страница статистики и аналитики ученика с табами"""
     from app.auth.rbac_utils import get_user_scope
     
-    student = Student.query.get_or_404(student_id)
+    try:
+        student = Student.query.get_or_404(student_id)
+    except Exception as e:
+        logger.error(f"Error loading student {student_id}: {e}", exc_info=True)
+        flash('Ошибка при загрузке данных ученика', 'danger')
+        return redirect(url_for('main.dashboard'))
     
     # Проверка доступа через data scoping
-    scope = get_user_scope(current_user)
-    if not scope['can_see_all']:
-        # Проверяем, есть ли доступ к этому ученику
-        if student.email:
-            student_user = User.query.filter_by(email=student.email, role='student').first()
-            if student_user:
-                if student_user.id not in scope['student_ids']:
+    try:
+        scope = get_user_scope(current_user)
+        if not scope['can_see_all']:
+            # Проверяем, есть ли доступ к этому ученику
+            if student.email:
+                student_user = User.query.filter_by(email=student.email, role='student').first()
+                if student_user:
+                    if student_user.id not in scope['student_ids']:
+                        flash('У вас нет доступа к статистике этого ученика.', 'danger')
+                        return redirect(url_for('main.dashboard'))
+            else:
+                if not scope['student_ids']:
                     flash('У вас нет доступа к статистике этого ученика.', 'danger')
                     return redirect(url_for('main.dashboard'))
-        else:
-            if not scope['student_ids']:
-                flash('У вас нет доступа к статистике этого ученика.', 'danger')
-                return redirect(url_for('main.dashboard'))
+    except Exception as e:
+        logger.error(f"Error checking access for student {student_id}: {e}", exc_info=True)
+        flash('Ошибка при проверке доступа', 'danger')
+        return redirect(url_for('main.dashboard'))
     
-    # Инициализируем сервис статистики
-    stats = StatsService(student_id)
-    
-    # Собираем данные для графиков (Навыки)
-    gpa_data = stats.get_gpa_trend(period_days=90)
-    skill_data = stats.get_skills_map()
-    metrics = stats.get_summary_metrics()
-    problem_topics = stats.get_problem_topics(threshold=60)
-    gpa_by_type = stats.get_gpa_by_type()
-    
-    # Собираем данные для графиков (Дисциплина)
-    attendance_data = stats.get_attendance_pie()
-    attendance_heatmap = stats.get_attendance_heatmap(weeks=52)
-    punctuality = stats.get_submission_punctuality()
+    # Инициализируем сервис статистики с обработкой ошибок
+    try:
+        stats = StatsService(student_id)
+        
+        # Собираем данные для графиков (Навыки)
+        try:
+            gpa_data = stats.get_gpa_trend(period_days=90)
+        except Exception as e:
+            logger.error(f"Error getting GPA trend: {e}", exc_info=True)
+            gpa_data = {'dates': [], 'scores': []}
+        
+        try:
+            skill_data = stats.get_skills_map()
+        except Exception as e:
+            logger.error(f"Error getting skills map: {e}", exc_info=True)
+            skill_data = {'labels': [], 'values': []}
+        
+        try:
+            metrics = stats.get_summary_metrics()
+        except Exception as e:
+            logger.error(f"Error getting summary metrics: {e}", exc_info=True)
+            metrics = {}
+        
+        try:
+            problem_topics = stats.get_problem_topics(threshold=60)
+        except Exception as e:
+            logger.error(f"Error getting problem topics: {e}", exc_info=True)
+            problem_topics = []
+        
+        try:
+            gpa_by_type = stats.get_gpa_by_type()
+        except Exception as e:
+            logger.error(f"Error getting GPA by type: {e}", exc_info=True)
+            gpa_by_type = {}
+        
+        # Собираем данные для графиков (Дисциплина)
+        try:
+            attendance_data = stats.get_attendance_pie()
+        except Exception as e:
+            logger.error(f"Error getting attendance pie: {e}", exc_info=True)
+            attendance_data = {'labels': [], 'values': []}
+        
+        try:
+            attendance_heatmap = stats.get_attendance_heatmap(weeks=52)
+        except Exception as e:
+            logger.error(f"Error getting attendance heatmap: {e}", exc_info=True)
+            attendance_heatmap = {'dates': [], 'values': [], 'statuses': []}
+        
+        try:
+            punctuality = stats.get_submission_punctuality()
+        except Exception as e:
+            logger.error(f"Error getting punctuality: {e}", exc_info=True)
+            punctuality = {}
+    except Exception as e:
+        logger.error(f"Error initializing StatsService: {e}", exc_info=True)
+        # Устанавливаем значения по умолчанию
+        gpa_data = {'dates': [], 'scores': []}
+        skill_data = {'labels': [], 'values': []}
+        metrics = {}
+        problem_topics = []
+        gpa_by_type = {}
+        attendance_data = {'labels': [], 'values': []}
+        attendance_heatmap = {'dates': [], 'values': [], 'statuses': []}
+        punctuality = {}
     
     # Загружаем статистику по заданиям для вкладки "Навыки"
-    lessons = Lesson.query.filter_by(student_id=student_id).options(
-        db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
-    ).all()
+    try:
+        lessons = Lesson.query.filter_by(student_id=student_id).options(
+            db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
+        ).all()
+    except Exception as e:
+        logger.error(f"Error loading lessons for student {student_id}: {e}", exc_info=True)
+        lessons = []
     
     task_stats = {}
-    for lesson in lessons:
-        for assignment_type in ['homework', 'classwork', 'exam']:
-            assignments = get_sorted_assignments(lesson, assignment_type)
-            weight = 2 if assignment_type == 'exam' else 1
-            
-            for lt in assignments:
-                if not lt.task or not lt.task.task_number:
+    try:
+        for lesson in lessons:
+            for assignment_type in ['homework', 'classwork', 'exam']:
+                try:
+                    assignments = get_sorted_assignments(lesson, assignment_type)
+                except Exception as e:
+                    logger.error(f"Error getting sorted assignments for lesson {lesson.lesson_id}, type {assignment_type}: {e}", exc_info=True)
                     continue
+                weight = 2 if assignment_type == 'exam' else 1
                 
-                task_num = lt.task.task_number
-                
-                if task_num not in task_stats:
-                    task_stats[task_num] = {
-                        'auto_correct': 0, 
-                        'auto_total': 0,
-                        'manual_correct': 0, 
-                        'manual_incorrect': 0,
-                        'correct': 0,
-                        'total': 0
-                    }
-                
-                # Учитываем все задания, даже без проверки
-                # Если есть проверка - учитываем результат
-                if lt.submission_correct is not None:
-                    task_stats[task_num]['auto_total'] += weight
-                    if lt.submission_correct:
-                        task_stats[task_num]['auto_correct'] += weight
-                # Если проверки нет, но задание есть - считаем как невыполненное для статистики
-                # Но не добавляем в auto_total, чтобы не искажать процент
+                for lt in assignments:
+                    if not lt.task or not lt.task.task_number:
+                        continue
+                    
+                    task_num = lt.task.task_number
+                    
+                    if task_num not in task_stats:
+                        task_stats[task_num] = {
+                            'auto_correct': 0, 
+                            'auto_total': 0,
+                            'manual_correct': 0, 
+                            'manual_incorrect': 0,
+                            'correct': 0,
+                            'total': 0
+                        }
+                    
+                    # Учитываем все задания, даже без проверки
+                    # Если есть проверка - учитываем результат
+                    if lt.submission_correct is not None:
+                        task_stats[task_num]['auto_total'] += weight
+                        if lt.submission_correct:
+                            task_stats[task_num]['auto_correct'] += weight
+                    # Если проверки нет, но задание есть - считаем как невыполненное для статистики
+                    # Но не добавляем в auto_total, чтобы не искажать процент
+    except Exception as e:
+        logger.error(f"Error processing lessons for student {student_id}: {e}", exc_info=True)
     
     # Загружаем ручные изменения статистики
-    manual_stats = StudentTaskStatistics.query.filter_by(student_id=student_id).all()
-    for ms in manual_stats:
-        if ms.task_number in task_stats:
-            task_stats[ms.task_number]['manual_correct'] = ms.manual_correct or 0
-            task_stats[ms.task_number]['manual_incorrect'] = ms.manual_incorrect or 0
-            task_stats[ms.task_number]['correct'] = task_stats[ms.task_number]['auto_correct'] + ms.manual_correct - (ms.manual_incorrect or 0)
-            task_stats[ms.task_number]['total'] = task_stats[ms.task_number]['auto_total'] + ms.manual_correct + (ms.manual_incorrect or 0)
-        else:
-            task_stats[ms.task_number] = {
-                'auto_correct': 0,
-                'auto_total': 0,
-                'manual_correct': ms.manual_correct or 0,
-                'manual_incorrect': ms.manual_incorrect or 0,
-                'correct': ms.manual_correct - (ms.manual_incorrect or 0),
-                'total': (ms.manual_correct or 0) + (ms.manual_incorrect or 0)
-            }
+    try:
+        manual_stats = StudentTaskStatistics.query.filter_by(student_id=student_id).all()
+        for ms in manual_stats:
+            if ms.task_number in task_stats:
+                task_stats[ms.task_number]['manual_correct'] = ms.manual_correct or 0
+                task_stats[ms.task_number]['manual_incorrect'] = ms.manual_incorrect or 0
+                task_stats[ms.task_number]['correct'] = task_stats[ms.task_number]['auto_correct'] + ms.manual_correct - (ms.manual_incorrect or 0)
+                task_stats[ms.task_number]['total'] = task_stats[ms.task_number]['auto_total'] + ms.manual_correct + (ms.manual_incorrect or 0)
+            else:
+                task_stats[ms.task_number] = {
+                    'auto_correct': 0,
+                    'auto_total': 0,
+                    'manual_correct': ms.manual_correct or 0,
+                    'manual_incorrect': ms.manual_incorrect or 0,
+                    'correct': ms.manual_correct - (ms.manual_incorrect or 0),
+                    'total': (ms.manual_correct or 0) + (ms.manual_incorrect or 0)
+                }
+    except Exception as e:
+        logger.error(f"Error loading manual stats for student {student_id}: {e}", exc_info=True)
     
     # Показываем все задания, по которым есть данные (с проверкой или ручными изменениями)
     chart_data = []
-    for task_num in sorted(task_stats.keys()):
-        stats_data = task_stats[task_num]
-        # Учитываем задания с проверкой (auto_total > 0) или с ручными изменениями
-        if stats_data['auto_total'] > 0 or stats_data.get('manual_correct', 0) > 0 or stats_data.get('manual_incorrect', 0) > 0:
-            # Вычисляем итоговые значения
-            total = stats_data['auto_total'] + stats_data.get('manual_correct', 0) + stats_data.get('manual_incorrect', 0)
-            correct = stats_data['auto_correct'] + stats_data.get('manual_correct', 0) - stats_data.get('manual_incorrect', 0)
-            
-            if total > 0:
-                percent = round((correct / total) * 100, 1)
-                # Ограничиваем процент снизу нулем для корректного отображения
-                if percent < 0:
+    try:
+        for task_num in sorted(task_stats.keys()):
+            stats_data = task_stats[task_num]
+            # Учитываем задания с проверкой (auto_total > 0) или с ручными изменениями
+            if stats_data['auto_total'] > 0 or stats_data.get('manual_correct', 0) > 0 or stats_data.get('manual_incorrect', 0) > 0:
+                # Вычисляем итоговые значения
+                total = stats_data['auto_total'] + stats_data.get('manual_correct', 0) + stats_data.get('manual_incorrect', 0)
+                correct = stats_data['auto_correct'] + stats_data.get('manual_correct', 0) - stats_data.get('manual_incorrect', 0)
+                
+                if total > 0:
+                    percent = round((correct / total) * 100, 1)
+                    # Ограничиваем процент снизу нулем для корректного отображения
+                    if percent < 0:
+                        percent = 0
+                else:
                     percent = 0
-            else:
-                percent = 0
-            
-            if percent < 40:
-                color = '#ef4444'
-            elif percent < 80:
-                color = '#eab308'
-            else:
-                color = '#22c55e'
-            
-            chart_data.append({
-                'task_number': task_num,
-                'percent': percent,
-                'correct': correct,
-                'total': total,
-                'color': color,
-                'auto_correct': stats_data.get('auto_correct', 0),
-                'auto_total': stats_data.get('auto_total', 0),
-                'manual_correct': stats_data.get('manual_correct', 0),
-                'manual_incorrect': stats_data.get('manual_incorrect', 0)
-            })
+                
+                if percent < 40:
+                    color = '#ef4444'
+                elif percent < 80:
+                    color = '#eab308'
+                else:
+                    color = '#22c55e'
+                
+                chart_data.append({
+                    'task_number': task_num,
+                    'percent': percent,
+                    'correct': correct,
+                    'total': total,
+                    'color': color,
+                    'auto_correct': stats_data.get('auto_correct', 0),
+                    'auto_total': stats_data.get('auto_total', 0),
+                    'manual_correct': stats_data.get('manual_correct', 0),
+                    'manual_incorrect': stats_data.get('manual_incorrect', 0)
+                })
+    except Exception as e:
+        logger.error(f"Error building chart_data for student {student_id}: {e}", exc_info=True)
+        chart_data = []
     
     # Сериализуем данные для передачи в JavaScript через Jinja
     charts_context = {
@@ -1588,17 +1666,26 @@ def student_analytics(student_id):
     }
     
     # Определяем, может ли пользователь редактировать статистику
-    can_edit = not (current_user.is_student() or current_user.is_parent())
+    try:
+        can_edit = not (current_user.is_student() or current_user.is_parent())
+    except Exception as e:
+        logger.error(f"Error checking can_edit for student {student_id}: {e}", exc_info=True)
+        can_edit = False
     
-    return render_template('student_stats_unified.html',
-                         student=student,
-                         charts=charts_context,
-                         metrics=metrics,
-                         gpa_by_type=gpa_by_type,
-                         problem_topics=problem_topics,
-                         chart_data=chart_data,
-                         punctuality=punctuality,
-                         can_edit=can_edit)
+    try:
+        return render_template('student_stats_unified.html',
+                             student=student,
+                             charts=charts_context,
+                             metrics=metrics,
+                             gpa_by_type=gpa_by_type,
+                             problem_topics=problem_topics,
+                             chart_data=chart_data,
+                             punctuality=punctuality,
+                             can_edit=can_edit)
+    except Exception as e:
+        logger.error(f"Error rendering template for student {student_id}: {e}", exc_info=True)
+        flash('Ошибка при отображении статистики', 'danger')
+        return redirect(url_for('students.student_profile', student_id=student_id))
 
 @students_bp.route('/student/<int:student_id>/edit', methods=['GET', 'POST'])
 @login_required
