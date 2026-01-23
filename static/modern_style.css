@@ -722,6 +722,14 @@ body::after {
     transition: all 0.25s ease;
 }
 
+/* Иконки внутри кнопок: используем flex-gap, не margin-right (иначе “отлипают” в гриде) */
+.neo-button .ui-icon,
+.neo-button .ui-icon--sm,
+.neo-button .ui-icon--md,
+.neo-button .ui-icon--only {
+    margin-right: 0;
+}
+
 .neo-button.accent {
     background: linear-gradient(120deg, rgba(0, 198, 164, 0.92), rgba(23, 96, 216, 0.9));
     border-color: rgba(0, 198, 164, 0.45);
@@ -2553,7 +2561,7 @@ body.creator-theme-active .students-grid {
 
 /* Контейнер профиля */
 .profile-container {
-    max-width: 900px;
+    max-width: 1200px;
     margin: 0 auto;
     display: grid;
     gap: 2rem;
@@ -2764,7 +2772,6 @@ body.creator-theme-active .students-grid {
     .profile-content-grid {
         grid-template-columns: 1fr;
     }
-}
 
     /* Статистика */
     .stats-grid {
@@ -3108,6 +3115,8 @@ body.creator-theme-active .students-grid {
     min-width: 120px;
 }
 
+/* Дополнительные адаптации для генератора/мелкого текста */
+@media (max-width: 768px) {
     /* Генератор контекста */
     .generator-context {
         padding: 1.2rem;

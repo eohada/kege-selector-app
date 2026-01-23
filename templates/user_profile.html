@@ -11,7 +11,11 @@
     {% endif %}
     <style>
         /* Profile UX refresh (local overrides) */
-        .profile-content-grid { grid-template-columns: 1.25fr 0.75fr; align-items: start; }
+        .profile-content-grid {
+            grid-template-columns: minmax(360px, 1.05fr) minmax(360px, 0.95fr);
+            gap: 1.25rem;
+            align-items: start;
+        }
         @media (max-width: 980px) { .profile-content-grid { grid-template-columns: 1fr; } }
         .profile-actions-grid {
             display: grid;
@@ -19,7 +23,14 @@
             gap: .75rem;
         }
         @media (max-width: 520px) { .profile-actions-grid { grid-template-columns: 1fr; } }
-        .profile-actions-grid .neo-button { width: 100%; justify-content: center; }
+        .profile-actions-grid .neo-button {
+            width: 100%;
+            justify-content: center;
+            white-space: normal;
+            text-align: center;
+            line-height: 1.15;
+            padding: 0.85rem 1.05rem;
+        }
         .profile-mini-card {
             padding: 1rem;
             border-radius: var(--radius-lg);
@@ -27,6 +38,25 @@
             background: rgba(255,255,255,0.02);
         }
         .profile-mini-title { font-weight: 900; margin-bottom: .35rem; }
+
+        /* Выпадающие блоки */
+        .profile-details > summary {
+            cursor: pointer;
+            font-weight: 900;
+            color: var(--text-primary);
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+        }
+        .profile-details > summary::-webkit-details-marker { display: none; }
+        .profile-details > summary::before {
+            content: '▸';
+            color: var(--text-muted);
+            transform: translateY(-1px);
+        }
+        .profile-details[open] > summary::before { content: '▾'; }
+        .profile-details-body { margin-top: .9rem; }
     </style>
 </head>
 <body>
@@ -182,7 +212,7 @@
                                         </div>
 
                                         {% if lesson_counts %}
-                                        <div style="display:grid; grid-template-columns: repeat(3, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
+                                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
                                             <div class="glass-panel" style="padding: 0.9rem; text-align: center;">
                                                 <div style="font-size: 0.85rem; color: var(--text-muted); overflow-wrap: anywhere; word-break: break-word; line-height: 1.15;">Всего уроков</div>
                                                 <div style="font-weight: 800; font-size: 1.4rem; margin-top: 0.25rem;">{{ lesson_counts.total }}</div>
@@ -288,25 +318,30 @@
 
                                 {% if recent_lessons and recent_lessons|length > 0 %}
                                 <div class="profile-section">
-                                    <h3>Лента уроков</h3>
-                                    <div style="display:flex; flex-direction: column; gap: 0.75rem;">
-                                        {% for l in recent_lessons %}
-                                        {% set l_local = (l.lesson_date|to_tz(tz_name)) %}
-                                        <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=l.lesson_id) }}" class="glass-panel" style="text-decoration:none; padding: 0.9rem; display:flex; justify-content: space-between; gap: 1rem; align-items: center;">
-                                            <div style="min-width: 0;">
-                                                <div style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                    {{ l.topic or 'Урок' }}
+                                    <details class="profile-details" open>
+                                        <summary>
+                                            Лента уроков
+                                            <span class="status-badge status-info" style="opacity:.75;">{{ recent_lessons|length }}</span>
+                                        </summary>
+                                        <div class="profile-details-body" style="display:flex; flex-direction: column; gap: 0.75rem;">
+                                            {% for l in recent_lessons %}
+                                            {% set l_local = (l.lesson_date|to_tz(tz_name)) %}
+                                            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=l.lesson_id) }}" class="glass-panel" style="text-decoration:none; padding: 0.9rem; display:flex; justify-content: space-between; gap: 1rem; align-items: center;">
+                                                <div style="min-width: 0;">
+                                                    <div style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                        {{ l.topic or 'Урок' }}
+                                                    </div>
+                                                    <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
+                                                        {{ l_local.strftime('%d.%m.%Y %H:%M') if l_local else '—' }}
+                                                    </div>
                                                 </div>
-                                                <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
-                                                    {{ l_local.strftime('%d.%m.%Y %H:%M') if l_local else '—' }}
-                                                </div>
-                                            </div>
-                                            <span class="status-badge status-info" style="white-space: nowrap;">
-                                                {{ 'План' if l.status == 'planned' else ('Проведён' if l.status == 'completed' else ('В процессе' if l.status == 'in_progress' else l.status)) }}
-                                            </span>
-                                        </a>
-                                        {% endfor %}
-                                    </div>
+                                                <span class="status-badge status-info" style="white-space: nowrap;">
+                                                    {{ 'План' if l.status == 'planned' else ('Проведён' if l.status == 'completed' else ('В процессе' if l.status == 'in_progress' else l.status)) }}
+                                                </span>
+                                            </a>
+                                            {% endfor %}
+                                        </div>
+                                    </details>
                                 </div>
                                 {% endif %}
                                 {% else %}
