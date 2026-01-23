@@ -1340,7 +1340,8 @@ def assignment_view(assignment_id):
     """Просмотр конкретной работы"""
     assignment = Assignment.query.options(
         joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
-        joinedload(Assignment.submissions).joinedload(Submission.student)
+        joinedload(Assignment.submissions).joinedload(Submission.student),
+        joinedload(Assignment.created_by)
     ).get_or_404(assignment_id)
     
     # Проверка доступа
@@ -1460,6 +1461,7 @@ def submissions_list():
         student_id=student.student_id
     ).options(
         joinedload(Submission.assignment).joinedload(Assignment.tasks),
+        joinedload(Submission.assignment).joinedload(Assignment.created_by),
         joinedload(Submission.answers)
     ).order_by(Submission.assigned_at.desc()).all()
     
@@ -1506,6 +1508,7 @@ def submission_view(submission_id):
     """Просмотр и выполнение работы"""
     submission = Submission.query.options(
         joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
+        joinedload(Submission.assignment).joinedload(Assignment.created_by),
         joinedload(Submission.answers),
         joinedload(Submission.comments).joinedload(SubmissionComment.author)
     ).get_or_404(submission_id)
