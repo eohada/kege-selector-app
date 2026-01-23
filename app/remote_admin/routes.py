@@ -156,12 +156,28 @@ def users_list():
 
 
 def _get_users_by_role(role):  # comment
-    """Получает список пользователей по роли через API"""  # comment
+    """Получает список пользователей по роли через API. Для 'tutor' также включает 'creator'."""  # comment
     try:  # comment
-        path = f"/internal/remote-admin/api/users?role={role}&is_active=true"  # comment
-        resp = make_remote_request('GET', path)  # comment
-        if resp.status_code == 200:  # comment
-            return resp.json().get('users', [])  # comment
+        if role == 'tutor':
+            # Для tutor также получаем creator'ов (creator может работать как tutor)
+            path = f"/internal/remote-admin/api/users?role=tutor&is_active=true"
+            resp = make_remote_request('GET', path)
+            tutors = resp.json().get('users', []) if resp.status_code == 200 else []
+            
+            path_creator = f"/internal/remote-admin/api/users?role=creator&is_active=true"
+            resp_creator = make_remote_request('GET', path_creator)
+            creators = resp_creator.json().get('users', []) if resp_creator.status_code == 200 else []
+            
+            # Объединяем списки, убирая дубликаты по id
+            all_users = {u['id']: u for u in tutors}
+            for creator in creators:
+                all_users[creator['id']] = creator
+            return list(all_users.values())
+        else:
+            path = f"/internal/remote-admin/api/users?role={role}&is_active=true"  # comment
+            resp = make_remote_request('GET', path)  # comment
+            if resp.status_code == 200:  # comment
+                return resp.json().get('users', [])  # comment
     except Exception as e:  # comment
         logger.error(f"Error fetching {role}s: {e}")  # comment
     return []  # comment
