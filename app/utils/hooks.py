@@ -10,6 +10,7 @@ from flask_login import current_user
 from sqlalchemy import text
 from datetime import datetime
 from app.models import db, Lesson, Student, moscow_now, MOSCOW_TZ, UserSubscription, TariffPlan
+from app.utils.subscription_access import get_effective_access_for_user, mark_subscription_expired_if_needed
 from app.utils.db_migrations import ensure_schema_columns
 from core.audit_logger import audit_logger
 
@@ -336,17 +337,30 @@ def register_hooks(app):
             if request.path.startswith('/static/') or request.path.startswith('/font/'):
                 return None
 
-            now = datetime.utcnow()
-            sub = UserSubscription.query.filter_by(user_id=current_user.id, status='active').order_by(UserSubscription.ends_at.desc().nullslast(), UserSubscription.subscription_id.desc()).first()
-            if not sub or not sub.plan_id:
-                return None
-            if sub.ends_at and sub.ends_at < now:
-                return None
-            plan = TariffPlan.query.get(sub.plan_id)
-            if not plan:
+            # Best-effort subscription resolution
+            eff = get_effective_access_for_user(current_user.id)
+            sub = eff.subscription
+            plan = eff.plan
+
+            # no subscription / no plan => old behavior (backward compatible)
+            if not sub or not plan:
                 return None
 
-            # Only enforce when plan explicitly defines flags
+            # expired subscription => block paid modules (but keep profile/login accessible)
+            if eff.status == 'expired':
+                try:
+                    mark_subscription_expired_if_needed(sub)
+                except Exception:
+                    pass
+                # allow profile and logout to stay reachable
+                if (request.endpoint or '').startswith('auth.') or request.endpoint in ('auth.logout', 'auth.user_profile'):
+                    return None
+                # block trainer and lessons
+                if request.path.startswith('/internal/trainer/') or (request.endpoint or '').startswith('trainer.'):
+                    return redirect(url_for('auth.user_profile'))
+                return redirect(url_for('auth.user_profile'))
+
+            # Only enforce when plan explicitly defines flags (otherwise legacy / informational)
             if plan.allow_lessons is None and plan.allow_trainer is None:
                 return None
 
@@ -360,6 +374,24 @@ def register_hooks(app):
                     return redirect(url_for('main.dashboard'))
                 return None
 
+            # trainer-only: allow limited stats pages for own progress
+            if not allow_lessons and allow_trainer:
+                # allow only specific student pages + profile/logout
+                allowed_student_endpoints = {
+                    'students.student_analytics',
+                    'students.student_statistics',
+                }
+                if ep == 'main.student_dashboard':
+                    # student landing should not expose lessons/assignments for trainer-only
+                    return redirect(url_for('trainer.trainer_embed'))
+                if ep in allowed_student_endpoints:
+                    return None
+                if ep.startswith('auth.'):
+                    return None
+                # everything else is considered "lessons side"
+                return redirect(url_for('trainer.trainer_embed'))
+
+            # lessons-only: block trainer is already handled above
             # lesson side (broad)
             lesson_prefixes = (
                 'lessons.',
@@ -370,8 +402,10 @@ def register_hooks(app):
                 'diagnostics.',
                 'gradebook.',
                 'groups.',
+                'courses.',
+                'main.student_dashboard',
             )
-            if any(ep.startswith(pfx) for pfx in lesson_prefixes):
+            if ep == 'main.student_dashboard' or any(ep.startswith(pfx) for pfx in lesson_prefixes if pfx != 'main.student_dashboard'):
                 if not allow_lessons:
                     return redirect(url_for('main.dashboard'))
         except Exception:
@@ -391,6 +425,21 @@ def register_hooks(app):
             if current_user.email:
                 current_student = Student.query.filter_by(email=current_user.email).first()
         return dict(current_student=current_student, moscow_now=moscow_now)
+
+    @app.context_processor
+    def inject_subscription_access():
+        """
+        Добавляет subscription_access в шаблоны:
+        - allow_lessons / allow_trainer (если определено тарифом)
+        - label / ends_at / seconds_left
+        """
+        try:
+            if not getattr(current_user, 'is_authenticated', False):
+                return dict(subscription_access=None)
+            eff = get_effective_access_for_user(current_user.id)
+            return dict(subscription_access=eff)
+        except Exception:
+            return dict(subscription_access=None)
 
     @app.before_request
     def identify_tester():

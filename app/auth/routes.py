@@ -16,6 +16,7 @@ from wtforms.validators import DataRequired
 
 from app.auth import auth_bp
 from app.models import db, User, moscow_now, Student
+from app.utils.subscription_access import get_effective_access_for_user
 from core.audit_logger import audit_logger
 
 class LoginForm(FlaskForm):
@@ -96,14 +97,27 @@ def login():
                         # Родитель идет на свой дашборд
                         next_page = url_for('parents.parent_dashboard')
                     elif user.is_student():
-                        # Ученик идет на свой профиль
-                        student = None
-                        if user.email:
-                            student = Student.query.filter_by(email=user.email).first()
-                        if student:
-                            next_page = url_for('students.student_profile', student_id=student.student_id)
+                        # Ученик: landing зависит от тарифа (уроки/тренажёр/оба)
+                        eff = get_effective_access_for_user(user.id)
+                        allow_lessons = True if eff.allow_lessons is None else bool(eff.allow_lessons)
+                        allow_trainer = True if eff.allow_trainer is None else bool(eff.allow_trainer)
+                        if eff.status == 'expired':
+                            next_page = url_for('auth.user_profile')
+
+                        # Если явно "только тренажёр" — сразу в тренажёр
+                        elif (allow_lessons is False) and (allow_trainer is True):
+                            next_page = url_for('trainer.trainer_embed')
+                        elif (allow_lessons is False) and (allow_trainer is False):
+                            next_page = url_for('auth.user_profile')
                         else:
-                            next_page = url_for('main.dashboard')
+                            # По умолчанию: ученик идёт в свою комнату/профиль (по Student)
+                            student = None
+                            if user.email:
+                                student = Student.query.filter_by(email=user.email).first()
+                            if student:
+                                next_page = url_for('students.student_profile', student_id=student.student_id)
+                            else:
+                                next_page = url_for('main.student_dashboard')
                     elif user.is_admin():
                         # Админ может выбрать dashboard или админку
                         next_page = url_for('main.dashboard')

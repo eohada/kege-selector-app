@@ -101,6 +101,38 @@
                                         {{ current_user.last_login.strftime('%d.%m.%Y %H:%M') if current_user.last_login else '—' }}
                                     </span>
                                 </div>
+
+                                {# Подписка/доступ для ученика/родителя #}
+                                {% if current_user.is_student() or current_user.is_parent() %}
+                                <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;">
+                                    <div class="hero-eyebrow">доступ</div>
+                                    {% if subscription_access and subscription_access.subscription and subscription_access.plan %}
+                                        <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items: center; margin-top: .35rem;">
+                                            <span class="status-badge status-info" style="opacity:0.95;">{{ subscription_access.label }}</span>
+                                            <span class="status-badge status-info" style="opacity:0.85;">Тариф: <strong>{{ subscription_access.plan.title }}</strong></span>
+                                            {% if subscription_access.ends_at_utc %}
+                                                <span class="status-badge status-info" style="opacity:0.85;">
+                                                    До: <strong>{{ subscription_access.ends_at_utc.strftime('%d.%m.%Y') }}</strong>
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        {% if subscription_access.seconds_left is not none %}
+                                            {% set days_left = (subscription_access.seconds_left // 86400) %}
+                                            {% set hours_left = ((subscription_access.seconds_left % 86400) // 3600) %}
+                                            <div style="margin-top: .6rem; color: var(--text-muted);">
+                                                Осталось: <strong style="color: var(--text-primary);">{{ days_left }}д {{ hours_left }}ч</strong>
+                                            </div>
+                                        {% endif %}
+                                    {% elif subscription_access and subscription_access.status == 'expired' %}
+                                        <div style="margin-top: .35rem; font-weight: 900;">Подписка истекла</div>
+                                        {% if subscription_access.ends_at_utc %}
+                                        <div style="margin-top: .35rem; color: var(--text-muted);">Закончилась: {{ subscription_access.ends_at_utc.strftime('%d.%m.%Y') }}</div>
+                                        {% endif %}
+                                    {% else %}
+                                        <div style="margin-top: .35rem; color: var(--text-muted);">Тариф не задан (доступ без ограничений/legacy).</div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
                                 
                                 {% if current_user.telegram_link %}
                                 <div class="data-row">
@@ -147,22 +179,35 @@
                                         </div>
                                         {% endif %}
 
+                                        {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
+                                        {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
+
                                         <div style="display:flex; gap: 0.75rem; flex-wrap: wrap;">
+                                            {% if sub_allow_lessons %}
                                             <a href="{{ url_for('students.student_profile', student_id=linked_student.student_id) }}" class="neo-button accent" style="text-decoration:none;">
                                                 <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" class="ui-icon ui-icon--sm">
                                                 Открыть мою комнату
                                             </a>
+                                            {% endif %}
                                             <a href="{{ url_for('students.student_analytics', student_id=linked_student.student_id) }}" class="neo-button outline" style="text-decoration:none;">
                                                 <img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" class="ui-icon ui-icon--sm">
                                                 Статистика
                                             </a>
+                                            {% if sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
+                                            <a href="{{ url_for('trainer.trainer_embed') }}" class="neo-button outline" style="text-decoration:none;">
+                                                <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" class="ui-icon ui-icon--sm">
+                                                Тренажёр
+                                            </a>
+                                            {% endif %}
+                                            {% if sub_allow_lessons %}
                                             <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost" style="text-decoration:none;">
                                                 <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" class="ui-icon ui-icon--sm">
                                                 Мои работы
                                             </a>
+                                            {% endif %}
                                         </div>
 
-                                        {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
+                                        {% if sub_allow_lessons and (has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule')) %}
                                         <div class="profile-section" style="margin-top: 1rem;">
                                             <details>
                                                 <summary style="cursor:pointer; font-weight: 900;">Синхронизация календаря</summary>

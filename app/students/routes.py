@@ -40,6 +40,7 @@ from core.audit_logger import audit_logger
 from flask_login import current_user
 from app.utils.db_migrations import ensure_schema_columns
 from app.auth.rbac_utils import get_user_scope, has_permission
+from app.utils.subscription_access import get_effective_access_for_user
 
 logger = logging.getLogger(__name__)
 
@@ -394,6 +395,12 @@ def student_profile(student_id):
         student_user_obj = None
         if student.email:
             student_user_obj = User.query.filter_by(email=student.email, role='student').first()
+        student_subscription = None
+        try:
+            if student_user_obj:
+                student_subscription = get_effective_access_for_user(student_user_obj.id)
+        except Exception:
+            student_subscription = None
 
         # Загружаем информацию о родителях (для тьюторов)
         parents_info = []
@@ -448,6 +455,7 @@ def student_profile(student_id):
         return render_template('student_profile.html', 
                                student=student, 
                                student_user=student_user_obj,
+                               student_subscription=student_subscription,
                                active_submissions=active_submissions,
                                lessons=all_lessons,
                                last_completed=last_completed,

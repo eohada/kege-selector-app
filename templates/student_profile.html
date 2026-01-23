@@ -275,6 +275,38 @@
                     </a>
                 </div>
             </div>
+
+            {# Доступ/подписка (показываем преподавателю/админу и самому ученику) #}
+            {% if student_subscription %}
+            <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;">
+                <div class="hero-eyebrow">доступ</div>
+                {% if student_subscription.subscription and student_subscription.plan %}
+                    <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items: center; margin-top: .35rem;">
+                        <span class="status-badge status-info" style="opacity:0.95;">{{ student_subscription.label }}</span>
+                        <span class="status-badge status-info" style="opacity:0.85;">Тариф: <strong>{{ student_subscription.plan.title }}</strong></span>
+                        {% if student_subscription.ends_at_utc %}
+                            <span class="status-badge status-info" style="opacity:0.85;">
+                                До: <strong>{{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</strong>
+                            </span>
+                        {% endif %}
+                    </div>
+                    {% if student_subscription.seconds_left is not none %}
+                        {% set days_left = (student_subscription.seconds_left // 86400) %}
+                        {% set hours_left = ((student_subscription.seconds_left % 86400) // 3600) %}
+                        <div style="margin-top: .6rem; color: var(--text-muted);">
+                            Осталось: <strong style="color: var(--text-primary);">{{ days_left }}д {{ hours_left }}ч</strong>
+                        </div>
+                    {% endif %}
+                {% elif student_subscription.status == 'expired' %}
+                    <div style="margin-top: .35rem; font-weight: 900;">Подписка истекла</div>
+                    {% if student_subscription.ends_at_utc %}
+                    <div style="margin-top: .35rem; color: var(--text-muted);">Закончилась: {{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</div>
+                    {% endif %}
+                {% else %}
+                    <div style="margin-top: .35rem; color: var(--text-muted);">Тариф не задан (legacy).</div>
+                {% endif %}
+            </div>
+            {% endif %}
             
             {% if student.goal_text %}
             <div style="background: var(--surface-2); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1);">

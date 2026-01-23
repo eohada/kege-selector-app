@@ -49,13 +49,14 @@
     <nav class="nav-links">
         {% if current_user.is_parent() %}
         {# Навигация для родителя #}
+        {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
         <a href="{{ url_for('parents.parent_dashboard') }}" class="nav-link {% if active_page == 'parent_dashboard' %}active{% endif %}">
             <span class="nav-link-content">
                 <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Мои дети" class="nav-link-icon">
                 <span class="nav-link-label">Мои дети</span>
             </span>
         </a>
-        {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
+        {% if sub_allow_lessons and (has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule')) %}
         <a href="{{ url_for('schedule.schedule') }}" class="nav-link {% if active_page == 'schedule' %}active{% endif %}">
             <span class="nav-link-content">
                 <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="nav-link-icon">
@@ -65,20 +66,32 @@
         {% endif %}
         {% elif current_user.is_student() %}
         {# Навигация для ученика #}
+        {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
+        {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
         {% if current_student %}
+        {% if sub_allow_lessons %}
         <a href="{{ url_for('students.student_profile', student_id=current_student.student_id) }}" class="nav-link {% if active_page == 'student_profile' %}active{% endif %}">
             <span class="nav-link-content">
                 <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Мой профиль" class="nav-link-icon">
                 <span class="nav-link-label">Мой профиль</span>
             </span>
         </a>
+        {% endif %}
         <a href="{{ url_for('students.student_analytics', student_id=current_student.student_id) if current_student else '#' }}" class="nav-link {% if active_page == 'student_analytics' %}active{% endif %}">
             <span class="nav-link-content">
                 <img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Статистика" class="nav-link-icon">
                 <span class="nav-link-label">Статистика</span>
             </span>
         </a>
-        {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
+        {% if sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
+        <a href="{{ url_for('trainer.trainer_embed') }}" class="nav-link {% if active_page == 'trainer' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" alt="Тренажёр" class="nav-link-icon">
+                <span class="nav-link-label">Тренажёр</span>
+            </span>
+        </a>
+        {% endif %}
+        {% if sub_allow_lessons and (has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule')) %}
         <a href="{{ url_for('schedule.schedule') }}" class="nav-link {% if active_page == 'schedule' %}active{% endif %}">
             <span class="nav-link-content">
                 <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="nav-link-icon">
