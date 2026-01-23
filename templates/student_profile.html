@@ -210,10 +210,27 @@
             flex: 0 0 auto;
         }
 
+        /* Более “премиальная” сетка действий без обрезаний */
+        .profile-header-simple .hero-actions.student-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.6rem;
+            align-items: stretch;
+            max-width: 720px;
+        }
+        .profile-header-simple .hero-actions.student-actions .neo-button {
+            width: 100%;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
         @media (max-width: 768px) {
             .profile-header-simple .hero-actions {
                 justify-content: center;
                 max-width: 100%;
+            }
+            .profile-header-simple .hero-actions.student-actions {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -247,7 +264,7 @@
                         {% endif %}
                     </div>
                 </div>
-                <div class="hero-actions">
+                <div class="hero-actions {% if current_user.is_student() or current_user.is_parent() %}student-actions{% endif %}">
                     {% if not current_user.is_student() and not current_user.is_parent() %}
                     <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent">
                         <i class="fas fa-plus ui-icon ui-icon--sm"></i> Новый урок
@@ -362,7 +379,19 @@
                         <div style="background: var(--surface-2); padding: 1.2rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                             <div>
                                 <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.3rem;">{{ submission.assignment.title }}</div>
-                                <div style="font-size: 0.85rem; color: var(--warning);"><i class="fas fa-exclamation-circle"></i> Дедлайн: {{ submission.assignment.deadline.strftime('%d.%m') if submission.assignment.deadline else 'Нет' }}</div>
+                                <div style="display:flex; gap:.8rem; flex-wrap: wrap; align-items: center; font-size: 0.85rem; color: var(--text-muted);">
+                                    <span style="color: var(--warning);"><i class="fas fa-exclamation-circle"></i> Дедлайн: {{ submission.assignment.deadline.strftime('%d.%m') if submission.assignment.deadline else 'Нет' }}</span>
+                                    {% if submission.assignment and submission.assignment.created_by %}
+                                        <span style="opacity:.7;">·</span>
+                                        <span>
+                                            Выдал:
+                                            <a href="{{ url_for('auth.user_public_profile', user_id=submission.assignment.created_by.id) }}"
+                                               style="color: var(--text-primary); text-decoration:none; font-weight: 800;">
+                                                {{ submission.assignment.created_by.username }}
+                                            </a>
+                                        </span>
+                                    {% endif %}
+                                </div>
                             </div>
                             <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}" class="neo-button outline" style="font-size: 0.9rem;">
                                 Открыть

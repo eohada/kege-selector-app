@@ -332,7 +332,7 @@ def student_profile(student_id):
                 Submission.student_id == student_id,
                 Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED'])
             ).options(
-                db.joinedload(Submission.assignment)
+                db.joinedload(Submission.assignment).joinedload(Assignment.created_by)
             ).order_by(Submission.assigned_at.desc()).all()
         except Exception as e:
             logger.error(f"Error loading active submissions: {e}")

@@ -206,6 +206,37 @@ def user_profile():
         lesson_counts=lesson_counts,
     )
 
+
+@auth_bp.route('/user/<int:user_id>')
+@login_required
+def user_public_profile(user_id: int):
+    """
+    Публичный (read-only) профиль пользователя для просмотра “как в соцсетях”.
+    Не показывает приватные данные (email/телефон), только имя/роль/описание/аватар.
+    """
+    if user_id == current_user.id:
+        return redirect(url_for('auth.user_profile'))
+
+    u = User.query.get_or_404(user_id)
+
+    # Только для авторизованных; доп. ограничения на роли тут не вводим,
+    # но можно ужесточить позже (например, ученику — только tutor/admin).
+    display_name = None
+    try:
+        if u.profile:
+            fn = (u.profile.first_name or '').strip()
+            ln = (u.profile.last_name or '').strip()
+            name = (fn + ' ' + ln).strip()
+            display_name = name or None
+    except Exception:
+        display_name = None
+
+    return render_template(
+        'user_public_profile.html',
+        public_user=u,
+        public_display_name=display_name or u.username,
+    )
+
 @auth_bp.route('/user/profile/update', methods=['POST'])
 @login_required
 def profile_update():

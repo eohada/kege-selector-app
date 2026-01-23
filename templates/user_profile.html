@@ -9,6 +9,25 @@
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
+    <style>
+        /* Profile UX refresh (local overrides) */
+        .profile-content-grid { grid-template-columns: 1.25fr 0.75fr; align-items: start; }
+        @media (max-width: 980px) { .profile-content-grid { grid-template-columns: 1fr; } }
+        .profile-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .75rem;
+        }
+        @media (max-width: 520px) { .profile-actions-grid { grid-template-columns: 1fr; } }
+        .profile-actions-grid .neo-button { width: 100%; justify-content: center; }
+        .profile-mini-card {
+            padding: 1rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+        }
+        .profile-mini-title { font-weight: 900; margin-bottom: .35rem; }
+    </style>
 </head>
 <body>
     <div class="app-shell">
@@ -182,7 +201,7 @@
                                         {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
                                         {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
 
-                                        <div style="display:flex; gap: 0.75rem; flex-wrap: wrap;">
+                                        <div class="profile-actions-grid" style="margin-top: .25rem;">
                                             {% if sub_allow_lessons %}
                                             <a href="{{ url_for('students.student_profile', student_id=linked_student.student_id) }}" class="neo-button accent" style="text-decoration:none;">
                                                 <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" class="ui-icon ui-icon--sm">
@@ -293,7 +312,7 @@
                                 {% else %}
                                 <div class="profile-section">
                                     <h3>Быстрые действия</h3>
-                                    <div style="display:flex; gap: 0.75rem; flex-wrap: wrap;">
+                                    <div class="profile-actions-grid">
                                         {% if has_permission(current_user, 'tools.schedule') or has_permission(current_user, 'schedule.view') %}
                                         <a href="{{ url_for('schedule.schedule') }}" class="neo-button accent" style="text-decoration:none;">
                                             <img src="{{ url_for('static', filename='icons/icons8-календарь-96.png') }}" class="ui-icon ui-icon--sm">

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ public_display_name }} · Профиль</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .public-profile-wrap { max-width: 1060px; margin: 1.25rem auto 3rem; padding: 0 1rem; }
+        .public-hero {
+            display:flex; gap: 1.25rem; align-items: center; justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .public-identity { display:flex; gap: 1.1rem; align-items:center; min-width: 0; }
+        .public-avatar {
+            width: 84px; height: 84px; border-radius: 999px;
+            background: rgba(255,255,255,0.04); border: 1px solid var(--stroke-1);
+            display:flex; align-items:center; justify-content:center;
+            font-weight: 900; font-size: 1.9rem; color: var(--text-muted);
+            overflow:hidden;
+        }
+        .public-avatar img { width:100%; height:100%; object-fit: cover; }
+        .public-title { min-width:0; }
+        .public-title h1 { margin: 0; font-size: 2rem; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .public-sub { margin-top: .35rem; display:flex; gap:.5rem; flex-wrap: wrap; align-items:center; color: var(--text-muted); }
+        .public-grid { display:grid; grid-template-columns: 1fr 360px; gap: 1.25rem; margin-top: 1.25rem; }
+        @media (max-width: 960px) { .public-grid { grid-template-columns: 1fr; } }
+        .public-bio { white-space: pre-wrap; line-height: 1.6; color: var(--text-primary); }
+        .public-actions { display:flex; gap: .6rem; flex-wrap: wrap; justify-content: flex-end; }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% set active_page = None %}
+        {% include '_primary_nav.html' %}
+        <main class="public-profile-wrap">
+            <section class="glass-panel">
+                <div class="public-hero">
+                    <div class="public-identity">
+                        <div class="public-avatar">
+                            {% if public_user.avatar_url %}
+                                <img src="{{ public_user.avatar_url }}" alt="Avatar">
+                            {% else %}
+                                {{ public_display_name[0].upper() }}
+                            {% endif %}
+                        </div>
+                        <div class="public-title">
+                            <div class="hero-eyebrow">профиль</div>
+                            <h1 title="{{ public_display_name }}">{{ public_display_name }}</h1>
+                            <div class="public-sub">
+                                <span class="status-badge status-info" style="opacity:.9;">{{ public_user.get_role_display() }}</span>
+                                <span class="status-badge status-info" style="opacity:.75;">@{{ public_user.username }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="public-actions">
+                        <a class="neo-button outline" href="{{ url_for('auth.user_profile') }}" style="text-decoration:none;">Мой профиль</a>
+                        <a class="neo-button ghost" href="{{ request.referrer or url_for('main.dashboard') }}" style="text-decoration:none;">Назад</a>
+                    </div>
+                </div>
+            </section>
+
+            <div class="public-grid">
+                <section class="profile-section">
+                    <h3>О пользователе</h3>
+                    {% if public_user.about_me %}
+                        <div class="public-bio">{{ public_user.about_me }}</div>
+                    {% else %}
+                        <div style="color: var(--text-muted);">Пока нет описания.</div>
+                    {% endif %}
+                </section>
+
+                <aside class="profile-section">
+                    <h3>Сводка</h3>
+                    <div class="data-row">
+                        <span class="data-label">Роль</span>
+                        <span class="data-value" style="font-family: 'JetBrains Mono', monospace;">{{ public_user.get_role_display() }}</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Ник</span>
+                        <span class="data-value">@{{ public_user.username }}</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">В системе с</span>
+                        <span class="data-value">{{ public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—' }}</span>
+                    </div>
+                </aside>
+            </div>
+        </main>
+    </div>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>
+
