@@ -114,6 +114,12 @@
                         <div class="sc-title">Шаблон</div>
                         <div class="sc-sub">Создать работу из заранее собранного набора.</div>
                     </a>
+                    {% if lesson_id %}
+                    <a class="source-card {% if source=='lesson' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson_id, assignment_type=assignment_type) }}">
+                        <div class="sc-title">Урок</div>
+                        <div class="sc-sub">Собрать работу из задач текущего урока.</div>
+                    </a>
+                    {% endif %}
                     <a class="source-card {% if source=='manual' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='manual', assignment_type=assignment_type) }}">
                         <div class="sc-title">Вручную</div>
                         <div class="sc-sub">Вставить список task_id и назначить.</div>
@@ -204,7 +210,8 @@
                             <label class="neo-label" for="ca_recipients">Кому назначить *</label>
                             <select id="ca_recipients" class="neo-select" name="recipients" multiple size="10" style="min-height: 260px;">
                                 {% for st in (recipient_options or []) %}
-                                    <option value="{{ st.student_id }}">{{ st.name }}{% if st.platform_id %} · {{ st.platform_id }}{% endif %}</option>
+                                    {% set _sel = (default_recipient_ids is defined and (st.student_id in default_recipient_ids)) %}
+                                    <option value="{{ st.student_id }}" {% if _sel %}selected{% endif %}>{{ st.name }}{% if st.platform_id %} · {{ st.platform_id }}{% endif %}</option>
                                 {% endfor %}
                             </select>
                             <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top: .6rem;">

@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload
 from app.assignments import assignments_bp
 from app.models import (
     db, Assignment, AssignmentTask, Submission, Answer,
-    Student, User, Tasks, Lesson, Enrollment, GradebookEntry, SubmissionAttempt, RubricTemplate,
+    Student, User, Tasks, Lesson, LessonTask, Enrollment, GradebookEntry, SubmissionAttempt, RubricTemplate,
     TaskTemplate, TemplateTask
 )
 from app.students.utils import get_sorted_assignments
@@ -1069,17 +1069,19 @@ def assignment_create():
     - source=manual: вручную (вставить task_id)
     """
     source = (request.args.get('source') or 'accepted').strip().lower()
-    if source not in {'accepted', 'template', 'manual'}:
+    if source not in {'accepted', 'template', 'manual', 'lesson'}:
         source = 'accepted'
 
     # Prefill assignment type
     assignment_type = _normalize_assignment_type(request.args.get('assignment_type')) or 'homework'
     task_type = request.args.get('task_type', type=int, default=None)
     template_id = request.args.get('template_id', type=int, default=None)
+    lesson_id = request.args.get('lesson_id', type=int, default=None)
 
     tasks: list[Tasks] = []
     source_label = ''
     source_meta: dict[str, Any] = {}
+    default_recipient_ids: list[int] = []
 
     if source == 'accepted':
         tasks = get_accepted_tasks(task_type=task_type)
@@ -1100,27 +1102,90 @@ def assignment_create():
     else:
         source_label = 'Вручную'
 
+    if source == 'lesson':
+        source_label = 'Урок'
+        if not lesson_id:
+            flash('Не указан lesson_id.', 'danger')
+            return redirect(url_for('assignments.assignments_list'))
+        try:
+            lesson = Lesson.query.options(
+                joinedload(Lesson.student),
+                joinedload(Lesson.homework_tasks).joinedload(LessonTask.task),
+            ).get_or_404(int(lesson_id))
+        except Exception as e:
+            flash(f'Не удалось открыть урок: {e}', 'danger')
+            return redirect(url_for('assignments.assignments_list'))
+
+        # Access check: must be able to see this student
+        try:
+            scope = get_user_scope(current_user)
+            if not scope.get('can_see_all'):
+                allowed_students = get_students_for_tutor(current_user.id) or []
+                allowed_ids = {int(s.student_id) for s in allowed_students if getattr(s, 'student_id', None)}
+                if int(getattr(lesson, 'student_id', 0) or 0) not in allowed_ids:
+                    return redirect(url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id))
+        except Exception:
+            pass
+
+        # Pull tasks from lesson by assignment_type
+        lt_list = list(getattr(lesson, 'homework_tasks', []) or [])
+        picked: list[LessonTask] = []
+        for lt in lt_list:
+            lt_type = (getattr(lt, 'assignment_type', None) or 'homework')
+            if assignment_type == 'homework':
+                if lt_type == 'homework' or getattr(lt, 'assignment_type', None) is None:
+                    picked.append(lt)
+            else:
+                if lt_type == assignment_type:
+                    picked.append(lt)
+        # unique tasks in stable order
+        seen = set()
+        out_tasks: list[Tasks] = []
+        for lt in picked:
+            t = getattr(lt, 'task', None)
+            tid = getattr(t, 'task_id', None)
+            if t and tid and tid not in seen:
+                seen.add(tid)
+                out_tasks.append(t)
+        tasks = out_tasks
+
+        st = getattr(lesson, 'student', None)
+        source_meta = {
+            'lesson_id': lesson.lesson_id,
+            'lesson_topic': lesson.topic,
+            'student_id': lesson.student_id,
+            'student_name': getattr(st, 'name', None),
+        }
+        default_recipient_ids = [int(lesson.student_id)]
+
     # Recipients list (for modal/form)
     recipient_options: list[Student] = []
     try:
-        scope = get_user_scope(current_user)
-        if scope.get('can_see_all'):
+        if source == 'lesson' and default_recipient_ids:
             recipient_options = (
-                Student.query.filter(Student.is_active.is_(True))
+                Student.query.filter(Student.student_id.in_(default_recipient_ids))
                 .order_by(Student.name.asc(), Student.student_id.asc())
-                .limit(500)
                 .all()
             )
         else:
-            tutor_students = get_students_for_tutor(current_user.id) or []
-            ids = [int(s.student_id) for s in tutor_students if getattr(s, 'student_id', None)]
-            if ids:
+            scope = get_user_scope(current_user)
+            if scope.get('can_see_all'):
                 recipient_options = (
-                    Student.query.filter(Student.student_id.in_(ids))
+                    Student.query.filter(Student.is_active.is_(True))
                     .order_by(Student.name.asc(), Student.student_id.asc())
                     .limit(500)
                     .all()
                 )
+            else:
+                tutor_students = get_students_for_tutor(current_user.id) or []
+                ids = [int(s.student_id) for s in tutor_students if getattr(s, 'student_id', None)]
+                if ids:
+                    recipient_options = (
+                        Student.query.filter(Student.student_id.in_(ids))
+                        .order_by(Student.name.asc(), Student.student_id.asc())
+                        .limit(500)
+                        .all()
+                    )
     except Exception:
         recipient_options = []
 
@@ -1150,10 +1215,12 @@ def assignment_create():
         assignment_type=assignment_type,
         task_type=task_type,
         template_id=template_id,
+        lesson_id=lesson_id,
         templates=templates,
         tasks=tasks,
         task_ids=task_ids,
         recipient_options=recipient_options,
+        default_recipient_ids=default_recipient_ids,
     )
 
 
