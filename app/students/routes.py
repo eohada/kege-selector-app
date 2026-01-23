@@ -1276,6 +1276,10 @@ def student_statistics(student_id):
 @login_required
 def update_statistics(student_id):
     """API endpoint для обновления ручной статистики с поддержкой разных режимов редактирования"""
+    # Проверка прав доступа: ученики не могут редактировать статистику
+    if current_user.is_student() or current_user.is_parent():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    
     try:
         logger.info(f"Получен запрос на обновление статистики для ученика {student_id}")
         
@@ -1402,6 +1406,10 @@ def update_statistics(student_id):
 @login_required
 def reset_statistics(student_id):
     """API endpoint для сброса ручных изменений статистики"""
+    # Проверка прав доступа: ученики не могут редактировать статистику
+    if current_user.is_student() or current_user.is_parent():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    
     try:
         student = Student.query.get_or_404(student_id)
         data = request.get_json()
@@ -1579,6 +1587,9 @@ def student_analytics(student_id):
         'heatmap_statuses': json.dumps(attendance_heatmap['statuses'], ensure_ascii=False)
     }
     
+    # Определяем, может ли пользователь редактировать статистику
+    can_edit = not (current_user.is_student() or current_user.is_parent())
+    
     return render_template('student_stats_unified.html',
                          student=student,
                          charts=charts_context,
@@ -1586,7 +1597,8 @@ def student_analytics(student_id):
                          gpa_by_type=gpa_by_type,
                          problem_topics=problem_topics,
                          chart_data=chart_data,
-                         punctuality=punctuality)
+                         punctuality=punctuality,
+                         can_edit=can_edit)
 
 @students_bp.route('/student/<int:student_id>/edit', methods=['GET', 'POST'])
 @login_required
