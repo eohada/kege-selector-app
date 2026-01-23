@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KEGE Selector — Карта разделов (углублённая)</title>
+  <style>
+    :root{
+      --bg:#070911;
+      --panel:#0c1020;
+      --panel2:#0a0d18;
+      --stroke:rgba(255,255,255,.10);
+      --muted:rgba(255,255,255,.70);
+      --text:rgba(255,255,255,.92);
+      --accent:#00ffd5;
+      --accent2:#1f7bff;
+      --warn:#ffb347;
+      --danger:#ff4d6b;
+      --shadow: 0 12px 40px rgba(0,0,0,.55);
+      --r:16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      background:
+        radial-gradient(1000px 600px at 12% 18%, rgba(0,255,213,.14), transparent 60%),
+        radial-gradient(1000px 600px at 88% 12%, rgba(31,123,255,.16), transparent 58%),
+        radial-gradient(800px 500px at 60% 90%, rgba(255,179,71,.10), transparent 60%),
+        var(--bg);
+      color:var(--text);
+    }
+    .wrap{
+      display:grid;
+      grid-template-columns: 440px 1fr;
+      gap:16px;
+      padding:16px;
+      height:100%;
+    }
+    @media (max-width: 1100px){
+      .wrap{grid-template-columns: 1fr; height:auto;}
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      border:1px solid var(--stroke);
+      border-radius: var(--r);
+      box-shadow: var(--shadow);
+    }
+    .left{display:flex; flex-direction:column; min-height:0; overflow:hidden;}
+    .head{padding:16px; border-bottom:1px solid var(--stroke);}
+    .eyebrow{font-weight:950; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.70); font-size:.75rem;}
+    .title{margin-top:8px; font-size:1.35rem; font-weight:950; letter-spacing:-.02em; line-height:1.15;}
+    .sub{margin-top:8px; color:var(--muted); line-height:1.45; font-size:.95rem;}
+    .toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; align-items:center;}
+    .search{
+      flex: 1 1 220px;
+      min-width: 220px;
+      background: var(--panel2);
+      border:1px solid var(--stroke);
+      border-radius: 12px;
+      padding:10px 12px;
+      color: var(--text);
+      outline:none;
+    }
+    .btn{
+      background: rgba(0,255,213,.12);
+      border:1px solid rgba(0,255,213,.35);
+      color: var(--text);
+      padding:10px 12px;
+      border-radius: 12px;
+      font-weight:950;
+      cursor:pointer;
+      white-space: nowrap;
+    }
+    .btn.ghost{background: rgba(255,255,255,.03); border:1px solid var(--stroke);}
+    .seg{
+      display:inline-flex;
+      border:1px solid var(--stroke);
+      border-radius: 999px;
+      overflow:hidden;
+      background: rgba(255,255,255,.02);
+    }
+    .seg button{
+      border:none;
+      background: transparent;
+      padding:10px 12px;
+      color: rgba(255,255,255,.85);
+      font-weight:950;
+      cursor:pointer;
+    }
+    .seg button.active{background: rgba(0,255,213,.10); color: rgba(255,255,255,.92);}
+    .list{padding:10px; overflow:auto; min-height:0;}
+    .item{
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.02);
+      border-radius: 14px;
+      padding:12px;
+      margin:10px 0;
+      cursor:pointer;
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+    .item:hover{transform: translateY(-1px); border-color: rgba(0,255,213,.35); background: rgba(255,255,255,.03);}
+    .item.active{border-color: rgba(0,255,213,.55); background: rgba(0,255,213,.06);}
+    .item .name{font-weight:950;}
+    .item .meta{margin-top:6px; color: var(--muted); font-size:.9rem; line-height:1.35;}
+    .badge{
+      font-size:.75rem;
+      padding:4px 8px;
+      border-radius: 999px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.02);
+      color: rgba(255,255,255,.82);
+      font-weight:950;
+      white-space: nowrap;
+    }
+    .badge.study{border-color: rgba(0,255,213,.35); background: rgba(0,255,213,.08);}
+    .badge.tools{border-color: rgba(31,123,255,.35); background: rgba(31,123,255,.08);}
+    .badge.core{border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.04);}
+    .badge.page{border-color: rgba(255,179,71,.35); background: rgba(255,179,71,.08);}
+
+    .right{display:grid; grid-template-rows: 1fr 340px; gap:16px; min-height:0;}
+    @media (max-width: 1100px){ .right{grid-template-rows: 520px auto;} }
+    .canvas{position:relative; overflow:hidden; min-height:0;}
+    .canvas-head{
+      position:absolute; top:12px; left:12px; right:12px;
+      display:flex; gap:10px; align-items:center; justify-content: space-between;
+      pointer-events:none; z-index:2;
+    }
+    .hint{
+      pointer-events:none;
+      font-size:.9rem;
+      color:rgba(255,255,255,.74);
+      background: rgba(0,0,0,.25);
+      border:1px solid var(--stroke);
+      border-radius: 999px;
+      padding:8px 12px;
+      backdrop-filter: blur(8px);
+    }
+    .svg-wrap{width:100%; height:100%; position:absolute; inset:0; user-select:none; touch-action:none;}
+    svg{width:100%; height:100%;}
+    .edge{stroke: rgba(255,255,255,.22); stroke-width: 2; fill:none; opacity:0; transition: opacity .16s ease, stroke .16s ease, stroke-width .16s ease;}
+    .edge.dim{opacity:.12;}
+    .edge.hl{opacity:1; stroke: rgba(0,255,213,.78); stroke-width: 2.6;}
+    .node{cursor:pointer;}
+    .node rect{fill: rgba(12,16,32,.88); stroke: rgba(255,255,255,.16); stroke-width:1; rx:16; ry:16; filter: drop-shadow(0 10px 18px rgba(0,0,0,.50));}
+    .node.page rect{fill: rgba(255,179,71,.05); stroke: rgba(255,179,71,.25);}
+    .node:hover rect{stroke: rgba(0,255,213,.45);}
+    .node.active rect{stroke: rgba(0,255,213,.85); fill: rgba(0,255,213,.06);}
+    .node text.t1{font-weight:950; font-size:14px; fill: rgba(255,255,255,.92);}
+    .node text.t2{font-weight:900; font-size:11px; fill: rgba(255,255,255,.65);}
+    .details{padding:14px 16px; overflow:auto; min-height:0;}
+    .details h3{margin:0; font-size:1.05rem; font-weight:950;}
+    .mono{font-family: var(--mono);}
+    .muted{color: var(--muted);}
+    ul{margin:0; padding-left: 18px; color: rgba(255,255,255,.82)}
+    li{margin:6px 0; line-height:1.35;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="card left">
+      <div class="head">
+        <div class="eyebrow">углублённая версия</div>
+        <div class="title">Карта разделов + страниц (без каши)</div>
+        <div class="sub">
+          Здесь по умолчанию показываются связи <b>только для выбранного узла</b>. “Все связи” включается отдельной кнопкой.
+          Переключатель “Разделы/Страницы” делает карту глубже, но остаётся читабельной.
+        </div>
+        <div class="toolbar">
+          <input class="search" id="q" placeholder="Поиск: раздел, страница, роут, шаблон..." />
+          <div class="seg" title="Глубина карты">
+            <button id="modeSections" class="active">Разделы</button>
+            <button id="modePages">Страницы</button>
+          </div>
+          <button class="btn ghost" id="toggleEdges">Все связи: выкл</button>
+          <button class="btn" id="reset">Сброс</button>
+        </div>
+      </div>
+      <div class="list" id="list"></div>
+    </section>
+
+    <section class="right">
+      <section class="card canvas">
+        <div class="canvas-head">
+          <div class="hint">Drag: перемещение • Wheel: zoom • Click: детали</div>
+          <div class="hint" id="selHint">Выбран: —</div>
+        </div>
+        <div class="svg-wrap" id="svgHost"></div>
+      </section>
+
+      <section class="card details" id="details">
+        <h3>Детали</h3>
+        <div class="muted" style="margin-top:8px;">Выбери узел.</div>
+      </section>
+    </section>
+  </div>
+
+  <script>
+    // --- Data: Sections (high-level) ---
+    const SECTIONS = [
+      {id:'dashboard', group:'core', name:'Ученики (Dashboard)', routes:['/dashboard','/students/*'], templates:['dashboard.html','student_profile.html','student_stats_unified.html'], usedBy:['Главный вход для тьютора/админа']},
+      {id:'schedule', group:'core', name:'Расписание', routes:['/schedule'], templates:['schedule.html'], usedBy:['Создание/открытие уроков']},
+      {id:'lessons', group:'study', name:'Уроки', routes:['/lesson/<id>/homework-tasks','/lesson/<id>/classwork-tasks','/lesson/<id>/exam-tasks'], templates:['lesson_form.html','lesson_homework.html','lesson_manual_create.html'], usedBy:['LessonTask внутри урока']},
+      {id:'assignments', group:'study', name:'Работы (Assignments)', routes:['/assignments','/assignments/<id>'], templates:['assignments_list.html','assignment_view.html'], usedBy:['Раздача работ, мониторинг сдач']},
+      {id:'create', group:'study', name:'Создать работу (Wizard)', routes:['/assignments/create'], templates:['assignment_create.html'], usedBy:['Единый мастер (accepted/template/manual/lesson)']},
+      {id:'submissions', group:'study', name:'Сдачи (Submissions)', routes:['/submissions/<id>','/submissions/<id>/grade'], templates:['submission_view.html','submission_grade.html'], usedBy:['Ученик сдаёт, учитель проверяет']},
+      {id:'reviews', group:'study', name:'Проверка (Review Queue)', routes:['/reviews/queue'], templates:['review_queue.html'], usedBy:['Единая очередь проверок']},
+      {id:'lessonTaskReview', group:'study', name:'Проверка задачи урока', routes:['/reviews/lesson-task/<id>'], templates:['lesson_task_review.html'], usedBy:['Фокус-проверка LessonTask']},
+      {id:'generator', group:'tools', name:'Генератор', routes:['/kege-generator'], templates:['kege_generator.html','accepted.html','skipped.html','results.html'], usedBy:['Подбор задач → принятие/пропуск']},
+      {id:'templates', group:'tools', name:'Шаблоны', routes:['/templates','/templates/new'], templates:['templates_list.html','template_form.html','template_view.html'], usedBy:['Наборы задач для повторного использования']},
+      {id:'rubrics', group:'tools', name:'Рубрики', routes:['/rubrics'], templates:['rubrics_list.html','rubric_form.html'], usedBy:['Критерии/шаблоны комментариев']},
+      {id:'library', group:'tools', name:'Библиотека', routes:['/library'], templates:['materials_library.html (если есть)'], usedBy:['Материалы для уроков']},
+      {id:'trainer', group:'study', name:'Тренажёр', routes:['/trainer/embed'], templates:['trainer_embed.html','trainer_app/app.py'], usedBy:['Отдельный модуль']},
+    ];
+
+    const SECTION_EDGES = [
+      ['dashboard','schedule'],['dashboard','lessons'],['dashboard','assignments'],
+      ['schedule','lessons'],
+      ['lessons','generator'],['lessons','templates'],['lessons','create'],['lessons','reviews'],['lessons','lessonTaskReview'],['lessons','library'],
+      ['generator','templates'],['generator','create'],
+      ['templates','create'],['templates','generator'],
+      ['assignments','create'],['assignments','submissions'],['assignments','reviews'],
+      ['submissions','reviews'],
+      ['reviews','lessonTaskReview'],['reviews','submissions'],
+      ['rubrics','submissions'],['rubrics','lessonTaskReview'],
+      ['trainer','lessons']
+    ];
+
+    // --- Data: Pages (deeper) ---
+    const PAGES = [
+      // generator cluster
+      {id:'p_kege_generator', section:'generator', name:'kege_generator.html', kind:'page', routes:['/kege-generator'], templates:['templates/kege_generator.html'], usedBy:['Запуск генерации / actions / перейти к принятым/пропущенным']},
+      {id:'p_accepted', section:'generator', name:'accepted.html', kind:'page', routes:['/assignments/accepted'], templates:['templates/accepted.html'], usedBy:['Буфер принятых → создать работу']},
+      {id:'p_skipped', section:'generator', name:'skipped.html', kind:'page', routes:['/assignments/skipped'], templates:['templates/skipped.html'], usedBy:['Пропущенные (глобальные)']},
+      {id:'p_results', section:'generator', name:'results.html', kind:'page', routes:['/assignments/generator/results'], templates:['templates/results.html'], usedBy:['Результаты генерации']},
+
+      // templates cluster
+      {id:'p_templates_list', section:'templates', name:'templates_list.html', kind:'page', routes:['/templates'], templates:['templates/templates_list.html'], usedBy:['Список + вход в создание']},
+      {id:'p_template_form', section:'templates', name:'template_form.html', kind:'page', routes:['/templates/new','/templates/<id>/edit'], templates:['templates/template_form.html'], usedBy:['Quick/manual режимы создания']},
+      {id:'p_template_view', section:'templates', name:'template_view.html', kind:'page', routes:['/templates/<id>'], templates:['templates/template_view.html'], usedBy:['Просмотр + создать работу из шаблона']},
+
+      // lessons cluster
+      {id:'p_lesson_form', section:'lessons', name:'lesson_form.html', kind:'page', routes:['/lesson/<id>/edit'], templates:['templates/lesson_form.html'], usedBy:['Редактирование урока + кнопки (создать работу из урока)']},
+      {id:'p_lesson_homework', section:'lessons', name:'lesson_homework.html', kind:'page', routes:['/lesson/<id>/*-tasks'], templates:['templates/lesson_homework.html'], usedBy:['Список задач урока + CTA в проверку']},
+      {id:'p_lesson_manual', section:'lessons', name:'lesson_manual_create.html', kind:'page', routes:['/lesson/<id>/manual-create'], templates:['templates/lesson_manual_create.html'], usedBy:['Ручное добавление задач']},
+      {id:'p_lesson_task_review', section:'lessons', name:'lesson_task_review.html', kind:'page', routes:['/reviews/lesson-task/<id>'], templates:['templates/lesson_task_review.html'], usedBy:['Проверка LessonTask']},
+
+      // assignments cluster
+      {id:'p_assignments_list', section:'assignments', name:'assignments_list.html', kind:'page', routes:['/assignments'], templates:['templates/assignments_list.html'], usedBy:['Список работ']},
+      {id:'p_assignment_create', section:'assignments', name:'assignment_create.html', kind:'page', routes:['/assignments/create'], templates:['templates/assignment_create.html'], usedBy:['Мастер создания работ']},
+      {id:'p_assignment_view', section:'assignments', name:'assignment_view.html', kind:'page', routes:['/assignments/<id>'], templates:['templates/assignment_view.html'], usedBy:['Просмотр работы + переход в очередь проверки']},
+      {id:'p_submission_view', section:'submissions', name:'submission_view.html', kind:'page', routes:['/submissions/<id>'], templates:['templates/submission_view.html'], usedBy:['Ученик решает/сдаёт']},
+      {id:'p_submission_grade', section:'submissions', name:'submission_grade.html', kind:'page', routes:['/submissions/<id>/grade'], templates:['templates/submission_grade.html'], usedBy:['Учитель проверяет']},
+      {id:'p_review_queue', section:'reviews', name:'review_queue.html', kind:'page', routes:['/reviews/queue'], templates:['templates/review_queue.html'], usedBy:['Единый журнал проверок']},
+    ];
+
+    const PAGE_EDGES = [
+      // generator flows
+      ['p_kege_generator','p_accepted'],['p_kege_generator','p_skipped'],['p_kege_generator','p_results'],
+      ['p_accepted','p_assignment_create'],
+      // templates flows
+      ['p_templates_list','p_template_form'],['p_templates_list','p_template_view'],
+      ['p_template_view','p_assignment_create'],['p_template_view','p_kege_generator'],
+      // lessons flows
+      ['p_lesson_form','p_assignment_create'],['p_lesson_homework','p_review_queue'],['p_lesson_homework','p_lesson_task_review'],['p_lesson_homework','p_kege_generator'],
+      // assignments/submissions/reviews
+      ['p_assignments_list','p_assignment_create'],['p_assignments_list','p_assignment_view'],
+      ['p_assignment_view','p_review_queue'],['p_review_queue','p_submission_grade'],['p_review_queue','p_lesson_task_review'],
+      ['p_submission_view','p_submission_grade']
+    ];
+
+    const POS_SECTIONS = {
+      dashboard:[80,120], schedule:[80,250],
+      lessons:[420,120], assignments:[420,240], create:[420,360],
+      reviews:[760,120], submissions:[760,240], lessonTaskReview:[1060,120],
+      generator:[420,540], templates:[760,540], rubrics:[1060,540], library:[760,680], trainer:[1060,360]
+    };
+
+    function badgeClass(g){
+      if (g==='study') return 'study';
+      if (g==='tools') return 'tools';
+      if (g==='core') return 'core';
+      return 'page';
+    }
+
+    // --- Graph engine (render either sections or pages) ---
+    const svgNS = "http://www.w3.org/2000/svg";
+    const host = document.getElementById('svgHost');
+    const svg = document.createElementNS(svgNS,'svg');
+    svg.setAttribute('viewBox','0 0 1200 900');
+    host.appendChild(svg);
+
+    const defs = document.createElementNS(svgNS,'defs');
+    defs.innerHTML = `
+      <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+        <path d="M0,0 L10,3 L0,6 z" fill="rgba(255,255,255,.24)"></path>
+      </marker>
+      <marker id="arrowHL" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+        <path d="M0,0 L10,3 L0,6 z" fill="rgba(0,255,213,.78)"></path>
+      </marker>
+    `;
+    svg.appendChild(defs);
+
+    const g = document.createElementNS(svgNS,'g');
+    svg.appendChild(g);
+
+    let panX = 0, panY = 0, scale = 1;
+    let dragging = false, last = null, dragStart = null, dragMoved=false;
+    const DRAG_THRESHOLD_PX = 4;
+    function applyTransform(){ g.setAttribute('transform', `translate(${panX},${panY}) scale(${scale})`); }
+
+    host.addEventListener('pointerdown', (e)=>{
+      try { if (e.target && e.target.closest && e.target.closest('.node')) return; } catch (_) {}
+      dragging = true; dragMoved=false; dragStart={x:e.clientX,y:e.clientY}; last={x:e.clientX,y:e.clientY};
+      try { host.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+    host.addEventListener('pointermove', (e)=>{
+      if (!dragging || !last) return;
+      if (!dragMoved && dragStart){
+        const dist = Math.hypot(e.clientX-dragStart.x, e.clientY-dragStart.y);
+        if (dist < DRAG_THRESHOLD_PX) return;
+        dragMoved=true;
+      }
+      panX += (e.clientX - last.x);
+      panY += (e.clientY - last.y);
+      last = {x:e.clientX,y:e.clientY};
+      applyTransform();
+    });
+    host.addEventListener('pointerup', (e)=>{ dragging=false; last=null; dragStart=null; dragMoved=false; try{host.releasePointerCapture(e.pointerId);}catch(_){} });
+    host.addEventListener('pointercancel', (e)=>{ dragging=false; last=null; dragStart=null; dragMoved=false; try{host.releasePointerCapture(e.pointerId);}catch(_){} });
+    host.addEventListener('wheel', (e)=>{
+      e.preventDefault();
+      const k = (-e.deltaY) > 0 ? 1.08 : 0.92;
+      scale = Math.max(0.6, Math.min(1.9, scale*k));
+      applyTransform();
+    }, {passive:false});
+
+    let showAllEdges = false;
+    let mode = 'sections'; // sections | pages
+    let selectedId = null;
+
+    const edgeEls = new Map();
+    const nodeEls = new Map();
+
+    function clearGraph(){
+      while (g.firstChild) g.removeChild(g.firstChild);
+      edgeEls.clear();
+      nodeEls.clear();
+    }
+
+    function centerOf(posMap, id, w, h){
+      const [x,y] = posMap[id] || [0,0];
+      return [x + w/2, y + h/2];
+    }
+
+    function drawGraph(nodes, edges, posMap){
+      clearGraph();
+      // background grid
+      const grid = document.createElementNS(svgNS,'g');
+      grid.setAttribute('opacity','0.25');
+      for (let x=0; x<=1200; x+=80){
+        const l = document.createElementNS(svgNS,'line');
+        l.setAttribute('x1',x); l.setAttribute('y1',0);
+        l.setAttribute('x2',x); l.setAttribute('y2',900);
+        l.setAttribute('stroke','rgba(255,255,255,.06)');
+        grid.appendChild(l);
+      }
+      for (let y=0; y<=900; y+=80){
+        const l = document.createElementNS(svgNS,'line');
+        l.setAttribute('x1',0); l.setAttribute('y1',y);
+        l.setAttribute('x2',1200); l.setAttribute('y2',y);
+        l.setAttribute('stroke','rgba(255,255,255,.06)');
+        grid.appendChild(l);
+      }
+      g.appendChild(grid);
+
+      const eg = document.createElementNS(svgNS,'g');
+      g.appendChild(eg);
+      const w = 250, h = 62;
+      for (const [a,b] of edges){
+        if (!posMap[a] || !posMap[b]) continue;
+        const [ax,ay] = centerOf(posMap, a, w, h);
+        const [bx,by] = centerOf(posMap, b, w, h);
+        const p = document.createElementNS(svgNS,'path');
+        const dx = Math.max(40, Math.min(170, Math.abs(bx-ax)/2));
+        const c1x = ax + (bx>ax ? dx : -dx);
+        const c1y = ay;
+        const c2x = bx + (bx>ax ? -dx : dx);
+        const c2y = by;
+        p.setAttribute('d', `M ${ax} ${ay} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${bx} ${by}`);
+        p.setAttribute('class','edge');
+        p.setAttribute('marker-end','url(#arrow)');
+        eg.appendChild(p);
+        edgeEls.set(`${a}->${b}`, p);
+      }
+
+      const ng = document.createElementNS(svgNS,'g');
+      g.appendChild(ng);
+      for (const n of nodes){
+        const pos = posMap[n.id];
+        if (!pos) continue;
+        const [x,y] = pos;
+        const node = document.createElementNS(svgNS,'g');
+        node.setAttribute('class', `node ${n.kind==='page'?'page':''}`);
+        node.dataset.id = n.id;
+
+        const rect = document.createElementNS(svgNS,'rect');
+        rect.setAttribute('x', x);
+        rect.setAttribute('y', y);
+        rect.setAttribute('width', w);
+        rect.setAttribute('height', h);
+        node.appendChild(rect);
+
+        const t1 = document.createElementNS(svgNS,'text');
+        t1.setAttribute('x', x+14);
+        t1.setAttribute('y', y+26);
+        t1.setAttribute('class','t1');
+        t1.textContent = n.name;
+        node.appendChild(t1);
+
+        const t2 = document.createElementNS(svgNS,'text');
+        t2.setAttribute('x', x+14);
+        t2.setAttribute('y', y+46);
+        t2.setAttribute('class','t2');
+        t2.textContent = (n.routes && n.routes[0]) ? n.routes[0] : '';
+        node.appendChild(t2);
+
+        node.addEventListener('click', (e)=>{ try{e.stopPropagation();}catch(_){}; select(n.id, nodes, edges, posMap); });
+        ng.appendChild(node);
+        nodeEls.set(n.id, node);
+      }
+
+      applyTransform();
+      resetEdges(nodes, edges);
+    }
+
+    function resetEdges(nodes, edges){
+      for (const el of edgeEls.values()){
+        el.classList.remove('hl');
+        el.classList.remove('dim');
+        el.setAttribute('marker-end','url(#arrow)');
+        // default: hide all until selection; showAll -> dim
+        if (showAllEdges) el.classList.add('dim'); else el.classList.remove('dim');
+        el.style.opacity = showAllEdges ? '' : '0';
+      }
+    }
+
+    function select(id, nodes, edges, posMap){
+      selectedId = id;
+      for (const el of nodeEls.values()) el.classList.remove('active');
+      const n = nodeEls.get(id);
+      if (n) n.classList.add('active');
+
+      resetEdges(nodes, edges);
+      // show only incident edges (or all if enabled)
+      for (const [a,b] of edges){
+        const el = edgeEls.get(`${a}->${b}`);
+        if (!el) continue;
+        if (showAllEdges){
+          el.classList.add('dim');
+          el.style.opacity = '';
+        }
+        if (a===id || b===id){
+          el.classList.add('hl');
+          el.classList.remove('dim');
+          el.style.opacity = '';
+          el.setAttribute('marker-end','url(#arrowHL)');
+        }
+      }
+
+      const item = document.querySelector(`.item[data-id="${id}"]`);
+      document.querySelectorAll('.item').forEach(x=>x.classList.remove('active'));
+      if (item) item.classList.add('active');
+
+      const model = nodes.find(x=>x.id===id) || SECTIONS.find(x=>x.id===id) || PAGES.find(x=>x.id===id);
+      document.getElementById('selHint').textContent = `Выбран: ${model ? model.name : id}`;
+      renderDetails(model, nodes, edges);
+    }
+
+    function renderDetails(model, nodes, edges){
+      const el = document.getElementById('details');
+      if (!model){
+        el.innerHTML = `<h3>Детали</h3><div class="muted" style="margin-top:8px;">—</div>`;
+        return;
+      }
+      const inb = edges.filter(([a,b])=>b===model.id).map(([a])=> (nodes.find(n=>n.id===a)||{}).name || a);
+      const out = edges.filter(([a,b])=>a===model.id).map(([,b])=> (nodes.find(n=>n.id===b)||{}).name || b);
+      el.innerHTML = `
+        <h3>${escapeHtml(model.name)}</h3>
+        <div class="muted" style="margin-top:8px;">
+          <div><b>Routes:</b> ${(model.routes||[]).map(r=>`<span class="mono">${escapeHtml(r)}</span>`).join(' • ') || '—'}</div>
+          <div style="margin-top:6px;"><b>Templates:</b> ${(model.templates||[]).map(t=>`<span class="mono">${escapeHtml(t)}</span>`).join(' • ') || '—'}</div>
+          <div style="margin-top:6px;"><b>Где используется:</b></div>
+          ${renderList(model.usedBy)}
+          <div style="margin-top:10px;"><b>Связи:</b></div>
+          <div>Входящие: ${escapeHtml(inb.join(' • ') || '—')}</div>
+          <div>Исходящие: ${escapeHtml(out.join(' • ') || '—')}</div>
+        </div>
+      `;
+    }
+    function renderList(arr){
+      const a = (arr||[]).filter(Boolean);
+      if (!a.length) return `<div class="muted">—</div>`;
+      return `<ul>${a.map(x=>`<li>${escapeHtml(x)}</li>`).join('')}</ul>`;
+    }
+    function escapeHtml(x){
+      return String(x)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'","&#39;");
+    }
+
+    function buildList(){
+      const host = document.getElementById('list');
+      host.innerHTML = '';
+      const q = (document.getElementById('q').value || '').trim().toLowerCase();
+
+      const data = (mode==='sections') ? SECTIONS : [...SECTIONS.map(s=>({...s, kind:'section'})), ...PAGES];
+      const filtered = data.filter(x=>{
+        if (!q) return true;
+        const hay = [x.name, ...(x.routes||[]), ...(x.templates||[]), ...(x.usedBy||[])].join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+
+      for (const x of filtered){
+        const div = document.createElement('div');
+        div.className = 'item';
+        div.dataset.id = x.id;
+        const cls = (x.kind==='page') ? 'page' : badgeClass(x.group);
+        div.innerHTML = `
+          <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
+            <div class="name">${escapeHtml(x.name)}</div>
+            <span class="badge ${cls}">${x.kind==='page' ? 'Страница' : x.group==='study'?'Учёба':x.group==='tools'?'Инструменты':'Core'}</span>
+          </div>
+          <div class="meta">${escapeHtml((x.routes||[])[0] || '')}</div>
+        `;
+        div.addEventListener('click', ()=>{
+          if (mode==='sections'){
+            select(x.id, SECTIONS, SECTION_EDGES, POS_SECTIONS);
+          } else {
+            // pages mode: построим “локальную” карту вокруг выбранного узла
+            buildPageFocus(x.id);
+          }
+        });
+        host.appendChild(div);
+      }
+    }
+
+    function buildPageFocus(id){
+      // фокус: выбранный узел + 1‑соседи (так убираем кашу)
+      const all = [...PAGES];
+      const edges = [...PAGE_EDGES];
+
+      const neighbors = new Set([id]);
+      for (const [a,b] of edges){
+        if (a===id){ neighbors.add(b); }
+        if (b===id){ neighbors.add(a); }
+      }
+      // если выбрали раздел — показываем страницы раздела + основные переходы
+      const isSection = SECTIONS.some(s=>s.id===id);
+      if (isSection){
+        for (const p of PAGES){
+          if (p.section===id) neighbors.add(p.id);
+        }
+        for (const [a,b] of edges){
+          const pa = PAGES.find(x=>x.id===a);
+          const pb = PAGES.find(x=>x.id===b);
+          if ((pa && pa.section===id) || (pb && pb.section===id)){
+            neighbors.add(a); neighbors.add(b);
+          }
+        }
+      }
+
+      const nodes = [];
+      for (const nid of neighbors){
+        const p = PAGES.find(x=>x.id===nid);
+        const s = SECTIONS.find(x=>x.id===nid);
+        if (p) nodes.push(p);
+        else if (s) nodes.push({...s, kind:'section'});
+      }
+
+      // позиционирование: выбранный в центре, остальные по кругу
+      const pos = {};
+      const cx = 520, cy = 340;
+      const w = 250, h = 62;
+      pos[id] = [cx, cy];
+      const others = nodes.filter(n=>n.id!==id);
+      const r = 240;
+      others.forEach((n, idx)=>{
+        const ang = (Math.PI * 2) * (idx / Math.max(1, others.length));
+        pos[n.id] = [cx + Math.cos(ang)*r, cy + Math.sin(ang)*r];
+      });
+
+      const filteredEdges = edges.filter(([a,b])=>neighbors.has(a) && neighbors.has(b));
+      drawGraph(nodes, filteredEdges, pos);
+      select(id, nodes, filteredEdges, pos);
+    }
+
+    function setMode(next){
+      mode = next;
+      document.getElementById('modeSections').classList.toggle('active', mode==='sections');
+      document.getElementById('modePages').classList.toggle('active', mode==='pages');
+      panX = 0; panY = 0; scale = 1; applyTransform();
+      if (mode==='sections'){
+        drawGraph(SECTIONS, SECTION_EDGES, POS_SECTIONS);
+        select('dashboard', SECTIONS, SECTION_EDGES, POS_SECTIONS);
+      } else {
+        // pages: стартуем с обзорного “фокуса” на dashboard (как раздел)
+        buildPageFocus('dashboard');
+      }
+      buildList();
+    }
+
+    // UI
+    document.getElementById('q').addEventListener('input', buildList);
+    document.getElementById('modeSections').addEventListener('click', ()=>setMode('sections'));
+    document.getElementById('modePages').addEventListener('click', ()=>setMode('pages'));
+    document.getElementById('toggleEdges').addEventListener('click', ()=>{
+      showAllEdges = !showAllEdges;
+      document.getElementById('toggleEdges').textContent = `Все связи: ${showAllEdges ? 'вкл' : 'выкл'}`;
+      // пересборка текущего режима
+      if (mode==='sections'){
+        drawGraph(SECTIONS, SECTION_EDGES, POS_SECTIONS);
+        select(selectedId || 'dashboard', SECTIONS, SECTION_EDGES, POS_SECTIONS);
+      } else {
+        buildPageFocus(selectedId || 'dashboard');
+      }
+    });
+    document.getElementById('reset').addEventListener('click', ()=>{
+      document.getElementById('q').value = '';
+      showAllEdges = false;
+      document.getElementById('toggleEdges').textContent = 'Все связи: выкл';
+      setMode(mode);
+    });
+
+    // init
+    setMode('sections');
+  </script>
+</body>
+</html>
+

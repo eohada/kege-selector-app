@@ -268,10 +268,12 @@
                                         <script>
                                             (function() {
                                                 const origin = window.location.origin;
-                                                const token = {{ (('"' ~ current_user.schedule_ics_token ~ '"') if current_user.schedule_ics_token else 'null')|safe }};
-                                                const link = token ? `${origin}/schedule/ics/${token}?timezone={{ ics_tz_param }}` : '';
+                                                const token = {% if current_user.schedule_ics_token %}'{{ current_user.schedule_ics_token }}'{% else %}null{% endif %};
+                                                const icsTzParam = '{{ ics_tz_param }}';
+                                                const regenerateUrl = '{{ url_for('schedule.schedule_regenerate_ics_token') }}';
+                                                const link = token ? `${origin}/schedule/ics/${token}?timezone=${icsTzParam}` : '';
                                                 const el = document.getElementById('icsLink');
-                                                if (el) el.value = link || '(нажмите “Обновить ссылку”)';
+                                                if (el) el.value = link || '(нажмите "Обновить ссылку")';
                                                 window.copyIcsLink = async function() {
                                                     const v = el?.value || '';
                                                     if (!v || v.startsWith('(')) return;
@@ -279,7 +281,7 @@
                                                 }
                                                 window.regenerateIcsToken = async function() {
                                                     try {
-                                                        const resp = await fetch(`{{ url_for('schedule.schedule_regenerate_ics_token') }}`, {
+                                                        const resp = await fetch(regenerateUrl, {
                                                             method: 'POST',
                                                             headers: {
                                                                 'Content-Type': 'application/json',
@@ -289,7 +291,7 @@
                                                         });
                                                         const data = await resp.json().catch(() => ({}));
                                                         if (!resp.ok || data.success === false) throw new Error(data.error || `HTTP ${resp.status}`);
-                                                        const newLink = `${origin}/schedule/ics/${data.token}?timezone={{ ics_tz_param }}`;
+                                                        const newLink = `${origin}/schedule/ics/${data.token}?timezone=${icsTzParam}`;
                                                         if (el) el.value = newLink;
                                                         if (window.toast) window.toast.success('Ссылка обновлена');
                                                     } catch (e) {
@@ -308,7 +310,7 @@
 
                                 {% if recent_lessons and recent_lessons|length > 0 %}
                                 <div class="profile-section">
-                                    <details class="profile-details" open>
+                                    <details class="profile-details">
                                         <summary>
                                             Лента уроков
                                             <span class="status-badge status-info" style="opacity:.75;">{{ recent_lessons|length }}</span>
@@ -423,8 +425,10 @@
                                 <script>
                                     (function() {
                                         const origin = window.location.origin;
-                                        const token = {{ (('"' ~ current_user.schedule_ics_token ~ '"') if current_user.schedule_ics_token else 'null')|safe }};
-                                        const link = token ? `${origin}/schedule/ics/${token}?timezone={{ ics_tz_param }}` : '';
+                                        const token = {% if current_user.schedule_ics_token %}'{{ current_user.schedule_ics_token }}'{% else %}null{% endif %};
+                                        const icsTzParam = '{{ ics_tz_param }}';
+                                        const regenerateUrl = '{{ url_for('schedule.schedule_regenerate_ics_token') }}';
+                                        const link = token ? `${origin}/schedule/ics/${token}?timezone=${icsTzParam}` : '';
                                         const el = document.getElementById('icsLink');
                                         if (el) el.value = link || '(нажмите “Обновить ссылку”)';
                                         window.copyIcsLink = async function() {
@@ -434,7 +438,7 @@
                                         }
                                         window.regenerateIcsToken = async function() {
                                             try {
-                                                const resp = await fetch(`{{ url_for('schedule.schedule_regenerate_ics_token') }}`, {
+                                                const resp = await fetch(regenerateUrl, {
                                                     method: 'POST',
                                                     headers: {
                                                         'Content-Type': 'application/json',
@@ -444,7 +448,7 @@
                                                 });
                                                 const data = await resp.json().catch(() => ({}));
                                                 if (!resp.ok || data.success === false) throw new Error(data.error || `HTTP ${resp.status}`);
-                                                const newLink = `${origin}/schedule/ics/${data.token}?timezone={{ ics_tz_param }}`;
+                                                const newLink = `${origin}/schedule/ics/${data.token}?timezone=${icsTzParam}`;
                                                 if (el) el.value = newLink;
                                                 if (window.toast) window.toast.success('Ссылка обновлена');
                                             } catch (e) {

@@ -19,6 +19,25 @@ def _require_admin():
         abort(403)
 
 
+@billing_bp.route('/billing/plans/public')
+def billing_plans_public():
+    """Публичная страница тарифов (без авторизации)."""
+    groups = TariffGroup.query.filter_by(is_active=True).order_by(TariffGroup.order_index.asc(), TariffGroup.group_id.asc()).all()
+    plans = TariffPlan.query.filter_by(is_active=True).order_by(
+        TariffPlan.group_id.asc().nullsfirst(),
+        TariffPlan.order_index.asc(),
+        TariffPlan.title.asc(),
+        TariffPlan.plan_id.asc(),
+    ).all()
+    plans_by_group: list[tuple[TariffGroup, list[TariffPlan]]] = []
+    for g in groups:
+        items = [p for p in plans if p.group_id == g.group_id]
+        if items:
+            plans_by_group.append((g, items))
+    ungrouped_plans = [p for p in plans if not p.group_id]
+    return render_template('billing_plans_public.html', groups=groups, plans_by_group=plans_by_group, ungrouped_plans=ungrouped_plans)
+
+
 @billing_bp.route('/billing/plans')
 @login_required
 def billing_plans():

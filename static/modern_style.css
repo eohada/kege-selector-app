@@ -2615,7 +2615,7 @@ body.creator-theme-active .students-grid {
     opacity: 0.9;
 }
 
-.profile-card::after {
+/* .profile-card::after {
     content: '';
     position: absolute;
     inset: -30px;
@@ -2626,7 +2626,7 @@ body.creator-theme-active .students-grid {
     opacity: 0.55;
     pointer-events: none;
     z-index: 0;
-}
+} */
 
 /* Обложка */
 .profile-cover {

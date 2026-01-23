@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Тарифы</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+  {% include '_ux_enhancements.html' %}
+</head>
+<body>
+  <div class="app-shell">
+    <nav style="position: fixed; width: 100%; top: 0; z-index: 100; backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; height: 70px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-weight: 700; font-size: 1.2rem;">Чёрный неон</div>
+            <a href="{{ url_for('main.landing') }}" style="color: var(--text-muted); text-decoration: none;">На главную</a>
+        </div>
+    </nav>
+
+    <main style="margin-top: 100px; padding-bottom: 2rem;">
+      <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px;">
+        <section class="glass-panel" style="margin-bottom: 1.25rem;">
+          <p class="hero-eyebrow">тарифы</p>
+          <h1 class="hero-title" style="margin-bottom:.25rem;">Выберите подходящий тариф</h1>
+          <div style="color: var(--text-muted);">Выберите план, который лучше всего подходит для ваших целей обучения.</div>
+        </section>
+
+        {% if plans_by_group or ungrouped_plans %}
+          {% for group, group_plans in plans_by_group %}
+            {% if group_plans %}
+              <section class="glass-panel" style="margin-bottom: 1.25rem;">
+                <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem;">{{ group.title }}</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+                  {% for plan in group_plans %}
+                    <div style="border: 1px solid var(--glass-border, rgba(255,255,255,0.1)); border-radius: 12px; padding: 1.5rem; background: rgba(255,255,255,0.02);">
+                      <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">{{ plan.title }}</h3>
+                      {% if plan.description %}
+                        <p style="color: var(--text-muted); margin-bottom: 1rem; line-height: 1.6;">{{ plan.description }}</p>
+                      {% endif %}
+                      <div style="margin-bottom: 1rem;">
+                        {% if plan.price_rub %}
+                          <div style="font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem;">{{ plan.price_rub }} ₽</div>
+                        {% endif %}
+                        {% if plan.period_days %}
+                          <div style="color: var(--text-muted); font-size: 0.9rem;">на {{ plan.period_days }} дней</div>
+                        {% endif %}
+                      </div>
+                      <div style="margin-bottom: 1rem;">
+                        {% if plan.allow_lessons %}
+                          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <span>✓</span>
+                            <span>Доступ к урокам</span>
+                          </div>
+                        {% endif %}
+                        {% if plan.allow_trainer %}
+                          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <span>✓</span>
+                            <span>Доступ к тренажёру</span>
+                          </div>
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+              </section>
+            {% endif %}
+          {% endfor %}
+
+          {% if ungrouped_plans %}
+            <section class="glass-panel" style="margin-bottom: 1.25rem;">
+              <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem;">Другие тарифы</h2>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+                {% for plan in ungrouped_plans %}
+                  <div style="border: 1px solid var(--glass-border, rgba(255,255,255,0.1)); border-radius: 12px; padding: 1.5rem; background: rgba(255,255,255,0.02);">
+                    <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">{{ plan.title }}</h3>
+                    {% if plan.description %}
+                      <p style="color: var(--text-muted); margin-bottom: 1rem; line-height: 1.6;">{{ plan.description }}</p>
+                    {% endif %}
+                    <div style="margin-bottom: 1rem;">
+                      {% if plan.price_rub %}
+                        <div style="font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem;">{{ plan.price_rub }} ₽</div>
+                      {% endif %}
+                      {% if plan.period_days %}
+                        <div style="color: var(--text-muted); font-size: 0.9rem;">на {{ plan.period_days }} дней</div>
+                      {% endif %}
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                      {% if plan.allow_lessons %}
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                          <span>✓</span>
+                          <span>Доступ к урокам</span>
+                        </div>
+                      {% endif %}
+                      {% if plan.allow_trainer %}
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                          <span>✓</span>
+                          <span>Доступ к тренажёру</span>
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </section>
+          {% endif %}
+        {% else %}
+          <section class="glass-panel">
+            <p style="color: var(--text-muted); text-align: center; padding: 2rem;">Тарифы пока не доступны.</p>
+          </section>
+        {% endif %}
+
+        <section class="glass-panel" style="text-align: center; margin-top: 2rem;">
+          <p style="color: var(--text-muted); margin-bottom: 1rem;">Для получения доступа к тарифам свяжитесь с нами.</p>
+          <a href="{{ url_for('main.landing') }}" class="neo-button accent" style="text-decoration: none;">Вернуться на главную</a>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
