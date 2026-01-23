@@ -2648,20 +2648,20 @@ def admin_user_edit(user_id):
                     all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
                     all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
                     # Всегда формируем список tutor'ов (включая creator), так как он может понадобиться для разных ролей
-                all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
+                    all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
                     # Определяем, находимся ли мы в песочнице
                     environment = os.environ.get('ENVIRONMENT', 'local')
                     railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
                     is_sandbox = _is_sandbox(environment, railway_environment)
                     
                     return render_template('admin_user_edit.html',
-                                     user=user,
-                                     family_ties=family_ties,
-                                     enrollments=enrollments,
-                                     all_parents=all_parents,
-                                     all_students=all_students,
-                                     all_tutors=all_tutors,
-                                     is_sandbox=is_sandbox)
+                                         user=user,
+                                         family_ties=family_ties,
+                                         enrollments=enrollments,
+                                         all_parents=all_parents,
+                                         all_students=all_students,
+                                         all_tutors=all_tutors,
+                                         is_sandbox=is_sandbox)
             
             # Обновляем пароль, если указан
             new_password = request.form.get('password', '').strip()
