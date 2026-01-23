@@ -206,7 +206,7 @@
                         </button>
                         {% endif %}
                         {% endif %}
-                        <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="neo-button ghost" style="text-decoration:none;">
+                        <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted', assignment_type=assignment.assignment_type, assignment_id=assignment.assignment_id) }}" class="neo-button ghost" style="text-decoration:none;">
                             ✅ Очередь проверки
                         </a>
                     </div>

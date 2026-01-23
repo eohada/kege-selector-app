@@ -120,7 +120,7 @@
 </head>
 <body>
     <div class="app-shell">
-        {% set active_page = 'review_queue' %}
+        {% set active_page = active_page | default('review_queue') %}
         {% include '_primary_nav.html' %}
 
         <main style="margin-top: 1.25rem;">
@@ -130,6 +130,8 @@
                 <div class="queue-sub">Единая очередь «что проверить» по классной комнате и работам. Фильтруй и переходи в нужную проверку.</div>
 
                 <form method="GET" class="filters">
+                    {% if lesson_id %}<input type="hidden" name="lesson_id" value="{{ lesson_id }}">{% endif %}
+                    {% if assignment_id %}<input type="hidden" name="assignment_id" value="{{ assignment_id }}">{% endif %}
                     <div>
                         <label class="filter-label" for="status">Статус</label>
                         <select class="neo-select" id="status" name="status">
@@ -174,6 +176,21 @@
                     </div>
                 </form>
             </section>
+
+            {% if lesson_id or assignment_id %}
+            <div class="glass-panel" style="margin-bottom: 1rem; padding: 1rem;">
+                <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items:center; justify-content: space-between;">
+                    <div style="display:flex; gap:.45rem; flex-wrap: wrap; align-items:center;">
+                        <span class="status-badge status-info" style="opacity: 0.95;">Фильтр</span>
+                        {% if lesson_id %}<span class="status-badge status-info" style="opacity: 0.95;">Урок #{{ lesson_id }}</span>{% endif %}
+                        {% if assignment_id %}<span class="status-badge status-info" style="opacity: 0.95;">Работа #{{ assignment_id }}</span>{% endif %}
+                    </div>
+                    <a class="neo-button outline sm" href="{{ url_for('lessons.review_queue') }}" style="text-decoration:none;">
+                        Сбросить фильтр
+                    </a>
+                </div>
+            </div>
+            {% endif %}
 
             {% if (source != 'assignments') and lesson_cards and lesson_cards|length > 0 %}
                 {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}

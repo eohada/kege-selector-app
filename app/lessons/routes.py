@@ -734,6 +734,17 @@ def review_queue():
     source = (request.args.get('source') or 'all').strip().lower()  # all|lessons|assignments
     assignment_type = (request.args.get('assignment_type') or '').strip().lower()  # homework|classwork|exam
     student_query = (request.args.get('student') or '').strip()
+    lesson_id = request.args.get('lesson_id', type=int)
+    assignment_id = request.args.get('assignment_id', type=int)
+
+    try:
+        lesson_id = int(lesson_id) if lesson_id else None
+    except Exception:
+        lesson_id = None
+    try:
+        assignment_id = int(assignment_id) if assignment_id else None
+    except Exception:
+        assignment_id = None
 
     allowed_statuses = {'submitted', 'returned', 'graded', 'pending'}
     if status not in allowed_statuses:
@@ -757,6 +768,8 @@ def review_queue():
 
     try:
         ql = LessonTask.query.join(Lesson, Lesson.lesson_id == LessonTask.lesson_id).join(Student, Student.student_id == Lesson.student_id)
+        if lesson_id:
+            ql = ql.filter(Lesson.lesson_id == int(lesson_id))
         if assignment_type:
             ql = ql.filter((LessonTask.assignment_type == assignment_type) | (LessonTask.assignment_type.is_(None) if assignment_type == 'homework' else False))
         if student_query:
@@ -776,6 +789,8 @@ def review_queue():
 
     try:
         qs0 = Submission.query.join(Student, Student.student_id == Submission.student_id).join(Assignment, Assignment.assignment_id == Submission.assignment_id)
+        if assignment_id:
+            qs0 = qs0.filter(Assignment.assignment_id == int(assignment_id))
         if assignment_type:
             qs0 = qs0.filter(Assignment.assignment_type == assignment_type)
         if student_query:
@@ -814,6 +829,8 @@ def review_queue():
         ).join(Lesson, Lesson.lesson_id == LessonTask.lesson_id).join(Student, Student.student_id == Lesson.student_id)
 
         q = q.filter(LessonTask.status == status)
+        if lesson_id:
+            q = q.filter(Lesson.lesson_id == int(lesson_id))
         if assignment_type:
             q = q.filter((LessonTask.assignment_type == assignment_type) | (LessonTask.assignment_type.is_(None) if assignment_type == 'homework' else False))
 
@@ -877,6 +894,8 @@ def review_queue():
         ).join(Student, Student.student_id == Submission.student_id).join(Assignment, Assignment.assignment_id == Submission.assignment_id)
 
         qs = qs.filter(Submission.status.in_(statuses))
+        if assignment_id:
+            qs = qs.filter(Assignment.assignment_id == int(assignment_id))
         if assignment_type:
             qs = qs.filter(Assignment.assignment_type == assignment_type)
         if student_query:
@@ -940,6 +959,8 @@ def review_queue():
         assignment_type=assignment_type,
         student_query=student_query,
         status_counts=status_counts,
+        lesson_id=lesson_id,
+        assignment_id=assignment_id,
     )
 
 
