@@ -712,6 +712,7 @@ def clear_accepted():
     _require_kege_generator_access()
 
     raw = (request.form.get('task_type') or '').strip()
+    assignment_type = (request.form.get('assignment_type') or 'homework').strip().lower()
     task_type = None
     if raw:
         try:
@@ -737,7 +738,7 @@ def clear_accepted():
         except Exception:
             pass
         flash(f'Не удалось очистить принятые задания: {e}', 'danger')
-        return redirect(url_for('kege_generator.show_accepted', task_type=task_type) if task_type else url_for('kege_generator.show_accepted'))
+        return redirect(url_for('assignments.assignments_accepted', assignment_type=assignment_type, task_type=task_type))
 
     try:
         audit_logger.log(
@@ -755,7 +756,7 @@ def clear_accepted():
     else:
         flash('Все принятые задания очищены.', 'success')
 
-    return redirect(url_for('kege_generator.kege_generator'))
+    return redirect(url_for('assignments.assignments_accepted', assignment_type=assignment_type, task_type=task_type))
 
 @kege_generator_bp.route('/skipped')
 @login_required

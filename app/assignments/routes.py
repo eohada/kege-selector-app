@@ -901,6 +901,7 @@ def assignments_accepted():
 def assignments_accepted_clear():
     """Очистить принятые задания (UsageHistory)."""
     raw = (request.form.get('task_type') or '').strip()
+    assignment_type = (request.form.get('assignment_type') or 'homework').strip().lower()
     task_type = None
     if raw:
         try:
@@ -925,7 +926,7 @@ def assignments_accepted_clear():
             pass
         flash(f'Не удалось очистить принятые задания: {e}', 'danger')
 
-    return redirect(url_for('assignments.assignments_list'))
+    return redirect(url_for('assignments.assignments_accepted', assignment_type=assignment_type, task_type=task_type))
 
 
 @assignments_bp.route('/assignments/skipped')

@@ -303,11 +303,11 @@
                         <summary style="cursor:pointer; color: var(--text-primary); font-weight: 700;">Расширенные действия</summary>
                         <div style="margin-top: 1rem;">
                             <div class="generator-links" style="margin-bottom: 1rem;">
-                                <a href="{{ url_for('kege_generator.show_accepted', assignment_type=assignment_type) }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Принятые" class="ui-icon ui-icon--sm">Принятые</a>
+                                <a href="{{ url_for('assignments.assignments_accepted', assignment_type=assignment_type) }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Принятые" class="ui-icon ui-icon--sm">Принятые</a>
                                 {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
-                                <a href="{{ url_for('kege_generator.show_accepted', assignment_type=assignment_type, create='1') }}" class="neo-button outline">📝 Создать работу</a>
+                                <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type=assignment_type) }}" class="neo-button outline">📝 Создать работу</a>
                                 {% endif %}
-                                <a href="{{ url_for('kege_generator.show_skipped') }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/MINUS.png') }}" alt="Пропущенные" class="ui-icon ui-icon--sm">Пропущенные</a>
+                                <a href="{{ url_for('assignments.assignments_skipped') }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/MINUS.png') }}" alt="Пропущенные" class="ui-icon ui-icon--sm">Пропущенные</a>
                             </div>
                             <form method="POST"
                                   action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"

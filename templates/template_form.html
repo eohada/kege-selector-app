@@ -6,6 +6,7 @@
     <title>{% if is_new %}Создать шаблон{% else %}Редактировать шаблон{% endif %} · Чёрный неон</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
@@ -18,6 +19,13 @@
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
                 <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost" style="text-decoration: none;">← К библиотеке</a>
+                {% if is_new %}
+                {% set _m = (mode or '') %}
+                <div style="display:flex; gap: .5rem; flex-wrap: wrap;">
+                    <a href="{{ url_for('templates.template_new') }}" class="neo-button {{ 'accent' if _m != 'manual' else 'outline' }}" style="text-decoration:none;">Быстро</a>
+                    <a href="{{ url_for('templates.template_new', mode='manual') }}" class="neo-button {{ 'accent' if _m == 'manual' else 'outline' }}" style="text-decoration:none;">Вручную</a>
+                </div>
+                {% endif %}
             </div>
             <p class="hero-eyebrow">{% if is_new %}создание шаблона{% else %}редактирование шаблона{% endif %}</p>
             <h1 class="hero-title">{% if is_new %}<img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Создать" class="ui-icon ui-icon--md">Создать шаблон{% else %}<img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--md">Редактировать шаблон{% endif %}</h1>
@@ -68,17 +76,42 @@
             </div>
             {% endif %}
 
-            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost">Отмена</a>
-                <button type="submit" class="neo-button outline" data-after="generator">{% if is_new %}Создать и добавить задания{% else %}Сохранить и добавить задания{% endif %}</button>
-                <button type="submit" class="neo-button accent" data-after="list">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
-            </div>
+            {% if is_new and (mode or '') == 'manual' %}
+                <div style="margin-top: 1.5rem; padding: 1rem; border: 1px dashed var(--stroke-1); border-radius: var(--radius-lg); background: rgba(255,255,255,0.02);">
+                    <div class="hero-eyebrow">вручную</div>
+                    <div style="font-weight: 900; margin-top: .25rem;">Добавь задания карточками и нажми «Сохранить шаблон».</div>
+                    <div style="color: var(--text-muted); margin-top: .35rem; line-height: 1.4;">Это тот же шаблон, просто без генератора — всё сохраняется через единый `/templates/new`.</div>
+                </div>
+
+                {% include '_manual_task_cards.html' %}
+
+                <section class="glass-panel" style="position: sticky; bottom: 2rem; margin-top: 2rem; z-index: 100;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div id="status-text" style="color: var(--text-muted);">Заданий: <span id="tasks-count">0</span></div>
+                        <button type="button" onclick="saveManualTemplate()" class="neo-button accent">
+                            💾 Сохранить шаблон
+                        </button>
+                    </div>
+                </section>
+
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem;">
+                    <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost">Отмена</a>
+                </div>
+            {% else %}
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <a href="{{ url_for('templates.templates_list') }}" class="neo-button ghost">Отмена</a>
+                    <button type="submit" class="neo-button outline" data-after="generator">{% if is_new %}Создать и добавить задания{% else %}Сохранить и добавить задания{% endif %}</button>
+                    <button type="submit" class="neo-button accent" data-after="list">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
+                </div>
+            {% endif %}
         </form>
     </div>
 
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script>
+        {% if not (is_new and (mode or '') == 'manual') %}
         document.getElementById('templateForm').addEventListener('submit', async function(e) { // Сабмит формы шаблона
             e.preventDefault(); // Не даём браузеру перезагрузить страницу
             
@@ -129,6 +162,73 @@
                 toast.error('Ошибка при сохранении шаблона');
             }
         });
+        {% else %}
+        async function saveManualTemplate() {
+            const name = (document.getElementById('name') || {}).value ? document.getElementById('name').value.trim() : '';
+            if (!name) {
+                toast.error('Введите название шаблона');
+                document.getElementById('name') && document.getElementById('name').focus();
+                return;
+            }
+            const description = (document.getElementById('description') || {}).value ? document.getElementById('description').value.trim() : '';
+            const template_type = (document.getElementById('template_type') || {}).value || 'homework';
+            const category = (document.getElementById('category') || {}).value || null;
+
+            const cards = document.querySelectorAll('.task-card-entry');
+            if (!cards || cards.length === 0) {
+                toast.warning('Добавьте хотя бы одно задание');
+                return;
+            }
+
+            const tasks = [];
+            let hasError = false;
+            cards.forEach((card) => {
+                const number = (card.querySelector('.task-number-input') || {}).value || '1';
+                const content = (card.querySelector('.task-content-input') || {}).value || '';
+                const answer = (card.querySelector('.task-answer-input') || {}).value || '';
+                if (!content.trim()) {
+                    try { card.querySelector('.task-content-input').style.borderColor = 'var(--danger-color)'; } catch (e) {}
+                    hasError = true;
+                } else {
+                    tasks.push({ number: parseInt(number, 10) || 1, content, answer });
+                }
+            });
+            if (hasError) {
+                toast.error('Заполните текст всех заданий');
+                return;
+            }
+
+            const loaderId = (window.loading && typeof loading.show === 'function') ? loading.show(document.body, 'Сохранение шаблона...') : null;
+            const csrfToken = document.querySelector('meta[name="csrf-token"]');
+            try {
+                const res = await fetch('{{ url_for('templates.template_new') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken ? csrfToken.content : ''
+                    },
+                    body: JSON.stringify({ name, description, template_type, category, tasks })
+                });
+                const data = await res.json();
+                if (data && data.success) {
+                    toast.success('Шаблон создан');
+                    const tid = data.template_id;
+                    setTimeout(() => {
+                        window.location.href = tid ? ('{{ url_for('templates.template_view', template_id=0) }}'.replace('/0', '/' + String(tid))) : '{{ url_for('templates.templates_list') }}';
+                    }, 800);
+                } else {
+                    toast.error((data && data.error) ? data.error : 'Ошибка при сохранении');
+                }
+            } catch (e) {
+                console.error(e);
+                toast.error('Ошибка сети');
+            } finally {
+                if (loaderId && window.loading && typeof loading.hide === 'function') {
+                    loading.hide(loaderId);
+                }
+            }
+        }
+        {% endif %}
     </script>
 </body>
 </html>

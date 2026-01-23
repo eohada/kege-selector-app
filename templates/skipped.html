@@ -217,7 +217,7 @@
                     setTimeout(() => {
                         taskElement.remove();
                         if (document.querySelectorAll('.task-card').length === 0) {
-                            window.location.href = '{{ url_for('kege_generator.kege_generator') }}';
+                            window.location.href = '{{ url_for('assignments.assignments_skipped') }}';
                         }
                     }, 500);
                     if (typeof toast !== 'undefined' && toast) {
@@ -335,7 +335,7 @@
                     // Проверяем, остались ли задания
                     setTimeout(() => {
                         if (document.querySelectorAll('.task-card').length === 0) {
-                            window.location.href = '{{ url_for('kege_generator.kege_generator') }}';
+                            window.location.href = '{{ url_for('assignments.assignments_skipped') }}';
                         }
                     }, 500);
                 } else {
@@ -357,9 +357,9 @@
         
         function filterByTaskType(taskType) {
             if (taskType === '') {
-                window.location.href = '{{ skipped_base_url | default(url_for('kege_generator.show_skipped')) }}';
+                window.location.href = '{{ skipped_base_url | default(url_for('assignments.assignments_skipped')) }}';
             } else {
-                window.location.href = '{{ skipped_base_url | default(url_for('kege_generator.show_skipped')) }}?task_type=' + taskType;
+                window.location.href = '{{ skipped_base_url | default(url_for('assignments.assignments_skipped')) }}?task_type=' + taskType;
             }
         }
     </script>

@@ -25,7 +25,7 @@
                 </div>
                 {% if can_manage_templates %}
                 <a href="{{ url_for('templates.template_new') }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Создать" class="ui-icon ui-icon--sm">Создать шаблон</a>
-                <a href="{{ url_for('templates.template_manual_create') }}" class="neo-button outline" style="margin-left: 1rem;"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Создать" class="ui-icon ui-icon--sm"> Создать вручную</a>
+                <a href="{{ url_for('templates.template_new', mode='manual') }}" class="neo-button outline" style="margin-left: 1rem;"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Создать" class="ui-icon ui-icon--sm"> Создать вручную</a>
                 {% endif %}
             </div>
         </section>

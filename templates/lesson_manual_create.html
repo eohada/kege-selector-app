@@ -27,15 +27,7 @@
             <p class="hero-subtitle">Добавление собственных заданий для ученика {{ lesson.student.name }}</p>
         </section>
 
-        <div id="tasks-container">
-            <!-- Здесь будут появляться карточки заданий -->
-        </div>
-
-        <section class="glass-panel" style="text-align: center; margin-top: 2rem; border-style: dashed;">
-            <button onclick="addTaskCard()" class="neo-button outline" style="width: 100%; padding: 1.5rem;">
-                <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">Добавить еще задание
-            </button>
-        </section>
+        {% include '_manual_task_cards.html' %}
 
         <section class="glass-panel" style="position: sticky; bottom: 2rem; margin-top: 2rem; z-index: 100;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -47,50 +39,9 @@
         </section>
     </div>
 
-    <template id="task-card-template">
-        <section class="glass-panel task-card-entry" style="margin-bottom: 1.5rem; position: relative;">
-            <button type="button" onclick="removeTaskCard(this)" class="neo-button danger" style="position: absolute; top: 1rem; right: 1rem; padding: 0.5rem;">
-                <img src="{{ url_for('static', filename='icons/MUSORN.png') }}" alt="Удалить" class="ui-icon ui-icon--sm ui-icon--only">
-            </button>
-            
-            <div class="form-group" style="margin-bottom: 1.5rem; max-width: 200px;">
-                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Номер задания (ЕГЭ)</label>
-                <input type="number" class="task-number-input" min="1" max="27" value="1" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary);">
-            </div>
-
-            <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Текст задания</label>
-                <textarea class="task-content-input" rows="6" placeholder="Введите текст задания..." style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary); font-family: inherit;"></textarea>
-                <small style="color: var(--text-muted);">Поддерживается HTML-разметка</small>
-            </div>
-
-            <div class="form-group">
-                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Правильный ответ</label>
-                <input type="text" class="task-answer-input" placeholder="Например: 42" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary);">
-            </div>
-        </section>
-    </template>
-
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script>
-        function addTaskCard() {
-            const template = document.getElementById('task-card-template');
-            const clone = template.content.cloneNode(true);
-            document.getElementById('tasks-container').appendChild(clone);
-            updateCount();
-        }
-
-        function removeTaskCard(btn) {
-            btn.closest('.task-card-entry').remove();
-            updateCount();
-        }
-
-        function updateCount() {
-            const count = document.querySelectorAll('.task-card-entry').length;
-            document.getElementById('tasks-count').textContent = count;
-        }
-
         async function saveTasks() {
             const cards = document.querySelectorAll('.task-card-entry');
             if (cards.length === 0) {
@@ -153,11 +104,6 @@
                 loading.hide(loaderId);
             }
         }
-
-        // Add first card automatically
-        document.addEventListener('DOMContentLoaded', () => {
-            addTaskCard();
-        });
     </script>
 </body>
 </html>

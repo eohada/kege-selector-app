@@ -35,9 +35,10 @@
                         📝 Создать работу ({{ tasks|length }})
                     </a>
                     {% endif %}
-                    <form method="POST" action="{{ clear_accepted_url | default(url_for('kege_generator.clear_accepted')) }}" style="display:inline-flex; gap:.5rem; align-items:center;" onsubmit="return confirmAcceptedClear();">
+                    <form method="POST" action="{{ clear_accepted_url | default(url_for('assignments.assignments_accepted_clear')) }}" style="display:inline-flex; gap:.5rem; align-items:center;" onsubmit="return confirmAcceptedClear();">
                         {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
                         {% if task_type %}<input type="hidden" name="task_type" value="{{ task_type }}">{% endif %}
+                        {% if assignment_type %}<input type="hidden" name="assignment_type" value="{{ assignment_type }}">{% endif %}
                         <button type="submit" class="neo-button ghost" style="color: var(--danger);">
                             🧹 Очистить принятые{% if task_type %} (тип {{ task_type }}){% endif %}
                         </button>
@@ -104,7 +105,7 @@
                 <h3 class="empty-state-title">Нет принятых заданий</h3>
                 <p class="empty-state-description">Принятые задания будут отображаться здесь</p>
                 <div class="empty-state-actions">
-                    <a href="{{ back_url | default(url_for('kege_generator.kege_generator')) }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--sm">Назад</a>
+                    <a href="{{ back_url | default(url_for('assignments.assignments_list')) }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--sm">Назад</a>
                 </div>
             </div>
         </section>
@@ -129,9 +130,9 @@
         
         function filterByTaskType(taskType) {
             if (taskType === '') {
-                window.location.href = '{{ accepted_base_url | default(url_for('kege_generator.show_accepted', assignment_type=assignment_type)) }}';
+                window.location.href = '{{ accepted_base_url | default(url_for('assignments.assignments_accepted', assignment_type=assignment_type)) }}';
             } else {
-                window.location.href = '{{ accepted_base_url | default(url_for('kege_generator.show_accepted', assignment_type=assignment_type)) }}?task_type=' + taskType;
+                window.location.href = '{{ accepted_base_url | default(url_for('assignments.assignments_accepted', assignment_type=assignment_type)) }}?task_type=' + taskType;
             }
         }
 
