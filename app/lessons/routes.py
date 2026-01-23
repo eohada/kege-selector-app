@@ -964,6 +964,71 @@ def review_queue():
     )
 
 
+@lessons_bp.route('/reviews/lesson-task/<int:lesson_task_id>')
+@login_required
+@check_access('assignment.grade')
+def review_lesson_task(lesson_task_id: int):
+    """
+    Единый экран проверки конкретной задачи урока (LessonTask),
+    чтобы проверка не была размазана по страницам урока.
+    """
+    if current_user.is_student() or current_user.is_parent():
+        return make_response('Forbidden', 403)
+
+    lt = (
+        LessonTask.query.options(
+            db.joinedload(LessonTask.lesson).joinedload(Lesson.student),
+            db.joinedload(LessonTask.task),
+            db.joinedload(LessonTask.teacher_comments),
+        )
+        .filter(LessonTask.lesson_task_id == lesson_task_id)
+        .first_or_404()
+    )
+    lesson = lt.lesson
+    if not lesson:
+        return make_response('Not found', 404)
+
+    # RBAC: проверяем доступ к ученику урока
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all'):
+        accessible_student_ids = _resolve_accessible_student_ids(scope)
+        if lesson.student_id not in (accessible_student_ids or []):
+            return make_response('Forbidden', 403)
+
+    a_type = (lt.assignment_type or 'homework').strip().lower()
+    if a_type not in {'homework', 'classwork', 'exam'}:
+        a_type = 'homework'
+
+    back_status = (lt.status or 'submitted').strip().lower()
+    if back_status not in {'submitted', 'returned', 'graded', 'pending'}:
+        back_status = 'submitted'
+
+    return render_template(
+        'lesson_task_review.html',
+        active_page='review_queue',
+        lesson=lesson,
+        student=lesson.student,
+        lesson_task=lt,
+        assignment_type=a_type,
+        back_queue_url=url_for(
+            'lessons.review_queue',
+            source='lessons',
+            lesson_id=lesson.lesson_id,
+            assignment_type=a_type,
+            status=back_status,
+        ),
+        back_lesson_url=(
+            url_for('lessons.lesson_exam_view', lesson_id=lesson.lesson_id)
+            if a_type == 'exam'
+            else (
+                url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id)
+                if a_type == 'classwork'
+                else url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id)
+            )
+        ),
+    )
+
+
 @lessons_bp.route('/reviews/lesson/<int:lesson_id>/bulk', methods=['POST'])
 @login_required
 @check_access('assignment.grade')

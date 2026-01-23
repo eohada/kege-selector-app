@@ -257,8 +257,7 @@
                                     {% set tnum = lt.task.task_number if lt.task and lt.task.task_number else None %}
                                     {% set label = ('№' ~ tnum) if tnum else ('ID ' ~ lt.lesson_task_id) %}
                                     {% set lt_type = (lt.assignment_type or 'homework') %}
-                                    {% set view_url = url_for('lessons.lesson_exam_view', lesson_id=lesson.lesson_id) if lt_type == 'exam' else (url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) if lt_type == 'classwork' else url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id)) %}
-                                    <a class="task-chip" href="{{ view_url }}#task-{{ lt.lesson_task_id }}">
+                                    <a class="task-chip" href="{{ url_for('lessons.review_lesson_task', lesson_task_id=lt.lesson_task_id) }}">
                                         <div class="task-left">
                                             <div class="task-name">{{ label }}</div>
                                             <div class="task-sub">

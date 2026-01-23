@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проверка · Задача урока</title>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% include '_ux_enhancements.html' %}
+    <style>
+        .page-hero {
+            background: radial-gradient(900px 420px at 14% 10%, rgba(0, 255, 213, 0.10), transparent 60%),
+                        radial-gradient(900px 420px at 85% 20%, rgba(31, 123, 255, 0.10), transparent 55%);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .hero-title {
+            font-size: 2.05rem;
+            font-weight: 900;
+            margin: 0.35rem 0 0 0;
+            letter-spacing: -0.01em;
+            line-height: 1.15;
+        }
+        .hero-meta {
+            margin-top: 0.8rem;
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            border-radius: 999px;
+            padding: 0.25rem 0.55rem;
+            border: 1px solid var(--stroke-1);
+            background: rgba(255,255,255,0.02);
+            font-weight: 900;
+            font-size: 0.82rem;
+            color: var(--text-primary);
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 1rem;
+            align-items: start;
+        }
+        @media (max-width: 980px) {
+            .layout { grid-template-columns: 1fr; }
+        }
+        .card {
+            border: 1px solid var(--stroke-1);
+            background: var(--surface-1);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+        }
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 900;
+            margin: 0;
+        }
+        .task-content pre {
+            background: rgba(0,0,0,0.2);
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            overflow-x: auto;
+        }
+        .correctness-toggle {
+            display: inline-flex;
+            border: 1px solid var(--stroke-1);
+            border-radius: 999px;
+            overflow: hidden;
+            background: rgba(255,255,255,0.02);
+        }
+        .correctness-toggle button {
+            border: none;
+            background: transparent;
+            padding: 0.55rem 0.85rem;
+            cursor: pointer;
+            color: var(--text-primary);
+            font-weight: 900;
+        }
+        .correctness-toggle button.active-correct { background: rgba(0, 254, 202, 0.12); color: var(--success); }
+        .correctness-toggle button.active-incorrect { background: rgba(255, 108, 145, 0.12); color: var(--danger); }
+        .correctness-toggle button.active-none { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+        .muted { color: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% include '_primary_nav.html' %}
+
+        {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
+        {% set lesson_local = (lesson.lesson_date|to_tz(tz_name)) if lesson and lesson.lesson_date else None %}
+        {% set tnum = (lesson_task.task.task_number if lesson_task and lesson_task.task and lesson_task.task.task_number else None) %}
+        {% set task_status = ((lesson_task.status or 'pending')|lower) %}
+
+        <main style="margin-top: 1.25rem;">
+            <section class="page-hero">
+                <div style="display:flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start;">
+                    <div style="min-width:0;">
+                        <div style="display:flex; gap:.6rem; flex-wrap: wrap;">
+                            <a href="{{ back_queue_url }}" class="neo-button outline" style="text-decoration:none;">← Очередь проверки</a>
+                            <a href="{{ back_lesson_url }}#task-{{ lesson_task.lesson_task_id }}" class="neo-button ghost" style="text-decoration:none;">Открыть урок</a>
+                        </div>
+                        <h1 class="hero-title">Проверка задачи {% if tnum %}№{{ tnum }}{% else %}#{{ lesson_task.lesson_task_id }}{% endif %}</h1>
+                        <div class="hero-meta">
+                            <span class="pill"><i class="fas fa-user-graduate"></i> {{ student.name if student else '—' }}</span>
+                            <span class="pill"><i class="far fa-calendar"></i> {{ lesson_local.strftime('%d.%m.%Y %H:%M') if lesson_local else '—' }}</span>
+                            <span class="pill">
+                                {% if assignment_type == 'classwork' %}КР{% elif assignment_type == 'exam' %}Проверочная{% else %}ДЗ{% endif %}
+                            </span>
+                            <span class="pill">
+                                {% if task_status == 'submitted' %}Сдано{% elif task_status == 'graded' %}Проверено{% elif task_status == 'returned' %}На доработку{% else %}Черновик{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items:center; justify-content:flex-end;">
+                        <button type="button" class="neo-button accent" onclick="saveFeedback()">
+                            <i class="fas fa-save ui-icon ui-icon--sm"></i> Сохранить
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <div class="layout">
+                <section class="card">
+                    <h2 class="card-title">Условие</h2>
+                    <div class="task-content" style="margin-top: 0.75rem;">
+                        {{ lesson_task.task.content_html|safe if lesson_task and lesson_task.task else '' }}
+                        {% if lesson_task and lesson_task.task and lesson_task.task.attached_files %}
+                        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                            <strong><i class="fas fa-paperclip"></i> Вложения:</strong> {{ lesson_task.task.attached_files }}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div style="margin-top: 1.25rem;">
+                        <h2 class="card-title">Ответ ученика</h2>
+                        <div class="neo-input" style="margin-top: 0.6rem; background: rgba(0,0,0,0.2); border-color: transparent; cursor: default; opacity: 0.95;">
+                            {{ lesson_task.student_submission or '—' }}
+                        </div>
+
+                        {% set correct_val = lesson_task.student_answer if lesson_task.student_answer else (lesson_task.task.answer if lesson_task.task and lesson_task.task.answer else '') %}
+                        {% if correct_val %}
+                        <div style="margin-top: 0.8rem; padding: 0.9rem; background: rgba(0, 254, 202, 0.05); border: 1px solid rgba(0, 254, 202, 0.2); border-radius: var(--radius-md);">
+                            <div style="font-weight: 900; color: var(--success); display:flex; align-items:center; gap:.5rem; flex-wrap: wrap;">
+                                <i class="fas fa-check"></i> Правильный ответ:
+                                <span style="font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.2); padding: 0.2rem 0.5rem; border-radius: 6px;">{{ correct_val }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </section>
+
+                <aside class="card">
+                    <h2 class="card-title">Проверка</h2>
+
+                    <div style="margin-top: 0.85rem;">
+                        <div class="neo-label">Вердикт (верно/неверно)</div>
+                        <div style="margin-top: 0.5rem; display:flex; gap:.6rem; align-items:center; flex-wrap: wrap;">
+                            <div class="correctness-toggle" role="group" aria-label="correctness">
+                                <button type="button" id="btn-correct" onclick="setCorrectness('correct')"><i class="fas fa-check"></i></button>
+                                <button type="button" id="btn-none" onclick="setCorrectness('none')"><i class="fas fa-minus"></i></button>
+                                <button type="button" id="btn-incorrect" onclick="setCorrectness('incorrect')"><i class="fas fa-times"></i></button>
+                            </div>
+                            <span class="muted" id="correctness-label"></span>
+                        </div>
+                    </div>
+
+                    <div class="neo-field" style="margin-top: 0.85rem;">
+                        <label class="neo-label" for="status">Статус</label>
+                        <select class="neo-select" id="status">
+                            <option value="pending" {% if task_status == 'pending' %}selected{% endif %}>Не начато</option>
+                            <option value="submitted" {% if task_status == 'submitted' %}selected{% endif %}>Сдано</option>
+                            <option value="graded" {% if task_status == 'graded' %}selected{% endif %}>Проверено</option>
+                            <option value="returned" {% if task_status == 'returned' %}selected{% endif %}>На доработку</option>
+                        </select>
+                    </div>
+
+                    <div class="neo-field" style="margin-top: 0.85rem;">
+                        <label class="neo-label" for="answer_key">Ключ (переопределение)</label>
+                        <input class="neo-input" id="answer_key" value="{{ lesson_task.student_answer or '' }}" placeholder="Если нужен отдельный ключ для урока">
+                    </div>
+
+                    <div class="neo-field" style="margin-top: 0.85rem;">
+                        <label class="neo-label" for="teacher_comment">Комментарий преподавателя (последний)</label>
+                        <textarea class="neo-textarea" id="teacher_comment" placeholder="Коротко: что поправить, на что обратить внимание...">{{ lesson_task.teacher_comment or '' }}</textarea>
+                    </div>
+
+                    <div style="margin-top: 0.85rem; padding-top: 0.85rem; border-top: 1px solid var(--stroke-1);">
+                        <div class="hero-eyebrow">история комментариев</div>
+                        {% set tcomments = lesson_task.teacher_comments or [] %}
+                        {% if tcomments|length > 0 %}
+                        <select class="neo-select" id="comment_select" onchange="onCommentSelect()">
+                            {% for c in tcomments %}
+                                <option value="{{ c.comment_id }}" data-body="{{ c.body|e }}" data-created="{{ c.created_at.isoformat() if c.created_at else '' }}">
+                                    {{ c.created_at.isoformat() if c.created_at else ('#' ~ c.comment_id) }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div id="comment_body" style="margin-top: 0.75rem; white-space: pre-wrap; line-height: 1.55;">{{ tcomments[-1].body }}</div>
+                        {% else %}
+                        <div class="muted" style="margin-top: 0.6rem;">Пока нет комментариев.</div>
+                        {% endif %}
+
+                        <textarea class="neo-textarea" id="comment_new" style="margin-top: 0.75rem;" placeholder="Добавить новый комментарий в историю..."></textarea>
+                        <div style="margin-top: 0.6rem; display:flex; gap:.6rem; flex-wrap: wrap;">
+                            <button type="button" class="neo-button outline sm" onclick="addComment()">
+                                <i class="fas fa-comment-dots ui-icon ui-icon--sm"></i> Добавить в историю
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1rem; display:flex; gap:.6rem; flex-wrap: wrap;">
+                        <button type="button" class="neo-button accent" onclick="saveFeedback()">
+                            <i class="fas fa-save ui-icon ui-icon--sm"></i> Сохранить
+                        </button>
+                        <a class="neo-button ghost" href="{{ back_queue_url }}" style="text-decoration:none;">
+                            ↩ В очередь
+                        </a>
+                    </div>
+                </aside>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const LESSON_ID = {{ lesson.lesson_id }};
+        const LESSON_TASK_ID = {{ lesson_task.lesson_task_id }};
+        const CSRF_TOKEN = (document.querySelector('meta[name="csrf-token"]') || {}).content || '';
+
+        let currentCorrectness = (function() {
+            {% if lesson_task.submission_correct == true %}
+            return 'correct';
+            {% elif lesson_task.submission_correct == false %}
+            return 'incorrect';
+            {% else %}
+            return 'none';
+            {% endif %}
+        })();
+
+        function toastOk(msg) {
+            try { window.showToast && window.showToast(msg, 'success'); return; } catch (e) {}
+            alert(msg);
+        }
+        function toastErr(msg) {
+            try { window.showToast && window.showToast(msg, 'error'); return; } catch (e) {}
+            alert(msg);
+        }
+
+        function renderCorrectness() {
+            const btnC = document.getElementById('btn-correct');
+            const btnN = document.getElementById('btn-none');
+            const btnI = document.getElementById('btn-incorrect');
+            const label = document.getElementById('correctness-label');
+            if (!btnC || !btnN || !btnI || !label) return;
+            btnC.classList.toggle('active-correct', currentCorrectness === 'correct');
+            btnN.classList.toggle('active-none', currentCorrectness === 'none');
+            btnI.classList.toggle('active-incorrect', currentCorrectness === 'incorrect');
+            if (currentCorrectness === 'correct') label.textContent = 'Верно';
+            else if (currentCorrectness === 'incorrect') label.textContent = 'Неверно';
+            else label.textContent = 'Не отмечено';
+        }
+
+        async function jsonPost(url, payload) {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(CSRF_TOKEN ? { 'X-CSRFToken': CSRF_TOKEN } : {}),
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify(payload || {}),
+            });
+            let data = null;
+            try { data = await res.json(); } catch (e) { data = null; }
+            if (!res.ok || !data || data.success === false) {
+                const msg = (data && (data.error || data.message)) ? (data.error || data.message) : `HTTP ${res.status}`;
+                throw new Error(msg);
+            }
+            return data;
+        }
+
+        async function setCorrectness(kind) {
+            currentCorrectness = kind;
+            renderCorrectness();
+            try {
+                await jsonPost(`/lesson/${LESSON_ID}/task/${LESSON_TASK_ID}/set-status`, { status: kind });
+                toastOk('Вердикт сохранён');
+            } catch (e) {
+                toastErr(e.message || 'Ошибка сохранения');
+            }
+        }
+
+        async function saveFeedback() {
+            const status = (document.getElementById('status') || {}).value || 'pending';
+            const teacher_comment = (document.getElementById('teacher_comment') || {}).value || '';
+            const answer_key = (document.getElementById('answer_key') || {}).value || '';
+            const payload = {
+                status,
+                teacher_comment,
+                answer_key,
+                submission_correct: (currentCorrectness === 'none' ? null : (currentCorrectness === 'correct')),
+            };
+            try {
+                await jsonPost(`/lesson/${LESSON_ID}/task/${LESSON_TASK_ID}/teacher-feedback/save`, payload);
+                toastOk('Сохранено');
+            } catch (e) {
+                toastErr(e.message || 'Ошибка сохранения');
+            }
+        }
+
+        function onCommentSelect() {
+            const sel = document.getElementById('comment_select');
+            const body = document.getElementById('comment_body');
+            if (!sel || !body) return;
+            const opt = sel.options[sel.selectedIndex];
+            body.textContent = (opt && opt.dataset && opt.dataset.body) ? opt.dataset.body : '';
+        }
+
+        async function addComment() {
+            const val = (document.getElementById('comment_new') || {}).value || '';
+            if (!val.trim()) return;
+            try {
+                const data = await jsonPost(`/lesson/${LESSON_ID}/task/${LESSON_TASK_ID}/teacher-comment/add`, { body: val.trim() });
+                toastOk('Комментарий добавлен');
+                const sel = document.getElementById('comment_select');
+                const body = document.getElementById('comment_body');
+                const created = (data.comment && data.comment.created_at) ? data.comment.created_at : '';
+                const cid = (data.comment && data.comment.comment_id) ? data.comment.comment_id : null;
+                if (sel && cid) {
+                    const opt = document.createElement('option');
+                    opt.value = String(cid);
+                    opt.dataset.body = val.trim();
+                    opt.textContent = created || ('#' + cid);
+                    sel.appendChild(opt);
+                    sel.value = String(cid);
+                    if (body) body.textContent = val.trim();
+                }
+                const tn = document.getElementById('comment_new');
+                if (tn) tn.value = '';
+            } catch (e) {
+                toastErr(e.message || 'Ошибка');
+            }
+        }
+
+        renderCorrectness();
+        onCommentSelect();
+    </script>
+</body>
+</html>
+

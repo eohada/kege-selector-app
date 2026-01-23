@@ -625,27 +625,17 @@
                                 <span class="status-badge status-success" data-tooltip="Проверено">{{ cnt_graded }} · Проверено</span>
                             </div>
                         </div>
-                        <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end;">
-                            <div class="neo-field" style="min-width: 220px;">
-                                <label class="neo-label">Фильтр</label>
-                                <select class="neo-select" id="teacherFilterSelect" onchange="applyTeacherFilter(this.value)">
-                                    <option value="all">Все</option>
-                                    <option value="submitted">Только сдано</option>
-                                    <option value="returned">Только на доработку</option>
-                                    <option value="graded">Только проверено</option>
-                                    <option value="pending">Только не начато</option>
-                                </select>
-                            </div>
-                            <div class="hero-actions" style="margin-top: 0;">
-                                <button type="button" class="neo-button ghost sm" onclick="teacherSelectAllVisible(true)"><i class="fas fa-check-square"></i> Выбрать видимые</button>
-                                <button type="button" class="neo-button ghost sm" onclick="teacherSelectAllVisible(false)"><i class="far fa-square"></i> Снять выбор</button>
-                            </div>
+                        <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; justify-content: flex-end;">
+                            <a class="neo-button accent sm" href="{{ url_for('lessons.review_queue', source='lessons', lesson_id=lesson.lesson_id, assignment_type=assignment_type, status='submitted') }}" style="text-decoration:none;">
+                                <i class="fas fa-check ui-icon ui-icon--sm"></i> Открыть проверку по уроку
+                            </a>
+                            <a class="neo-button outline sm" href="{{ url_for('lessons.review_queue', source='lessons', lesson_id=lesson.lesson_id, assignment_type=assignment_type, status='returned') }}" style="text-decoration:none;">
+                                На доработку
+                            </a>
+                            <a class="neo-button ghost sm" href="{{ url_for('lessons.review_queue', source='lessons', lesson_id=lesson.lesson_id, assignment_type=assignment_type, status='graded') }}" style="text-decoration:none;">
+                                Проверено
+                            </a>
                         </div>
-                    </div>
-                    <div class="hero-actions" style="margin-top: 1rem;">
-                        <button type="button" class="neo-button outline sm" onclick="bulkUpdateTaskStatus('graded')"><i class="fas fa-check-double"></i> Отметить проверено</button>
-                        <button type="button" class="neo-button outline sm" onclick="bulkUpdateTaskStatus('returned')"><i class="fas fa-undo"></i> Вернуть на доработку</button>
-                        <button type="button" class="neo-button ghost sm" onclick="startReviewMode()"><i class="fas fa-forward"></i> Режим проверки (по сданным)</button>
                     </div>
                 </div>
                 {% endif %}
@@ -681,11 +671,6 @@
 
                 <section id="task-{{ hw_task.lesson_task_id }}" class="task-card {{ status_class }}" data-task-id="{{ hw_task.lesson_task_id }}" data-task-status="{{ (hw_task.status or 'pending')|lower }}">
                     <div class="task-header">
-                        {% if not is_student_view and not is_parent_view %}
-                        <label style="display:flex; align-items:center; gap:0.5rem; margin-right: 0.5rem;">
-                            <input type="checkbox" class="neo-checkbox-input teacher-task-select" data-task-id="{{ hw_task.lesson_task_id }}" style="width: 18px; height: 18px;">
-                        </label>
-                        {% endif %}
                         <span class="task-number">
                             №{{ loop.index }}
                             {% if hw_task.task.task_number %}
@@ -809,125 +794,17 @@
 
                     {% if not is_student_view and not is_parent_view %}
                     <div style="margin-top: 1.25rem; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); background: var(--surface-2);">
-                        <div class="hero-eyebrow" style="margin-bottom: 0.8rem;">проверка преподавателем</div>
-                        {% set tnum = hw_task.task.task_number if hw_task.task and hw_task.task.task_number else None %}
-                        {% if tnum in [24, 25, 26, 27] %}
-                        <div style="margin-bottom: 0.9rem; padding: 0.9rem; border-radius: var(--radius-md); border: 1px solid rgba(0,255,213,0.25); background: rgba(0,255,213,0.05);">
-                            <div style="display:flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                                <div style="min-width: 0;">
-                                    <div class="hero-eyebrow" style="color: var(--accent-1);">чек‑лист проверки 24–27</div>
-                                    <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem; line-height: 1.4;">Отметь пункты и вставь шаблон в комментарий — проверка становится стандартизированной и быстрой.</div>
+                        <div class="hero-eyebrow" style="margin-bottom: 0.6rem;">проверка преподавателем</div>
+                        <div style="display:flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                            <div style="min-width: 0;">
+                                <div style="font-weight: 900;">Проверяй в «Журнале проверок» — единый интерфейс без дублей.</div>
+                                <div style="margin-top: 0.35rem; color: var(--text-muted); font-size: 0.92rem; line-height: 1.4;">
+                                    Сохраняются статус, верно/неверно, ключ и комментарии.
                                 </div>
-                                <button type="button" class="neo-button ghost sm" onclick="insertRubricTemplate({{ hw_task.lesson_task_id }})">
-                                    <i class="fas fa-wand-magic-sparkles"></i> Вставить шаблон
-                                </button>
                             </div>
-                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.5rem; margin-top: 0.75rem;">
-                                <label style="display:flex; gap: 0.55rem; align-items: flex-start;">
-                                    <input type="checkbox" class="rubric-ck" data-task="{{ hw_task.lesson_task_id }}" value="Алгоритм/логика решения корректны (основная идея).">
-                                    <span>Алгоритм/логика корректны</span>
-                                </label>
-                                <label style="display:flex; gap: 0.55rem; align-items: flex-start;">
-                                    <input type="checkbox" class="rubric-ck" data-task="{{ hw_task.lesson_task_id }}" value="Учтены крайние случаи (пустые/минимальные/максимальные значения).">
-                                    <span>Крайние случаи</span>
-                                </label>
-                                <label style="display:flex; gap: 0.55rem; align-items: flex-start;">
-                                    <input type="checkbox" class="rubric-ck" data-task="{{ hw_task.lesson_task_id }}" value="Формат ввода/вывода соблюдён, ответ соответствует требуемому виду.">
-                                    <span>Формат ввода/вывода</span>
-                                </label>
-                                <label style="display:flex; gap: 0.55rem; align-items: flex-start;">
-                                    <input type="checkbox" class="rubric-ck" data-task="{{ hw_task.lesson_task_id }}" value="Сложность/эффективность достаточны (нет очевидных неоптимальностей).">
-                                    <span>Эффективность</span>
-                                </label>
-                                <label style="display:flex; gap: 0.55rem; align-items: flex-start;">
-                                    <input type="checkbox" class="rubric-ck" data-task="{{ hw_task.lesson_task_id }}" value="Код читаемый: понятные имена, структура, нет лишнего.">
-                                    <span>Читаемость</span>
-                                </label>
-                                <label style="display:flex; gap: 0.55rem; align-items: flex-start;">
-                                    <input type="checkbox" class="rubric-ck" data-task="{{ hw_task.lesson_task_id }}" value="Решение проверено на примерах (базовые тесты).">
-                                    <span>Проверка на примерах</span>
-                                </label>
-                            </div>
-                        </div>
-                        {% endif %}
-                        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <div class="neo-field">
-                                <label class="neo-label">Ключ (переопределение)</label>
-                                <input type="text" class="neo-input" id="answer_key_{{ hw_task.lesson_task_id }}" name="answer_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_answer or '' }}" placeholder="Если нужен отдельный ключ для урока">
-                            </div>
-                            <div class="neo-field">
-                                <label class="neo-label">Статус</label>
-                                <select class="neo-select" id="status_{{ hw_task.lesson_task_id }}" name="status_{{ hw_task.lesson_task_id }}">
-                                    {% set st = (hw_task.status or 'pending') %}
-                                    <option value="pending" {% if st == 'pending' %}selected{% endif %}>Не начато</option>
-                                    <option value="submitted" {% if st == 'submitted' %}selected{% endif %}>Сдано</option>
-                                    <option value="graded" {% if st == 'graded' %}selected{% endif %}>Проверено</option>
-                                    <option value="returned" {% if st == 'returned' %}selected{% endif %}>На доработку</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="neo-field" style="margin-top: 1rem;">
-                            <label class="neo-label">Комментарии преподавателя (история)</label>
-                            {% set tcomments = hw_task.teacher_comments or [] %}
-                            {% if tcomments|length > 0 %}
-                                <select class="neo-select" id="teacher-comments-select-teacher-{{ hw_task.lesson_task_id }}" onchange="onTeacherCommentSelectTeacher({{ hw_task.lesson_task_id }})">
-                                    {% for c in tcomments %}
-                                        <option value="{{ c.comment_id }}" data-body="{{ c.body|e }}" data-created-utc="{{ c.created_at.isoformat() if c.created_at else '' }}">{{ c.created_at.isoformat() if c.created_at else '' }}</option>
-                                    {% endfor %}
-                                </select>
-                                <div id="teacher-comments-body-teacher-{{ hw_task.lesson_task_id }}" style="margin-top: 0.8rem; white-space: pre-wrap; line-height: 1.6; color: var(--text-primary);">
-                                    {{ tcomments[-1].body }}
-                                </div>
-                                <div class="hero-actions" style="margin-top: 0.8rem;">
-                                    <button type="button" class="neo-button ghost sm" onclick="updateTeacherComment(parseInt(document.getElementById('teacher-comments-select-teacher-{{ hw_task.lesson_task_id }}').value, 10), {{ hw_task.lesson_task_id }})">
-                                        <i class="fas fa-pen"></i> Редактировать
-                                    </button>
-                                    <button type="button" class="neo-button danger sm" onclick="deleteTeacherComment(parseInt(document.getElementById('teacher-comments-select-teacher-{{ hw_task.lesson_task_id }}').value, 10), {{ hw_task.lesson_task_id }})">
-                                        <i class="fas fa-trash"></i> Удалить
-                                    </button>
-                                </div>
-                            {% else %}
-                                <div style="color: var(--text-muted); font-size: 0.9rem;">Пока нет комментариев.</div>
-                            {% endif %}
-                            <textarea class="neo-textarea" id="teacher_comment_new_{{ hw_task.lesson_task_id }}" placeholder="Добавить новый комментарий..."></textarea>
-                        </div>
-                        <div class="hero-actions" style="margin-top: 1rem;">
-                            <button type="button" class="neo-button accent sm" onclick="saveTeacherFeedback({{ hw_task.lesson_task_id }})">
-                                <i class="fas fa-save"></i> Сохранить проверку
-                            </button>
-                            <button type="button" class="neo-button outline sm" onclick="addTeacherComment({{ hw_task.lesson_task_id }})">
-                                <i class="fas fa-comment-dots"></i> Добавить комментарий
-                            </button>
-                            <button type="button" class="neo-button outline sm" onclick="markReturned({{ hw_task.lesson_task_id }})">
-                                <i class="fas fa-undo"></i> Вернуть на доработку
-                            </button>
-                            <button type="button" class="neo-button ghost sm" onclick="markGraded({{ hw_task.lesson_task_id }})">
-                                <i class="fas fa-check-double"></i> Отметить как проверено
-                            </button>
-                        </div>
-                    </div>
-                    {% endif %}
-                    
-                    <!-- Teacher Controls: Status Toggle -->
-                    {% if not is_student_view and not is_parent_view %}
-                    <div class="status-toggle" style="margin-top: 1.5rem; display: flex; align-items: center; gap: 1rem; padding-top: 1rem; border-top: 1px dashed var(--stroke-1);">
-                        <span class="neo-label" style="width: auto; margin: 0;">Статус:</span>
-                        <div class="status-toggle-switch" style="display: flex; background: var(--surface-1); border-radius: 20px; border: 1px solid var(--stroke-1); overflow: hidden;">
-                            <button type="button" onclick="setTaskStatus({{ lesson.lesson_id }}, {{ hw_task.lesson_task_id }}, 'correct')" 
-                                    class="neo-button sm {{ 'accent' if hw_task.submission_correct == true else 'ghost' }}" 
-                                    style="border-radius: 0; border: none; padding: 0.5rem 1rem;">
-                                <i class="fas fa-check"></i>
-                            </button>
-                            <button type="button" onclick="setTaskStatus({{ lesson.lesson_id }}, {{ hw_task.lesson_task_id }}, 'none')" 
-                                    class="neo-button sm {{ 'ghost' if hw_task.submission_correct is none else 'ghost' }}" 
-                                    style="border-radius: 0; border: none; padding: 0.5rem 1rem; opacity: 0.5;">
-                                <i class="fas fa-minus"></i>
-                            </button>
-                            <button type="button" onclick="setTaskStatus({{ lesson.lesson_id }}, {{ hw_task.lesson_task_id }}, 'incorrect')" 
-                                    class="neo-button sm {{ 'danger' if hw_task.submission_correct == false else 'ghost' }}" 
-                                    style="border-radius: 0; border: none; padding: 0.5rem 1rem;">
-                                <i class="fas fa-times"></i>
-                            </button>
+                            <a class="neo-button accent sm" href="{{ url_for('lessons.review_lesson_task', lesson_task_id=hw_task.lesson_task_id) }}" style="text-decoration:none;">
+                                ✅ Проверить
+                            </a>
                         </div>
                     </div>
                     {% endif %}
@@ -937,7 +814,9 @@
                 
                 <div class="homework-actions" style="position: sticky; bottom: 2rem; z-index: 100; background: var(--surface-1); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); display: flex; gap: 1rem; box-shadow: var(--shadow-soft);">
                     {% if not is_student_view and not is_parent_view %}
-                        <button type="submit" class="neo-button accent"><i class="fas fa-save"></i> Сохранить изменения</button>
+                        <a href="{{ url_for('lessons.review_queue', source='lessons', lesson_id=lesson.lesson_id, assignment_type=assignment_type, status='submitted') }}" class="neo-button accent" style="text-decoration:none;">
+                            <i class="fas fa-check"></i> Проверка (очередь)
+                        </a>
                         <a href="{{ url_for('kege_generator.kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button outline"><i class="fas fa-plus"></i> Добавить задания</a>
                         {% if assignment_type == 'homework' %}
                         <a href="{{ url_for('lessons.lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" target="_blank"><i class="fas fa-download"></i> Экспорт ДЗ</a>
