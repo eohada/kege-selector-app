@@ -553,8 +553,8 @@ class User(db.Model):
         return self.role == 'admin'
     
     def is_tutor(self):
-        """Проверка, является ли пользователь тьютором"""
-        return self.role == 'tutor'
+        """Проверка, является ли пользователь тьютором (creator также может работать как tutor)"""
+        return self.role == 'tutor' or self.role == 'creator'
     
     def is_student(self):
         """Проверка, является ли пользователь учеником"""

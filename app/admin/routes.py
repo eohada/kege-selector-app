@@ -2582,7 +2582,7 @@ def admin_user_edit(user_id):
                     enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
                 all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
                 all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
-                all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
+                all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all() if user.is_student() else []
                 # Определяем, находимся ли мы в песочнице
                 environment = os.environ.get('ENVIRONMENT', 'local')
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
@@ -2613,7 +2613,7 @@ def admin_user_edit(user_id):
                     enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
                 all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
                 all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
-                all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
+                all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all() if user.is_student() else []
                 # Определяем, находимся ли мы в песочнице
                 environment = os.environ.get('ENVIRONMENT', 'local')
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
@@ -2645,7 +2645,7 @@ def admin_user_edit(user_id):
                         enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
                     all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
                     all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
-                    all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
+                    all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all() if user.is_student() else []
                     # Определяем, находимся ли мы в песочнице
                     environment = os.environ.get('ENVIRONMENT', 'local')
                     railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
@@ -2887,7 +2887,7 @@ def admin_user_edit(user_id):
                 enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
             all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
             all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
-            all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
+            all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all() if user.is_student() else []
             # Определяем, находимся ли мы в песочнице
             environment = os.environ.get('ENVIRONMENT', 'local')
             railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
@@ -2917,7 +2917,7 @@ def admin_user_edit(user_id):
         # Получаем списки пользователей для выпадающих списков
         all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
         all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
-        all_tutors = User.query.filter_by(role='tutor', is_active=True).order_by(User.username).all() if user.is_student() else []
+        all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all() if user.is_student() else []
         
         return render_template('admin_user_edit.html',
                              user=user,
