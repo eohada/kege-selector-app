@@ -38,7 +38,7 @@
     <div class="app-shell">
         {% set active_page = None %}
         {% include '_primary_nav.html' %}
-        <main class="public-profile-wrap">
+        <main class="public-profile-wrap {% if public_user.role == 'creator' %}theme-creator{% elif public_user.role == 'admin' %}theme-admin{% elif public_user.role == 'tutor' %}theme-tutor{% elif public_user.role == 'parent' %}theme-parent{% elif public_user.role == 'student' %}theme-student{% endif %}">
             <section class="glass-panel">
                 <div class="public-hero">
                     <div class="public-identity">

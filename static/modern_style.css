@@ -2559,6 +2559,24 @@ body.creator-theme-active .students-grid {
     --accent-bg: rgba(0, 198, 164, 0.1);
 }
 
+.theme-tutor {
+    --accent-color: #1f7bff;
+    --accent-glow: rgba(31, 123, 255, 0.45);
+    --accent-bg: rgba(31, 123, 255, 0.12);
+}
+
+.theme-parent {
+    --accent-color: #b14dff;
+    --accent-glow: rgba(177, 77, 255, 0.35);
+    --accent-bg: rgba(177, 77, 255, 0.12);
+}
+
+.theme-admin {
+    --accent-color: #ffb020;
+    --accent-glow: rgba(255, 176, 32, 0.35);
+    --accent-bg: rgba(255, 176, 32, 0.12);
+}
+
 /* Контейнер профиля */
 .profile-container {
     max-width: 1200px;
@@ -2577,6 +2595,39 @@ body.creator-theme-active .students-grid {
     box-shadow: var(--shadow-soft);
 }
 
+/* “Вау” обводка и глубина */
+.profile-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg,
+        rgba(255,255,255,0.14),
+        rgba(255,255,255,0.04),
+        rgba(0,0,0,0.0)
+    );
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.9;
+}
+
+.profile-card::after {
+    content: '';
+    position: absolute;
+    inset: -30px;
+    background: radial-gradient(circle at 15% 30%, var(--accent-glow, rgba(0,198,164,0.35)) 0%, transparent 55%),
+                radial-gradient(circle at 85% 10%, rgba(255,255,255,0.06) 0%, transparent 55%),
+                radial-gradient(circle at 70% 95%, rgba(31,123,255,0.18) 0%, transparent 55%);
+    filter: blur(18px);
+    opacity: 0.55;
+    pointer-events: none;
+    z-index: 0;
+}
+
 /* Обложка */
 .profile-cover {
     height: 200px;
@@ -2593,6 +2644,18 @@ body.creator-theme-active .students-grid {
     background: 
         radial-gradient(circle at 10% 20%, rgba(255,255,255,0.03) 0%, transparent 20%),
         radial-gradient(circle at 90% 80%, rgba(255,255,255,0.03) 0%, transparent 20%);
+    z-index: 1;
+}
+
+.profile-cover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 18% 28%, var(--accent-bg, rgba(0,198,164,0.12)) 0%, transparent 55%),
+        radial-gradient(circle at 72% 18%, rgba(31,123,255,0.16) 0%, transparent 55%),
+        linear-gradient(120deg, rgba(255,255,255,0.03), rgba(255,255,255,0.0));
+    opacity: 1;
     z-index: 1;
 }
 
@@ -2705,6 +2768,25 @@ body.creator-theme-active .students-grid {
     grid-template-columns: 2fr 1fr;
     gap: 1.5rem;
 }
+
+/* Выпадающие секции (используем в профилях и комнатах) */
+.profile-details > summary {
+    cursor: pointer;
+    font-weight: 900;
+    color: var(--text-primary);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+.profile-details > summary::-webkit-details-marker { display: none; }
+.profile-details > summary::before {
+    content: '▸';
+    color: var(--text-muted);
+    transform: translateY(-1px);
+}
+.profile-details[open] > summary::before { content: '▾'; }
+.profile-details-body { margin-top: .9rem; }
 
 .profile-section {
     background: var(--surface-1);
