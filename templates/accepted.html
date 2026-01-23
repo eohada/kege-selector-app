@@ -19,7 +19,7 @@
     {% include '_active_lesson_banner.html' %}
     
     <div class="app-shell">
-        {% set active_page = 'generator' %}
+        {% set active_page = active_page | default('generator') %}
         {% include '_primary_nav.html' %}
 
         <section class="glass-panel" style="margin-bottom: 2rem;">
@@ -35,6 +35,13 @@
                         📝 Создать работу ({{ tasks|length }})
                     </button>
                     {% endif %}
+                    <form method="POST" action="{{ clear_accepted_url | default(url_for('kege_generator.clear_accepted')) }}" style="display:inline-flex; gap:.5rem; align-items:center;" onsubmit="return confirmAcceptedClear();">
+                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                        {% if task_type %}<input type="hidden" name="task_type" value="{{ task_type }}">{% endif %}
+                        <button type="submit" class="neo-button ghost" style="color: var(--danger);">
+                            🧹 Очистить принятые{% if task_type %} (тип {{ task_type }}){% endif %}
+                        </button>
+                    </form>
                 </div>
             </div>
         </section>
@@ -158,7 +165,7 @@
                 <h3 class="empty-state-title">Нет принятых заданий</h3>
                 <p class="empty-state-description">Принятые задания будут отображаться здесь</p>
                 <div class="empty-state-actions">
-                    <a href="{{ url_for('kege_generator.kege_generator') }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--sm">Перейти к генератору</a>
+                    <a href="{{ back_url | default(url_for('kege_generator.kege_generator')) }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--sm">Назад</a>
                 </div>
             </div>
         </section>
@@ -183,10 +190,16 @@
         
         function filterByTaskType(taskType) {
             if (taskType === '') {
-                window.location.href = '{{ url_for('kege_generator.show_accepted', assignment_type=assignment_type) }}';
+                window.location.href = '{{ accepted_base_url | default(url_for('kege_generator.show_accepted', assignment_type=assignment_type)) }}';
             } else {
-                window.location.href = '{{ url_for('kege_generator.show_accepted', assignment_type=assignment_type) }}?task_type=' + taskType;
+                window.location.href = '{{ accepted_base_url | default(url_for('kege_generator.show_accepted', assignment_type=assignment_type)) }}?task_type=' + taskType;
             }
+        }
+
+        function confirmAcceptedClear() {
+            const total = {{ (tasks|length) if tasks is defined else 0 }};
+            const typePart = {% if task_type %}'типа {{ task_type }}'{% else %}'всех типов'{% endif %};
+            return window.confirm('Очистить принятые задания ' + typePart + '?\\n\\nСейчас в списке: ' + total + ' шт.\\nДействие необратимо.');
         }
     </script>
     <script src="{{ url_for('static', filename='toast.js') }}"></script>

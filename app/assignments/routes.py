@@ -19,6 +19,7 @@ from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 from core.db_models import moscow_now
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents
+from core.selector_logic import get_accepted_tasks, reset_history
 
 logger = logging.getLogger(__name__)
 
@@ -825,6 +826,105 @@ def assignments_list():
         now=now,
         can_create=has_permission(current_user, 'assignment.create'),
     )
+
+
+# ============================================================================
+# TASK POOL (ACCEPTED) — unified entrypoint for assignment creation
+# ============================================================================
+
+@assignments_bp.route('/assignments/accepted')
+@login_required
+@check_access('assignment.create')
+def assignments_accepted():
+    """
+    "Принятые задания" — буфер между генератором и созданием работ.
+    Живёт рядом с разделом "Работы", чтобы не дублировать разделы.
+    """
+    try:
+        task_type = request.args.get('task_type', type=int, default=None)
+        assignment_type = (request.args.get('assignment_type') or 'homework').strip().lower()
+        if assignment_type not in ['homework', 'classwork', 'exam']:
+            assignment_type = 'homework'
+        open_create = (request.args.get('create') or '').strip() == '1'
+
+        accepted_tasks = get_accepted_tasks(task_type=task_type)
+        if not accepted_tasks:
+            flash('Нет принятых заданий.' if not task_type else f'Нет принятых заданий типа {task_type}.', 'info')
+            return redirect(url_for('assignments.assignments_list'))
+
+        # Recipients list for the "create assignment" modal
+        recipient_options = []
+        try:
+            scope = get_user_scope(current_user)
+            if scope.get('can_see_all'):
+                recipient_options = (
+                    Student.query.filter(Student.is_active.is_(True))
+                    .order_by(Student.name.asc(), Student.student_id.asc())
+                    .limit(500)
+                    .all()
+                )
+            else:
+                # Reuse mapping logic from assignments utils
+                tutor_students = get_students_for_tutor(current_user.id) or []
+                ids = [int(s.student_id) for s in tutor_students if getattr(s, 'student_id', None)]
+                if ids:
+                    recipient_options = (
+                        Student.query.filter(Student.student_id.in_(ids))
+                        .order_by(Student.name.asc(), Student.student_id.asc())
+                        .limit(500)
+                        .all()
+                    )
+        except Exception:
+            recipient_options = []
+
+        return render_template(
+            'accepted.html',
+            tasks=accepted_tasks,
+            task_type=task_type,
+            assignment_type=assignment_type,
+            open_create=open_create,
+            recipient_options=recipient_options,
+            active_page='assignments',
+            accepted_base_url=url_for('assignments.assignments_accepted', assignment_type=assignment_type),
+            clear_accepted_url=url_for('assignments.assignments_accepted_clear'),
+            back_url=url_for('assignments.assignments_list'),
+        )
+    except Exception as e:
+        flash(f'Ошибка: {e}', 'danger')
+        return redirect(url_for('assignments.assignments_list'))
+
+
+@assignments_bp.route('/assignments/accepted/clear', methods=['POST'])
+@login_required
+@check_access('assignment.create')
+def assignments_accepted_clear():
+    """Очистить принятые задания (UsageHistory)."""
+    raw = (request.form.get('task_type') or '').strip()
+    task_type = None
+    if raw:
+        try:
+            task_type = int(raw)
+        except Exception:
+            task_type = None
+
+    try:
+        reset_history(task_type=task_type)
+        audit_logger.log(
+            action='accepted_clear',
+            entity='Task',
+            entity_id=None,
+            status='success',
+            metadata={'task_type': task_type},
+        )
+        flash('Принятые задания очищены.' if not task_type else f'Принятые задания типа {task_type} очищены.', 'success')
+    except Exception as e:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        flash(f'Не удалось очистить принятые задания: {e}', 'danger')
+
+    return redirect(url_for('assignments.assignments_list'))
 
 
 @assignments_bp.route('/assignments/<int:assignment_id>/archive', methods=['POST'])

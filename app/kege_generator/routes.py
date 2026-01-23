@@ -5,11 +5,11 @@ import logging
 import os
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 
 from app.kege_generator import kege_generator_bp
 from app.kege_generator.forms import TaskSelectionForm, ResetForm, TaskSearchForm
-from app.models import Lesson, Tasks, LessonTask, StudentTaskSeen, db
+from app.models import Lesson, Tasks, LessonTask, StudentTaskSeen, UsageHistory, db
 from app.models import TaskTemplate, TemplateTask
 from app.auth.rbac_utils import has_permission
 from core.selector_logic import (
@@ -799,62 +799,66 @@ def task_action():
 @kege_generator_bp.route('/accepted')
 @login_required
 def show_accepted():
-    """Показать принятые задания"""
+    """
+    Legacy URL (generator era). Kept as alias.
+    Новая точка входа: /assignments/accepted
+    """
+    task_type = request.args.get('task_type', type=int, default=None)
+    assignment_type = (request.args.get('assignment_type') or 'homework').strip().lower()
+    create = (request.args.get('create') or '').strip()
+    return redirect(url_for('assignments.assignments_accepted', task_type=task_type, assignment_type=assignment_type, create=create))
+
+@kege_generator_bp.route('/accepted/clear', methods=['POST'])
+@login_required
+def clear_accepted():
+    """Очистить принятые задания (UsageHistory)."""
     _require_kege_generator_access()
-    try:
-        task_type = request.args.get('task_type', type=int, default=None)
-        assignment_type = (request.args.get('assignment_type') or 'homework').strip().lower()
-        if assignment_type not in ['homework', 'classwork', 'exam']:
-            assignment_type = 'homework'
-        open_create = (request.args.get('create') or '').strip() == '1'
 
-        accepted_tasks = get_accepted_tasks(task_type=task_type)
-
-        if not accepted_tasks:
-            message = f'Нет принятых заданий типа {task_type}.' if task_type else 'Нет принятых заданий.'
-            flash(message, 'info')
-            return redirect(url_for('kege_generator.kege_generator'))
-
-        # Список доступных учеников для назначения работы (для модалки создания работы)
-        recipient_options = []
+    raw = (request.form.get('task_type') or '').strip()
+    task_type = None
+    if raw:
         try:
-            from app.models import Student, Enrollment, User
-            from app.auth.rbac_utils import get_user_scope
-            from sqlalchemy import func, or_
-
-            scope = get_user_scope(current_user)
-            if scope.get('can_see_all'):
-                recipient_options = Student.query.filter(Student.is_active.is_(True)).order_by(Student.name.asc(), Student.student_id.asc()).limit(500).all()
-            else:
-                # как минимум для тьютора: берём enrollments и маппим User -> Student так же, как в assignments
-                enrollments = Enrollment.query.filter_by(tutor_id=current_user.id, status='active').all()
-                user_ids = [e.student_id for e in (enrollments or []) if getattr(e, 'student_id', None)]
-                if user_ids:
-                    users = User.query.filter(User.id.in_(user_ids)).all()
-                    emails = [str(u.email).strip().lower() for u in (users or []) if u and u.email and str(u.email).strip()]
-                    usernames = [str(u.username).strip() for u in (users or []) if u and u.username and str(u.username).strip()]
-                    flt = []
-                    if emails:
-                        flt.append(func.lower(Student.email).in_(emails))
-                    if usernames:
-                        flt.append(Student.platform_id.in_(usernames))
-                    flt.append((Student.student_id.in_([int(x) for x in user_ids])) & (Student.email.is_(None)))
-                    recipient_options = Student.query.filter(or_(*flt)).order_by(Student.name.asc(), Student.student_id.asc()).limit(500).all()
+            task_type = int(raw)
         except Exception:
-            recipient_options = []
+            task_type = None
 
-        return render_template(
-            'accepted.html',
-            tasks=accepted_tasks,
-            task_type=task_type,
-            assignment_type=assignment_type,
-            open_create=open_create,
-            recipient_options=recipient_options,
-        )
+    # Считаем сколько было (best-effort), чтобы дать полезный feedback
+    deleted_count = None
+    try:
+        q = UsageHistory.query
+        if task_type:
+            q = q.join(Tasks, Tasks.task_id == UsageHistory.task_fk).filter(Tasks.task_number == task_type)
+        deleted_count = q.count()
+    except Exception:
+        deleted_count = None
 
+    try:
+        reset_history(task_type=task_type)
     except Exception as e:
-        flash(f'Ошибка: {e}', 'danger')
-        return redirect(url_for('kege_generator.kege_generator'))
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        flash(f'Не удалось очистить принятые задания: {e}', 'danger')
+        return redirect(url_for('kege_generator.show_accepted', task_type=task_type) if task_type else url_for('kege_generator.show_accepted'))
+
+    try:
+        audit_logger.log(
+            action='accepted_clear',
+            entity='Task',
+            entity_id=None,
+            status='success',
+            metadata={'task_type': task_type, 'deleted_count': deleted_count},
+        )
+    except Exception:
+        pass
+
+    if task_type:
+        flash('Принятые задания этого типа очищены.', 'success')
+    else:
+        flash('Все принятые задания очищены.', 'success')
+
+    return redirect(url_for('kege_generator.kege_generator'))
 
 @kege_generator_bp.route('/skipped')
 @login_required
