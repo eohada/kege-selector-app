@@ -1590,28 +1590,46 @@ def submission_view(submission_id):
 @login_required
 def submission_start(submission_id):
     """Старт выполнения работы"""
-    submission = Submission.query.get_or_404(submission_id)
+    try:
+        logger.info(f"Starting submission {submission_id} for user {current_user.id}")
+        
+        submission = Submission.query.get_or_404(submission_id)
+        logger.info(f"Found submission {submission_id}")
+        
+        # Проверка доступа
+        student = get_student_by_user_id(current_user.id)
+        logger.info(f"Student for user {current_user.id}: {student}")
+        
+        if not student or submission.student_id != student.student_id:
+            logger.warning(f"Access denied: student={student}, submission.student_id={submission.student_id}")
+            return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+        
+        # Проверка статуса
+        if submission.status != 'ASSIGNED':
+            logger.warning(f"Invalid status for submission {submission_id}: {submission.status}")
+            return jsonify({'success': False, 'error': 'Работа уже начата или сдана'}), 400
+        
+        # Проверка дедлайна
+        now = moscow_now()
+        logger.info(f"Current time: {now}, deadline: {submission.assignment.deadline}, hard_deadline: {submission.assignment.hard_deadline}")
+        
+        if now > submission.assignment.deadline and submission.assignment.hard_deadline:
+            logger.warning(f"Deadline passed for submission {submission_id}")
+            return jsonify({'success': False, 'error': 'Дедлайн истек'}), 400
+        
+        # Устанавливаем статус и время начала
+        submission.status = 'IN_PROGRESS'
+        submission.started_at = now
+        logger.info(f"Saving submission {submission_id} with status IN_PROGRESS and started_at {now}")
+        db.session.commit()
+        logger.info(f"Successfully committed submission {submission_id}")
+        
+        return jsonify({'success': True, 'started_at': submission.started_at.isoformat()}), 200
     
-    # Проверка доступа
-    student = get_student_by_user_id(current_user.id)
-    if not student or submission.student_id != student.student_id:
-        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
-    
-    # Проверка статуса
-    if submission.status != 'ASSIGNED':
-        return jsonify({'success': False, 'error': 'Работа уже начата или сдана'}), 400
-    
-    # Проверка дедлайна
-    now = moscow_now()
-    if now > submission.assignment.deadline and submission.assignment.hard_deadline:
-        return jsonify({'success': False, 'error': 'Дедлайн истек'}), 400
-    
-    # Устанавливаем статус и время начала
-    submission.status = 'IN_PROGRESS'
-    submission.started_at = now
-    db.session.commit()
-    
-    return jsonify({'success': True, 'started_at': submission.started_at.isoformat()}), 200
+    except Exception as e:
+        logger.error(f"Error in submission_start for submission {submission_id}: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({'success': False, 'error': f'Ошибка сервера: {str(e)}'}), 500
 
 
 @assignments_bp.route('/submissions/<int:submission_id>/autosave', methods=['PUT'])
@@ -1694,109 +1712,115 @@ def submission_autosave(submission_id):
 @login_required
 def submission_submit(submission_id):
     """Финальная сдача работы"""
-    submission = Submission.query.options(
-        joinedload(Submission.assignment).joinedload(Assignment.tasks),
-        joinedload(Submission.answers)
-    ).get_or_404(submission_id)
-    
-    # Проверка доступа
-    student = get_student_by_user_id(current_user.id)
-    if not student or submission.student_id != student.student_id:
-        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
-    
-    # Проверка статуса
-    if submission.status not in ['IN_PROGRESS', 'ASSIGNED']:
-        return jsonify({'success': False, 'error': 'Работа уже сдана'}), 400
-    
-    assignment = submission.assignment
-    now = moscow_now()
-    
-    # Проверка дедлайна
-    is_late = now > assignment.deadline
-    if is_late and assignment.hard_deadline:
-        return jsonify({'success': False, 'error': 'Дедлайн истек, сдача невозможна'}), 403
-    
-    # Устанавливаем статус
-    submission.status = 'SUBMITTED'
-    submission.submitted_at = now
-    submission.is_late = is_late
-    
-    # Автоматическая проверка
-    all_auto_graded = True
-    total_score = 0
-    max_score = 0
-    
-    for assignment_task in assignment.tasks:
-        max_score += assignment_task.max_score
-        
-        answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
-        
-        if not answer:
-            if not assignment_task.requires_manual_grading:
-                # Нет ответа на задачу с авто-проверкой - 0 баллов
-                answer = Answer(
-                    submission_id=submission_id,
-                    assignment_task_id=assignment_task.assignment_task_id,
-                    max_score=assignment_task.max_score,
-                    score=0,
-                    is_correct=False
-                )
-                db.session.add(answer)
-                total_score += 0
-            else:
-                all_auto_graded = False
-            continue
-        
-        # Авто-проверка, если не требует ручной проверки
-        if not assignment_task.requires_manual_grading:
-            is_correct, score = auto_grade_answer(answer, assignment_task)
-            if is_correct is not None:
-                answer.is_correct = is_correct
-                answer.score = score
-                total_score += score
-            else:
-                all_auto_graded = False
-        else:
-            all_auto_graded = False
-    
-    submission.total_score = total_score
-    submission.max_score = max_score
-    submission.percentage = (total_score / max_score * 100) if max_score > 0 else 0
-    
-    # Если все задачи проверены автоматически, сразу ставим GRADED
-    if all_auto_graded:
-        submission.status = 'GRADED'
-        submission.graded_at = now
-        # Авто-добавление в журнал
-        _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
-
-    # Фиксируем попытку сдачи (для истории пересдач)
     try:
-        _record_submission_attempt(submission)
+        submission = Submission.query.options(
+            joinedload(Submission.assignment).joinedload(Assignment.tasks),
+            joinedload(Submission.answers)
+        ).get_or_404(submission_id)
+        
+        # Проверка доступа
+        student = get_student_by_user_id(current_user.id)
+        if not student or submission.student_id != student.student_id:
+            return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+        
+        # Проверка статуса
+        if submission.status not in ['IN_PROGRESS', 'ASSIGNED']:
+            return jsonify({'success': False, 'error': 'Работа уже сдана'}), 400
+        
+        assignment = submission.assignment
+        now = moscow_now()
+        
+        # Проверка дедлайна
+        is_late = now > assignment.deadline
+        if is_late and assignment.hard_deadline:
+            return jsonify({'success': False, 'error': 'Дедлайн истек, сдача невозможна'}), 403
+        
+        # Устанавливаем статус
+        submission.status = 'SUBMITTED'
+        submission.submitted_at = now
+        submission.is_late = is_late
+        
+        # Автоматическая проверка
+        all_auto_graded = True
+        total_score = 0
+        max_score = 0
+        
+        for assignment_task in assignment.tasks:
+            max_score += assignment_task.max_score
+            
+            answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
+            
+            if not answer:
+                if not assignment_task.requires_manual_grading:
+                    # Нет ответа на задачу с авто-проверкой - 0 баллов
+                    answer = Answer(
+                        submission_id=submission_id,
+                        assignment_task_id=assignment_task.assignment_task_id,
+                        max_score=assignment_task.max_score,
+                        score=0,
+                        is_correct=False
+                    )
+                    db.session.add(answer)
+                    total_score += 0
+                else:
+                    all_auto_graded = False
+                continue
+            
+            # Авто-проверка, если не требует ручной проверки
+            if not assignment_task.requires_manual_grading:
+                is_correct, score = auto_grade_answer(answer, assignment_task)
+                if is_correct is not None:
+                    answer.is_correct = is_correct
+                    answer.score = score
+                    total_score += score
+                else:
+                    all_auto_graded = False
+            else:
+                all_auto_graded = False
+        
+        submission.total_score = total_score
+        submission.max_score = max_score
+        submission.percentage = (total_score / max_score * 100) if max_score > 0 else 0
+        
+        # Если все задачи проверены автоматически, сразу ставим GRADED
+        if all_auto_graded:
+            submission.status = 'GRADED'
+            submission.graded_at = now
+            # Авто-добавление в журнал
+            _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
+
+        # Фиксируем попытку сдачи (для истории пересдач)
+        try:
+            _record_submission_attempt(submission)
+        except Exception as e:
+            logger.warning(f"Could not record SubmissionAttempt for {submission.submission_id}: {e}")
+        
+        db.session.commit()
+        
+        audit_logger.log(
+            action='submit_assignment',
+            entity='Submission',
+            entity_id=submission_id,
+            status='success',
+            metadata={
+                'assignment_id': assignment.assignment_id,
+                'is_late': is_late,
+                'auto_graded': all_auto_graded
+            }
+        )
+        
+        return jsonify({
+            'success': True,
+            'status': submission.status,
+            'score': total_score,
+            'max_score': max_score,
+            'percentage': submission.percentage
+        }), 200
+    
     except Exception as e:
-        logger.warning(f"Could not record SubmissionAttempt for {submission.submission_id}: {e}")
-    
-    db.session.commit()
-    
-    audit_logger.log(
-        action='submit_assignment',
-        entity='Submission',
-        entity_id=submission_id,
-        status='success',
-        metadata={
-            'assignment_id': assignment.assignment_id,
-            'is_late': is_late,
-            'auto_graded': all_auto_graded
-        }
-    )
-    
-    return jsonify({
-        'success': True,
-        'status': submission.status,
-        'score': total_score,
-        'max_score': max_score,
-        'percentage': submission.percentage
-    }), 200
+        logger.error(f"Error in submission_submit for submission {submission_id}: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({'success': False, 'error': f'Ошибка при сдаче работы: {str(e)}'}), 500
 
 
 # ============================================================================

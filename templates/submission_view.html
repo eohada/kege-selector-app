@@ -428,19 +428,44 @@
         // Обработчики событий
         {% if submission.status == 'ASSIGNED' %}
         document.getElementById('start-btn').addEventListener('click', function() {
+            console.log('Starting submission...');
+            const startBtn = document.getElementById('start-btn');
+            startBtn.disabled = true;
+            startBtn.textContent = 'Загрузка...';
+            
             fetch(`{{ url_for('assignments.submission_start', submission_id=submission.submission_id) }}`, {
                 method: 'POST',
                 headers: {
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+                    'Content-Type': 'application/json'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        console.error('Server error response:', response.status, text);
+                        throw new Error(`HTTP ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('Response data:', data);
                 if (data.success) {
+                    alert('Выполнение начато! Страница обновляется...');
                     location.reload();
                 } else {
                     alert('Ошибка: ' + (data.error || 'Не удалось начать выполнение'));
+                    startBtn.disabled = false;
+                    startBtn.textContent = 'Начать выполнение';
                 }
+            })
+            .catch(error => {
+                console.error('Error in submission start:', error);
+                alert('Ошибка при начале выполнения: ' + error.message + '. Смотрите консоль браузера (F12) для деталей.');
+                startBtn.disabled = false;
+                startBtn.textContent = 'Начать выполнение';
             });
         });
         {% endif %}
@@ -463,20 +488,45 @@
                 return;
             }
             
+            console.log('Submitting assignment...');
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Сохранение...';
+            
             fetch(`{{ url_for('assignments.submission_submit', submission_id=submission.submission_id) }}`, {
                 method: 'POST',
                 headers: {
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+                    'Content-Type': 'application/json'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Submit response status:', response.status);
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        console.error('Server error on submit:', response.status, text);
+                        throw new Error(`HTTP ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('Submit response data:', data);
                 if (data.success) {
-                    alert('Работа успешно сдана!');
+                    alert(`Работа успешно сдана!\nОценка: ${data.score}/${data.max_score} (${data.percentage.toFixed(0)}%)`);
                     location.reload();
                 } else {
                     alert('Ошибка: ' + (data.error || 'Не удалось сдать работу'));
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
                 }
+            })
+            .catch(error => {
+                console.error('Error in submission submit:', error);
+                alert('Ошибка при сдаче работы: ' + error.message + '. Смотрите консоль браузера (F12).');
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             });
         });
         {% endif %}
