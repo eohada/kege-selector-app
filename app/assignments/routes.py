@@ -15,7 +15,7 @@ from app.models import (
     TaskTemplate, TemplateTask
 )
 from app.students.utils import get_sorted_assignments
-from core.db_models import SubmissionComment
+from core.db_models import SubmissionComment, MOSCOW_TZ
 from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 from core.db_models import moscow_now
 from core.audit_logger import audit_logger
@@ -23,6 +23,15 @@ from app.notifications.service import notify_student_and_parents
 from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_unique_tasks, reset_history, reset_skipped
 
 logger = logging.getLogger(__name__)
+
+def _ensure_aware_datetime(dt):
+    """Конвертирует naive datetime в aware (Moscow timezone)"""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        # Naive datetime - добавляем Moscow timezone
+        return dt.replace(tzinfo=MOSCOW_TZ)
+    return dt
 
 def _normalize_assignment_type(value: str | None) -> str:
     v = (value or '').strip().lower()
@@ -711,9 +720,14 @@ def assignments_list():
         assigned = _safe_int(getattr(row, 'assigned', 0))
         pending = assigned + in_progress + returned
 
-        is_overdue = bool(a.deadline and a.deadline < now and pending > 0)
+        # Нормализуем deadline для сравнения (убираем timezone)
+        deadline_naive = None
+        if a.deadline:
+            deadline_naive = a.deadline.replace(tzinfo=None) if a.deadline.tzinfo else a.deadline
+        
+        is_overdue = bool(deadline_naive and deadline_naive < now and pending > 0)
         is_completed = bool(total_students > 0 and pending == 0 and to_grade == 0)
-        is_active = bool(a.deadline and a.deadline >= now and (pending > 0 or to_grade > 0))
+        is_active = bool(deadline_naive and deadline_naive >= now and (pending > 0 or to_grade > 0))
         return {
             'total_students': total_students,
             'to_grade': to_grade,
@@ -792,7 +806,12 @@ def assignments_list():
         tasks_count = _safe_int(getattr(row, 'tasks_count', 0))
         pending = assigned + in_progress + returned
 
-        is_overdue = bool(assignment.deadline and assignment.deadline < now and pending > 0)
+        # Нормализуем deadline для сравнения (убираем timezone)
+        deadline_naive = None
+        if assignment.deadline:
+            deadline_naive = assignment.deadline.replace(tzinfo=None) if assignment.deadline.tzinfo else assignment.deadline
+        
+        is_overdue = bool(deadline_naive and deadline_naive < now and pending > 0)
         is_completed = bool(total_students > 0 and pending == 0 and to_grade == 0)
 
         assignments_data.append({
@@ -1554,12 +1573,10 @@ def submission_view(submission_id):
     try:
         # Проверка дедлайна
         now = moscow_now()
-        # Нормализуем datetime для сравнения (убираем timezone если есть)
-        if assignment.deadline:
-            # Если deadline имеет timezone, приводим к naive для сравнения
-            deadline_naive = assignment.deadline.replace(tzinfo=None) if assignment.deadline.tzinfo else assignment.deadline
-            now_naive = now.replace(tzinfo=None) if now.tzinfo else now
-            is_deadline_passed = now_naive > deadline_naive
+        deadline = _ensure_aware_datetime(assignment.deadline)
+        
+        if deadline:
+            is_deadline_passed = now > deadline
         else:
             is_deadline_passed = False
         can_submit = not (is_deadline_passed and assignment.hard_deadline)
@@ -1611,9 +1628,10 @@ def submission_start(submission_id):
         
         # Проверка дедлайна
         now = moscow_now()
-        logger.info(f"Current time: {now}, deadline: {submission.assignment.deadline}, hard_deadline: {submission.assignment.hard_deadline}")
+        deadline = _ensure_aware_datetime(submission.assignment.deadline)
+        logger.info(f"Current time: {now}, deadline: {deadline}, hard_deadline: {submission.assignment.hard_deadline}")
         
-        if now > submission.assignment.deadline and submission.assignment.hard_deadline:
+        if deadline and now > deadline and submission.assignment.hard_deadline:
             logger.warning(f"Deadline passed for submission {submission_id}")
             return jsonify({'success': False, 'error': 'Дедлайн истек'}), 400
         
@@ -1729,9 +1747,10 @@ def submission_submit(submission_id):
         
         assignment = submission.assignment
         now = moscow_now()
+        deadline = _ensure_aware_datetime(assignment.deadline)
         
         # Проверка дедлайна
-        is_late = now > assignment.deadline
+        is_late = deadline and now > deadline
         if is_late and assignment.hard_deadline:
             return jsonify({'success': False, 'error': 'Дедлайн истек, сдача невозможна'}), 403
         
