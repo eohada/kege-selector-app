@@ -238,23 +238,32 @@
             {% endfor %}
             
             {% if submission.status == 'ASSIGNED' %}
-            <div style="text-align: center; margin: 2rem 0;">
-                <button type="button" id="start-btn" class="btn-primary" style="padding: 1rem 2rem; font-size: 1.1em;">
-                    Начать выполнение
+            <div style="text-align: center; margin: 2.5rem 0;">
+                <button type="button" id="start-btn" class="neo-button accent" style="padding: 1.2rem 2.5rem; font-size: 1.05em; font-weight: 700; letter-spacing: 0.5px;">
+                    ▶ Начать выполнение
                 </button>
             </div>
             {% endif %}
             
             {% if submission.status == 'IN_PROGRESS' and can_submit %}
-            <div class="submit-section">
-                <div>
-                    <button type="button" id="autosave-btn" class="btn-secondary" style="margin-right: 1rem;">
-                        Сохранить черновик
+            <div class="submit-section" style="display: flex; justify-content: space-between; align-items: center; gap: 2rem; margin: 2.5rem 0; padding: 1.5rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg);">
+                <div style="display: flex; align-items: center; gap: 1.5rem;">
+                    {% if assignment.time_limit_minutes %}
+                    <div id="timer-container" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.25rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                        <span style="font-size: 1.3em;">⏱️</span>
+                        <div>
+                            <div style="font-size: 0.8em; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Осталось времени</div>
+                            <div id="timer" style="font-size: 1.8em; font-weight: 800; color: var(--accent-1); font-family: 'Monaco', 'Menlo', monospace;">{{ '%02d:%02d:%02d' % (assignment.time_limit_minutes // 60, assignment.time_limit_minutes % 60, 0) }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <button type="button" id="autosave-btn" class="neo-button ghost" style="padding: 0.9rem 1.8rem; font-weight: 600;">
+                        💾 Сохранить черновик
                     </button>
-                    <span id="last-save" class="autosave-indicator"></span>
+                    <span id="last-save" class="autosave-indicator" style="font-size: 0.85em; color: var(--text-muted); font-weight: 500;"></span>
                 </div>
-                <button type="button" id="submit-btn" class="btn-primary" style="padding: 1rem 2rem;">
-                    Сдать работу
+                <button type="button" id="submit-btn" class="neo-button accent" style="padding: 1rem 2.2rem; font-weight: 700; letter-spacing: 0.5px;">
+                    ✓ Сдать работу
                 </button>
             </div>
             {% endif %}
@@ -335,6 +344,45 @@
     </div>
     
     <script>
+        // Функция для показа красивых уведомлений (toast)
+        function showToast(message, type = 'info') {
+            let container = document.querySelector('.toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'toast-container';
+                document.body.appendChild(container);
+            }
+            
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            
+            const icons = {
+                'success': '✓',
+                'error': '✕',
+                'warning': '⚠',
+                'info': 'ℹ'
+            };
+            
+            toast.innerHTML = `
+                <div class="toast-content">
+                    <span class="toast-icon">${icons[type] || '●'}</span>
+                    <span class="toast-message">${message}</span>
+                    <button class="toast-close" onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; cursor: pointer; padding: 0; font-size: 1.1em;">✕</button>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            
+            // Показываем с задержкой для триггера анимации
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Автоматически скрываем через 4 секунды
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+        
         // Чат
         const commentForm = document.getElementById('comment-form');
         if (commentForm) {
@@ -358,7 +406,7 @@
                         input.value = '';
                         location.reload(); 
                     } else {
-                        alert('Ошибка: ' + (data.error || 'Не удалось отправить комментарий'));
+                        showToast('Ошибка: ' + (data.error || 'Не удалось отправить комментарий'), 'error');
                     }
                 });
             });
@@ -482,6 +530,59 @@
         // Ручное сохранение
         document.getElementById('autosave-btn')?.addEventListener('click', autosave);
         
+        // Таймер обратного отсчета
+        const timerElement = document.getElementById('timer');
+        const timerContainer = document.getElementById('timer-container');
+        
+        if (timerElement && timerContainer) {
+            {% if assignment.time_limit_minutes %}
+            let totalSeconds = {{ assignment.time_limit_minutes * 60 }};
+            const startTime = new Date('{{ submission.started_at.isoformat() }}');
+            const clientTime = new Date();
+            const timeDiff = Math.floor((clientTime - new Date(startTime)) / 1000);
+            totalSeconds -= timeDiff;
+            
+            function updateTimer() {
+                if (totalSeconds <= 0) {
+                    timerElement.textContent = '00:00:00';
+                    timerElement.style.color = '#ef4444';
+                    timerContainer.style.borderColor = '#ef4444';
+                    timerContainer.style.background = 'rgba(239, 68, 68, 0.1)';
+                    return;
+                }
+                
+                const hours = Math.floor(totalSeconds / 3600);
+                const minutes = Math.floor((totalSeconds % 3600) / 60);
+                const seconds = totalSeconds % 60;
+                
+                timerElement.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                
+                // Меняем цвет при приближении к концу
+                if (totalSeconds <= 300) { // 5 минут
+                    timerElement.style.color = '#f59e0b';
+                    timerContainer.style.borderColor = '#f59e0b';
+                }
+                if (totalSeconds <= 60) { // 1 минута
+                    timerElement.style.color = '#ef4444';
+                    timerContainer.style.borderColor = '#ef4444';
+                    timerContainer.style.background = 'rgba(239, 68, 68, 0.1)';
+                }
+                
+                totalSeconds--;
+            }
+            
+            updateTimer();
+            setInterval(updateTimer, 1000);
+            
+            // Предупреждение перед отправкой если время закончилось
+            document.getElementById('submit-btn')?.addEventListener('click', function() {
+                if (totalSeconds <= 0) {
+                    alert('Время на выполнение работы истекло. Ваша работа будет отправлена с отметкой о задержке.');
+                }
+            });
+            {% endif %}
+        }
+        
         // Сдача работы
         document.getElementById('submit-btn')?.addEventListener('click', function() {
             if (!confirm('Вы уверены, что хотите сдать работу? После сдачи изменить ответы будет невозможно.')) {
@@ -492,7 +593,7 @@
             const submitBtn = document.getElementById('submit-btn');
             submitBtn.disabled = true;
             const originalText = submitBtn.textContent;
-            submitBtn.textContent = 'Сохранение...';
+            submitBtn.textContent = '⏳ Сохранение...';
             
             fetch(`{{ url_for('assignments.submission_submit', submission_id=submission.submission_id) }}`, {
                 method: 'POST',
@@ -514,17 +615,17 @@
             .then(data => {
                 console.log('Submit response data:', data);
                 if (data.success) {
-                    alert(`Работа успешно сдана!\nОценка: ${data.score}/${data.max_score} (${data.percentage.toFixed(0)}%)`);
-                    location.reload();
+                    showToast(`Работа успешно сдана! Оценка: ${data.score}/${data.max_score} (${data.percentage.toFixed(0)}%)`, 'success');
+                    setTimeout(() => location.reload(), 1500);
                 } else {
-                    alert('Ошибка: ' + (data.error || 'Не удалось сдать работу'));
+                    showToast('Ошибка: ' + (data.error || 'Не удалось сдать работу'), 'error');
                     submitBtn.disabled = false;
                     submitBtn.textContent = originalText;
                 }
             })
             .catch(error => {
                 console.error('Error in submission submit:', error);
-                alert('Ошибка при сдаче работы: ' + error.message + '. Смотрите консоль браузера (F12).');
+                showToast('Ошибка при сдаче работы: ' + error.message, 'error');
                 submitBtn.disabled = false;
                 submitBtn.textContent = originalText;
             });

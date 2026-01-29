@@ -204,6 +204,11 @@
                                 <label class="neo-label" for="ca_deadline">Дедлайн *</label>
                                 <input id="ca_deadline" class="neo-input" type="datetime-local" name="deadline" required>
                             </div>
+                            <div class="neo-field">
+                                <label class="neo-label" for="ca_time_limit">Время выполнения (минут)</label>
+                                <input id="ca_time_limit" class="neo-input" type="number" name="time_limit_minutes" min="5" max="480" placeholder="Например: 90 (для 1,5 часов)" title="Минимум 5, максимум 480 минут (8 часов)">
+                                <small style="display: block; margin-top: 0.35rem; color: var(--text-muted); font-size: 0.8em;">Опционально. После начала выполнения у ученика запустится таймер обратного отсчета</small>
+                            </div>
                         </div>
 
                         <div class="neo-field" style="margin-top: .75rem;">
@@ -300,6 +305,8 @@
                 const title = (document.getElementById('ca_title')?.value || '').trim();
                 const type = (document.getElementById('ca_type')?.value || 'homework').trim();
                 const deadlineLocal = (document.getElementById('ca_deadline')?.value || '').trim();
+                const timeLimitStr = (document.getElementById('ca_time_limit')?.value || '').trim();
+                const timeLimitMinutes = timeLimitStr ? parseInt(timeLimitStr, 10) : null;
                 const recipientsSel = document.getElementById('ca_recipients');
                 const recipientIds = recipientsSel ? Array.from(recipientsSel.selectedOptions).map(o => parseInt(o.value, 10)).filter(Number.isFinite) : [];
                 const taskIds = getTaskIds();
@@ -308,6 +315,11 @@
                 if (!deadlineLocal) { window.toast?.error?.('Выберите дедлайн'); if (btn) { btn.disabled = false; btn.textContent = 'Создать работу'; } return; }
                 if (!recipientIds.length) { window.toast?.error?.('Выберите хотя бы одного ученика'); if (btn) { btn.disabled = false; btn.textContent = 'Создать работу'; } return; }
                 if (!taskIds.length) { window.toast?.error?.('Нет заданий для создания работы'); if (btn) { btn.disabled = false; btn.textContent = 'Создать работу'; } return; }
+                if (timeLimitStr && (!Number.isFinite(timeLimitMinutes) || timeLimitMinutes < 5 || timeLimitMinutes > 480)) { 
+                    window.toast?.error?.('Время выполнения должно быть от 5 до 480 минут'); 
+                    if (btn) { btn.disabled = false; btn.textContent = 'Создать работу'; } 
+                    return; 
+                }
 
                 const deadlineDate = new Date(deadlineLocal);
                 if (!Number.isFinite(deadlineDate.getTime())) { window.toast?.error?.('Некорректный дедлайн'); if (btn) { btn.disabled = false; btn.textContent = 'Создать работу'; } return; }
@@ -317,7 +329,7 @@
                     type,
                     deadline: deadlineDate.toISOString(),
                     hard_deadline: false,
-                    time_limit_minutes: null,
+                    time_limit_minutes: timeLimitMinutes,
                     description: '',
                     tasks: taskIds.slice(0, 500).map((taskId, idx) => ({ task_id: taskId, max_score: 1, order: idx })),
                     recipientIds: recipientIds,
