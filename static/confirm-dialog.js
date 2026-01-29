@@ -147,28 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
     );
   }, true);
 
-  // Глобальный перехват window.confirm для скриптов
-  const originalConfirm = window.confirm;
-  window.confirm = function(message) {
-    // Если вызов происходит с empty message, пропускаем
-    if (!message || typeof message !== 'string') {
-      return originalConfirm(message);
-    }
-
-    // Берем от 100-150 символов для заголовка
-    const isDanger = message.toLowerCase().includes('удали');
-    
-    return new Promise((resolve) => {
-      showConfirmDialog(
-        message,
-        () => resolve(true),
-        () => resolve(false),
-        {
-          isDanger: isDanger,
-          confirmText: isDanger ? 'Удалить' : 'Да',
-          cancelText: 'Отмена'
-        }
-      );
-    });
-  };
+  // Закрываем DOMContentLoaded обработчик (без перехвата window.confirm,
+  // чтобы не ломать синхронный код, использующий confirm()).
 });

@@ -502,19 +502,19 @@
             .then(data => {
                 console.log('Response data:', data);
                 if (data.success) {
-                    alert('Выполнение начато! Страница обновляется...');
-                    location.reload();
+                    showToast('✓ Выполнение начато! Страница обновляется...', 'success');
+                    setTimeout(() => location.reload(), 1000);
                 } else {
-                    alert('Ошибка: ' + (data.error || 'Не удалось начать выполнение'));
+                    showToast('✕ Ошибка: ' + (data.error || 'Не удалось начать выполнение'), 'error');
                     startBtn.disabled = false;
-                    startBtn.textContent = 'Начать выполнение';
+                    startBtn.textContent = '▶ Начать выполнение';
                 }
             })
             .catch(error => {
                 console.error('Error in submission start:', error);
-                alert('Ошибка при начале выполнения: ' + error.message + '. Смотрите консоль браузера (F12) для деталей.');
+                showToast('✕ Ошибка при начале выполнения: ' + error.message, 'error');
                 startBtn.disabled = false;
-                startBtn.textContent = 'Начать выполнение';
+                startBtn.textContent = '▶ Начать выполнение';
             });
         });
         {% endif %}
@@ -534,10 +534,11 @@
         // Таймер обратного отсчета
         const timerElement = document.getElementById('timer');
         const timerContainer = document.getElementById('timer-container');
+        let totalSeconds = 0;
         
         if (timerElement && timerContainer) {
             {% if assignment.time_limit_minutes %}
-            let totalSeconds = {{ assignment.time_limit_minutes * 60 }};
+            totalSeconds = {{ assignment.time_limit_minutes * 60 }};
             const startTime = new Date('{{ submission.started_at.isoformat() }}');
             const clientTime = new Date();
             const timeDiff = Math.floor((clientTime - new Date(startTime)) / 1000);
@@ -574,19 +575,18 @@
             
             updateTimer();
             setInterval(updateTimer, 1000);
-            
-            // Предупреждение перед отправкой если время закончилось
-            document.getElementById('submit-btn')?.addEventListener('click', function() {
-                if (totalSeconds <= 0) {
-                    alert('Время на выполнение работы истекло. Ваша работа будет отправлена с отметкой о задержке.');
-                }
-            });
             {% endif %}
         }
         
         // Сдача работы
         document.getElementById('submit-btn')?.addEventListener('click', function(e) {
             e.preventDefault();
+            
+            // Проверка времени
+            if (totalSeconds <= 0) {
+                showToast('⚠ Время на выполнение работы истекло. Ваша работа будет отправлена с отметкой о задержке.', 'warning');
+            }
+            
             showConfirmDialog(
                 'Вы уверены, что хотите сдать работу? После сдачи изменить ответы будет невозможно.',
                 () => {
@@ -616,17 +616,17 @@
                     .then(data => {
                         console.log('Submit response data:', data);
                         if (data.success) {
-                            showToast(`Работа успешно сдана! Оценка: ${data.score}/${data.max_score} (${data.percentage.toFixed(0)}%)`, 'success');
+                            showToast(`✓ Работа успешно сдана! Оценка: ${data.score}/${data.max_score} (${data.percentage.toFixed(0)}%)`, 'success');
                             setTimeout(() => location.reload(), 1500);
                         } else {
-                            showToast('Ошибка: ' + (data.error || 'Не удалось сдать работу'), 'error');
+                            showToast('✕ Ошибка: ' + (data.error || 'Не удалось сдать работу'), 'error');
                             submitBtn.disabled = false;
                             submitBtn.textContent = originalText;
                         }
                     })
                     .catch(error => {
                         console.error('Error in submission submit:', error);
-                        showToast('Ошибка при сдаче работы: ' + error.message, 'error');
+                        showToast('✕ Ошибка при сдаче работы: ' + error.message, 'error');
                         submitBtn.disabled = false;
                         submitBtn.textContent = originalText;
                     });
@@ -639,9 +639,6 @@
                     cancelText: 'Отмена'
                 }
             );
-        });
-                submitBtn.textContent = originalText;
-            });
         });
         {% endif %}
     </script>
