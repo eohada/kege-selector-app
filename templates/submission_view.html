@@ -255,13 +255,17 @@
             {% if submission.status == 'IN_PROGRESS' and can_submit %}
             <div class="submit-section" style="display: flex; justify-content: space-between; align-items: center; gap: 2rem; margin: 2.5rem 0; padding: 1.5rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg);">
                 <div style="display: flex; align-items: center; gap: 1.5rem;">
-                    {% if assignment.time_limit_minutes %}
+                    {% if assignment.time_limit_minutes and submission.started_at %}
                     <div id="timer-container" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.25rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
                         <span style="font-size: 1.3em;">⏱️</span>
                         <div>
                             <div style="font-size: 0.8em; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Осталось времени</div>
                             <div id="timer" style="font-size: 1.8em; font-weight: 800; color: var(--accent-1); font-family: 'Monaco', 'Menlo', monospace;">{{ '%02d:%02d:%02d' % (assignment.time_limit_minutes // 60, assignment.time_limit_minutes % 60, 0) }}</div>
                         </div>
+                    </div>
+                    {% elif assignment.time_limit_minutes and not submission.started_at %}
+                    <div id="timer-container" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.25rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1); color: var(--text-muted); font-style: italic;">
+                        Таймер будет запущен после начала выполнения.
                     </div>
                     {% endif %}
                     <button type="button" id="autosave-btn" class="neo-button ghost" style="padding: 0.9rem 1.8rem; font-weight: 600;">
@@ -552,7 +556,18 @@
                     if (!isFinite(timeDiff) || isNaN(timeDiff)) timeDiff = 0;
                     totalSeconds -= timeDiff;
                     if (!isFinite(totalSeconds) || isNaN(totalSeconds)) totalSeconds = 0;
-                    if (totalSeconds < 0) totalSeconds = 0;
+
+                    // Debug logging to help diagnose zero timer issue
+                    try {
+                        console.log('Timer init:', {assignment_time_limit: {{ assignment.time_limit_minutes or 0 }}, startTimeRaw, startTime: startTime.toString(), clientTime: clientTime.toString(), timeDiff, totalSeconds});
+                    } catch (e) {
+                        console.log('Timer init (partial): startTimeRaw=', startTimeRaw, 'timeDiff=', timeDiff, 'totalSeconds=', totalSeconds);
+                    }
+
+                    if (totalSeconds < 0) {
+                        // Если уже просрочено — показываем 00:00:00, но не оставляем отрицательные значения
+                        totalSeconds = 0;
+                    }
 
                     function updateTimer() {
                 if (totalSeconds <= 0) {
