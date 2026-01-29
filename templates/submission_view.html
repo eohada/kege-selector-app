@@ -487,45 +487,62 @@
         // Обработчики событий
         {% if submission.status == 'ASSIGNED' %}
         document.getElementById('start-btn').addEventListener('click', function() {
-            console.log('Starting submission...');
-            const startBtn = document.getElementById('start-btn');
-            startBtn.disabled = true;
-            startBtn.textContent = 'Загрузка...';
-            
-            fetch(`{{ url_for('assignments.submission_start', submission_id=submission.submission_id) }}`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
-                console.log('Response status:', response.status);
-                if (!response.ok) {
-                    return response.text().then(text => {
-                        console.error('Server error response:', response.status, text);
-                        throw new Error(`HTTP ${response.status}`);
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Response data:', data);
-                if (data.success) {
-                    showToast('✓ Выполнение начато! Страница обновляется...', 'success');
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    showToast('✕ Ошибка: ' + (data.error || 'Не удалось начать выполнение'), 'error');
+            // Показываем подтверждение перед стартом выполнения
+            const doStart = () => {
+                console.log('Starting submission...');
+                const startBtn = document.getElementById('start-btn');
+                startBtn.disabled = true;
+                startBtn.textContent = 'Загрузка...';
+
+                fetch(`{{ url_for('assignments.submission_start', submission_id=submission.submission_id) }}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            console.error('Server error response:', response.status, text);
+                            throw new Error(`HTTP ${response.status}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Response data:', data);
+                    // Дополнительный лог для диагностики времени старта
+                    try { console.log('Server started_at:', data.started_at); } catch (e) {}
+                    if (data.success) {
+                        showToast('✓ Выполнение начато! Страница обновляется...', 'success');
+                        setTimeout(() => location.reload(), 1000);
+                    } else {
+                        showToast('✕ Ошибка: ' + (data.error || 'Не удалось начать выполнение'), 'error');
+                        startBtn.disabled = false;
+                        startBtn.textContent = '▶ Начать выполнение';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error in submission start:', error);
+                    showToast('✕ Ошибка при начале выполнения: ' + error.message, 'error');
                     startBtn.disabled = false;
                     startBtn.textContent = '▶ Начать выполнение';
-                }
-            })
-            .catch(error => {
-                console.error('Error in submission start:', error);
-                showToast('✕ Ошибка при начале выполнения: ' + error.message, 'error');
-                startBtn.disabled = false;
-                startBtn.textContent = '▶ Начать выполнение';
-            });
+                });
+            };
+
+            if (typeof showConfirmDialog === 'function') {
+                showConfirmDialog(
+                    'Вы уверены, что хотите начать выполнение? Таймер начнёт отсчёт и условия задания станут доступны.',
+                    doStart,
+                    () => { /* отмена */ },
+                    { title: 'Начать выполнение?', isDanger: false, confirmText: 'Начать', cancelText: 'Отмена' }
+                );
+            } else {
+                // Если модальное окно недоступно, выполняем старт без подтверждения
+                doStart();
+            }
         });
         {% endif %}
         
