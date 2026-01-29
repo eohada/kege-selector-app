@@ -567,7 +567,32 @@
                     {% if assignment.time_limit_minutes and submission.started_at %}
                     totalSeconds = {{ assignment.time_limit_minutes * 60 }};
                     const startTimeRaw = '{{ submission.started_at.isoformat() }}';
-                    const startTime = new Date(startTimeRaw);
+
+                    // Безопасный парсер ISO-строк: если сервер вернул временную метку
+                    // без смещения (например "2026-01-29T11:26:21.422567"),
+                    // то `new Date(...)` в разных браузерах может трактовать её как UTC,
+                    // что приведёт к сдвигу. Здесь парсим вручную и считаем такие
+                    // метки локальным временем (чтобы таймер соответствовал времени сервера).
+                    function parseISOToLocal(iso) {
+                        if (!iso) return null;
+                        // Если есть явное смещение или Z — используем стандартный парсер
+                        if (/[zZ]|[+\-]\d{2}:?\d{2}$/.test(iso)) {
+                            return new Date(iso);
+                        }
+                        // Разбираем компоненты YYYY-MM-DDTHH:MM:SS(.sss)
+                        const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?$/);
+                        if (!m) return new Date(iso);
+                        const year = parseInt(m[1], 10);
+                        const month = parseInt(m[2], 10) - 1;
+                        const day = parseInt(m[3], 10);
+                        const hour = parseInt(m[4], 10);
+                        const minute = parseInt(m[5], 10);
+                        const second = parseInt(m[6], 10);
+                        const ms = m[7] ? Math.floor((parseFloat('0.' + m[7]) * 1000)) : 0;
+                        return new Date(year, month, day, hour, minute, second, ms);
+                    }
+
+                    const startTime = parseISOToLocal(startTimeRaw);
                     const clientTime = new Date();
                     let timeDiff = Math.floor((clientTime - startTime) / 1000);
                     if (!isFinite(timeDiff) || isNaN(timeDiff)) timeDiff = 0;
