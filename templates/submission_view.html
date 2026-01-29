@@ -218,9 +218,15 @@
                     </div>
                 </div>
                 
+                {% if submission.status == 'ASSIGNED' %}
+                <div class="task-content" style="color: var(--text-muted); font-style: italic;">
+                    Условия задания будут доступны после нажатия «Начать выполнение». Пока видно только номер и краткая информация.
+                </div>
+                {% else %}
                 <div class="task-content">
                     {{ task_item.task.content_html|safe }}
                 </div>
+                {% endif %}
                 
                 <div>
                     <label for="answer-{{ task_item.assignment_task.assignment_task_id }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">
@@ -537,14 +543,18 @@
         let totalSeconds = 0;
         
         if (timerElement && timerContainer) {
-            {% if assignment.time_limit_minutes %}
-            totalSeconds = {{ assignment.time_limit_minutes * 60 }};
-            const startTime = new Date('{{ submission.started_at.isoformat() }}');
-            const clientTime = new Date();
-            const timeDiff = Math.floor((clientTime - new Date(startTime)) / 1000);
-            totalSeconds -= timeDiff;
-            
-            function updateTimer() {
+                    {% if assignment.time_limit_minutes and submission.started_at %}
+                    totalSeconds = {{ assignment.time_limit_minutes * 60 }};
+                    const startTimeRaw = '{{ submission.started_at.isoformat() }}';
+                    const startTime = new Date(startTimeRaw);
+                    const clientTime = new Date();
+                    let timeDiff = Math.floor((clientTime - startTime) / 1000);
+                    if (!isFinite(timeDiff) || isNaN(timeDiff)) timeDiff = 0;
+                    totalSeconds -= timeDiff;
+                    if (!isFinite(totalSeconds) || isNaN(totalSeconds)) totalSeconds = 0;
+                    if (totalSeconds < 0) totalSeconds = 0;
+
+                    function updateTimer() {
                 if (totalSeconds <= 0) {
                     timerElement.textContent = '00:00:00';
                     timerElement.style.color = '#ef4444';
