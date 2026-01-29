@@ -6,6 +6,7 @@
   <title>Траектория · {{ student.name }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
   {% include '_ux_enhancements.html' %}
   {% if csrf_token %}
   <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -231,6 +232,7 @@
   </div>
 
   {# toast.js уже подключается через _ux_enhancements.html #}
+  <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
 </body>
 </html>
 

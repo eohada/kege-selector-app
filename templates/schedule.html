@@ -882,16 +882,28 @@
                       </div>
                     `;
                     el.querySelector('button')?.addEventListener('click', async () => {
-                        if (!confirm('Удалить слот?')) return;
-                        const r = await fetch(`{{ url_for('schedule.schedule_templates_delete', slot_id=0) }}`.replace('0', String(t.slot_id)), {
-                            method: 'POST',
-                            headers: {'Content-Type':'application/json','X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
-                            body: JSON.stringify({})
-                        });
-                        const d = await r.json().catch(() => ({}));
-                        if (!r.ok || d.success === false) { if (window.toast) window.toast.error(d.error || 'Ошибка'); return; }
-                        if (window.toast) window.toast.success('Удалено');
-                        loadTemplates();
+                        const slot_id = el.querySelector('button')?.getAttribute('data-id');
+                        showConfirmDialog(
+                            'Удалить слот?',
+                            async () => {
+                                const r = await fetch(`{{ url_for('schedule.schedule_templates_delete', slot_id=0) }}`.replace('0', String(slot_id)), {
+                                    method: 'POST',
+                                    headers: {'Content-Type':'application/json','X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''},
+                                    body: JSON.stringify({})
+                                });
+                                const d = await r.json().catch(() => ({}));
+                                if (!r.ok || d.success === false) { if (window.toast) window.toast.error(d.error || 'Ошибка'); return; }
+                                if (window.toast) window.toast.success('Удалено');
+                                loadTemplates();
+                            },
+                            null,
+                            {
+                                title: 'Удалить слот?',
+                                isDanger: true,
+                                confirmText: 'Удалить',
+                                cancelText: 'Отмена'
+                            }
+                        );
                     });
                     list.appendChild(el);
                 });

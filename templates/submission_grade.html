@@ -14,6 +14,7 @@
     
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
     {% include '_ux_enhancements.html' %}
     
     <style>
@@ -478,15 +479,15 @@
         });
         
         // Возврат на доработку
-        document.getElementById('return-btn')?.addEventListener('click', function() {
-            if (!confirm('Вернуть работу на доработку? Ученик сможет исправить ответы и сдать заново.')) {
-                return;
-            }
-            
-            const scores = [];
-            document.querySelectorAll('.score-input').forEach(input => {
-                scores.push({
-                    assignment_task_id: parseInt(input.name.replace('score_', '')),
+        document.getElementById('return-btn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            showConfirmDialog(
+                'Вернуть работу на доработку? Ученик сможет исправить ответы и сдать заново.',
+                () => {
+                    const scores = [];
+                    document.querySelectorAll('.score-input').forEach(input => {
+                        scores.push({
+                            assignment_task_id: parseInt(input.name.replace('score_', '')),
                     score: parseInt(input.value) || 0,
                     comment: document.querySelector(`textarea[name="comment_${input.name.replace('score_', '')}"]`)?.value || ''
                 });
@@ -511,14 +512,24 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Работа возвращена на доработку!');
-                    location.reload();
+                    showToast('✓ Работа возвращена на доработку!', 'success');
+                    setTimeout(() => location.reload(), 1500);
                 } else {
-                    alert('Ошибка: ' + (data.error || 'Не удалось вернуть работу'));
+                    showToast('✕ Ошибка: ' + (data.error || 'Не удалось вернуть работу'), 'error');
                 }
             });
+                },
+                null,
+                {
+                    title: 'Вернуть на доработку?',
+                    isDanger: true,
+                    confirmText: 'Вернуть',
+                    cancelText: 'Отмена'
+                }
+            );
         });
         {% endif %}
     </script>
+    <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
 </body>
 </html>

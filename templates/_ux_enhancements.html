@@ -223,3 +223,7 @@
 </script>
 
 {# Примечание: UX скрипты были удалены, но breadcrumbs container оставлен для совместимости #}
+
+{# Подключаем модальный диалог подтверждения для всех страниц #}
+<link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
+<script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>

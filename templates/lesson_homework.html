@@ -6,6 +6,7 @@
     <title>{{ lesson.topic or 'Урок' }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/easymde/dist/easymde.min.css">
@@ -376,32 +377,42 @@
 
         <script>
             async function deleteLesson(lessonId, studentId) {
-                const ok = confirm('Удалить урок? Это действие нельзя отменить.');
-                if (!ok) return;
-                try {
-                    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
-                    const resp = await fetch(`/schedule/api/lesson/${lessonId}/delete`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': csrf
-                        },
-                        body: JSON.stringify({})
-                    });
-                    const data = await resp.json().catch(() => ({}));
-                    if (!resp.ok || data.success === false) {
-                        const msg = data.error || `HTTP ${resp.status}`;
-                        if (window.toast) window.toast.error(msg);
-                        else alert(msg);
-                        return;
+                showConfirmDialog(
+                    'Удалить урок? Это действие нельзя отменить.',
+                    async () => {
+                        try {
+                            const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+                            const resp = await fetch(`/schedule/api/lesson/${lessonId}/delete`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': csrf
+                                },
+                                body: JSON.stringify({})
+                            });
+                            const data = await resp.json().catch(() => ({}));
+                            if (!resp.ok || data.success === false) {
+                                const msg = data.error || `HTTP ${resp.status}`;
+                                if (window.toast) window.toast.error(msg);
+                                else showToast(msg, 'error');
+                                return;
+                            }
+                            if (window.toast) window.toast.success('Урок удалён');
+                            window.location.href = `/student/${studentId}`;
+                        } catch (e) {
+                            const msg = e?.message || 'Ошибка удаления';
+                            if (window.toast) window.toast.error(msg);
+                            else showToast(msg, 'error');
+                        }
+                    },
+                    null,
+                    {
+                        title: 'Удалить урок?',
+                        isDanger: true,
+                        confirmText: 'Удалить',
+                        cancelText: 'Отмена'
                     }
-                    if (window.toast) window.toast.success('Урок удалён');
-                    window.location.href = `/student/${studentId}`;
-                } catch (e) {
-                    const msg = e?.message || 'Ошибка удаления';
-                    if (window.toast) window.toast.error(msg);
-                    else alert(msg);
-                }
+                );
             }
         </script>
 
@@ -1512,11 +1523,12 @@
         }
 
         async function deleteMaterial(url, btn) {
-            if (!confirm('Удалить этот файл?')) return;
-            
-            try {
-                const res = await fetch(`/lesson/${LESSON_ID}/material/delete`, {
-                    method: 'POST',
+            showConfirmDialog(
+                'Удалить этот файл?',
+                async () => {
+                    try {
+                        const res = await fetch(`/lesson/${LESSON_ID}/material/delete`, {
+                            method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
                     body: JSON.stringify({ url })
                 });
@@ -1529,27 +1541,47 @@
             } catch (e) {
                 toast.error('Ошибка сети');
             }
+                },
+                null,
+                {
+                    title: 'Удалить файл?',
+                    isDanger: true,
+                    confirmText: 'Удалить',
+                    cancelText: 'Отмена'
+                }
+            );
         }
 
         async function detachLibraryMaterial(linkId, btn) {
-            if (!confirm('Открепить материал от урока?')) return;
-            try {
-                const res = await fetch(`/library/materials/detach`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-                    body: JSON.stringify({ link_id: linkId })
-                });
-                const data = await res.json();
-                if (data && data.success) {
-                    toast.success('Материал откреплён');
-                    const card = btn.closest('.material-card');
-                    if (card) card.remove();
-                } else {
-                    toast.error((data && data.error) ? data.error : 'Ошибка');
+            showConfirmDialog(
+                'Открепить материал от урока?',
+                async () => {
+                    try {
+                        const res = await fetch(`/library/materials/detach`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                            body: JSON.stringify({ link_id: linkId })
+                        });
+                        const data = await res.json();
+                        if (data && data.success) {
+                            toast.success('Материал откреплён');
+                            const card = btn.closest('.material-card');
+                            if (card) card.remove();
+                        } else {
+                            toast.error((data && data.error) ? data.error : 'Ошибка');
+                        }
+                    } catch (e) {
+                        toast.error('Ошибка сети');
+                    }
+                },
+                null,
+                {
+                    title: 'Открепить материал?',
+                    isDanger: false,
+                    confirmText: 'Открепить',
+                    cancelText: 'Отмена'
                 }
-            } catch (e) {
-                toast.error('Ошибка сети');
-            }
+            );
         }
 
         function openLibraryAttachModal() {
@@ -1706,8 +1738,19 @@
 
         // Task Deletion (Legacy Support)
         function handleDeleteTask(taskId, type) {
-             if(!confirm('Удалить задание?')) return;
-             document.getElementById(`delete-form-${taskId}`).submit();
+            showConfirmDialog(
+                'Удалить задание?',
+                () => {
+                    document.getElementById(`delete-form-${taskId}`).submit();
+                },
+                null,
+                {
+                    title: 'Удалить задание?',
+                    isDanger: true,
+                    confirmText: 'Удалить',
+                    cancelText: 'Отмена'
+                }
+            );
         }
 
         async function saveTeacherFeedback(taskId) {
@@ -1949,34 +1992,46 @@
         }
 
         async function deleteTeacherComment(commentId, taskId) {
-            if (!confirm('Удалить комментарий?')) return;
-            try {
-                const res = await fetch(`/lesson/teacher-comment/${commentId}/delete`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-                    body: JSON.stringify({})
-                });
-                const data = await res.json();
-                if (!data.success) {
-                    toast.error(data.error || 'Ошибка');
-                    return;
-                }
-                toast.success('Комментарий удалён');
-                const sel = document.getElementById(`teacher-comments-select-teacher-${taskId}`);
-                const bodyEl = document.getElementById(`teacher-comments-body-teacher-${taskId}`);
-                if (sel) {
-                    const idx = sel.selectedIndex;
-                    sel.remove(idx);
-                    const newOpt = sel.options[sel.selectedIndex] || sel.options[sel.options.length - 1];
-                    if (newOpt) {
-                        if (bodyEl) bodyEl.textContent = newOpt.getAttribute('data-body') || '';
-                    } else {
-                        if (bodyEl) bodyEl.textContent = '';
+            showConfirmDialog(
+                'Удалить комментарий?',
+                async () => {
+                    try {
+                        const res = await fetch(`/lesson/teacher-comment/${commentId}/delete`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                            body: JSON.stringify({})
+                        });
+                        const data = await res.json();
+                        if (!data.success) {
+                            toast.error(data.error || 'Ошибка');
+                            return;
+                        }
+                        toast.success('Комментарий удалён');
+                        const sel = document.getElementById(`teacher-comments-select-teacher-${taskId}`);
+                        const bodyEl = document.getElementById(`teacher-comments-body-teacher-${taskId}`);
+                        if (sel) {
+                            const idx = sel.selectedIndex;
+                            sel.remove(idx);
+                            const newOpt = sel.options[sel.selectedIndex] || sel.options[sel.options.length - 1];
+                            if (newOpt) {
+                                if (bodyEl) bodyEl.textContent = newOpt.getAttribute('data-body') || '';
+                            } else {
+                                if (bodyEl) bodyEl.textContent = '';
+                            }
+                        }
                     }
+                } catch (e) {
+                    toast.error('Ошибка сети');
                 }
-            } catch (e) {
-                toast.error('Ошибка сети');
-            }
+                },
+                null,
+                {
+                    title: 'Удалить комментарий?',
+                    isDanger: true,
+                    confirmText: 'Удалить',
+                    cancelText: 'Отмена'
+                }
+            );
         }
 
         function getSelectedTeacherTaskIds() {
@@ -2050,5 +2105,6 @@
             toast.info('Режим проверки: показаны только «Сдано»');
         }
     </script>
+    <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
 </body>
 </html>

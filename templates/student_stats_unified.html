@@ -6,6 +6,7 @@
     <title>Статистика - {{ student.name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
     {% include '_ux_enhancements.html' %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     {% if csrf_token %}
@@ -1390,13 +1391,12 @@
                 btn.addEventListener('click', async function() {
                     const taskNumber = parseInt(this.dataset.taskNumber);
                     
-                    if (!confirm(`Вы уверены, что хотите сбросить ручные изменения для задания ${taskNumber}?`)) {
-                        return;
-                    }
-                    
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '⏳ Сброс...';
-                    this.disabled = true;
+                    showConfirmDialog(
+                        `Вы уверены, что хотите сбросить ручные изменения для задания ${taskNumber}?`,
+                        async () => {
+                            const originalText = this.innerHTML;
+                            this.innerHTML = '⏳ Сброс...';
+                            this.disabled = true;
                     
                     try {
                         const url = `{{ url_for('students.reset_statistics', student_id=student.student_id) }}`;
@@ -1438,6 +1438,15 @@
                         this.innerHTML = originalText;
                         this.disabled = false;
                     }
+                        },
+                        null,
+                        {
+                            title: 'Сбросить изменения?',
+                            isDanger: true,
+                            confirmText: 'Сбросить',
+                            cancelText: 'Отмена'
+                        }
+                    );
                 });
             });
             
@@ -1558,12 +1567,11 @@
                         return;
                     }
                     
-                    if (!confirm(`Применить значения (${bulkCorrect} правильно, ${bulkIncorrect} неправильно) ко всем заданиям в режиме "${editMode === 'add' ? 'Добавить' : editMode === 'set' ? 'Установить' : 'Вычесть'}"?`)) {
-                        return;
-                    }
-                    
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '⏳ Применение...';
+                    showConfirmDialog(
+                        `Применить значения (${bulkCorrect} правильно, ${bulkIncorrect} неправильно) ко всем заданиям в режиме "${editMode === 'add' ? 'Добавить' : editMode === 'set' ? 'Установить' : 'Вычесть'}"?`,
+                        async () => {
+                            const originalText = this.innerHTML;
+                            this.innerHTML = '⏳ Применение...';
                     this.disabled = true;
                     
                     const items = document.querySelectorAll('.stat-edit-item');
@@ -1623,22 +1631,30 @@
                     } else {
                         showTemporaryNotification(`Применено к ${successCount} заданиям, ошибок: ${errorCount}`, 'error');
                     }
+                        },
+                        null,
+                        {
+                            title: 'Применить к заданиям?',
+                            isDanger: false,
+                            confirmText: 'Применить',
+                            cancelText: 'Отмена'
+                        }
+                    );
                 });
             }
             
             // Обработка сброса всех изменений
             if (resetAllBtn) {
                 resetAllBtn.addEventListener('click', async function() {
-                    if (!confirm('Вы уверены, что хотите сбросить ВСЕ ручные изменения статистики? Это действие нельзя отменить.')) {
-                        return;
-                    }
-                    
-                    const originalText = this.innerHTML;
-                    this.innerHTML = '⏳ Сброс...';
-                    this.disabled = true;
-                    
-                    try {
-                        const url = `{{ url_for('students.reset_statistics', student_id=student.student_id) }}`;
+                    showConfirmDialog(
+                        'Вы уверены, что хотите сбросить ВСЕ ручные изменения статистики? Это действие нельзя отменить.',
+                        async () => {
+                            const originalText = this.innerHTML;
+                            this.innerHTML = '⏳ Сброс...';
+                            this.disabled = true;
+                            
+                            try {
+                                const url = `{{ url_for('students.reset_statistics', student_id=student.student_id) }}`;
                         
                         const response = await fetch(url, {
                             method: 'POST',
@@ -1675,11 +1691,21 @@
                         this.innerHTML = originalText;
                         this.disabled = false;
                     }
+                        },
+                        null,
+                        {
+                            title: 'Сбросить всё?',
+                            isDanger: true,
+                            confirmText: 'Сбросить',
+                            cancelText: 'Отмена'
+                        }
+                    );
                 });
             }
         });
     </script>
     
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
 </body>
 </html>
