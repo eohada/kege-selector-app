@@ -592,7 +592,20 @@
                         return new Date(year, month, day, hour, minute, second, ms);
                     }
 
-                    const startTime = parseISOToLocal(startTimeRaw);
+                    // Если сервер передал численный timestamp (ms), используем его — это однозначно
+                    // снимает все проблемы с часовыми поясами/интерпретацией строк.
+                    {% if submission.started_at %}
+                    const startedAtMs = {{ (submission.started_at.timestamp() * 1000)|int }};
+                    {% else %}
+                    const startedAtMs = null;
+                    {% endif %}
+
+                    let startTime;
+                    if (startedAtMs) {
+                        startTime = new Date(startedAtMs);
+                    } else {
+                        startTime = parseISOToLocal(startTimeRaw);
+                    }
                     const clientTime = new Date();
                     let timeDiff = Math.floor((clientTime - startTime) / 1000);
                     if (!isFinite(timeDiff) || isNaN(timeDiff)) timeDiff = 0;
