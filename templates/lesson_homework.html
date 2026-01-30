@@ -43,6 +43,9 @@
         margin-bottom: 1.5rem;
         overflow-x: auto;
         padding-bottom: 0.5rem;
+        position: relative;
+        z-index: 10;
+        pointer-events: auto;
     }
     .tab-btn {
         background: transparent;
@@ -54,9 +57,12 @@
         transition: all 0.2s;
         font-weight: 500;
         white-space: nowrap;
+        position: relative;
+        z-index: 1;
+        pointer-events: auto;
     }
     .tab-btn:hover {
-        color: var(--text-main);
+        color: var(--text-primary);
         background: rgba(255,255,255,0.05);
         border-radius: var(--radius-sm) var(--radius-sm) 0 0;
     }
@@ -417,14 +423,14 @@
         </script>
 
         <!-- Tabs Navigation -->
-        <div class="lesson-tabs">
-            <button class="tab-btn active" onclick="switchTab('theory')"><i class="fas fa-book"></i> Конспект</button>
-            <button class="tab-btn" onclick="switchTab('tasks')">
+        <div class="lesson-tabs" role="tablist">
+            <button type="button" class="tab-btn active" data-tab="theory" role="tab" aria-selected="true"><i class="fas fa-book"></i> Конспект</button>
+            <button type="button" class="tab-btn" data-tab="tasks" role="tab" aria-selected="false">
                 {% if assignment_type == 'homework' %}<i class="fas fa-home"></i> Домашнее задание{% elif assignment_type == 'classwork' %}<i class="fas fa-chalkboard-teacher"></i> Классная работа{% else %}<i class="fas fa-tasks"></i> Проверочная{% endif %}
             </button>
-            <button class="tab-btn" onclick="switchTab('materials')"><i class="fas fa-paperclip"></i> Материалы</button>
-            <button class="tab-btn" onclick="switchTab('notes')"><i class="fas fa-sticky-note"></i> Заметки {{ 'ученика' if not is_student_view else '' }}</button>
-            <button class="tab-btn" onclick="switchTab('chat')"><i class="fas fa-comments"></i> Диалог</button>
+            <button type="button" class="tab-btn" data-tab="materials" role="tab" aria-selected="false"><i class="fas fa-paperclip"></i> Материалы</button>
+            <button type="button" class="tab-btn" data-tab="notes" role="tab" aria-selected="false"><i class="fas fa-sticky-note"></i> Заметки {{ 'ученика' if not is_student_view else '' }}</button>
+            <button type="button" class="tab-btn" data-tab="chat" role="tab" aria-selected="false"><i class="fas fa-comments"></i> Диалог</button>
         </div>
 
         <!-- TAB: THEORY -->
@@ -1020,15 +1026,20 @@
         
         // Tabs Logic (с сохранением выбранной вкладки)
         function switchTab(tabName) {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('active');
+                b.setAttribute('aria-selected', 'false');
+            });
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-            
-            document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
-            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            var btn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
+            var pane = document.getElementById('tab-' + tabName);
+            if (btn) { btn.classList.add('active'); btn.setAttribute('aria-selected', 'true'); }
+            if (pane) pane.classList.add('active');
 
             try {
-                localStorage.setItem(`lesson_${LESSON_ID}_active_tab`, tabName);
-                history.replaceState(null, '', `#tab=${tabName}`);
+                localStorage.setItem('lesson_' + LESSON_ID + '_active_tab', tabName);
+                history.replaceState(null, '', '#tab=' + tabName);
             } catch (e) {}
             
             // Refresh editors if needed (codemirror sometimes needs refresh on visible)
@@ -1038,14 +1049,26 @@
 
         // Initialize Editors
         document.addEventListener('DOMContentLoaded', () => {
+            // Клики по табам (делегирование — надёжно работает у препода и ученика)
+            var tabsContainer = document.querySelector('.lesson-tabs');
+            if (tabsContainer) {
+                tabsContainer.addEventListener('click', function(e) {
+                    var btn = e.target && (e.target.closest && e.target.closest('.tab-btn') || (e.target.classList && e.target.classList.contains('tab-btn') ? e.target : null));
+                    if (btn && btn.getAttribute('data-tab')) {
+                        e.preventDefault();
+                        switchTab(btn.getAttribute('data-tab'));
+                    }
+                });
+            }
+
             // restore tab from hash/localStorage
             try {
                 const hash = (location.hash || '').trim();
                 const match = hash.match(/tab=([a-z_]+)/i);
                 const fromHash = match ? match[1] : null;
-                const fromStore = localStorage.getItem(`lesson_${LESSON_ID}_active_tab`);
+                const fromStore = localStorage.getItem('lesson_' + LESSON_ID + '_active_tab');
                 const tab = fromHash || fromStore;
-                if (tab && document.getElementById(`tab-${tab}`)) {
+                if (tab && document.getElementById('tab-' + tab)) {
                     switchTab(tab);
                 }
             } catch (e) {}
