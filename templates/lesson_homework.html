@@ -78,6 +78,23 @@
     .tab-pane.active {
         display: block;
     }
+
+    /* Поле конспекта — нормальная высота редактора */
+    #theory-markdown-wrap,
+    #theory-editor {
+        min-height: 320px;
+    }
+    #theory-markdown-wrap .CodeMirror,
+    #theory-markdown-wrap .EasyMDEContainer .CodeMirror {
+        min-height: 300px;
+    }
+    #notes-editor {
+        min-height: 200px;
+    }
+    #tab-notes .CodeMirror,
+    #tab-notes .EasyMDEContainer .CodeMirror {
+        min-height: 180px;
+    }
     
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(5px); }
@@ -957,7 +974,7 @@
                     <h3 style="margin: 0;">{{ 'Твои заметки' if is_student_view else 'Заметки ученика' }}</h3>
                     <button class="neo-button accent sm" onclick="saveNotes()"><i class="fas fa-save"></i> Сохранить</button>
                 </div>
-                <textarea id="notes-editor">{{ lesson.student_notes or '' }}</textarea>
+                <textarea id="notes-editor" style="min-height: 200px; width: 100%;">{{ lesson.student_notes or '' }}</textarea>
                 <p style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">
                     <i class="fas fa-lock"></i> Эти заметки видишь только ты {{ 'и преподаватель' if is_student_view else 'и ученик' }}.
                 </p>
@@ -1048,7 +1065,7 @@
         }
 
         // Initialize Editors
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', function() {
             // Клики по табам (делегирование — надёжно работает у препода и ученика)
             var tabsContainer = document.querySelector('.lesson-tabs');
             if (tabsContainer) {
@@ -1061,57 +1078,67 @@
                 });
             }
 
-            // restore tab from hash/localStorage
             try {
-                const hash = (location.hash || '').trim();
-                const match = hash.match(/tab=([a-z_]+)/i);
-                const fromHash = match ? match[1] : null;
-                const fromStore = localStorage.getItem('lesson_' + LESSON_ID + '_active_tab');
-                const tab = fromHash || fromStore;
+                // restore tab from hash/localStorage
+                var hash = (location.hash || '').trim();
+                var match = hash.match(/tab=([a-z_]+)/i);
+                var fromHash = match ? match[1] : null;
+                var fromStore = localStorage.getItem('lesson_' + LESSON_ID + '_active_tab');
+                var tab = fromHash || fromStore;
                 if (tab && document.getElementById('tab-' + tab)) {
                     switchTab(tab);
                 }
             } catch (e) {}
 
-            // restore teacher filter
             try {
-                const saved = localStorage.getItem(`lesson_${LESSON_ID}_teacher_filter`);
+                var saved = localStorage.getItem('lesson_' + LESSON_ID + '_teacher_filter');
                 if (saved && document.getElementById('teacherFilterSelect')) {
                     document.getElementById('teacherFilterSelect').value = saved;
                     applyTeacherFilter(saved);
                 }
             } catch (e) {}
 
-            {% if not is_student_view and not is_parent_view %}
-            window.theoryEditor = new EasyMDE({
-                element: document.getElementById('theory-editor'),
-                spellChecker: false,
-                autosave: { enabled: true, uniqueId: `lesson_${LESSON_ID}_theory` },
-                toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "image", "|", "preview", "side-by-side", "fullscreen"]
-            });
-            // init blocks editor
-            window.__lessonBlocks = Array.isArray(INITIAL_BLOCKS) ? INITIAL_BLOCKS : [];
-            renderBlocks();
             try {
-                const modeSaved = localStorage.getItem(`lesson_${LESSON_ID}_theory_mode`);
-                if (modeSaved === 'blocks') setTheoryMode('blocks');
-                else setTheoryMode('markdown');
-            } catch (e) { setTheoryMode('markdown'); }
-            {% else %}
-            // Render Markdown for students
-            const contentDiv = document.getElementById('theory-content');
-            if (contentDiv) {
-                contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(contentDiv.innerText));
+                {% if not is_student_view and not is_parent_view %}
+                var theoryEl = document.getElementById('theory-editor');
+                if (theoryEl) {
+                    window.theoryEditor = new EasyMDE({
+                        element: theoryEl,
+                        spellChecker: false,
+                        autosave: { enabled: true, uniqueId: 'lesson_' + LESSON_ID + '_theory' },
+                        toolbar: ["bold", "italic", "heading", "|", "quote", "unordered-list", "ordered-list", "|", "link", "|", "preview", "side-by-side", "fullscreen"]
+                    });
+                    window.__lessonBlocks = Array.isArray(INITIAL_BLOCKS) ? INITIAL_BLOCKS : [];
+                    renderBlocks();
+                    try {
+                        var modeSaved = localStorage.getItem('lesson_' + LESSON_ID + '_theory_mode');
+                        if (modeSaved === 'blocks') setTheoryMode('blocks');
+                        else setTheoryMode('markdown');
+                    } catch (e2) { setTheoryMode('markdown'); }
+                }
+                {% else %}
+                var contentDiv = document.getElementById('theory-content');
+                if (contentDiv && typeof DOMPurify !== 'undefined' && typeof marked !== 'undefined') {
+                    contentDiv.innerHTML = DOMPurify.sanitize(marked.parse(contentDiv.innerText));
+                }
+                {% endif %}
+            } catch (e) {
+                console.error('Theory editor init:', e);
             }
-            {% endif %}
 
-            // Notes Editor (for everyone authorized)
-            window.notesEditor = new EasyMDE({
-                element: document.getElementById('notes-editor'),
-                spellChecker: false,
-                autosave: { enabled: true, uniqueId: `lesson_${LESSON_ID}_notes` },
-                 toolbar: ["bold", "italic", "heading", "|", "unordered-list", "|", "link", "preview"]
-            });
+            try {
+                var notesEl = document.getElementById('notes-editor');
+                if (notesEl) {
+                    window.notesEditor = new EasyMDE({
+                        element: notesEl,
+                        spellChecker: false,
+                        autosave: { enabled: true, uniqueId: 'lesson_' + LESSON_ID + '_notes' },
+                        toolbar: ["bold", "italic", "heading", "|", "unordered-list", "|", "link", "preview"]
+                    });
+                }
+            } catch (e) {
+                console.error('Notes editor init:', e);
+            }
         });
 
         // Save Functions
@@ -1550,20 +1577,21 @@
                 'Удалить этот файл?',
                 async () => {
                     try {
-                        const res = await fetch(`/lesson/${LESSON_ID}/material/delete`, {
+                        var res = await fetch('/lesson/' + LESSON_ID + '/material/delete', {
                             method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
-                    body: JSON.stringify({ url })
-                });
-                if (res.ok) {
-                    toast.success('Файл удален');
-                    btn.closest('.material-card').remove();
-                } else {
-                    toast.error('Ошибка удаления');
-                }
-            } catch (e) {
-                toast.error('Ошибка сети');
-            }
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+                            body: JSON.stringify({ url: url })
+                        });
+                        if (res.ok) {
+                            toast.success('Файл удален');
+                            var card = btn.closest('.material-card');
+                            if (card) card.remove();
+                        } else {
+                            toast.error('Ошибка удаления');
+                        }
+                    } catch (e) {
+                        toast.error('Ошибка сети');
+                    }
                 },
                 null,
                 {
@@ -2042,7 +2070,6 @@
                                 if (bodyEl) bodyEl.textContent = '';
                             }
                         }
-                    }
                 } catch (e) {
                     toast.error('Ошибка сети');
                 }
