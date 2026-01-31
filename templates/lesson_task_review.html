@@ -138,9 +138,49 @@
                     <div class="task-content" style="margin-top: 0.75rem;">
                         {{ lesson_task.task.content_html|safe if lesson_task and lesson_task.task else '' }}
                         {% if lesson_task and lesson_task.task and lesson_task.task.attached_files %}
-                        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
-                            <strong><i class="fas fa-paperclip"></i> Вложения:</strong> {{ lesson_task.task.attached_files }}
+                        <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);" class="task-attachments" data-attached-files='{{ lesson_task.task.attached_files|tojson|e }}'>
+                            <strong><i class="fas fa-paperclip"></i> Вложения:</strong>
+                            <div class="attached-links" style="margin-top: .5rem;"></div>
                         </div>
+                        <script>
+                        (function(){
+                            try {
+                                const PROXY_BASE = '{{ url_for("assignments.attached_proxy") }}';
+                                document.querySelectorAll('.task-attachments[data-attached-files]').forEach(function(el){
+                                    const container = el.querySelector('.attached-links');
+                                    if (!container) return;
+                                    let raw = el.getAttribute('data-attached-files');
+                                    if (!raw) return;
+                                    try {
+                                        let parsed = JSON.parse(raw);
+                                        if (typeof parsed === 'string') {
+                                            try { parsed = JSON.parse(parsed); } catch(e) { /* keep string */ }
+                                        }
+                                        let files = parsed;
+                                        if (!files) return;
+                                        if (!Array.isArray(files)) {
+                                            if (typeof files === 'object') files = [files]; else return;
+                                        }
+                                        container.innerHTML = '';
+                                        files.forEach(function(f){
+                                            const name = (f && f.name) ? f.name : (f && f.filename) ? f.filename : (typeof f === 'string' ? f.split('/').pop() : 'file');
+                                            const url = (f && f.url) ? f.url : (typeof f === 'string' ? f : null);
+                                            if (!url) return;
+                                            const a = document.createElement('a');
+                                            a.href = PROXY_BASE + '?url=' + encodeURIComponent(url);
+                                            a.target = '_blank';
+                                            a.rel = 'noopener noreferrer';
+                                            a.textContent = name;
+                                            a.className = 'neo-link';
+                                            const wrap = document.createElement('div');
+                                            wrap.appendChild(a);
+                                            container.appendChild(wrap);
+                                        });
+                                    } catch(e) { console.error('attachments parse', e); }
+                                });
+                            } catch(e) { console.error(e); }
+                        })();
+                        </script>
                         {% endif %}
                     </div>
 

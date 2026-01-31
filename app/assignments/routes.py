@@ -21,6 +21,8 @@ from core.db_models import moscow_now
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents
 from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_unique_tasks, reset_history, reset_skipped
+import requests
+from flask import Response, stream_with_context, abort
 
 logger = logging.getLogger(__name__)
 
@@ -1648,6 +1650,43 @@ def submission_start(submission_id):
         logger.error(f"Error in submission_start for submission {submission_id}: {e}", exc_info=True)
         db.session.rollback()
         return jsonify({'success': False, 'error': f'Ошибка сервера: {str(e)}'}), 500
+
+
+@assignments_bp.route('/attachments/proxy')
+@login_required
+def attached_proxy():
+    """Proxy для скачивания внешних вложений (ограничен по домену).
+    Принимает параметр `url` — внешний адрес файла. Возвращает потоковый ответ с заголовками.
+    """
+    url = request.args.get('url', '')
+    if not url:
+        abort(400)
+
+    # Разрешённый список префиксов — ограничиваем до известных хостов, чтобы не открывать прокси
+    allowed_prefixes = ('https://kompege.ru/', 'http://kompege.ru/')
+    if not any(url.startswith(p) for p in allowed_prefixes):
+        logger.warning(f'Attempt to proxy disallowed url: {url}')
+        abort(400)
+
+    try:
+        upstream = requests.get(url, stream=True, timeout=15)
+    except Exception as e:
+        logger.error(f'Error fetching upstream attachment {url}: {e}')
+        abort(502)
+
+    def generate():
+        try:
+            for chunk in upstream.iter_content(chunk_size=8192):
+                if chunk:
+                    yield chunk
+        finally:
+            upstream.close()
+
+    content_type = upstream.headers.get('content-type', 'application/octet-stream')
+    filename = url.split('/')[-1].split('?')[0]
+    resp = Response(stream_with_context(generate()), content_type=content_type)
+    resp.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return resp
 
 
 @assignments_bp.route('/submissions/<int:submission_id>/autosave', methods=['PUT'])
