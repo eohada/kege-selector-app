@@ -36,11 +36,10 @@ except Exception:
 
 
 def _inject_css():
-    # Streamlit allows limited styling; this keeps UI cleaner and more "product-like".
     st.markdown(
         """
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
   /* Hide default Streamlit chrome */
   #MainMenu {visibility: hidden;}
@@ -49,162 +48,328 @@ def _inject_css():
 
   html, body, [class*="css"] { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
 
-  /* Reduce top padding + add premium background */
+  /* Premium dark background */
   .stApp {
     background:
-      radial-gradient(900px 600px at 15% 10%, rgba(99,102,241,0.18), transparent 60%),
-      radial-gradient(900px 600px at 85% 15%, rgba(16,185,129,0.12), transparent 55%),
-      radial-gradient(900px 600px at 50% 85%, rgba(59,130,246,0.10), transparent 55%),
-      linear-gradient(180deg, rgba(10,12,18,1) 0%, rgba(7,9,14,1) 100%);
+      radial-gradient(ellipse 1200px 800px at 10% 20%, rgba(99,102,241,0.22), transparent 55%),
+      radial-gradient(ellipse 1000px 700px at 90% 10%, rgba(16,185,129,0.18), transparent 50%),
+      radial-gradient(ellipse 900px 600px at 50% 90%, rgba(59,130,246,0.12), transparent 50%),
+      linear-gradient(180deg, #0a0c12 0%, #070910 100%);
+    min-height: 100vh;
   }
-  .block-container { padding-top: 1.05rem; padding-bottom: 2.2rem; }
+  .block-container { padding-top: 0.8rem; padding-bottom: 1.5rem; }
 
-  /* Make chat/input feel tighter */
   .stChatInputContainer { padding-top: 0.25rem; }
 
-  /* Card-ish containers */
-  .k-card {
-    border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 14px;
-    padding: 14px 14px;
-    background: rgba(255,255,255,0.035);
-    box-shadow: 0 12px 30px rgba(0,0,0,0.28);
-    backdrop-filter: blur(10px);
-  }
-  .k-muted { color: rgba(255,255,255,0.70); }
-  .k-title { font-weight: 700; letter-spacing: -0.02em; }
-  .k-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    border: 1px solid rgba(255,255,255,0.14);
-    background: rgba(255,255,255,0.04);
-    margin-right: 6px;
-  }
-  .k-badge.ok { border-color: rgba(34,197,94,0.55); background: rgba(34,197,94,0.10); }
-  .k-badge.warn { border-color: rgba(245,158,11,0.55); background: rgba(245,158,11,0.10); }
-  .k-badge.err { border-color: rgba(239,68,68,0.55); background: rgba(239,68,68,0.10); }
-
-  .k-panel {
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 16px;
-    padding: 16px 16px;
-    background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
-    box-shadow: 0 12px 30px rgba(0,0,0,0.30);
-  }
-
-  .task-choice-stack { display: grid; gap: 14px; }
-
-  .task-choice-card {
-    position: relative;
-    border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: linear-gradient(160deg, rgba(15,18,26,0.98), rgba(10,12,18,0.95));
-    box-shadow: 0 16px 40px rgba(0,0,0,0.35);
-    overflow: hidden;
-    transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
-  }
-
-  .task-choice-card:has(.choice-zone.left:hover) {
-    border-color: rgba(239,68,68,0.6);
-    box-shadow: 0 16px 45px rgba(239,68,68,0.20);
-    background: linear-gradient(160deg, rgba(45,10,12,0.98), rgba(12,8,10,0.95));
-  }
-
-  .task-choice-card:has(.choice-zone.right:hover) {
-    border-color: rgba(16,185,129,0.65);
-    box-shadow: 0 16px 45px rgba(16,185,129,0.20);
-    background: linear-gradient(160deg, rgba(8,26,20,0.98), rgba(8,12,10,0.95));
-  }
-
-  .task-choice-content {
-    padding: 16px 16px 18px 16px;
-  }
-
-  .task-choice-header {
+  /* ===== Number picker panel ===== */
+  .number-picker-panel {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 10px;
+    gap: 10px;
+    justify-content: center;
+    padding: 20px 16px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 20px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+    margin-bottom: 24px;
   }
 
-  .task-choice-body {
-    color: rgba(255,255,255,0.92);
-    line-height: 1.6;
-    font-size: 14.5px;
-  }
-
-  .choice-zone {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 50%;
-    display: flex;
-    align-items: stretch;
-  }
-
-  .choice-zone.left { left: 0; }
-  .choice-zone.right { right: 0; }
-
-  .choice-zone.left:hover { background: rgba(239,68,68,0.12); }
-  .choice-zone.right:hover { background: rgba(16,185,129,0.12); }
-
-  .choice-zone .stButton { width: 100%; height: 100%; }
-  .choice-zone .stButton > button {
-    width: 100% !important;
-    height: 100% !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-    color: rgba(255,255,255,0.65) !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.03em !important;
-    text-transform: uppercase !important;
-  }
-  .choice-zone.left .stButton > button { text-align: left !important; padding-left: 14px !important; }
-  .choice-zone.right .stButton > button { text-align: right !important; padding-right: 14px !important; }
-  .choice-zone .stButton > button:hover { color: rgba(255,255,255,0.92) !important; }
-
-  /* Make code editor (custom component iframe) match style */
-  div[data-testid="stCustomComponentV1"] iframe {
+  .number-btn {
+    width: 52px;
+    height: 52px;
     border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.14);
-    background: rgba(0,0,0,0.28);
-    box-shadow: 0 14px 34px rgba(0,0,0,0.38);
+    border: 1px solid rgba(255,255,255,0.12);
+    background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    color: rgba(255,255,255,0.75);
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
-  /* Buttons */
+  .number-btn:hover {
+    border-color: rgba(0,255,213,0.5);
+    background: linear-gradient(160deg, rgba(0,255,213,0.12), rgba(0,255,213,0.04));
+    color: #00ffd5;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,255,213,0.20);
+  }
+
+  .number-btn.active {
+    border-color: rgba(0,255,213,0.8);
+    background: linear-gradient(160deg, rgba(0,255,213,0.25), rgba(0,255,213,0.10));
+    color: #00ffd5;
+    box-shadow: 0 0 20px rgba(0,255,213,0.30);
+  }
+
+  .number-btn.empty {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  /* ===== TikTok-style fullscreen card ===== */
+  .swipe-card-container {
+    position: relative;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    min-height: 70vh;
+  }
+
+  .swipe-card {
+    position: relative;
+    width: 100%;
+    min-height: 65vh;
+    border-radius: 28px;
+    border: 2px solid rgba(255,255,255,0.10);
+    background: linear-gradient(165deg, rgba(18,20,30,0.98), rgba(12,14,22,0.96));
+    box-shadow:
+      0 30px 80px rgba(0,0,0,0.50),
+      0 0 0 1px rgba(255,255,255,0.04) inset;
+    overflow: hidden;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+  }
+
+  .swipe-card.hover-left {
+    border-color: rgba(239,68,68,0.7);
+    background: linear-gradient(165deg, rgba(50,15,20,0.98), rgba(25,10,15,0.96));
+    box-shadow:
+      0 30px 80px rgba(239,68,68,0.25),
+      0 0 60px rgba(239,68,68,0.10) inset;
+  }
+
+  .swipe-card.hover-right {
+    border-color: rgba(16,185,129,0.7);
+    background: linear-gradient(165deg, rgba(10,40,30,0.98), rgba(8,25,20,0.96));
+    box-shadow:
+      0 30px 80px rgba(16,185,129,0.25),
+      0 0 60px rgba(16,185,129,0.10) inset;
+  }
+
+  .swipe-card-inner {
+    padding: 32px 36px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .swipe-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .swipe-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.85);
+  }
+
+  .swipe-badge.primary {
+    border-color: rgba(0,255,213,0.5);
+    background: rgba(0,255,213,0.12);
+    color: #00ffd5;
+  }
+
+  .swipe-card-body {
+    color: rgba(255,255,255,0.92);
+    font-size: 16px;
+    line-height: 1.75;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+
+  .swipe-card-body::-webkit-scrollbar {
+    width: 6px;
+  }
+  .swipe-card-body::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.04);
+    border-radius: 3px;
+  }
+  .swipe-card-body::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 3px;
+  }
+
+  /* Zone hints */
+  .zone-hints {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .zone-hint {
+    flex: 1;
+    padding: 18px 24px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+  }
+
+  .zone-hint.left {
+    color: #ef4444;
+    background: linear-gradient(0deg, rgba(239,68,68,0.15), transparent);
+  }
+
+  .zone-hint.right {
+    color: #10b981;
+    background: linear-gradient(0deg, rgba(16,185,129,0.15), transparent);
+  }
+
+  .swipe-card.hover-left .zone-hint.left { opacity: 1; }
+  .swipe-card.hover-right .zone-hint.right { opacity: 1; }
+
+  /* Click zones overlay */
+  .click-zones {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    z-index: 10;
+  }
+
+  .click-zone {
+    flex: 1;
+    cursor: pointer;
+  }
+
+  /* ===== Utilities ===== */
+  .k-card {
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 16px;
+    padding: 16px 18px;
+    background: rgba(255,255,255,0.035);
+    box-shadow: 0 14px 35px rgba(0,0,0,0.30);
+    backdrop-filter: blur(12px);
+  }
+
+  .k-muted { color: rgba(255,255,255,0.65); }
+  .k-title { font-weight: 800; letter-spacing: -0.02em; color: #fff; }
+
+  .k-badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.05);
+    margin-right: 6px;
+  }
+  .k-badge.ok { border-color: rgba(34,197,94,0.55); background: rgba(34,197,94,0.12); color: #22c55e; }
+  .k-badge.warn { border-color: rgba(245,158,11,0.55); background: rgba(245,158,11,0.12); color: #f59e0b; }
+  .k-badge.err { border-color: rgba(239,68,68,0.55); background: rgba(239,68,68,0.12); color: #ef4444; }
+
+  /* ===== Workbench styling ===== */
+  div[data-testid="stCustomComponentV1"] iframe {
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.30);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.40);
+  }
+
   div.stButton > button {
-    border-radius: 12px !important;
-    border: 1px solid rgba(255,255,255,0.14) !important;
-    background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)) !important;
-    color: rgba(255,255,255,0.92) !important;
-    padding: 0.60rem 0.85rem !important;
-    transition: transform .06s ease, background .18s ease, border-color .18s ease;
+    border-radius: 14px !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02)) !important;
+    color: rgba(255,255,255,0.90) !important;
+    font-weight: 600 !important;
+    padding: 0.65rem 1rem !important;
+    transition: all 0.15s ease;
   }
   div.stButton > button:hover {
-    border-color: rgba(255,255,255,0.22) !important;
-    background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03)) !important;
+    border-color: rgba(0,255,213,0.4) !important;
+    background: linear-gradient(180deg, rgba(0,255,213,0.10), rgba(0,255,213,0.03)) !important;
+    color: #00ffd5 !important;
     transform: translateY(-1px);
   }
-  div.stButton > button:active { transform: translateY(0px); }
 
-  /* Inputs / selects */
   div[data-baseweb="input"] input,
   div[data-baseweb="textarea"] textarea {
-    border-radius: 12px !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
     background: rgba(255,255,255,0.03) !important;
   }
 
-  /* Tabs look */
   button[data-baseweb="tab"] {
     border-radius: 999px !important;
-    margin-right: 6px !important;
-    padding-top: 6px !important;
-    padding-bottom: 6px !important;
+    margin-right: 8px !important;
+    padding: 8px 16px !important;
+    font-weight: 600 !important;
+  }
+
+  /* Hero section */
+  .hero-section {
+    text-align: center;
+    padding: 24px 16px 8px;
+    margin-bottom: 16px;
+  }
+
+  .hero-title {
+    font-size: 2.2rem;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.75) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+    color: rgba(255,255,255,0.55);
+    font-weight: 500;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .stat-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .stat-value {
+    font-weight: 700;
+    font-size: 14px;
+    color: #00ffd5;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: rgba(255,255,255,0.55);
   }
 </style>
         """,
@@ -277,7 +442,6 @@ def _render_tests_block(tests_payload: Any):
 
 def _get_query_param(name: str) -> str:
     try:
-        # Streamlit >= 1.30
         return (st.query_params.get(name) or '').strip()
     except Exception:
         return (st.experimental_get_query_params().get(name, [''])[0] or '').strip()
@@ -286,22 +450,17 @@ def _get_query_param(name: str) -> str:
 def _init_state():
     st.session_state.setdefault('me', None)
     st.session_state.setdefault('task', None)
-    st.session_state.setdefault('task_type', 24)
-    st.session_state.setdefault('last_task_type', None)
-    st.session_state.setdefault('pinned_task_id', None)
-    st.session_state.setdefault('candidate_tasks', [])
+    st.session_state.setdefault('task_type', None)
+    st.session_state.setdefault('current_card', None)
     st.session_state.setdefault('code', '')
     st.session_state.setdefault('messages', [])
     st.session_state.setdefault('analysis', None)
     st.session_state.setdefault('tests', None)
-    # Avoid repeats within a Streamlit session (per task_type)
-    st.session_state.setdefault('seen_task_ids', {})  # dict[int, list[int]]
-    # Hint ladder progress (per task_id)
-    st.session_state.setdefault('hint_level_by_task', {})  # dict[int, int]
+    st.session_state.setdefault('seen_task_ids', {})
+    st.session_state.setdefault('hint_level_by_task', {})
     st.session_state.setdefault('history_loaded', False)
     st.session_state.setdefault('history_items', [])
-    st.session_state.setdefault('history_selected', None)
-    st.session_state.setdefault('layout_mode', 'Фокус')  # Фокус|Разделить
+    st.session_state.setdefault('swipe_action', None)
 
 
 def _render_task_html(task: dict[str, Any]):
@@ -309,12 +468,10 @@ def _render_task_html(task: dict[str, Any]):
     if not html:
         st.info("У условия нет HTML-контента.")
         return
-    # IMPORTANT: avoid inner iframe scrollbars (components.html) — render directly
-    # so the page scroll is the only scroll.
     st.markdown(
         f"""
-<div class="k-card" style="padding: 16px 16px;">
-  <div style="color: rgba(255,255,255,0.92); line-height: 1.65; font-size: 15px;">
+<div class="k-card" style="padding: 18px 20px;">
+  <div style="color: rgba(255,255,255,0.92); line-height: 1.7; font-size: 15px;">
     {html}
   </div>
 </div>
@@ -336,12 +493,9 @@ def _register_seen_task(task_type: int, task_id: int):
         seen.append(int(task_id))
 
 
-def _pull_next_candidate(client: PlatformClient, *, task_type: int, pinned_id: int | None = None) -> dict[str, Any] | None:
+def _pull_random_task(client: PlatformClient, *, task_type: int) -> dict[str, Any] | None:
     seen = st.session_state['seen_task_ids'].get(int(task_type), []) or []
-    if pinned_id is not None:
-        resp = client.stream_start(task_type=int(task_type), exclude_task_ids=seen, task_id=int(pinned_id))
-        st.session_state['pinned_task_id'] = None
-    elif not seen:
+    if not seen:
         resp = client.stream_start(task_type=int(task_type), exclude_task_ids=seen)
     else:
         resp = client.stream_next(task_type=int(task_type), exclude_task_ids=seen)
@@ -353,18 +507,6 @@ def _pull_next_candidate(client: PlatformClient, *, task_type: int, pinned_id: i
     return None
 
 
-def _ensure_candidate_tasks(client: PlatformClient, *, task_type: int, target: int = 3):
-    candidates = st.session_state.get('candidate_tasks') or []
-    pinned_id = st.session_state.get('pinned_task_id')
-    while len(candidates) < int(target):
-        t = _pull_next_candidate(client, task_type=int(task_type), pinned_id=pinned_id)
-        pinned_id = None
-        if not t:
-            break
-        candidates.append(t)
-    st.session_state['candidate_tasks'] = candidates
-
-
 def _check_answer_match(expected_raw: str, given_raw: str) -> tuple[bool, list[str]]:
     expected_raw = (expected_raw or '').strip()
     if not expected_raw:
@@ -374,6 +516,134 @@ def _check_answer_match(expected_raw: str, given_raw: str) -> tuple[bool, list[s
     normalized_expected = [v for v in normalized_expected if v != '']
     normalized_given = normalize_answer_value(given_raw)
     return normalized_given in normalized_expected and normalized_given != '', normalized_expected
+
+
+def _render_swipe_card(task: dict[str, Any], card_key: str) -> str | None:
+    """
+    Render TikTok-style swipe card with left/right click zones.
+    Returns 'skip' or 'accept' or None.
+    """
+    task_id = task.get('task_id') or 0
+    task_number = task.get('task_number') or '?'
+    source_url = task.get('source_url') or ''
+    site_task_id = task.get('site_task_id') or ''
+    content_html = (task.get('content_html') or '').strip()
+
+    # Build header badges
+    header_html = f'<span class="swipe-badge primary">№{task_number}</span>'
+    header_html += f'<span class="swipe-badge">ID {task_id}</span>'
+    if source_url:
+        header_html += f'<a href="{source_url}" target="_blank" class="swipe-badge" style="text-decoration:none;color:inherit;">Источник ↗</a>'
+    if site_task_id:
+        header_html += f'<span class="swipe-badge">{site_task_id}</span>'
+
+    # Interactive card with JavaScript
+    card_html = f"""
+    <div class="swipe-card-container">
+      <div class="swipe-card" id="swipe-card-{card_key}">
+        <div class="swipe-card-inner">
+          <div class="swipe-card-header">
+            {header_html}
+          </div>
+          <div class="swipe-card-body">
+            {content_html}
+          </div>
+        </div>
+        <div class="zone-hints">
+          <div class="zone-hint left">← Пропустить</div>
+          <div class="zone-hint right">Решать →</div>
+        </div>
+        <div class="click-zones">
+          <div class="click-zone" id="zone-left-{card_key}"></div>
+          <div class="click-zone" id="zone-right-{card_key}"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    (function() {{
+      const card = document.getElementById('swipe-card-{card_key}');
+      const zoneLeft = document.getElementById('zone-left-{card_key}');
+      const zoneRight = document.getElementById('zone-right-{card_key}');
+
+      if (!card || !zoneLeft || !zoneRight) return;
+
+      zoneLeft.addEventListener('mouseenter', () => {{
+        card.classList.remove('hover-right');
+        card.classList.add('hover-left');
+      }});
+
+      zoneRight.addEventListener('mouseenter', () => {{
+        card.classList.remove('hover-left');
+        card.classList.add('hover-right');
+      }});
+
+      card.addEventListener('mouseleave', () => {{
+        card.classList.remove('hover-left', 'hover-right');
+      }});
+
+      zoneLeft.addEventListener('click', (e) => {{
+        e.stopPropagation();
+        card.style.transform = 'translateX(-120%) rotate(-15deg)';
+        card.style.opacity = '0';
+        setTimeout(() => {{
+          window.parent.postMessage({{ type: 'swipe_action', action: 'skip', key: '{card_key}' }}, '*');
+        }}, 200);
+      }});
+
+      zoneRight.addEventListener('click', (e) => {{
+        e.stopPropagation();
+        card.style.transform = 'translateX(120%) rotate(15deg)';
+        card.style.opacity = '0';
+        setTimeout(() => {{
+          window.parent.postMessage({{ type: 'swipe_action', action: 'accept', key: '{card_key}' }}, '*');
+        }}, 200);
+      }});
+    }})();
+    </script>
+    """
+
+    # Render and listen for action
+    components.html(card_html, height=650, scrolling=False)
+
+    # Check for action via query params (workaround for Streamlit)
+    action = st.session_state.get('swipe_action')
+    if action:
+        st.session_state['swipe_action'] = None
+        return action
+
+    return None
+
+
+def _render_number_picker(counts: dict[int, int], current: int | None) -> int | None:
+    """Render beautiful number picker panel. Returns selected number or None."""
+    buttons_html = ""
+    for n in range(1, 28):
+        count = counts.get(n, 0)
+        active_class = "active" if n == current else ""
+        empty_class = "empty" if count == 0 else ""
+        title = f"{count} заданий" if count > 0 else "Нет заданий"
+        buttons_html += f'<button class="number-btn {active_class} {empty_class}" data-num="{n}" title="{title}" {"disabled" if count == 0 else ""}>{n}</button>'
+
+    picker_html = f"""
+    <div class="number-picker-panel" id="number-picker">
+      {buttons_html}
+    </div>
+    <script>
+    (function() {{
+      const panel = document.getElementById('number-picker');
+      if (!panel) return;
+      panel.querySelectorAll('.number-btn:not(.empty)').forEach(btn => {{
+        btn.addEventListener('click', () => {{
+          const num = btn.getAttribute('data-num');
+          window.parent.postMessage({{ type: 'select_number', number: parseInt(num) }}, '*');
+        }});
+      }});
+    }})();
+    </script>
+    """
+    components.html(picker_html, height=100, scrolling=False)
+    return None
 
 
 def main():
@@ -406,15 +676,8 @@ def main():
 
     user = (st.session_state['me'] or {}).get('user') or {}
     username = user.get('username') or 'пользователь'
-    role = user.get('role') or ''
 
-    if qp_task_type:
-        try:
-            st.session_state['task_type'] = int(qp_task_type)
-        except Exception:
-            pass
-
-    # Load stats so user sees which task numbers exist in DB
+    # Load stats
     counts: dict[int, int] = {}
     try:
         stats = client.get_task_stats()
@@ -428,201 +691,165 @@ def main():
     except Exception:
         counts = {}
 
-    if counts and int(st.session_state.get('task_type') or 0) not in counts:
-        st.session_state['task_type'] = int(sorted(counts.keys())[0])
-
-    # LLM info for status (best-effort)
-    llm_info = None
-    try:
-        resp = client.llm_info()
-        llm_info = (resp.get('llm') or {}) if isinstance(resp, dict) else None
-    except Exception:
-        llm_info = get_llm_info()
-
-    pinned_id: int | None = None
-    if qp_task_id:
+    # Handle query param task_type
+    if qp_task_type and st.session_state.get('task_type') is None:
         try:
-            pinned_id = int(qp_task_id)
+            tt = int(qp_task_type)
+            if counts.get(tt, 0) > 0:
+                st.session_state['task_type'] = tt
         except Exception:
-            pinned_id = None
+            pass
 
-    if pinned_id and st.session_state.get('pinned_task_id') is None:
-        st.session_state['pinned_task_id'] = int(pinned_id)
+    task = st.session_state.get('task')
+    task_type = st.session_state.get('task_type')
+    current_card = st.session_state.get('current_card')
 
-    # ===== Top bar =====
-    left, mid, right = st.columns([1.35, 1.6, 1.05], gap="large")
-    with left:
-        st.markdown("## Тренажёр")
+    # ===== STATE: No task type selected — show picker =====
+    if task_type is None and task is None:
         st.markdown(
-            "<div class='k-card'>"
-            f"<div class='k-title'>Привет, {username}</div>"
-            "<div class='k-muted' style='margin-top:4px'>Решай спокойно: код → запуск → проверка → подсказки.</div>"
-            "</div>",
+            """
+            <div class="hero-section">
+              <div class="hero-title">Тренажёр КЕГЭ</div>
+              <div class="hero-subtitle">Выбери номер задания и начни тренировку</div>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 
-    with mid:
-        st.markdown("### Панель выбора задания")
-        st.markdown("<div class='k-panel'>", unsafe_allow_html=True)
-        options = list(range(1, 28))
-
-        def _fmt(n: int) -> str:
-            c = counts.get(int(n), 0)
-            return f"№{n} · в базе: {c}"
-
-        task_type = st.selectbox(
-            "Номер задания",
-            options=options,
-            index=max(0, min(len(options) - 1, int(st.session_state.get('task_type') or 24) - 1)),
-            format_func=_fmt,
-            key="task_type_picker",
-        )
-        st.session_state['task_type'] = int(task_type)
-        st.session_state['seen_task_ids'].setdefault(int(task_type), [])
-        if counts and counts.get(int(task_type), 0) <= 0:
-            st.warning("Для этого номера заданий пока нет задач в базе. Выбери другой номер или наполни `Tasks`.")
-        st.markdown("</div>", unsafe_allow_html=True)
-
-        st.markdown("")
-        st.radio(
-            "Режим",
-            options=["Фокус", "Разделить"],
-            horizontal=True,
-            key="layout_mode",
-            help="Фокус: рабочая зона на всю ширину, условие сворачивается.\nРазделить: условие слева, код/запуск справа.",
+        # Stats bar
+        total_tasks = sum(counts.values())
+        available_numbers = len([n for n, c in counts.items() if c > 0])
+        st.markdown(
+            f"""
+            <div class="stats-bar">
+              <div class="stat-item">
+                <span class="stat-value">{total_tasks}</span>
+                <span class="stat-label">заданий в базе</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">{available_numbers}</span>
+                <span class="stat-label">номеров доступно</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">{username}</span>
+                <span class="stat-label">пользователь</span>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
-    with right:
-        badges = []
-        badges.append(_badge(f"раннер: {'ON' if is_runner_enabled() else 'OFF'}", "ok" if is_runner_enabled() else "warn"))
-        if isinstance(llm_info, dict) and llm_info.get('configured') and (llm_info.get('picked') or {}).get('provider'):
-            picked = llm_info.get('picked') or {}
-            badges.append(_badge(f"LLM: {picked.get('provider')}", "ok"))
-        else:
-            badges.append(_badge("LLM: OFF", "warn"))
-        st.markdown("<div class='k-card'>" + "".join(badges) + "</div>", unsafe_allow_html=True)
+        st.markdown("#### Выбери номер задания")
 
-        with st.expander("Диагностика", expanded=False):
-            env_flag = (os.environ.get('TRAINER_ENABLE_RUNNER') or '').strip()
-            st.caption(f"role: `{role}`")
-            st.caption(f"TRAINER_ENABLE_RUNNER: `{env_flag!r}`")
-            if st.button("Проверить LLM", use_container_width=True):
-                try:
-                    pr = client.llm_ping()
-                    ans = (pr.get('answer') or '') if isinstance(pr, dict) else ''
-                    st.success(f"Ответ: {str(ans).strip()[:80]}")
-                except Exception:
-                    llm = get_llm_client()
-                    if not llm:
-                        st.error("LLM клиент не создан (проверь env).")
-                    else:
-                        try:
-                            ans = llm.chat(
-                                messages=[{'role': 'system', 'content': 'Answer with a single word OK.'}, {'role': 'user', 'content': 'ping'}],
-                                temperature=0.0,
-                                max_tokens=5,
-                            )
-                            st.success(f"Ответ: {str(ans).strip()[:80]}")
-                        except Exception as e:
-                            st.error(f"Ошибка LLM: {e}")
-
-    st.markdown("")
-
-    # Track task_type changes
-    prev_task_type = st.session_state.get('last_task_type')
-    if prev_task_type is None:
-        st.session_state['last_task_type'] = int(task_type)
-    elif int(prev_task_type) != int(task_type):
-        st.session_state['last_task_type'] = int(task_type)
-        st.session_state['task'] = None
-        st.session_state['candidate_tasks'] = []
-        st.session_state['pinned_task_id'] = None
-        _reset_workbench_state()
-
-    st.markdown("")
-
-    task = st.session_state.get('task')
-    if not task:
-        st.markdown("### Карточки выбора")
-        if counts and counts.get(int(task_type), 0) <= 0:
-            st.info("Выбери номер, где есть задания — карточки появятся автоматически.")
-            return
-
-        _ensure_candidate_tasks(client, task_type=int(task_type), target=3)
-        candidates = st.session_state.get('candidate_tasks') or []
-
-        if not candidates:
-            st.info("Задач не найдено. Попробуй другой номер.")
-            return
-
-        st.markdown("<div class='task-choice-stack'>", unsafe_allow_html=True)
-        for idx, cand in enumerate(candidates):
-            c_tid = int(cand.get('task_id') or 0)
-            src_bits = []
-            if cand.get("source_url"):
-                src_bits.append(f"<a href='{cand.get('source_url')}' target='_blank'>Источник</a>")
-            if cand.get("site_task_id"):
-                src_bits.append(f"site_id: {cand.get('site_task_id')}")
-            body_preview = (cand.get('content_html') or '').strip()
-            if len(body_preview) > 550:
-                body_preview = body_preview[:550] + "…"
-
-            st.markdown(
-                "<div class='task-choice-card'>"
-                "<div class='task-choice-content'>"
-                "<div class='task-choice-header'>"
-                + _badge(f"№{cand.get('task_number')}", "ok")
-                + _badge(f"ID {cand.get('task_id')}", "ok")
-                + (f"<span class='k-muted'>{' · '.join(src_bits)}</span>" if src_bits else "<span class='k-muted'>Источник не указан</span>")
-                + "</div>"
-                + f"<div class='task-choice-body'>{body_preview}</div>"
-                + "</div>",
-                unsafe_allow_html=True,
-            )
-
-            left_col, right_col = st.columns([1, 1], gap="small")
-            with left_col:
-                st.markdown("<div class='choice-zone left'>", unsafe_allow_html=True)
-                if st.button("Пропустить", use_container_width=True, key=f"skip_{c_tid}_{idx}"):
-                    st.session_state['candidate_tasks'] = [c for c in candidates if int(c.get('task_id') or 0) != c_tid]
-                    _ensure_candidate_tasks(client, task_type=int(task_type), target=3)
+        # Number picker with Streamlit buttons (for reliable interaction)
+        cols = st.columns(9)
+        for i, n in enumerate(range(1, 28)):
+            col_idx = i % 9
+            count = counts.get(n, 0)
+            with cols[col_idx]:
+                disabled = count == 0
+                label = f"{n}" if count > 0 else f"~{n}~"
+                if st.button(
+                    label,
+                    key=f"pick_{n}",
+                    disabled=disabled,
+                    use_container_width=True,
+                    help=f"{count} заданий" if count > 0 else "Нет заданий",
+                ):
+                    st.session_state['task_type'] = n
+                    st.session_state['current_card'] = None
                     st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
-            with right_col:
-                st.markdown("<div class='choice-zone right'>", unsafe_allow_html=True)
-                if st.button("Выполнять", use_container_width=True, key=f"accept_{c_tid}_{idx}"):
-                    st.session_state['task'] = cand
-                    st.session_state['candidate_tasks'] = []
-                    _reset_workbench_state()
-                    if cand.get('task_id'):
-                        st.session_state['hint_level_by_task'][int(cand.get('task_id'))] = 0
-                    st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
 
-            st.markdown("</div>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
         return
 
-    # ===== Task actions (active task) =====
-    a1, a2, a3, a4 = st.columns([1, 1, 1, 2], gap="small")
-    if a1.button("↩ Вернуться к выбору", use_container_width=True):
-        st.session_state['task'] = None
-        st.session_state['candidate_tasks'] = []
-        _reset_workbench_state()
-        st.rerun()
+    # ===== STATE: Task type selected, no active task — show swipe card =====
+    if task is None:
+        # Load card if needed
+        if current_card is None:
+            card = _pull_random_task(client, task_type=int(task_type))
+            if card:
+                st.session_state['current_card'] = card
+                current_card = card
+            else:
+                st.warning("Задания закончились. Попробуй другой номер.")
+                if st.button("← Выбрать другой номер"):
+                    st.session_state['task_type'] = None
+                    st.session_state['current_card'] = None
+                    st.rerun()
+                return
 
-    if a2.button("→ Следующее (через карточки)", use_container_width=True):
-        st.session_state['task'] = None
-        st.session_state['candidate_tasks'] = []
-        _reset_workbench_state()
-        _ensure_candidate_tasks(client, task_type=int(task_type), target=3)
-        st.rerun()
+        # Header
+        st.markdown(
+            f"""
+            <div class="hero-section" style="padding-bottom:0;">
+              <div class="hero-title">Задание №{task_type}</div>
+              <div class="hero-subtitle">Нажми на левую половину чтобы пропустить, на правую — чтобы решать</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-    if a3.button("💾 Сохранить", use_container_width=True):
-        task = st.session_state.get('task') or {}
-        if not task:
-            st.warning("Сначала выбери задание.")
-        else:
+        # Back button
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col1:
+            if st.button("← Сменить номер", use_container_width=True):
+                st.session_state['task_type'] = None
+                st.session_state['current_card'] = None
+                st.rerun()
+
+        # Render the swipe card
+        card_key = f"card_{current_card.get('task_id', 0)}"
+        _render_swipe_card(current_card, card_key)
+
+        # Action buttons as fallback (below card)
+        st.markdown("")
+        bcol1, bcol2 = st.columns(2, gap="large")
+        with bcol1:
+            if st.button("⬅ Пропустить", use_container_width=True, key="btn_skip"):
+                st.session_state['current_card'] = None
+                st.rerun()
+        with bcol2:
+            if st.button("Решать ➡", use_container_width=True, key="btn_accept"):
+                st.session_state['task'] = current_card
+                st.session_state['current_card'] = None
+                _reset_workbench_state()
+                st.rerun()
+
+        return
+
+    # ===== STATE: Active task — workbench =====
+    tid = int(task.get('task_id') or 0)
+    knowledge = load_task_knowledge(tid) if tid else None
+    tests = (knowledge or {}).get('tests') if isinstance(knowledge, dict) else None
+
+    # Header
+    st.markdown(
+        f"""
+        <div style="display:flex; align-items:center; gap:16px; margin-bottom:16px; flex-wrap:wrap;">
+          <span class="swipe-badge primary" style="font-size:15px;">№{task.get('task_number')}</span>
+          <span class="swipe-badge">ID {task.get('task_id')}</span>
+          <span class="k-muted">Решаем задание</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Action bar
+    a1, a2, a3 = st.columns([1, 1, 1], gap="small")
+    with a1:
+        if st.button("← К выбору карточки", use_container_width=True):
+            st.session_state['task'] = None
+            st.session_state['current_card'] = None
+            _reset_workbench_state()
+            st.rerun()
+    with a2:
+        if st.button("→ Следующее задание", use_container_width=True):
+            st.session_state['task'] = None
+            st.session_state['current_card'] = None
+            _reset_workbench_state()
+            st.rerun()
+    with a3:
+        if st.button("💾 Сохранить прогресс", use_container_width=True):
             try:
                 client.save_session(
                     task_id=task.get('task_id'),
@@ -636,352 +863,277 @@ def main():
                 st.toast("Сохранено")
             except Exception as e:
                 st.error(f"Не удалось сохранить: {e}")
-    a4.markdown("<div class='k-muted' style='padding-top:10px'>Помощник и история — справа. Код и запуск — в «Решение».</div>", unsafe_allow_html=True)
 
-    tid = int(task.get('task_id') or 0)
-    knowledge = load_task_knowledge(tid) if tid else None
-    tests = (knowledge or {}).get('tests') if isinstance(knowledge, dict) else None
+    # Main workbench
+    tab_task, tab_solve, tab_help, tab_hist = st.tabs(["📄 Условие", "💻 Решение", "💡 Помощник", "📚 История"])
 
-    layout_mode = (st.session_state.get("layout_mode") or "Фокус").strip()
+    with tab_task:
+        _render_task_html(task)
+        if task.get('source_url'):
+            st.markdown(f"[Открыть источник ↗]({task.get('source_url')})")
 
-    # Layout:
-    # - Focus: no empty space; statement collapses into expander above the workbench.
-    # - Split: statement on the left, workbench on the right.
-    if layout_mode == "Разделить":
-        left_pane, right_pane = st.columns([1.05, 1.25], gap="large")
-        with left_pane:
-            st.markdown("### Условие")
-            src_bits = []
-            if task.get("source_url"):
-                src_bits.append(f"[Источник]({task.get('source_url')})")
-            if task.get("site_task_id"):
-                src_bits.append(f"site_id: `{task.get('site_task_id')}`")
-            st.markdown(
-                "<div class='k-card'>"
-                + _badge(f"№{task.get('task_number')}", "ok")
-                + _badge(f"ID {task.get('task_id')}", "ok")
-                + (" ".join(src_bits) if src_bits else "<span class='k-muted'>Источник не указан.</span>")
-                + "</div>",
-                unsafe_allow_html=True,
-            )
-            _render_task_html(task)
-        workbench_container = right_pane
-    else:
-        # Focus mode
-        st.markdown("### Рабочая зона")
-        with st.expander("Условие (свернуть/развернуть)", expanded=False):
-            _render_task_html(task)
-        workbench_container = st.container()
+    with tab_solve:
+        st.markdown("### Код")
 
-    with workbench_container:
-        tab_solve, tab_help, tab_hist = st.tabs(["Решение", "Помощник", "История"])
+        code_val = ""
+        try:
+            from streamlit_ace import st_ace
+            code_val = st_ace(
+                key="code_editor",
+                value=st.session_state.get("code") or "",
+                language="python",
+                theme="dracula",
+                keybinding="vscode",
+                height=380,
+                min_lines=18,
+                font_size=14,
+                tab_size=4,
+                show_gutter=True,
+                wrap=True,
+                auto_update=False,
+            ) or ""
+        except Exception:
+            code_val = st.text_area(
+                "Код",
+                value=st.session_state.get('code') or "",
+                height=380,
+                placeholder="print('hello')",
+            ) or ""
 
-        with tab_solve:
-            st.markdown("### Код")
-            st.caption("Пишешь код здесь и запускаешь ниже — без переключения вкладок.")
+        if len(code_val) > 20000:
+            st.warning("Код слишком большой, обрезаю до 20 000 символов.")
+            code_val = code_val[:20000]
+        st.session_state["code"] = code_val
 
-            code_val = ""
-            try:
-                from streamlit_ace import st_ace  # type: ignore
-                code_val = st_ace(
-                    key="code_editor",
-                    value=st.session_state.get("code") or "",
-                    language="python",
-                    theme="dracula",
-                    keybinding="vscode",
-                    height=420,
-                    min_lines=20,
-                    font_size=14,
-                    tab_size=4,
-                    show_gutter=True,
-                    wrap=True,
-                    auto_update=False,  # no rerun while typing
-                ) or ""
-            except Exception:
-                code_val = st.text_area(
-                    "Код",
-                    value=st.session_state.get('code') or "",
-                    height=420,
-                    placeholder="print('hello')",
-                ) or ""
+        c1, c2, c3 = st.columns([1, 1, 1], gap="small")
+        if c1.button("🔍 Анализ кода", use_container_width=True, key="btn_analyze"):
+            st.session_state['analysis'] = analyze_python_code(st.session_state.get('code') or '')
+            hints = (st.session_state['analysis'] or {}).get('hints') or []
+            if hints:
+                st.session_state['messages'].append({'role': 'assistant', 'content': 'Что я заметил:\n\n- ' + '\n- '.join(hints[:4])})
+        if c2.button("🗑 Очистить", use_container_width=True, key="btn_clear_code"):
+            st.session_state['code'] = ''
+            st.session_state['analysis'] = None
+            st.session_state['tests'] = None
+        if c3.button("🔄 Сброс чата", use_container_width=True, key="btn_reset_help"):
+            st.session_state['messages'] = []
+            if tid:
+                st.session_state['hint_level_by_task'][tid] = 0
 
-            if len(code_val) > 20000:
-                st.warning("Код слишком большой, обрезаю до 20 000 символов.")
-                code_val = code_val[:20000]
-            st.session_state["code"] = code_val
+        if st.session_state.get('analysis'):
+            with st.expander("Результат анализа", expanded=False):
+                st.code(json.dumps(st.session_state['analysis'], ensure_ascii=False, indent=2), language="json")
 
-            c1, c2, c3 = st.columns([1, 1, 1], gap="small")
-            if c1.button("Проанализировать", use_container_width=True, key="btn_analyze"):
-                st.session_state['analysis'] = analyze_python_code(st.session_state.get('code') or '')
-                hints = (st.session_state['analysis'] or {}).get('hints') or []
-                if hints:
-                    st.session_state['messages'].append({'role': 'assistant', 'content': 'Что я заметил в коде:\n\n- ' + '\n- '.join(hints[:4])})
-            if c2.button("Очистить код", use_container_width=True, key="btn_clear_code"):
-                st.session_state['code'] = ''
-                st.session_state['analysis'] = None
-                st.session_state['tests'] = None
-            if c3.button("Сбросить чат/подсказки", use_container_width=True, key="btn_reset_help"):
-                st.session_state['messages'] = []
-                if tid:
-                    st.session_state['hint_level_by_task'][tid] = 0
+        st.markdown("### Проверка")
 
-            if st.session_state.get('analysis') is not None:
-                with st.expander("Анализ (MVP)", expanded=False):
-                    st.code(json.dumps(st.session_state['analysis'], ensure_ascii=False, indent=2), language="json")
+        if not is_runner_enabled():
+            st.warning("Запуск кода выключен. Включи `TRAINER_ENABLE_RUNNER=1`.")
+        else:
+            rt0, rt1, rt2 = st.tabs(["✅ Проверить ответ", "▶ Запустить код", "🧪 Тесты"])
 
-            st.markdown("### Запуск и проверка")
-            if not is_runner_enabled():
-                st.warning("Запуск кода выключен на сервере. Включи `TRAINER_ENABLE_RUNNER=1` в сервисе тренажёра.")
-            else:
-                rt0, rt1, rt2 = st.tabs(["Проверить ответ", "Запустить (stdin → stdout)", "Проверить тестами"])
-                with rt0:
-                    expected_answer = (task.get('answer') or '')
-                    st.caption("Сравнение идёт по нормализованным значениям (пробелы/регистр/форматы чисел).")
-                    user_answer = st.text_input("Ответ", value=st.session_state.get('answer_input') or "", key="answer_input")
-                    if st.button("✅ Проверить ответ", use_container_width=True, key="btn_check_answer"):
-                        if not expected_answer:
-                            st.warning("В базе нет правильного ответа для этой задачи.")
-                        elif not (user_answer or "").strip():
-                            st.warning("Введите ответ для проверки.")
-                        else:
-                            ok, variants = _check_answer_match(expected_answer, user_answer)
-                            if ok:
-                                st.success("Ответ верный.")
-                            else:
-                                st.error("Ответ неверный.")
-                                if variants:
-                                    st.caption("Подсказка: проверь формат ответа (число/строка, без лишних пробелов).")
-                with rt1:
-                    stdin_val = st.text_area(
-                        "Ввод (stdin)",
-                        value=st.session_state.get('run_stdin') or "",
-                        height=130,
-                        placeholder="Например:\n5\n1 2 3 4 5\n",
-                        key="run_stdin",
-                    )
-                    expect = st.text_area(
-                        "Ожидаемый вывод (необязательно)",
-                        value=st.session_state.get('run_expected') or "",
-                        height=90,
-                        placeholder="Если заполнишь — я сравню stdout (по .strip()).",
-                        key="run_expected",
-                    )
-                    # When widgets have keys, Streamlit manages st.session_state for them automatically.
-
-                    if st.button("▶ Запустить", use_container_width=True, key="btn_run_program"):
-                        res = run_python_program(code=st.session_state.get('code') or '', stdin=stdin_val, timeout_seconds=2.0)
-                        st.session_state['run_result'] = res
-
-                    res = st.session_state.get('run_result')
-                    if isinstance(res, dict):
-                        if res.get('ok'):
-                            st.success("Код выполнился.")
-                        else:
-                            st.error(f"Ошибка запуска: {res.get('error')}")
-                            if res.get('details'):
-                                st.code(str(res.get('details'))[:4000])
-
-                        out_col, err_col = st.columns(2, gap="small")
-                        out_col.markdown("**stdout**")
-                        out_col.code((res.get('stdout') or '')[:12000])
-                        err_txt = (res.get('stderr') or '')
-                        if err_txt:
-                            err_col.markdown("**stderr**")
-                            err_col.code(err_txt[:6000])
-
-                        if (expect or '').strip():
-                            got = (res.get('stdout') or '').strip()
-                            exp = (expect or '').strip()
-                            if got == exp:
-                                st.success("stdout совпал с ожидаемым.")
-                            else:
-                                st.warning("stdout НЕ совпал с ожидаемым.")
-
-                with rt2:
-                    if not tests:
-                        st.info("Для этой задачи пока нет тестов в knowledge. Добавим позже при наполнении данных.")
+            with rt0:
+                expected_answer = (task.get('answer') or '')
+                user_answer = st.text_input("Твой ответ", key="answer_input")
+                if st.button("Проверить", use_container_width=True, key="btn_check_answer"):
+                    if not expected_answer:
+                        st.warning("В базе нет правильного ответа.")
+                    elif not (user_answer or "").strip():
+                        st.warning("Введи ответ.")
                     else:
-                        st.caption("Для тестов добавь функцию `solve(s)`; раннер вызовет её на тестовых input и сравнит expected.")
-                        if st.button("🧪 Запустить тесты", use_container_width=True, key="btn_run_tests"):
-                            st.session_state['tests'] = run_python_solve_tests(code=st.session_state.get('code') or '', tests=tests)
-                        if st.session_state.get('tests') is not None:
-                            _render_tests_block(st.session_state.get('tests'))
+                        ok, _ = _check_answer_match(expected_answer, user_answer)
+                        if ok:
+                            st.success("✅ Верно!")
+                        else:
+                            st.error("❌ Неверно. Попробуй ещё.")
 
-        with tab_help:
-            # Hint progress
-            ladder = (knowledge or {}).get('hint_ladder') if isinstance(knowledge, dict) else None
-            max_lvl = 0
-            if isinstance(ladder, list):
-                for it in ladder:
-                    if isinstance(it, dict) and it.get('level') is not None:
-                        try:
-                            max_lvl = max(max_lvl, int(it.get('level') or 0))
-                        except Exception:
-                            continue
-                if max_lvl <= 0:
-                    max_lvl = len([it for it in ladder if isinstance(it, dict) and it.get('hint')])
-            cur_lvl = int((st.session_state.get('hint_level_by_task') or {}).get(tid, 0) or 0)
-            if max_lvl > 0:
-                st.progress(min(1.0, float(cur_lvl) / float(max_lvl)))
-                st.caption(f"Подсказки: уровень {cur_lvl}/{max_lvl}")
+            with rt1:
+                stdin_val = st.text_area("Ввод (stdin)", height=100, key="run_stdin", placeholder="5\n1 2 3 4 5")
+                expect = st.text_area("Ожидаемый вывод (опционально)", height=80, key="run_expected")
 
-            h1, h2 = st.columns([1.0, 1.0], gap="large")
-            with h1:
-                st.markdown("### Подсказки")
-                if st.button("Получить следующую подсказку", use_container_width=True, key="btn_next_hint"):
-                    t = st.session_state.get('task') or {}
-                    current_level = int((st.session_state.get('hint_level_by_task') or {}).get(tid, 0) or 0)
-                    next_hint = None
-                    next_level = current_level
-                    if isinstance(ladder, list) and ladder:
-                        sorted_ladder = []
-                        for item in ladder:
-                            if isinstance(item, dict) and item.get('hint'):
-                                try:
-                                    lvl = int(item.get('level') or 0)
-                                except Exception:
-                                    lvl = 0
-                                sorted_ladder.append((lvl, str(item.get('hint'))))
-                        sorted_ladder.sort(key=lambda x: (x[0] if x[0] else 10**9))
-                        if all(lvl == 0 for (lvl, _) in sorted_ladder):
-                            sorted_ladder = list(enumerate([h for (_, h) in sorted_ladder], start=1))
-                        for (lvl, htxt) in sorted_ladder:
-                            if int(lvl) > int(current_level):
-                                next_level = int(lvl)
-                                next_hint = htxt
-                                break
+                if st.button("▶ Запустить", use_container_width=True, key="btn_run"):
+                    res = run_python_program(code=st.session_state.get('code') or '', stdin=stdin_val, timeout_seconds=2.0)
+                    st.session_state['run_result'] = res
 
-                    if next_hint:
-                        st.session_state['hint_level_by_task'][tid] = next_level
-                        st.session_state['messages'].append({'role': 'assistant', 'content': f"Подсказка (уровень {next_level}): {next_hint}"})
+                res = st.session_state.get('run_result')
+                if isinstance(res, dict):
+                    if res.get('ok'):
+                        st.success("Выполнено")
                     else:
-                        # fallback: ask LLM for a guided question (without giving full solution)
-                        try:
-                            msgs = build_messages_for_help(
-                                task=t,
-                                code=st.session_state.get('code') or '',
-                                analysis=st.session_state.get('analysis'),
-                                history=(st.session_state.get('messages') or []) + [{'role': 'user', 'content': 'Дай следующую подсказку по шагам (не решение), задай наводящий вопрос.'}],
-                                knowledge=knowledge,
-                            )
-                            answer = None
-                            try:
-                                pr = client.llm_chat(
-                                    messages=msgs,
-                                    temperature=0.2,
-                                    max_tokens=500,
-                                    task_id=int(t.get('task_id') or 0) if t.get('task_id') else None,
-                                    task_type=int(t.get('task_number') or 0) if t.get('task_number') else None,
-                                )
-                                answer = (pr.get('answer') or '') if isinstance(pr, dict) else None
-                            except Exception:
-                                llm = get_llm_client()
-                                if llm:
-                                    answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=500)
-                            answer = (answer or '').strip() or 'Сформулируй, что именно ты считаешь ответом (строка/число) и какие входные данные.'
-                            st.session_state['messages'].append({'role': 'assistant', 'content': answer})
-                        except Exception as e:
-                            st.session_state['messages'].append({'role': 'assistant', 'content': f'Ошибка обращения к LLM: {e}'})
+                        st.error(f"Ошибка: {res.get('error')}")
+                        if res.get('details'):
+                            st.code(str(res.get('details'))[:3000])
 
-                with st.expander("Текущий код (preview)", expanded=False):
-                    st.code((st.session_state.get('code') or '')[:12000], language="python")
+                    st.markdown("**stdout:**")
+                    st.code((res.get('stdout') or '')[:8000])
+                    if res.get('stderr'):
+                        st.markdown("**stderr:**")
+                        st.code(res.get('stderr')[:4000])
 
-            with h2:
-                st.markdown("### Чат помощника")
-                for m in st.session_state.get('messages') or []:
-                    with st.chat_message(m.get('role') or 'assistant'):
-                        st.markdown(m.get('content') or '')
+                    if (expect or '').strip():
+                        if (res.get('stdout') or '').strip() == expect.strip():
+                            st.success("Вывод совпал!")
+                        else:
+                            st.warning("Вывод не совпал.")
 
-                prompt = st.chat_input("Напиши вопрос помощнику…")
-                if prompt:
-                    st.session_state['messages'].append({'role': 'user', 'content': prompt})
+            with rt2:
+                if not tests:
+                    st.info("Для этой задачи нет тестов.")
+                else:
+                    if st.button("🧪 Запустить тесты", use_container_width=True, key="btn_tests"):
+                        st.session_state['tests'] = run_python_solve_tests(code=st.session_state.get('code') or '', tests=tests)
+                    if st.session_state.get('tests'):
+                        _render_tests_block(st.session_state.get('tests'))
+
+    with tab_help:
+        ladder = (knowledge or {}).get('hint_ladder') if isinstance(knowledge, dict) else None
+        max_lvl = 0
+        if isinstance(ladder, list):
+            for it in ladder:
+                if isinstance(it, dict) and it.get('level'):
                     try:
-                        msgs = build_messages_for_help(
-                            task=task,
-                            code=st.session_state.get('code') or '',
-                            analysis=st.session_state.get('analysis'),
-                            history=st.session_state.get('messages'),
-                            knowledge=knowledge,
-                        )
-                        answer = None
-                        try:
-                            pr = client.llm_chat(
-                                messages=msgs,
-                                temperature=0.2,
-                                max_tokens=700,
-                                task_id=int(task.get('task_id') or 0) if task.get('task_id') else None,
-                                task_type=int(task.get('task_number') or 0) if task.get('task_number') else None,
-                            )
-                            answer = (pr.get('answer') or '') if isinstance(pr, dict) else None
-                        except Exception:
-                            llm = get_llm_client()
-                            if llm:
-                                answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=700)
-                        if not answer:
-                            st.session_state['messages'].append({'role': 'assistant', 'content': 'LLM пока не настроен. Скажи, что ты уже сделал и где застрял.'})
-                        else:
-                            answer = (answer or '').strip() or 'Не смог сформировать ответ. Попробуй переформулировать вопрос.'
-                            st.session_state['messages'].append({'role': 'assistant', 'content': answer})
-                    except Exception as e:
-                        st.session_state['messages'].append({'role': 'assistant', 'content': f'Ошибка обращения к LLM: {e}'})
-                    st.rerun()
+                        max_lvl = max(max_lvl, int(it.get('level') or 0))
+                    except Exception:
+                        continue
+            if max_lvl <= 0:
+                max_lvl = len([it for it in ladder if isinstance(it, dict) and it.get('hint')])
+        cur_lvl = int((st.session_state.get('hint_level_by_task') or {}).get(tid, 0) or 0)
+        if max_lvl > 0:
+            st.progress(min(1.0, float(cur_lvl) / float(max_lvl)))
+            st.caption(f"Подсказки: {cur_lvl}/{max_lvl}")
 
-        with tab_hist:
-            st.markdown("### История попыток")
-            if st.button("Обновить историю", use_container_width=True, key="btn_hist_refresh"):
-                st.session_state['history_loaded'] = False
-            if not st.session_state.get('history_loaded'):
+        if st.button("💡 Следующая подсказка", use_container_width=True, key="btn_hint"):
+            current_level = cur_lvl
+            next_hint = None
+            next_level = current_level
+            if isinstance(ladder, list) and ladder:
+                sorted_ladder = []
+                for item in ladder:
+                    if isinstance(item, dict) and item.get('hint'):
+                        try:
+                            lvl = int(item.get('level') or 0)
+                        except Exception:
+                            lvl = 0
+                        sorted_ladder.append((lvl, str(item.get('hint'))))
+                sorted_ladder.sort(key=lambda x: (x[0] if x[0] else 10**9))
+                if all(lvl == 0 for (lvl, _) in sorted_ladder):
+                    sorted_ladder = list(enumerate([h for (_, h) in sorted_ladder], start=1))
+                for (lvl, htxt) in sorted_ladder:
+                    if int(lvl) > int(current_level):
+                        next_level = int(lvl)
+                        next_hint = htxt
+                        break
+
+            if next_hint:
+                st.session_state['hint_level_by_task'][tid] = next_level
+                st.session_state['messages'].append({'role': 'assistant', 'content': f"Подсказка ({next_level}): {next_hint}"})
+            else:
                 try:
-                    h = client.list_sessions(limit=25)
-                    st.session_state['history_items'] = (h.get('sessions') or []) if isinstance(h, dict) else []
-                    st.session_state['history_loaded'] = True
-                except Exception as e:
-                    st.caption(f"История недоступна: {e}")
-                    st.session_state['history_items'] = []
-                    st.session_state['history_loaded'] = True
-
-            items = st.session_state.get('history_items') or []
-            if not items:
-                st.info("Пока нет сохранённых попыток.")
-            else:
-                options = []
-                for it in items:
-                    label = f"#{it.get('session_id')} · №{it.get('task_type')} · {it.get('created_at')}"
-                    options.append((label, it))
-                labels = [o[0] for o in options]
-                sel = st.selectbox("Открыть попытку", options=list(range(len(labels))), format_func=lambda i: labels[i], key="hist_sel")
-                sel_item = options[int(sel)][1]
-                if st.button("Загрузить выбранную", use_container_width=True, key="btn_hist_load"):
+                    msgs = build_messages_for_help(
+                        task=task,
+                        code=st.session_state.get('code') or '',
+                        analysis=st.session_state.get('analysis'),
+                        history=(st.session_state.get('messages') or []) + [{'role': 'user', 'content': 'Дай подсказку (не решение).'}],
+                        knowledge=knowledge,
+                    )
+                    answer = None
                     try:
-                        sid = int(sel_item.get('session_id') or 0)
-                        if sid:
-                            resp = client.get_session(sid)
-                            sess = (resp.get('session') or {}) if isinstance(resp, dict) else {}
-                            task_payload = resp.get('task') if isinstance(resp, dict) else None
+                        pr = client.llm_chat(messages=msgs, temperature=0.2, max_tokens=500, task_id=tid, task_type=int(task.get('task_number') or 0))
+                        answer = (pr.get('answer') or '') if isinstance(pr, dict) else None
+                    except Exception:
+                        llm = get_llm_client()
+                        if llm:
+                            answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=500)
+                    answer = (answer or '').strip() or 'Сформулируй, что уже сделал и где застрял.'
+                    st.session_state['messages'].append({'role': 'assistant', 'content': answer})
+                except Exception as e:
+                    st.session_state['messages'].append({'role': 'assistant', 'content': f'Ошибка: {e}'})
 
-                            if task_payload:
-                                st.session_state['task'] = task_payload
-                            else:
-                                tid2 = int(sess.get('task_id') or 0)
-                                if tid2:
-                                    t_resp = client.get_task(tid2)
-                                    tsk2 = t_resp.get('task') if isinstance(t_resp, dict) else None
-                                    if tsk2:
-                                        st.session_state['task'] = tsk2
+        st.markdown("### Чат")
+        for m in st.session_state.get('messages') or []:
+            with st.chat_message(m.get('role') or 'assistant'):
+                st.markdown(m.get('content') or '')
 
-                            st.session_state['code'] = (sess.get('code') or '')
-                            st.session_state['analysis'] = sess.get('analysis')
-                            st.session_state['tests'] = sess.get('tests')
-                            msgs = sess.get('messages')
-                            st.session_state['messages'] = msgs if isinstance(msgs, list) else []
+        prompt = st.chat_input("Задай вопрос помощнику…")
+        if prompt:
+            st.session_state['messages'].append({'role': 'user', 'content': prompt})
+            try:
+                msgs = build_messages_for_help(
+                    task=task,
+                    code=st.session_state.get('code') or '',
+                    analysis=st.session_state.get('analysis'),
+                    history=st.session_state.get('messages'),
+                    knowledge=knowledge,
+                )
+                answer = None
+                try:
+                    pr = client.llm_chat(messages=msgs, temperature=0.2, max_tokens=700, task_id=tid, task_type=int(task.get('task_number') or 0))
+                    answer = (pr.get('answer') or '') if isinstance(pr, dict) else None
+                except Exception:
+                    llm = get_llm_client()
+                    if llm:
+                        answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=700)
+                if not answer:
+                    st.session_state['messages'].append({'role': 'assistant', 'content': 'LLM не настроен.'})
+                else:
+                    st.session_state['messages'].append({'role': 'assistant', 'content': answer.strip()})
+            except Exception as e:
+                st.session_state['messages'].append({'role': 'assistant', 'content': f'Ошибка: {e}'})
+            st.rerun()
 
-                            if st.session_state.get('task') and st.session_state['task'].get('task_id'):
-                                st.session_state['hint_level_by_task'][int(st.session_state['task']['task_id'])] = 0
-                            st.rerun()
-                    except Exception as e:
-                        st.error(f"Не удалось открыть: {e}")
+    with tab_hist:
+        if st.button("Обновить историю", use_container_width=True, key="btn_hist_refresh"):
+            st.session_state['history_loaded'] = False
+        if not st.session_state.get('history_loaded'):
+            try:
+                h = client.list_sessions(limit=25)
+                st.session_state['history_items'] = (h.get('sessions') or []) if isinstance(h, dict) else []
+                st.session_state['history_loaded'] = True
+            except Exception as e:
+                st.caption(f"История недоступна: {e}")
+                st.session_state['history_items'] = []
+                st.session_state['history_loaded'] = True
+
+        items = st.session_state.get('history_items') or []
+        if not items:
+            st.info("Нет сохранённых попыток.")
+        else:
+            options = []
+            for it in items:
+                label = f"#{it.get('session_id')} · №{it.get('task_type')} · {it.get('created_at')}"
+                options.append((label, it))
+            labels = [o[0] for o in options]
+            sel = st.selectbox("Выбери попытку", options=list(range(len(labels))), format_func=lambda i: labels[i], key="hist_sel")
+            sel_item = options[int(sel)][1]
+            if st.button("Загрузить", use_container_width=True, key="btn_hist_load"):
+                try:
+                    sid = int(sel_item.get('session_id') or 0)
+                    if sid:
+                        resp = client.get_session(sid)
+                        sess = (resp.get('session') or {}) if isinstance(resp, dict) else {}
+                        task_payload = resp.get('task') if isinstance(resp, dict) else None
+
+                        if task_payload:
+                            st.session_state['task'] = task_payload
+                        else:
+                            tid2 = int(sess.get('task_id') or 0)
+                            if tid2:
+                                t_resp = client.get_task(tid2)
+                                tsk2 = t_resp.get('task') if isinstance(t_resp, dict) else None
+                                if tsk2:
+                                    st.session_state['task'] = tsk2
+
+                        st.session_state['code'] = (sess.get('code') or '')
+                        st.session_state['analysis'] = sess.get('analysis')
+                        st.session_state['tests'] = sess.get('tests')
+                        msgs = sess.get('messages')
+                        st.session_state['messages'] = msgs if isinstance(msgs, list) else []
+
+                        if st.session_state.get('task') and st.session_state['task'].get('task_id'):
+                            st.session_state['hint_level_by_task'][int(st.session_state['task']['task_id'])] = 0
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Не удалось открыть: {e}")
 
 
 if __name__ == '__main__':
     main()
-
