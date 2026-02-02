@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from typing import Any
 
@@ -18,6 +19,7 @@ from trainer_app.analyzers.python_static import analyze_python_code
 from trainer_app.knowledge import load_task_knowledge
 from trainer_app.llm.providers import get_llm_client, get_llm_info, build_messages_for_help
 from trainer_app.runner.sandbox import is_runner_enabled, run_python_solve_tests, run_python_program
+from app.lessons.utils import normalize_answer_value
 
 
 st.set_page_config(page_title="Тренажёр · AI помощник", layout="wide")
@@ -83,6 +85,87 @@ def _inject_css():
   .k-badge.ok { border-color: rgba(34,197,94,0.55); background: rgba(34,197,94,0.10); }
   .k-badge.warn { border-color: rgba(245,158,11,0.55); background: rgba(245,158,11,0.10); }
   .k-badge.err { border-color: rgba(239,68,68,0.55); background: rgba(239,68,68,0.10); }
+
+  .k-panel {
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 16px 16px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+    box-shadow: 0 12px 30px rgba(0,0,0,0.30);
+  }
+
+  .task-choice-stack { display: grid; gap: 14px; }
+
+  .task-choice-card {
+    position: relative;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: linear-gradient(160deg, rgba(15,18,26,0.98), rgba(10,12,18,0.95));
+    box-shadow: 0 16px 40px rgba(0,0,0,0.35);
+    overflow: hidden;
+    transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+  }
+
+  .task-choice-card:has(.choice-zone.left:hover) {
+    border-color: rgba(239,68,68,0.6);
+    box-shadow: 0 16px 45px rgba(239,68,68,0.20);
+    background: linear-gradient(160deg, rgba(45,10,12,0.98), rgba(12,8,10,0.95));
+  }
+
+  .task-choice-card:has(.choice-zone.right:hover) {
+    border-color: rgba(16,185,129,0.65);
+    box-shadow: 0 16px 45px rgba(16,185,129,0.20);
+    background: linear-gradient(160deg, rgba(8,26,20,0.98), rgba(8,12,10,0.95));
+  }
+
+  .task-choice-content {
+    padding: 16px 16px 18px 16px;
+  }
+
+  .task-choice-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+
+  .task-choice-body {
+    color: rgba(255,255,255,0.92);
+    line-height: 1.6;
+    font-size: 14.5px;
+  }
+
+  .choice-zone {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    display: flex;
+    align-items: stretch;
+  }
+
+  .choice-zone.left { left: 0; }
+  .choice-zone.right { right: 0; }
+
+  .choice-zone.left:hover { background: rgba(239,68,68,0.12); }
+  .choice-zone.right:hover { background: rgba(16,185,129,0.12); }
+
+  .choice-zone .stButton { width: 100%; height: 100%; }
+  .choice-zone .stButton > button {
+    width: 100% !important;
+    height: 100% !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: rgba(255,255,255,0.65) !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.03em !important;
+    text-transform: uppercase !important;
+  }
+  .choice-zone.left .stButton > button { text-align: left !important; padding-left: 14px !important; }
+  .choice-zone.right .stButton > button { text-align: right !important; padding-right: 14px !important; }
+  .choice-zone .stButton > button:hover { color: rgba(255,255,255,0.92) !important; }
 
   /* Make code editor (custom component iframe) match style */
   div[data-testid="stCustomComponentV1"] iframe {
@@ -204,6 +287,9 @@ def _init_state():
     st.session_state.setdefault('me', None)
     st.session_state.setdefault('task', None)
     st.session_state.setdefault('task_type', 24)
+    st.session_state.setdefault('last_task_type', None)
+    st.session_state.setdefault('pinned_task_id', None)
+    st.session_state.setdefault('candidate_tasks', [])
     st.session_state.setdefault('code', '')
     st.session_state.setdefault('messages', [])
     st.session_state.setdefault('analysis', None)
@@ -235,6 +321,59 @@ def _render_task_html(task: dict[str, Any]):
         """,
         unsafe_allow_html=True,
     )
+
+
+def _reset_workbench_state():
+    st.session_state['analysis'] = None
+    st.session_state['tests'] = None
+    st.session_state['messages'] = []
+    st.session_state['code'] = ''
+
+
+def _register_seen_task(task_type: int, task_id: int):
+    seen = st.session_state['seen_task_ids'].setdefault(int(task_type), [])
+    if int(task_id) not in seen:
+        seen.append(int(task_id))
+
+
+def _pull_next_candidate(client: PlatformClient, *, task_type: int, pinned_id: int | None = None) -> dict[str, Any] | None:
+    seen = st.session_state['seen_task_ids'].get(int(task_type), []) or []
+    if pinned_id is not None:
+        resp = client.stream_start(task_type=int(task_type), exclude_task_ids=seen, task_id=int(pinned_id))
+        st.session_state['pinned_task_id'] = None
+    elif not seen:
+        resp = client.stream_start(task_type=int(task_type), exclude_task_ids=seen)
+    else:
+        resp = client.stream_next(task_type=int(task_type), exclude_task_ids=seen)
+    t = resp.get('task') if isinstance(resp, dict) else None
+    if t and t.get('task_id'):
+        _register_seen_task(int(task_type), int(t.get('task_id')))
+        st.session_state['hint_level_by_task'][int(t.get('task_id'))] = 0
+        return t
+    return None
+
+
+def _ensure_candidate_tasks(client: PlatformClient, *, task_type: int, target: int = 3):
+    candidates = st.session_state.get('candidate_tasks') or []
+    pinned_id = st.session_state.get('pinned_task_id')
+    while len(candidates) < int(target):
+        t = _pull_next_candidate(client, task_type=int(task_type), pinned_id=pinned_id)
+        pinned_id = None
+        if not t:
+            break
+        candidates.append(t)
+    st.session_state['candidate_tasks'] = candidates
+
+
+def _check_answer_match(expected_raw: str, given_raw: str) -> tuple[bool, list[str]]:
+    expected_raw = (expected_raw or '').strip()
+    if not expected_raw:
+        return False, []
+    variants = [v.strip() for v in re.split(r'[|;\n]+', expected_raw) if v.strip()]
+    normalized_expected = [normalize_answer_value(v) for v in variants] if variants else [normalize_answer_value(expected_raw)]
+    normalized_expected = [v for v in normalized_expected if v != '']
+    normalized_given = normalize_answer_value(given_raw)
+    return normalized_given in normalized_expected and normalized_given != '', normalized_expected
 
 
 def main():
@@ -307,6 +446,9 @@ def main():
         except Exception:
             pinned_id = None
 
+    if pinned_id and st.session_state.get('pinned_task_id') is None:
+        st.session_state['pinned_task_id'] = int(pinned_id)
+
     # ===== Top bar =====
     left, mid, right = st.columns([1.35, 1.6, 1.05], gap="large")
     with left:
@@ -320,6 +462,8 @@ def main():
         )
 
     with mid:
+        st.markdown("### Панель выбора задания")
+        st.markdown("<div class='k-panel'>", unsafe_allow_html=True)
         options = list(range(1, 28))
 
         def _fmt(n: int) -> str:
@@ -337,6 +481,7 @@ def main():
         st.session_state['seen_task_ids'].setdefault(int(task_type), [])
         if counts and counts.get(int(task_type), 0) <= 0:
             st.warning("Для этого номера заданий пока нет задач в базе. Выбери другой номер или наполни `Tasks`.")
+        st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown("")
         st.radio(
@@ -383,42 +528,100 @@ def main():
 
     st.markdown("")
 
-    # ===== Task actions =====
-    a1, a2, a3, a4 = st.columns([1, 1, 1, 2], gap="small")
-    if a1.button("✨ Получить задание", use_container_width=True):
-        seen = st.session_state['seen_task_ids'].get(int(task_type), []) or []
-        resp = client.stream_start(task_type=int(task_type), exclude_task_ids=seen, task_id=pinned_id)
-        st.session_state['task'] = resp.get('task')
-        st.session_state['analysis'] = None
-        st.session_state['tests'] = None
-        st.session_state['messages'] = []
-        st.session_state['code'] = ''
-        t = st.session_state.get('task') or {}
-        if t.get('task_id'):
-            seen = st.session_state['seen_task_ids'].setdefault(int(task_type), [])
-            if int(t['task_id']) not in seen:
-                seen.append(int(t['task_id']))
-            st.session_state['hint_level_by_task'][int(t['task_id'])] = 0
+    # Track task_type changes
+    prev_task_type = st.session_state.get('last_task_type')
+    if prev_task_type is None:
+        st.session_state['last_task_type'] = int(task_type)
+    elif int(prev_task_type) != int(task_type):
+        st.session_state['last_task_type'] = int(task_type)
+        st.session_state['task'] = None
+        st.session_state['candidate_tasks'] = []
+        st.session_state['pinned_task_id'] = None
+        _reset_workbench_state()
 
-    if a2.button("→ Следующее", use_container_width=True):
-        seen = st.session_state['seen_task_ids'].get(int(task_type), []) or []
-        resp = client.stream_next(task_type=int(task_type), exclude_task_ids=seen)
-        st.session_state['task'] = resp.get('task')
-        st.session_state['analysis'] = None
-        st.session_state['tests'] = None
-        st.session_state['messages'] = []
-        st.session_state['code'] = ''
-        t = st.session_state.get('task') or {}
-        if t.get('task_id'):
-            seen = st.session_state['seen_task_ids'].setdefault(int(task_type), [])
-            if int(t['task_id']) not in seen:
-                seen.append(int(t['task_id']))
-            st.session_state['hint_level_by_task'][int(t['task_id'])] = 0
+    st.markdown("")
+
+    task = st.session_state.get('task')
+    if not task:
+        st.markdown("### Карточки выбора")
+        if counts and counts.get(int(task_type), 0) <= 0:
+            st.info("Выбери номер, где есть задания — карточки появятся автоматически.")
+            return
+
+        _ensure_candidate_tasks(client, task_type=int(task_type), target=3)
+        candidates = st.session_state.get('candidate_tasks') or []
+
+        if not candidates:
+            st.info("Задач не найдено. Попробуй другой номер.")
+            return
+
+        st.markdown("<div class='task-choice-stack'>", unsafe_allow_html=True)
+        for idx, cand in enumerate(candidates):
+            c_tid = int(cand.get('task_id') or 0)
+            src_bits = []
+            if cand.get("source_url"):
+                src_bits.append(f"<a href='{cand.get('source_url')}' target='_blank'>Источник</a>")
+            if cand.get("site_task_id"):
+                src_bits.append(f"site_id: {cand.get('site_task_id')}")
+            body_preview = (cand.get('content_html') or '').strip()
+            if len(body_preview) > 550:
+                body_preview = body_preview[:550] + "…"
+
+            st.markdown(
+                "<div class='task-choice-card'>"
+                "<div class='task-choice-content'>"
+                "<div class='task-choice-header'>"
+                + _badge(f"№{cand.get('task_number')}", "ok")
+                + _badge(f"ID {cand.get('task_id')}", "ok")
+                + (f"<span class='k-muted'>{' · '.join(src_bits)}</span>" if src_bits else "<span class='k-muted'>Источник не указан</span>")
+                + "</div>"
+                + f"<div class='task-choice-body'>{body_preview}</div>"
+                + "</div>",
+                unsafe_allow_html=True,
+            )
+
+            left_col, right_col = st.columns([1, 1], gap="small")
+            with left_col:
+                st.markdown("<div class='choice-zone left'>", unsafe_allow_html=True)
+                if st.button("Пропустить", use_container_width=True, key=f"skip_{c_tid}_{idx}"):
+                    st.session_state['candidate_tasks'] = [c for c in candidates if int(c.get('task_id') or 0) != c_tid]
+                    _ensure_candidate_tasks(client, task_type=int(task_type), target=3)
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
+            with right_col:
+                st.markdown("<div class='choice-zone right'>", unsafe_allow_html=True)
+                if st.button("Выполнять", use_container_width=True, key=f"accept_{c_tid}_{idx}"):
+                    st.session_state['task'] = cand
+                    st.session_state['candidate_tasks'] = []
+                    _reset_workbench_state()
+                    if cand.get('task_id'):
+                        st.session_state['hint_level_by_task'][int(cand.get('task_id'))] = 0
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+        return
+
+    # ===== Task actions (active task) =====
+    a1, a2, a3, a4 = st.columns([1, 1, 1, 2], gap="small")
+    if a1.button("↩ Вернуться к выбору", use_container_width=True):
+        st.session_state['task'] = None
+        st.session_state['candidate_tasks'] = []
+        _reset_workbench_state()
+        st.rerun()
+
+    if a2.button("→ Следующее (через карточки)", use_container_width=True):
+        st.session_state['task'] = None
+        st.session_state['candidate_tasks'] = []
+        _reset_workbench_state()
+        _ensure_candidate_tasks(client, task_type=int(task_type), target=3)
+        st.rerun()
 
     if a3.button("💾 Сохранить", use_container_width=True):
         task = st.session_state.get('task') or {}
         if not task:
-            st.warning("Сначала получи задание.")
+            st.warning("Сначала выбери задание.")
         else:
             try:
                 client.save_session(
@@ -434,25 +637,6 @@ def main():
             except Exception as e:
                 st.error(f"Не удалось сохранить: {e}")
     a4.markdown("<div class='k-muted' style='padding-top:10px'>Помощник и история — справа. Код и запуск — в «Решение».</div>", unsafe_allow_html=True)
-
-    # If task is not started yet but we have pinned task_id: load it once for convenience
-    if st.session_state.get('task') is None and pinned_id is not None:
-        try:
-            resp = client.get_task(pinned_id)
-            tsk = resp.get('task') if isinstance(resp, dict) else None
-            if tsk and int(tsk.get('task_number') or 0) == int(task_type):
-                st.session_state['task'] = tsk
-                seen = st.session_state['seen_task_ids'].setdefault(int(task_type), [])
-                if int(tsk.get('task_id')) not in seen:
-                    seen.append(int(tsk.get('task_id')))
-                st.session_state['hint_level_by_task'][int(tsk.get('task_id'))] = 0
-        except Exception:
-            pass
-
-    task = st.session_state.get('task')
-    if not task:
-        st.info("Нажми **Получить задание**, чтобы начать.")
-        return
 
     tid = int(task.get('task_id') or 0)
     knowledge = load_task_knowledge(tid) if tid else None
@@ -549,7 +733,24 @@ def main():
             if not is_runner_enabled():
                 st.warning("Запуск кода выключен на сервере. Включи `TRAINER_ENABLE_RUNNER=1` в сервисе тренажёра.")
             else:
-                rt1, rt2 = st.tabs(["Запустить (stdin → stdout)", "Проверить тестами"])
+                rt0, rt1, rt2 = st.tabs(["Проверить ответ", "Запустить (stdin → stdout)", "Проверить тестами"])
+                with rt0:
+                    expected_answer = (task.get('answer') or '')
+                    st.caption("Сравнение идёт по нормализованным значениям (пробелы/регистр/форматы чисел).")
+                    user_answer = st.text_input("Ответ", value=st.session_state.get('answer_input') or "", key="answer_input")
+                    if st.button("✅ Проверить ответ", use_container_width=True, key="btn_check_answer"):
+                        if not expected_answer:
+                            st.warning("В базе нет правильного ответа для этой задачи.")
+                        elif not (user_answer or "").strip():
+                            st.warning("Введите ответ для проверки.")
+                        else:
+                            ok, variants = _check_answer_match(expected_answer, user_answer)
+                            if ok:
+                                st.success("Ответ верный.")
+                            else:
+                                st.error("Ответ неверный.")
+                                if variants:
+                                    st.caption("Подсказка: проверь формат ответа (число/строка, без лишних пробелов).")
                 with rt1:
                     stdin_val = st.text_area(
                         "Ввод (stdin)",

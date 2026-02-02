@@ -175,6 +175,28 @@
                                             const wrap = document.createElement('div');
                                             wrap.appendChild(a);
                                             container.appendChild(wrap);
+
+                                            // Remove duplicate links from the task content (links pointing to the same file)
+                                            try {
+                                                const taskContent = el.closest('.task-content');
+                                                if (taskContent) {
+                                                    const filename = (new URL(url, window.location.origin)).pathname.split('/').pop();
+                                                    taskContent.querySelectorAll('a').forEach(function(existingA){
+                                                        try {
+                                                            const href = existingA.getAttribute('href') || '';
+                                                            if (!href) return;
+                                                            if (href === url || href.indexOf(filename) !== -1 || href.indexOf(encodeURIComponent(filename)) !== -1) {
+                                                                const block = existingA.closest('p,div,li,section') || existingA.parentElement;
+                                                                if (block && /Файл\s+к\s+заданию/i.test(block.textContent)) {
+                                                                    block.remove();
+                                                                } else {
+                                                                    existingA.remove();
+                                                                }
+                                                            }
+                                                        } catch(e) {}
+                                                    });
+                                                }
+                                            } catch(e) {}
                                         });
                                     } catch(e) { console.error('attachments parse', e); }
                                 });

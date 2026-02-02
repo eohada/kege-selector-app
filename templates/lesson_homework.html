@@ -799,6 +799,32 @@
                                             const wrap = document.createElement('div');
                                             wrap.appendChild(a);
                                             container.appendChild(wrap);
+
+                                            // Удаляем дублирующие ссылки в тексте условия (если они ведут на тот же файл)
+                                            try {
+                                                const taskContent = el.closest('.task-content');
+                                                if (taskContent) {
+                                                    // ищем все ссылки в тексте условия, которые содержат имя файла или исходный url
+                                                    const filename = (new URL(url, window.location.origin)).pathname.split('/').pop();
+                                                    taskContent.querySelectorAll('a').forEach(function(existingA){
+                                                        try {
+                                                            const href = existingA.getAttribute('href') || '';
+                                                            if (!href) return;
+                                                            // сравниваем по полному url или по имени файла
+                                                            if (href === url || href.indexOf(filename) !== -1 || href.indexOf(encodeURIComponent(filename)) !== -1) {
+                                                                // если в родительском блоке есть явная подпись "Файл к заданию" — удаляем весь блок,
+                                                                // иначе удаляем только ссылку
+                                                                const block = existingA.closest('p,div,li,section') || existingA.parentElement;
+                                                                if (block && /Файл\s+к\s+заданию/i.test(block.textContent)) {
+                                                                    block.remove();
+                                                                } else {
+                                                                    existingA.remove();
+                                                                }
+                                                            }
+                                                        } catch(e) { /* ignore per-link errors */ }
+                                                    });
+                                                }
+                                            } catch(e) { /* ignore duplicate-removal errors */ }
                                         });
                                     } catch(e) { console.error('attachments parse', e); }
                                 });
