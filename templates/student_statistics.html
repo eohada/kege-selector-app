@@ -11,6 +11,19 @@
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
+    <style>
+        .statistics-chart-wrap {
+            overflow-x: auto;
+        }
+        .statistics-chart-wrap canvas {
+            min-width: 620px;
+        }
+        @media (max-width: 720px) {
+            .statistics-chart-wrap canvas {
+                min-width: 520px;
+            }
+        }
+    </style>
 </head>
 <body class="{% if active_lesson %}lesson-active{% endif %}">
     {% if active_lesson and active_student %}
@@ -63,8 +76,8 @@
                 </div>
             </div>
             
-            <div style="margin-top: 2rem;">
-                <canvas id="statisticsChart" style="max-height: 500px;"></canvas>
+            <div class="statistics-chart-wrap" style="margin-top: 2rem;">
+                <canvas id="statisticsChart" style="max-height: 420px;"></canvas>
             </div>
             
             <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--stroke-1);">

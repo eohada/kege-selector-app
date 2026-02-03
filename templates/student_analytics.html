@@ -11,6 +11,26 @@
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
+    <style>
+        .analytics-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .analytics-charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 900px) {
+            .analytics-metrics-grid,
+            .analytics-charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body class="{% if active_lesson %}lesson-active{% endif %}">
     {% if active_lesson and active_student %}
@@ -60,7 +80,7 @@
         </section>
         
         <!-- Метрики (карточки) -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="analytics-metrics-grid">
             <div class="glass-panel">
                 <div class="panel-head">
                     <div>
@@ -111,7 +131,7 @@
         </div>
         
         <!-- Графики -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+        <div class="analytics-charts-grid">
             <!-- График динамики GPA -->
             <section class="glass-panel">
                 <div class="panel-head">

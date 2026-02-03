@@ -336,10 +336,10 @@
             {% endif %}
         </div>
 
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;" class="profile-grid-responsive">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;" class="profile-grid-responsive">
             {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
             <!-- Left Column: Learning Process -->
-            <div style="display: flex; flex-direction: column; gap: 2rem;">
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
                 
                 <!-- Active Lesson -->
                 {% if in_progress_lesson %}

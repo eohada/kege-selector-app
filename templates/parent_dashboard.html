@@ -14,7 +14,7 @@
         .child-selector {
             display: flex;
             gap: 0.5rem;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             flex-wrap: wrap;
         }
         
@@ -44,8 +44,8 @@
         .metrics-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
         }
         
         .metric-card {
@@ -78,7 +78,7 @@
             background: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 100%);
             border-radius: 8px;
             color: white;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
         
         .ai-summary h3 {
@@ -141,7 +141,7 @@
         
         <main class="main-content">
             <div class="content-container">
-                <section class="glass-panel" style="margin-bottom: 2rem;">
+                <section class="glass-panel" style="margin-bottom: 1.5rem;">
                     <div class="panel-head">
                         <div>
                             <p class="eyebrow">дашборд родителя</p>
@@ -167,7 +167,7 @@
                         
                         <!-- Блок финансов -->
                         {% if financial_data.can_topup %}
-                        <section class="glass-panel" style="margin-bottom: 2rem;">
+                        <section class="glass-panel" style="margin-bottom: 1.5rem;">
                             <div class="panel-head">
                                 <div>
                                     <p class="eyebrow">финансы</p>
@@ -189,7 +189,7 @@
                         
                         <!-- Блок успеваемости (AI Summary) -->
                         {% if child_stats and child_stats.ai_summary %}
-                        <section class="ai-summary" style="margin-bottom: 2rem;">
+                        <section class="ai-summary" style="margin-bottom: 1.5rem;">
                             <h3>📊 Успеваемость за неделю</h3>
                             <p>
                                 За эту неделю <strong>{{ selected_child_name }}</strong> решил(а) 
@@ -210,7 +210,7 @@
                         
                         <!-- Метрики -->
                         {% if child_stats and child_stats.metrics %}
-                        <section class="glass-panel" style="margin-bottom: 2rem;">
+                        <section class="glass-panel" style="margin-bottom: 1.5rem;">
                             <div class="panel-head">
                                 <div>
                                     <p class="eyebrow">статистика</p>
@@ -243,7 +243,7 @@
                         
                         <!-- Задания (Assignments) -->
                         {% if pending_assignments or recent_submissions %}
-                        <section class="glass-panel" style="margin-bottom: 2rem;">
+                        <section class="glass-panel" style="margin-bottom: 1.5rem;">
                             <div class="panel-head">
                                 <div>
                                     <p class="eyebrow">обучение</p>
@@ -251,7 +251,7 @@
                                 </div>
                             </div>
                             
-                            <div style="display: grid; gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+                            <div style="display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
                                 <!-- Активные задания -->
                                 <div>
                                     <h3 style="font-size: 1rem; color: var(--text-muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">Нужно выполнить</h3>
@@ -317,7 +317,7 @@
                         
                         <!-- Предстоящие уроки -->
                         {% if upcoming_lessons %}
-                        <section class="glass-panel" style="margin-bottom: 2rem;">
+                        <section class="glass-panel" style="margin-bottom: 1.5rem;">
                             <div class="panel-head">
                                 <div>
                                     <p class="eyebrow">расписание</p>
@@ -346,7 +346,7 @@
                         
                         <!-- Последние уроки -->
                         {% if recent_lessons %}
-                        <section class="glass-panel" style="margin-bottom: 2rem;">
+                        <section class="glass-panel" style="margin-bottom: 1.5rem;">
                             <div class="panel-head">
                                 <div>
                                     <p class="eyebrow">история</p>
@@ -383,7 +383,7 @@
                         
                         <!-- Проблемные темы -->
                         {% if child_stats and child_stats.problem_topics %}
-                        <section class="glass-panel" style="margin-bottom: 2rem;">
+                        <section class="glass-panel" style="margin-bottom: 1.5rem;">
                             <div class="panel-head">
                                 <div>
                                     <p class="eyebrow">требует внимания</p>

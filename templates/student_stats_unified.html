@@ -123,6 +123,21 @@
         .metric-delta.negative {
             color: #ef4444;
         }
+
+        @media (max-width: 980px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            .chart-container {
+                height: 320px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .metrics-grid {
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            }
+        }
         
         /* Heatmap посещаемости */
         .heatmap-wrapper {
