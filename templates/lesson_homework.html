@@ -1275,16 +1275,6 @@
                             allow="camera; microphone; fullscreen; display-capture; autoplay"
                             allowfullscreen>
                     </iframe>
-                    <!-- PiP Overlay с кнопками (показывается в PiP режиме) -->
-                    <div id="videocall-pip-overlay" style="display: none;">
-                        <div class="pip-overlay-header" onmousedown="startPipOverlayDrag(event)" ontouchstart="startPipOverlayDragTouch(event)">
-                            <span><i class="fas fa-video"></i> Звонок</span>
-                            <div class="pip-overlay-controls">
-                                <button onclick="expandPipToTab()" title="Развернуть"><i class="fas fa-expand"></i></button>
-                                <button onclick="endVideoCall()" title="Завершить" class="danger"><i class="fas fa-phone-slash"></i></button>
-                            </div>
-                        </div>
-                    </div>
                 </div>
 
                 <div style="margin-top: 1rem; padding: 0.75rem; background: var(--surface-1); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
@@ -3092,5 +3082,16 @@
         });
     </script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
+    
+    <!-- PiP Overlay (в конце body для правильного z-index) -->
+    <div id="videocall-pip-overlay">
+        <div class="pip-overlay-header" onmousedown="startPipOverlayDrag(event)" ontouchstart="startPipOverlayDragTouch(event)">
+            <span><i class="fas fa-video"></i> Звонок</span>
+            <div class="pip-overlay-controls">
+                <button onclick="expandPipToTab()" title="Развернуть"><i class="fas fa-expand"></i></button>
+                <button onclick="endVideoCall()" title="Завершить" class="danger"><i class="fas fa-phone-slash"></i></button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
