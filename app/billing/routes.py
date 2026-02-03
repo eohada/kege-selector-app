@@ -75,6 +75,7 @@ def billing_plan_create():
         price_rub=request.form.get('price_rub', type=int),
         price_per_lesson_rub=request.form.get('price_per_lesson_rub', type=int),
         period_days=request.form.get('period_days', type=int),
+        lessons_count=request.form.get('lessons_count', type=int),
         allow_lessons=True if (request.form.get('allow_lessons') or 'off') == 'on' else False,
         allow_trainer=True if (request.form.get('allow_trainer') or 'off') == 'on' else False,
         is_active=True,
@@ -125,6 +126,7 @@ def billing_plan_update(plan_id: int):
     plan.price_rub = request.form.get('price_rub', type=int)
     plan.price_per_lesson_rub = request.form.get('price_per_lesson_rub', type=int)
     plan.period_days = request.form.get('period_days', type=int)
+    plan.lessons_count = request.form.get('lessons_count', type=int)
     plan.group_id = request.form.get('group_id', type=int) or None
     plan.order_index = request.form.get('order_index', type=int) or 0
     # access flags
@@ -218,7 +220,8 @@ def billing_subscription_assign():
     _require_admin()
     user_id = request.form.get('user_id', type=int)
     plan_id = request.form.get('plan_id', type=int)
-    days = request.form.get('days', type=int) or 30
+    days = request.form.get('days', type=int)
+    lessons = request.form.get('lessons', type=int)
     note = (request.form.get('note') or '').strip() or None
     if not user_id:
         flash('Выберите пользователя.', 'danger')
@@ -233,12 +236,18 @@ def billing_subscription_assign():
         extra.status = 'cancelled'
 
     if sub:
-        base_end = sub.ends_at or now
-        if base_end < now:
-            base_end = now
-        sub.plan_id = plan_id or None
+        # Продление по дням (если указано)
+        if days:
+            base_end = sub.ends_at or now
+            if base_end < now:
+                base_end = now
+            sub.ends_at = base_end + timedelta(days=int(days))
+        # Добавление уроков (если указано)
+        if lessons:
+            current_lessons = sub.lessons_remaining or 0
+            sub.lessons_remaining = current_lessons + int(lessons)
+        sub.plan_id = plan_id or sub.plan_id
         sub.started_at = sub.started_at or now
-        sub.ends_at = base_end + timedelta(days=int(days))
         if note:
             sub.note = note
     else:
@@ -247,7 +256,8 @@ def billing_subscription_assign():
             plan_id=plan_id or None,
             status='active',
             started_at=now,
-            ends_at=(now + timedelta(days=int(days))),
+            ends_at=(now + timedelta(days=int(days))) if days else None,
+            lessons_remaining=lessons,
             note=note,
         )
         db.session.add(sub)
@@ -261,7 +271,7 @@ def billing_subscription_assign():
         return redirect(url_for('billing.billing_subscriptions'))
 
     try:
-        audit_logger.log(action='billing_subscription_assign', entity='UserSubscription', entity_id=sub.subscription_id, status='success', metadata={'user_id': user_id, 'plan_id': plan_id, 'days': days})
+        audit_logger.log(action='billing_subscription_assign', entity='UserSubscription', entity_id=sub.subscription_id, status='success', metadata={'user_id': user_id, 'plan_id': plan_id, 'days': days, 'lessons': lessons})
     except Exception:
         pass
     flash('Подписка назначена.', 'success')

@@ -63,13 +63,19 @@
                 <input class="neo-input" name="price_rub" type="number" min="0">
               </div>
               <div class="neo-field">
-                <label class="neo-label">Период (дней)</label>
-                <input class="neo-input" name="period_days" type="number" min="1">
+                <label class="neo-label">Кол-во уроков</label>
+                <input class="neo-input" name="lessons_count" type="number" min="1" placeholder="напр. 8">
               </div>
             </div>
-            <div class="neo-field" style="margin-top:.75rem;">
-              <label class="neo-label">Цена за урок (₽)</label>
-              <input class="neo-input" name="price_per_lesson_rub" type="number" min="0">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top:.75rem;">
+              <div class="neo-field">
+                <label class="neo-label">Цена за урок (₽)</label>
+                <input class="neo-input" name="price_per_lesson_rub" type="number" min="0">
+              </div>
+              <div class="neo-field">
+                <label class="neo-label">Период (дней)</label>
+                <input class="neo-input" name="period_days" type="number" min="1" placeholder="опц.">
+              </div>
             </div>
             <div style="margin-top:.75rem; display:flex; gap: 1rem; flex-wrap: wrap;">
               <label style="display:flex; align-items:center; gap:.5rem;">
@@ -142,7 +148,8 @@
                 </div>
                 <div style="color: var(--text-muted); font-size:.92rem; margin-top:.25rem;">
                   {% if p.price_rub is not none %}{{ p.price_rub }} ₽{% endif %}
-                  {% if p.price_per_lesson_rub is not none %}{% if p.price_rub is not none %} · {% endif %}{{ p.price_per_lesson_rub }} ₽/урок{% endif %}
+                  {% if p.lessons_count is not none %}{% if p.price_rub is not none %} · {% endif %}<strong>{{ p.lessons_count }} уроков</strong>{% endif %}
+                  {% if p.price_per_lesson_rub is not none %}{% if p.price_rub is not none or p.lessons_count is not none %} · {% endif %}{{ p.price_per_lesson_rub }} ₽/урок{% endif %}
                   {% if p.period_days is not none %} · {{ p.period_days }} дней{% endif %}
                   · статус: <strong>{{ 'active' if p.is_active else 'inactive' }}</strong>
                 </div>
@@ -181,18 +188,24 @@
                   <label class="neo-label">Описание</label>
                   <textarea class="neo-input" name="description" style="min-height: 90px;">{{ p.description or '' }}</textarea>
                 </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:.75rem; margin-top:.75rem;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:.75rem; margin-top:.75rem;">
                   <div class="neo-field">
                     <label class="neo-label">Цена (₽)</label>
                     <input class="neo-input" name="price_rub" type="number" min="0" value="{{ p.price_rub if p.price_rub is not none else '' }}">
                   </div>
+                  <div class="neo-field">
+                    <label class="neo-label">Кол-во уроков</label>
+                    <input class="neo-input" name="lessons_count" type="number" min="1" value="{{ p.lessons_count if p.lessons_count is not none else '' }}">
+                  </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:.75rem; margin-top:.75rem;">
                   <div class="neo-field">
                     <label class="neo-label">Цена за урок (₽)</label>
                     <input class="neo-input" name="price_per_lesson_rub" type="number" min="0" value="{{ p.price_per_lesson_rub if p.price_per_lesson_rub is not none else '' }}">
                   </div>
                   <div class="neo-field">
                     <label class="neo-label">Период (дней)</label>
-                    <input class="neo-input" name="period_days" type="number" min="1" value="{{ p.period_days if p.period_days is not none else '' }}">
+                    <input class="neo-input" name="period_days" type="number" min="1" value="{{ p.period_days if p.period_days is not none else '' }}" placeholder="опц.">
                   </div>
                 </div>
                 <div style="margin-top:.75rem; display:flex; gap: 1rem; flex-wrap: wrap;">

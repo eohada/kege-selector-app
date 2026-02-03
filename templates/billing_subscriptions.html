@@ -73,13 +73,17 @@
             </div>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:.75rem; margin-top:.75rem;">
               <div class="neo-field">
-                <label class="neo-label">Дней</label>
-                <input class="neo-input" name="days" type="number" min="1" value="30">
+                <label class="neo-label">Уроков</label>
+                <input class="neo-input" name="lessons" type="number" min="1" placeholder="напр. 8">
               </div>
               <div class="neo-field">
-                <label class="neo-label">Заметка</label>
-                <input class="neo-input" name="note" placeholder="опц.">
+                <label class="neo-label">Дней (опц.)</label>
+                <input class="neo-input" name="days" type="number" min="1" placeholder="опц.">
               </div>
+            </div>
+            <div class="neo-field" style="margin-top:.75rem;">
+              <label class="neo-label">Заметка</label>
+              <input class="neo-input" name="note" placeholder="опц.">
             </div>
             <div style="margin-top: 1rem; display:flex; justify-content:flex-end;">
               <button class="neo-button accent" type="submit">Назначить / продлить</button>
@@ -97,6 +101,7 @@
                   <div style="color: var(--text-muted); font-size:.92rem; margin-top:.25rem;">
                     статус: <strong>{{ s.status }}</strong>
                     {% if s.plan %} · тариф: <strong>{{ s.plan.title }}</strong>{% endif %}
+                    {% if s.lessons_remaining is not none %} · уроков: <strong>{{ s.lessons_remaining }}</strong>{% endif %}
                     {% if s.ends_at %} · до: <strong>{{ s.ends_at.strftime('%d.%m.%Y') }}</strong>{% endif %}
                   </div>
                   {% if s.note %}<div style="color: var(--text-muted); margin-top:.35rem;">{{ s.note }}</div>{% endif %}

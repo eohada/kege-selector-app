@@ -1008,6 +1008,7 @@ class TariffPlan(db.Model):
     price_rub = db.Column(db.Integer, nullable=True)     # цена в рублях (информативно)
     price_per_lesson_rub = db.Column(db.Integer, nullable=True)  # цена за урок (информативно)
     period_days = db.Column(db.Integer, nullable=True)   # длительность доступа (информативно)
+    lessons_count = db.Column(db.Integer, nullable=True)  # количество уроков в тарифе
 
     # Форматы доступа (для продажи): уроки / тренажёр / уроки+тренажёр
     allow_lessons = db.Column(db.Boolean, nullable=True)   # None => не ограничиваем (backward compatible)
@@ -1031,6 +1032,7 @@ class UserSubscription(db.Model):
     status = db.Column(db.String(30), default='active', nullable=False, index=True)  # active|expired|cancelled|paused
     started_at = db.Column(db.DateTime, nullable=True)
     ends_at = db.Column(db.DateTime, nullable=True)
+    lessons_remaining = db.Column(db.Integer, nullable=True)  # оставшееся количество уроков
     note = db.Column(db.Text, nullable=True)
 
     created_at = db.Column(db.DateTime, default=moscow_now)

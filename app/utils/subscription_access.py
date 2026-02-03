@@ -31,6 +31,9 @@ class EffectiveAccess:
     ends_at_utc: Optional[datetime]
     seconds_left: Optional[int]
 
+    # lessons
+    lessons_remaining: Optional[int]  # оставшееся количество уроков
+
     # display
     label: str
 
@@ -71,12 +74,20 @@ def get_effective_access_for_user(user_id: int) -> EffectiveAccess:
             status="none",
             ends_at_utc=None,
             seconds_left=None,
+            lessons_remaining=None,
             label=_compute_label(None, None),
         )
 
     ends_at = sub.ends_at
-    if ends_at and ends_at < now:
-        # subscription is logically expired (even if status field wasn't updated yet)
+    lessons_remaining = getattr(sub, 'lessons_remaining', None)
+    
+    # Проверка на истечение по дате
+    time_expired = ends_at and ends_at < now
+    # Проверка на истечение по урокам (если lessons_remaining = 0 и он был установлен)
+    lessons_expired = lessons_remaining is not None and lessons_remaining <= 0
+    
+    if time_expired or lessons_expired:
+        # subscription is logically expired
         return EffectiveAccess(
             subscription=sub,
             plan=TariffPlan.query.get(sub.plan_id) if sub.plan_id else None,
@@ -85,7 +96,8 @@ def get_effective_access_for_user(user_id: int) -> EffectiveAccess:
             status="expired",
             ends_at_utc=ends_at,
             seconds_left=0,
-            label="Подписка истекла",
+            lessons_remaining=lessons_remaining,
+            label="Уроки закончились" if lessons_expired else "Подписка истекла",
         )
 
     plan = TariffPlan.query.get(sub.plan_id) if sub.plan_id else None
@@ -107,6 +119,7 @@ def get_effective_access_for_user(user_id: int) -> EffectiveAccess:
         status=(sub.status or "active"),
         ends_at_utc=ends_at,
         seconds_left=seconds_left,
+        lessons_remaining=lessons_remaining,
         label=_compute_label(allow_lessons, allow_trainer),
     )
 

@@ -340,6 +340,20 @@ def lesson_complete(lesson_id):
     
     lesson.status = 'completed'
 
+    # Уменьшаем счетчик оставшихся уроков у студента
+    try:
+        if lesson.student and lesson.student.user_id:
+            from app.models import UserSubscription
+            active_sub = UserSubscription.query.filter_by(
+                user_id=lesson.student.user_id,
+                status='active'
+            ).order_by(UserSubscription.ends_at.desc().nullslast()).first()
+            if active_sub and active_sub.lessons_remaining is not None and active_sub.lessons_remaining > 0:
+                active_sub.lessons_remaining -= 1
+                logger.info(f"Decreased lessons_remaining for user {lesson.student.user_id}: {active_sub.lessons_remaining + 1} -> {active_sub.lessons_remaining}")
+    except Exception as e:
+        logger.warning(f"Could not decrease lessons_remaining for lesson {lesson_id}: {e}")
+
     try:
         db.session.commit()
     except Exception as e:

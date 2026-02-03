@@ -562,6 +562,13 @@ def ensure_schema_columns(app):
                             except Exception as e:
                                 logger.warning(f"Could not add allow_trainer to {tp_table}: {e}")
                                 db.session.rollback()
+                        if 'lessons_count' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{tp_table}" ADD COLUMN lessons_count INTEGER'))
+                                logger.info(f"Added lessons_count to {tp_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add lessons_count to {tp_table}: {e}")
+                                db.session.rollback()
                 except Exception:
                     pass
 
@@ -572,6 +579,21 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create UserSubscriptions table: {e}")
                     db.session.rollback()
+            else:
+                # добавляем lessons_remaining если таблица уже есть
+                try:
+                    us_table = _resolve_table_name(table_names, 'UserSubscriptions')
+                    if us_table:
+                        cols = {c['name'] for c in inspector.get_columns(us_table)}
+                        if 'lessons_remaining' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{us_table}" ADD COLUMN lessons_remaining INTEGER'))
+                                logger.info(f"Added lessons_remaining to {us_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add lessons_remaining to {us_table}: {e}")
+                                db.session.rollback()
+                except Exception:
+                    pass
 
             if 'UserConsents' not in table_names and 'userconsents' not in table_names:
                 try:

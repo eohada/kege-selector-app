@@ -296,7 +296,15 @@
                             </span>
                         {% endif %}
                     </div>
-                    {% if student_subscription.seconds_left is not none %}
+                    {# Показываем оставшиеся уроки (приоритет) или дни #}
+                    {% if student_subscription.lessons_remaining is not none %}
+                        <div style="margin-top: .6rem; display: flex; align-items: center; gap: .5rem;">
+                            <span style="color: var(--text-muted);">Осталось уроков:</span>
+                            <span style="font-size: 1.5rem; font-weight: 900; color: {% if student_subscription.lessons_remaining <= 2 %}var(--danger){% elif student_subscription.lessons_remaining <= 5 %}var(--warning){% else %}var(--accent-1){% endif %};">
+                                {{ student_subscription.lessons_remaining }}
+                            </span>
+                        </div>
+                    {% elif student_subscription.seconds_left is not none %}
                         {% set days_left = (student_subscription.seconds_left // 86400) %}
                         {% set hours_left = ((student_subscription.seconds_left % 86400) // 3600) %}
                         <div style="margin-top: .6rem; color: var(--text-muted);">
@@ -304,7 +312,13 @@
                         </div>
                     {% endif %}
                 {% elif student_subscription.status == 'expired' %}
-                    <div style="margin-top: .35rem; font-weight: 900;">Подписка истекла</div>
+                    <div style="margin-top: .35rem; font-weight: 900; color: var(--danger);">
+                        {% if student_subscription.lessons_remaining is not none and student_subscription.lessons_remaining <= 0 %}
+                            Уроки закончились
+                        {% else %}
+                            Подписка истекла
+                        {% endif %}
+                    </div>
                     {% if student_subscription.ends_at_utc %}
                     <div style="margin-top: .35rem; color: var(--text-muted);">Закончилась: {{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</div>
                     {% endif %}
