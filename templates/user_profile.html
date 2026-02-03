@@ -788,6 +788,10 @@
             }
         }
         
+        function getCsrfToken() {
+            return document.querySelector('meta[name="csrf-token"]')?.content || '';
+        }
+        
         async function generateTelegramCode() {
             const area = document.getElementById('telegram-link-area');
             if (!area) return;
@@ -795,7 +799,10 @@
             area.innerHTML = '<div style="color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Генерация кода...</div>';
             
             try {
-                const resp = await fetch('/api/telegram/link-code', { method: 'POST' });
+                const resp = await fetch('/api/telegram/link-code', { 
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCsrfToken() }
+                });
                 const data = await resp.json();
                 
                 if (data.success) {
@@ -843,7 +850,10 @@
             if (!confirm('Отвязать Telegram? Вы перестанете получать уведомления.')) return;
             
             try {
-                const resp = await fetch('/api/telegram/unlink', { method: 'POST' });
+                const resp = await fetch('/api/telegram/unlink', { 
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCsrfToken() }
+                });
                 const data = await resp.json();
                 
                 if (data.success) {
@@ -861,7 +871,10 @@
             try {
                 const resp = await fetch('/api/telegram/toggle-notifications', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
                     body: JSON.stringify({ enabled })
                 });
                 const data = await resp.json();
