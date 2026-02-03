@@ -9,9 +9,9 @@ from telegram import Bot
 from telegram.error import TelegramError
 from sqlalchemy import text
 
-from urep_bot.config import APP_URL
-from urep_bot.db import get_session, close_session
-from urep_bot.messages import NOTIFICATION_TEMPLATES
+from config import APP_URL
+from db import get_session, close_session
+from messages import NOTIFICATION_TEMPLATES
 
 logger = logging.getLogger(__name__)
 

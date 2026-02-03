@@ -5,16 +5,11 @@
 import asyncio
 import logging
 import sys
-from pathlib import Path
 
-# Добавляем корневую директорию в путь
-ROOT_DIR = Path(__file__).parent.parent
-sys.path.insert(0, str(ROOT_DIR))
-
-from urep_bot.config import validate_config, LOG_LEVEL, NOTIFICATION_CHECK_INTERVAL, REMINDER_CHECK_INTERVAL
-from urep_bot.db import init_db
-from urep_bot.bot import create_bot_application
-from urep_bot.notifications import process_pending_notifications, process_lesson_reminders, check_low_lessons
+from config import validate_config, LOG_LEVEL, NOTIFICATION_CHECK_INTERVAL, REMINDER_CHECK_INTERVAL
+from db import init_db
+from bot import create_bot_application
+from notifications import process_pending_notifications, process_lesson_reminders, check_low_lessons
 
 # Настройка логирования
 logging.basicConfig(
