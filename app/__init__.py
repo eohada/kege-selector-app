@@ -68,6 +68,10 @@ def create_app(config_name=None):
     app.config['MIRO_CLIENT_ID'] = (os.environ.get('MIRO_CLIENT_ID') or '').strip() or None
     app.config['MIRO_CLIENT_SECRET'] = (os.environ.get('MIRO_CLIENT_SECRET') or '').strip() or None
     
+    # Daily.co для видеозвонков
+    app.config['DAILY_API_KEY'] = (os.environ.get('DAILY_API_KEY') or '').strip() or None
+    app.config['DAILY_DOMAIN'] = 'urep'  # urep.daily.co
+    
     # Определение окружения (production, sandbox, local)
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
     

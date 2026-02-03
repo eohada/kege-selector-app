@@ -2800,3 +2800,93 @@ def lesson_whiteboard_miro_auth_status(lesson_id):
     except Exception as e:
         logger.error(f"Error checking Miro auth status: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ==================== ВИДЕОЗВОНКИ (DAILY.CO) ====================
+
+@lessons_bp.route('/lesson/<int:lesson_id>/videocall/room', methods=['POST'])
+@login_required
+def lesson_videocall_create_room(lesson_id):
+    """Создать или получить комнату Daily.co для урока."""
+    import requests
+    
+    lesson = Lesson.query.get_or_404(lesson_id)
+    
+    api_key = current_app.config.get('DAILY_API_KEY')
+    domain = current_app.config.get('DAILY_DOMAIN', 'urep')
+    
+    if not api_key:
+        return jsonify({'success': False, 'error': 'Daily.co API key not configured'}), 500
+    
+    # Уникальное имя комнаты для урока
+    room_name = f"lesson-{lesson_id}"
+    
+    try:
+        # Проверяем, существует ли комната
+        check_response = requests.get(
+            f'https://api.daily.co/v1/rooms/{room_name}',
+            headers={'Authorization': f'Bearer {api_key}'}
+        )
+        
+        if check_response.status_code == 200:
+            # Комната уже существует
+            room_data = check_response.json()
+            return jsonify({
+                'success': True,
+                'room_url': room_data.get('url') or f"https://{domain}.daily.co/{room_name}",
+                'room_name': room_name,
+                'exists': True
+            })
+        
+        # Создаём новую комнату
+        create_response = requests.post(
+            'https://api.daily.co/v1/rooms',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json'
+            },
+            json={
+                'name': room_name,
+                'privacy': 'public',  # Можно сделать 'private' если нужна авторизация
+                'properties': {
+                    'enable_screenshare': True,
+                    'enable_chat': True,
+                    'start_video_off': False,
+                    'start_audio_off': False,
+                    'enable_knocking': False,
+                    'exp': None  # Комната не истекает
+                }
+            }
+        )
+        
+        if create_response.status_code in [200, 201]:
+            room_data = create_response.json()
+            logger.info(f"Daily.co room created for lesson {lesson_id}: {room_name}")
+            return jsonify({
+                'success': True,
+                'room_url': room_data.get('url') or f"https://{domain}.daily.co/{room_name}",
+                'room_name': room_name,
+                'exists': False
+            })
+        else:
+            logger.error(f"Daily.co room creation failed: {create_response.text}")
+            return jsonify({'success': False, 'error': 'Failed to create room'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error creating Daily.co room: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/videocall/room', methods=['GET'])
+@login_required
+def lesson_videocall_get_room(lesson_id):
+    """Получить информацию о комнате Daily.co для урока."""
+    domain = current_app.config.get('DAILY_DOMAIN', 'urep')
+    room_name = f"lesson-{lesson_id}"
+    
+    return jsonify({
+        'success': True,
+        'room_url': f"https://{domain}.daily.co/{room_name}",
+        'room_name': room_name,
+        'domain': domain
+    })

@@ -1280,7 +1280,7 @@
                 <div style="margin-top: 1rem; padding: 0.75rem; background: var(--surface-1); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
                     <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.85rem;">
                         <i class="fas fa-info-circle"></i>
-                        <span>Видеозвонок работает через Jitsi Meet — бесплатный и безопасный сервис. Не требует регистрации.</span>
+                        <span>Видеозвонок работает через Daily.co — надёжный сервис видеосвязи. Не требует регистрации для участников.</span>
                     </div>
                 </div>
             </div>
@@ -2724,40 +2724,67 @@
             document.removeEventListener('touchend', stopPipDrag);
         }
         
-        function startVideoCall() {
+        async function startVideoCall() {
             const placeholder = document.getElementById('videocall-placeholder');
             const iframe = document.getElementById('videocall-iframe');
             const endBtn = document.getElementById('end-call-btn');
             
-            // Генерируем уникальное имя комнаты
-            const roomName = `KegeLesson{{ lesson.lesson_id }}Student{{ lesson.student_id or 0 }}`;
-            const userName = encodeURIComponent('{{ current_user.username or current_user.name or "Участник" }}');
-            // Jitsi Meet - бесплатный сервис видеозвонков
-            const jitsiUrl = `https://meet.jit.si/${roomName}#userInfo.displayName="${userName}"&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&config.disableDeepLinking=true`;
+            // Показываем лоадер
+            placeholder.innerHTML = `
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--accent-1); margin-bottom: 1rem;"></i>
+                <span style="color: var(--text-muted);">Подключение к звонку...</span>
+            `;
             
-            // Показываем iframe
-            placeholder.style.display = 'none';
-            iframe.style.display = 'block';
-            iframe.src = jitsiUrl;
-            endBtn.style.display = 'inline-flex';
-            
-            videoCallActive = true;
-            videoPipMode = false;
-            
-            // Создаём PiP контейнер (скрытый)
-            createPipContainer();
-            
-            if (typeof toast !== 'undefined') {
-                toast.success('Видеозвонок запущен');
+            try {
+                // Создаём/получаем комнату через API
+                const res = await fetch(`/lesson/${LESSON_ID}/videocall/room`, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': CSRF_TOKEN }
+                });
+                const data = await res.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Ошибка создания комнаты');
+                }
+                
+                // Имя пользователя для Daily.co
+                const userName = encodeURIComponent('{{ current_user.username or current_user.name or "Участник" }}');
+                const roomUrl = data.room_url + `?t=${Date.now()}&userName=${userName}`;
+                
+                // Показываем iframe
+                placeholder.style.display = 'none';
+                iframe.style.display = 'block';
+                iframe.src = roomUrl;
+                endBtn.style.display = 'inline-flex';
+                
+                videoCallActive = true;
+                videoPipMode = false;
+                
+                // Создаём PiP контейнер (скрытый)
+                createPipContainer();
+                
+                if (typeof toast !== 'undefined') {
+                    toast.success('Видеозвонок запущен');
+                }
+            } catch (e) {
+                console.error('Video call error:', e);
+                placeholder.innerHTML = `
+                    <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: var(--danger); margin-bottom: 1rem;"></i>
+                    <span style="color: var(--text-muted);">Ошибка: ${e.message}</span>
+                    <button class="neo-button accent" onclick="startVideoCall()" style="margin-top: 1rem;">
+                        <i class="fas fa-redo"></i> Повторить
+                    </button>
+                `;
+                if (typeof toast !== 'undefined') {
+                    toast.error('Ошибка запуска видеозвонка');
+                }
             }
         }
         
         function openVideoCallNewTab() {
-            // Открываем Jitsi в новой вкладке (без ограничения по времени)
-            const roomName = `KegeLesson{{ lesson.lesson_id }}Student{{ lesson.student_id or 0 }}`;
-            const userName = encodeURIComponent('{{ current_user.username or current_user.name or "Участник" }}');
-            const jitsiUrl = `https://meet.jit.si/${roomName}#userInfo.displayName="${userName}"`;
-            window.open(jitsiUrl, '_blank');
+            // Открываем Daily.co в новой вкладке
+            const roomUrl = `https://urep.daily.co/lesson-${LESSON_ID}`;
+            window.open(roomUrl, '_blank');
             
             if (typeof toast !== 'undefined') {
                 toast.info('Звонок открыт в новой вкладке');
