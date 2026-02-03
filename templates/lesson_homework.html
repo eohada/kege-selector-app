@@ -449,6 +449,7 @@
             <button type="button" class="tab-btn" data-tab="notes" role="tab" aria-selected="false"><i class="fas fa-sticky-note"></i> Заметки {{ 'ученика' if not is_student_view else '' }}</button>
             <button type="button" class="tab-btn" data-tab="chat" role="tab" aria-selected="false"><i class="fas fa-comments"></i> Диалог</button>
             <button type="button" class="tab-btn" data-tab="whiteboard" role="tab" aria-selected="false"><i class="fas fa-chalkboard"></i> Доска</button>
+            <button type="button" class="tab-btn" data-tab="videocall" role="tab" aria-selected="false"><i class="fas fa-video"></i> Звонок</button>
         </div>
 
         <!-- TAB: THEORY -->
@@ -1130,6 +1131,68 @@
                     </div>
                 </div>
                 {% endif %}
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- ВКЛАДКА: ВИДЕОЗВОНОК (JITSI) -->
+        <!-- ============================================ -->
+        <div id="tab-videocall" class="tab-pane">
+            <div class="glass-panel">
+                <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                    <div>
+                        <div class="hero-eyebrow">видеосвязь</div>
+                        <h3 style="margin: 0.35rem 0 0 0;">Видеозвонок</h3>
+                        <div style="color: var(--text-muted); margin-top: 0.35rem; line-height: 1.45;">
+                            {% if is_student_view %}
+                                Присоединитесь к видеозвонку с преподавателем.
+                            {% else %}
+                                Проводите урок с видео и аудио связью в реальном времени.
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div id="videocall-actions" style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end;">
+                        <button class="neo-button accent" onclick="startVideoCall()">
+                            <i class="fas fa-video"></i> Начать звонок
+                        </button>
+                        <button class="neo-button outline" onclick="toggleVideoCallFullscreen()">
+                            <i class="fas fa-expand"></i> На весь экран
+                        </button>
+                        <button class="neo-button ghost danger" onclick="endVideoCall()" id="end-call-btn" style="display: none;">
+                            <i class="fas fa-phone-slash"></i> Завершить
+                        </button>
+                    </div>
+                </div>
+
+                <div id="videocall-container" style="min-height: 500px; border-radius: var(--radius-lg); overflow: hidden; position: relative;">
+                    <!-- Placeholder до начала звонка -->
+                    <div id="videocall-placeholder" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 500px; background: var(--surface-2); border: 2px dashed var(--stroke-1); border-radius: var(--radius-lg);">
+                        <i class="fas fa-video" style="font-size: 3rem; color: var(--accent-1); margin-bottom: 1rem;"></i>
+                        <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">Видеозвонок не активен</h4>
+                        <p style="color: var(--text-muted); margin: 0 0 1.5rem 0; text-align: center; max-width: 400px;">
+                            Нажмите «Начать звонок», чтобы создать комнату видеосвязи для этого урока.
+                            {% if is_student_view %}
+                            <br><br>Если преподаватель уже начал звонок, нажмите кнопку чтобы присоединиться.
+                            {% endif %}
+                        </p>
+                        <button class="neo-button accent lg" onclick="startVideoCall()">
+                            <i class="fas fa-video"></i> Начать звонок
+                        </button>
+                    </div>
+                    <!-- Iframe для Jitsi -->
+                    <iframe id="videocall-iframe" 
+                            style="display: none; width: 100%; height: 500px; border: none; border-radius: var(--radius-lg);"
+                            allow="camera; microphone; fullscreen; display-capture; autoplay"
+                            allowfullscreen>
+                    </iframe>
+                </div>
+
+                <div style="margin-top: 1rem; padding: 0.75rem; background: var(--surface-1); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.85rem;">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Видеозвонок работает через Jitsi Meet — бесплатный и безопасный сервис. Не требует регистрации.</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -2478,6 +2541,91 @@
                 }
             }
         }
+        
+        // ==================== ВИДЕОЗВОНОК (JITSI) ====================
+        
+        let videoCallActive = false;
+        
+        function startVideoCall() {
+            const placeholder = document.getElementById('videocall-placeholder');
+            const iframe = document.getElementById('videocall-iframe');
+            const endBtn = document.getElementById('end-call-btn');
+            
+            // Генерируем уникальное имя комнаты на основе ID урока
+            const roomName = `kege-lesson-{{ lesson.lesson_id }}-{{ lesson.student_id or 0 }}`;
+            
+            // Имя пользователя
+            const userName = encodeURIComponent('{{ current_user.username or current_user.name or "Участник" }}');
+            
+            // Формируем URL Jitsi
+            const jitsiUrl = `https://meet.jit.si/${roomName}#userInfo.displayName="${userName}"&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
+            
+            // Показываем iframe
+            placeholder.style.display = 'none';
+            iframe.style.display = 'block';
+            iframe.src = jitsiUrl;
+            endBtn.style.display = 'inline-flex';
+            
+            videoCallActive = true;
+            
+            // Уведомление
+            if (typeof toast !== 'undefined') {
+                toast.success('Видеозвонок запущен');
+            }
+        }
+        
+        function endVideoCall() {
+            const placeholder = document.getElementById('videocall-placeholder');
+            const iframe = document.getElementById('videocall-iframe');
+            const endBtn = document.getElementById('end-call-btn');
+            
+            // Останавливаем iframe
+            iframe.src = '';
+            iframe.style.display = 'none';
+            placeholder.style.display = 'flex';
+            endBtn.style.display = 'none';
+            
+            videoCallActive = false;
+            
+            if (typeof toast !== 'undefined') {
+                toast.info('Видеозвонок завершён');
+            }
+        }
+        
+        function toggleVideoCallFullscreen() {
+            const container = document.getElementById('videocall-container');
+            const iframe = document.getElementById('videocall-iframe');
+            const element = (iframe && iframe.style.display !== 'none') ? iframe : container;
+            
+            if (!document.fullscreenElement) {
+                if (element.requestFullscreen) {
+                    element.requestFullscreen();
+                } else if (element.webkitRequestFullscreen) {
+                    element.webkitRequestFullscreen();
+                } else if (element.msRequestFullscreen) {
+                    element.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        }
+        
+        // Предупреждение при закрытии страницы во время звонка
+        window.addEventListener('beforeunload', function(e) {
+            if (videoCallActive) {
+                e.preventDefault();
+                e.returnValue = 'Видеозвонок активен. Вы уверены, что хотите покинуть страницу?';
+                return e.returnValue;
+            }
+        });
+        
+        // ==================== КОНЕЦ ВИДЕОЗВОНКА ====================
         
         async function createWhiteboard() {
             const container = document.getElementById('whiteboard-container');
