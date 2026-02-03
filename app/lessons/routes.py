@@ -2455,35 +2455,61 @@ def lesson_delete_material(lesson_id):
 @login_required
 def lesson_whiteboard_info(lesson_id):
     """Получить информацию о доске урока."""
-    lesson = Lesson.query.get_or_404(lesson_id)
-    
-    # Проверка доступа
-    if not check_access(lesson, current_user):
-        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
-    
-    whiteboard = lesson.whiteboard
-    
-    if not whiteboard:
+    try:
+        lesson = Lesson.query.get_or_404(lesson_id)
+        
+        # Проверка доступа
+        if not check_access(lesson, current_user):
+            return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+        
+        # Пробуем получить whiteboard (может не существовать таблица)
+        try:
+            whiteboard = lesson.whiteboard
+        except Exception as e:
+            logger.warning(f"Whiteboard relationship error, trying to create table: {e}")
+            # Пробуем создать таблицу
+            try:
+                from sqlalchemy import inspect
+                inspector = inspect(db.engine)
+                table_names = inspector.get_table_names()
+                if 'LessonWhiteboards' not in table_names and 'lessonwhiteboards' not in table_names:
+                    LessonWhiteboard.__table__.create(db.engine)
+                    logger.info("LessonWhiteboards table created on-demand")
+            except Exception as create_err:
+                logger.warning(f"Could not create LessonWhiteboards table: {create_err}")
+            
+            # Возвращаем как будто доски нет
+            return jsonify({
+                'success': True,
+                'exists': False,
+                'whiteboard': None,
+                'note': 'Whiteboard feature initializing'
+            })
+        
+        if not whiteboard:
+            return jsonify({
+                'success': True,
+                'exists': False,
+                'whiteboard': None
+            })
+        
         return jsonify({
             'success': True,
-            'exists': False,
-            'whiteboard': None
+            'exists': True,
+            'whiteboard': {
+                'id': whiteboard.id,
+                'miro_board_id': whiteboard.miro_board_id,
+                'miro_board_url': whiteboard.miro_board_url,
+                'miro_view_link': whiteboard.miro_view_link,
+                'board_name': whiteboard.board_name,
+                'is_active': whiteboard.is_active,
+                'allow_student_edit': whiteboard.allow_student_edit,
+                'created_at': whiteboard.created_at.isoformat() if whiteboard.created_at else None
+            }
         })
-    
-    return jsonify({
-        'success': True,
-        'exists': True,
-        'whiteboard': {
-            'id': whiteboard.id,
-            'miro_board_id': whiteboard.miro_board_id,
-            'miro_board_url': whiteboard.miro_board_url,
-            'miro_view_link': whiteboard.miro_view_link,
-            'board_name': whiteboard.board_name,
-            'is_active': whiteboard.is_active,
-            'allow_student_edit': whiteboard.allow_student_edit,
-            'created_at': whiteboard.created_at.isoformat() if whiteboard.created_at else None
-        }
-    })
+    except Exception as e:
+        logger.error(f"Error in lesson_whiteboard_info: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/create', methods=['POST'])
