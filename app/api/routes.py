@@ -2,18 +2,19 @@
 API маршруты
 """
 import logging
+import secrets
 from flask import request, jsonify, url_for
 from flask_login import login_required
 from sqlalchemy import or_
 
 from app.api import api_bp
-from app.models import Student, Lesson, Tasks, db, User, Enrollment
+from app.models import Student, Lesson, Tasks, db, User, Enrollment, UserProfile
 from app.students.forms import normalize_school_class
 from app.utils.student_id_manager import assign_platform_id_if_needed
 from app.auth.rbac_utils import get_user_scope
 from flask_login import current_user
 from core.audit_logger import audit_logger
-from datetime import datetime
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -393,4 +394,115 @@ def api_templates():
         })
     except Exception as e:
         logger.error(f'Ошибка при получении шаблонов через API: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================
+# TELEGRAM BOT INTEGRATION
+# ============================================
+
+@api_bp.route('/api/telegram/link-code', methods=['POST'])
+@login_required
+def api_telegram_link_code():
+    """Генерация одноразового кода для привязки Telegram аккаунта"""
+    try:
+        # Получаем или создаём профиль пользователя
+        profile = current_user.profile
+        if not profile:
+            profile = UserProfile(user_id=current_user.id)
+            db.session.add(profile)
+        
+        # Генерируем 6-символьный код (hex)
+        code = secrets.token_hex(3).upper()  # Например: "A1B2C3"
+        profile.telegram_link_code = code
+        profile.telegram_link_code_expires = datetime.utcnow() + timedelta(minutes=10)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'code': code,
+            'expires_in': 600  # секунд
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при генерации Telegram кода: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/api/telegram/unlink', methods=['POST'])
+@login_required
+def api_telegram_unlink():
+    """Отвязка Telegram аккаунта"""
+    try:
+        profile = current_user.profile
+        if not profile:
+            return jsonify({'success': False, 'error': 'Профиль не найден'}), 404
+        
+        if not profile.telegram_chat_id:
+            return jsonify({'success': False, 'error': 'Telegram не привязан'}), 400
+        
+        profile.telegram_chat_id = None
+        profile.telegram_link_code = None
+        profile.telegram_link_code_expires = None
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Telegram отвязан'
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при отвязке Telegram: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/api/telegram/toggle-notifications', methods=['POST'])
+@login_required
+def api_telegram_toggle_notifications():
+    """Включение/выключение Telegram уведомлений"""
+    try:
+        profile = current_user.profile
+        if not profile:
+            return jsonify({'success': False, 'error': 'Профиль не найден'}), 404
+        
+        data = request.get_json() or {}
+        enabled = data.get('enabled', not profile.telegram_notifications_enabled)
+        
+        profile.telegram_notifications_enabled = bool(enabled)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'enabled': profile.telegram_notifications_enabled
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при переключении уведомлений: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/api/telegram/status', methods=['GET'])
+@login_required
+def api_telegram_status():
+    """Получение статуса привязки Telegram"""
+    try:
+        profile = current_user.profile
+        
+        if not profile:
+            return jsonify({
+                'success': True,
+                'linked': False,
+                'notifications_enabled': True
+            })
+        
+        return jsonify({
+            'success': True,
+            'linked': profile.telegram_chat_id is not None,
+            'chat_id': profile.telegram_chat_id,
+            'notifications_enabled': profile.telegram_notifications_enabled if profile.telegram_notifications_enabled is not None else True
+        })
+    except Exception as e:
+        logger.error(f'Ошибка при получении статуса Telegram: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500

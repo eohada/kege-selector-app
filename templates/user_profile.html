@@ -187,6 +187,17 @@
                                 </div>
                                 {% endif %}
                                 
+                                {# Блок Telegram уведомлений #}
+                                <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;" id="telegram-notifications-block">
+                                    <div class="hero-eyebrow">уведомления</div>
+                                    <h4 style="margin: 0.35rem 0 0.5rem 0;">Telegram бот</h4>
+                                    
+                                    <div id="telegram-status-content">
+                                        {# Контент загружается через JS #}
+                                        <div style="color: var(--text-muted);">Загрузка...</div>
+                                    </div>
+                                </div>
+                                
                                 {% if current_user.telegram_link %}
                                 <div class="data-row">
                                     <span class="data-label">Telegram</span>
@@ -715,6 +726,160 @@
                 }
             }
         });
+    </script>
+    
+    <!-- Telegram Bot Integration -->
+    <script>
+        let telegramLinkCode = null;
+        let telegramCodeExpires = null;
+        
+        async function loadTelegramStatus() {
+            const container = document.getElementById('telegram-status-content');
+            if (!container) return;
+            
+            try {
+                const resp = await fetch('/api/telegram/status');
+                const data = await resp.json();
+                
+                if (data.success) {
+                    renderTelegramStatus(data);
+                } else {
+                    container.innerHTML = '<div style="color: var(--danger);">Ошибка загрузки</div>';
+                }
+            } catch (e) {
+                container.innerHTML = '<div style="color: var(--danger);">Ошибка соединения</div>';
+            }
+        }
+        
+        function renderTelegramStatus(data) {
+            const container = document.getElementById('telegram-status-content');
+            if (!container) return;
+            
+            if (data.linked) {
+                container.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                        <span style="color: var(--success); font-weight: 600;">
+                            <i class="fas fa-check-circle"></i> Telegram привязан
+                        </span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" id="tg-notifications-toggle" 
+                                   ${data.notifications_enabled ? 'checked' : ''} 
+                                   onchange="toggleTelegramNotifications(this.checked)">
+                            <span style="color: var(--text-muted);">Получать уведомления</span>
+                        </label>
+                        <button class="neo-button ghost sm" onclick="unlinkTelegram()">
+                            <i class="fas fa-unlink"></i> Отвязать
+                        </button>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div style="color: var(--text-muted); margin-bottom: 0.75rem;">
+                        Привяжите Telegram, чтобы получать уведомления о уроках, проверке ДЗ и сообщениях.
+                    </div>
+                    <div id="telegram-link-area">
+                        <button class="neo-button accent sm" onclick="generateTelegramCode()">
+                            <i class="fab fa-telegram"></i> Привязать Telegram
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        async function generateTelegramCode() {
+            const area = document.getElementById('telegram-link-area');
+            if (!area) return;
+            
+            area.innerHTML = '<div style="color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Генерация кода...</div>';
+            
+            try {
+                const resp = await fetch('/api/telegram/link-code', { method: 'POST' });
+                const data = await resp.json();
+                
+                if (data.success) {
+                    telegramLinkCode = data.code;
+                    telegramCodeExpires = Date.now() + (data.expires_in * 1000);
+                    
+                    area.innerHTML = `
+                        <div style="background: var(--surface-2); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                                1. Откройте бота <a href="https://t.me/urep_notify_bot" target="_blank" style="color: var(--accent-1);">@urep_notify_bot</a>
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                                2. Отправьте команду:
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                                <code style="background: var(--surface-1); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 1.1rem; font-weight: 600; letter-spacing: 0.05em;">/link ${data.code}</code>
+                                <button class="neo-button ghost sm" onclick="copyTelegramCode()" title="Скопировать">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--warning);">
+                                <i class="fas fa-clock"></i> Код действителен 10 минут
+                            </div>
+                        </div>
+                        <button class="neo-button ghost sm" style="margin-top: 0.75rem;" onclick="loadTelegramStatus()">
+                            <i class="fas fa-arrow-left"></i> Назад
+                        </button>
+                    `;
+                } else {
+                    area.innerHTML = `<div style="color: var(--danger);">Ошибка: ${data.error}</div>`;
+                }
+            } catch (e) {
+                area.innerHTML = `<div style="color: var(--danger);">Ошибка соединения</div>`;
+            }
+        }
+        
+        function copyTelegramCode() {
+            if (telegramLinkCode) {
+                navigator.clipboard.writeText('/link ' + telegramLinkCode);
+                if (window.toast) toast.success('Команда скопирована!');
+            }
+        }
+        
+        async function unlinkTelegram() {
+            if (!confirm('Отвязать Telegram? Вы перестанете получать уведомления.')) return;
+            
+            try {
+                const resp = await fetch('/api/telegram/unlink', { method: 'POST' });
+                const data = await resp.json();
+                
+                if (data.success) {
+                    if (window.toast) toast.success('Telegram отвязан');
+                    loadTelegramStatus();
+                } else {
+                    if (window.toast) toast.error(data.error);
+                }
+            } catch (e) {
+                if (window.toast) toast.error('Ошибка соединения');
+            }
+        }
+        
+        async function toggleTelegramNotifications(enabled) {
+            try {
+                const resp = await fetch('/api/telegram/toggle-notifications', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled })
+                });
+                const data = await resp.json();
+                
+                if (data.success) {
+                    if (window.toast) toast.success(enabled ? 'Уведомления включены' : 'Уведомления выключены');
+                } else {
+                    if (window.toast) toast.error(data.error);
+                    loadTelegramStatus(); // Откатить UI
+                }
+            } catch (e) {
+                if (window.toast) toast.error('Ошибка соединения');
+                loadTelegramStatus();
+            }
+        }
+        
+        // Загружаем статус при загрузке страницы
+        document.addEventListener('DOMContentLoaded', loadTelegramStatus);
     </script>
 </body>
 </html>

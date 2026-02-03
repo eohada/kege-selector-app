@@ -418,6 +418,21 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create UserNotifications table: {e}")
                     db.session.rollback()
+            else:
+                # Добавляем telegram_sent если таблица уже есть
+                try:
+                    un_table = _resolve_table_name(table_names, 'UserNotifications')
+                    if un_table:
+                        cols = {c['name'] for c in inspector.get_columns(un_table)}
+                        if 'telegram_sent' not in cols:
+                            try:
+                                db.session.execute(text(f'ALTER TABLE "{un_table}" ADD COLUMN telegram_sent BOOLEAN DEFAULT FALSE'))
+                                logger.info(f"Added telegram_sent to {un_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add telegram_sent to {un_table}: {e}")
+                                db.session.rollback()
+                except Exception:
+                    pass
 
             # Фундамент: диалоги по уроку
             if 'LessonMessages' not in table_names and 'lessonmessages' not in table_names:
@@ -1002,6 +1017,41 @@ def ensure_schema_columns(app):
                     logger.info("Created UserProfiles table")
                 except Exception as e:
                     logger.warning(f"Could not create UserProfiles table: {e}")
+            else:
+                # Добавляем поля для Telegram Bot интеграции
+                try:
+                    cols = {c['name'] for c in inspector.get_columns(profiles_table)}
+                    if 'telegram_chat_id' not in cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN telegram_chat_id BIGINT'))
+                            logger.info(f"Added telegram_chat_id to {profiles_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add telegram_chat_id to {profiles_table}: {e}")
+                            db.session.rollback()
+                    if 'telegram_link_code' not in cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN telegram_link_code VARCHAR(32)'))
+                            logger.info(f"Added telegram_link_code to {profiles_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add telegram_link_code to {profiles_table}: {e}")
+                            db.session.rollback()
+                    if 'telegram_link_code_expires' not in cols:
+                        try:
+                            col_type = 'TIMESTAMP' if _is_postgres(app) else 'DATETIME'
+                            db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN telegram_link_code_expires {col_type}'))
+                            logger.info(f"Added telegram_link_code_expires to {profiles_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add telegram_link_code_expires to {profiles_table}: {e}")
+                            db.session.rollback()
+                    if 'telegram_notifications_enabled' not in cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN telegram_notifications_enabled BOOLEAN DEFAULT TRUE'))
+                            logger.info(f"Added telegram_notifications_enabled to {profiles_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add telegram_notifications_enabled to {profiles_table}: {e}")
+                            db.session.rollback()
+                except Exception:
+                    pass
             
             # 3. Создаем таблицу FamilyTies (если её нет)
             family_ties_table = _resolve_table_name(table_names, 'FamilyTies')

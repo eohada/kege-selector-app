@@ -629,6 +629,7 @@ class UserNotification(db.Model):
     meta = db.Column(db.JSON, nullable=True)
 
     is_read = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    telegram_sent = db.Column(db.Boolean, default=False, nullable=False, index=True)  # Отправлено ли в Telegram
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
 
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('notifications', lazy=True, cascade='all, delete-orphan'))
@@ -906,9 +907,15 @@ class UserProfile(db.Model):
     last_name = db.Column(db.String(100), nullable=True)
     middle_name = db.Column(db.String(100), nullable=True)
     phone = db.Column(db.String(50), nullable=True)  # Для SMS уведомлений
-    telegram_id = db.Column(db.String(100), nullable=True)  # Для бота уведомлений
+    telegram_id = db.Column(db.String(100), nullable=True)  # Legacy: username/ссылка
     timezone = db.Column(db.String(50), default='Europe/Moscow', nullable=False)
     avatar_url = db.Column(db.String(500), nullable=True)
+    
+    # Telegram Bot интеграция
+    telegram_chat_id = db.Column(db.BigInteger, nullable=True, unique=True, index=True)  # Chat ID для отправки уведомлений
+    telegram_link_code = db.Column(db.String(32), nullable=True)  # Одноразовый код привязки
+    telegram_link_code_expires = db.Column(db.DateTime, nullable=True)  # Срок действия кода
+    telegram_notifications_enabled = db.Column(db.Boolean, default=True, nullable=False)  # Включены ли уведомления
     
     # Приватные заметки (видны только админу и тьютору)
     internal_notes = db.Column(db.Text, nullable=True)
