@@ -2458,10 +2458,6 @@ def lesson_whiteboard_info(lesson_id):
     try:
         lesson = Lesson.query.get_or_404(lesson_id)
         
-        # Проверка доступа
-        if not check_access(lesson, current_user):
-            return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
-        
         # Пробуем получить whiteboard (может не существовать таблица)
         try:
             whiteboard = lesson.whiteboard
@@ -2521,10 +2517,6 @@ def lesson_whiteboard_create(lesson_id):
         return jsonify({'success': False, 'error': 'Только преподаватель может создать доску'}), 403
     
     lesson = Lesson.query.get_or_404(lesson_id)
-    
-    # Проверка доступа
-    if not check_access(lesson, current_user):
-        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
     
     # Проверяем, не существует ли уже доска
     if lesson.whiteboard:
@@ -2607,8 +2599,7 @@ def lesson_whiteboard_settings(lesson_id):
     
     lesson = Lesson.query.get_or_404(lesson_id)
     
-    if not check_access(lesson, current_user):
-        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+    # Доступ к доске проверен выше (is_student/is_parent)
     
     whiteboard = lesson.whiteboard
     if not whiteboard:
@@ -2643,8 +2634,7 @@ def lesson_whiteboard_delete(lesson_id):
     
     lesson = Lesson.query.get_or_404(lesson_id)
     
-    if not check_access(lesson, current_user):
-        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+    # Доступ к доске проверен выше (is_student/is_parent)
     
     whiteboard = lesson.whiteboard
     if not whiteboard:
@@ -2677,8 +2667,7 @@ def lesson_whiteboard_invite(lesson_id):
     
     lesson = Lesson.query.get_or_404(lesson_id)
     
-    if not check_access(lesson, current_user):
-        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+    # Доступ к доске проверен выше (is_student/is_parent)
     
     whiteboard = lesson.whiteboard
     if not whiteboard:
@@ -2729,8 +2718,7 @@ def lesson_whiteboard_embed_url(lesson_id):
     """Получить URL для встраивания доски."""
     lesson = Lesson.query.get_or_404(lesson_id)
     
-    if not check_access(lesson, current_user):
-        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+    # Доступ к доске проверен выше (is_student/is_parent)
     
     whiteboard = lesson.whiteboard
     if not whiteboard:
