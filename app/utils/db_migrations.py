@@ -1050,6 +1050,26 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add telegram_notifications_enabled to {profiles_table}: {e}")
                             db.session.rollback()
+                    
+                    # Детальные настройки Telegram уведомлений
+                    tg_notify_fields = [
+                        'tg_notify_lesson_reminder',
+                        'tg_notify_homework_checked',
+                        'tg_notify_homework_returned',
+                        'tg_notify_new_message',
+                        'tg_notify_lesson_scheduled',
+                        'tg_notify_low_lessons',
+                        'tg_notify_news'
+                    ]
+                    for field in tg_notify_fields:
+                        if field not in cols:
+                            try:
+                                default_val = 'FALSE' if field == 'tg_notify_news' else 'TRUE'
+                                db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN {field} BOOLEAN DEFAULT {default_val}'))
+                                logger.info(f"Added {field} to {profiles_table}")
+                            except Exception as e:
+                                logger.warning(f"Could not add {field} to {profiles_table}: {e}")
+                                db.session.rollback()
                 except Exception:
                     pass
             

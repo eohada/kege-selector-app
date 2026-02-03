@@ -917,6 +917,15 @@ class UserProfile(db.Model):
     telegram_link_code_expires = db.Column(db.DateTime, nullable=True)  # Срок действия кода
     telegram_notifications_enabled = db.Column(db.Boolean, default=True, nullable=False)  # Включены ли уведомления
     
+    # Детальные настройки Telegram уведомлений
+    tg_notify_lesson_reminder = db.Column(db.Boolean, default=True, nullable=False)  # Напоминания об уроках
+    tg_notify_homework_checked = db.Column(db.Boolean, default=True, nullable=False)  # ДЗ проверено
+    tg_notify_homework_returned = db.Column(db.Boolean, default=True, nullable=False)  # ДЗ возвращено на доработку
+    tg_notify_new_message = db.Column(db.Boolean, default=True, nullable=False)  # Новое сообщение от преподавателя
+    tg_notify_lesson_scheduled = db.Column(db.Boolean, default=True, nullable=False)  # Урок запланирован
+    tg_notify_low_lessons = db.Column(db.Boolean, default=True, nullable=False)  # Уроки заканчиваются
+    tg_notify_news = db.Column(db.Boolean, default=False, nullable=False)  # Новости платформы (по умолчанию выкл)
+    
     # Приватные заметки (видны только админу и тьютору)
     internal_notes = db.Column(db.Text, nullable=True)
     
