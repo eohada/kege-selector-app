@@ -10,6 +10,7 @@ from core.db_models import (
     Tester, AuditLog, RolePermission, User,
     UserNotification,
     LessonMessage,
+    LessonWhiteboard,
     InviteLink,
     LessonTaskTeacherComment, TaskReview,
     Course, CourseModule,
@@ -425,6 +426,15 @@ def ensure_schema_columns(app):
                     logger.info("LessonMessages table created")
                 except Exception as e:
                     logger.warning(f"Could not create LessonMessages table: {e}")
+                    db.session.rollback()
+
+            # Фундамент: интерактивные доски Miro
+            if 'LessonWhiteboards' not in table_names and 'lessonwhiteboards' not in table_names:
+                try:
+                    LessonWhiteboard.__table__.create(db.engine)
+                    logger.info("LessonWhiteboards table created")
+                except Exception as e:
+                    logger.warning(f"Could not create LessonWhiteboards table: {e}")
                     db.session.rollback()
 
             # Фундамент: приглашения (онбординг)
