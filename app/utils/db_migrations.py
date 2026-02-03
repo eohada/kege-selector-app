@@ -701,6 +701,9 @@ def ensure_schema_columns(app):
                     db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN goal_text TEXT'))  # Храним текстовую формулировку цели
                 if 'programming_language' not in student_columns:
                     db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN programming_language VARCHAR(100)'))  # Храним выбранный язык программирования
+                if 'user_id' not in student_columns:
+                    db.session.execute(text(f'ALTER TABLE "{students_table}" ADD COLUMN user_id INTEGER REFERENCES "Users"(id)'))
+                    logger.info(f"Added user_id column to {students_table}")
 
                 indexes = {idx['name'] for idx in inspector.get_indexes(students_table)}
                 if 'idx_students_category' not in indexes:

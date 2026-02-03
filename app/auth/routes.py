@@ -111,8 +111,9 @@ def login():
                             next_page = url_for('auth.user_profile')
                         else:
                             # По умолчанию: ученик идёт в свою комнату/профиль (по Student)
-                            student = None
-                            if user.email:
+                            # Сначала по user_id (новый способ), затем по email (старый)
+                            student = Student.query.filter_by(user_id=user.id).first()
+                            if not student and user.email:
                                 student = Student.query.filter_by(email=user.email).first()
                             if student:
                                 next_page = url_for('students.student_profile', student_id=student.student_id)
@@ -181,18 +182,23 @@ def user_profile():
     recent_lessons = []
     lesson_counts = {'total': 0, 'planned': 0, 'completed': 0}
     try:
-        # Привязка аккаунта ученика к сущности Student по email (основной кейс)
+        # Привязка аккаунта ученика к сущности Student
         if current_user.is_student():
-            email = (current_user.email or current_user.username or '').strip()
-            if email:
-                linked_student = Student.query.filter_by(email=email).first()
-                if linked_student:
-                    recent_lessons = Lesson.query.filter_by(student_id=linked_student.student_id).order_by(
-                        Lesson.lesson_date.desc()
-                    ).limit(6).all()
-                    lesson_counts['total'] = Lesson.query.filter_by(student_id=linked_student.student_id).count()
-                    lesson_counts['planned'] = Lesson.query.filter_by(student_id=linked_student.student_id, status='planned').count()
-                    lesson_counts['completed'] = Lesson.query.filter_by(student_id=linked_student.student_id, status='completed').count()
+            # Сначала по user_id (новый способ)
+            linked_student = Student.query.filter_by(user_id=current_user.id).first()
+            # Fallback на email (старый способ)
+            if not linked_student:
+                email = (current_user.email or '').strip()
+                if email:
+                    linked_student = Student.query.filter_by(email=email).first()
+            
+            if linked_student:
+                recent_lessons = Lesson.query.filter_by(student_id=linked_student.student_id).order_by(
+                    Lesson.lesson_date.desc()
+                ).limit(6).all()
+                lesson_counts['total'] = Lesson.query.filter_by(student_id=linked_student.student_id).count()
+                lesson_counts['planned'] = Lesson.query.filter_by(student_id=linked_student.student_id, status='planned').count()
+                lesson_counts['completed'] = Lesson.query.filter_by(student_id=linked_student.student_id, status='completed').count()
     except Exception as e:
         logger.warning(f"Failed to build profile context for user {current_user.id}: {e}")
         linked_student = None

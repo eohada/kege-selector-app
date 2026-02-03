@@ -351,21 +351,26 @@ def _record_submission_attempt(submission: Submission) -> None:
 # ============================================================================
 
 def get_student_by_user_id(user_id):
-    """Получить Student по User.id (через email)"""
+    """Получить Student по User.id"""
     user = User.query.get(user_id)
     if not user:
         return None
 
+    # 1) user_id -> Student.user_id (новый способ — прямая связь)
+    st = Student.query.filter_by(user_id=user_id).first()
+    if st:
+        return st
+
     email = (str(user.email).strip() if user.email else '')
     username = (str(user.username).strip() if user.username else '')
 
-    # 1) email -> Student.email (case-insensitive)
+    # 2) email -> Student.email (case-insensitive) — fallback для старых данных
     if email:
         st = Student.query.filter(func.lower(Student.email) == email.lower()).first()
         if st:
             return st
 
-    # 2) username -> Student.platform_id (если email пустой/не совпадает)
+    # 3) username -> Student.platform_id (если email пустой/не совпадает)
     if username:
         try:
             st = Student.query.filter(Student.platform_id == username).first()
@@ -374,7 +379,7 @@ def get_student_by_user_id(user_id):
         except Exception:
             pass
 
-    # 3) fallback: Student.student_id == User.id — но только если у Student нет email
+    # 4) fallback: Student.student_id == User.id — но только если у Student нет email
     # (чтобы избежать коллизий Users.id vs Students.student_id)
     try:
         st = Student.query.filter(Student.student_id == int(user_id), Student.email.is_(None)).first()

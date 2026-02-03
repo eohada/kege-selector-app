@@ -1815,11 +1815,11 @@ def remote_admin_api_create_pack():
         )
         db.session.add(student_profile)
         
-        # Запись Student
+        # Запись Student (связываем с User через user_id)
         student_record = Student(
+            user_id=student_user.id,  # Прямая связь с User
             name=student_name,
             telegram=student_telegram or None,
-            phone=student_phone or None,
             school_class=int(school_class) if school_class else None,
             target_score=int(target_score) if target_score else None,
             category=category or None,
