@@ -12,17 +12,33 @@
 </head>
 <body>
 <div class="app-shell">
-    {% include '_primary_nav.html' %}
+    <header class="faq-topbar">
+        <a href="{{ url_for('main.index') }}" class="faq-brand">
+            <div class="faq-logo">LOGO</div>
+            <div class="faq-brand-text">
+                <div class="faq-brand-title">URep</div>
+                <div class="faq-brand-subtitle">База знаний</div>
+            </div>
+        </a>
+        <div class="faq-topbar-actions">
+            {% if current_user and current_user.is_authenticated %}
+            <a href="{{ url_for('main.dashboard') }}" class="neo-button outline sm">В дашборд</a>
+            <a href="{{ url_for('auth.user_profile') }}" class="neo-button sm">Профиль</a>
+            {% else %}
+            <a href="{{ url_for('auth.login') }}" class="neo-button">Войти</a>
+            {% endif %}
+        </div>
+    </header>
     
     <main class="main-content" style="padding: 2rem; max-width: 1000px; margin: 0 auto;">
         <div class="glass-panel" style="padding: 2rem;">
             <h1 style="margin-bottom: 0.5rem;">📚 База знаний</h1>
             <p style="color: var(--text-muted); margin-bottom: 2rem;">
-                Ответы на частые вопросы и руководство по работе с платформой
+                Ответы для учеников и родителей: как устроена платформа и как с ней работать
             </p>
 
             {# Быстрая навигация #}
-            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 2rem;">
+            <div class="faq-quick-nav" style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 2rem;">
                 <a href="#getting-started" class="neo-button outline sm">🚀 Начало работы</a>
                 <a href="#lessons" class="neo-button outline sm">📖 Уроки</a>
                 <a href="#homework" class="neo-button outline sm">📝 Домашние задания</a>
@@ -60,7 +76,7 @@
                         <span class="faq-toggle">+</span>
                     </div>
                     <div class="faq-answer">
-                        <p>Если вы забыли пароль, свяжитесь с вашим преподавателем или напишите в Telegram-бот — администратор сбросит пароль и выдаст новый.</p>
+                        <p>Если вы забыли пароль, свяжитесь с преподавателем или напишите в Telegram‑бот @URep_bot — администратор сбросит пароль и выдаст новый.</p>
                     </div>
                 </div>
 
@@ -73,10 +89,10 @@
                         <p>Чтобы получать уведомления в Telegram:</p>
                         <ol>
                             <li>Перейдите в ваш профиль (иконка аватара → Профиль)</li>
-                            <li>Найдите блок "Telegram уведомления"</li>
-                            <li>Нажмите "Получить код привязки"</li>
-                            <li>Скопируйте код и отправьте его боту @urep_student_bot</li>
-                            <li>После успешной привязки вы будете получать уведомления о новых уроках, проверенных работах и напоминания</li>
+                            <li>Найдите блок «Telegram уведомления»</li>
+                            <li>Нажмите «Получить код привязки»</li>
+                            <li>Скопируйте код и отправьте его боту @URep_bot</li>
+                            <li>После успешной привязки вы сможете включать/выключать нужные типы уведомлений</li>
                         </ol>
                     </div>
                 </div>
@@ -107,14 +123,17 @@
                         <span class="faq-toggle">+</span>
                     </div>
                     <div class="faq-answer">
-                        <p>Классная комната — это ваше рабочее пространство на уроке. Здесь вы найдёте:</p>
+                        <p>Классная комната — это рабочее пространство урока. Внутри есть вкладки:</p>
                         <ul>
-                            <li><strong>Конспект</strong> — материалы урока, которые подготовил преподаватель</li>
-                            <li><strong>Домашнее задание</strong> — задачи для самостоятельной работы</li>
-                            <li><strong>Чат</strong> — общение с преподавателем</li>
-                            <li><strong>Доска</strong> — интерактивная доска Miro для совместной работы</li>
+                            <li><strong>Конспект</strong> — материалы урока</li>
+                            <li><strong>Домашнее задание / Классная работа / Проверочная</strong> — задания по текущему типу урока</li>
+                            <li><strong>Материалы</strong> — файлы и ссылки к уроку</li>
+                            <li><strong>Заметки</strong> — личные заметки ученика</li>
+                            <li><strong>Диалог</strong> — чат с преподавателем</li>
+                            <li><strong>Доска</strong> — интерактивная доска Miro</li>
+                            <li><strong>Звонок</strong> — раздел видеосвязи (сейчас в разработке)</li>
                         </ul>
-                        <p>Переключайтесь между вкладками, чтобы получить доступ к нужному разделу.</p>
+                        <p>Переключайтесь между вкладками, чтобы работать с нужным разделом.</p>
                     </div>
                 </div>
 
@@ -124,10 +143,10 @@
                         <span class="faq-toggle">+</span>
                     </div>
                     <div class="faq-answer">
-                        <p>Интерактивная доска (Miro) позволяет вам и преподавателю рисовать, писать и работать совместно в реальном времени.</p>
+                        <p>Интерактивная доска (Miro) позволяет вам и преподавателю работать вместе в реальном времени.</p>
                         <ul>
-                            <li>Используйте инструменты слева для рисования, текста, стикеров</li>
-                            <li>Вы можете приближать и отдалять доску колёсиком мыши</li>
+                            <li>Используйте инструменты Miro для рисования, текста и стикеров</li>
+                            <li>Приближайте/отдаляйте доску колёсиком мыши или жестом на тачпаде</li>
                             <li>Все изменения сохраняются автоматически</li>
                             <li>После урока доска остаётся доступной для просмотра</li>
                         </ul>
@@ -150,7 +169,6 @@
                             <li>Откройте урок и перейдите на вкладку "Домашнее задание"</li>
                             <li>Найдите задачу, которую хотите сдать</li>
                             <li>Введите ваш ответ в поле ввода</li>
-                            <li>При необходимости прикрепите файлы (код, скриншоты)</li>
                             <li>Нажмите "Отправить"</li>
                         </ol>
                         <p>После отправки задача уйдёт на проверку преподавателю.</p>
@@ -199,12 +217,11 @@
                         <span class="faq-toggle">+</span>
                     </div>
                     <div class="faq-answer">
-                        <p>Тренажёр — это инструмент для самостоятельной практики задач ЕГЭ/ОГЭ по информатике.</p>
+                        <p>Тренажёр — это раздел для самостоятельной практики задач. Он доступен, если включён в ваш тариф/доступ.</p>
                         <ul>
                             <li>Выбирайте номер задания, который хотите отработать</li>
-                            <li>Решайте задачи и получайте мгновенную проверку</li>
-                            <li>Отслеживайте свой прогресс в статистике</li>
-                            <li>Тренируйтесь в любое время — тренажёр доступен 24/7</li>
+                            <li>Решайте задачи и получайте проверку</li>
+                            <li>Отслеживайте прогресс в статистике</li>
                         </ul>
                     </div>
                 </div>
@@ -254,13 +271,7 @@
                         <span class="faq-toggle">+</span>
                     </div>
                     <div class="faq-answer">
-                        <p>Если вам нужно перенести урок, свяжитесь с преподавателем заранее (минимум за 24 часа) через:</p>
-                        <ul>
-                            <li>Чат на платформе</li>
-                            <li>Telegram</li>
-                            <li>Телефон (если есть)</li>
-                        </ul>
-                        <p>Преподаватель согласует с вами новое время и перенесёт урок в системе.</p>
+                        <p>Если нужно перенести урок, свяжитесь с преподавателем удобным способом (чат, Telegram или другой контакт, который вам дали). Преподаватель согласует новое время и перенесёт урок в системе.</p>
                     </div>
                 </div>
             </section>
@@ -275,14 +286,15 @@
                         <span class="faq-toggle">+</span>
                     </div>
                     <div class="faq-answer">
-                        <p>Платформа отправляет уведомления о важных событиях:</p>
+                        <p>Набор уведомлений зависит от ваших настроек. Обычно доступны:</p>
                         <ul>
-                            <li>📅 Напоминание об уроке (за 1 час и за 15 минут)</li>
+                            <li>📅 Напоминания об уроках</li>
                             <li>✅ Домашнее задание проверено</li>
                             <li>🔄 Задание возвращено на доработку</li>
-                            <li>📝 Новое домашнее задание</li>
                             <li>💬 Новое сообщение от преподавателя</li>
+                            <li>📝 Урок запланирован/перенесён</li>
                             <li>⚠️ Осталось мало уроков по тарифу</li>
+                            <li>📢 Новости платформы (если включено)</li>
                         </ul>
                     </div>
                 </div>
@@ -293,10 +305,10 @@
                         <span class="faq-toggle">+</span>
                     </div>
                     <div class="faq-answer">
-                        <p>После привязки Telegram-бота вы можете настроить, какие уведомления получать:</p>
+                        <p>После привязки Telegram‑бота @URep_bot вы можете настроить, какие уведомления получать:</p>
                         <ol>
-                            <li>Откройте бота @urep_student_bot</li>
-                            <li>Нажмите "Настройки" или отправьте /settings</li>
+                            <li>Откройте бота @URep_bot</li>
+                            <li>Нажмите «Настройки» или используйте меню бота</li>
                             <li>Включите или выключите нужные типы уведомлений</li>
                         </ol>
                     </div>
@@ -368,7 +380,7 @@
                     <div class="faq-answer">
                         <p>Если у вас возникла проблема:</p>
                         <ol>
-                            <li><strong>Технические проблемы</strong> (не работает кнопка, не загружается страница) — напишите в Telegram-бот или преподавателю</li>
+                            <li><strong>Технические проблемы</strong> (не работает кнопка, не загружается страница) — напишите в Telegram‑бот @URep_bot или преподавателю</li>
                             <li><strong>Вопросы по учёбе</strong> — обратитесь к преподавателю</li>
                             <li><strong>Вопросы по оплате</strong> — свяжитесь с администратором</li>
                         </ol>
@@ -399,6 +411,43 @@
 </div>
 
 <style>
+.faq-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem 2rem 0.5rem;
+}
+.faq-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    text-decoration: none;
+    color: var(--text-primary);
+}
+.faq-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--accent-1);
+    display: grid;
+    place-items: center;
+    font-weight: 900;
+    color: #000;
+}
+.faq-brand-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+.faq-brand-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+.faq-topbar-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
 .faq-section {
     margin-bottom: 2.5rem;
 }
@@ -455,6 +504,43 @@
 .faq-answer li {
     margin: 0.4rem 0;
     line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+    .faq-topbar {
+        padding: 1rem 1.25rem 0.25rem;
+    }
+    .main-content {
+        padding: 1.25rem !important;
+    }
+}
+
+@media (max-width: 720px) {
+    .faq-topbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .faq-quick-nav .neo-button {
+        flex: 1 1 100%;
+        justify-content: center;
+        white-space: normal;
+    }
+    .glass-panel {
+        padding: 1.25rem !important;
+    }
+    .faq-section-title {
+        font-size: 1.15rem;
+    }
+    .faq-question {
+        padding: 0.85rem 1rem;
+        gap: 0.75rem;
+    }
+    .faq-answer {
+        padding: 0 1rem;
+    }
+    .faq-item.open .faq-answer {
+        padding: 0 1rem 1rem;
+    }
 }
 </style>
 

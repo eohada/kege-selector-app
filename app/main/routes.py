@@ -980,7 +980,6 @@ def backup_db():
 
 
 @main_bp.route('/faq')
-@login_required
 def faq():
     """База знаний / FAQ для учеников и родителей."""
     return render_template('faq.html', active_page='faq')
