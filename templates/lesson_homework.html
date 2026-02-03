@@ -338,6 +338,87 @@
     .teacher-feedback-student select.neo-select:hover {
         border-color: rgba(0, 255, 213, 0.35);
     }
+
+    /* Video Call PiP (Picture-in-Picture) */
+    #videocall-pip {
+        display: none;
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 320px;
+        height: 240px;
+        background: var(--surface-1);
+        border: 2px solid var(--accent-1);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        z-index: 9999;
+        overflow: hidden;
+        resize: both;
+        min-width: 240px;
+        min-height: 180px;
+        max-width: 50vw;
+        max-height: 50vh;
+    }
+
+    #videocall-pip .pip-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+        color: var(--surface-1);
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: move;
+        user-select: none;
+    }
+
+    #videocall-pip .pip-header i {
+        margin-right: 6px;
+    }
+
+    #videocall-pip .pip-controls {
+        display: flex;
+        gap: 6px;
+    }
+
+    #videocall-pip .pip-controls button {
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+    }
+
+    #videocall-pip .pip-controls button:hover {
+        background: rgba(255, 255, 255, 0.35);
+    }
+
+    #videocall-pip .pip-controls button.danger:hover {
+        background: var(--danger);
+    }
+
+    #videocall-pip iframe {
+        width: 100%;
+        height: calc(100% - 40px);
+        border: none;
+    }
+
+    /* Адаптив для мобильных */
+    @media (max-width: 768px) {
+        #videocall-pip {
+            width: 200px;
+            height: 160px;
+            bottom: 10px;
+            right: 10px;
+        }
+    }
     </style>
 </head>
 <body>
@@ -2542,22 +2623,108 @@
             }
         }
         
-        // ==================== ВИДЕОЗВОНОК (JITSI) ====================
+        // ==================== ВИДЕОЗВОНОК (JITSI) С PIP ====================
         
         let videoCallActive = false;
+        let videoPipMode = false;
+        let pipDragOffset = { x: 0, y: 0 };
+        let pipIsDragging = false;
+        
+        // Создаём PiP контейнер динамически
+        function createPipContainer() {
+            if (document.getElementById('videocall-pip')) return;
+            
+            const pip = document.createElement('div');
+            pip.id = 'videocall-pip';
+            pip.innerHTML = `
+                <div class="pip-header">
+                    <span><i class="fas fa-video"></i> Звонок</span>
+                    <div class="pip-controls">
+                        <button onclick="expandPipToTab()" title="Развернуть"><i class="fas fa-expand"></i></button>
+                        <button onclick="endVideoCall()" title="Завершить" class="danger"><i class="fas fa-phone-slash"></i></button>
+                    </div>
+                </div>
+                <iframe id="videocall-pip-iframe" 
+                        allow="camera; microphone; fullscreen; display-capture; autoplay"
+                        allowfullscreen></iframe>
+            `;
+            document.body.appendChild(pip);
+            
+            // Делаем PiP перетаскиваемым
+            const header = pip.querySelector('.pip-header');
+            header.addEventListener('mousedown', startPipDrag);
+            header.addEventListener('touchstart', startPipDragTouch, { passive: false });
+        }
+        
+        function startPipDrag(e) {
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'I') return;
+            pipIsDragging = true;
+            const pip = document.getElementById('videocall-pip');
+            const rect = pip.getBoundingClientRect();
+            pipDragOffset.x = e.clientX - rect.left;
+            pipDragOffset.y = e.clientY - rect.top;
+            document.addEventListener('mousemove', doPipDrag);
+            document.addEventListener('mouseup', stopPipDrag);
+        }
+        
+        function startPipDragTouch(e) {
+            if (e.target.tagName === 'BUTTON' || e.target.tagName === 'I') return;
+            e.preventDefault();
+            pipIsDragging = true;
+            const pip = document.getElementById('videocall-pip');
+            const rect = pip.getBoundingClientRect();
+            const touch = e.touches[0];
+            pipDragOffset.x = touch.clientX - rect.left;
+            pipDragOffset.y = touch.clientY - rect.top;
+            document.addEventListener('touchmove', doPipDragTouch, { passive: false });
+            document.addEventListener('touchend', stopPipDrag);
+        }
+        
+        function doPipDrag(e) {
+            if (!pipIsDragging) return;
+            const pip = document.getElementById('videocall-pip');
+            let x = e.clientX - pipDragOffset.x;
+            let y = e.clientY - pipDragOffset.y;
+            // Ограничиваем границами экрана
+            x = Math.max(0, Math.min(x, window.innerWidth - pip.offsetWidth));
+            y = Math.max(0, Math.min(y, window.innerHeight - pip.offsetHeight));
+            pip.style.left = x + 'px';
+            pip.style.top = y + 'px';
+            pip.style.right = 'auto';
+            pip.style.bottom = 'auto';
+        }
+        
+        function doPipDragTouch(e) {
+            if (!pipIsDragging) return;
+            e.preventDefault();
+            const pip = document.getElementById('videocall-pip');
+            const touch = e.touches[0];
+            let x = touch.clientX - pipDragOffset.x;
+            let y = touch.clientY - pipDragOffset.y;
+            x = Math.max(0, Math.min(x, window.innerWidth - pip.offsetWidth));
+            y = Math.max(0, Math.min(y, window.innerHeight - pip.offsetHeight));
+            pip.style.left = x + 'px';
+            pip.style.top = y + 'px';
+            pip.style.right = 'auto';
+            pip.style.bottom = 'auto';
+        }
+        
+        function stopPipDrag() {
+            pipIsDragging = false;
+            document.removeEventListener('mousemove', doPipDrag);
+            document.removeEventListener('mouseup', stopPipDrag);
+            document.removeEventListener('touchmove', doPipDragTouch);
+            document.removeEventListener('touchend', stopPipDrag);
+        }
         
         function startVideoCall() {
             const placeholder = document.getElementById('videocall-placeholder');
             const iframe = document.getElementById('videocall-iframe');
             const endBtn = document.getElementById('end-call-btn');
             
-            // Генерируем уникальное имя комнаты на основе ID урока
+            // Генерируем уникальное имя комнаты
             const roomName = `kege-lesson-{{ lesson.lesson_id }}-{{ lesson.student_id or 0 }}`;
-            
-            // Имя пользователя
             const userName = encodeURIComponent('{{ current_user.username or current_user.name or "Участник" }}');
-            
-            // Формируем URL Jitsi
             const jitsiUrl = `https://meet.jit.si/${roomName}#userInfo.displayName="${userName}"&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
             
             // Показываем iframe
@@ -2567,8 +2734,11 @@
             endBtn.style.display = 'inline-flex';
             
             videoCallActive = true;
+            videoPipMode = false;
             
-            // Уведомление
+            // Создаём PiP контейнер (скрытый)
+            createPipContainer();
+            
             if (typeof toast !== 'undefined') {
                 toast.success('Видеозвонок запущен');
             }
@@ -2578,19 +2748,69 @@
             const placeholder = document.getElementById('videocall-placeholder');
             const iframe = document.getElementById('videocall-iframe');
             const endBtn = document.getElementById('end-call-btn');
+            const pip = document.getElementById('videocall-pip');
             
-            // Останавливаем iframe
+            // Останавливаем все iframe
             iframe.src = '';
             iframe.style.display = 'none';
             placeholder.style.display = 'flex';
             endBtn.style.display = 'none';
             
+            if (pip) {
+                const pipIframe = pip.querySelector('iframe');
+                if (pipIframe) pipIframe.src = '';
+                pip.style.display = 'none';
+            }
+            
             videoCallActive = false;
+            videoPipMode = false;
             
             if (typeof toast !== 'undefined') {
                 toast.info('Видеозвонок завершён');
             }
         }
+        
+        function showPipMode() {
+            if (!videoCallActive) return;
+            
+            const mainIframe = document.getElementById('videocall-iframe');
+            const pip = document.getElementById('videocall-pip');
+            const pipIframe = document.getElementById('videocall-pip-iframe');
+            
+            if (!pip || !mainIframe.src) return;
+            
+            // Копируем URL в PiP iframe
+            pipIframe.src = mainIframe.src;
+            pip.style.display = 'block';
+            videoPipMode = true;
+        }
+        
+        function hidePipMode() {
+            const pip = document.getElementById('videocall-pip');
+            if (pip) {
+                pip.style.display = 'none';
+            }
+            videoPipMode = false;
+        }
+        
+        function expandPipToTab() {
+            // Переключаемся на вкладку звонка
+            switchTab('videocall');
+            hidePipMode();
+        }
+        
+        // Переопределяем switchTab для поддержки PiP
+        const originalSwitchTab = switchTab;
+        switchTab = function(tabName) {
+            originalSwitchTab(tabName);
+            
+            // Если звонок активен и переключаемся НЕ на вкладку звонка — показываем PiP
+            if (videoCallActive && tabName !== 'videocall') {
+                showPipMode();
+            } else if (tabName === 'videocall') {
+                hidePipMode();
+            }
+        };
         
         function toggleVideoCallFullscreen() {
             const container = document.getElementById('videocall-container');
@@ -2616,7 +2836,7 @@
             }
         }
         
-        // Предупреждение при закрытии страницы во время звонка
+        // Предупреждение при закрытии страницы
         window.addEventListener('beforeunload', function(e) {
             if (videoCallActive) {
                 e.preventDefault();
