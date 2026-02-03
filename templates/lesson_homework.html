@@ -404,9 +404,15 @@
         background: var(--danger);
     }
 
-    #videocall-pip iframe {
+    #videocall-pip .pip-iframe-container {
         width: 100%;
         height: calc(100% - 40px);
+        overflow: hidden;
+    }
+
+    #videocall-pip .pip-iframe-container iframe {
+        width: 100%;
+        height: 100%;
         border: none;
     }
 
@@ -1235,6 +1241,9 @@
                     <div id="videocall-actions" style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end;">
                         <button class="neo-button accent" onclick="startVideoCall()">
                             <i class="fas fa-video"></i> Начать звонок
+                        </button>
+                        <button class="neo-button outline" onclick="openVideoCallNewTab()" title="Без ограничения времени">
+                            <i class="fas fa-external-link-alt"></i> В новой вкладке
                         </button>
                         <button class="neo-button outline" onclick="toggleVideoCallFullscreen()">
                             <i class="fas fa-expand"></i> На весь экран
@@ -2630,7 +2639,7 @@
         let pipDragOffset = { x: 0, y: 0 };
         let pipIsDragging = false;
         
-        // Создаём PiP контейнер динамически
+        // Создаём PiP контейнер динамически (без iframe - будем перемещать основной)
         function createPipContainer() {
             if (document.getElementById('videocall-pip')) return;
             
@@ -2644,9 +2653,7 @@
                         <button onclick="endVideoCall()" title="Завершить" class="danger"><i class="fas fa-phone-slash"></i></button>
                     </div>
                 </div>
-                <iframe id="videocall-pip-iframe" 
-                        allow="camera; microphone; fullscreen; display-capture; autoplay"
-                        allowfullscreen></iframe>
+                <div class="pip-iframe-container"></div>
             `;
             document.body.appendChild(pip);
             
@@ -2723,9 +2730,10 @@
             const endBtn = document.getElementById('end-call-btn');
             
             // Генерируем уникальное имя комнаты
-            const roomName = `kege-lesson-{{ lesson.lesson_id }}-{{ lesson.student_id or 0 }}`;
+            const roomName = `KegeLesson{{ lesson.lesson_id }}Student{{ lesson.student_id or 0 }}`;
             const userName = encodeURIComponent('{{ current_user.username or current_user.name or "Участник" }}');
-            const jitsiUrl = `https://meet.jit.si/${roomName}#userInfo.displayName="${userName}"&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false`;
+            // Jitsi Meet - бесплатный сервис видеозвонков
+            const jitsiUrl = `https://meet.jit.si/${roomName}#userInfo.displayName="${userName}"&config.prejoinPageEnabled=false&config.startWithAudioMuted=false&config.startWithVideoMuted=false&config.disableDeepLinking=true`;
             
             // Показываем iframe
             placeholder.style.display = 'none';
@@ -2744,23 +2752,42 @@
             }
         }
         
+        function openVideoCallNewTab() {
+            // Открываем Jitsi в новой вкладке (без ограничения по времени)
+            const roomName = `KegeLesson{{ lesson.lesson_id }}Student{{ lesson.student_id or 0 }}`;
+            const userName = encodeURIComponent('{{ current_user.username or current_user.name or "Участник" }}');
+            const jitsiUrl = `https://meet.jit.si/${roomName}#userInfo.displayName="${userName}"`;
+            window.open(jitsiUrl, '_blank');
+            
+            if (typeof toast !== 'undefined') {
+                toast.info('Звонок открыт в новой вкладке');
+            }
+        }
+        
         function endVideoCall() {
             const placeholder = document.getElementById('videocall-placeholder');
             const iframe = document.getElementById('videocall-iframe');
             const endBtn = document.getElementById('end-call-btn');
             const pip = document.getElementById('videocall-pip');
+            const mainContainer = document.getElementById('videocall-container');
             
-            // Останавливаем все iframe
-            iframe.src = '';
-            iframe.style.display = 'none';
-            placeholder.style.display = 'flex';
-            endBtn.style.display = 'none';
-            
-            if (pip) {
-                const pipIframe = pip.querySelector('iframe');
-                if (pipIframe) pipIframe.src = '';
-                pip.style.display = 'none';
+            // Сначала возвращаем iframe в основной контейнер (если он в PiP)
+            if (iframe && mainContainer && iframe.parentElement !== mainContainer) {
+                mainContainer.appendChild(iframe);
             }
+            
+            // Останавливаем iframe
+            if (iframe) {
+                iframe.src = '';
+                iframe.style.display = 'none';
+                iframe.style.width = '100%';
+                iframe.style.height = '500px';
+                iframe.style.borderRadius = 'var(--radius-lg)';
+            }
+            
+            if (placeholder) placeholder.style.display = 'flex';
+            if (endBtn) endBtn.style.display = 'none';
+            if (pip) pip.style.display = 'none';
             
             videoCallActive = false;
             videoPipMode = false;
@@ -2773,23 +2800,34 @@
         function showPipMode() {
             if (!videoCallActive) return;
             
-            const mainIframe = document.getElementById('videocall-iframe');
+            const iframe = document.getElementById('videocall-iframe');
             const pip = document.getElementById('videocall-pip');
-            const pipIframe = document.getElementById('videocall-pip-iframe');
+            const pipContainer = pip ? pip.querySelector('.pip-iframe-container') : null;
             
-            if (!pip || !mainIframe.src) return;
+            if (!pip || !iframe || !iframe.src) return;
             
-            // Копируем URL в PiP iframe
-            pipIframe.src = mainIframe.src;
+            // ПЕРЕМЕЩАЕМ iframe в PiP контейнер (не копируем!)
+            pipContainer.appendChild(iframe);
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.borderRadius = '0';
             pip.style.display = 'block';
             videoPipMode = true;
         }
         
         function hidePipMode() {
+            const iframe = document.getElementById('videocall-iframe');
             const pip = document.getElementById('videocall-pip');
-            if (pip) {
-                pip.style.display = 'none';
-            }
+            const mainContainer = document.getElementById('videocall-container');
+            
+            if (!pip || !iframe || !mainContainer) return;
+            
+            // ВОЗВРАЩАЕМ iframe обратно в основной контейнер
+            mainContainer.appendChild(iframe);
+            iframe.style.width = '100%';
+            iframe.style.height = '500px';
+            iframe.style.borderRadius = 'var(--radius-lg)';
+            pip.style.display = 'none';
             videoPipMode = false;
         }
         
