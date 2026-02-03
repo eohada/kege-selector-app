@@ -14,16 +14,16 @@ from telegram.ext import (
 )
 from sqlalchemy import text
 
-from config import BOT_TOKEN, APP_URL
-from db import get_session, close_session
-from messages import (
+from urep_bot.config import BOT_TOKEN, APP_URL
+from urep_bot.db import get_session, close_session
+from urep_bot.messages import (
     WELCOME_MESSAGE, HELP_MESSAGE, LINK_SUCCESS, LINK_INVALID_CODE,
     LINK_CODE_EXPIRED, LINK_ALREADY_LINKED, LINK_USAGE,
     UNLINK_SUCCESS, UNLINK_NOT_LINKED, PROFILE_NOT_LINKED,
     NO_UPCOMING_LESSONS, NO_STATS, SETTINGS_TEMPLATE,
     NOTIFICATIONS_ENABLED, NOTIFICATIONS_DISABLED, ERROR_GENERIC
 )
-from keyboards import (
+from urep_bot.keyboards import (
     get_main_keyboard, get_settings_keyboard, get_back_keyboard,
     get_unlink_confirm_keyboard, get_open_link_keyboard
 )
