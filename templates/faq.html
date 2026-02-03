@@ -1,0 +1,469 @@
+{% extends "base.html" %}
+{% block title %}База знаний · URep{% endblock %}
+
+{% block content %}
+<div class="app-shell">
+    {% include '_primary_nav.html' %}
+    
+    <main class="main-content" style="padding: 2rem; max-width: 1000px; margin: 0 auto;">
+        <div class="glass-panel" style="padding: 2rem;">
+            <h1 style="margin-bottom: 0.5rem;">📚 База знаний</h1>
+            <p style="color: var(--text-muted); margin-bottom: 2rem;">
+                Ответы на частые вопросы и руководство по работе с платформой
+            </p>
+
+            {# Быстрая навигация #}
+            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 2rem;">
+                <a href="#getting-started" class="neo-button outline sm">🚀 Начало работы</a>
+                <a href="#lessons" class="neo-button outline sm">📖 Уроки</a>
+                <a href="#homework" class="neo-button outline sm">📝 Домашние задания</a>
+                <a href="#trainer" class="neo-button outline sm">🧠 Тренажёр</a>
+                <a href="#schedule" class="neo-button outline sm">📅 Расписание</a>
+                <a href="#notifications" class="neo-button outline sm">🔔 Уведомления</a>
+                <a href="#parents" class="neo-button outline sm">👨‍👩‍👧 Для родителей</a>
+                <a href="#support" class="neo-button outline sm">💬 Поддержка</a>
+            </div>
+
+            {# ===== НАЧАЛО РАБОТЫ ===== #}
+            <section id="getting-started" class="faq-section">
+                <h2 class="faq-section-title">🚀 Начало работы</h2>
+                
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Как войти на платформу?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Для входа на платформу используйте логин и пароль, которые вам предоставил преподаватель или администратор.</p>
+                        <ol>
+                            <li>Перейдите на страницу входа</li>
+                            <li>Введите ваш логин (имя пользователя)</li>
+                            <li>Введите пароль</li>
+                            <li>Нажмите "Войти"</li>
+                        </ol>
+                        <p><strong>Важно:</strong> Логин и пароль чувствительны к регистру!</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Что делать, если забыл пароль?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Если вы забыли пароль, свяжитесь с вашим преподавателем или напишите в Telegram-бот — администратор сбросит пароль и выдаст новый.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Как подключить Telegram-уведомления?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Чтобы получать уведомления в Telegram:</p>
+                        <ol>
+                            <li>Перейдите в ваш профиль (иконка аватара → Профиль)</li>
+                            <li>Найдите блок "Telegram уведомления"</li>
+                            <li>Нажмите "Получить код привязки"</li>
+                            <li>Скопируйте код и отправьте его боту @urep_student_bot</li>
+                            <li>После успешной привязки вы будете получать уведомления о новых уроках, проверенных работах и напоминания</li>
+                        </ol>
+                    </div>
+                </div>
+            </section>
+
+            {# ===== УРОКИ ===== #}
+            <section id="lessons" class="faq-section">
+                <h2 class="faq-section-title">📖 Уроки</h2>
+                
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Как попасть на урок?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Есть несколько способов попасть на урок:</p>
+                        <ul>
+                            <li><strong>Из профиля:</strong> На главной странице вашего профиля отображаются ближайшие уроки — нажмите на нужный</li>
+                            <li><strong>Из расписания:</strong> Перейдите в раздел "Расписание" и выберите урок</li>
+                            <li><strong>По прямой ссылке:</strong> Преподаватель может отправить вам прямую ссылку на урок</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Что находится в классной комнате?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Классная комната — это ваше рабочее пространство на уроке. Здесь вы найдёте:</p>
+                        <ul>
+                            <li><strong>Конспект</strong> — материалы урока, которые подготовил преподаватель</li>
+                            <li><strong>Домашнее задание</strong> — задачи для самостоятельной работы</li>
+                            <li><strong>Чат</strong> — общение с преподавателем</li>
+                            <li><strong>Доска</strong> — интерактивная доска Miro для совместной работы</li>
+                        </ul>
+                        <p>Переключайтесь между вкладками, чтобы получить доступ к нужному разделу.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Как работать с интерактивной доской?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Интерактивная доска (Miro) позволяет вам и преподавателю рисовать, писать и работать совместно в реальном времени.</p>
+                        <ul>
+                            <li>Используйте инструменты слева для рисования, текста, стикеров</li>
+                            <li>Вы можете приближать и отдалять доску колёсиком мыши</li>
+                            <li>Все изменения сохраняются автоматически</li>
+                            <li>После урока доска остаётся доступной для просмотра</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            {# ===== ДОМАШНИЕ ЗАДАНИЯ ===== #}
+            <section id="homework" class="faq-section">
+                <h2 class="faq-section-title">📝 Домашние задания</h2>
+                
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Как сдать домашнее задание?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Чтобы сдать домашнее задание:</p>
+                        <ol>
+                            <li>Откройте урок и перейдите на вкладку "Домашнее задание"</li>
+                            <li>Найдите задачу, которую хотите сдать</li>
+                            <li>Введите ваш ответ в поле ввода</li>
+                            <li>При необходимости прикрепите файлы (код, скриншоты)</li>
+                            <li>Нажмите "Отправить"</li>
+                        </ol>
+                        <p>После отправки задача уйдёт на проверку преподавателю.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Какие статусы бывают у задания?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <ul>
+                            <li><strong style="color: var(--text-muted);">⬜ Не начато</strong> — вы ещё не приступали к заданию</li>
+                            <li><strong style="color: var(--warning);">🟡 На проверке</strong> — ответ отправлен, ждёт проверки</li>
+                            <li><strong style="color: var(--success);">🟢 Принято</strong> — преподаватель принял ваш ответ</li>
+                            <li><strong style="color: var(--danger);">🔴 На доработку</strong> — нужно исправить ошибки и отправить снова</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Можно ли пересдать задание?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Да! Если преподаватель вернул задание на доработку (статус "На доработку"), вы можете:</p>
+                        <ol>
+                            <li>Прочитать комментарий преподавателя</li>
+                            <li>Исправить ошибки</li>
+                            <li>Отправить задание повторно</li>
+                        </ol>
+                        <p>Количество попыток не ограничено — главное разобраться в материале!</p>
+                    </div>
+                </div>
+            </section>
+
+            {# ===== ТРЕНАЖЁР ===== #}
+            <section id="trainer" class="faq-section">
+                <h2 class="faq-section-title">🧠 Тренажёр</h2>
+                
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Что такое тренажёр?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Тренажёр — это инструмент для самостоятельной практики задач ЕГЭ/ОГЭ по информатике.</p>
+                        <ul>
+                            <li>Выбирайте номер задания, который хотите отработать</li>
+                            <li>Решайте задачи и получайте мгновенную проверку</li>
+                            <li>Отслеживайте свой прогресс в статистике</li>
+                            <li>Тренируйтесь в любое время — тренажёр доступен 24/7</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Как пользоваться тренажёром?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <ol>
+                            <li>Перейдите в раздел "Тренажёр" в меню</li>
+                            <li>Выберите номер задания ЕГЭ (1-27)</li>
+                            <li>Прочитайте условие задачи</li>
+                            <li>Введите ваш ответ</li>
+                            <li>Нажмите "Проверить" — система сразу покажет результат</li>
+                            <li>Если ответ неверный, попробуйте ещё раз или посмотрите подсказку</li>
+                        </ol>
+                    </div>
+                </div>
+            </section>
+
+            {# ===== РАСПИСАНИЕ ===== #}
+            <section id="schedule" class="faq-section">
+                <h2 class="faq-section-title">📅 Расписание</h2>
+                
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Где посмотреть расписание уроков?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Расписание доступно в разделе "Расписание" в верхнем меню.</p>
+                        <p>Там вы увидите:</p>
+                        <ul>
+                            <li>Календарь с запланированными уроками</li>
+                            <li>Время начала каждого урока</li>
+                            <li>Тему урока</li>
+                            <li>Статус (запланирован / проведён / отменён)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Как перенести урок?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Если вам нужно перенести урок, свяжитесь с преподавателем заранее (минимум за 24 часа) через:</p>
+                        <ul>
+                            <li>Чат на платформе</li>
+                            <li>Telegram</li>
+                            <li>Телефон (если есть)</li>
+                        </ul>
+                        <p>Преподаватель согласует с вами новое время и перенесёт урок в системе.</p>
+                    </div>
+                </div>
+            </section>
+
+            {# ===== УВЕДОМЛЕНИЯ ===== #}
+            <section id="notifications" class="faq-section">
+                <h2 class="faq-section-title">🔔 Уведомления</h2>
+                
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Какие уведомления я буду получать?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Платформа отправляет уведомления о важных событиях:</p>
+                        <ul>
+                            <li>📅 Напоминание об уроке (за 1 час и за 15 минут)</li>
+                            <li>✅ Домашнее задание проверено</li>
+                            <li>🔄 Задание возвращено на доработку</li>
+                            <li>📝 Новое домашнее задание</li>
+                            <li>💬 Новое сообщение от преподавателя</li>
+                            <li>⚠️ Осталось мало уроков по тарифу</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Как настроить уведомления?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>После привязки Telegram-бота вы можете настроить, какие уведомления получать:</p>
+                        <ol>
+                            <li>Откройте бота @urep_student_bot</li>
+                            <li>Нажмите "Настройки" или отправьте /settings</li>
+                            <li>Включите или выключите нужные типы уведомлений</li>
+                        </ol>
+                    </div>
+                </div>
+            </section>
+
+            {# ===== ДЛЯ РОДИТЕЛЕЙ ===== #}
+            <section id="parents" class="faq-section">
+                <h2 class="faq-section-title">👨‍👩‍👧 Для родителей</h2>
+                
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Как отслеживать успеваемость ребёнка?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Как родитель, вы имеете доступ к разделу "Мои дети", где можете:</p>
+                        <ul>
+                            <li>Видеть расписание уроков ребёнка</li>
+                            <li>Отслеживать выполнение домашних заданий</li>
+                            <li>Смотреть статистику и прогресс</li>
+                            <li>Получать уведомления о пропущенных уроках или невыполненных заданиях</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Как связаться с преподавателем?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Вы можете связаться с преподавателем через:</p>
+                        <ul>
+                            <li>Telegram (контакт указан в профиле преподавателя)</li>
+                            <li>Чат на платформе (если у вас есть доступ к урокам)</li>
+                        </ul>
+                        <p>Преподаватель обычно отвечает в течение рабочего дня.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Как работает оплата?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Оплата производится за пакет уроков:</p>
+                        <ul>
+                            <li>Вы покупаете определённое количество уроков</li>
+                            <li>После каждого проведённого урока счётчик уменьшается на 1</li>
+                            <li>Остаток уроков виден в профиле ученика</li>
+                            <li>Когда уроки заканчиваются, вы получите уведомление</li>
+                        </ul>
+                        <p>Для продления свяжитесь с администратором или преподавателем.</p>
+                    </div>
+                </div>
+            </section>
+
+            {# ===== ПОДДЕРЖКА ===== #}
+            <section id="support" class="faq-section">
+                <h2 class="faq-section-title">💬 Поддержка</h2>
+                
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>У меня проблема, куда обратиться?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Если у вас возникла проблема:</p>
+                        <ol>
+                            <li><strong>Технические проблемы</strong> (не работает кнопка, не загружается страница) — напишите в Telegram-бот или преподавателю</li>
+                            <li><strong>Вопросы по учёбе</strong> — обратитесь к преподавателю</li>
+                            <li><strong>Вопросы по оплате</strong> — свяжитесь с администратором</li>
+                        </ol>
+                        <p>Опишите проблему максимально подробно: что делали, что ожидали, что произошло. Приложите скриншот, если возможно.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" onclick="toggleFaq(this)">
+                        <span>Платформа работает медленно, что делать?</span>
+                        <span class="faq-toggle">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Попробуйте следующее:</p>
+                        <ol>
+                            <li>Обновите страницу (F5 или Ctrl+R)</li>
+                            <li>Очистите кэш браузера (Ctrl+Shift+Delete)</li>
+                            <li>Попробуйте другой браузер (рекомендуем Chrome или Firefox)</li>
+                            <li>Проверьте скорость интернета</li>
+                        </ol>
+                        <p>Если проблема сохраняется — сообщите преподавателю.</p>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<style>
+.faq-section {
+    margin-bottom: 2.5rem;
+}
+.faq-section-title {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--accent-primary);
+}
+.faq-item {
+    background: var(--surface-2);
+    border-radius: var(--radius-md);
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+}
+.faq-question {
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+.faq-question:hover {
+    background: var(--surface-3);
+}
+.faq-toggle {
+    font-size: 1.5rem;
+    color: var(--accent-primary);
+    transition: transform 0.2s;
+}
+.faq-item.open .faq-toggle {
+    transform: rotate(45deg);
+}
+.faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out, padding 0.3s;
+    padding: 0 1.25rem;
+}
+.faq-item.open .faq-answer {
+    max-height: 1000px;
+    padding: 0 1.25rem 1.25rem;
+}
+.faq-answer p {
+    margin: 0.75rem 0;
+    line-height: 1.6;
+}
+.faq-answer ul, .faq-answer ol {
+    margin: 0.75rem 0;
+    padding-left: 1.5rem;
+}
+.faq-answer li {
+    margin: 0.4rem 0;
+    line-height: 1.5;
+}
+</style>
+
+<script>
+function toggleFaq(el) {
+    const item = el.parentElement;
+    item.classList.toggle('open');
+}
+
+// Открыть секцию по hash в URL
+document.addEventListener('DOMContentLoaded', function() {
+    const hash = window.location.hash;
+    if (hash) {
+        const section = document.querySelector(hash);
+        if (section) {
+            section.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -978,3 +978,9 @@ def backup_db():
         flash(f'Ошибка при создании резервной копии: {str(e)}', 'error')
         return redirect(url_for('main.dashboard'))
 
+
+@main_bp.route('/faq')
+@login_required
+def faq():
+    """База знаний / FAQ для учеников и родителей."""
+    return render_template('faq.html', active_page='faq')

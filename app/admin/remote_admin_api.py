@@ -1207,16 +1207,56 @@ def remote_admin_api_user(user_id):
                 return jsonify({'error': 'cannot delete creator'}), 403
             
             username = user.username
+            user_role = user.role
             
             # Удаляем логи
+            deleted_logs = 0
             try:
                 deleted_logs = db.session.execute(
                     delete(AuditLog).where(AuditLog.user_id == user_id)
                 ).rowcount
             except Exception as e:
                 logger.warning(f"Error deleting user logs: {e}")
-                db.session.rollback()
-                deleted_logs = 0
+            
+            # Удаляем FamilyTie (связи родитель-ученик)
+            try:
+                if user_role == 'parent':
+                    FamilyTie.query.filter_by(parent_id=user_id).delete()
+                elif user_role == 'student':
+                    FamilyTie.query.filter_by(student_id=user_id).delete()
+            except Exception as e:
+                logger.warning(f"Error deleting family ties: {e}")
+            
+            # Удаляем Enrollment (записи на курсы)
+            try:
+                if user_role == 'student':
+                    Enrollment.query.filter_by(student_id=user_id).delete()
+                elif user_role == 'tutor':
+                    Enrollment.query.filter_by(tutor_id=user_id).delete()
+            except Exception as e:
+                logger.warning(f"Error deleting enrollments: {e}")
+            
+            # Удаляем подписки
+            try:
+                from app.models import UserSubscription
+                UserSubscription.query.filter_by(user_id=user_id).delete()
+            except Exception as e:
+                logger.warning(f"Error deleting subscriptions: {e}")
+            
+            # Удаляем уведомления
+            try:
+                from app.models import UserNotification
+                UserNotification.query.filter_by(user_id=user_id).delete()
+            except Exception as e:
+                logger.warning(f"Error deleting notifications: {e}")
+            
+            # Удаляем Student (если есть связь через user_id)
+            try:
+                student_record = Student.query.filter_by(user_id=user_id).first()
+                if student_record:
+                    db.session.delete(student_record)
+            except Exception as e:
+                logger.warning(f"Error deleting student record: {e}")
             
             # Удаляем профиль
             try:

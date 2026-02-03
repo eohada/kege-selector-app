@@ -64,6 +64,12 @@
             </span>
         </a>
         {% endif %}
+        <a href="{{ url_for('main.faq') }}" class="nav-link {% if active_page == 'faq' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" alt="FAQ" class="nav-link-icon">
+                <span class="nav-link-label">FAQ</span>
+            </span>
+        </a>
         {% elif current_user.is_student() %}
         {# Навигация для ученика #}
         {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
@@ -99,6 +105,12 @@
             </span>
         </a>
         {% endif %}
+        <a href="{{ url_for('main.faq') }}" class="nav-link {% if active_page == 'faq' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" alt="FAQ" class="nav-link-icon">
+                <span class="nav-link-label">FAQ</span>
+            </span>
+        </a>
         {% endif %}
         {% else %}
         {# Навигация для админа, тьютора и остальных #}
