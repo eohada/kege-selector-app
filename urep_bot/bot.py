@@ -155,35 +155,64 @@ def esc(text) -> str:
 
 def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
     """Получить пользователя по chat_id Telegram."""
+    # Базовый запрос без новых колонок (для совместимости)
     result = session.execute(text("""
         SELECT u.id, u.username, u.email, u.role, up.first_name, up.last_name,
-               up.telegram_notifications_enabled,
-               up.tg_notify_lesson_reminder, up.tg_notify_homework_checked,
-               up.tg_notify_homework_returned, up.tg_notify_new_message,
-               up.tg_notify_lesson_scheduled, up.tg_notify_low_lessons, up.tg_notify_news
+               up.telegram_notifications_enabled
         FROM "Users" u
         JOIN "UserProfiles" up ON up.user_id = u.id
         WHERE up.telegram_chat_id = :chat_id
     """), {"chat_id": chat_id})
     row = result.fetchone()
-    if row:
-        return {
-            "id": row[0],
-            "username": row[1],
-            "email": row[2],
-            "role": row[3],
-            "first_name": row[4],
-            "last_name": row[5],
-            "notifications_enabled": row[6] if row[6] is not None else True,
-            "tg_notify_lesson_reminder": row[7] if row[7] is not None else True,
-            "tg_notify_homework_checked": row[8] if row[8] is not None else True,
-            "tg_notify_homework_returned": row[9] if row[9] is not None else True,
-            "tg_notify_new_message": row[10] if row[10] is not None else True,
-            "tg_notify_lesson_scheduled": row[11] if row[11] is not None else True,
-            "tg_notify_low_lessons": row[12] if row[12] is not None else True,
-            "tg_notify_news": row[13] if row[13] is not None else False,
-        }
-    return None
+    if not row:
+        return None
+    
+    user = {
+        "id": row[0],
+        "username": row[1],
+        "email": row[2],
+        "role": row[3],
+        "first_name": row[4],
+        "last_name": row[5],
+        "notifications_enabled": row[6] if row[6] is not None else True,
+        # Значения по умолчанию для настроек уведомлений
+        "tg_notify_lesson_reminder": True,
+        "tg_notify_homework_checked": True,
+        "tg_notify_homework_returned": True,
+        "tg_notify_new_message": True,
+        "tg_notify_lesson_scheduled": True,
+        "tg_notify_low_lessons": True,
+        "tg_notify_news": False,
+    }
+    
+    # Пробуем получить детальные настройки (если колонки существуют)
+    try:
+        settings_result = session.execute(text("""
+            SELECT 
+                COALESCE(tg_notify_lesson_reminder, TRUE),
+                COALESCE(tg_notify_homework_checked, TRUE),
+                COALESCE(tg_notify_homework_returned, TRUE),
+                COALESCE(tg_notify_new_message, TRUE),
+                COALESCE(tg_notify_lesson_scheduled, TRUE),
+                COALESCE(tg_notify_low_lessons, TRUE),
+                COALESCE(tg_notify_news, FALSE)
+            FROM "UserProfiles"
+            WHERE telegram_chat_id = :chat_id
+        """), {"chat_id": chat_id})
+        settings = settings_result.fetchone()
+        if settings:
+            user["tg_notify_lesson_reminder"] = settings[0]
+            user["tg_notify_homework_checked"] = settings[1]
+            user["tg_notify_homework_returned"] = settings[2]
+            user["tg_notify_new_message"] = settings[3]
+            user["tg_notify_lesson_scheduled"] = settings[4]
+            user["tg_notify_low_lessons"] = settings[5]
+            user["tg_notify_news"] = settings[6]
+    except Exception:
+        # Колонки ещё не созданы - используем значения по умолчанию
+        pass
+    
+    return user
 
 
 def get_student_by_email(session, email: str) -> Optional[dict]:
@@ -836,15 +865,23 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 current = user.get(field, True)
                 new_value = not current
                 
-                session.execute(text(f"""
-                    UPDATE "UserProfiles"
-                    SET {field} = :value
-                    WHERE telegram_chat_id = :chat_id
-                """), {"value": new_value, "chat_id": chat_id})
-                session.commit()
-                
-                # Обновляем user dict
-                user[field] = new_value
+                try:
+                    session.execute(text(f"""
+                        UPDATE "UserProfiles"
+                        SET {field} = :value
+                        WHERE telegram_chat_id = :chat_id
+                    """), {"value": new_value, "chat_id": chat_id})
+                    session.commit()
+                    user[field] = new_value
+                except Exception as e:
+                    session.rollback()
+                    logger.warning(f"Could not update {field}: {e}")
+                    await query.edit_message_text(
+                        "⚙️ <b>Настройки</b>\n\n⚠️ Настройки временно недоступны. Попробуй позже.",
+                        parse_mode="HTML",
+                        reply_markup=get_back_keyboard()
+                    )
+                    return
             
             text = build_settings_text(user)
             await query.edit_message_text(text, parse_mode="HTML", reply_markup=get_settings_keyboard(user))

@@ -86,7 +86,7 @@ async def process_pending_notifications(bot: Bot):
     session = get_session()
     try:
         # Получаем непрочитанные уведомления для пользователей с привязанным Telegram
-        # Учитываем детальные настройки уведомлений
+        # Используем COALESCE для совместимости с БД без новых колонок
         result = session.execute(text("""
             SELECT 
                 un.notification_id,
@@ -95,14 +95,7 @@ async def process_pending_notifications(bot: Bot):
                 un.body,
                 un.link_url,
                 un.meta,
-                up.telegram_chat_id,
-                up.tg_notify_lesson_reminder,
-                up.tg_notify_homework_checked,
-                up.tg_notify_homework_returned,
-                up.tg_notify_new_message,
-                up.tg_notify_lesson_scheduled,
-                up.tg_notify_low_lessons,
-                up.tg_notify_news
+                up.telegram_chat_id
             FROM "UserNotifications" un
             JOIN "UserProfiles" up ON up.user_id = un.user_id
             WHERE un.telegram_sent = FALSE
@@ -120,37 +113,8 @@ async def process_pending_notifications(bot: Bot):
         
         sent_count = 0
         
-        # Маппинг kind -> поле настроек
-        kind_to_setting = {
-            'lesson_reminder_1h': 7,  # tg_notify_lesson_reminder
-            'lesson_reminder_15m': 7,
-            'lesson_scheduled': 11,  # tg_notify_lesson_scheduled
-            'lesson_review_graded': 8,  # tg_notify_homework_checked
-            'lesson_task_graded': 8,
-            'assignment_graded': 8,
-            'lesson_review_returned': 9,  # tg_notify_homework_returned
-            'lesson_task_returned': 9,
-            'assignment_returned': 9,
-            'lesson_message': 10,  # tg_notify_new_message
-            'lessons_low': 12,  # tg_notify_low_lessons
-            'news': 13,  # tg_notify_news
-        }
-        
         for notif in notifications:
-            notif_id, kind, title, body, link_url, meta, chat_id, *settings = notif
-            
-            # Проверяем настройки пользователя для данного типа уведомления
-            setting_idx = kind_to_setting.get(kind)
-            if setting_idx is not None and len(settings) > (setting_idx - 7):
-                user_setting = settings[setting_idx - 7]
-                if user_setting is False:
-                    # Пользователь отключил этот тип уведомлений - помечаем как отправленное
-                    session.execute(text("""
-                        UPDATE "UserNotifications"
-                        SET telegram_sent = TRUE
-                        WHERE notification_id = :notif_id
-                    """), {"notif_id": notif_id})
-                    continue
+            notif_id, kind, title, body, link_url, meta, chat_id = notif
             
             # Форматируем и отправляем
             message_text = format_notification(kind, title, body, link_url, meta)
