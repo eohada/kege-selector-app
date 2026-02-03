@@ -2417,10 +2417,18 @@
                 </a>
             ` : '';
             
+            // Кнопка полноэкранного режима
+            const fullscreenBtn = `
+                <button class="neo-button outline sm" onclick="toggleWhiteboardFullscreen()">
+                    <i class="fas fa-expand"></i> На весь экран
+                </button>
+            `;
+            
             if (!isStudent && !isParent) {
                 // Кнопки для преподавателя
                 html = `
                     ${miroAuthBtn}
+                    ${fullscreenBtn}
                     <a href="https://miro.com/app/board/${whiteboardData.miro_board_id}/" target="_blank" class="neo-button outline sm">
                         <i class="fas fa-external-link-alt"></i> Открыть в Miro
                     </a>
@@ -2435,6 +2443,7 @@
                 // Кнопки для ученика
                 html = `
                     ${miroAuthBtn}
+                    ${fullscreenBtn}
                     <a href="https://miro.com/app/board/${whiteboardData.miro_board_id}/" target="_blank" class="neo-button outline sm">
                         <i class="fas fa-external-link-alt"></i> Открыть в Miro
                     </a>
@@ -2442,6 +2451,32 @@
             }
             
             actions.innerHTML = html;
+        }
+        
+        function toggleWhiteboardFullscreen() {
+            const container = document.getElementById('whiteboard-container');
+            const iframe = container.querySelector('iframe');
+            const element = iframe || container;
+            
+            if (!document.fullscreenElement) {
+                // Входим в полноэкранный режим
+                if (element.requestFullscreen) {
+                    element.requestFullscreen();
+                } else if (element.webkitRequestFullscreen) {
+                    element.webkitRequestFullscreen();
+                } else if (element.msRequestFullscreen) {
+                    element.msRequestFullscreen();
+                }
+            } else {
+                // Выходим из полноэкранного режима
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
         }
         
         async function createWhiteboard() {
