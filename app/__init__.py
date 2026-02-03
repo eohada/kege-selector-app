@@ -495,7 +495,9 @@ def create_app(config_name=None):
         # Обмениваем code на access_token
         client_id = app.config.get('MIRO_CLIENT_ID')
         client_secret = app.config.get('MIRO_CLIENT_SECRET')
-        redirect_uri = request.url_root.rstrip('/') + '/auth/miro/callback'
+        # Принудительно используем https (Railway прокси скрывает https)
+        base_url = request.url_root.rstrip('/').replace('http://', 'https://')
+        redirect_uri = base_url + '/auth/miro/callback'
         
         try:
             token_response = requests.post(
@@ -562,7 +564,9 @@ def create_app(config_name=None):
             return redirect(url_for('auth.login'))
         
         client_id = app.config.get('MIRO_CLIENT_ID')
-        redirect_uri = request.url_root.rstrip('/') + '/auth/miro/callback'
+        # Принудительно используем https
+        base_url = request.url_root.rstrip('/').replace('http://', 'https://')
+        redirect_uri = base_url + '/auth/miro/callback'
         
         # Сохраняем lesson_id для редиректа после авторизации
         lesson_id = request.args.get('lesson_id')
