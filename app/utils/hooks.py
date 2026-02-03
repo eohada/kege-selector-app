@@ -336,6 +336,9 @@ def register_hooks(app):
                 return None
             if request.path.startswith('/static/') or request.path.startswith('/font/'):
                 return None
+            # Allow Telegram API for all users (notifications settings)
+            if request.path.startswith('/api/telegram/'):
+                return None
 
             # Best-effort subscription resolution
             eff = get_effective_access_for_user(current_user.id)
