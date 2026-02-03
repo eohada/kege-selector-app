@@ -2563,10 +2563,10 @@ def lesson_whiteboard_create(lesson_id):
         # Логируем
         audit_logger.log(
             action='whiteboard_created',
-            actor_user_id=current_user.id,
-            target_type='lesson',
-            target_id=lesson_id,
-            details={'miro_board_id': whiteboard.miro_board_id}
+            entity='Lesson',
+            entity_id=lesson_id,
+            status='success',
+            metadata={'miro_board_id': whiteboard.miro_board_id}
         )
         
         return jsonify({
@@ -2649,10 +2649,10 @@ def lesson_whiteboard_delete(lesson_id):
     # Логируем
     audit_logger.log(
         action='whiteboard_deleted',
-        actor_user_id=current_user.id,
-        target_type='lesson',
-        target_id=lesson_id,
-        details={'miro_board_id': miro_board_id}
+        entity='Lesson',
+        entity_id=lesson_id,
+        status='success',
+        metadata={'miro_board_id': miro_board_id}
     )
     
     return jsonify({'success': True})
