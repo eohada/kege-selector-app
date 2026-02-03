@@ -352,8 +352,11 @@ def register_hooks(app):
                     mark_subscription_expired_if_needed(sub)
                 except Exception:
                     pass
-                # allow profile and logout to stay reachable
+                # allow profile, logout and Telegram API to stay reachable
                 if (request.endpoint or '').startswith('auth.') or request.endpoint in ('auth.logout', 'auth.user_profile'):
+                    return None
+                # allow Telegram API for notifications settings
+                if request.path.startswith('/api/telegram/'):
                     return None
                 # block trainer and lessons
                 if request.path.startswith('/internal/trainer/') or (request.endpoint or '').startswith('trainer.'):
@@ -387,6 +390,9 @@ def register_hooks(app):
                 if ep in allowed_student_endpoints:
                     return None
                 if ep.startswith('auth.'):
+                    return None
+                # allow Telegram API
+                if request.path.startswith('/api/telegram/'):
                     return None
                 # everything else is considered "lessons side"
                 return redirect(url_for('trainer.trainer_embed'))
