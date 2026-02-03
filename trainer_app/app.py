@@ -27,7 +27,6 @@ st.set_page_config(page_title="Тренажёр · AI помощник", layout=
 # Optional .env loading (helps local/dev and simple deploys)
 try:
     from dotenv import load_dotenv  # type: ignore
-    # Load repo root .env and trainer_app/.env if present (best-effort)
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     load_dotenv(os.path.join(repo_root, '.env'), override=False)
     load_dotenv(os.path.join(os.path.dirname(__file__), '.env'), override=False)
@@ -35,342 +34,49 @@ except Exception:
     pass
 
 
-def _inject_css():
+def _inject_minimal_css():
+    """Minimal CSS for Streamlit native elements only."""
     st.markdown(
         """
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
-  /* Hide default Streamlit chrome */
   #MainMenu {visibility: hidden;}
   footer {visibility: hidden;}
   header {visibility: hidden;}
-
-  html, body, [class*="css"] { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-
-  /* Premium dark background */
+  html, body, [class*="css"] { font-family: Inter, system-ui, -apple-system, sans-serif; }
   .stApp {
-    background:
-      radial-gradient(ellipse 1200px 800px at 10% 20%, rgba(99,102,241,0.22), transparent 55%),
-      radial-gradient(ellipse 1000px 700px at 90% 10%, rgba(16,185,129,0.18), transparent 50%),
-      radial-gradient(ellipse 900px 600px at 50% 90%, rgba(59,130,246,0.12), transparent 50%),
-      linear-gradient(180deg, #0a0c12 0%, #070910 100%);
+    background: linear-gradient(135deg, #0a0c12 0%, #0d1117 50%, #070910 100%);
     min-height: 100vh;
   }
-  .block-container { padding-top: 0.8rem; padding-bottom: 1.5rem; }
-
-  .stChatInputContainer { padding-top: 0.25rem; }
-
-  /* ===== Number picker panel ===== */
-  .number-picker-panel {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
-    padding: 20px 16px;
-    background: linear-gradient(160deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
-    border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 20px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.35);
-    margin-bottom: 24px;
-  }
-
-  .number-btn {
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-    color: rgba(255,255,255,0.75);
-    font-weight: 700;
-    font-size: 16px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .number-btn:hover {
-    border-color: rgba(0,255,213,0.5);
-    background: linear-gradient(160deg, rgba(0,255,213,0.12), rgba(0,255,213,0.04));
-    color: #00ffd5;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0,255,213,0.20);
-  }
-
-  .number-btn.active {
-    border-color: rgba(0,255,213,0.8);
-    background: linear-gradient(160deg, rgba(0,255,213,0.25), rgba(0,255,213,0.10));
-    color: #00ffd5;
-    box-shadow: 0 0 20px rgba(0,255,213,0.30);
-  }
-
-  .number-btn.empty {
-    opacity: 0.35;
-    cursor: not-allowed;
-  }
-
-  /* ===== TikTok-style fullscreen card ===== */
-  .swipe-card-container {
-    position: relative;
-    width: 100%;
-    max-width: 900px;
-    margin: 0 auto;
-    min-height: 70vh;
-  }
-
-  .swipe-card {
-    position: relative;
-    width: 100%;
-    min-height: 65vh;
-    border-radius: 28px;
-    border: 2px solid rgba(255,255,255,0.10);
-    background: linear-gradient(165deg, rgba(18,20,30,0.98), rgba(12,14,22,0.96));
-    box-shadow:
-      0 30px 80px rgba(0,0,0,0.50),
-      0 0 0 1px rgba(255,255,255,0.04) inset;
-    overflow: hidden;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-  }
-
-  .swipe-card.hover-left {
-    border-color: rgba(239,68,68,0.7);
-    background: linear-gradient(165deg, rgba(50,15,20,0.98), rgba(25,10,15,0.96));
-    box-shadow:
-      0 30px 80px rgba(239,68,68,0.25),
-      0 0 60px rgba(239,68,68,0.10) inset;
-  }
-
-  .swipe-card.hover-right {
-    border-color: rgba(16,185,129,0.7);
-    background: linear-gradient(165deg, rgba(10,40,30,0.98), rgba(8,25,20,0.96));
-    box-shadow:
-      0 30px 80px rgba(16,185,129,0.25),
-      0 0 60px rgba(16,185,129,0.10) inset;
-  }
-
-  .swipe-card-inner {
-    padding: 32px 36px;
-    position: relative;
-    z-index: 2;
-  }
-
-  .swipe-card-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-  }
-
-  .swipe-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 6px 14px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 600;
-    border: 1px solid rgba(255,255,255,0.14);
-    background: rgba(255,255,255,0.05);
-    color: rgba(255,255,255,0.85);
-  }
-
-  .swipe-badge.primary {
-    border-color: rgba(0,255,213,0.5);
-    background: rgba(0,255,213,0.12);
-    color: #00ffd5;
-  }
-
-  .swipe-card-body {
-    color: rgba(255,255,255,0.92);
-    font-size: 16px;
-    line-height: 1.75;
-    max-height: 50vh;
-    overflow-y: auto;
-    padding-right: 8px;
-  }
-
-  .swipe-card-body::-webkit-scrollbar {
-    width: 6px;
-  }
-  .swipe-card-body::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.04);
-    border-radius: 3px;
-  }
-  .swipe-card-body::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.15);
-    border-radius: 3px;
-  }
-
-  /* Zone hints */
-  .zone-hints {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: flex;
-    pointer-events: none;
-    z-index: 5;
-  }
-
-  .zone-hint {
-    flex: 1;
-    padding: 18px 24px;
-    text-align: center;
-    font-weight: 700;
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    opacity: 0.5;
-    transition: opacity 0.2s ease;
-  }
-
-  .zone-hint.left {
-    color: #ef4444;
-    background: linear-gradient(0deg, rgba(239,68,68,0.15), transparent);
-  }
-
-  .zone-hint.right {
-    color: #10b981;
-    background: linear-gradient(0deg, rgba(16,185,129,0.15), transparent);
-  }
-
-  .swipe-card.hover-left .zone-hint.left { opacity: 1; }
-  .swipe-card.hover-right .zone-hint.right { opacity: 1; }
-
-  /* Click zones overlay */
-  .click-zones {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    z-index: 10;
-  }
-
-  .click-zone {
-    flex: 1;
-    cursor: pointer;
-  }
-
-  /* ===== Utilities ===== */
-  .k-card {
-    border: 1px solid rgba(255,255,255,0.10);
-    border-radius: 16px;
-    padding: 16px 18px;
-    background: rgba(255,255,255,0.035);
-    box-shadow: 0 14px 35px rgba(0,0,0,0.30);
-    backdrop-filter: blur(12px);
-  }
-
-  .k-muted { color: rgba(255,255,255,0.65); }
-  .k-title { font-weight: 800; letter-spacing: -0.02em; color: #fff; }
-
-  .k-badge {
-    display: inline-block;
-    padding: 5px 12px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-    border: 1px solid rgba(255,255,255,0.14);
-    background: rgba(255,255,255,0.05);
-    margin-right: 6px;
-  }
-  .k-badge.ok { border-color: rgba(34,197,94,0.55); background: rgba(34,197,94,0.12); color: #22c55e; }
-  .k-badge.warn { border-color: rgba(245,158,11,0.55); background: rgba(245,158,11,0.12); color: #f59e0b; }
-  .k-badge.err { border-color: rgba(239,68,68,0.55); background: rgba(239,68,68,0.12); color: #ef4444; }
-
-  /* ===== Workbench styling ===== */
-  div[data-testid="stCustomComponentV1"] iframe {
-    border-radius: 16px;
-    border: 1px solid rgba(255,255,255,0.12);
-    background: rgba(0,0,0,0.30);
-    box-shadow: 0 16px 40px rgba(0,0,0,0.40);
-  }
-
+  .block-container { padding-top: 0.5rem; padding-bottom: 1rem; }
   div.stButton > button {
     border-radius: 14px !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
-    background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02)) !important;
-    color: rgba(255,255,255,0.90) !important;
+    border: 1px solid rgba(255,255,255,0.15) !important;
+    background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)) !important;
+    color: rgba(255,255,255,0.92) !important;
     font-weight: 600 !important;
-    padding: 0.65rem 1rem !important;
-    transition: all 0.15s ease;
+    padding: 0.7rem 1.2rem !important;
+    transition: all 0.2s ease;
   }
   div.stButton > button:hover {
-    border-color: rgba(0,255,213,0.4) !important;
-    background: linear-gradient(180deg, rgba(0,255,213,0.10), rgba(0,255,213,0.03)) !important;
+    border-color: rgba(0,255,213,0.5) !important;
+    background: linear-gradient(180deg, rgba(0,255,213,0.12), rgba(0,255,213,0.04)) !important;
     color: #00ffd5 !important;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,255,213,0.2);
   }
-
   div[data-baseweb="input"] input,
   div[data-baseweb="textarea"] textarea {
-    border-radius: 14px !important;
-    border: 1px solid rgba(255,255,255,0.10) !important;
-    background: rgba(255,255,255,0.03) !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    background: rgba(255,255,255,0.04) !important;
+    color: #fff !important;
   }
-
   button[data-baseweb="tab"] {
     border-radius: 999px !important;
-    margin-right: 8px !important;
-    padding: 8px 16px !important;
     font-weight: 600 !important;
   }
-
-  /* Hero section */
-  .hero-section {
-    text-align: center;
-    padding: 24px 16px 8px;
-    margin-bottom: 16px;
-  }
-
-  .hero-title {
-    font-size: 2.2rem;
-    font-weight: 900;
-    letter-spacing: -0.03em;
-    background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.75) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 8px;
-  }
-
-  .hero-subtitle {
-    font-size: 1rem;
-    color: rgba(255,255,255,0.55);
-    font-weight: 500;
-  }
-
-  /* Stats bar */
-  .stats-bar {
-    display: flex;
-    justify-content: center;
-    gap: 24px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-  }
-
-  .stat-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    border-radius: 12px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-  }
-
-  .stat-value {
-    font-weight: 700;
-    font-size: 14px;
-    color: #00ffd5;
-  }
-
-  .stat-label {
-    font-size: 13px;
-    color: rgba(255,255,255,0.55);
-  }
+  .stTabs [data-baseweb="tab-panel"] { padding-top: 1rem; }
 </style>
         """,
         unsafe_allow_html=True,
@@ -387,57 +93,24 @@ def _render_tests_block(tests_payload: Any):
     if not isinstance(tests_payload, dict):
         st.info("Нет результатов тестов.")
         return
-
     if not tests_payload.get("ok"):
         st.error(f"Тесты не запустились: {tests_payload.get('error')}")
         details = tests_payload.get("details") or ""
-        validation = tests_payload.get("validation")
         if details:
             st.code(str(details)[:4000])
-        if validation:
-            st.caption("Диагностика (валидация):")
-            st.code(json.dumps(validation, ensure_ascii=False, indent=2)[:8000], language="json")
         return
-
     results = tests_payload.get("results") or []
     if not isinstance(results, list) or not results:
         st.warning("Тесты вернули пустой результат.")
-        st.code(json.dumps(tests_payload, ensure_ascii=False, indent=2)[:8000], language="json")
         return
-
-    ok_cnt = 0
-    rows: list[dict[str, Any]] = []
-    for r in results:
-        if not isinstance(r, dict):
-            continue
-        ok = bool(r.get("ok"))
-        ok_cnt += 1 if ok else 0
-        rows.append(
-            {
-                "OK": "✅" if ok else "❌",
-                "Тест": r.get("name") or "",
-                "Ожидалось": r.get("expected") if r.get("expected") is not None else "",
-                "Получилось": r.get("got") if r.get("got") is not None else "",
-            }
-        )
-
-    total = len(rows)
+    ok_cnt = sum(1 for r in results if isinstance(r, dict) and r.get("ok"))
+    total = len(results)
     if ok_cnt == total:
         st.success(f"Все тесты пройдены: {ok_cnt}/{total}")
     else:
         st.warning(f"Пройдено тестов: {ok_cnt}/{total}")
-
+    rows = [{"OK": "✅" if r.get("ok") else "❌", "Тест": r.get("name", ""), "Ожидалось": r.get("expected", ""), "Получилось": r.get("got", "")} for r in results if isinstance(r, dict)]
     st.dataframe(rows, use_container_width=True, hide_index=True)
-
-    failed_errs = []
-    for r in results:
-        if isinstance(r, dict) and not r.get("ok") and r.get("error"):
-            failed_errs.append({"name": r.get("name"), "error": r.get("error")})
-    if failed_errs:
-        with st.expander("Ошибки в тестах (traceback)", expanded=False):
-            for fe in failed_errs[:20]:
-                st.markdown(f"**{fe.get('name') or 'тест'}**")
-                st.code(str(fe.get("error") or "")[:6000])
 
 
 def _get_query_param(name: str) -> str:
@@ -460,24 +133,6 @@ def _init_state():
     st.session_state.setdefault('hint_level_by_task', {})
     st.session_state.setdefault('history_loaded', False)
     st.session_state.setdefault('history_items', [])
-    st.session_state.setdefault('swipe_action', None)
-
-
-def _render_task_html(task: dict[str, Any]):
-    html = (task.get('content_html') or '').strip()
-    if not html:
-        st.info("У условия нет HTML-контента.")
-        return
-    st.markdown(
-        f"""
-<div class="k-card" style="padding: 18px 20px;">
-  <div style="color: rgba(255,255,255,0.92); line-height: 1.7; font-size: 15px;">
-    {html}
-  </div>
-</div>
-        """,
-        unsafe_allow_html=True,
-    )
 
 
 def _reset_workbench_state():
@@ -518,136 +173,512 @@ def _check_answer_match(expected_raw: str, given_raw: str) -> tuple[bool, list[s
     return normalized_given in normalized_expected and normalized_given != '', normalized_expected
 
 
-def _render_swipe_card(task: dict[str, Any], card_key: str) -> str | None:
-    """
-    Render TikTok-style swipe card with left/right click zones.
-    Returns 'skip' or 'accept' or None.
-    """
+def _render_number_picker_component(counts: dict[int, int], username: str) -> None:
+    """Render beautiful fullscreen number picker with all styles embedded."""
+    
+    buttons_html = ""
+    for n in range(1, 28):
+        count = counts.get(n, 0)
+        disabled = "disabled" if count == 0 else ""
+        empty_class = "empty" if count == 0 else ""
+        buttons_html += f'<button class="num-btn {empty_class}" data-num="{n}" {disabled}>{n}<span class="count">{count}</span></button>'
+    
+    html = f'''
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+body {{
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: transparent;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}}
+
+.hero {{
+  text-align: center;
+  margin-bottom: 40px;
+}}
+
+.hero-title {{
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 12px;
+}}
+
+.hero-subtitle {{
+  font-size: 1.1rem;
+  color: rgba(255,255,255,0.5);
+  font-weight: 500;
+}}
+
+.hero-user {{
+  margin-top: 20px;
+  padding: 10px 24px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 999px;
+  display: inline-block;
+  color: rgba(255,255,255,0.7);
+  font-weight: 600;
+}}
+
+.picker-label {{
+  font-size: 1rem;
+  color: rgba(255,255,255,0.6);
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}}
+
+.number-grid {{
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 12px;
+  max-width: 650px;
+  width: 100%;
+}}
+
+.num-btn {{
+  aspect-ratio: 1;
+  border-radius: 16px;
+  border: 2px solid rgba(255,255,255,0.1);
+  background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  position: relative;
+  overflow: hidden;
+}}
+
+.num-btn .count {{
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.4);
+  font-weight: 500;
+}}
+
+.num-btn:not(.empty):hover {{
+  border-color: rgba(0,255,213,0.7);
+  background: linear-gradient(160deg, rgba(0,255,213,0.15), rgba(0,255,213,0.05));
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 15px 40px rgba(0,255,213,0.3), 0 0 0 1px rgba(0,255,213,0.2) inset;
+  color: #00ffd5;
+}}
+
+.num-btn:not(.empty):hover .count {{
+  color: rgba(0,255,213,0.7);
+}}
+
+.num-btn:not(.empty):active {{
+  transform: translateY(-2px) scale(1.02);
+}}
+
+.num-btn.empty {{
+  opacity: 0.25;
+  cursor: not-allowed;
+}}
+
+@media (max-width: 600px) {{
+  .number-grid {{ grid-template-columns: repeat(5, 1fr); gap: 8px; }}
+  .hero-title {{ font-size: 2rem; }}
+  .num-btn {{ font-size: 1rem; border-radius: 12px; }}
+}}
+</style>
+</head>
+<body>
+  <div class="hero">
+    <div class="hero-title">Тренажёр КЕГЭ</div>
+    <div class="hero-subtitle">Выбери номер задания для тренировки</div>
+    <div class="hero-user">👤 {username}</div>
+  </div>
+  
+  <div class="picker-label">Номер задания</div>
+  
+  <div class="number-grid" id="picker">
+    {buttons_html}
+  </div>
+
+<script>
+document.querySelectorAll('.num-btn:not(.empty)').forEach(btn => {{
+  btn.addEventListener('click', () => {{
+    const num = btn.getAttribute('data-num');
+    // Send to Streamlit
+    window.parent.postMessage({{
+      type: 'streamlit:setComponentValue',
+      value: parseInt(num)
+    }}, '*');
+  }});
+}});
+</script>
+</body>
+</html>
+'''
+    components.html(html, height=550, scrolling=False)
+
+
+def _render_swipe_card_component(task: dict[str, Any], task_type: int) -> None:
+    """Render TikTok-style swipe card with embedded styles and full interactivity."""
+    
     task_id = task.get('task_id') or 0
     task_number = task.get('task_number') or '?'
     source_url = task.get('source_url') or ''
     site_task_id = task.get('site_task_id') or ''
     content_html = (task.get('content_html') or '').strip()
+    
+    # Escape content for embedding
+    content_safe = content_html.replace('`', '\\`').replace('${', '\\${')
+    
+    source_badge = f'<a href="{source_url}" target="_blank" class="badge link">Источник ↗</a>' if source_url else ''
+    site_badge = f'<span class="badge">{site_task_id}</span>' if site_task_id else ''
+    
+    html = f'''
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<style>
+* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+body {{
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: transparent;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}}
 
-    # Build header badges
-    header_html = f'<span class="swipe-badge primary">№{task_number}</span>'
-    header_html += f'<span class="swipe-badge">ID {task_id}</span>'
-    if source_url:
-        header_html += f'<a href="{source_url}" target="_blank" class="swipe-badge" style="text-decoration:none;color:inherit;">Источник ↗</a>'
-    if site_task_id:
-        header_html += f'<span class="swipe-badge">{site_task_id}</span>'
+.header {{
+  text-align: center;
+  margin-bottom: 24px;
+}}
 
-    # Interactive card with JavaScript
-    card_html = f"""
-    <div class="swipe-card-container">
-      <div class="swipe-card" id="swipe-card-{card_key}">
-        <div class="swipe-card-inner">
-          <div class="swipe-card-header">
-            {header_html}
-          </div>
-          <div class="swipe-card-body">
-            {content_html}
-          </div>
+.header-title {{
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 8px;
+}}
+
+.header-hint {{
+  font-size: 0.95rem;
+  color: rgba(255,255,255,0.5);
+}}
+
+.back-btn {{
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.8);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}}
+
+.back-btn:hover {{
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.25);
+}}
+
+/* Card Container */
+.card-wrapper {{
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  perspective: 1000px;
+}}
+
+.swipe-card {{
+  position: relative;
+  width: 100%;
+  min-height: 55vh;
+  border-radius: 24px;
+  border: 2px solid rgba(255,255,255,0.12);
+  background: linear-gradient(165deg, rgba(20,22,32,0.98), rgba(14,16,24,0.96));
+  box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05) inset;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}}
+
+/* Hover states */
+.swipe-card.hover-left {{
+  border-color: rgba(239,68,68,0.8);
+  background: linear-gradient(165deg, rgba(60,20,25,0.98), rgba(30,12,18,0.96));
+  box-shadow: 0 30px 80px rgba(239,68,68,0.3), 0 0 80px rgba(239,68,68,0.1) inset;
+  transform: rotateY(-2deg) scale(1.01);
+}}
+
+.swipe-card.hover-right {{
+  border-color: rgba(16,185,129,0.8);
+  background: linear-gradient(165deg, rgba(12,45,35,0.98), rgba(8,28,22,0.96));
+  box-shadow: 0 30px 80px rgba(16,185,129,0.3), 0 0 80px rgba(16,185,129,0.1) inset;
+  transform: rotateY(2deg) scale(1.01);
+}}
+
+/* Card content */
+.card-inner {{
+  padding: 28px 32px;
+  position: relative;
+  z-index: 2;
+}}
+
+.card-header {{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}}
+
+.badge {{
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.85);
+}}
+
+.badge.primary {{
+  border-color: rgba(0,255,213,0.5);
+  background: rgba(0,255,213,0.12);
+  color: #00ffd5;
+}}
+
+.badge.link {{
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}}
+
+.badge.link:hover {{
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.3);
+}}
+
+.card-body {{
+  color: rgba(255,255,255,0.92);
+  font-size: 15px;
+  line-height: 1.75;
+  max-height: 45vh;
+  overflow-y: auto;
+  padding-right: 8px;
+}}
+
+.card-body::-webkit-scrollbar {{ width: 5px; }}
+.card-body::-webkit-scrollbar-track {{ background: rgba(255,255,255,0.03); border-radius: 3px; }}
+.card-body::-webkit-scrollbar-thumb {{ background: rgba(255,255,255,0.12); border-radius: 3px; }}
+
+.card-body p {{ margin-bottom: 12px; }}
+.card-body img {{ max-width: 100%; border-radius: 8px; margin: 12px 0; }}
+
+/* Zone indicators */
+.zone-indicators {{
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  pointer-events: none;
+  z-index: 5;
+}}
+
+.zone-indicator {{
+  flex: 1;
+  padding: 20px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
+}}
+
+.zone-indicator.left {{
+  color: #ef4444;
+  background: linear-gradient(0deg, rgba(239,68,68,0.2), transparent 80%);
+}}
+
+.zone-indicator.right {{
+  color: #10b981;
+  background: linear-gradient(0deg, rgba(16,185,129,0.2), transparent 80%);
+}}
+
+.swipe-card.hover-left .zone-indicator.left {{ opacity: 1; }}
+.swipe-card.hover-right .zone-indicator.right {{ opacity: 1; }}
+
+/* Invisible click zones */
+.click-zones {{
+  position: absolute;
+  inset: 0;
+  display: flex;
+  z-index: 10;
+}}
+
+.click-zone {{
+  flex: 1;
+  cursor: pointer;
+}}
+
+/* Exit animation */
+.swipe-card.exit-left {{
+  transform: translateX(-150%) rotate(-20deg);
+  opacity: 0;
+}}
+
+.swipe-card.exit-right {{
+  transform: translateX(150%) rotate(20deg);
+  opacity: 0;
+}}
+
+@media (max-width: 600px) {{
+  .card-inner {{ padding: 20px; }}
+  .header-title {{ font-size: 1.4rem; }}
+  .card-body {{ font-size: 14px; }}
+}}
+</style>
+</head>
+<body>
+  <button class="back-btn" id="backBtn">← Сменить номер</button>
+
+  <div class="header">
+    <div class="header-title">Задание №{task_type}</div>
+    <div class="header-hint">Наведи на левую часть чтобы пропустить, на правую — решать</div>
+  </div>
+
+  <div class="card-wrapper">
+    <div class="swipe-card" id="card">
+      <div class="card-inner">
+        <div class="card-header">
+          <span class="badge primary">№{task_number}</span>
+          <span class="badge">ID {task_id}</span>
+          {source_badge}
+          {site_badge}
         </div>
-        <div class="zone-hints">
-          <div class="zone-hint left">← Пропустить</div>
-          <div class="zone-hint right">Решать →</div>
-        </div>
-        <div class="click-zones">
-          <div class="click-zone" id="zone-left-{card_key}"></div>
-          <div class="click-zone" id="zone-right-{card_key}"></div>
+        <div class="card-body">
+          {content_html}
         </div>
       </div>
+      
+      <div class="zone-indicators">
+        <div class="zone-indicator left">← Пропустить</div>
+        <div class="zone-indicator right">Решать →</div>
+      </div>
+      
+      <div class="click-zones">
+        <div class="click-zone" id="zoneLeft"></div>
+        <div class="click-zone" id="zoneRight"></div>
+      </div>
     </div>
+  </div>
 
-    <script>
-    (function() {{
-      const card = document.getElementById('swipe-card-{card_key}');
-      const zoneLeft = document.getElementById('zone-left-{card_key}');
-      const zoneRight = document.getElementById('zone-right-{card_key}');
+<script>
+const card = document.getElementById('card');
+const zoneLeft = document.getElementById('zoneLeft');
+const zoneRight = document.getElementById('zoneRight');
+const backBtn = document.getElementById('backBtn');
 
-      if (!card || !zoneLeft || !zoneRight) return;
+// Hover effects
+zoneLeft.addEventListener('mouseenter', () => {{
+  card.classList.remove('hover-right');
+  card.classList.add('hover-left');
+}});
 
-      zoneLeft.addEventListener('mouseenter', () => {{
-        card.classList.remove('hover-right');
-        card.classList.add('hover-left');
-      }});
+zoneRight.addEventListener('mouseenter', () => {{
+  card.classList.remove('hover-left');
+  card.classList.add('hover-right');
+}});
 
-      zoneRight.addEventListener('mouseenter', () => {{
-        card.classList.remove('hover-left');
-        card.classList.add('hover-right');
-      }});
+card.addEventListener('mouseleave', () => {{
+  card.classList.remove('hover-left', 'hover-right');
+}});
 
-      card.addEventListener('mouseleave', () => {{
-        card.classList.remove('hover-left', 'hover-right');
-      }});
+// Click handlers
+zoneLeft.addEventListener('click', () => {{
+  card.classList.add('exit-left');
+  setTimeout(() => {{
+    window.parent.postMessage({{
+      type: 'streamlit:setComponentValue',
+      value: {{ action: 'skip' }}
+    }}, '*');
+  }}, 350);
+}});
 
-      zoneLeft.addEventListener('click', (e) => {{
-        e.stopPropagation();
-        card.style.transform = 'translateX(-120%) rotate(-15deg)';
-        card.style.opacity = '0';
-        setTimeout(() => {{
-          window.parent.postMessage({{ type: 'swipe_action', action: 'skip', key: '{card_key}' }}, '*');
-        }}, 200);
-      }});
+zoneRight.addEventListener('click', () => {{
+  card.classList.add('exit-right');
+  setTimeout(() => {{
+    window.parent.postMessage({{
+      type: 'streamlit:setComponentValue',
+      value: {{ action: 'accept' }}
+    }}, '*');
+  }}, 350);
+}});
 
-      zoneRight.addEventListener('click', (e) => {{
-        e.stopPropagation();
-        card.style.transform = 'translateX(120%) rotate(15deg)';
-        card.style.opacity = '0';
-        setTimeout(() => {{
-          window.parent.postMessage({{ type: 'swipe_action', action: 'accept', key: '{card_key}' }}, '*');
-        }}, 200);
-      }});
-    }})();
-    </script>
-    """
-
-    # Render and listen for action
-    components.html(card_html, height=650, scrolling=False)
-
-    # Check for action via query params (workaround for Streamlit)
-    action = st.session_state.get('swipe_action')
-    if action:
-        st.session_state['swipe_action'] = None
-        return action
-
-    return None
+backBtn.addEventListener('click', () => {{
+  window.parent.postMessage({{
+    type: 'streamlit:setComponentValue',
+    value: {{ action: 'back' }}
+  }}, '*');
+}});
+</script>
+</body>
+</html>
+'''
+    components.html(html, height=700, scrolling=False)
 
 
-def _render_number_picker(counts: dict[int, int], current: int | None) -> int | None:
-    """Render beautiful number picker panel. Returns selected number or None."""
-    buttons_html = ""
-    for n in range(1, 28):
-        count = counts.get(n, 0)
-        active_class = "active" if n == current else ""
-        empty_class = "empty" if count == 0 else ""
-        title = f"{count} заданий" if count > 0 else "Нет заданий"
-        buttons_html += f'<button class="number-btn {active_class} {empty_class}" data-num="{n}" title="{title}" {"disabled" if count == 0 else ""}>{n}</button>'
-
-    picker_html = f"""
-    <div class="number-picker-panel" id="number-picker">
-      {buttons_html}
-    </div>
-    <script>
-    (function() {{
-      const panel = document.getElementById('number-picker');
-      if (!panel) return;
-      panel.querySelectorAll('.number-btn:not(.empty)').forEach(btn => {{
-        btn.addEventListener('click', () => {{
-          const num = btn.getAttribute('data-num');
-          window.parent.postMessage({{ type: 'select_number', number: parseInt(num) }}, '*');
-        }});
-      }});
-    }})();
-    </script>
-    """
-    components.html(picker_html, height=100, scrolling=False)
-    return None
+def _render_task_html(task: dict[str, Any]):
+    html = (task.get('content_html') or '').strip()
+    if not html:
+        st.info("У условия нет HTML-контента.")
+        return
+    st.markdown(
+        f"""
+<div style="padding: 20px; background: rgba(255,255,255,0.03); border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
+  <div style="color: rgba(255,255,255,0.92); line-height: 1.75; font-size: 15px;">
+    {html}
+  </div>
+</div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def main():
-    _inject_css()
+    _inject_minimal_css()
     _init_state()
 
     token = _get_query_param('token')
@@ -704,152 +735,84 @@ def main():
     task_type = st.session_state.get('task_type')
     current_card = st.session_state.get('current_card')
 
-    # ===== STATE: No task type selected — show picker =====
+    # ===== STATE 1: No task type — Number Picker =====
     if task_type is None and task is None:
-        st.markdown(
-            """
-            <div class="hero-section">
-              <div class="hero-title">Тренажёр КЕГЭ</div>
-              <div class="hero-subtitle">Выбери номер задания и начни тренировку</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        # Stats bar
-        total_tasks = sum(counts.values())
-        available_numbers = len([n for n, c in counts.items() if c > 0])
-        st.markdown(
-            f"""
-            <div class="stats-bar">
-              <div class="stat-item">
-                <span class="stat-value">{total_tasks}</span>
-                <span class="stat-label">заданий в базе</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-value">{available_numbers}</span>
-                <span class="stat-label">номеров доступно</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-value">{username}</span>
-                <span class="stat-label">пользователь</span>
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        st.markdown("#### Выбери номер задания")
-
-        # Number picker with Streamlit buttons (for reliable interaction)
+        _render_number_picker_component(counts, username)
+        
+        # Fallback buttons for selection
+        st.markdown("---")
+        st.markdown("**Или выбери кнопкой:**")
         cols = st.columns(9)
         for i, n in enumerate(range(1, 28)):
             col_idx = i % 9
             count = counts.get(n, 0)
             with cols[col_idx]:
-                disabled = count == 0
-                label = f"{n}" if count > 0 else f"~{n}~"
-                if st.button(
-                    label,
-                    key=f"pick_{n}",
-                    disabled=disabled,
-                    use_container_width=True,
-                    help=f"{count} заданий" if count > 0 else "Нет заданий",
-                ):
+                if st.button(str(n), key=f"pick_{n}", disabled=count == 0, use_container_width=True):
                     st.session_state['task_type'] = n
                     st.session_state['current_card'] = None
                     st.rerun()
-
         return
 
-    # ===== STATE: Task type selected, no active task — show swipe card =====
+    # ===== STATE 2: Task type selected, show swipe card =====
     if task is None:
-        # Load card if needed
         if current_card is None:
             card = _pull_random_task(client, task_type=int(task_type))
             if card:
                 st.session_state['current_card'] = card
                 current_card = card
             else:
-                st.warning("Задания закончились. Попробуй другой номер.")
+                st.warning("Задания закончились для этого номера.")
                 if st.button("← Выбрать другой номер"):
                     st.session_state['task_type'] = None
                     st.session_state['current_card'] = None
                     st.rerun()
                 return
 
-        # Header
-        st.markdown(
-            f"""
-            <div class="hero-section" style="padding-bottom:0;">
-              <div class="hero-title">Задание №{task_type}</div>
-              <div class="hero-subtitle">Нажми на левую половину чтобы пропустить, на правую — чтобы решать</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        # Back button
-        col1, col2, col3 = st.columns([1, 2, 1])
+        _render_swipe_card_component(current_card, int(task_type))
+        
+        # Fallback buttons
+        st.markdown("---")
+        col1, col2, col3 = st.columns([1, 1, 1])
         with col1:
             if st.button("← Сменить номер", use_container_width=True):
                 st.session_state['task_type'] = None
                 st.session_state['current_card'] = None
                 st.rerun()
-
-        # Render the swipe card
-        card_key = f"card_{current_card.get('task_id', 0)}"
-        _render_swipe_card(current_card, card_key)
-
-        # Action buttons as fallback (below card)
-        st.markdown("")
-        bcol1, bcol2 = st.columns(2, gap="large")
-        with bcol1:
-            if st.button("⬅ Пропустить", use_container_width=True, key="btn_skip"):
+        with col2:
+            if st.button("⬅ Пропустить", use_container_width=True):
                 st.session_state['current_card'] = None
                 st.rerun()
-        with bcol2:
-            if st.button("Решать ➡", use_container_width=True, key="btn_accept"):
+        with col3:
+            if st.button("Решать ➡", use_container_width=True):
                 st.session_state['task'] = current_card
                 st.session_state['current_card'] = None
                 _reset_workbench_state()
                 st.rerun()
-
         return
 
-    # ===== STATE: Active task — workbench =====
+    # ===== STATE 3: Active task — Workbench =====
     tid = int(task.get('task_id') or 0)
     knowledge = load_task_knowledge(tid) if tid else None
     tests = (knowledge or {}).get('tests') if isinstance(knowledge, dict) else None
 
     # Header
-    st.markdown(
-        f"""
-        <div style="display:flex; align-items:center; gap:16px; margin-bottom:16px; flex-wrap:wrap;">
-          <span class="swipe-badge primary" style="font-size:15px;">№{task.get('task_number')}</span>
-          <span class="swipe-badge">ID {task.get('task_id')}</span>
-          <span class="k-muted">Решаем задание</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Action bar
-    a1, a2, a3 = st.columns([1, 1, 1], gap="small")
-    with a1:
-        if st.button("← К выбору карточки", use_container_width=True):
+    st.markdown(f"### Задание №{task.get('task_number')} · ID {task.get('task_id')}")
+    
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col1:
+        if st.button("← К выбору", use_container_width=True):
             st.session_state['task'] = None
             st.session_state['current_card'] = None
             _reset_workbench_state()
             st.rerun()
-    with a2:
-        if st.button("→ Следующее задание", use_container_width=True):
+    with col2:
+        if st.button("→ Следующее", use_container_width=True):
             st.session_state['task'] = None
             st.session_state['current_card'] = None
             _reset_workbench_state()
             st.rerun()
-    with a3:
-        if st.button("💾 Сохранить прогресс", use_container_width=True):
+    with col3:
+        if st.button("💾 Сохранить", use_container_width=True):
             try:
                 client.save_session(
                     task_id=task.get('task_id'),
@@ -860,11 +823,11 @@ def main():
                     tests=st.session_state.get('tests'),
                     messages=st.session_state.get('messages'),
                 )
-                st.toast("Сохранено")
+                st.toast("Сохранено!")
             except Exception as e:
-                st.error(f"Не удалось сохранить: {e}")
+                st.error(f"Ошибка: {e}")
 
-    # Main workbench
+    # Tabs
     tab_task, tab_solve, tab_help, tab_hist = st.tabs(["📄 Условие", "💻 Решение", "💡 Помощник", "📚 История"])
 
     with tab_task:
@@ -873,8 +836,6 @@ def main():
             st.markdown(f"[Открыть источник ↗]({task.get('source_url')})")
 
     with tab_solve:
-        st.markdown("### Код")
-
         code_val = ""
         try:
             from streamlit_ace import st_ace
@@ -883,9 +844,7 @@ def main():
                 value=st.session_state.get("code") or "",
                 language="python",
                 theme="dracula",
-                keybinding="vscode",
-                height=380,
-                min_lines=18,
+                height=350,
                 font_size=14,
                 tab_size=4,
                 show_gutter=True,
@@ -893,246 +852,156 @@ def main():
                 auto_update=False,
             ) or ""
         except Exception:
-            code_val = st.text_area(
-                "Код",
-                value=st.session_state.get('code') or "",
-                height=380,
-                placeholder="print('hello')",
-            ) or ""
+            code_val = st.text_area("Код", value=st.session_state.get('code') or "", height=350) or ""
 
-        if len(code_val) > 20000:
-            st.warning("Код слишком большой, обрезаю до 20 000 символов.")
-            code_val = code_val[:20000]
-        st.session_state["code"] = code_val
+        st.session_state["code"] = code_val[:20000]
 
-        c1, c2, c3 = st.columns([1, 1, 1], gap="small")
-        if c1.button("🔍 Анализ кода", use_container_width=True, key="btn_analyze"):
+        c1, c2 = st.columns(2)
+        if c1.button("🔍 Анализ", use_container_width=True):
             st.session_state['analysis'] = analyze_python_code(st.session_state.get('code') or '')
-            hints = (st.session_state['analysis'] or {}).get('hints') or []
-            if hints:
-                st.session_state['messages'].append({'role': 'assistant', 'content': 'Что я заметил:\n\n- ' + '\n- '.join(hints[:4])})
-        if c2.button("🗑 Очистить", use_container_width=True, key="btn_clear_code"):
+        if c2.button("🗑 Очистить", use_container_width=True):
             st.session_state['code'] = ''
             st.session_state['analysis'] = None
-            st.session_state['tests'] = None
-        if c3.button("🔄 Сброс чата", use_container_width=True, key="btn_reset_help"):
-            st.session_state['messages'] = []
-            if tid:
-                st.session_state['hint_level_by_task'][tid] = 0
 
         if st.session_state.get('analysis'):
-            with st.expander("Результат анализа", expanded=False):
-                st.code(json.dumps(st.session_state['analysis'], ensure_ascii=False, indent=2), language="json")
+            with st.expander("Результат анализа"):
+                st.json(st.session_state['analysis'])
 
         st.markdown("### Проверка")
-
+        
         if not is_runner_enabled():
-            st.warning("Запуск кода выключен. Включи `TRAINER_ENABLE_RUNNER=1`.")
+            st.warning("Запуск кода выключен (`TRAINER_ENABLE_RUNNER=1`).")
         else:
-            rt0, rt1, rt2 = st.tabs(["✅ Проверить ответ", "▶ Запустить код", "🧪 Тесты"])
-
+            rt0, rt1, rt2 = st.tabs(["✅ Ответ", "▶ Запуск", "🧪 Тесты"])
+            
             with rt0:
-                expected_answer = (task.get('answer') or '')
-                user_answer = st.text_input("Твой ответ", key="answer_input")
-                if st.button("Проверить", use_container_width=True, key="btn_check_answer"):
-                    if not expected_answer:
-                        st.warning("В базе нет правильного ответа.")
-                    elif not (user_answer or "").strip():
+                expected = task.get('answer') or ''
+                user_ans = st.text_input("Твой ответ:", key="ans_input")
+                if st.button("Проверить", key="check_ans"):
+                    if not expected:
+                        st.warning("Нет ответа в базе.")
+                    elif not user_ans.strip():
                         st.warning("Введи ответ.")
                     else:
-                        ok, _ = _check_answer_match(expected_answer, user_answer)
+                        ok, _ = _check_answer_match(expected, user_ans)
                         if ok:
                             st.success("✅ Верно!")
                         else:
-                            st.error("❌ Неверно. Попробуй ещё.")
+                            st.error("❌ Неверно.")
 
             with rt1:
-                stdin_val = st.text_area("Ввод (stdin)", height=100, key="run_stdin", placeholder="5\n1 2 3 4 5")
-                expect = st.text_area("Ожидаемый вывод (опционально)", height=80, key="run_expected")
-
-                if st.button("▶ Запустить", use_container_width=True, key="btn_run"):
-                    res = run_python_program(code=st.session_state.get('code') or '', stdin=stdin_val, timeout_seconds=2.0)
+                stdin = st.text_area("stdin:", height=100, key="run_stdin")
+                if st.button("▶ Запустить", key="run_btn"):
+                    res = run_python_program(code=st.session_state.get('code') or '', stdin=stdin, timeout_seconds=2.0)
                     st.session_state['run_result'] = res
-
                 res = st.session_state.get('run_result')
-                if isinstance(res, dict):
+                if res:
                     if res.get('ok'):
                         st.success("Выполнено")
                     else:
                         st.error(f"Ошибка: {res.get('error')}")
-                        if res.get('details'):
-                            st.code(str(res.get('details'))[:3000])
-
-                    st.markdown("**stdout:**")
-                    st.code((res.get('stdout') or '')[:8000])
+                    st.code(res.get('stdout', '')[:5000])
                     if res.get('stderr'):
-                        st.markdown("**stderr:**")
-                        st.code(res.get('stderr')[:4000])
-
-                    if (expect or '').strip():
-                        if (res.get('stdout') or '').strip() == expect.strip():
-                            st.success("Вывод совпал!")
-                        else:
-                            st.warning("Вывод не совпал.")
+                        st.code(res.get('stderr')[:2000])
 
             with rt2:
                 if not tests:
-                    st.info("Для этой задачи нет тестов.")
+                    st.info("Нет тестов для этой задачи.")
                 else:
-                    if st.button("🧪 Запустить тесты", use_container_width=True, key="btn_tests"):
+                    if st.button("🧪 Тесты", key="test_btn"):
                         st.session_state['tests'] = run_python_solve_tests(code=st.session_state.get('code') or '', tests=tests)
                     if st.session_state.get('tests'):
                         _render_tests_block(st.session_state.get('tests'))
 
     with tab_help:
         ladder = (knowledge or {}).get('hint_ladder') if isinstance(knowledge, dict) else None
-        max_lvl = 0
-        if isinstance(ladder, list):
-            for it in ladder:
-                if isinstance(it, dict) and it.get('level'):
-                    try:
-                        max_lvl = max(max_lvl, int(it.get('level') or 0))
-                    except Exception:
-                        continue
-            if max_lvl <= 0:
-                max_lvl = len([it for it in ladder if isinstance(it, dict) and it.get('hint')])
-        cur_lvl = int((st.session_state.get('hint_level_by_task') or {}).get(tid, 0) or 0)
-        if max_lvl > 0:
-            st.progress(min(1.0, float(cur_lvl) / float(max_lvl)))
-            st.caption(f"Подсказки: {cur_lvl}/{max_lvl}")
-
-        if st.button("💡 Следующая подсказка", use_container_width=True, key="btn_hint"):
-            current_level = cur_lvl
+        
+        if st.button("💡 Подсказка", use_container_width=True):
+            cur_lvl = st.session_state.get('hint_level_by_task', {}).get(tid, 0) or 0
             next_hint = None
-            next_level = current_level
+            next_lvl = cur_lvl
+            
             if isinstance(ladder, list) and ladder:
-                sorted_ladder = []
-                for item in ladder:
-                    if isinstance(item, dict) and item.get('hint'):
-                        try:
-                            lvl = int(item.get('level') or 0)
-                        except Exception:
-                            lvl = 0
-                        sorted_ladder.append((lvl, str(item.get('hint'))))
-                sorted_ladder.sort(key=lambda x: (x[0] if x[0] else 10**9))
-                if all(lvl == 0 for (lvl, _) in sorted_ladder):
-                    sorted_ladder = list(enumerate([h for (_, h) in sorted_ladder], start=1))
-                for (lvl, htxt) in sorted_ladder:
-                    if int(lvl) > int(current_level):
-                        next_level = int(lvl)
+                sorted_l = sorted([(int(x.get('level') or 0), x.get('hint')) for x in ladder if isinstance(x, dict) and x.get('hint')], key=lambda x: x[0] or 999)
+                for lvl, htxt in sorted_l:
+                    if lvl > cur_lvl:
+                        next_lvl = lvl
                         next_hint = htxt
                         break
 
             if next_hint:
-                st.session_state['hint_level_by_task'][tid] = next_level
-                st.session_state['messages'].append({'role': 'assistant', 'content': f"Подсказка ({next_level}): {next_hint}"})
+                st.session_state['hint_level_by_task'][tid] = next_lvl
+                st.session_state['messages'].append({'role': 'assistant', 'content': f"Подсказка ({next_lvl}): {next_hint}"})
             else:
                 try:
-                    msgs = build_messages_for_help(
-                        task=task,
-                        code=st.session_state.get('code') or '',
-                        analysis=st.session_state.get('analysis'),
-                        history=(st.session_state.get('messages') or []) + [{'role': 'user', 'content': 'Дай подсказку (не решение).'}],
-                        knowledge=knowledge,
-                    )
+                    msgs = build_messages_for_help(task=task, code=st.session_state.get('code') or '', analysis=st.session_state.get('analysis'), history=st.session_state.get('messages', []) + [{'role': 'user', 'content': 'Дай подсказку.'}], knowledge=knowledge)
                     answer = None
                     try:
                         pr = client.llm_chat(messages=msgs, temperature=0.2, max_tokens=500, task_id=tid, task_type=int(task.get('task_number') or 0))
-                        answer = (pr.get('answer') or '') if isinstance(pr, dict) else None
+                        answer = pr.get('answer') if isinstance(pr, dict) else None
                     except Exception:
                         llm = get_llm_client()
                         if llm:
                             answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=500)
-                    answer = (answer or '').strip() or 'Сформулируй, что уже сделал и где застрял.'
-                    st.session_state['messages'].append({'role': 'assistant', 'content': answer})
+                    st.session_state['messages'].append({'role': 'assistant', 'content': (answer or '').strip() or 'Расскажи, что уже сделал.'})
                 except Exception as e:
                     st.session_state['messages'].append({'role': 'assistant', 'content': f'Ошибка: {e}'})
 
-        st.markdown("### Чат")
-        for m in st.session_state.get('messages') or []:
-            with st.chat_message(m.get('role') or 'assistant'):
-                st.markdown(m.get('content') or '')
+        for m in st.session_state.get('messages', []):
+            with st.chat_message(m.get('role', 'assistant')):
+                st.markdown(m.get('content', ''))
 
-        prompt = st.chat_input("Задай вопрос помощнику…")
+        prompt = st.chat_input("Вопрос помощнику...")
         if prompt:
             st.session_state['messages'].append({'role': 'user', 'content': prompt})
             try:
-                msgs = build_messages_for_help(
-                    task=task,
-                    code=st.session_state.get('code') or '',
-                    analysis=st.session_state.get('analysis'),
-                    history=st.session_state.get('messages'),
-                    knowledge=knowledge,
-                )
+                msgs = build_messages_for_help(task=task, code=st.session_state.get('code') or '', analysis=st.session_state.get('analysis'), history=st.session_state.get('messages'), knowledge=knowledge)
                 answer = None
                 try:
                     pr = client.llm_chat(messages=msgs, temperature=0.2, max_tokens=700, task_id=tid, task_type=int(task.get('task_number') or 0))
-                    answer = (pr.get('answer') or '') if isinstance(pr, dict) else None
+                    answer = pr.get('answer') if isinstance(pr, dict) else None
                 except Exception:
                     llm = get_llm_client()
                     if llm:
                         answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=700)
-                if not answer:
-                    st.session_state['messages'].append({'role': 'assistant', 'content': 'LLM не настроен.'})
-                else:
-                    st.session_state['messages'].append({'role': 'assistant', 'content': answer.strip()})
+                st.session_state['messages'].append({'role': 'assistant', 'content': (answer or '').strip() or 'LLM не настроен.'})
             except Exception as e:
                 st.session_state['messages'].append({'role': 'assistant', 'content': f'Ошибка: {e}'})
             st.rerun()
 
     with tab_hist:
-        if st.button("Обновить историю", use_container_width=True, key="btn_hist_refresh"):
+        if st.button("Обновить", key="hist_refresh"):
             st.session_state['history_loaded'] = False
         if not st.session_state.get('history_loaded'):
             try:
                 h = client.list_sessions(limit=25)
-                st.session_state['history_items'] = (h.get('sessions') or []) if isinstance(h, dict) else []
+                st.session_state['history_items'] = h.get('sessions', []) if isinstance(h, dict) else []
                 st.session_state['history_loaded'] = True
             except Exception as e:
-                st.caption(f"История недоступна: {e}")
+                st.caption(f"Ошибка: {e}")
                 st.session_state['history_items'] = []
                 st.session_state['history_loaded'] = True
 
-        items = st.session_state.get('history_items') or []
+        items = st.session_state.get('history_items', [])
         if not items:
             st.info("Нет сохранённых попыток.")
         else:
-            options = []
-            for it in items:
-                label = f"#{it.get('session_id')} · №{it.get('task_type')} · {it.get('created_at')}"
-                options.append((label, it))
-            labels = [o[0] for o in options]
-            sel = st.selectbox("Выбери попытку", options=list(range(len(labels))), format_func=lambda i: labels[i], key="hist_sel")
-            sel_item = options[int(sel)][1]
-            if st.button("Загрузить", use_container_width=True, key="btn_hist_load"):
+            labels = [f"#{it.get('session_id')} · №{it.get('task_type')} · {it.get('created_at')}" for it in items]
+            sel = st.selectbox("Попытка:", range(len(labels)), format_func=lambda i: labels[i], key="hist_sel")
+            if st.button("Загрузить", key="hist_load"):
                 try:
-                    sid = int(sel_item.get('session_id') or 0)
+                    sid = items[sel].get('session_id')
                     if sid:
-                        resp = client.get_session(sid)
-                        sess = (resp.get('session') or {}) if isinstance(resp, dict) else {}
-                        task_payload = resp.get('task') if isinstance(resp, dict) else None
-
-                        if task_payload:
-                            st.session_state['task'] = task_payload
-                        else:
-                            tid2 = int(sess.get('task_id') or 0)
-                            if tid2:
-                                t_resp = client.get_task(tid2)
-                                tsk2 = t_resp.get('task') if isinstance(t_resp, dict) else None
-                                if tsk2:
-                                    st.session_state['task'] = tsk2
-
-                        st.session_state['code'] = (sess.get('code') or '')
+                        resp = client.get_session(int(sid))
+                        sess = resp.get('session', {}) if isinstance(resp, dict) else {}
+                        if resp.get('task'):
+                            st.session_state['task'] = resp['task']
+                        st.session_state['code'] = sess.get('code', '')
                         st.session_state['analysis'] = sess.get('analysis')
-                        st.session_state['tests'] = sess.get('tests')
-                        msgs = sess.get('messages')
-                        st.session_state['messages'] = msgs if isinstance(msgs, list) else []
-
-                        if st.session_state.get('task') and st.session_state['task'].get('task_id'):
-                            st.session_state['hint_level_by_task'][int(st.session_state['task']['task_id'])] = 0
+                        st.session_state['messages'] = sess.get('messages', []) if isinstance(sess.get('messages'), list) else []
                         st.rerun()
                 except Exception as e:
-                    st.error(f"Не удалось открыть: {e}")
+                    st.error(f"Ошибка: {e}")
 
 
 if __name__ == '__main__':
