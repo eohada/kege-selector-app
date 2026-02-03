@@ -16,7 +16,7 @@ from app.auth.rbac_utils import check_access, get_user_scope
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, perform_auto_check, normalize_answer_value  # comment
-from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, LessonWhiteboard, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents
@@ -2445,3 +2445,293 @@ def lesson_delete_material(lesson_id):
         return jsonify({'success': True})
     
     return jsonify({'success': False, 'error': 'Material not found'}), 404
+
+
+# ============================================================================
+# ИНТЕРАКТИВНАЯ ДОСКА (MIRO)
+# ============================================================================
+
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard', methods=['GET'])
+@login_required
+def lesson_whiteboard_info(lesson_id):
+    """Получить информацию о доске урока."""
+    lesson = Lesson.query.get_or_404(lesson_id)
+    
+    # Проверка доступа
+    if not check_access(lesson, current_user):
+        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+    
+    whiteboard = lesson.whiteboard
+    
+    if not whiteboard:
+        return jsonify({
+            'success': True,
+            'exists': False,
+            'whiteboard': None
+        })
+    
+    return jsonify({
+        'success': True,
+        'exists': True,
+        'whiteboard': {
+            'id': whiteboard.id,
+            'miro_board_id': whiteboard.miro_board_id,
+            'miro_board_url': whiteboard.miro_board_url,
+            'miro_view_link': whiteboard.miro_view_link,
+            'board_name': whiteboard.board_name,
+            'is_active': whiteboard.is_active,
+            'allow_student_edit': whiteboard.allow_student_edit,
+            'created_at': whiteboard.created_at.isoformat() if whiteboard.created_at else None
+        }
+    })
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/create', methods=['POST'])
+@login_required
+def lesson_whiteboard_create(lesson_id):
+    """Создать новую доску Miro для урока."""
+    # Только преподаватель может создавать доску
+    if current_user.is_student() or current_user.is_parent():
+        return jsonify({'success': False, 'error': 'Только преподаватель может создать доску'}), 403
+    
+    lesson = Lesson.query.get_or_404(lesson_id)
+    
+    # Проверка доступа
+    if not check_access(lesson, current_user):
+        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+    
+    # Проверяем, не существует ли уже доска
+    if lesson.whiteboard:
+        return jsonify({
+            'success': False, 
+            'error': 'Доска уже существует',
+            'whiteboard': {
+                'miro_board_id': lesson.whiteboard.miro_board_id,
+                'miro_board_url': lesson.whiteboard.miro_board_url
+            }
+        }), 400
+    
+    try:
+        from app.lessons.miro_service import get_miro_service, MiroAPIError
+        
+        miro = get_miro_service()
+        
+        # Формируем название доски
+        student = lesson.student
+        board_name = f"Урок: {lesson.topic or 'Без темы'}"
+        if student:
+            board_name = f"{student.name} - {board_name}"
+        
+        # Создаём доску в Miro
+        board_data = miro.create_board(
+            name=board_name,
+            description=f"Интерактивная доска для урока #{lesson_id}"
+        )
+        
+        # Сохраняем в БД
+        whiteboard = LessonWhiteboard(
+            lesson_id=lesson_id,
+            miro_board_id=board_data.get('id'),
+            miro_board_url=board_data.get('viewLink'),
+            miro_view_link=board_data.get('viewLink'),
+            board_name=board_name,
+            is_active=True,
+            allow_student_edit=True
+        )
+        
+        db.session.add(whiteboard)
+        db.session.commit()
+        
+        # Логируем
+        audit_logger.log(
+            action='whiteboard_created',
+            actor_user_id=current_user.id,
+            target_type='lesson',
+            target_id=lesson_id,
+            details={'miro_board_id': whiteboard.miro_board_id}
+        )
+        
+        return jsonify({
+            'success': True,
+            'whiteboard': {
+                'id': whiteboard.id,
+                'miro_board_id': whiteboard.miro_board_id,
+                'miro_board_url': whiteboard.miro_board_url,
+                'miro_view_link': whiteboard.miro_view_link,
+                'board_name': whiteboard.board_name,
+                'embed_url': f"https://miro.com/app/live-embed/{whiteboard.miro_board_id}/?embedMode=view_only_without_ui&autoplay=false"
+            }
+        })
+        
+    except MiroAPIError as e:
+        logger.error(f"Miro API error creating board: {e}")
+        return jsonify({'success': False, 'error': f'Ошибка Miro API: {e.message}'}), 500
+    except Exception as e:
+        logger.error(f"Error creating whiteboard: {e}")
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/settings', methods=['POST'])
+@login_required
+def lesson_whiteboard_settings(lesson_id):
+    """Обновить настройки доски."""
+    if current_user.is_student() or current_user.is_parent():
+        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+    
+    lesson = Lesson.query.get_or_404(lesson_id)
+    
+    if not check_access(lesson, current_user):
+        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+    
+    whiteboard = lesson.whiteboard
+    if not whiteboard:
+        return jsonify({'success': False, 'error': 'Доска не найдена'}), 404
+    
+    data = request.get_json() or {}
+    
+    # Обновляем настройки
+    if 'is_active' in data:
+        whiteboard.is_active = bool(data['is_active'])
+    
+    if 'allow_student_edit' in data:
+        whiteboard.allow_student_edit = bool(data['allow_student_edit'])
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'whiteboard': {
+            'is_active': whiteboard.is_active,
+            'allow_student_edit': whiteboard.allow_student_edit
+        }
+    })
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/delete', methods=['POST'])
+@login_required
+def lesson_whiteboard_delete(lesson_id):
+    """Удалить доску (отвязать от урока, доска в Miro остаётся)."""
+    if current_user.is_student() or current_user.is_parent():
+        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+    
+    lesson = Lesson.query.get_or_404(lesson_id)
+    
+    if not check_access(lesson, current_user):
+        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+    
+    whiteboard = lesson.whiteboard
+    if not whiteboard:
+        return jsonify({'success': False, 'error': 'Доска не найдена'}), 404
+    
+    miro_board_id = whiteboard.miro_board_id
+    
+    # Удаляем запись из БД (доска в Miro остаётся)
+    db.session.delete(whiteboard)
+    db.session.commit()
+    
+    # Логируем
+    audit_logger.log(
+        action='whiteboard_deleted',
+        actor_user_id=current_user.id,
+        target_type='lesson',
+        target_id=lesson_id,
+        details={'miro_board_id': miro_board_id}
+    )
+    
+    return jsonify({'success': True})
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/invite', methods=['POST'])
+@login_required
+def lesson_whiteboard_invite(lesson_id):
+    """Пригласить ученика на доску по email."""
+    if current_user.is_student() or current_user.is_parent():
+        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+    
+    lesson = Lesson.query.get_or_404(lesson_id)
+    
+    if not check_access(lesson, current_user):
+        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+    
+    whiteboard = lesson.whiteboard
+    if not whiteboard:
+        return jsonify({'success': False, 'error': 'Доска не найдена'}), 404
+    
+    data = request.get_json() or {}
+    email = data.get('email')
+    
+    if not email:
+        # Попробуем взять email ученика
+        student = lesson.student
+        if student and student.user and student.user.email:
+            email = student.user.email
+        else:
+            return jsonify({'success': False, 'error': 'Email не указан'}), 400
+    
+    try:
+        from app.lessons.miro_service import get_miro_service, MiroAPIError
+        
+        miro = get_miro_service()
+        
+        role = "editor" if whiteboard.allow_student_edit else "viewer"
+        
+        result = miro.share_board(
+            board_id=whiteboard.miro_board_id,
+            email=email,
+            role=role,
+            message=f"Приглашение на интерактивную доску урока: {lesson.topic or 'Урок'}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': f'Приглашение отправлено на {email}',
+            'role': role
+        })
+        
+    except MiroAPIError as e:
+        logger.error(f"Miro API error inviting user: {e}")
+        return jsonify({'success': False, 'error': f'Ошибка Miro API: {e.message}'}), 500
+    except Exception as e:
+        logger.error(f"Error inviting to whiteboard: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/embed-url', methods=['GET'])
+@login_required
+def lesson_whiteboard_embed_url(lesson_id):
+    """Получить URL для встраивания доски."""
+    lesson = Lesson.query.get_or_404(lesson_id)
+    
+    if not check_access(lesson, current_user):
+        return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
+    
+    whiteboard = lesson.whiteboard
+    if not whiteboard:
+        return jsonify({'success': False, 'error': 'Доска не найдена'}), 404
+    
+    # Определяем режим встраивания
+    is_teacher = not (current_user.is_student() or current_user.is_parent())
+    is_active = whiteboard.is_active
+    can_edit = whiteboard.allow_student_edit or is_teacher
+    
+    # Формируем URL
+    board_id = whiteboard.miro_board_id
+    
+    if is_teacher or (is_active and can_edit):
+        # Режим редактирования
+        embed_url = f"https://miro.com/app/live-embed/{board_id}/?embedMode=view_only_without_ui&autoplay=false"
+        mode = "edit"
+    else:
+        # Режим только просмотра (для ученика после урока)
+        embed_url = f"https://miro.com/app/live-embed/{board_id}/?embedMode=view_only_without_ui&autoplay=false"
+        mode = "view"
+    
+    return jsonify({
+        'success': True,
+        'embed_url': embed_url,
+        'board_url': whiteboard.miro_board_url or f"https://miro.com/app/board/{board_id}/",
+        'mode': mode,
+        'is_active': is_active,
+        'can_edit': can_edit
+    })

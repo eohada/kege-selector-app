@@ -63,6 +63,9 @@ def create_app(config_name=None):
     app.config['TRAINER_URL'] = (os.environ.get('TRAINER_URL') or '').strip() or None
     app.config['TRAINER_SHARED_SECRET'] = (os.environ.get('TRAINER_SHARED_SECRET') or '').strip() or None
     
+    # Miro API для интерактивных досок
+    app.config['MIRO_ACCESS_TOKEN'] = (os.environ.get('MIRO_ACCESS_TOKEN') or '').strip() or None
+    
     # Определение окружения (production, sandbox, local)
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
     

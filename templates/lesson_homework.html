@@ -448,6 +448,7 @@
             <button type="button" class="tab-btn" data-tab="materials" role="tab" aria-selected="false"><i class="fas fa-paperclip"></i> Материалы</button>
             <button type="button" class="tab-btn" data-tab="notes" role="tab" aria-selected="false"><i class="fas fa-sticky-note"></i> Заметки {{ 'ученика' if not is_student_view else '' }}</button>
             <button type="button" class="tab-btn" data-tab="chat" role="tab" aria-selected="false"><i class="fas fa-comments"></i> Диалог</button>
+            <button type="button" class="tab-btn" data-tab="whiteboard" role="tab" aria-selected="false"><i class="fas fa-chalkboard"></i> Доска</button>
         </div>
 
         <!-- TAB: THEORY -->
@@ -1078,6 +1079,54 @@
                     <textarea class="neo-textarea" id="lessonChatText" placeholder="Напиши сообщение..." style="min-height: 110px;"></textarea>
                     <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end; margin-top: 0.75rem;">
                         <button class="neo-button accent sm" id="lessonChatSendBtn" type="button" onclick="sendLessonChatMessage()"><i class="fas fa-paper-plane"></i> Отправить</button>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- ВКЛАДКА: ИНТЕРАКТИВНАЯ ДОСКА (MIRO) -->
+        <!-- ============================================ -->
+        <div id="tab-whiteboard" class="tab-pane">
+            <div class="glass-panel">
+                <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                    <div>
+                        <div class="hero-eyebrow">совместная работа</div>
+                        <h3 style="margin: 0.35rem 0 0 0;">Интерактивная доска</h3>
+                        <div style="color: var(--text-muted); margin-top: 0.35rem; line-height: 1.45;">
+                            {% if is_student_view %}
+                                Рисуйте и решайте задачи вместе с преподавателем в реальном времени.
+                            {% else %}
+                                Визуализируйте решения, рисуйте графики и объясняйте материал наглядно.
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div id="whiteboard-actions" style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end;">
+                        <!-- Кнопки загрузятся динамически -->
+                    </div>
+                </div>
+
+                <div id="whiteboard-container" style="min-height: 500px; border-radius: var(--radius-lg); overflow: hidden; position: relative;">
+                    <!-- Контент загрузится динамически -->
+                    <div id="whiteboard-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 500px; background: var(--surface-2); border: 2px dashed var(--stroke-1); border-radius: var(--radius-lg);">
+                        <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+                        <span style="color: var(--text-muted);">Загрузка доски...</span>
+                    </div>
+                </div>
+
+                <!-- Настройки доски (только для преподавателя) -->
+                {% if not is_student_view and not is_parent_view %}
+                <div id="whiteboard-settings" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
+                    <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" id="whiteboard-student-edit" checked onchange="updateWhiteboardSettings()">
+                            <span style="color: var(--text-primary);">Ученик может редактировать</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" id="whiteboard-active" checked onchange="updateWhiteboardSettings()">
+                            <span style="color: var(--text-primary);">Доска активна</span>
+                        </label>
                     </div>
                 </div>
                 {% endif %}
@@ -2220,6 +2269,293 @@
             if (first) first.scrollIntoView({ behavior: 'smooth', block: 'start' });
             toast.info('Режим проверки: показаны только «Сдано»');
         }
+
+        // ============================================
+        // ИНТЕРАКТИВНАЯ ДОСКА (MIRO)
+        // ============================================
+        
+        const LESSON_ID = {{ lesson.lesson_id }};
+        let whiteboardLoaded = false;
+        let whiteboardData = null;
+        
+        // Загрузка информации о доске при переключении на вкладку
+        function loadWhiteboardTab() {
+            if (whiteboardLoaded) return;
+            whiteboardLoaded = true;
+            
+            fetchWhiteboardInfo();
+        }
+        
+        async function fetchWhiteboardInfo() {
+            const container = document.getElementById('whiteboard-container');
+            const loading = document.getElementById('whiteboard-loading');
+            const actions = document.getElementById('whiteboard-actions');
+            
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/whiteboard`, {
+                    headers: { 'X-CSRFToken': CSRF_TOKEN }
+                });
+                const data = await res.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Ошибка загрузки');
+                }
+                
+                whiteboardData = data.whiteboard;
+                
+                if (data.exists && whiteboardData) {
+                    // Доска существует — показываем iframe
+                    renderWhiteboardEmbed(whiteboardData);
+                    renderWhiteboardActions(true);
+                    
+                    // Обновляем настройки (для преподавателя)
+                    const editCb = document.getElementById('whiteboard-student-edit');
+                    const activeCb = document.getElementById('whiteboard-active');
+                    if (editCb) editCb.checked = whiteboardData.allow_student_edit;
+                    if (activeCb) activeCb.checked = whiteboardData.is_active;
+                    
+                    const settings = document.getElementById('whiteboard-settings');
+                    if (settings) settings.style.display = 'block';
+                } else {
+                    // Доска не создана — показываем placeholder
+                    renderWhiteboardPlaceholder();
+                    renderWhiteboardActions(false);
+                }
+                
+            } catch (e) {
+                console.error('Whiteboard load error:', e);
+                container.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; background: var(--surface-2); border-radius: var(--radius-lg);">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 2rem; color: var(--danger); margin-bottom: 1rem;"></i>
+                        <span style="color: var(--text-muted);">Ошибка загрузки доски: ${e.message}</span>
+                        <button class="neo-button outline sm" style="margin-top: 1rem;" onclick="fetchWhiteboardInfo()">
+                            <i class="fas fa-redo"></i> Повторить
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        function renderWhiteboardEmbed(wb) {
+            const container = document.getElementById('whiteboard-container');
+            const embedUrl = `https://miro.com/app/live-embed/${wb.miro_board_id}/?embedMode=view_only_without_ui&autoplay=false`;
+            
+            container.innerHTML = `
+                <iframe 
+                    id="miro-board-iframe"
+                    src="${embedUrl}"
+                    frameBorder="0" 
+                    scrolling="no" 
+                    allow="fullscreen; clipboard-read; clipboard-write"
+                    style="width: 100%; height: 600px; border-radius: var(--radius-lg); background: #1a1a2e;">
+                </iframe>
+            `;
+        }
+        
+        function renderWhiteboardPlaceholder() {
+            const container = document.getElementById('whiteboard-container');
+            const isStudent = {{ 'true' if is_student_view else 'false' }};
+            const isParent = {{ 'true' if is_parent_view else 'false' }};
+            
+            if (isStudent || isParent) {
+                container.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; background: var(--surface-2); border: 2px dashed var(--stroke-1); border-radius: var(--radius-lg);">
+                        <i class="fas fa-chalkboard" style="font-size: 4rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+                        <h3 style="color: var(--text-primary); margin-bottom: 0.5rem;">Доска ещё не создана</h3>
+                        <p style="color: var(--text-muted);">Преподаватель создаст доску во время урока</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; background: var(--surface-2); border: 2px dashed var(--stroke-1); border-radius: var(--radius-lg);">
+                        <i class="fas fa-chalkboard" style="font-size: 4rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+                        <h3 style="color: var(--text-primary); margin-bottom: 0.5rem;">Интерактивная доска</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Создайте доску для совместной работы с учеником</p>
+                        <button class="neo-button accent" onclick="createWhiteboard()">
+                            <i class="fas fa-plus"></i> Создать доску
+                        </button>
+                    </div>
+                `;
+            }
+        }
+        
+        function renderWhiteboardActions(exists) {
+            const actions = document.getElementById('whiteboard-actions');
+            const isStudent = {{ 'true' if is_student_view else 'false' }};
+            const isParent = {{ 'true' if is_parent_view else 'false' }};
+            
+            if (!exists) {
+                actions.innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            
+            if (!isStudent && !isParent) {
+                // Кнопки для преподавателя
+                html = `
+                    <a href="https://miro.com/app/board/${whiteboardData.miro_board_id}/" target="_blank" class="neo-button outline sm">
+                        <i class="fas fa-external-link-alt"></i> Открыть в Miro
+                    </a>
+                    <button class="neo-button ghost sm" onclick="inviteStudentToWhiteboard()">
+                        <i class="fas fa-user-plus"></i> Пригласить ученика
+                    </button>
+                    <button class="neo-button ghost sm danger" onclick="deleteWhiteboard()">
+                        <i class="fas fa-trash"></i> Удалить
+                    </button>
+                `;
+            } else {
+                // Кнопки для ученика
+                html = `
+                    <a href="https://miro.com/app/board/${whiteboardData.miro_board_id}/" target="_blank" class="neo-button outline sm">
+                        <i class="fas fa-external-link-alt"></i> Открыть в Miro
+                    </a>
+                `;
+            }
+            
+            actions.innerHTML = html;
+        }
+        
+        async function createWhiteboard() {
+            const container = document.getElementById('whiteboard-container');
+            
+            // Показываем лоадер
+            container.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; background: var(--surface-2); border-radius: var(--radius-lg);">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--accent-1); margin-bottom: 1rem;"></i>
+                    <span style="color: var(--text-muted);">Создание доски...</span>
+                </div>
+            `;
+            
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/whiteboard/create`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN 
+                    }
+                });
+                const data = await res.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Ошибка создания');
+                }
+                
+                whiteboardData = data.whiteboard;
+                toast.success('Доска создана!');
+                
+                // Показываем доску
+                renderWhiteboardEmbed(whiteboardData);
+                renderWhiteboardActions(true);
+                
+                const settings = document.getElementById('whiteboard-settings');
+                if (settings) settings.style.display = 'block';
+                
+            } catch (e) {
+                console.error('Create whiteboard error:', e);
+                toast.error(e.message || 'Ошибка создания доски');
+                renderWhiteboardPlaceholder();
+            }
+        }
+        
+        async function deleteWhiteboard() {
+            if (!confirm('Удалить доску? Доска останется в вашем аккаунте Miro, но будет отвязана от урока.')) {
+                return;
+            }
+            
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/whiteboard/delete`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN 
+                    }
+                });
+                const data = await res.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Ошибка удаления');
+                }
+                
+                whiteboardData = null;
+                toast.success('Доска отвязана от урока');
+                renderWhiteboardPlaceholder();
+                renderWhiteboardActions(false);
+                
+                const settings = document.getElementById('whiteboard-settings');
+                if (settings) settings.style.display = 'none';
+                
+            } catch (e) {
+                console.error('Delete whiteboard error:', e);
+                toast.error(e.message || 'Ошибка удаления');
+            }
+        }
+        
+        async function inviteStudentToWhiteboard() {
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/whiteboard/invite`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN 
+                    }
+                });
+                const data = await res.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Ошибка приглашения');
+                }
+                
+                toast.success(data.message || 'Приглашение отправлено!');
+                
+            } catch (e) {
+                console.error('Invite error:', e);
+                toast.error(e.message || 'Ошибка отправки приглашения');
+            }
+        }
+        
+        async function updateWhiteboardSettings() {
+            const editCb = document.getElementById('whiteboard-student-edit');
+            const activeCb = document.getElementById('whiteboard-active');
+            
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/whiteboard/settings`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': CSRF_TOKEN 
+                    },
+                    body: JSON.stringify({
+                        allow_student_edit: editCb ? editCb.checked : true,
+                        is_active: activeCb ? activeCb.checked : true
+                    })
+                });
+                const data = await res.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Ошибка сохранения');
+                }
+                
+                toast.success('Настройки сохранены');
+                
+            } catch (e) {
+                console.error('Settings error:', e);
+                toast.error(e.message || 'Ошибка сохранения настроек');
+            }
+        }
+        
+        // Инициализация при переключении на вкладку "Доска"
+        document.addEventListener('DOMContentLoaded', function() {
+            const tabs = document.querySelectorAll('.tab-btn');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    if (tabId === 'whiteboard') {
+                        loadWhiteboardTab();
+                    }
+                });
+            });
+        });
     </script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
 </body>

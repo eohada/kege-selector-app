@@ -649,6 +649,31 @@ class LessonMessage(db.Model):
     author = db.relationship('User', foreign_keys=[author_user_id])
 
 
+class LessonWhiteboard(db.Model):
+    """Интерактивная доска Miro, привязанная к уроку."""
+    __tablename__ = 'LessonWhiteboards'
+
+    id = db.Column(db.Integer, primary_key=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=False, unique=True, index=True)
+    
+    # Данные Miro доски
+    miro_board_id = db.Column(db.String(100), nullable=False, index=True)  # ID доски в Miro
+    miro_board_url = db.Column(db.String(500), nullable=True)  # Полная ссылка на доску (для редактирования)
+    miro_view_link = db.Column(db.String(500), nullable=True)  # Публичная ссылка для просмотра
+    
+    # Статус и права
+    is_active = db.Column(db.Boolean, default=True, nullable=False)  # Активна ли доска (во время урока = True)
+    allow_student_edit = db.Column(db.Boolean, default=True, nullable=False)  # Может ли ученик редактировать
+    
+    # Метаданные
+    board_name = db.Column(db.String(200), nullable=True)  # Название доски
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    
+    # Связь с уроком
+    lesson = db.relationship('Lesson', foreign_keys=[lesson_id], backref=db.backref('whiteboard', uselist=False, lazy=True))
+
+
 class InviteLink(db.Model):
     """
     Приглашение в систему (онбординг).
