@@ -216,7 +216,7 @@ body::after {
     justify-content: space-between;
     gap: 1.8rem;
     padding: 1.2rem 1.8rem;
-    background: #0f111c;
+    background: #0f111c !important;
     border-radius: var(--radius-lg);
     border: 1px solid var(--stroke-1);
     box-shadow: var(--shadow-soft);
@@ -3796,9 +3796,9 @@ body.creator-theme-active {
 }
 
 body.creator-theme-active .nav-primary {
-    background: rgba(30, 0, 0, 0.9);
-    border-color: rgba(255, 0, 0, 0.3);
-    box-shadow: 0 10px 40px rgba(255, 0, 0, 0.1);
+    background: #0f111c !important;
+    border-color: var(--stroke-1);
+    box-shadow: var(--shadow-soft);
 }
 
 /* Updated Profile Cover */
