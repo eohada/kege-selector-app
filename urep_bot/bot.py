@@ -35,6 +35,23 @@ logger = logging.getLogger(__name__)
 # УТИЛИТЫ
 # ============================================
 
+def escape_markdown(text: str) -> str:
+    """Экранирование специальных символов Markdown."""
+    if not text:
+        return ""
+    # Экранируем символы, которые могут сломать Markdown
+    for char in ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']:
+        text = text.replace(char, '\\' + char)
+    return text
+
+
+def safe_text(text: str) -> str:
+    """Безопасный текст для Markdown (экранирует если нужно)."""
+    if not text:
+        return "Не указано"
+    return escape_markdown(str(text))
+
+
 def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
     """Получить пользователя по chat_id Telegram."""
     result = session.execute(text("""
@@ -152,11 +169,11 @@ def get_student_stats(session, student_id: int) -> dict:
     """), {"student_id": student_id})
     row = result.fetchone()
     
-    # Получаем статистику по ДЗ
+    # Получаем статистику по ДЗ (status: pending, submitted, graded, returned)
     hw_result = session.execute(text("""
         SELECT 
-            COUNT(*) FILTER (WHERE lt.submission_status = 'checked') as hw_checked,
-            COUNT(*) FILTER (WHERE lt.submission_status = 'submitted') as hw_pending,
+            COUNT(*) FILTER (WHERE lt.status = 'graded') as hw_checked,
+            COUNT(*) FILTER (WHERE lt.status = 'submitted') as hw_pending,
             COUNT(*) FILTER (WHERE lt.submission_correct = TRUE) as hw_correct,
             COUNT(*) as hw_total
         FROM "LessonTasks" lt
@@ -330,8 +347,8 @@ async def me_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         student = get_student_by_email(session, user['email'])
         sub = get_subscription_info(session, user['id'])
         
-        text_parts = [f"👤 *{name}*"]
-        text_parts.append(f"📧 {user['email'] or 'Email не указан'}")
+        text_parts = [f"👤 *{safe_text(name)}*"]
+        text_parts.append(f"📧 {safe_text(user['email']) if user['email'] else 'Email не указан'}")
         text_parts.append("")
         
         # Информация о студенте
@@ -341,9 +358,9 @@ async def me_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if student['target_score']:
                 text_parts.append(f"🎯 Цель: {student['target_score']} баллов")
             if student['programming_language']:
-                text_parts.append(f"💻 Язык: {student['programming_language']}")
+                text_parts.append(f"💻 Язык: {safe_text(student['programming_language'])}")
             if student['category']:
-                text_parts.append(f"📂 Категория: {student['category']}")
+                text_parts.append(f"📂 Категория: {safe_text(student['category'])}")
         
         text_parts.append("")
         
@@ -406,14 +423,14 @@ async def lessons_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for i, lesson in enumerate(lessons, 1):
             date = lesson['lesson_date']
             date_str = date.strftime('%d.%m %H:%M') if date else "Дата не указана"
-            topic_str = lesson['topic'] or "Тема не указана"
+            topic_str = safe_text(lesson['topic']) if lesson['topic'] else "Тема не указана"
             duration = lesson['duration'] or 60
             
             status_emoji = "🟢" if lesson['status'] == 'in_progress' else "📅"
             if lesson['status'] == 'completed':
                 status_emoji = "✅"
             
-            text_parts.append(f"{status_emoji} *{date_str}* ({duration} мин)")
+            text_parts.append(f"{status_emoji} *{date_str}* \\({duration} мин\\)")
             text_parts.append(f"   📝 {topic_str}")
             text_parts.append("")
         
@@ -553,8 +570,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             student = get_student_by_email(session, user['email'])
             sub = get_subscription_info(session, user['id'])
             
-            text_parts = [f"👤 *{name}*"]
-            text_parts.append(f"📧 {user['email'] or 'Email не указан'}")
+            text_parts = [f"👤 *{safe_text(name)}*"]
+            text_parts.append(f"📧 {safe_text(user['email']) if user['email'] else 'Email не указан'}")
             text_parts.append("")
             
             if student:
@@ -567,7 +584,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text_parts.append("*💳 Подписка:*")
             if sub:
                 if sub['plan_title']:
-                    text_parts.append(f"📋 {sub['plan_title']}")
+                    text_parts.append(f"📋 {safe_text(sub['plan_title'])}")
                 if sub['lessons_remaining'] is not None:
                     text_parts.append(f"📚 Осталось уроков: {sub['lessons_remaining']}")
             else:
@@ -605,9 +622,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for lesson in lessons:
                 date = lesson['lesson_date']
                 date_str = date.strftime('%d.%m %H:%M') if date else "?"
-                topic_str = lesson['topic'] or "Без темы"
+                topic_str = safe_text(lesson['topic']) if lesson['topic'] else "Без темы"
                 status_emoji = "🟢" if lesson['status'] == 'in_progress' else "📅"
-                text_parts.append(f"{status_emoji} *{date_str}* ({lesson['duration']} мин)")
+                text_parts.append(f"{status_emoji} *{date_str}* \\({lesson['duration']} мин\\)")
                 text_parts.append(f"   {topic_str}")
                 text_parts.append("")
             
