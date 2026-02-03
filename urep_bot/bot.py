@@ -248,7 +248,7 @@ def get_subscription_info(session, user_id: int) -> Optional[dict]:
     """Получить информацию о подписке."""
     result = session.execute(text("""
         SELECT us.lessons_remaining, us.ends_at, us.status, us.started_at,
-               tp.title, tp.lessons_count, tp.price
+               tp.title, tp.lessons_count
         FROM "UserSubscriptions" us
         LEFT JOIN "TariffPlans" tp ON tp.plan_id = us.plan_id
         WHERE us.user_id = :user_id AND us.status = 'active'
@@ -264,7 +264,6 @@ def get_subscription_info(session, user_id: int) -> Optional[dict]:
             "started_at": row[3],
             "plan_title": row[4],
             "lessons_total": row[5],
-            "price": row[6],
         }
     return None
 
