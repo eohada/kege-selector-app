@@ -1735,7 +1735,7 @@ def remote_admin_api_tariffs():
                 'title': t.title,
                 'description': t.description,
                 'lessons_count': t.lessons_count,
-                'duration_days': t.duration_days,
+                'period_days': t.period_days,
             } for t in tariffs]
         })
     except Exception as e:
