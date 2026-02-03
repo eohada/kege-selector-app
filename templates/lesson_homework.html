@@ -2338,7 +2338,7 @@
         
         function renderWhiteboardEmbed(wb) {
             const container = document.getElementById('whiteboard-container');
-            const embedUrl = `https://miro.com/app/live-embed/${wb.miro_board_id}/?embedMode=view_only_without_ui&autoplay=false`;
+            const embedUrl = `https://miro.com/app/live-embed/${wb.miro_board_id}/?moveToViewport=-1000,-1000,2000,2000&embedAutoplay=false`;
             
             container.innerHTML = `
                 <iframe 

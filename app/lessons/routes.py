@@ -2577,7 +2577,7 @@ def lesson_whiteboard_create(lesson_id):
                 'miro_board_url': whiteboard.miro_board_url,
                 'miro_view_link': whiteboard.miro_view_link,
                 'board_name': whiteboard.board_name,
-                'embed_url': f"https://miro.com/app/live-embed/{whiteboard.miro_board_id}/?embedMode=view_only_without_ui&autoplay=false"
+                'embed_url': f"https://miro.com/app/live-embed/{whiteboard.miro_board_id}/?moveToViewport=-1000,-1000,2000,2000&embedAutoplay=false"
             }
         })
         
@@ -2734,11 +2734,11 @@ def lesson_whiteboard_embed_url(lesson_id):
     
     if is_teacher or (is_active and can_edit):
         # Режим редактирования
-        embed_url = f"https://miro.com/app/live-embed/{board_id}/?embedMode=view_only_without_ui&autoplay=false"
+        embed_url = f"https://miro.com/app/live-embed/{board_id}/?moveToViewport=-1000,-1000,2000,2000&embedAutoplay=false"
         mode = "edit"
     else:
         # Режим только просмотра (для ученика после урока)
-        embed_url = f"https://miro.com/app/live-embed/{board_id}/?embedMode=view_only_without_ui&autoplay=false"
+        embed_url = f"https://miro.com/app/live-embed/{board_id}/?moveToViewport=-1000,-1000,2000,2000&embedAutoplay=false"
         mode = "view"
     
     return jsonify({
