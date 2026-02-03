@@ -216,7 +216,7 @@ body::after {
     justify-content: space-between;
     gap: 1.8rem;
     padding: 1.2rem 1.8rem;
-    background: var(--surface-2);
+    background: #0f111c;
     border-radius: var(--radius-lg);
     border: 1px solid var(--stroke-1);
     box-shadow: var(--shadow-soft);
@@ -2584,7 +2584,7 @@ body.creator-theme-active .students-grid {
 
 /* Контейнер профиля */
 .profile-container {
-    max-width: 1200px;
+    max-width: 1480px;
     margin: 0 auto;
     display: grid;
     gap: 2rem;
