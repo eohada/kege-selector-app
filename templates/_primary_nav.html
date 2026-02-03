@@ -78,8 +78,8 @@
         {% if sub_allow_lessons %}
         <a href="{{ url_for('students.student_profile', student_id=current_student.student_id) }}" class="nav-link {% if active_page == 'student_profile' %}active{% endif %}">
             <span class="nav-link-content">
-                <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Мой профиль" class="nav-link-icon">
-                <span class="nav-link-label">Мой профиль</span>
+                <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Комната ученика" class="nav-link-icon">
+                <span class="nav-link-label">Комната ученика</span>
             </span>
         </a>
         {% endif %}

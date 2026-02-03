@@ -170,8 +170,8 @@ body::after {
 
 .app-shell,
 .container {
-    width: min(1380px, calc(100% - 4rem));
-    max-width: 1380px !important; /* КРИТИЧЕСКИ ВАЖНО: фиксируем максимальную ширину для консистентности */
+    width: min(1480px, calc(100% - 4rem));
+    max-width: 1480px !important; /* КРИТИЧЕСКИ ВАЖНО: фиксируем максимальную ширину для консистентности */
     margin: 0 auto;
     padding-top: 3.5rem;
     position: relative;
@@ -221,8 +221,8 @@ body::after {
     border: 1px solid var(--stroke-1);
     box-shadow: var(--shadow-soft);
     margin-bottom: 2.8rem;
-    width: min(1380px, calc(100% - 4rem));
-    max-width: 1380px;
+    width: min(1480px, calc(100% - 4rem));
+    max-width: 1480px;
     margin-left: auto;
     margin-right: auto;
     box-sizing: border-box;
@@ -2442,7 +2442,7 @@ body.creator-theme-active .students-grid {
     .app-shell,
     .container {
         width: calc(100% - 2rem) !important;
-        max-width: 1380px !important; /* КРИТИЧЕСКИ ВАЖНО: фиксируем максимальную ширину даже на мобильных */
+        max-width: 1480px !important; /* КРИТИЧЕСКИ ВАЖНО: фиксируем максимальную ширину даже на мобильных */
         padding-top: 1.5rem;
     }
 
