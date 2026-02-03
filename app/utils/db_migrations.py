@@ -437,6 +437,16 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create LessonWhiteboards table: {e}")
                     db.session.rollback()
 
+            # Фундамент: токены Miro OAuth
+            if 'MiroUserTokens' not in table_names and 'mirousertokens' not in table_names:
+                try:
+                    from app.models import MiroUserToken
+                    MiroUserToken.__table__.create(db.engine)
+                    logger.info("MiroUserTokens table created")
+                except Exception as e:
+                    logger.warning(f"Could not create MiroUserTokens table: {e}")
+                    db.session.rollback()
+
             # Фундамент: приглашения (онбординг)
             if 'InviteLinks' not in table_names and 'invitelinks' not in table_names:
                 try:

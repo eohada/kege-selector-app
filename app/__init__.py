@@ -65,6 +65,8 @@ def create_app(config_name=None):
     
     # Miro API для интерактивных досок
     app.config['MIRO_ACCESS_TOKEN'] = (os.environ.get('MIRO_ACCESS_TOKEN') or '').strip() or None
+    app.config['MIRO_CLIENT_ID'] = (os.environ.get('MIRO_CLIENT_ID') or '').strip() or None
+    app.config['MIRO_CLIENT_SECRET'] = (os.environ.get('MIRO_CLIENT_SECRET') or '').strip() or None
     
     # Определение окружения (production, sandbox, local)
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
@@ -468,11 +470,114 @@ def create_app(config_name=None):
     @app.route('/auth/miro/callback', methods=['GET', 'POST'])
     def miro_oauth_callback():
         """Callback endpoint для Miro OAuth 2.0."""
-        from flask import request, jsonify
+        from flask import request, jsonify, redirect, url_for, flash, session
+        from flask_login import current_user
+        import requests
+        from datetime import datetime, timedelta
+        
         code = request.args.get('code')
-        if not code:
+        error = request.args.get('error')
+        
+        # Если нет code - это проверка URL от Miro
+        if not code and not error:
             return jsonify({'status': 'ok', 'message': 'Miro OAuth callback endpoint'}), 200
-        return jsonify({'status': 'ok', 'code_received': True}), 200
+        
+        if error:
+            logger.warning(f"Miro OAuth error: {error}")
+            flash(f'Ошибка авторизации Miro: {error}', 'danger')
+            return redirect(url_for('main.dashboard'))
+        
+        # Проверяем авторизацию пользователя
+        if not current_user.is_authenticated:
+            flash('Войдите в систему для подключения Miro', 'warning')
+            return redirect(url_for('auth.login'))
+        
+        # Обмениваем code на access_token
+        client_id = app.config.get('MIRO_CLIENT_ID')
+        client_secret = app.config.get('MIRO_CLIENT_SECRET')
+        redirect_uri = request.url_root.rstrip('/') + '/auth/miro/callback'
+        
+        try:
+            token_response = requests.post(
+                'https://api.miro.com/v1/oauth/token',
+                data={
+                    'grant_type': 'authorization_code',
+                    'client_id': client_id,
+                    'client_secret': client_secret,
+                    'code': code,
+                    'redirect_uri': redirect_uri
+                },
+                headers={'Content-Type': 'application/x-www-form-urlencoded'}
+            )
+            
+            if token_response.status_code != 200:
+                logger.error(f"Miro token exchange failed: {token_response.text}")
+                flash('Ошибка получения токена Miro', 'danger')
+                return redirect(url_for('main.dashboard'))
+            
+            token_data = token_response.json()
+            access_token = token_data.get('access_token')
+            refresh_token = token_data.get('refresh_token')
+            expires_in = token_data.get('expires_in', 3600)
+            
+            # Сохраняем токен в БД
+            from app.models import MiroUserToken
+            
+            miro_token = MiroUserToken.query.filter_by(user_id=current_user.id).first()
+            if not miro_token:
+                miro_token = MiroUserToken(user_id=current_user.id)
+                db.session.add(miro_token)
+            
+            miro_token.access_token = access_token
+            miro_token.refresh_token = refresh_token
+            miro_token.expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+            miro_token.miro_user_id = token_data.get('user_id')
+            miro_token.miro_team_id = token_data.get('team_id')
+            
+            db.session.commit()
+            
+            logger.info(f"Miro OAuth successful for user {current_user.id}")
+            flash('Miro успешно подключен! Теперь вы можете редактировать доски.', 'success')
+            
+            # Редирект обратно на урок, если был сохранён
+            lesson_id = session.pop('miro_auth_lesson_id', None)
+            if lesson_id:
+                return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id) + '#tab=whiteboard')
+            
+            return redirect(url_for('main.dashboard'))
+            
+        except Exception as e:
+            logger.error(f"Miro OAuth error: {e}", exc_info=True)
+            flash(f'Ошибка подключения Miro: {str(e)}', 'danger')
+            return redirect(url_for('main.dashboard'))
+    
+    # Endpoint для начала Miro OAuth авторизации
+    @app.route('/auth/miro/authorize')
+    def miro_oauth_authorize():
+        """Начало OAuth авторизации Miro."""
+        from flask import redirect, session, request
+        from flask_login import current_user, login_required
+        
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.login'))
+        
+        client_id = app.config.get('MIRO_CLIENT_ID')
+        redirect_uri = request.url_root.rstrip('/') + '/auth/miro/callback'
+        
+        # Сохраняем lesson_id для редиректа после авторизации
+        lesson_id = request.args.get('lesson_id')
+        if lesson_id:
+            session['miro_auth_lesson_id'] = lesson_id
+        
+        # Формируем URL авторизации Miro
+        auth_url = (
+            f"https://miro.com/oauth/authorize"
+            f"?response_type=code"
+            f"&client_id={client_id}"
+            f"&redirect_uri={redirect_uri}"
+        )
+        
+        return redirect(auth_url)
     
     return app
 

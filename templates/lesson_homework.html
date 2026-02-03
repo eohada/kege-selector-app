@@ -2304,6 +2304,9 @@
                 whiteboardData = data.whiteboard;
                 
                 if (data.exists && whiteboardData) {
+                    // Проверяем Miro авторизацию
+                    await checkMiroAuthStatus();
+                    
                     // Доска существует — показываем iframe
                     renderWhiteboardEmbed(whiteboardData);
                     renderWhiteboardActions(true);
@@ -2379,6 +2382,22 @@
             }
         }
         
+        let miroAuthorized = false;
+        
+        async function checkMiroAuthStatus() {
+            try {
+                const res = await fetch(`/lesson/${LESSON_ID}/whiteboard/miro-auth-status`);
+                const data = await res.json();
+                if (data.success) {
+                    miroAuthorized = data.authorized;
+                    return data;
+                }
+            } catch (e) {
+                console.warn('Could not check Miro auth status:', e);
+            }
+            return { authorized: false };
+        }
+        
         function renderWhiteboardActions(exists) {
             const actions = document.getElementById('whiteboard-actions');
             const isStudent = {{ 'true' if is_student_view else 'false' }};
@@ -2391,9 +2410,17 @@
             
             let html = '';
             
+            // Кнопка авторизации Miro (для редактирования в iframe)
+            const miroAuthBtn = !miroAuthorized ? `
+                <a href="/auth/miro/authorize?lesson_id=${LESSON_ID}" class="neo-button accent sm">
+                    <i class="fas fa-sign-in-alt"></i> Войти через Miro (для редактирования)
+                </a>
+            ` : '';
+            
             if (!isStudent && !isParent) {
                 // Кнопки для преподавателя
                 html = `
+                    ${miroAuthBtn}
                     <a href="https://miro.com/app/board/${whiteboardData.miro_board_id}/" target="_blank" class="neo-button outline sm">
                         <i class="fas fa-external-link-alt"></i> Открыть в Miro
                     </a>
@@ -2407,6 +2434,7 @@
             } else {
                 // Кнопки для ученика
                 html = `
+                    ${miroAuthBtn}
                     <a href="https://miro.com/app/board/${whiteboardData.miro_board_id}/" target="_blank" class="neo-button outline sm">
                         <i class="fas fa-external-link-alt"></i> Открыть в Miro
                     </a>

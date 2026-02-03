@@ -674,6 +674,33 @@ class LessonWhiteboard(db.Model):
     lesson = db.relationship('Lesson', foreign_keys=[lesson_id], backref=db.backref('whiteboard', uselist=False, lazy=True))
 
 
+class MiroUserToken(db.Model):
+    """Токены Miro OAuth для пользователей (позволяет редактировать доски в iframe)."""
+    __tablename__ = 'MiroUserTokens'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, unique=True, index=True)
+    
+    # OAuth токены
+    access_token = db.Column(db.Text, nullable=False)
+    refresh_token = db.Column(db.Text, nullable=True)
+    token_type = db.Column(db.String(50), default='bearer')
+    
+    # Срок действия
+    expires_at = db.Column(db.DateTime, nullable=True)  # Когда истекает access_token
+    
+    # Miro user info
+    miro_user_id = db.Column(db.String(100), nullable=True)
+    miro_team_id = db.Column(db.String(100), nullable=True)
+    
+    # Метаданные
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    
+    # Связь с пользователем
+    user = db.relationship('User', backref=db.backref('miro_token', uselist=False, lazy=True))
+
+
 class InviteLink(db.Model):
     """
     Приглашение в систему (онбординг).

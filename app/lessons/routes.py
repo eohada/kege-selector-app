@@ -2741,11 +2741,62 @@ def lesson_whiteboard_embed_url(lesson_id):
         embed_url = f"https://miro.com/app/live-embed/{board_id}/?moveToViewport=-1000,-1000,2000,2000&embedAutoplay=false"
         mode = "view"
     
+    # Проверяем Miro авторизацию пользователя
+    miro_authorized = False
+    try:
+        from app.models import MiroUserToken
+        from datetime import datetime
+        miro_token = MiroUserToken.query.filter_by(user_id=current_user.id).first()
+        if miro_token and miro_token.access_token:
+            # Проверяем не истёк ли токен
+            if miro_token.expires_at is None or miro_token.expires_at > datetime.utcnow():
+                miro_authorized = True
+    except Exception as e:
+        logger.warning(f"Could not check Miro auth status: {e}")
+    
     return jsonify({
         'success': True,
         'embed_url': embed_url,
         'board_url': whiteboard.miro_board_url or f"https://miro.com/app/board/{board_id}/",
         'mode': mode,
         'is_active': is_active,
-        'can_edit': can_edit
+        'can_edit': can_edit,
+        'miro_authorized': miro_authorized
     })
+
+
+@lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/miro-auth-status', methods=['GET'])
+@login_required
+def lesson_whiteboard_miro_auth_status(lesson_id):
+    """Проверить статус Miro авторизации пользователя."""
+    try:
+        from app.models import MiroUserToken
+        from datetime import datetime
+        
+        miro_token = MiroUserToken.query.filter_by(user_id=current_user.id).first()
+        
+        if not miro_token or not miro_token.access_token:
+            return jsonify({
+                'success': True,
+                'authorized': False,
+                'auth_url': url_for('miro_oauth_authorize', lesson_id=lesson_id, _external=True)
+            })
+        
+        # Проверяем срок действия
+        if miro_token.expires_at and miro_token.expires_at <= datetime.utcnow():
+            return jsonify({
+                'success': True,
+                'authorized': False,
+                'expired': True,
+                'auth_url': url_for('miro_oauth_authorize', lesson_id=lesson_id, _external=True)
+            })
+        
+        return jsonify({
+            'success': True,
+            'authorized': True,
+            'miro_user_id': miro_token.miro_user_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking Miro auth status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
