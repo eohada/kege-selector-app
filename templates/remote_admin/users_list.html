@@ -203,9 +203,14 @@
                         Окружение: <strong>{{ environment_name }}</strong>
                     </p>
                 </div>
-                <a href="{{ url_for('remote_admin.user_new') }}" class="neo-button" style="text-decoration: none;">
-                    + Создать пользователя
-                </a>
+                <div style="display: flex; gap: 0.75rem;">
+                    <a href="{{ url_for('remote_admin.create_pack') }}" class="neo-button accent" style="text-decoration: none;">
+                        🎒 Создать пак
+                    </a>
+                    <a href="{{ url_for('remote_admin.user_new') }}" class="neo-button outline" style="text-decoration: none;">
+                        + Пользователя
+                    </a>
+                </div>
             </div>
 
             <div class="tabs" role="tablist" aria-label="Users tabs">

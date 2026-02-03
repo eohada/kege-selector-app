@@ -320,6 +320,7 @@ def remote_admin_api_users():
             logger.info(f"Creating user via remote admin API: {data}")
             username = data.get('username', '').strip()
             email = data.get('email', '').strip() or None
+            telegram_link = data.get('telegram_link', '').strip() or None
             password = data.get('password', '').strip()
             role = (data.get('role') or 'student').strip()  # comment
             is_active = data.get('is_active', True)  # comment
@@ -361,6 +362,7 @@ def remote_admin_api_users():
             user = User(
                 username=username,
                 email=email,
+                telegram_link=telegram_link,
                 password_hash=generate_password_hash(password),
                 role=role,
                 is_active=is_active,
@@ -1050,6 +1052,7 @@ def remote_admin_api_user(user_id):
                 'id': user.id,
                 'username': user.username,
                 'email': user.email,
+                'telegram_link': user.telegram_link,
                 'role': user.role,
                 'is_active': user.is_active,
                 'created_at': user.created_at.isoformat() if user.created_at else None,
@@ -1107,6 +1110,8 @@ def remote_admin_api_user(user_id):
                 user.username = data['username']
             if 'email' in data:
                 user.email = data['email'] or None
+            if 'telegram_link' in data:
+                user.telegram_link = data['telegram_link'] or None
             if 'role' in data:
                 user.role = data['role']
             if 'is_active' in data:
@@ -1709,3 +1714,268 @@ def remote_admin_api_permissions():
         db.session.rollback()
         logger.error(f"Error in remote_admin_api_permissions: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/tariffs', methods=['GET'])
+@csrf.exempt
+def remote_admin_api_tariffs():
+    """API: Список тарифных планов."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    
+    try:
+        from app.models import TariffPlan
+        
+        tariffs = TariffPlan.query.filter_by(is_active=True).order_by(TariffPlan.title).all()
+        
+        return jsonify({
+            'success': True,
+            'tariffs': [{
+                'plan_id': t.plan_id,
+                'title': t.title,
+                'description': t.description,
+                'lessons_count': t.lessons_count,
+                'duration_days': t.duration_days,
+            } for t in tariffs]
+        })
+    except Exception as e:
+        logger.error(f"Error in remote_admin_api_tariffs: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/create-pack', methods=['POST'])
+@csrf.exempt
+def remote_admin_api_create_pack():
+    """API: Быстрое создание пака (ученик + родитель + тариф)."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    
+    try:
+        from werkzeug.security import generate_password_hash
+        from core.db_models import moscow_now
+        from app.models import Student, UserSubscription, TariffPlan, FamilyTie, Enrollment
+        from app.utils.student_id_manager import assign_platform_id_if_needed
+        import secrets
+        
+        data = request.get_json() or {}
+        logger.info(f"Creating pack via remote admin API: {data}")
+        
+        # === Данные ученика ===
+        student_name = (data.get('student_name') or '').strip()
+        student_telegram = (data.get('student_telegram') or '').strip()
+        student_phone = (data.get('student_phone') or '').strip()
+        student_password = (data.get('student_password') or '').strip() or secrets.token_urlsafe(8)
+        school_class = data.get('school_class')
+        target_score = data.get('target_score')
+        category = (data.get('category') or '').strip()
+        tutor_id = data.get('tutor_id')
+        
+        if not student_name:
+            return jsonify({'error': 'Имя ученика обязательно'}), 400
+        
+        # Генерируем username для ученика
+        student_username = _generate_username(student_name, 'student')
+        
+        # === Данные родителя ===
+        create_parent = data.get('create_parent', False)
+        parent_name = (data.get('parent_name') or '').strip()
+        parent_telegram = (data.get('parent_telegram') or '').strip()
+        parent_phone = (data.get('parent_phone') or '').strip()
+        parent_password = (data.get('parent_password') or '').strip() or secrets.token_urlsafe(8)
+        
+        if create_parent and not parent_name:
+            parent_name = f"Родитель {student_name}"
+        
+        parent_username = _generate_username(parent_name, 'parent') if create_parent else None
+        
+        # === Данные тарифа ===
+        assign_tariff = data.get('assign_tariff', False)
+        tariff_id = data.get('tariff_id')
+        lessons_count = data.get('lessons_count')
+        
+        # ========== СОЗДАНИЕ УЧЕНИКА ==========
+        student_user = User(
+            username=student_username,
+            email=None,
+            password_hash=generate_password_hash(student_password),
+            role='student',
+            is_active=True,
+            telegram_link=student_telegram or None,
+            created_at=moscow_now()
+        )
+        db.session.add(student_user)
+        db.session.flush()
+        
+        # Профиль ученика
+        student_profile = UserProfile(
+            user_id=student_user.id,
+            first_name=student_name.split()[0] if student_name else None,
+            last_name=' '.join(student_name.split()[1:]) if len(student_name.split()) > 1 else None,
+            phone=student_phone or None,
+        )
+        db.session.add(student_profile)
+        
+        # Запись Student
+        student_record = Student(
+            name=student_name,
+            telegram=student_telegram or None,
+            phone=student_phone or None,
+            school_class=int(school_class) if school_class else None,
+            target_score=int(target_score) if target_score else None,
+            category=category or None,
+            is_active=True
+        )
+        db.session.add(student_record)
+        db.session.flush()
+        
+        # Автоматический platform_id
+        assign_platform_id_if_needed(student_record)
+        db.session.flush()
+        
+        # Привязка тьютора через Enrollment
+        if tutor_id:
+            enrollment = Enrollment(
+                student_id=student_user.id,
+                tutor_id=int(tutor_id),
+                subject=category or 'INFORMATICS',
+                status='active'
+            )
+            db.session.add(enrollment)
+        
+        result = {
+            'success': True,
+            'student': {
+                'id': student_user.id,
+                'username': student_username,
+                'password': student_password,
+                'platform_id': student_record.platform_id,
+            }
+        }
+        
+        # ========== СОЗДАНИЕ РОДИТЕЛЯ ==========
+        if create_parent and parent_name:
+            parent_user = User(
+                username=parent_username,
+                email=None,
+                password_hash=generate_password_hash(parent_password),
+                role='parent',
+                is_active=True,
+                telegram_link=parent_telegram or None,
+                created_at=moscow_now()
+            )
+            db.session.add(parent_user)
+            db.session.flush()
+            
+            # Профиль родителя
+            parent_profile = UserProfile(
+                user_id=parent_user.id,
+                first_name=parent_name.split()[0] if parent_name else None,
+                last_name=' '.join(parent_name.split()[1:]) if len(parent_name.split()) > 1 else None,
+                phone=parent_phone or None,
+            )
+            db.session.add(parent_profile)
+            
+            # Связь родитель-ученик
+            family_tie = FamilyTie(
+                parent_id=parent_user.id,
+                student_id=student_user.id,
+                access_level='full',
+                is_confirmed=True
+            )
+            db.session.add(family_tie)
+            
+            result['parent'] = {
+                'id': parent_user.id,
+                'username': parent_username,
+                'password': parent_password,
+            }
+        
+        # ========== НАЗНАЧЕНИЕ ТАРИФА ==========
+        if assign_tariff and (tariff_id or lessons_count):
+            plan = None
+            if tariff_id:
+                plan = TariffPlan.query.get(int(tariff_id))
+            
+            final_lessons = None
+            if lessons_count:
+                final_lessons = int(lessons_count)
+            elif plan and plan.lessons_count:
+                final_lessons = plan.lessons_count
+            
+            subscription = UserSubscription(
+                user_id=student_user.id,
+                plan_id=plan.plan_id if plan else None,
+                status='active',
+                started_at=moscow_now(),
+                lessons_remaining=final_lessons,
+            )
+            db.session.add(subscription)
+            
+            result['subscription'] = {
+                'plan_title': plan.title if plan else None,
+                'lessons_remaining': final_lessons,
+            }
+        
+        db.session.commit()
+        
+        audit_logger.log(
+            action='create_pack',
+            entity='User',
+            entity_id=student_user.id,
+            status='success',
+            metadata={
+                'student_username': student_username,
+                'parent_created': create_parent,
+                'tariff_assigned': assign_tariff,
+            }
+        )
+        
+        return jsonify(result), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in remote_admin_api_create_pack: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+def _generate_username(name: str, role: str) -> str:
+    """Генерация уникального username из имени."""
+    import re
+    import secrets
+    
+    # Транслитерация
+    translit_map = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
+        'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+        'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+        'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+    }
+    
+    name_lower = name.lower().strip()
+    result = ''
+    for char in name_lower:
+        if char in translit_map:
+            result += translit_map[char]
+        elif char.isalnum():
+            result += char
+        elif char == ' ':
+            result += '_'
+    
+    # Убираем лишние подчёркивания
+    result = re.sub(r'_+', '_', result).strip('_')
+    
+    if not result:
+        result = role
+    
+    # Добавляем суффикс для уникальности
+    base_username = result[:20]
+    suffix = secrets.token_hex(2)
+    username = f"{base_username}_{suffix}"
+    
+    # Проверяем уникальность
+    while User.query.filter_by(username=username).first():
+        suffix = secrets.token_hex(2)
+        username = f"{base_username}_{suffix}"
+    
+    return username

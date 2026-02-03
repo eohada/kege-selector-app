@@ -38,9 +38,16 @@
                     </div>
 
                     <div class="neo-field">
-                        <label class="neo-label" for="email">Email</label>
+                        <label class="neo-label" for="email">Email (опционально)</label>
                         <input type="email" id="email" name="email" class="neo-input" 
-                               value="{{ user.email if user else '' }}">
+                               value="{{ user.email if user else '' }}" placeholder="Можно оставить пустым">
+                    </div>
+
+                    <div class="neo-field">
+                        <label class="neo-label" for="telegram_link">Telegram</label>
+                        <input type="text" id="telegram_link" name="telegram_link" class="neo-input" 
+                               value="{{ user.telegram_link if user else '' }}" placeholder="@username или https://t.me/username">
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Ссылка на Telegram для связи с учеником/родителем</small>
                     </div>
 
                     <div class="neo-field">

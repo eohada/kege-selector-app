@@ -203,6 +203,7 @@ def user_new():
             data = {
                 'username': request.form.get('username', '').strip(),
                 'email': request.form.get('email', '').strip() or None,
+                'telegram_link': request.form.get('telegram_link', '').strip() or None,
                 'password': request.form.get('password', '').strip(),
                 'role': request.form.get('role', 'student').strip(),
                 'is_active': request.form.get('is_active') == 'on',
@@ -276,6 +277,7 @@ def user_edit(user_id):
             data = {
                 'username': request.form.get('username', '').strip(),
                 'email': request.form.get('email', '').strip() or None,
+                'telegram_link': request.form.get('telegram_link', '').strip() or None,
                 'role': request.form.get('role', 'student').strip(),
                 'is_active': request.form.get('is_active') == 'on',
                 'platform_id': request.form.get('platform_id', '').strip() or None,
@@ -771,3 +773,58 @@ def task_formator():
         items=data.get('items', []),
         task_numbers=task_numbers,
     )
+
+
+@remote_admin_bp.route('/create-pack', methods=['GET', 'POST'])
+@login_required
+def create_pack():
+    """Быстрое создание пака: ученик + родитель + тариф."""
+    if not current_user.is_creator():
+        flash('Доступ только для Создателя', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    current_env = get_current_environment()
+    environments = get_environments()
+    
+    if not is_environment_configured(current_env):
+        flash(f'Окружение {environments.get(current_env, {}).get("name", current_env)} не настроено', 'error')
+        return redirect(url_for('remote_admin.dashboard'))
+    
+    if request.method == 'POST':
+        try:
+            data = request.get_json() or {}
+            
+            # Отправляем на API целевого окружения
+            resp = make_remote_request('POST', '/internal/remote-admin/api/create-pack', payload=data)
+            
+            if resp.status_code in (200, 201):
+                return jsonify(resp.json())
+            else:
+                error_data = resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {}
+                return jsonify({'success': False, 'error': error_data.get('error', f'Ошибка: {resp.status_code}')}), resp.status_code
+                
+        except Exception as e:
+            logger.error(f"Error creating pack: {e}", exc_info=True)
+            return jsonify({'success': False, 'error': str(e)}), 500
+    
+    # GET — показываем форму
+    tutors = _get_users_by_role('tutor')
+    
+    # Получаем тарифы
+    tariffs = []
+    try:
+        resp = make_remote_request('GET', '/internal/remote-admin/api/tariffs')
+        if resp.status_code == 200:
+            tariffs = resp.json().get('tariffs', [])
+    except Exception as e:
+        logger.warning(f"Could not load tariffs: {e}")
+    
+    import os
+    app_url = os.environ.get('APP_URL', 'https://urep.up.railway.app')
+    
+    return render_template('remote_admin/create_pack.html',
+                         current_environment=current_env,
+                         environment_name=environments.get(current_env, {}).get('name', current_env),
+                         tutors=tutors,
+                         tariffs=tariffs,
+                         app_url=app_url)
