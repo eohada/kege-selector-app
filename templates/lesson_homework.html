@@ -2555,6 +2555,15 @@
                     }
                 });
             });
+            
+            // Проверяем, если вкладка "Доска" активна при загрузке страницы
+            setTimeout(function() {
+                const hash = window.location.hash || '';
+                const savedTab = localStorage.getItem('lesson_' + LESSON_ID + '_active_tab');
+                if (hash.includes('whiteboard') || savedTab === 'whiteboard') {
+                    loadWhiteboardTab();
+                }
+            }, 100);
         });
     </script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
