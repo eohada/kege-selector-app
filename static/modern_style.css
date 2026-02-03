@@ -173,7 +173,7 @@ body::after {
     width: min(1480px, calc(100% - 4rem));
     max-width: 1480px !important; /* КРИТИЧЕСКИ ВАЖНО: фиксируем максимальную ширину для консистентности */
     margin: 0 auto;
-    padding-top: 3.5rem;
+    padding-top: 0;
     position: relative;
     z-index: 1;
     /* Гарантируем одинаковую ширину независимо от размера окна */
@@ -217,14 +217,16 @@ body::after {
     gap: 1.8rem;
     padding: 1.2rem 1.8rem;
     background: #0f111c !important;
+    background-image: none !important;
+    backdrop-filter: none !important;
     border-radius: var(--radius-lg);
     border: 1px solid var(--stroke-1);
     box-shadow: var(--shadow-soft);
     margin-bottom: 2.8rem;
-    width: min(1480px, calc(100% - 4rem));
-    max-width: 1480px;
-    margin-left: auto;
-    margin-right: auto;
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
     box-sizing: border-box;
 }
 
@@ -2443,7 +2445,7 @@ body.creator-theme-active .students-grid {
     .container {
         width: calc(100% - 2rem) !important;
         max-width: 1480px !important; /* КРИТИЧЕСКИ ВАЖНО: фиксируем максимальную ширину даже на мобильных */
-        padding-top: 1.5rem;
+        padding-top: 0;
     }
 
     body {
