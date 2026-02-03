@@ -341,3 +341,32 @@ def profile_update():
         )
         return jsonify({'success': False, 'error': f'Ошибка сохранения: {str(e)}'}), 500
 
+
+# ==================== MIRO OAUTH ====================
+
+@auth_bp.route('/miro/callback', methods=['GET', 'POST'])
+def miro_oauth_callback():
+    """
+    Callback endpoint для Miro OAuth 2.0.
+    Miro редиректит сюда после авторизации пользователя.
+    """
+    # Получаем код авторизации
+    code = request.args.get('code')
+    error = request.args.get('error')
+    state = request.args.get('state')  # Для CSRF защиты
+    
+    if error:
+        logger.warning(f"Miro OAuth error: {error}")
+        flash(f'Ошибка авторизации Miro: {error}', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
+    if not code:
+        # Если нет code - это просто проверка URL от Miro
+        return jsonify({'status': 'ok', 'message': 'Miro OAuth callback endpoint'}), 200
+    
+    # TODO: Обменять code на access_token
+    # Это будет реализовано позже
+    
+    logger.info(f"Miro OAuth callback received with code: {code[:10]}...")
+    flash('Miro авторизация успешна!', 'success')
+    return redirect(url_for('main.dashboard'))
