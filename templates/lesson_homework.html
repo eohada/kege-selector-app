@@ -1222,65 +1222,26 @@
         </div>
 
         <!-- ============================================ -->
-        <!-- ВКЛАДКА: ВИДЕОЗВОНОК (JITSI) -->
+        <!-- ВКЛАДКА: ВИДЕОЗВОНОК (COMING SOON) -->
         <!-- ============================================ -->
         <div id="tab-videocall" class="tab-pane">
             <div class="glass-panel">
-                <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
-                    <div>
-                        <div class="hero-eyebrow">видеосвязь</div>
-                        <h3 style="margin: 0.35rem 0 0 0;">Видеозвонок</h3>
-                        <div style="color: var(--text-muted); margin-top: 0.35rem; line-height: 1.45;">
-                            {% if is_student_view %}
-                                Присоединитесь к видеозвонку с преподавателем.
-                            {% else %}
-                                Проводите урок с видео и аудио связью в реальном времени.
-                            {% endif %}
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; text-align: center;">
+                    <div style="font-size: 4rem; margin-bottom: 1.5rem;">
+                        <i class="fas fa-video" style="color: var(--accent-1); opacity: 0.5;"></i>
+                    </div>
+                    <h2 style="margin: 0 0 0.75rem 0; color: var(--text-primary); font-weight: 600;">
+                        Coming soon...
+                    </h2>
+                    <p style="color: var(--text-muted); max-width: 400px; line-height: 1.6; margin: 0;">
+                        Функция видеозвонков находится в разработке.<br>
+                        Скоро вы сможете проводить уроки с видео и аудио связью прямо на платформе.
+                    </p>
+                    <div style="margin-top: 2rem; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                        <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.85rem;">
+                            <i class="fas fa-lightbulb" style="color: var(--warning);"></i>
+                            <span>Пока можете использовать Zoom, Google Meet или Discord для видеосвязи</span>
                         </div>
-                    </div>
-                    <div id="videocall-actions" style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end;">
-                        <button class="neo-button accent" onclick="startVideoCall()">
-                            <i class="fas fa-video"></i> Начать звонок
-                        </button>
-                        <button class="neo-button outline" onclick="openVideoCallNewTab()" title="Без ограничения времени">
-                            <i class="fas fa-external-link-alt"></i> В новой вкладке
-                        </button>
-                        <button class="neo-button outline" onclick="toggleVideoCallFullscreen()">
-                            <i class="fas fa-expand"></i> На весь экран
-                        </button>
-                        <button class="neo-button ghost danger" onclick="endVideoCall()" id="end-call-btn" style="display: none;">
-                            <i class="fas fa-phone-slash"></i> Завершить
-                        </button>
-                    </div>
-                </div>
-
-                <div id="videocall-container" style="min-height: 500px; border-radius: var(--radius-lg); overflow: hidden; position: relative;">
-                    <!-- Placeholder до начала звонка -->
-                    <div id="videocall-placeholder" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 500px; background: var(--surface-2); border: 2px dashed var(--stroke-1); border-radius: var(--radius-lg);">
-                        <i class="fas fa-video" style="font-size: 3rem; color: var(--accent-1); margin-bottom: 1rem;"></i>
-                        <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">Видеозвонок не активен</h4>
-                        <p style="color: var(--text-muted); margin: 0 0 1.5rem 0; text-align: center; max-width: 400px;">
-                            Нажмите «Начать звонок», чтобы создать комнату видеосвязи для этого урока.
-                            {% if is_student_view %}
-                            <br><br>Если преподаватель уже начал звонок, нажмите кнопку чтобы присоединиться.
-                            {% endif %}
-                        </p>
-                        <button class="neo-button accent lg" onclick="startVideoCall()">
-                            <i class="fas fa-video"></i> Начать звонок
-                        </button>
-                    </div>
-                    <!-- Iframe для Daily.co -->
-                    <iframe id="videocall-iframe" 
-                            style="display: none; width: 100%; height: 500px; border: none; border-radius: var(--radius-lg);"
-                            allow="camera; microphone; fullscreen; display-capture; autoplay"
-                            allowfullscreen>
-                    </iframe>
-                </div>
-
-                <div style="margin-top: 1rem; padding: 0.75rem; background: var(--surface-1); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
-                    <div style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); font-size: 0.85rem;">
-                        <i class="fas fa-info-circle"></i>
-                        <span>Видеозвонок работает через Daily.co — надёжный сервис видеосвязи. Не требует регистрации для участников.</span>
                     </div>
                 </div>
             </div>
@@ -3082,16 +3043,5 @@
         });
     </script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
-    
-    <!-- PiP Overlay (в конце body для правильного z-index) -->
-    <div id="videocall-pip-overlay">
-        <div class="pip-overlay-header" onmousedown="startPipOverlayDrag(event)" ontouchstart="startPipOverlayDragTouch(event)">
-            <span><i class="fas fa-video"></i> Звонок</span>
-            <div class="pip-overlay-controls">
-                <button onclick="expandPipToTab()" title="Развернуть"><i class="fas fa-expand"></i></button>
-                <button onclick="endVideoCall()" title="Завершить" class="danger"><i class="fas fa-phone-slash"></i></button>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
