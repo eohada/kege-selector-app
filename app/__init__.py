@@ -464,5 +464,15 @@ def create_app(config_name=None):
             html = '<p>' + html + '</p>'
             return html
     
+    # Miro OAuth callback endpoint (напрямую в app для гарантированной регистрации)
+    @app.route('/auth/miro/callback', methods=['GET', 'POST'])
+    def miro_oauth_callback():
+        """Callback endpoint для Miro OAuth 2.0."""
+        from flask import request, jsonify
+        code = request.args.get('code')
+        if not code:
+            return jsonify({'status': 'ok', 'message': 'Miro OAuth callback endpoint'}), 200
+        return jsonify({'status': 'ok', 'code_received': True}), 200
+    
     return app
 
