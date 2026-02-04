@@ -223,10 +223,10 @@ body::after {
     border: 1px solid var(--stroke-1);
     box-shadow: var(--shadow-soft);
     margin-bottom: 2.8rem;
-    width: 100%;
-    max-width: 100%;
-    margin-left: 0;
-    margin-right: 0;
+    width: min(1480px, calc(100% - 4rem));
+    max-width: 1480px;
+    margin-left: auto;
+    margin-right: auto;
     box-sizing: border-box;
 }
 
@@ -2458,6 +2458,10 @@ body.creator-theme-active .students-grid {
         padding: 1rem 1.2rem;
         gap: 1rem;
         margin-bottom: 1.5rem;
+        width: calc(100% - 2rem);
+        max-width: 1480px;
+        margin-left: auto;
+        margin-right: auto;
     }
 
     .nav-brand {
