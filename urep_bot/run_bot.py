@@ -41,8 +41,8 @@ async def background_tasks(application):
     while True:
         try:
             # Проверяем уведомления каждые NOTIFICATION_CHECK_INTERVAL секунд
-                await process_pending_notifications(bot)
-                await process_error_report_replies(bot)
+            await process_pending_notifications(bot)
+            await process_error_report_replies(bot)
             
             notification_counter += NOTIFICATION_CHECK_INTERVAL
             reminder_counter += NOTIFICATION_CHECK_INTERVAL

@@ -1815,15 +1815,42 @@ def remote_admin_api_bot_admin_add():
             return jsonify({'error': 'identifier is required'}), 400
 
         user = None
+        normalized = identifier.lstrip('@').strip()
+
         if identifier.isdigit():
             user = User.query.get(int(identifier))
-        if not user:
+            if not user:
+                chat_id = int(identifier)
+                user = (
+                    User.query
+                    .join(UserProfile, UserProfile.user_id == User.id)
+                    .filter(UserProfile.telegram_chat_id == chat_id)
+                    .first()
+                )
+
+        if not user and normalized:
+            lowered = normalized.lower()
             user = User.query.filter(
-                (User.username == identifier) | (User.email == identifier)
+                (func.lower(User.username) == lowered) |
+                (func.lower(User.email) == lowered) |
+                (func.lower(User.telegram_link) == lowered) |
+                (User.telegram_link.ilike(f"%{normalized}%"))
+            ).first()
+
+        if not user and normalized:
+            tg_variants = {
+                normalized,
+                f"@{normalized}",
+                f"https://t.me/{normalized}",
+                f"http://t.me/{normalized}",
+                f"t.me/{normalized}",
+            }
+            user = User.query.filter(
+                User.telegram_link.in_(tg_variants)
             ).first()
 
         if not user:
-            return jsonify({'error': 'Пользователь не найден'}), 404
+            return jsonify({'error': 'Пользователь не найден в выбранном окружении'}), 404
 
         admin = BotAdmin.query.filter_by(user_id=user.id).first()
         if admin:
