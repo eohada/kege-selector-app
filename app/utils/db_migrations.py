@@ -1067,14 +1067,37 @@ def ensure_schema_columns(app):
                     for field in tg_notify_fields:
                         if field not in cols:
                             try:
-                                default_val = 'FALSE' if field == 'tg_notify_news' else 'TRUE'
+                                default_val = 'TRUE'
                                 db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN {field} BOOLEAN DEFAULT {default_val}'))
                                 logger.info(f"Added {field} to {profiles_table}")
                             except Exception as e:
                                 logger.warning(f"Could not add {field} to {profiles_table}: {e}")
                                 db.session.rollback()
+                    # Принудительно включаем новости по умолчанию
+                    try:
+                        db.session.execute(text(f'UPDATE "{profiles_table}" SET tg_notify_news = TRUE WHERE tg_notify_news IS NULL OR tg_notify_news = FALSE'))
+                        logger.info("Updated tg_notify_news to TRUE for existing profiles")
+                    except Exception as e:
+                        logger.warning(f"Could not update tg_notify_news defaults: {e}")
+                        db.session.rollback()
                 except Exception:
                     pass
+            
+            # 2.1 Создаем таблицы BotAdmins и BotErrorReports (если их нет)
+            bot_admins_table = _resolve_table_name(table_names, 'BotAdmins')
+            if not bot_admins_table:
+                try:
+                    db.create_all()
+                    logger.info("Created BotAdmins table")
+                except Exception as e:
+                    logger.warning(f"Could not create BotAdmins table: {e}")
+            bot_error_reports_table = _resolve_table_name(table_names, 'BotErrorReports')
+            if not bot_error_reports_table:
+                try:
+                    db.create_all()
+                    logger.info("Created BotErrorReports table")
+                except Exception as e:
+                    logger.warning(f"Could not create BotErrorReports table: {e}")
             
             # 3. Создаем таблицу FamilyTies (если её нет)
             family_ties_table = _resolve_table_name(table_names, 'FamilyTies')

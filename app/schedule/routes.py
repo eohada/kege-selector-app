@@ -9,6 +9,7 @@ from flask_login import login_required, current_user
 from app.schedule import schedule_bp
 from app.models import Lesson, Student, User, RecurringLessonSlot, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from app.auth.rbac_utils import get_user_scope, has_permission
+from app.notifications.service import notify_student_and_parents
 from core.audit_logger import audit_logger
 import secrets
 
@@ -612,6 +613,22 @@ def schedule_create_lesson():
         except Exception as e:
             db.session.rollback()
             raise
+
+        # Уведомление о новом уроке (ученик + родители)
+        try:
+            for created_lesson in created_lessons:
+                if created_lesson.status == 'planned':
+                    date_str = created_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if created_lesson.lesson_date else ''
+                    notify_student_and_parents(
+                        student,
+                        kind='lesson_scheduled',
+                        title='Новый урок запланирован',
+                        body=(created_lesson.topic or '').strip() or None,
+                        link_url=url_for('lessons.lesson_view', lesson_id=created_lesson.lesson_id),
+                        meta={'lesson_id': created_lesson.lesson_id, 'date': date_str, 'topic': created_lesson.topic or ''},
+                    )
+        except Exception as e:
+            logger.warning(f"Failed to notify about lesson_scheduled (schedule_create_lesson): {e}")
         
         for created_lesson in created_lessons:
             audit_logger.log(
@@ -739,6 +756,20 @@ def schedule_reschedule_lesson(lesson_id: int):
         lesson.lesson_date = new_dt
         db.session.commit()
 
+        try:
+            if lesson.status == 'planned' and lesson.student:
+                date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
+                notify_student_and_parents(
+                    lesson.student,
+                    kind='lesson_scheduled',
+                    title='Урок перенесён',
+                    body=(lesson.topic or '').strip() or None,
+                    link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
+                    meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or '', 'rescheduled': True},
+                )
+        except Exception as e:
+            logger.warning(f"Failed to notify about lesson reschedule: {e}")
+
         audit_logger.log(
             action='reschedule_lesson',
             entity='Lesson',
@@ -780,6 +811,20 @@ def schedule_set_status(lesson_id: int):
         old_status = lesson.status
         lesson.status = status
         db.session.commit()
+
+        try:
+            if status == 'planned' and old_status != 'planned' and lesson.student:
+                date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
+                notify_student_and_parents(
+                    lesson.student,
+                    kind='lesson_scheduled',
+                    title='Новый урок запланирован',
+                    body=(lesson.topic or '').strip() or None,
+                    link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
+                    meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or ''},
+                )
+        except Exception as e:
+            logger.warning(f"Failed to notify about lesson status planned: {e}")
 
         audit_logger.log(
             action='set_lesson_status',
@@ -881,6 +926,20 @@ def schedule_update_lesson(lesson_id: int):
             lesson.topic = topic
 
         db.session.commit()
+
+        try:
+            if new_lesson_date is not None and lesson.status == 'planned' and lesson.student:
+                date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
+                notify_student_and_parents(
+                    lesson.student,
+                    kind='lesson_scheduled',
+                    title='Урок перенесён',
+                    body=(lesson.topic or '').strip() or None,
+                    link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
+                    meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or '', 'rescheduled': True},
+                )
+        except Exception as e:
+            logger.warning(f"Failed to notify about lesson update reschedule: {e}")
 
         audit_logger.log(
             action='update_lesson_inline',
@@ -1361,6 +1420,7 @@ def schedule_templates_apply_week():
     templates = q.all()
 
     created_payload = []
+    created_pairs = []
     for t in templates:
         day = week_start + timedelta(days=int(t.weekday))
         dt = _parse_local_datetime(day.strftime('%Y-%m-%d'), t.time_hhmm, t.timezone)
@@ -1400,6 +1460,7 @@ def schedule_templates_apply_week():
         st = Student.query.get(t.student_id)
         if not st:
             continue
+        created_pairs.append((l, st))
         created_payload.append({
             'lesson_id': l.lesson_id,
             'student': st.name,
@@ -1421,5 +1482,21 @@ def schedule_templates_apply_week():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
+
+    # Уведомление о новых уроках (ученик + родители)
+    try:
+        for lesson, st in created_pairs:
+            if lesson.status == 'planned':
+                date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
+                notify_student_and_parents(
+                    st,
+                    kind='lesson_scheduled',
+                    title='Новый урок запланирован',
+                    body=(lesson.topic or '').strip() or None,
+                    link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
+                    meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or ''},
+                )
+    except Exception as e:
+        logger.warning(f"Failed to notify about lesson_scheduled (recurring slots): {e}")
 
     return jsonify({'success': True, 'created_lessons': created_payload}), 200

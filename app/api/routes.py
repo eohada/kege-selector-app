@@ -9,6 +9,7 @@ from sqlalchemy import or_
 
 from app.api import api_bp
 from app.models import Student, Lesson, Tasks, db, User, Enrollment, UserProfile
+from app.notifications.service import notify_student_and_parents
 from app.students.forms import normalize_school_class
 from app.utils.student_id_manager import assign_platform_id_if_needed
 from app.auth.rbac_utils import get_user_scope
@@ -340,6 +341,22 @@ def api_lesson_create():
         )
         db.session.add(lesson)
         db.session.commit()
+
+        # Уведомление о новом уроке (ученик + родители)
+        try:
+            student = Student.query.get(lesson.student_id)
+            if student and lesson.status == 'planned':
+                date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
+                notify_student_and_parents(
+                    student,
+                    kind='lesson_scheduled',
+                    title='Новый урок запланирован',
+                    body=(lesson.topic or '').strip() or None,
+                    link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
+                    meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or ''},
+                )
+        except Exception as e:
+            logger.warning(f"Failed to notify about lesson_scheduled (api_lesson_create): {e}")
 
         return jsonify({
             'success': True,

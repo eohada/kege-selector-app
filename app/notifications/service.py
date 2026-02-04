@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 def _get_student_user(student: Student) -> User | None:
     if not student:
         return None
+    if getattr(student, 'user_id', None):
+        u = User.query.get(student.user_id)
+        if u and u.role == 'student':
+            return u
     if getattr(student, 'email', None):
         u = User.query.filter_by(email=student.email, role='student').first()
         if u:

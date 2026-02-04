@@ -17,6 +17,7 @@ from app.students.forms import StudentForm, normalize_school_class
 from app.students.utils import get_sorted_assignments
 from app.students.stats_service import StatsService
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
+from app.notifications.service import notify_student_and_parents
 from app.models import (
     Student,
     StudentTaskStatistics,
@@ -264,18 +265,6 @@ def student_profile(student_id):
     try:
         from app.auth.rbac_utils import get_user_scope
 
-        # UX fix: студент всегда должен попадать в СВОЙ профиль.
-        # Если в URL подставили Users.id вместо Students.student_id — редиректим на реальный student_id по email.
-        if current_user.is_student():
-            try:
-                my_email = (current_user.email or '').strip().lower()
-                if my_email:
-                    me_student = Student.query.filter(func.lower(Student.email) == my_email).first()
-                    if me_student and me_student.student_id != student_id:
-                        return redirect(url_for('students.student_profile', student_id=me_student.student_id))
-            except Exception:
-                pass
-        
         # КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: загружаем уроки отдельным запросом с joinedload для homework_tasks
         try:
             student = Student.query.get_or_404(student_id)
@@ -284,39 +273,49 @@ def student_profile(student_id):
             flash('Ошибка при загрузке профиля ученика.', 'danger')
             return redirect(url_for('main.dashboard'))
         
+        # UX: студент всегда попадает в СВОЙ профиль — редирект при неверном student_id
+        if current_user.is_student():
+            try:
+                me_student = Student.query.filter_by(user_id=current_user.id).first()
+                if not me_student and (current_user.email or '').strip():
+                    me_student = Student.query.filter(func.lower(Student.email) == (current_user.email or '').strip().lower()).first()
+                if me_student and me_student.student_id != student_id:
+                    return redirect(url_for('students.student_profile', student_id=me_student.student_id))
+            except Exception:
+                pass
+
         # Проверка доступа через data scoping
         try:
-            # Ученику всегда разрешаем смотреть СВОЙ профиль (по email), даже если scope пустой/не настроен
+            # Ученику разрешаем смотреть только СВОЙ профиль (user_id или email)
             if current_user.is_student():
-                me_email = (current_user.email or '').strip().lower()
-                st_email = (student.email or '').strip().lower() if student.email else ''
-                if me_email and st_email and me_email == st_email:
+                if getattr(student, 'user_id', None) == current_user.id:
                     scope = {'can_see_all': False, 'student_ids': [current_user.id]}
                 else:
-                    scope = get_user_scope(current_user)
+                    me_email = (current_user.email or '').strip().lower()
+                    st_email = (student.email or '').strip().lower() if student.email else ''
+                    if me_email and st_email and me_email == st_email:
+                        scope = {'can_see_all': False, 'student_ids': [current_user.id]}
+                    else:
+                        scope = get_user_scope(current_user)
             else:
                 scope = get_user_scope(current_user)
             if not scope['can_see_all']:
                 # Проверяем, есть ли доступ к этому ученику
-                if student.email:
-                    try:
-                        student_user = User.query.filter_by(email=student.email, role='student').first()
-                        if student_user:
-                            if student_user.id not in scope['student_ids']:
-                                flash('У вас нет доступа к этому ученику.', 'danger')
-                                return redirect(url_for('main.dashboard'))
-                    except Exception as e:
-                        logger.warning(f"Error checking student access via email: {e}")
-                        # Если не можем проверить через email, проверяем через scope
-                        if not scope['student_ids']:
-                            flash('У вас нет доступа к этому ученику.', 'danger')
-                            return redirect(url_for('main.dashboard'))
+                student_user = None
+                if getattr(student, 'user_id', None):
+                    student_user_id = student.user_id
+                elif student.email:
+                    u = User.query.filter_by(email=student.email, role='student').first()
+                    student_user_id = u.id if u else None
                 else:
-                    # Если у Student нет email, проверяем через Enrollment/FamilyTie напрямую
-                    # Но это сложнее, пока просто блокируем
-                    if not scope['student_ids']:
+                    student_user_id = None
+                if student_user_id is not None:
+                    if student_user_id not in scope['student_ids']:
                         flash('У вас нет доступа к этому ученику.', 'danger')
                         return redirect(url_for('main.dashboard'))
+                elif not scope['student_ids']:
+                    flash('У вас нет доступа к этому ученику.', 'danger')
+                    return redirect(url_for('main.dashboard'))
         except Exception as e:
             logger.error(f"Error checking access scope: {e}", exc_info=True)
             # Если не можем проверить доступ, блокируем
@@ -1915,6 +1914,21 @@ def lesson_new(student_id):
                     raise  # Пробрасываем реальную ошибку дальше
             else:  # Если это не sequence‑проблема — не маскируем её
                 raise  # Пробрасываем реальную ошибку дальше
+
+        # Уведомление о новом уроке (ученик + родители)
+        try:
+            if lesson.status == 'planned':
+                date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
+                notify_student_and_parents(
+                    student,
+                    kind='lesson_scheduled',
+                    title='Новый урок запланирован',
+                    body=(lesson.topic or '').strip() or None,
+                    link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
+                    meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or ''},
+                )
+        except Exception as e:
+            logger.warning(f"Failed to notify about lesson_scheduled: {e}")
         
         # Логируем создание урока
         audit_logger.log(

@@ -12,6 +12,8 @@ from telegram.ext import (
     CommandHandler,
     CallbackQueryHandler,
     ContextTypes,
+    MessageHandler,
+    filters,
 )
 from sqlalchemy import text
 
@@ -33,6 +35,7 @@ WELCOME_MESSAGE = """
 • ✅ Проверка домашних заданий
 • 💬 Сообщения от преподавателя
 • ⚠️ Когда уроки заканчиваются
+• 📢 Новости платформы
 
 🔗 <b>Чтобы начать:</b>
 1. Зайди в личный кабинет на сайте
@@ -51,6 +54,7 @@ HELP_MESSAGE = """
 /lessons — Мои уроки (ближайшие + история)
 /stats — Подробная статистика
 /settings — Настройки уведомлений
+/error — Сообщить об ошибке
 /help — Эта справка
 
 /link КОД — Привязать аккаунт
@@ -67,6 +71,7 @@ LINK_SUCCESS = """
 • Результаты проверки ДЗ
 • Сообщения от преподавателя
 • Предупреждения о заканчивающихся уроках
+• Новости платформы
 
 ⚙️ Настроить уведомления: /settings
 """
@@ -83,6 +88,14 @@ PROFILE_NOT_LINKED = """
 NO_LESSONS = "📅 Уроков пока нет. Как только урок будет запланирован — я сообщу!"
 
 ERROR_MESSAGE = "❌ Произошла ошибка. Попробуй ещё раз или обратись к преподавателю."
+ERROR_REPORT_PROMPT = (
+    "🛠 <b>Сообщение об ошибке</b>\n\n"
+    "Опиши проблему одним сообщением:\n"
+    "• где именно возникла ошибка\n"
+    "• что ты делал(а) перед этим\n"
+    "• какой результат ожидал(а)\n"
+)
+ERROR_REPORT_RECEIVED = "✅ Сообщение об ошибке отправлено. Спасибо! Мы разберёмся и ответим."
 
 
 # ============================================
@@ -99,6 +112,9 @@ def get_main_keyboard():
         [
             InlineKeyboardButton("📊 Статистика", callback_data="stats"),
             InlineKeyboardButton("⚙️ Настройки", callback_data="settings"),
+        ],
+        [
+            InlineKeyboardButton("🛠 Сообщение об ошибке", callback_data="error_report"),
         ],
         [
             InlineKeyboardButton("🌐 Открыть сайт", url=APP_URL),
@@ -153,6 +169,38 @@ def esc(text) -> str:
     return html.escape(str(text))
 
 
+def get_bot_admin_chat_ids(session) -> list[int]:
+    """Получить список chat_id администраторов бота."""
+    try:
+        result = session.execute(text("""
+            SELECT up.telegram_chat_id
+            FROM "BotAdmins" ba
+            JOIN "UserProfiles" up ON up.user_id = ba.user_id
+            WHERE ba.is_active = TRUE
+              AND up.telegram_chat_id IS NOT NULL
+        """))
+        return [row[0] for row in result.fetchall() if row and row[0]]
+    except Exception:
+        return []
+
+
+async def start_error_report_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, *, from_callback: bool = False):
+    """Запускает сценарий отправки ошибки."""
+    context.user_data["awaiting_error_report"] = True
+    if from_callback and update.callback_query:
+        await update.callback_query.edit_message_text(
+            ERROR_REPORT_PROMPT,
+            parse_mode="HTML",
+            reply_markup=get_back_keyboard()
+        )
+    else:
+        await update.message.reply_text(
+            ERROR_REPORT_PROMPT,
+            parse_mode="HTML",
+            reply_markup=get_back_keyboard()
+        )
+
+
 def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
     """Получить пользователя по chat_id Telegram."""
     # Базовый запрос без новых колонок (для совместимости)
@@ -182,7 +230,7 @@ def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
         "tg_notify_new_message": True,
         "tg_notify_lesson_scheduled": True,
         "tg_notify_low_lessons": True,
-        "tg_notify_news": False,
+        "tg_notify_news": True,
     }
     
     # Пробуем получить детальные настройки (если колонки существуют)
@@ -195,7 +243,7 @@ def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
                 COALESCE(tg_notify_new_message, TRUE),
                 COALESCE(tg_notify_lesson_scheduled, TRUE),
                 COALESCE(tg_notify_low_lessons, TRUE),
-                COALESCE(tg_notify_news, FALSE)
+                COALESCE(tg_notify_news, TRUE)
             FROM "UserProfiles"
             WHERE telegram_chat_id = :chat_id
         """), {"chat_id": chat_id})
@@ -215,19 +263,29 @@ def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
     return user
 
 
-def get_student_by_email(session, email: str) -> Optional[dict]:
-    """Получить студента по email."""
-    if not email:
-        return None
-    result = session.execute(text("""
-        SELECT s.student_id, s.name, s.target_score, s.school_class, 
-               s.category, s.programming_language, s.goal_text,
-               s.diagnostic_level, s.strengths, s.weaknesses
-        FROM "Students" s
-        WHERE LOWER(s.email) = LOWER(:email) AND s.is_active = TRUE
-        LIMIT 1
-    """), {"email": email})
-    row = result.fetchone()
+def get_student_by_email(session, email: Optional[str], user_id: Optional[int] = None) -> Optional[dict]:
+    """Получить студента по user_id (приоритет) или email."""
+    row = None
+    if user_id:
+        result = session.execute(text("""
+            SELECT s.student_id, s.name, s.target_score, s.school_class, 
+                   s.category, s.programming_language, s.goal_text,
+                   s.diagnostic_level, s.strengths, s.weaknesses
+            FROM "Students" s
+            WHERE s.user_id = :user_id AND s.is_active = TRUE
+            LIMIT 1
+        """), {"user_id": user_id})
+        row = result.fetchone()
+    if not row and email:
+        result = session.execute(text("""
+            SELECT s.student_id, s.name, s.target_score, s.school_class, 
+                   s.category, s.programming_language, s.goal_text,
+                   s.diagnostic_level, s.strengths, s.weaknesses
+            FROM "Students" s
+            WHERE LOWER(s.email) = LOWER(:email) AND s.is_active = TRUE
+            LIMIT 1
+        """), {"email": email})
+        row = result.fetchone()
     if row:
         return {
             "student_id": row[0],
@@ -551,7 +609,7 @@ async def lessons_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(PROFILE_NOT_LINKED, parse_mode="HTML", reply_markup=get_main_keyboard())
             return
         
-        student = get_student_by_email(session, user['email'])
+        student = get_student_by_email(session, user.get('email'), user.get('id'))
         if not student:
             await update.message.reply_text(
                 "📚 Профиль ученика не найден. Обратись к преподавателю.",
@@ -610,6 +668,99 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         close_session(session)
 
 
+async def error_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /error — отправка ошибки."""
+    session = get_session()
+    try:
+        user = get_user_by_chat_id(session, update.effective_chat.id)
+        if not user:
+            await update.message.reply_text(PROFILE_NOT_LINKED, parse_mode="HTML", reply_markup=get_main_keyboard())
+            return
+    finally:
+        close_session(session)
+    await start_error_report_flow(update, context, from_callback=False)
+
+
+async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработка текста из лички для сценария ошибки."""
+    if not update.message or update.message.chat.type != "private":
+        return
+    if not context.user_data.get("awaiting_error_report"):
+        return
+    
+    message_text = (update.message.text or "").strip()
+    if not message_text:
+        await update.message.reply_text("Пожалуйста, опиши проблему текстом.")
+        return
+    
+    session = get_session()
+    try:
+        user = get_user_by_chat_id(session, update.effective_chat.id)
+        if not user:
+            await update.message.reply_text(PROFILE_NOT_LINKED, parse_mode="HTML", reply_markup=get_main_keyboard())
+            return
+        
+        chat_id = update.effective_chat.id
+        now = datetime.utcnow()
+        report_id = None
+        try:
+            result = session.execute(text("""
+                INSERT INTO "BotErrorReports" (user_id, telegram_chat_id, message, status, created_at, updated_at)
+                VALUES (:user_id, :chat_id, :message, 'new', :created_at, :updated_at)
+                RETURNING report_id
+            """), {
+                "user_id": user["id"],
+                "chat_id": chat_id,
+                "message": message_text,
+                "created_at": now,
+                "updated_at": now,
+            })
+            row = result.fetchone()
+            report_id = row[0] if row else None
+        except Exception:
+            session.rollback()
+            session.execute(text("""
+                INSERT INTO "BotErrorReports" (user_id, telegram_chat_id, message, status, created_at, updated_at)
+                VALUES (:user_id, :chat_id, :message, 'new', :created_at, :updated_at)
+            """), {
+                "user_id": user["id"],
+                "chat_id": chat_id,
+                "message": message_text,
+                "created_at": now,
+                "updated_at": now,
+            })
+        session.commit()
+        
+        admin_chat_ids = get_bot_admin_chat_ids(session)
+        admin_text = (
+            f"🛠 <b>Сообщение об ошибке</b>\n\n"
+            f"👤 {esc(user.get('first_name') or user.get('username') or 'Пользователь')}\n"
+            f"🆔 User ID: {user.get('id')}\n"
+            f"📝 {esc(message_text)}\n"
+            f"{f'📌 ID: {report_id}' if report_id else ''}\n"
+            f"🔗 {APP_URL}/admin/bot/errors"
+        )
+        for admin_chat_id in admin_chat_ids:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin_chat_id,
+                    text=admin_text,
+                    parse_mode="HTML",
+                    disable_web_page_preview=True
+                )
+            except Exception:
+                pass
+        
+        context.user_data["awaiting_error_report"] = False
+        await update.message.reply_text(ERROR_REPORT_RECEIVED, reply_markup=get_main_keyboard())
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error saving bot error report: {e}", exc_info=True)
+        await update.message.reply_text(ERROR_MESSAGE, parse_mode="HTML", reply_markup=get_main_keyboard())
+    finally:
+        close_session(session)
+
+
 # ============================================
 # ПОСТРОИТЕЛИ ТЕКСТА
 # ============================================
@@ -617,7 +768,7 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def build_profile_text(session, user: dict) -> str:
     """Построить текст профиля."""
     name = f"{user['first_name'] or ''} {user['last_name'] or ''}".strip() or user['username']
-    student = get_student_by_email(session, user['email'])
+    student = get_student_by_email(session, user.get('email'), user.get('id'))
     sub = get_subscription_info(session, user['id'])
     
     lines = [f"👤 <b>{esc(name)}</b>"]
@@ -663,7 +814,7 @@ async def build_profile_text(session, user: dict) -> str:
 
 async def build_stats_text(session, user: dict) -> str:
     """Построить текст статистики."""
-    student = get_student_by_email(session, user['email'])
+    student = get_student_by_email(session, user.get('email'), user.get('id'))
     if not student:
         return "📊 Профиль ученика не найден."
     
@@ -781,6 +932,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     data = query.data
     chat_id = update.effective_chat.id
+    if data != "error_report":
+        context.user_data.pop("awaiting_error_report", None)
     
     session = get_session()
     try:
@@ -814,7 +967,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not user:
                 await query.edit_message_text(PROFILE_NOT_LINKED, parse_mode="HTML", reply_markup=get_main_keyboard())
                 return
-            student = get_student_by_email(session, user['email'])
+            student = get_student_by_email(session, user.get('email'), user.get('id'))
             if not student:
                 await query.edit_message_text("Профиль ученика не найден.", parse_mode="HTML", reply_markup=get_back_keyboard())
                 return
@@ -826,7 +979,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not user:
                 await query.edit_message_text(PROFILE_NOT_LINKED, parse_mode="HTML", reply_markup=get_main_keyboard())
                 return
-            student = get_student_by_email(session, user['email'])
+            student = get_student_by_email(session, user.get('email'), user.get('id'))
             if not student:
                 await query.edit_message_text("Профиль ученика не найден.", parse_mode="HTML", reply_markup=get_back_keyboard())
                 return
@@ -847,6 +1000,12 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
             text = build_settings_text(user)
             await query.edit_message_text(text, parse_mode="HTML", reply_markup=get_settings_keyboard(user))
+        
+        elif data == "error_report":
+            if not user:
+                await query.edit_message_text(PROFILE_NOT_LINKED, parse_mode="HTML", reply_markup=get_main_keyboard())
+                return
+            await start_error_report_flow(update, context, from_callback=True)
         
         elif data.startswith("toggle_"):
             if not user:
@@ -916,6 +1075,8 @@ def create_bot_application() -> Application:
     application.add_handler(CommandHandler("lessons", lessons_command))
     application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CommandHandler("settings", settings_command))
+    application.add_handler(CommandHandler("error", error_command))
+    application.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND, handle_private_text))
     application.add_handler(CallbackQueryHandler(callback_handler))
     
     return application

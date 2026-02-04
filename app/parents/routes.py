@@ -57,10 +57,9 @@ def parent_dashboard():
             if not student_user:
                 continue
             
-            # Находим связанного Student (по email)
-            # В будущем можно добавить прямую связь user_id в Student
-            student = None
-            if student_user.email:
+            # Находим связанного Student: сначала по user_id, затем по email
+            student = Student.query.filter_by(user_id=student_user.id).first()
+            if not student and student_user.email:
                 student = Student.query.filter_by(email=student_user.email).first()
             
             # Формируем имя для отображения
@@ -92,9 +91,10 @@ def parent_dashboard():
         selected_student = None
         selected_student_user = User.query.get(selected_student_id)
         
-        # Находим связанного Student для выбранного User
+        # Находим связанного Student для выбранного User: user_id, затем email
         if selected_student_user:
-            if selected_student_user.email:
+            selected_student = Student.query.filter_by(user_id=selected_student_user.id).first()
+            if not selected_student and selected_student_user.email:
                 selected_student = Student.query.filter_by(email=selected_student_user.email).first()
         
         if selected_student:

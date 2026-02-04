@@ -14,7 +14,12 @@ sys.path.insert(0, str(ROOT_DIR))
 from urep_bot.config import validate_config, LOG_LEVEL, NOTIFICATION_CHECK_INTERVAL, REMINDER_CHECK_INTERVAL
 from urep_bot.db import init_db
 from urep_bot.bot import create_bot_application
-from urep_bot.notifications import process_pending_notifications, process_lesson_reminders, check_low_lessons
+from urep_bot.notifications import (
+    process_pending_notifications,
+    process_lesson_reminders,
+    check_low_lessons,
+    process_error_report_replies,
+)
 
 # Настройка логирования
 logging.basicConfig(
@@ -36,7 +41,8 @@ async def background_tasks(application):
     while True:
         try:
             # Проверяем уведомления каждые NOTIFICATION_CHECK_INTERVAL секунд
-            await process_pending_notifications(bot)
+                await process_pending_notifications(bot)
+                await process_error_report_replies(bot)
             
             notification_counter += NOTIFICATION_CHECK_INTERVAL
             reminder_counter += NOTIFICATION_CHECK_INTERVAL

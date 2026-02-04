@@ -928,7 +928,7 @@ class UserProfile(db.Model):
     tg_notify_new_message = db.Column(db.Boolean, default=True, nullable=False)  # Новое сообщение от преподавателя
     tg_notify_lesson_scheduled = db.Column(db.Boolean, default=True, nullable=False)  # Урок запланирован
     tg_notify_low_lessons = db.Column(db.Boolean, default=True, nullable=False)  # Уроки заканчиваются
-    tg_notify_news = db.Column(db.Boolean, default=False, nullable=False)  # Новости платформы (по умолчанию выкл)
+    tg_notify_news = db.Column(db.Boolean, default=True, nullable=False)  # Новости платформы (по умолчанию вкл)
     
     # Приватные заметки (видны только админу и тьютору)
     internal_notes = db.Column(db.Text, nullable=True)
@@ -941,6 +941,44 @@ class UserProfile(db.Model):
     
     def __repr__(self):
         return f'<UserProfile {self.user_id}: {self.first_name} {self.last_name}>'
+
+
+class BotAdmin(db.Model):
+    """Администраторы Telegram-бота (управляются из админки платформы)."""
+    __tablename__ = 'BotAdmins'
+    admin_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, unique=True, index=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+    def __repr__(self):
+        return f'<BotAdmin user_id={self.user_id} active={self.is_active}>'
+
+
+class BotErrorReport(db.Model):
+    """Сообщения об ошибках от учеников в Telegram-боте."""
+    __tablename__ = 'BotErrorReports'
+    report_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+    telegram_chat_id = db.Column(db.BigInteger, nullable=True, index=True)
+    message = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(32), default='new', nullable=False)  # new|in_progress|answered|closed
+    admin_reply = db.Column(db.Text, nullable=True)
+    admin_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+    reply_sent_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    replied_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    admin_user = db.relationship('User', foreign_keys=[admin_user_id])
+
+    def __repr__(self):
+        return f'<BotErrorReport {self.report_id} status={self.status}>'
 
 
 class FamilyTie(db.Model):

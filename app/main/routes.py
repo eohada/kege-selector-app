@@ -590,24 +590,21 @@ def student_dashboard():
     if not current_user.is_student():
         return redirect(url_for('main.dashboard'))
 
-    # Пытаемся найти связанного Student
+    # Пытаемся найти связанного Student: user_id (Create Pack), затем email, затем legacy student_id==user.id
     student = None
     try:
-        if current_user.email:
+        student = Student.query.filter_by(user_id=current_user.id).first()
+        if not student and current_user.email:
             student = Student.query.filter_by(email=current_user.email).first()
-    except Exception:
-        student = None
-    if not student:
-        # fallback: иногда Student.student_id == User.id, но только если у Student нет email
-        try:
+        if not student:
             candidate = Student.query.get(current_user.id)
             if candidate:
                 c_email = (candidate.email or '').strip().lower() if candidate.email else ''
                 u_email = (current_user.email or '').strip().lower()
                 if (not c_email) and (not u_email or u_email == c_email):
                     student = candidate
-        except Exception:
-            student = None
+    except Exception:
+        student = None
 
     if not student:
         flash('Профиль ученика не найден.', 'warning')

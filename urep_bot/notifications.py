@@ -15,6 +15,23 @@ from urep_bot.messages import NOTIFICATION_TEMPLATES
 
 logger = logging.getLogger(__name__)
 
+KIND_SETTINGS_MAP = {
+    'lesson_reminder_1h': 'tg_notify_lesson_reminder',
+    'lesson_reminder_15m': 'tg_notify_lesson_reminder',
+    'lesson_scheduled': 'tg_notify_lesson_scheduled',
+    'lesson_review_graded': 'tg_notify_homework_checked',
+    'lesson_task_graded': 'tg_notify_homework_checked',
+    'assignment_graded': 'tg_notify_homework_checked',
+    'lesson_review_returned': 'tg_notify_homework_returned',
+    'lesson_task_returned': 'tg_notify_homework_returned',
+    'assignment_returned': 'tg_notify_homework_returned',
+    'lesson_message': 'tg_notify_new_message',
+    'lessons_low': 'tg_notify_low_lessons',
+    'platform_news': 'tg_notify_news',
+    'news': 'tg_notify_news',
+    'generic': 'tg_notify_news',
+}
+
 
 def format_notification(kind: str, title: str, body: Optional[str], link_url: Optional[str], meta: Optional[dict] = None) -> str:
     """Форматирование уведомления для отправки."""
@@ -95,7 +112,14 @@ async def process_pending_notifications(bot: Bot):
                 un.body,
                 un.link_url,
                 un.meta,
-                up.telegram_chat_id
+                up.telegram_chat_id,
+                COALESCE(up.tg_notify_lesson_reminder, TRUE) AS tg_notify_lesson_reminder,
+                COALESCE(up.tg_notify_homework_checked, TRUE) AS tg_notify_homework_checked,
+                COALESCE(up.tg_notify_homework_returned, TRUE) AS tg_notify_homework_returned,
+                COALESCE(up.tg_notify_new_message, TRUE) AS tg_notify_new_message,
+                COALESCE(up.tg_notify_lesson_scheduled, TRUE) AS tg_notify_lesson_scheduled,
+                COALESCE(up.tg_notify_low_lessons, TRUE) AS tg_notify_low_lessons,
+                COALESCE(up.tg_notify_news, TRUE) AS tg_notify_news
             FROM "UserNotifications" un
             JOIN "UserProfiles" up ON up.user_id = un.user_id
             WHERE un.telegram_sent = FALSE
@@ -114,7 +138,29 @@ async def process_pending_notifications(bot: Bot):
         sent_count = 0
         
         for notif in notifications:
-            notif_id, kind, title, body, link_url, meta, chat_id = notif
+            (
+                notif_id, kind, title, body, link_url, meta, chat_id,
+                tg_notify_lesson_reminder, tg_notify_homework_checked, tg_notify_homework_returned,
+                tg_notify_new_message, tg_notify_lesson_scheduled, tg_notify_low_lessons, tg_notify_news
+            ) = notif
+            settings = {
+                'tg_notify_lesson_reminder': tg_notify_lesson_reminder,
+                'tg_notify_homework_checked': tg_notify_homework_checked,
+                'tg_notify_homework_returned': tg_notify_homework_returned,
+                'tg_notify_new_message': tg_notify_new_message,
+                'tg_notify_lesson_scheduled': tg_notify_lesson_scheduled,
+                'tg_notify_low_lessons': tg_notify_low_lessons,
+                'tg_notify_news': tg_notify_news,
+            }
+            
+            setting_key = KIND_SETTINGS_MAP.get(kind)
+            if setting_key and not settings.get(setting_key, True):
+                session.execute(text("""
+                    UPDATE "UserNotifications"
+                    SET telegram_sent = TRUE
+                    WHERE notification_id = :notif_id
+                """), {"notif_id": notif_id})
+                continue
             
             # Форматируем и отправляем
             message_text = format_notification(kind, title, body, link_url, meta)
@@ -184,6 +230,7 @@ async def process_lesson_reminders(bot: Bot):
             WHERE l.status = 'planned'
               AND up.telegram_chat_id IS NOT NULL
               AND (up.telegram_notifications_enabled = TRUE OR up.telegram_notifications_enabled IS NULL)
+              AND COALESCE(up.tg_notify_lesson_reminder, TRUE) = TRUE
               AND (
                   (l.lesson_date BETWEEN :hour_from AND :hour_to)
                   OR (l.lesson_date BETWEEN :fifteen_from AND :fifteen_to)
@@ -273,6 +320,7 @@ async def check_low_lessons(bot: Bot):
             JOIN "UserSubscriptions" us ON us.user_id = u.id
             WHERE up.telegram_chat_id IS NOT NULL
               AND (up.telegram_notifications_enabled = TRUE OR up.telegram_notifications_enabled IS NULL)
+              AND COALESCE(up.tg_notify_low_lessons, TRUE) = TRUE
               AND us.status = 'active'
               AND us.lessons_remaining IS NOT NULL
               AND us.lessons_remaining <= 2
@@ -319,6 +367,47 @@ async def check_low_lessons(bot: Bot):
     except Exception as e:
         session.rollback()
         logger.error(f"Error checking low lessons: {e}", exc_info=True)
+        return 0
+    finally:
+        close_session(session)
+
+
+async def process_error_report_replies(bot: Bot):
+    """Отправка ответов админа на сообщения об ошибках."""
+    session = get_session()
+    try:
+        result = session.execute(text("""
+            SELECT report_id, telegram_chat_id, admin_reply, status
+            FROM "BotErrorReports"
+            WHERE admin_reply IS NOT NULL
+              AND reply_sent_at IS NULL
+              AND telegram_chat_id IS NOT NULL
+            ORDER BY report_id ASC
+            LIMIT 50
+        """))
+        rows = result.fetchall()
+        if not rows:
+            return 0
+        
+        sent_count = 0
+        for report_id, chat_id, admin_reply, status in rows:
+            message = f"✅ <b>Ответ по вашему обращению</b>\n\n{admin_reply}"
+            success = await send_telegram_notification(bot, chat_id, message)
+            if success:
+                session.execute(text("""
+                    UPDATE "BotErrorReports"
+                    SET reply_sent_at = NOW(),
+                        replied_at = NOW(),
+                        status = CASE WHEN status = 'closed' THEN status ELSE 'answered' END
+                    WHERE report_id = :report_id
+                """), {"report_id": report_id})
+                sent_count += 1
+        
+        session.commit()
+        return sent_count
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error sending error report replies: {e}", exc_info=True)
         return 0
     finally:
         close_session(session)
