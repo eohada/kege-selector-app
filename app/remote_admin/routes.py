@@ -441,6 +441,208 @@ def tester_delete(tester_id):
     return redirect(url_for('remote_admin.testers'))
 
 
+@remote_admin_bp.route('/bot')
+@login_required
+def bot_panel():
+    """Админка Telegram-бота в удаленной панели."""
+    if not current_user.is_creator():
+        flash('Доступ только для Создателя', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    current_env = get_current_environment()
+    environments = get_environments()
+
+    if not is_environment_configured(current_env):
+        flash(f'Окружение {environments.get(current_env, {}).get("name", current_env)} не настроено', 'error')
+        return redirect(url_for('remote_admin.dashboard'))
+
+    status_filter = (request.args.get('status') or '').strip().lower()
+    if status_filter not in {'new', 'in_progress', 'answered', 'closed'}:
+        status_filter = ''
+
+    bot_admins = []
+    reports = []
+    try:
+        path = '/internal/remote-admin/api/bot'
+        if status_filter:
+            path = f"{path}?status={status_filter}"
+        resp = make_remote_request('GET', path)
+        if resp.status_code == 200:
+            data = resp.json()
+            bot_admins = data.get('bot_admins', [])
+            reports = data.get('reports', [])
+        else:
+            error_data = {}
+            if resp.headers.get('content-type', '').startswith('application/json'):
+                error_data = resp.json()
+            flash(error_data.get('error', f'Ошибка загрузки данных: {resp.status_code}'), 'error')
+    except Exception as e:
+        logger.error(f"Error loading bot admin data: {e}", exc_info=True)
+        flash(f'Ошибка загрузки данных: {str(e)}', 'error')
+
+    return render_template(
+        'remote_admin/bot_admin.html',
+        bot_admins=bot_admins,
+        reports=reports,
+        status_filter=status_filter,
+        current_environment=current_env,
+        environment_name=environments.get(current_env, {}).get('name', current_env),
+    )
+
+
+@remote_admin_bp.route('/bot/admins/add', methods=['POST'])
+@login_required
+def bot_admins_add():
+    """Добавить администратора бота в выбранном окружении."""
+    if not current_user.is_creator():
+        flash('Доступ только для Создателя', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    identifier = (request.form.get('identifier') or '').strip()
+    if not identifier:
+        flash('Укажи user_id, username или email.', 'warning')
+        return redirect(url_for('remote_admin.bot_panel'))
+
+    resp = make_remote_request('POST', '/internal/remote-admin/api/bot/admins/add', payload={'identifier': identifier})
+    if resp.status_code == 200:
+        data = resp.json()
+        flash(data.get('message', 'Администратор добавлен.'), 'success')
+    else:
+        error_data = {}
+        if resp.headers.get('content-type', '').startswith('application/json'):
+            error_data = resp.json()
+        flash(error_data.get('error', f'Ошибка: {resp.status_code}'), 'error')
+
+    return redirect(url_for('remote_admin.bot_panel'))
+
+
+@remote_admin_bp.route('/bot/admins/<int:admin_id>/toggle', methods=['POST'])
+@login_required
+def bot_admins_toggle(admin_id: int):
+    """Переключить статус администратора бота."""
+    if not current_user.is_creator():
+        flash('Доступ только для Создателя', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    resp = make_remote_request('POST', f'/internal/remote-admin/api/bot/admins/{admin_id}/toggle')
+    if resp.status_code == 200:
+        data = resp.json()
+        flash(data.get('message', 'Статус обновлен.'), 'success')
+    else:
+        error_data = {}
+        if resp.headers.get('content-type', '').startswith('application/json'):
+            error_data = resp.json()
+        flash(error_data.get('error', f'Ошибка: {resp.status_code}'), 'error')
+
+    return redirect(url_for('remote_admin.bot_panel'))
+
+
+@remote_admin_bp.route('/bot/admins/<int:admin_id>/delete', methods=['POST'])
+@login_required
+def bot_admins_delete(admin_id: int):
+    """Удалить администратора бота."""
+    if not current_user.is_creator():
+        flash('Доступ только для Создателя', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    resp = make_remote_request('DELETE', f'/internal/remote-admin/api/bot/admins/{admin_id}')
+    if resp.status_code == 200:
+        data = resp.json()
+        flash(data.get('message', 'Администратор удален.'), 'success')
+    else:
+        error_data = {}
+        if resp.headers.get('content-type', '').startswith('application/json'):
+            error_data = resp.json()
+        flash(error_data.get('error', f'Ошибка: {resp.status_code}'), 'error')
+
+    return redirect(url_for('remote_admin.bot_panel'))
+
+
+@remote_admin_bp.route('/bot/broadcast', methods=['POST'])
+@login_required
+def bot_broadcast():
+    """Создать рассылку новостей в Telegram."""
+    if not current_user.is_creator():
+        flash('Доступ только для Создателя', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    title = (request.form.get('title') or '').strip()
+    body = (request.form.get('body') or '').strip()
+    link_url = (request.form.get('link_url') or '').strip() or None
+
+    if not title or not body:
+        flash('Заполни заголовок и текст рассылки.', 'warning')
+        return redirect(url_for('remote_admin.bot_panel'))
+
+    resp = make_remote_request('POST', '/internal/remote-admin/api/bot/broadcast', payload={
+        'title': title,
+        'body': body,
+        'link_url': link_url,
+    })
+    if resp.status_code == 200:
+        data = resp.json()
+        flash(data.get('message', 'Рассылка создана.'), 'success')
+    else:
+        error_data = {}
+        if resp.headers.get('content-type', '').startswith('application/json'):
+            error_data = resp.json()
+        flash(error_data.get('error', f'Ошибка: {resp.status_code}'), 'error')
+
+    return redirect(url_for('remote_admin.bot_panel'))
+
+
+@remote_admin_bp.route('/bot/errors/<int:report_id>/reply', methods=['POST'])
+@login_required
+def bot_error_reply(report_id: int):
+    """Ответить на сообщение об ошибке."""
+    if not current_user.is_creator():
+        flash('Доступ только для Создателя', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    reply = (request.form.get('reply') or '').strip()
+    if not reply:
+        flash('Ответ не может быть пустым.', 'warning')
+        return redirect(url_for('remote_admin.bot_panel'))
+
+    resp = make_remote_request('POST', f'/internal/remote-admin/api/bot/errors/{report_id}/reply', payload={'reply': reply})
+    if resp.status_code == 200:
+        data = resp.json()
+        flash(data.get('message', 'Ответ сохранен.'), 'success')
+    else:
+        error_data = {}
+        if resp.headers.get('content-type', '').startswith('application/json'):
+            error_data = resp.json()
+        flash(error_data.get('error', f'Ошибка: {resp.status_code}'), 'error')
+
+    return redirect(url_for('remote_admin.bot_panel'))
+
+
+@remote_admin_bp.route('/bot/errors/<int:report_id>/status', methods=['POST'])
+@login_required
+def bot_error_status(report_id: int):
+    """Изменить статус сообщения об ошибке."""
+    if not current_user.is_creator():
+        flash('Доступ только для Создателя', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    status = (request.form.get('status') or '').strip().lower()
+    if status not in {'new', 'in_progress', 'answered', 'closed'}:
+        flash('Некорректный статус.', 'warning')
+        return redirect(url_for('remote_admin.bot_panel'))
+
+    resp = make_remote_request('POST', f'/internal/remote-admin/api/bot/errors/{report_id}/status', payload={'status': status})
+    if resp.status_code == 200:
+        data = resp.json()
+        flash(data.get('message', 'Статус обновлен.'), 'success')
+    else:
+        error_data = {}
+        if resp.headers.get('content-type', '').startswith('application/json'):
+            error_data = resp.json()
+        flash(error_data.get('error', f'Ошибка: {resp.status_code}'), 'error')
+
+    return redirect(url_for('remote_admin.bot_panel'))
+
+
 @remote_admin_bp.route('/audit-logs')
 @login_required
 def audit_logs():

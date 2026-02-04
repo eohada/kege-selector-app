@@ -15,6 +15,7 @@ import re
 
 from app.models import User, AuditLog, MaintenanceMode, db, UserProfile, Tasks, TaskReview
 from app.models import FamilyTie, Enrollment, Student, Lesson, RolePermission
+from app.models import BotAdmin, BotErrorReport, UserNotification
 from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES, DEFAULT_ROLE_PERMISSIONS
 from core.audit_logger import audit_logger
 from core.db_models import moscow_now
@@ -1753,6 +1754,227 @@ def remote_admin_api_permissions():
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error in remote_admin_api_permissions: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/bot', methods=['GET'])
+@csrf.exempt
+def remote_admin_api_bot_panel():
+    """API: Данные для админки Telegram-бота."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    status_filter = (request.args.get('status') or '').strip().lower()
+    if status_filter not in {'new', 'in_progress', 'answered', 'closed'}:
+        status_filter = ''
+
+    try:
+        bot_admins = BotAdmin.query.join(User, BotAdmin.user_id == User.id).order_by(User.username.asc()).all()
+        reports_query = BotErrorReport.query.order_by(BotErrorReport.created_at.desc(), BotErrorReport.report_id.desc())
+        if status_filter:
+            reports_query = reports_query.filter_by(status=status_filter)
+        reports = reports_query.limit(200).all()
+
+        admins_payload = [{
+            'admin_id': a.admin_id,
+            'user_id': a.user_id,
+            'username': a.user.username if a.user else '',
+            'role': a.user.role if a.user else '',
+            'is_active': bool(a.is_active),
+        } for a in bot_admins]
+
+        reports_payload = [{
+            'report_id': r.report_id,
+            'created_at': r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '',
+            'message': r.message,
+            'status': r.status,
+            'admin_reply': r.admin_reply,
+        } for r in reports]
+
+        return jsonify({
+            'success': True,
+            'bot_admins': admins_payload,
+            'reports': reports_payload,
+        })
+    except Exception as e:
+        logger.error(f"Error in remote_admin_api_bot_panel: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/bot/admins/add', methods=['POST'])
+@csrf.exempt
+def remote_admin_api_bot_admin_add():
+    """API: Добавить администратора бота."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    try:
+        data = request.get_json() or {}
+        identifier = (data.get('identifier') or '').strip()
+        if not identifier:
+            return jsonify({'error': 'identifier is required'}), 400
+
+        user = None
+        if identifier.isdigit():
+            user = User.query.get(int(identifier))
+        if not user:
+            user = User.query.filter(
+                (User.username == identifier) | (User.email == identifier)
+            ).first()
+
+        if not user:
+            return jsonify({'error': 'Пользователь не найден'}), 404
+
+        admin = BotAdmin.query.filter_by(user_id=user.id).first()
+        if admin:
+            admin.is_active = True
+        else:
+            admin = BotAdmin(user_id=user.id, created_by_user_id=None, is_active=True)
+            db.session.add(admin)
+
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'Админ бота добавлен: {user.username}'})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in remote_admin_api_bot_admin_add: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/bot/admins/<int:admin_id>/toggle', methods=['POST'])
+@csrf.exempt
+def remote_admin_api_bot_admin_toggle(admin_id: int):
+    """API: Переключить статус администратора бота."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    try:
+        admin = BotAdmin.query.get_or_404(admin_id)
+        admin.is_active = not admin.is_active
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Статус администратора обновлен.'})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in remote_admin_api_bot_admin_toggle: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/bot/admins/<int:admin_id>', methods=['DELETE'])
+@csrf.exempt
+def remote_admin_api_bot_admin_delete(admin_id: int):
+    """API: Удалить администратора бота."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    try:
+        admin = BotAdmin.query.get_or_404(admin_id)
+        db.session.delete(admin)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Администратор удален.'})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in remote_admin_api_bot_admin_delete: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/bot/broadcast', methods=['POST'])
+@csrf.exempt
+def remote_admin_api_bot_broadcast():
+    """API: Создать рассылку новостей платформы."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    try:
+        data = request.get_json() or {}
+        title = (data.get('title') or '').strip()
+        body = (data.get('body') or '').strip()
+        link_url = (data.get('link_url') or '').strip() or None
+
+        if not title or not body:
+            return jsonify({'error': 'title and body are required'}), 400
+
+        users = (
+            db.session.query(User.id)
+            .join(UserProfile, UserProfile.user_id == User.id)
+            .filter(UserProfile.telegram_chat_id.isnot(None))
+            .filter((UserProfile.telegram_notifications_enabled.is_(True)) | (UserProfile.telegram_notifications_enabled.is_(None)))
+            .filter(UserProfile.tg_notify_news.is_(True))
+            .all()
+        )
+        count = 0
+        for (user_id,) in users:
+            db.session.add(UserNotification(
+                user_id=user_id,
+                kind='platform_news',
+                title=title,
+                body=body,
+                link_url=link_url,
+            ))
+            count += 1
+        db.session.commit()
+
+        audit_logger.log(
+            action='bot_broadcast',
+            entity='UserNotification',
+            entity_id=None,
+            status='success',
+            metadata={'count': count, 'title': title, 'source': 'remote_admin'}
+        )
+
+        return jsonify({'success': True, 'message': f'Рассылка создана: {count} получателей.'})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in remote_admin_api_bot_broadcast: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/bot/errors/<int:report_id>/reply', methods=['POST'])
+@csrf.exempt
+def remote_admin_api_bot_error_reply(report_id: int):
+    """API: Ответить на сообщение об ошибке."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    try:
+        data = request.get_json() or {}
+        reply = (data.get('reply') or '').strip()
+        if not reply:
+            return jsonify({'error': 'reply is required'}), 400
+
+        report = BotErrorReport.query.get_or_404(report_id)
+        report.admin_reply = reply
+        report.admin_user_id = None
+        report.status = 'answered'
+        report.replied_at = moscow_now()
+        report.reply_sent_at = None
+
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Ответ сохранен и будет отправлен пользователю.'})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in remote_admin_api_bot_error_reply: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/bot/errors/<int:report_id>/status', methods=['POST'])
+@csrf.exempt
+def remote_admin_api_bot_error_status(report_id: int):
+    """API: Изменить статус сообщения об ошибке."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    try:
+        data = request.get_json() or {}
+        status = (data.get('status') or '').strip().lower()
+        if status not in {'new', 'in_progress', 'answered', 'closed'}:
+            return jsonify({'error': 'invalid status'}), 400
+
+        report = BotErrorReport.query.get_or_404(report_id)
+        report.status = status
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Статус обновлен.'})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in remote_admin_api_bot_error_status: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 
