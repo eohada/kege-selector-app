@@ -1243,13 +1243,28 @@ def _get_current_lesson_student(lesson):  # comment
     """Проверяем, что текущий пользователь - ученик этого урока"""  # comment
     if not current_user.is_student():  # comment
         return None  # comment
-    # В некоторых окружениях email может быть пустым, а логин хранится в username
-    ident = (current_user.email or current_user.username or '').strip()
-    if not ident:  # comment
+    # 1) Новый способ: прямая связь по user_id
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    # 2) Fallback: по email (старые данные)
+    if not student:
+        ident = (current_user.email or '').strip()
+        if ident:
+            student = Student.query.filter(db.func.lower(Student.email) == ident.lower()).first()
+    # 3) Fallback: Student.student_id == User.id, если email отсутствует
+    if not student:
+        try:
+            student = Student.query.filter(Student.student_id == int(current_user.id), Student.email.is_(None)).first()
+        except Exception:
+            student = None
+    if not student:
         return None  # comment
-    student = Student.query.filter(db.func.lower(Student.email) == ident.lower()).first()  # comment
-    if not student:  # comment
-        return None  # comment
+    # Бест-эффорт привязка user_id, если нашли по старому способу
+    if student.user_id is None:
+        try:
+            student.user_id = current_user.id
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
     if student.student_id != lesson.student_id:  # comment
         return None  # comment
     return student  # comment
