@@ -1830,12 +1830,20 @@ def remote_admin_api_bot_admin_add():
 
         if not user and normalized:
             lowered = normalized.lower()
-            user = User.query.filter(
-                (func.lower(User.username) == lowered) |
-                (func.lower(User.email) == lowered) |
-                (func.lower(User.telegram_link) == lowered) |
-                (User.telegram_link.ilike(f"%{normalized}%"))
-            ).first()
+            user = (
+                User.query
+                .outerjoin(UserProfile, UserProfile.user_id == User.id)
+                .filter(
+                    (func.lower(User.username) == lowered) |
+                    (func.lower(User.email) == lowered) |
+                    (func.lower(User.telegram_link) == lowered) |
+                    (User.telegram_link.ilike(f"%{normalized}%")) |
+                    (func.lower(UserProfile.telegram_id) == lowered) |
+                    (func.lower(UserProfile.telegram_id) == f"@{lowered}") |
+                    (UserProfile.telegram_id.ilike(f"%{normalized}%"))
+                )
+                .first()
+            )
 
         if not user and normalized:
             tg_variants = {

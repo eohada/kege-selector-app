@@ -484,6 +484,8 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     code = context.args[0].upper().strip()
     chat_id = update.effective_chat.id
+    tg_username = (update.effective_user.username or '').strip()
+    tg_identifier = f"@{tg_username}" if tg_username else None
     
     session = get_session()
     try:
@@ -532,9 +534,13 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             UPDATE "UserProfiles"
             SET telegram_chat_id = :chat_id,
                 telegram_link_code = NULL,
-                telegram_link_code_expires = NULL
+                telegram_link_code_expires = NULL,
+                telegram_id = CASE
+                    WHEN telegram_id IS NULL OR telegram_id = '' THEN :telegram_id
+                    ELSE telegram_id
+                END
             WHERE profile_id = :profile_id
-        """), {"chat_id": chat_id, "profile_id": profile_id})
+        """), {"chat_id": chat_id, "profile_id": profile_id, "telegram_id": tg_identifier})
         session.commit()
         
         await update.message.reply_text(LINK_SUCCESS, parse_mode="HTML", reply_markup=get_main_keyboard())
