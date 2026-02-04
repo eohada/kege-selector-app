@@ -154,7 +154,18 @@ def get_settings_keyboard(settings: dict):
         [toggle("tg_notify_new_message", "Сообщения преподавателя")],
         [toggle("tg_notify_low_lessons", "Уроки заканчиваются")],
         [toggle("tg_notify_news", "Новости платформы")],
+        [InlineKeyboardButton("🔌 Отвязать Telegram", callback_data="unlink")],
         [InlineKeyboardButton("« Главное меню", callback_data="main")],
+    ])
+
+
+def get_unlink_confirm_keyboard():
+    """Кнопки подтверждения отвязки Telegram."""
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✅ Отвязать", callback_data="unlink_confirm"),
+            InlineKeyboardButton("↩️ Отмена", callback_data="settings"),
+        ],
     ])
 
 
@@ -559,19 +570,13 @@ async def unlink_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     session = get_session()
     try:
-        user = get_user_by_chat_id(session, chat_id)
-        if not user:
+        if not _unlink_telegram(session, chat_id):
             await update.message.reply_text(
                 "ℹ️ Telegram не привязан к аккаунту.",
                 parse_mode="HTML",
                 reply_markup=get_main_keyboard()
             )
             return
-        
-        session.execute(text(
-            'UPDATE "UserProfiles" SET telegram_chat_id = NULL WHERE telegram_chat_id = :chat_id'
-        ), {"chat_id": chat_id})
-        session.commit()
         
         await update.message.reply_text(
             "✅ Telegram отвязан. Ты больше не будешь получать уведомления.",
@@ -584,6 +589,26 @@ async def unlink_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(ERROR_MESSAGE, parse_mode="HTML", reply_markup=get_main_keyboard())
     finally:
         close_session(session)
+
+
+def _unlink_telegram(session, chat_id: int) -> bool:
+    """Отвязать Telegram по chat_id."""
+    exists = session.execute(text(
+        'SELECT profile_id FROM "UserProfiles" WHERE telegram_chat_id = :chat_id'
+    ), {"chat_id": chat_id}).fetchone()
+    if not exists:
+        return False
+
+    session.execute(text("""
+        UPDATE "UserProfiles"
+        SET telegram_chat_id = NULL,
+            telegram_link_code = NULL,
+            telegram_link_code_expires = NULL,
+            telegram_id = NULL
+        WHERE telegram_chat_id = :chat_id
+    """), {"chat_id": chat_id})
+    session.commit()
+    return True
 
 
 async def me_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1007,6 +1032,31 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text = build_settings_text(user)
             await query.edit_message_text(text, parse_mode="HTML", reply_markup=get_settings_keyboard(user))
         
+        elif data == "unlink":
+            if not user:
+                await query.edit_message_text(PROFILE_NOT_LINKED, parse_mode="HTML", reply_markup=get_main_keyboard())
+                return
+            await query.edit_message_text(
+                "⚠️ <b>Отвязать Telegram?</b>\n\n"
+                "Ты перестанешь получать уведомления, пока снова не привяжешь аккаунт.",
+                parse_mode="HTML",
+                reply_markup=get_unlink_confirm_keyboard()
+            )
+
+        elif data == "unlink_confirm":
+            if not _unlink_telegram(session, chat_id):
+                await query.edit_message_text(
+                    "ℹ️ Telegram не привязан к аккаунту.",
+                    parse_mode="HTML",
+                    reply_markup=get_main_keyboard()
+                )
+                return
+            await query.edit_message_text(
+                "✅ Telegram отвязан. Чтобы вернуть уведомления, привяжи аккаунт снова.",
+                parse_mode="HTML",
+                reply_markup=get_main_keyboard()
+            )
+
         elif data == "error_report":
             if not user:
                 await query.edit_message_text(PROFILE_NOT_LINKED, parse_mode="HTML", reply_markup=get_main_keyboard())

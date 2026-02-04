@@ -127,6 +127,27 @@
             <section class="glass-panel" style="margin-bottom: 2rem;">
                 <div class="panel-head">
                     <div>
+                        <p class="eyebrow">безопасность</p>
+                        <h2>Отвязка Telegram</h2>
+                        <div style="color: var(--text-muted);">Удаляет привязку Telegram от профиля в выбранном окружении.</div>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('remote_admin.bot_unlink') }}" class="filters-grid" style="align-items: end;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="neo-field">
+                        <label class="neo-label" for="unlink-identifier">User ID / email / @tg / chat_id</label>
+                        <input id="unlink-identifier" name="identifier" class="neo-input" placeholder="например: @ivanov или 123456789">
+                    </div>
+                    <div class="filters-actions">
+                        <button type="submit" class="neo-button outline">Отвязать Telegram</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="glass-panel" style="margin-bottom: 2rem;">
+                <div class="panel-head">
+                    <div>
                         <p class="eyebrow">поддержка</p>
                         <h2>Сообщения об ошибках</h2>
                     </div>

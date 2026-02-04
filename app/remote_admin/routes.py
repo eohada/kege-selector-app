@@ -643,6 +643,32 @@ def bot_error_status(report_id: int):
     return redirect(url_for('remote_admin.bot_panel'))
 
 
+@remote_admin_bp.route('/bot/unlink', methods=['POST'])
+@login_required
+def bot_unlink():
+    """Отвязать Telegram от профиля в выбранном окружении."""
+    if not current_user.is_creator():
+        flash('Доступ только для Создателя', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    identifier = (request.form.get('identifier') or '').strip()
+    if not identifier:
+        flash('Укажи user_id / email / @tg / chat_id.', 'warning')
+        return redirect(url_for('remote_admin.bot_panel'))
+
+    resp = make_remote_request('POST', '/internal/remote-admin/api/bot/unlink', payload={'identifier': identifier})
+    if resp.status_code == 200:
+        data = resp.json()
+        flash(data.get('message', 'Telegram отвязан.'), 'success')
+    else:
+        error_data = {}
+        if resp.headers.get('content-type', '').startswith('application/json'):
+            error_data = resp.json()
+        flash(error_data.get('error', f'Ошибка: {resp.status_code}'), 'error')
+
+    return redirect(url_for('remote_admin.bot_panel'))
+
+
 @remote_admin_bp.route('/audit-logs')
 @login_required
 def audit_logs():

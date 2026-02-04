@@ -2013,6 +2013,81 @@ def remote_admin_api_bot_error_status(report_id: int):
         return jsonify({'error': str(e)}), 500
 
 
+@admin_bp.route('/internal/remote-admin/api/bot/unlink', methods=['POST'])
+@csrf.exempt
+def remote_admin_api_bot_unlink():
+    """API: Отвязать Telegram от профиля."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+
+    try:
+        data = request.get_json() or {}
+        identifier = (data.get('identifier') or '').strip()
+        if not identifier:
+            return jsonify({'error': 'identifier is required'}), 400
+
+        normalized = identifier.lstrip('@').strip()
+        profile = None
+        user = None
+
+        if identifier.isdigit():
+            chat_id = int(identifier)
+            profile = UserProfile.query.filter(UserProfile.telegram_chat_id == chat_id).first()
+            if profile:
+                user = User.query.get(profile.user_id)
+
+        if not profile and normalized:
+            lowered = normalized.lower()
+            profile = UserProfile.query.filter(
+                (func.lower(UserProfile.telegram_id) == lowered) |
+                (func.lower(UserProfile.telegram_id) == f"@{lowered}") |
+                (UserProfile.telegram_id.ilike(f"%{normalized}%"))
+            ).first()
+            if profile:
+                user = User.query.get(profile.user_id)
+
+        if not profile and normalized:
+            lowered = normalized.lower()
+            user = (
+                User.query
+                .outerjoin(UserProfile, UserProfile.user_id == User.id)
+                .filter(
+                    (func.lower(User.username) == lowered) |
+                    (func.lower(User.email) == lowered) |
+                    (func.lower(User.telegram_link) == lowered) |
+                    (User.telegram_link.ilike(f"%{normalized}%")) |
+                    (func.lower(UserProfile.telegram_id) == lowered) |
+                    (func.lower(UserProfile.telegram_id) == f"@{lowered}") |
+                    (UserProfile.telegram_id.ilike(f"%{normalized}%"))
+                )
+                .first()
+            )
+            if user:
+                profile = UserProfile.query.filter_by(user_id=user.id).first()
+
+        if not profile:
+            return jsonify({'error': 'Профиль не найден в выбранном окружении'}), 404
+
+        if not profile.telegram_chat_id and not profile.telegram_id:
+            return jsonify({'error': 'Telegram не привязан к этому профилю'}), 409
+
+        profile.telegram_chat_id = None
+        profile.telegram_id = None
+        profile.telegram_link_code = None
+        profile.telegram_link_code_expires = None
+        db.session.commit()
+
+        username = user.username if user else None
+        return jsonify({
+            'success': True,
+            'message': f'Telegram отвязан{f": {username}" if username else ""}.'
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in remote_admin_api_bot_unlink: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
 @admin_bp.route('/internal/remote-admin/api/tariffs', methods=['GET'])
 @csrf.exempt
 def remote_admin_api_tariffs():
