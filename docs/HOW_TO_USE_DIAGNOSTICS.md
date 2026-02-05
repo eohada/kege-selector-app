@@ -14,8 +14,8 @@
 
 Перед использованием полной диагностики, проверьте, что endpoint зарегистрирован:
 
-- **Production**: `https://kege-selector-staging-production.up.railway.app/admin/diagnostics/test`
-- **Sandbox**: `https://kege-selector-staging-sandbox.up.railway.app/admin/diagnostics/test`
+- **Production**: `https://boostudy.ru/admin/diagnostics/test`
+- **Sandbox**: `https://boostudy.ru/admin/diagnostics/test`
 
 Должен вернуться JSON:
 ```json
@@ -32,8 +32,8 @@
 ## Шаг 3: Войдите в систему
 
 1. Откройте любой из сайтов:
-   - Production: https://kege-selector-staging-production.up.railway.app/
-   - Sandbox: https://kege-selector-staging-sandbox.up.railway.app/
+   - Production: https://boostudy.ru/
+   - Sandbox: https://boostudy.ru/
 
 2. Войдите в систему (используйте свои учетные данные)
 
@@ -41,8 +41,8 @@
 
 После входа откройте в браузере:
 
-- **Production**: `https://kege-selector-staging-production.up.railway.app/admin/diagnostics`
-- **Sandbox**: `https://kege-selector-staging-sandbox.up.railway.app/admin/diagnostics`
+- **Production**: `https://boostudy.ru/admin/diagnostics`
+- **Sandbox**: `https://boostudy.ru/admin/diagnostics`
 
 ## Шаг 5: Сравните данные
 

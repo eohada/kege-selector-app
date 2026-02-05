@@ -4,8 +4,8 @@
 
 После авторизации в системе откройте:
 
-- **Production**: `https://kege-selector-staging-production.up.railway.app/admin/diagnostics`
-- **Sandbox**: `https://kege-selector-staging-sandbox.up.railway.app/admin/diagnostics`
+- **Production**: `https://boostudy.ru/admin/diagnostics`
+- **Sandbox**: `https://boostudy.ru/admin/diagnostics`
 
 ## Требования
 

@@ -16,7 +16,7 @@ role = sys.argv[3] if len(sys.argv) > 3 else 'creator'
 email = sys.argv[4] if len(sys.argv) > 4 else 'admin@example.com'
 
 # URL вашего сервиса (можно указать через аргумент или изменить здесь)
-url = sys.argv[5] if len(sys.argv) > 5 else 'https://kege-selector-staging-sandbox.up.railway.app/setup/first-user'
+url = sys.argv[5] if len(sys.argv) > 5 else 'https://boostudy.ru/setup/first-user'
 
 print("=" * 60)
 print("СОЗДАНИЕ ПЕРВОГО ПОЛЬЗОВАТЕЛЯ")

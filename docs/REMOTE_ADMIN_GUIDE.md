@@ -34,7 +34,7 @@
 
 ### URL админки
 
-Админка доступна по адресу: `https://kege-selector-app-admin.up.railway.app/`
+Админка доступна по адресу: `https://boostudy.ru/`
 
 При открытии этого URL вы автоматически попадаете на страницу входа в админку.
 
@@ -88,7 +88,7 @@ SANDBOX_ADMIN_TOKEN=<токен-безопасности>
 #### Для Admin (опционально):
 
 ```
-ADMIN_URL=https://kege-selector-app-admin.up.railway.app
+ADMIN_URL=https://boostudy.ru
 ADMIN_ADMIN_TOKEN=<токен-безопасности>
 ```
 

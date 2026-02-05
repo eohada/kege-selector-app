@@ -13,9 +13,9 @@ BOT_TOKEN = os.environ.get('BOT_TOKEN') or os.environ.get('UREP_BOT_TOKEN')
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 # App URL (для ссылок в сообщениях)
-APP_URL = os.environ.get('APP_URL', 'https://kege-selector-staging-sandbox.up.railway.app')
+APP_URL = os.environ.get('APP_URL', 'https://boostudy.ru/')
 # Отдельная ссылка для кнопки "Открыть сайт" в боте
-APP_OPEN_URL = os.environ.get('APP_OPEN_URL', 'https://kege-selector-staging-sandbox.up.railway.app/login')
+APP_OPEN_URL = os.environ.get('APP_OPEN_URL', 'https://boostudy.ru/login')
 
 # Logging
 LOG_LEVEL = os.environ.get('BOT_LOG_LEVEL', 'INFO')

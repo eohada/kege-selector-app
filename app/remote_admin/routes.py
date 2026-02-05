@@ -1048,7 +1048,7 @@ def create_pack():
         logger.warning(f"Could not load tariffs: {e}")
     
     import os
-    app_url = os.environ.get('APP_URL', 'https://urep.up.railway.app')
+    app_url = os.environ.get('APP_URL', 'https://boostudy.ru/')
     
     return render_template('remote_admin/create_pack.html',
                          current_environment=current_env,

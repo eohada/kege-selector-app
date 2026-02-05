@@ -33,8 +33,8 @@ pip install -r urep_bot/requirements.txt
 ```env
 BOT_TOKEN=your_telegram_bot_token
 DATABASE_URL=postgresql://user:password@host:port/database
-APP_URL=https://your-app.railway.app
-APP_OPEN_URL=https://kege-selector-staging-sandbox.up.railway.app/login
+APP_URL=https://boostudy.ru/
+APP_OPEN_URL=https://boostudy.ru/login
 ```
 
 3. Запустите бота:
@@ -88,8 +88,8 @@ urep_bot/
 |------------|----------|--------------|
 | `BOT_TOKEN` | Токен Telegram бота | — |
 | `DATABASE_URL` | URL PostgreSQL | — |
-| `APP_URL` | URL веб-приложения | https://kege-selector-staging-sandbox.up.railway.app |
-| `APP_OPEN_URL` | Ссылка для кнопки "Открыть сайт" | https://kege-selector-staging-sandbox.up.railway.app/login |
+| `APP_URL` | URL веб-приложения | https://boostudy.ru/ |
+| `APP_OPEN_URL` | Ссылка для кнопки "Открыть сайт" | https://boostudy.ru/login |
 | `BOT_LOG_LEVEL` | Уровень логирования | INFO |
 
 ## Получение токена бота
