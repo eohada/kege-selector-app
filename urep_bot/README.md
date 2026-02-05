@@ -88,7 +88,7 @@ urep_bot/
 |------------|----------|--------------|
 | `BOT_TOKEN` | Токен Telegram бота | — |
 | `DATABASE_URL` | URL PostgreSQL | — |
-| `APP_URL` | URL веб-приложения | https://urep.up.railway.app |
+| `APP_URL` | URL веб-приложения | https://kege-selector-staging-sandbox.up.railway.app |
 | `APP_OPEN_URL` | Ссылка для кнопки "Открыть сайт" | https://kege-selector-staging-sandbox.up.railway.app/login |
 | `BOT_LOG_LEVEL` | Уровень логирования | INFO |
 
