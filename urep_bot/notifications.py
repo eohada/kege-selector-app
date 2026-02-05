@@ -2,6 +2,7 @@
 Фоновые задачи: отправка уведомлений и напоминаний.
 """
 import logging
+import json
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -108,6 +109,7 @@ async def process_pending_notifications(bot: Bot):
         result = session.execute(text("""
             SELECT 
                 un.notification_id,
+                un.user_id,
                 un.kind,
                 un.title,
                 un.body,
@@ -137,13 +139,21 @@ async def process_pending_notifications(bot: Bot):
             return 0
         
         sent_count = 0
+        processed_ids: set[int] = set()
         
         for notif in notifications:
             (
-                notif_id, kind, title, body, link_url, meta, chat_id,
+                notif_id, user_id, kind, title, body, link_url, meta, chat_id,
                 tg_notify_lesson_reminder, tg_notify_homework_checked, tg_notify_homework_returned,
                 tg_notify_new_message, tg_notify_lesson_scheduled, tg_notify_low_lessons, tg_notify_news
             ) = notif
+            if notif_id in processed_ids:
+                continue
+            if isinstance(meta, str):
+                try:
+                    meta = json.loads(meta)
+                except Exception:
+                    meta = None
             settings = {
                 'tg_notify_lesson_reminder': tg_notify_lesson_reminder,
                 'tg_notify_homework_checked': tg_notify_homework_checked,
@@ -163,6 +173,100 @@ async def process_pending_notifications(bot: Bot):
                 """), {"notif_id": notif_id})
                 continue
             
+            # Агрегация уведомлений о заданиях по уроку/типу
+            if kind == 'assignment_assigned':
+                lesson_id = (meta or {}).get('lesson_id')
+                assignment_type = (meta or {}).get('assignment_type')
+                task_numbers = (meta or {}).get('task_numbers') or {}
+                pending = [{
+                    'notif_id': notif_id,
+                    'user_id': user_id,
+                    'chat_id': chat_id,
+                    'title': title,
+                    'body': body,
+                    'link_url': link_url,
+                    'lesson_id': lesson_id,
+                    'assignment_type': assignment_type,
+                    'task_numbers': task_numbers,
+                }]
+                for n in notifications:
+                    if n is notif:
+                        continue
+                    n_id, n_user_id, n_kind, n_title, n_body, n_link_url, n_meta, n_chat_id, *_ = n
+                    if n_kind != 'assignment_assigned':
+                        continue
+                    if n_user_id != user_id:
+                        continue
+                    if n_chat_id != chat_id:
+                        continue
+                    n_meta_obj = None
+                    if isinstance(n_meta, str):
+                        try:
+                            n_meta_obj = json.loads(n_meta)
+                        except Exception:
+                            n_meta_obj = None
+                    else:
+                        n_meta_obj = n_meta
+                    if (n_meta_obj or {}).get('lesson_id') != lesson_id:
+                        continue
+                    if (n_meta_obj or {}).get('assignment_type') != assignment_type:
+                        continue
+                    pending.append({
+                        'notif_id': n_id,
+                        'user_id': n_user_id,
+                        'chat_id': n_chat_id,
+                        'title': n_title,
+                        'body': n_body,
+                        'link_url': n_link_url,
+                        'lesson_id': lesson_id,
+                        'assignment_type': assignment_type,
+                        'task_numbers': (n_meta_obj or {}).get('task_numbers') or {},
+                    })
+
+                # Собираем суммарные количества
+                merged_counts: dict[int, int] = {}
+                for p in pending:
+                    for k, v in (p.get('task_numbers') or {}).items():
+                        try:
+                            num = int(k)
+                            merged_counts[num] = merged_counts.get(num, 0) + int(v)
+                        except Exception:
+                            continue
+
+                def _plural(count: int) -> str:
+                    if count % 10 == 1 and count % 100 != 11:
+                        return 'задание'
+                    if 2 <= count % 10 <= 4 and not (12 <= count % 100 <= 14):
+                        return 'задания'
+                    return 'заданий'
+
+                if merged_counts:
+                    parts = [f\"{cnt} {_plural(cnt)} №{num}\" for num, cnt in sorted(merged_counts.items())]
+                    summary = ", ".join(parts)
+                else:
+                    summary = "нет заданий"
+
+                label_map = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа'}
+                label = label_map.get(assignment_type, 'Задания')
+                agg_title = f"Новые задания — {label}"
+                agg_body = f"{label}: {summary}"
+                agg_link = pending[0].get('link_url')
+                agg_meta = {'lesson_id': lesson_id, 'assignment_type': assignment_type}
+
+                message_text = format_notification('assignment_assigned', agg_title, agg_body, agg_link, agg_meta)
+                success = await send_telegram_notification(bot, chat_id, message_text)
+
+                for p in pending:
+                    session.execute(text("""
+                        UPDATE "UserNotifications"
+                        SET telegram_sent = TRUE
+                        WHERE notification_id = :notif_id
+                    """), {"notif_id": p['notif_id']})
+                    processed_ids.add(int(p['notif_id']))
+                if success:
+                    sent_count += 1
+                continue
+
             # Форматируем и отправляем
             message_text = format_notification(kind, title, body, link_url, meta)
             

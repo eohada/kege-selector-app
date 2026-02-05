@@ -76,6 +76,21 @@ def build_task_number_summary(task_ids: Iterable[int]) -> str:
     return ", ".join(parts) if parts else 'нет заданий'
 
 
+def build_task_number_counts(task_ids: Iterable[int]) -> dict[int, int]:
+    ids = [int(tid) for tid in (task_ids or []) if tid]
+    if not ids:
+        return {}
+
+    rows = (
+        db.session.query(Tasks.task_number, db.func.count(Tasks.task_id))
+        .filter(Tasks.task_id.in_(ids))
+        .group_by(Tasks.task_number)
+        .order_by(Tasks.task_number.asc())
+        .all()
+    )
+    return {int(task_number): int(count or 0) for task_number, count in rows}
+
+
 def notify_student_and_parents(student: Student, *, kind: str, title: str, body: str | None = None, link_url: str | None = None, meta: dict | None = None) -> None:
     st_user = _get_student_user(student)
     if not st_user:

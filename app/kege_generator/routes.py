@@ -18,7 +18,7 @@ from core.selector_logic import (
     get_accepted_tasks, get_skipped_tasks, get_next_unique_task
 )
 from core.audit_logger import audit_logger
-from app.notifications.service import notify_student_and_parents, build_task_number_summary
+from app.notifications.service import notify_student_and_parents, build_task_number_summary, build_task_number_counts
 
 logger = logging.getLogger(__name__)
 
@@ -381,6 +381,7 @@ def generator_stream_act():
                         label = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа'}.get(atype, 'Задания')
                         title = f"Новые задания — {label}"
                         summary = build_task_number_summary(added_task_ids)
+                        task_numbers = build_task_number_counts(added_task_ids)
                         body = f"{label}: {summary}"
                         notify_student_and_parents(
                             lesson.student,
@@ -393,7 +394,7 @@ def generator_stream_act():
                                 ),
                                 lesson_id=lesson.lesson_id
                             ),
-                            meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': added_count},
+                            meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': added_count, 'task_numbers': task_numbers},
                         )
                         try:
                             db.session.commit()
@@ -639,6 +640,7 @@ def task_action():
                         label = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа'}.get(atype, 'Задания')
                         title = f"Новые задания — {label}"
                         summary = build_task_number_summary(added_task_ids)
+                        task_numbers = build_task_number_counts(added_task_ids)
                         body = f"{label}: {summary}"
                         notify_student_and_parents(
                             lesson.student,
@@ -651,7 +653,7 @@ def task_action():
                                 ),
                                 lesson_id=lesson.lesson_id
                             ),
-                            meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': added_count},
+                            meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': added_count, 'task_numbers': task_numbers},
                         )
                         try:
                             db.session.commit()

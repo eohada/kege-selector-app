@@ -10,7 +10,7 @@ from app.templates_manager import templates_bp
 from app.models import TaskTemplate, TemplateTask, Lesson, LessonTask, UsageHistory, Tasks, Student, User, db, moscow_now
 from app.auth.rbac_utils import has_permission, get_user_scope
 from core.audit_logger import audit_logger
-from app.notifications.service import notify_student_and_parents, build_task_number_summary
+from app.notifications.service import notify_student_and_parents, build_task_number_summary, build_task_number_counts
 
 logger = logging.getLogger(__name__)
 
@@ -452,6 +452,7 @@ def template_apply(template_id):
                 label = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа'}.get(atype, 'Задания')
                 title = f"Новые задания — {label}"
                 summary = build_task_number_summary(applied_task_ids)
+                task_numbers = build_task_number_counts(applied_task_ids)
                 body = f"{label}: {summary}"
                 notify_student_and_parents(
                     lesson.student,
@@ -464,7 +465,7 @@ def template_apply(template_id):
                         ),
                         lesson_id=lesson.lesson_id
                     ),
-                    meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': applied_count},
+                    meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': applied_count, 'task_numbers': task_numbers},
                 )
                 try:
                     db.session.commit()
