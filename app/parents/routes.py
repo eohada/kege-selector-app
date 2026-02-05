@@ -17,6 +17,35 @@ from sqlalchemy.orm import joinedload
 logger = logging.getLogger(__name__)
 
 
+def _resolve_student_for_user(student_user):
+    """Найти Student для user: по user_id, затем по email с выбором по урокам."""
+    if not student_user:
+        return None
+
+    student = Student.query.filter_by(user_id=student_user.id).first()
+    if student:
+        return student
+
+    if not student_user.email:
+        return None
+
+    candidates = Student.query.filter_by(email=student_user.email).all()
+    if not candidates:
+        return None
+    if len(candidates) == 1:
+        return candidates[0]
+
+    best_candidate = None
+    best_count = -1
+    for candidate in candidates:
+        lessons_count = Lesson.query.filter_by(student_id=candidate.student_id).count()
+        if lessons_count > best_count:
+            best_candidate = candidate
+            best_count = lessons_count
+
+    return best_candidate or candidates[0]
+
+
 @parents_bp.route('/parent/dashboard')
 @parents_bp.route('/dashboard')
 @require_parent
@@ -57,10 +86,8 @@ def parent_dashboard():
             if not student_user:
                 continue
             
-            # Находим связанного Student: сначала по user_id, затем по email
-            student = Student.query.filter_by(user_id=student_user.id).first()
-            if not student and student_user.email:
-                student = Student.query.filter_by(email=student_user.email).first()
+            # Находим связанного Student: сначала по user_id, затем по email (с выбором по урокам)
+            student = _resolve_student_for_user(student_user)
             
             # Формируем имя для отображения
             student_name = student_user.username
@@ -91,11 +118,9 @@ def parent_dashboard():
         selected_student = None
         selected_student_user = User.query.get(selected_student_id)
         
-        # Находим связанного Student для выбранного User: user_id, затем email
+        # Находим связанного Student для выбранного User: user_id, затем email (с выбором по урокам)
         if selected_student_user:
-            selected_student = Student.query.filter_by(user_id=selected_student_user.id).first()
-            if not selected_student and selected_student_user.email:
-                selected_student = Student.query.filter_by(email=selected_student_user.email).first()
+            selected_student = _resolve_student_for_user(selected_student_user)
         
         if selected_student:
             # Статистика через StatsService
@@ -231,10 +256,8 @@ def api_parent_children():
             if not student_user:
                 continue
             
-            # Находим связанного Student
-            student = None
-            if student_user.email:
-                student = Student.query.filter_by(email=student_user.email).first()
+            # Находим связанного Student: сначала по user_id, затем по email (с выбором по урокам)
+            student = _resolve_student_for_user(student_user)
             
             children_data.append({
                 'user_id': student_user.id,

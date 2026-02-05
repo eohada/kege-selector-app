@@ -19,26 +19,36 @@
         }
         
         .child-selector-btn {
-            padding: 0.75rem 1.5rem;
-            background: var(--surface-2);
-            border: 1px solid var(--stroke-1);
-            border-radius: 8px;
+            padding: 0.85rem 1.75rem;
+            background: var(--surface-3);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
             color: var(--text-primary);
             font-family: var(--font-base);
-            font-size: 0.95rem;
+            font-size: 1.05rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
             cursor: pointer;
             transition: all 0.2s ease;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
         }
         
         .child-selector-btn:hover {
-            background: var(--surface-3);
-            border-color: var(--accent-1);
+            background: rgba(59, 130, 246, 0.12);
+            border-color: rgba(59, 130, 246, 0.6);
+            transform: translateY(-1px);
         }
         
         .child-selector-btn.active {
-            background: var(--accent-1);
-            border-color: var(--accent-1);
-            color: white;
+            background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+            border-color: rgba(37, 99, 235, 0.9);
+            color: #ffffff;
+            box-shadow: 0 12px 26px rgba(14, 165, 233, 0.35);
+        }
+
+        .child-selector-btn:focus-visible {
+            outline: 2px solid rgba(14, 165, 233, 0.9);
+            outline-offset: 2px;
         }
         
         .metrics-grid {
@@ -75,10 +85,12 @@
         
         .ai-summary {
             padding: 1.5rem;
-            background: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 100%);
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%);
             border-radius: 8px;
-            color: white;
+            color: #f8fafc;
+            border: 1px solid rgba(148, 163, 184, 0.2);
             margin-bottom: 1.5rem;
+            box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
         }
         
         .ai-summary h3 {
@@ -89,6 +101,10 @@
         .ai-summary p {
             margin: 0.5rem 0;
             line-height: 1.6;
+        }
+
+        .ai-summary strong {
+            color: #ffffff;
         }
         
         .lessons-list {
@@ -181,9 +197,7 @@
                                     <div class="metric-delta">Оплачено: {{ financial_data.total_paid }}</div>
                                 </div>
                             </div>
-                            <div style="margin-top: 1rem;">
-                                <button class="neo-button accent">Пополнить баланс</button>
-                            </div>
+                            
                         </section>
                         {% endif %}
                         
