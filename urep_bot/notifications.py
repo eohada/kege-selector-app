@@ -26,6 +26,7 @@ KIND_SETTINGS_MAP = {
     'lesson_task_returned': 'tg_notify_homework_returned',
     'assignment_returned': 'tg_notify_homework_returned',
     'lesson_message': 'tg_notify_new_message',
+    'assignment_assigned': 'tg_notify_new_message',
     'lessons_low': 'tg_notify_low_lessons',
     'platform_news': 'tg_notify_news',
     'news': 'tg_notify_news',

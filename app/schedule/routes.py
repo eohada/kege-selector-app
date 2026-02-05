@@ -627,6 +627,11 @@ def schedule_create_lesson():
                         link_url=url_for('lessons.lesson_view', lesson_id=created_lesson.lesson_id),
                         meta={'lesson_id': created_lesson.lesson_id, 'date': date_str, 'topic': created_lesson.topic or ''},
                     )
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                logger.warning(f"Could not commit lesson_scheduled notifications (schedule_create_lesson): {e}")
         except Exception as e:
             logger.warning(f"Failed to notify about lesson_scheduled (schedule_create_lesson): {e}")
         
@@ -767,6 +772,11 @@ def schedule_reschedule_lesson(lesson_id: int):
                     link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
                     meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or '', 'rescheduled': True},
                 )
+                try:
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    logger.warning(f"Could not commit lesson reschedule notification: {e}")
         except Exception as e:
             logger.warning(f"Failed to notify about lesson reschedule: {e}")
 
@@ -823,6 +833,11 @@ def schedule_set_status(lesson_id: int):
                     link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
                     meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or ''},
                 )
+                try:
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    logger.warning(f"Could not commit lesson_scheduled notification (set_status): {e}")
         except Exception as e:
             logger.warning(f"Failed to notify about lesson status planned: {e}")
 
@@ -938,6 +953,11 @@ def schedule_update_lesson(lesson_id: int):
                     link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
                     meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or '', 'rescheduled': True},
                 )
+                try:
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    logger.warning(f"Could not commit lesson update reschedule notification: {e}")
         except Exception as e:
             logger.warning(f"Failed to notify about lesson update reschedule: {e}")
 
@@ -1496,6 +1516,11 @@ def schedule_templates_apply_week():
                     link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
                     meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or ''},
                 )
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.warning(f"Could not commit lesson_scheduled notifications (recurring slots): {e}")
     except Exception as e:
         logger.warning(f"Failed to notify about lesson_scheduled (recurring slots): {e}")
 

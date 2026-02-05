@@ -1472,6 +1472,7 @@ def lesson_homework_save(lesson_id):
         result_notes = request.form.get('homework_result_notes', '').strip()  # comment
         lesson.homework_result_notes = result_notes or None  # comment
 
+    prev_status = lesson.homework_status
     if lesson.lesson_type == 'introductory':
         lesson.homework_status = 'not_assigned'
     elif lesson.homework_result_percent is not None or lesson.homework_result_notes:
@@ -1486,6 +1487,27 @@ def lesson_homework_save(lesson_id):
     except Exception as e:
         db.session.rollback()
         raise
+
+    # Уведомление о новых заданиях в уроке (ДЗ)
+    try:
+        if lesson.student and prev_status != 'assigned_not_done' and lesson.homework_status == 'assigned_not_done' and homework_tasks:
+            title = 'Новое домашнее задание'
+            body = f"Урок: {(lesson.topic or '').strip() or 'Без темы'}"
+            notify_student_and_parents(
+                lesson.student,
+                kind='assignment_assigned',
+                title=title,
+                body=body,
+                link_url=url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id),
+                meta={'lesson_id': lesson.lesson_id, 'assignment_type': 'homework', 'tasks_count': len(homework_tasks)},
+            )
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                logger.warning(f"Could not commit assignment_assigned notification (homework_save): {e}")
+    except Exception as e:
+        logger.warning(f"Failed to notify about assignment_assigned (homework_save): {e}")
     
     # Логируем сохранение домашнего задания
     audit_logger.log(
@@ -2268,6 +2290,33 @@ def lesson_manual_create(lesson_id):
                 count += 1
                 
             db.session.commit()
+
+            try:
+                if count > 0 and lesson.student:
+                    atype = (assignment_type or 'homework').strip().lower()
+                    label = {'homework': 'домашнее задание', 'classwork': 'классная работа', 'exam': 'проверочная'} .get(atype, 'задания')
+                    title = f"Новые задания: {label}"
+                    body = f"Урок: {(lesson.topic or '').strip() or 'Без темы'}"
+                    notify_student_and_parents(
+                        lesson.student,
+                        kind='assignment_assigned',
+                        title=title,
+                        body=body,
+                        link_url=url_for(
+                            'lessons.lesson_homework_view' if atype == 'homework' else (
+                                'lessons.lesson_classwork_view' if atype == 'classwork' else 'lessons.lesson_exam_view'
+                            ),
+                            lesson_id=lesson.lesson_id
+                        ),
+                        meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': count},
+                    )
+                    try:
+                        db.session.commit()
+                    except Exception as e:
+                        db.session.rollback()
+                        logger.warning(f"Could not commit assignment_assigned notification (manual tasks): {e}")
+            except Exception as e:
+                logger.warning(f"Failed to notify about assignment_assigned (manual tasks): {e}")
             
             audit_logger.log(
                 action='create_manual_tasks',

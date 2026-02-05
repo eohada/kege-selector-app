@@ -10,6 +10,7 @@ from app.templates_manager import templates_bp
 from app.models import TaskTemplate, TemplateTask, Lesson, LessonTask, UsageHistory, Tasks, Student, User, db, moscow_now
 from app.auth.rbac_utils import has_permission, get_user_scope
 from core.audit_logger import audit_logger
+from app.notifications.service import notify_student_and_parents
 
 logger = logging.getLogger(__name__)
 
@@ -442,6 +443,33 @@ def template_apply(template_id):
         except Exception as commit_error:
             db.session.rollback()
             raise
+
+        try:
+            if applied_count > 0 and lesson.student:
+                atype = (assignment_type or 'homework').strip().lower()
+                label = {'homework': 'домашнее задание', 'classwork': 'классная работа', 'exam': 'проверочная'} .get(atype, 'задания')
+                title = f"Новые задания: {label}"
+                body = f"Урок: {(lesson.topic or '').strip() or 'Без темы'}"
+                notify_student_and_parents(
+                    lesson.student,
+                    kind='assignment_assigned',
+                    title=title,
+                    body=body,
+                    link_url=url_for(
+                        'lessons.lesson_homework_view' if atype == 'homework' else (
+                            'lessons.lesson_classwork_view' if atype == 'classwork' else 'lessons.lesson_exam_view'
+                        ),
+                        lesson_id=lesson.lesson_id
+                    ),
+                    meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': applied_count},
+                )
+                try:
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    logger.warning(f"Could not commit assignment_assigned notification (template_apply): {e}")
+        except Exception as e:
+            logger.warning(f"Failed to notify about assignment_assigned (template_apply): {e}")
         
         audit_logger.log(
             action='apply_template',

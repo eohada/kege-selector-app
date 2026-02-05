@@ -1927,6 +1927,11 @@ def lesson_new(student_id):
                     link_url=url_for('lessons.lesson_view', lesson_id=lesson.lesson_id),
                     meta={'lesson_id': lesson.lesson_id, 'date': date_str, 'topic': lesson.topic or ''},
                 )
+                try:
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    logger.warning(f"Could not commit lesson_scheduled notification: {e}")
         except Exception as e:
             logger.warning(f"Failed to notify about lesson_scheduled: {e}")
         

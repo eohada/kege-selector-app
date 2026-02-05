@@ -18,6 +18,7 @@ from core.selector_logic import (
     get_accepted_tasks, get_skipped_tasks, get_next_unique_task
 )
 from core.audit_logger import audit_logger
+from app.notifications.service import notify_student_and_parents
 
 logger = logging.getLogger(__name__)
 
@@ -357,6 +358,7 @@ def generator_stream_act():
                 if not lesson:
                     return jsonify({'success': False, 'error': 'Урок не найден'}), 404
                 existing = LessonTask.query.filter_by(lesson_id=lesson_id, task_id=task_id).first()
+                added_count = 0
                 if not existing:
                     db.session.add(LessonTask(lesson_id=lesson_id, task_id=task_id, assignment_type=assignment_type))
                     # record global anti-repeat (best-effort)
@@ -365,11 +367,38 @@ def generator_stream_act():
                             db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=task_id, source=f'lesson:{assignment_type}'))
                     except Exception:
                         pass
+                    added_count = 1
                 if assignment_type == 'homework':
                     lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
                     lesson.homework_result_percent = None
                     lesson.homework_result_notes = None
                 db.session.commit()
+                try:
+                    if added_count > 0 and lesson.student:
+                        atype = (assignment_type or 'homework').strip().lower()
+                        label = {'homework': 'домашнее задание', 'classwork': 'классная работа', 'exam': 'проверочная'} .get(atype, 'задания')
+                        title = f"Новые задания: {label}"
+                        body = f"Урок: {(lesson.topic or '').strip() or 'Без темы'}"
+                        notify_student_and_parents(
+                            lesson.student,
+                            kind='assignment_assigned',
+                            title=title,
+                            body=body,
+                            link_url=url_for(
+                                'lessons.lesson_homework_view' if atype == 'homework' else (
+                                    'lessons.lesson_classwork_view' if atype == 'classwork' else 'lessons.lesson_exam_view'
+                                ),
+                                lesson_id=lesson.lesson_id
+                            ),
+                            meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': added_count},
+                        )
+                        try:
+                            db.session.commit()
+                        except Exception as e:
+                            db.session.rollback()
+                            logger.warning(f"Could not commit assignment_assigned notification (generator accept): {e}")
+                except Exception as e:
+                    logger.warning(f"Failed to notify about assignment_assigned (generator accept): {e}")
                 message = 'Задание добавлено в урок.'
             else:
                 record_usage([task_id])
@@ -557,11 +586,13 @@ def task_action():
                 if not lesson:
                     return jsonify({'success': False, 'error': 'Урок не найден'}), 404
 
+                added_count = 0
                 for task_id in task_ids:
                     existing = LessonTask.query.filter_by(lesson_id=lesson_id, task_id=task_id).first()
                     if not existing:
                         lesson_task = LessonTask(lesson_id=lesson_id, task_id=task_id, assignment_type=assignment_type)
                         db.session.add(lesson_task)
+                        added_count += 1
                         # record global anti-repeat (best-effort)
                         try:
                             if lesson.student_id:
@@ -597,6 +628,33 @@ def task_action():
                         error=str(e)
                     )
                     return jsonify({'success': False, 'error': f'Ошибка при сохранении: {str(e)}'}), 500
+                try:
+                    if added_count > 0 and lesson.student:
+                        atype = (assignment_type or 'homework').strip().lower()
+                        label = {'homework': 'домашнее задание', 'classwork': 'классная работа', 'exam': 'проверочная'} .get(atype, 'задания')
+                        title = f"Новые задания: {label}"
+                        body = f"Урок: {(lesson.topic or '').strip() or 'Без темы'}"
+                        notify_student_and_parents(
+                            lesson.student,
+                            kind='assignment_assigned',
+                            title=title,
+                            body=body,
+                            link_url=url_for(
+                                'lessons.lesson_homework_view' if atype == 'homework' else (
+                                    'lessons.lesson_classwork_view' if atype == 'classwork' else 'lessons.lesson_exam_view'
+                                ),
+                                lesson_id=lesson.lesson_id
+                            ),
+                            meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': added_count},
+                        )
+                        try:
+                            db.session.commit()
+                        except Exception as e:
+                            db.session.rollback()
+                            logger.warning(f"Could not commit assignment_assigned notification (generator accept many): {e}")
+                except Exception as e:
+                    logger.warning(f"Failed to notify about assignment_assigned (generator accept many): {e}")
+
                 if template_id:
                     # Если есть template_id, сообщаем об этом
                     message = f'{len(task_ids)} заданий добавлено в домашнее задание и в шаблон.'

@@ -88,6 +88,7 @@ NOTIFICATION_TEMPLATES = {
     'lesson_message': "💬 {title}\n\n{body}",
     'assignment_graded': "✅ {title}\n\n{body}",
     'assignment_returned': "↩️ {title}\n\n{body}",
+    'assignment_assigned': "📝 {title}\n\n{body}",
     'lessons_low': "⚠️ Осталось уроков: {count}\n\nПополните баланс для продолжения занятий.",
     'platform_news': "📢 {title}\n\n{body}",
     'news': "📢 {title}\n\n{body}",
