@@ -24,6 +24,9 @@ LOG_LEVEL = os.environ.get('BOT_LOG_LEVEL', 'INFO')
 NOTIFICATION_CHECK_INTERVAL = 30  # Проверка новых уведомлений
 REMINDER_CHECK_INTERVAL = 300     # Проверка напоминаний (5 мин)
 
+# Защита от двойного запуска (Postgres advisory lock)
+BOT_INSTANCE_LOCK_KEY = int(os.environ.get('BOT_INSTANCE_LOCK_KEY', '735901'))
+
 
 def validate_config():
     """Проверка обязательных переменных окружения."""

@@ -5,14 +5,16 @@
 import asyncio
 import logging
 import sys
+import os
 from pathlib import Path
 
 # Добавляем корневую директорию в путь
 ROOT_DIR = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
-from urep_bot.config import validate_config, LOG_LEVEL, NOTIFICATION_CHECK_INTERVAL, REMINDER_CHECK_INTERVAL
-from urep_bot.db import init_db
+from urep_bot.config import validate_config, LOG_LEVEL, NOTIFICATION_CHECK_INTERVAL, REMINDER_CHECK_INTERVAL, BOT_INSTANCE_LOCK_KEY, DATABASE_URL
+from urep_bot.db import init_db, get_session, close_session
+from sqlalchemy import text
 from urep_bot.bot import create_bot_application
 from urep_bot.notifications import (
     process_pending_notifications,
@@ -70,6 +72,11 @@ def main():
     logger.info("=" * 50)
     logger.info("URep Telegram Bot starting...")
     logger.info("=" * 50)
+    logger.info(f"PID: {os.getpid()}")
+    logger.info(f"HOSTNAME: {os.environ.get('HOSTNAME') or ''}")
+    logger.info(f"RAILWAY_SERVICE_NAME: {os.environ.get('RAILWAY_SERVICE_NAME') or ''}")
+    logger.info(f"RAILWAY_DEPLOYMENT_ID: {os.environ.get('RAILWAY_DEPLOYMENT_ID') or ''}")
+    logger.info(f"RAILWAY_REPLICA_ID: {os.environ.get('RAILWAY_REPLICA_ID') or ''}")
     
     # Валидация конфигурации
     try:
@@ -85,6 +92,26 @@ def main():
         logger.info("Database initialized")
     except Exception as e:
         logger.error(f"Database error: {e}")
+        sys.exit(1)
+
+    # Защита от двойного запуска (Postgres advisory lock)
+    try:
+        db_url = (DATABASE_URL or '').lower()
+        if 'postgres' in db_url:
+            session = get_session()
+            try:
+                res = session.execute(text("SELECT pg_try_advisory_lock(:key)"), {"key": BOT_INSTANCE_LOCK_KEY}).fetchone()
+                locked = bool(res and res[0])
+                if not locked:
+                    logger.error("Another bot instance already holds advisory lock. Exiting.")
+                    sys.exit(3)
+                logger.info(f"Advisory lock acquired: {BOT_INSTANCE_LOCK_KEY}")
+            finally:
+                close_session(session)
+        else:
+            logger.info("Advisory lock skipped (non-Postgres DB).")
+    except Exception as e:
+        logger.error(f"Failed to acquire advisory lock: {e}")
         sys.exit(1)
     
     # Создание приложения
