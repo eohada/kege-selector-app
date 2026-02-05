@@ -77,6 +77,13 @@ def main():
     logger.info(f"RAILWAY_SERVICE_NAME: {os.environ.get('RAILWAY_SERVICE_NAME') or ''}")
     logger.info(f"RAILWAY_DEPLOYMENT_ID: {os.environ.get('RAILWAY_DEPLOYMENT_ID') or ''}")
     logger.info(f"RAILWAY_REPLICA_ID: {os.environ.get('RAILWAY_REPLICA_ID') or ''}")
+
+    # Жёсткая защита: бот не должен запускаться в web-сервисе
+    service_name = (os.environ.get('RAILWAY_SERVICE_NAME') or '').strip().lower()
+    allow_web = (os.environ.get('BOT_ALLOW_WEB') or '').strip().lower() in {'1', 'true', 'yes'}
+    if service_name == 'web' and not allow_web:
+        logger.error("Bot start blocked: RAILWAY_SERVICE_NAME=web. Set BOT_ALLOW_WEB=1 to override.")
+        sys.exit(3)
     
     # Валидация конфигурации
     try:
