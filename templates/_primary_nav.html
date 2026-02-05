@@ -39,8 +39,10 @@
         {% endif %}
         
         <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
-            <div class="brand-mark">LOGO</div>
-            <div class="brand-caption">Слот под фирменный знак</div>
+            <div class="brand-mark">
+                <img src="{{ url_for('static', filename='icons/BooStudyLogo.png') }}" alt="BooStudy" style="height: 36px; width: auto; display: block;">
+            </div>
+            <div class="brand-caption">BooStudy</div>
         </a>
     </div>
 
