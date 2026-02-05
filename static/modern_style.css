@@ -292,8 +292,8 @@ body::after {
 }
 
 .brand-mark {
-    width: 72px;
-    height: 72px;
+    width: 108px;
+    height: 108px;
     border-radius: 16px;
     border: none;
     display: grid;
@@ -305,7 +305,7 @@ body::after {
 }
 
 .brand-caption {
-    font-size: 1.05rem;
+    font-size: 1.55rem;
     color: var(--text-muted);
     letter-spacing: 0.05em;
 }
@@ -2470,8 +2470,8 @@ body.creator-theme-active .students-grid {
     }
 
     .brand-mark {
-        width: 56px;
-        height: 56px;
+        width: 84px;
+        height: 84px;
         font-size: 0.65rem;
     }
 
@@ -2482,7 +2482,7 @@ body.creator-theme-active .students-grid {
     }
 
     .brand-caption {
-        font-size: 0.9rem;
+        font-size: 1.25rem;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
