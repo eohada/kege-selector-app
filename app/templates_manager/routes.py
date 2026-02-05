@@ -10,7 +10,7 @@ from app.templates_manager import templates_bp
 from app.models import TaskTemplate, TemplateTask, Lesson, LessonTask, UsageHistory, Tasks, Student, User, db, moscow_now
 from app.auth.rbac_utils import has_permission, get_user_scope
 from core.audit_logger import audit_logger
-from app.notifications.service import notify_student_and_parents
+from app.notifications.service import notify_student_and_parents, build_task_number_summary
 
 logger = logging.getLogger(__name__)
 
@@ -398,6 +398,7 @@ def template_apply(template_id):
         ).get_or_404(template_id)
         
         template_tasks = sorted(template.template_tasks, key=lambda tt: tt.order)
+        applied_task_ids = []
         valid_types = ['homework', 'classwork', 'exam']  # Единственные типы, которые реально отображаются в уроке
         if requested_type in valid_types:  # Если фронт передал валидный тип — используем его
             assignment_type = requested_type  # Приоритет у текущего раздела (например, добавляем в КР)
@@ -423,6 +424,7 @@ def template_apply(template_id):
                 )
                 db.session.add(lesson_task)
                 applied_count += 1
+                applied_task_ids.append(template_task.task_id)
                 
                 usage = UsageHistory(
                     task_fk=template_task.task_id,
@@ -447,9 +449,10 @@ def template_apply(template_id):
         try:
             if applied_count > 0 and lesson.student:
                 atype = (assignment_type or 'homework').strip().lower()
-                label = {'homework': 'домашнее задание', 'classwork': 'классная работа', 'exam': 'проверочная'} .get(atype, 'задания')
-                title = f"Новые задания: {label}"
-                body = f"Урок: {(lesson.topic or '').strip() or 'Без темы'}"
+                label = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа'}.get(atype, 'Задания')
+                title = f"Новые задания — {label}"
+                summary = build_task_number_summary(applied_task_ids)
+                body = f"{label}: {summary}"
                 notify_student_and_parents(
                     lesson.student,
                     kind='assignment_assigned',

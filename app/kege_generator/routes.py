@@ -18,7 +18,7 @@ from core.selector_logic import (
     get_accepted_tasks, get_skipped_tasks, get_next_unique_task
 )
 from core.audit_logger import audit_logger
-from app.notifications.service import notify_student_and_parents
+from app.notifications.service import notify_student_and_parents, build_task_number_summary
 
 logger = logging.getLogger(__name__)
 
@@ -359,6 +359,7 @@ def generator_stream_act():
                     return jsonify({'success': False, 'error': 'Урок не найден'}), 404
                 existing = LessonTask.query.filter_by(lesson_id=lesson_id, task_id=task_id).first()
                 added_count = 0
+                added_task_ids = []
                 if not existing:
                     db.session.add(LessonTask(lesson_id=lesson_id, task_id=task_id, assignment_type=assignment_type))
                     # record global anti-repeat (best-effort)
@@ -368,6 +369,7 @@ def generator_stream_act():
                     except Exception:
                         pass
                     added_count = 1
+                    added_task_ids = [task_id]
                 if assignment_type == 'homework':
                     lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
                     lesson.homework_result_percent = None
@@ -376,9 +378,10 @@ def generator_stream_act():
                 try:
                     if added_count > 0 and lesson.student:
                         atype = (assignment_type or 'homework').strip().lower()
-                        label = {'homework': 'домашнее задание', 'classwork': 'классная работа', 'exam': 'проверочная'} .get(atype, 'задания')
-                        title = f"Новые задания: {label}"
-                        body = f"Урок: {(lesson.topic or '').strip() or 'Без темы'}"
+                        label = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа'}.get(atype, 'Задания')
+                        title = f"Новые задания — {label}"
+                        summary = build_task_number_summary(added_task_ids)
+                        body = f"{label}: {summary}"
                         notify_student_and_parents(
                             lesson.student,
                             kind='assignment_assigned',
@@ -587,12 +590,14 @@ def task_action():
                     return jsonify({'success': False, 'error': 'Урок не найден'}), 404
 
                 added_count = 0
+                added_task_ids = []
                 for task_id in task_ids:
                     existing = LessonTask.query.filter_by(lesson_id=lesson_id, task_id=task_id).first()
                     if not existing:
                         lesson_task = LessonTask(lesson_id=lesson_id, task_id=task_id, assignment_type=assignment_type)
                         db.session.add(lesson_task)
                         added_count += 1
+                        added_task_ids.append(task_id)
                         # record global anti-repeat (best-effort)
                         try:
                             if lesson.student_id:
@@ -631,9 +636,10 @@ def task_action():
                 try:
                     if added_count > 0 and lesson.student:
                         atype = (assignment_type or 'homework').strip().lower()
-                        label = {'homework': 'домашнее задание', 'classwork': 'классная работа', 'exam': 'проверочная'} .get(atype, 'задания')
-                        title = f"Новые задания: {label}"
-                        body = f"Урок: {(lesson.topic or '').strip() or 'Без темы'}"
+                        label = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа'}.get(atype, 'Задания')
+                        title = f"Новые задания — {label}"
+                        summary = build_task_number_summary(added_task_ids)
+                        body = f"{label}: {summary}"
                         notify_student_and_parents(
                             lesson.student,
                             kind='assignment_assigned',

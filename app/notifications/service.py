@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Iterable
 
-from app.models import db, User, Student, UserNotification, FamilyTie
+from app.models import db, User, Student, UserNotification, FamilyTie, Tasks
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,33 @@ def notify_user(user_id: int, *, kind: str, title: str, body: str | None = None,
         meta=meta,
     )
     db.session.add(n)
+
+
+def _pluralize_tasks(count: int) -> str:
+    if count % 10 == 1 and count % 100 != 11:
+        return 'задание'
+    if 2 <= count % 10 <= 4 and not (12 <= count % 100 <= 14):
+        return 'задания'
+    return 'заданий'
+
+
+def build_task_number_summary(task_ids: Iterable[int]) -> str:
+    ids = [int(tid) for tid in (task_ids or []) if tid]
+    if not ids:
+        return 'нет заданий'
+
+    rows = (
+        db.session.query(Tasks.task_number, db.func.count(Tasks.task_id))
+        .filter(Tasks.task_id.in_(ids))
+        .group_by(Tasks.task_number)
+        .order_by(Tasks.task_number.asc())
+        .all()
+    )
+    parts = []
+    for task_number, count in rows:
+        word = _pluralize_tasks(int(count or 0))
+        parts.append(f"{int(count)} {word} №{int(task_number)}")
+    return ", ".join(parts) if parts else 'нет заданий'
 
 
 def notify_student_and_parents(student: Student, *, kind: str, title: str, body: str | None = None, link_url: str | None = None, meta: dict | None = None) -> None:

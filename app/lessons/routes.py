@@ -19,7 +19,7 @@ from app.lessons.utils import get_sorted_assignments, perform_auto_check, normal
 from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, LessonWhiteboard, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
-from app.notifications.service import notify_student_and_parents
+from app.notifications.service import notify_student_and_parents, build_task_number_summary
 from app.models import FamilyTie  # для доступа родителя к диалогам
 
 logger = logging.getLogger(__name__)
@@ -1491,8 +1491,9 @@ def lesson_homework_save(lesson_id):
     # Уведомление о новых заданиях в уроке (ДЗ)
     try:
         if lesson.student and prev_status != 'assigned_not_done' and lesson.homework_status == 'assigned_not_done' and homework_tasks:
-            title = 'Новое домашнее задание'
-            body = f"Урок: {(lesson.topic or '').strip() or 'Без темы'}"
+            title = 'Новые задания — Домашняя работа'
+            summary = build_task_number_summary([t.task_id for t in homework_tasks])
+            body = f"Домашняя работа: {summary}"
             notify_student_and_parents(
                 lesson.student,
                 kind='assignment_assigned',
@@ -2268,6 +2269,7 @@ def lesson_manual_create(lesson_id):
                 db.session.rollback()  # Откатываем на всякий случай
             
             count = 0
+            created_task_ids = []
             for task_data in tasks_data:
                 # Create Task
                 new_task = Tasks(
@@ -2279,6 +2281,7 @@ def lesson_manual_create(lesson_id):
                 )
                 db.session.add(new_task)
                 db.session.flush() # Get task_id
+                created_task_ids.append(new_task.task_id)
                 
                 # Link to Lesson
                 lesson_task = LessonTask(
@@ -2294,9 +2297,10 @@ def lesson_manual_create(lesson_id):
             try:
                 if count > 0 and lesson.student:
                     atype = (assignment_type or 'homework').strip().lower()
-                    label = {'homework': 'домашнее задание', 'classwork': 'классная работа', 'exam': 'проверочная'} .get(atype, 'задания')
-                    title = f"Новые задания: {label}"
-                    body = f"Урок: {(lesson.topic or '').strip() or 'Без темы'}"
+                    label = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа'}.get(atype, 'Задания')
+                    title = f"Новые задания — {label}"
+                    summary = build_task_number_summary(created_task_ids)
+                    body = f"{label}: {summary}"
                     notify_student_and_parents(
                         lesson.student,
                         kind='assignment_assigned',
