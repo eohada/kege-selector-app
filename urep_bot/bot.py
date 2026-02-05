@@ -469,8 +469,8 @@ def format_hw_status(s: str) -> str:
 # ============================================
 
 def _link_via_app_api(code: str, chat_id: int, telegram_id: Optional[str]):
-    """Привязка через API приложения (если BOT_INTERNAL_TOKEN настроен)."""
-    if not BOT_INTERNAL_TOKEN or not APP_URL:
+    """Привязка через API приложения."""
+    if not APP_URL:
         return None
 
     url = f"{APP_URL.rstrip('/')}/api/telegram/link-bot"
@@ -480,10 +480,9 @@ def _link_via_app_api(code: str, chat_id: int, telegram_id: Optional[str]):
         "telegram_id": telegram_id,
     }
     request_data = json.dumps(payload).encode("utf-8")
-    request_headers = {
-        "Content-Type": "application/json",
-        "X-Bot-Token": BOT_INTERNAL_TOKEN,
-    }
+    request_headers = {"Content-Type": "application/json"}
+    if BOT_INTERNAL_TOKEN:
+        request_headers["X-Bot-Token"] = BOT_INTERNAL_TOKEN
 
     req = urllib.request.Request(
         url,

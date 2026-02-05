@@ -459,8 +459,11 @@ def api_telegram_link_bot():
     try:
         expected = (os.environ.get('BOT_INTERNAL_TOKEN') or '').strip()
         provided = (request.headers.get('X-Bot-Token') or '').strip()
-        if not expected or not secrets.compare_digest(provided, expected):
-            return jsonify({'success': False, 'error': 'unauthorized'}), 401
+        if expected:
+            if not secrets.compare_digest(provided, expected):
+                return jsonify({'success': False, 'error': 'unauthorized'}), 401
+        else:
+            logger.warning("BOT_INTERNAL_TOKEN не задан, привязка бота доступна без токена")
 
         data = request.get_json() or {}
         code = (data.get('code') or '').strip().upper()
