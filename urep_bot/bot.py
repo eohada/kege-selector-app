@@ -468,12 +468,8 @@ def format_hw_status(s: str) -> str:
 # КОМАНДЫ
 # ============================================
 
-def _link_via_app_api(code: str, chat_id: int, telegram_id: Optional[str]):
-    """Привязка через API приложения."""
-    if not APP_URL:
-        return None
-
-    url = f"{APP_URL.rstrip('/')}/api/telegram/link-bot"
+def _call_link_api(url: str, code: str, chat_id: int, telegram_id: Optional[str]):
+    """Вызов API привязки по указанному URL."""
     payload = {
         "code": code,
         "chat_id": chat_id,
@@ -506,6 +502,38 @@ def _link_via_app_api(code: str, chat_id: int, telegram_id: Optional[str]):
     except Exception as e:
         logger.warning(f"Link via app API failed: {e}", exc_info=True)
         return None
+
+
+def _link_via_app_api(code: str, chat_id: int, telegram_id: Optional[str]):
+    """Привязка через API приложения (с fallback на основной домен)."""
+    if not APP_URL:
+        return None
+
+    base_urls = []
+    for base in (APP_URL, "https://boostudy.ru/"):
+        if base and base not in base_urls:
+            base_urls.append(base)
+
+    last_result = None
+    for base in base_urls:
+        url = f"{base.rstrip('/')}/api/telegram/link-bot"
+        result = _call_link_api(url, code, chat_id, telegram_id)
+        if not result:
+            continue
+
+        status = result.get("status")
+        data = result.get("data") or {}
+        error = data.get("error")
+
+        if status == 200 and data.get("success"):
+            return result
+
+        if error != "invalid_code":
+            return result
+
+        last_result = result
+
+    return last_result
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):

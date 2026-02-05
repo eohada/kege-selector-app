@@ -6,7 +6,7 @@ import os
 import secrets
 from flask import request, jsonify, url_for
 from flask_login import login_required
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 
 from app.api import api_bp
 from app.models import Student, Lesson, Tasks, db, User, Enrollment, UserProfile
@@ -482,7 +482,9 @@ def api_telegram_link_bot():
         if existing:
             return jsonify({'success': False, 'error': 'already_linked'}), 409
 
-        profile = UserProfile.query.filter_by(telegram_link_code=code).first()
+        profile = UserProfile.query.filter(
+            func.upper(UserProfile.telegram_link_code) == code
+        ).first()
         if not profile:
             return jsonify({'success': False, 'error': 'invalid_code'}), 404
 
