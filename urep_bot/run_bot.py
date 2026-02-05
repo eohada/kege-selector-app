@@ -78,11 +78,17 @@ def main():
     logger.info(f"RAILWAY_DEPLOYMENT_ID: {os.environ.get('RAILWAY_DEPLOYMENT_ID') or ''}")
     logger.info(f"RAILWAY_REPLICA_ID: {os.environ.get('RAILWAY_REPLICA_ID') or ''}")
 
-    # Жёсткая защита: бот не должен запускаться в web-сервисе
+    # Защита от запуска в неправильном сервисе
     service_name = (os.environ.get('RAILWAY_SERVICE_NAME') or '').strip().lower()
     allow_web = (os.environ.get('BOT_ALLOW_WEB') or '').strip().lower() in {'1', 'true', 'yes'}
-    if service_name == 'web' and not allow_web:
-        logger.error("Bot start blocked: RAILWAY_SERVICE_NAME=web. Set BOT_ALLOW_WEB=1 to override.")
+    allow_list_raw = (os.environ.get('BOT_SERVICE_NAME_ALLOW') or '').strip().lower()
+    allow_list = {s.strip() for s in allow_list_raw.split(',') if s.strip()}
+    if allow_list:
+        if service_name not in allow_list:
+            logger.error(f"Bot start blocked: service '{service_name}' is not in BOT_SERVICE_NAME_ALLOW.")
+            sys.exit(3)
+    elif service_name == 'web' and not allow_web:
+        logger.error("Bot start blocked: RAILWAY_SERVICE_NAME=web. Set BOT_ALLOW_WEB=1 or BOT_SERVICE_NAME_ALLOW.")
         sys.exit(3)
     
     # Валидация конфигурации
