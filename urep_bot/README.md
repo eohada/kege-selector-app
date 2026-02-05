@@ -35,6 +35,7 @@ BOT_TOKEN=your_telegram_bot_token
 DATABASE_URL=postgresql://user:password@host:port/database
 APP_URL=https://boostudy.ru/
 APP_OPEN_URL=https://boostudy.ru/login
+BOT_INTERNAL_TOKEN=your_internal_token
 ```
 
 3. Запустите бота:
@@ -51,6 +52,7 @@ python urep_bot/run_bot.py
    - `DATABASE_URL` — URL базы данных (та же что у Flask)
    - `APP_URL` — URL веб-приложения
    - `APP_OPEN_URL` — ссылка для кнопки "Открыть сайт" в боте
+   - `BOT_INTERNAL_TOKEN` — токен для привязки аккаунтов через API
 
 4. Установите Start Command:
 ```
@@ -90,6 +92,7 @@ urep_bot/
 | `DATABASE_URL` | URL PostgreSQL | — |
 | `APP_URL` | URL веб-приложения | https://boostudy.ru/ |
 | `APP_OPEN_URL` | Ссылка для кнопки "Открыть сайт" | https://boostudy.ru/login |
+| `BOT_INTERNAL_TOKEN` | Токен для привязки аккаунтов | — |
 | `BOT_LOG_LEVEL` | Уровень логирования | INFO |
 
 ## Получение токена бота

@@ -5,6 +5,9 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 import html
+import json
+import urllib.request
+import urllib.error
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -17,7 +20,7 @@ from telegram.ext import (
 )
 from sqlalchemy import text
 
-from urep_bot.config import BOT_TOKEN, APP_URL, APP_OPEN_URL
+from urep_bot.config import BOT_TOKEN, APP_URL, APP_OPEN_URL, BOT_INTERNAL_TOKEN
 from urep_bot.db import get_session, close_session
 
 logger = logging.getLogger(__name__)
@@ -465,6 +468,47 @@ def format_hw_status(s: str) -> str:
 # КОМАНДЫ
 # ============================================
 
+def _link_via_app_api(code: str, chat_id: int, telegram_id: Optional[str]):
+    """Привязка через API приложения (если BOT_INTERNAL_TOKEN настроен)."""
+    if not BOT_INTERNAL_TOKEN or not APP_URL:
+        return None
+
+    url = f"{APP_URL.rstrip('/')}/api/telegram/link-bot"
+    payload = {
+        "code": code,
+        "chat_id": chat_id,
+        "telegram_id": telegram_id,
+    }
+    request_data = json.dumps(payload).encode("utf-8")
+    request_headers = {
+        "Content-Type": "application/json",
+        "X-Bot-Token": BOT_INTERNAL_TOKEN,
+    }
+
+    req = urllib.request.Request(
+        url,
+        data=request_data,
+        headers=request_headers,
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read().decode("utf-8")
+            data = json.loads(body) if body else {}
+            return {"status": resp.status, "data": data}
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8")
+        try:
+            data = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            data = {}
+        return {"status": e.code, "data": data}
+    except Exception as e:
+        logger.warning(f"Link via app API failed: {e}", exc_info=True)
+        return None
+
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /start."""
     await update.message.reply_text(
@@ -498,6 +542,53 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_username = (update.effective_user.username or '').strip()
     tg_identifier = f"@{tg_username}" if tg_username else None
     
+    api_result = _link_via_app_api(code, chat_id, tg_identifier)
+    if api_result:
+        status = api_result.get("status")
+        data = api_result.get("data") or {}
+        error = data.get("error")
+
+        if status == 200 and data.get("success"):
+            await update.message.reply_text(
+                LINK_SUCCESS,
+                parse_mode="HTML",
+                reply_markup=get_main_keyboard()
+            )
+            logger.info(f"User linked via API chat_id={chat_id}")
+            return
+
+        if error == "already_linked":
+            await update.message.reply_text(
+                "ℹ️ Этот Telegram уже привязан к аккаунту.\n\nИспользуй /unlink для отвязки.",
+                parse_mode="HTML",
+                reply_markup=get_main_keyboard()
+            )
+            return
+
+        if error == "expired_code":
+            await update.message.reply_text(
+                "⏰ Код истёк. Получи новый код в личном кабинете.",
+                parse_mode="HTML",
+                reply_markup=get_main_keyboard()
+            )
+            return
+
+        if error == "invalid_code":
+            await update.message.reply_text(
+                "❌ Неверный код. Проверь правильность или получи новый в личном кабинете.",
+                parse_mode="HTML",
+                reply_markup=get_main_keyboard()
+            )
+            return
+
+        if status not in (401, 403, 500):
+            await update.message.reply_text(
+                ERROR_MESSAGE,
+                parse_mode="HTML",
+                reply_markup=get_main_keyboard()
+            )
+            return
+
     session = get_session()
     try:
         # Проверяем, не привязан ли уже

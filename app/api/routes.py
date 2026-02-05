@@ -2,6 +2,7 @@
 API маршруты
 """
 import logging
+import os
 import secrets
 from flask import request, jsonify, url_for
 from flask_login import login_required
@@ -449,6 +450,54 @@ def api_telegram_link_code():
     except Exception as e:
         db.session.rollback()
         logger.error(f'Ошибка при генерации Telegram кода: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/api/telegram/link-bot', methods=['POST'])
+def api_telegram_link_bot():
+    """Привязка Telegram аккаунта ботом по одноразовому коду"""
+    try:
+        expected = (os.environ.get('BOT_INTERNAL_TOKEN') or '').strip()
+        provided = (request.headers.get('X-Bot-Token') or '').strip()
+        if not expected or not secrets.compare_digest(provided, expected):
+            return jsonify({'success': False, 'error': 'unauthorized'}), 401
+
+        data = request.get_json() or {}
+        code = (data.get('code') or '').strip().upper()
+        chat_id = data.get('chat_id')
+        telegram_id = (data.get('telegram_id') or '').strip() or None
+
+        if not code or chat_id is None:
+            return jsonify({'success': False, 'error': 'invalid_payload'}), 400
+
+        try:
+            chat_id = int(chat_id)
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'invalid_chat_id'}), 400
+
+        existing = UserProfile.query.filter_by(telegram_chat_id=chat_id).first()
+        if existing:
+            return jsonify({'success': False, 'error': 'already_linked'}), 409
+
+        profile = UserProfile.query.filter_by(telegram_link_code=code).first()
+        if not profile:
+            return jsonify({'success': False, 'error': 'invalid_code'}), 404
+
+        if profile.telegram_link_code_expires and profile.telegram_link_code_expires < datetime.utcnow():
+            return jsonify({'success': False, 'error': 'expired_code'}), 410
+
+        profile.telegram_chat_id = chat_id
+        profile.telegram_link_code = None
+        profile.telegram_link_code_expires = None
+        if telegram_id and not profile.telegram_id:
+            profile.telegram_id = telegram_id
+
+        db.session.commit()
+
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при привязке Telegram ботом: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

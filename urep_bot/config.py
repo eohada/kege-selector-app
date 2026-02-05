@@ -16,6 +16,8 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 APP_URL = os.environ.get('APP_URL', 'https://boostudy.ru/')
 # Отдельная ссылка для кнопки "Открыть сайт" в боте
 APP_OPEN_URL = os.environ.get('APP_OPEN_URL', 'https://boostudy.ru/login')
+# Токен для безопасного доступа к API приложения (привязка Telegram)
+BOT_INTERNAL_TOKEN = os.environ.get('BOT_INTERNAL_TOKEN', '').strip()
 
 # Logging
 LOG_LEVEL = os.environ.get('BOT_LOG_LEVEL', 'INFO')
