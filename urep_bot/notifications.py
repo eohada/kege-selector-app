@@ -241,7 +241,7 @@ async def process_pending_notifications(bot: Bot):
                     return 'заданий'
 
                 if merged_counts:
-                    parts = [f\"{cnt} {_plural(cnt)} №{num}\" for num, cnt in sorted(merged_counts.items())]
+                    parts = [f"{cnt} {_plural(cnt)} №{num}" for num, cnt in sorted(merged_counts.items())]
                     summary = ", ".join(parts)
                 else:
                     summary = "нет заданий"
