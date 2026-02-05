@@ -34,6 +34,7 @@ pip install -r urep_bot/requirements.txt
 BOT_TOKEN=your_telegram_bot_token
 DATABASE_URL=postgresql://user:password@host:port/database
 APP_URL=https://your-app.railway.app
+APP_OPEN_URL=https://kege-selector-staging-sandbox.up.railway.app/login
 ```
 
 3. Запустите бота:
@@ -49,6 +50,7 @@ python urep_bot/run_bot.py
    - `BOT_TOKEN` — токен от @BotFather
    - `DATABASE_URL` — URL базы данных (та же что у Flask)
    - `APP_URL` — URL веб-приложения
+   - `APP_OPEN_URL` — ссылка для кнопки "Открыть сайт" в боте
 
 4. Установите Start Command:
 ```
@@ -87,6 +89,7 @@ urep_bot/
 | `BOT_TOKEN` | Токен Telegram бота | — |
 | `DATABASE_URL` | URL PostgreSQL | — |
 | `APP_URL` | URL веб-приложения | https://urep.up.railway.app |
+| `APP_OPEN_URL` | Ссылка для кнопки "Открыть сайт" | https://kege-selector-staging-sandbox.up.railway.app/login |
 | `BOT_LOG_LEVEL` | Уровень логирования | INFO |
 
 ## Получение токена бота

@@ -14,6 +14,8 @@ DATABASE_URL = os.environ.get('DATABASE_URL')
 
 # App URL (для ссылок в сообщениях)
 APP_URL = os.environ.get('APP_URL', 'https://urep.up.railway.app')
+# Отдельная ссылка для кнопки "Открыть сайт" в боте
+APP_OPEN_URL = os.environ.get('APP_OPEN_URL', 'https://kege-selector-staging-sandbox.up.railway.app/login')
 
 # Logging
 LOG_LEVEL = os.environ.get('BOT_LOG_LEVEL', 'INFO')

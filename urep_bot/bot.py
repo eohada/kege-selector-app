@@ -17,7 +17,7 @@ from telegram.ext import (
 )
 from sqlalchemy import text
 
-from urep_bot.config import BOT_TOKEN, APP_URL
+from urep_bot.config import BOT_TOKEN, APP_URL, APP_OPEN_URL
 from urep_bot.db import get_session, close_session
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ def get_main_keyboard():
             InlineKeyboardButton("🛠 Сообщение об ошибке", callback_data="error_report"),
         ],
         [
-            InlineKeyboardButton("🌐 Открыть сайт", url=APP_URL),
+            InlineKeyboardButton("🌐 Открыть сайт", url=APP_OPEN_URL),
         ],
     ])
 
