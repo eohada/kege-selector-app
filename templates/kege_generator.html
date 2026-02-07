@@ -327,6 +327,7 @@
                                   action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
                                   class="generator-form-grid" style="margin-top: 1rem;">
                                 {{ search_form.hidden_tag() }}
+                                <input type="hidden" name="lesson_id" value="{{ lesson_id or '' }}">
                                 <div class="neo-field">
                                     {{ search_form.task_id.label(class_='neo-label') }}
                                     {{ search_form.task_id(class_='neo-input') }}

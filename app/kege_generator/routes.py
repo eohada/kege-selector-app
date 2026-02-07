@@ -154,6 +154,12 @@ def kege_generator(lesson_id=None):
     
     # Обработчик поиска задания по уникальному ID
     if search_form.search_submit.data and search_form.validate_on_submit():
+        if not lesson_id:
+            try:
+                lesson_id_from_form = request.form.get('lesson_id')
+                lesson_id = int(lesson_id_from_form) if lesson_id_from_form not in (None, '', False) else None
+            except Exception:
+                lesson_id = None
         task_id_str = search_form.task_id.data.strip()
         try:
             task_id_int = int(task_id_str)
@@ -168,6 +174,7 @@ def kege_generator(lesson_id=None):
             if task:
                 added_to_lesson = False
                 added_to_template = False
+                added_to_history = False
 
                 if lesson_id:
                     lesson = Lesson.query.get(lesson_id)
@@ -202,6 +209,24 @@ def kege_generator(lesson_id=None):
                         flash('Ошибка при добавлении задания в урок.', 'danger')
                         return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
 
+                elif template_id:
+                    try:
+                        added_to_template = _attach_task_to_template(task.task_id, template_id)
+                        db.session.commit()
+                    except Exception as e:
+                        db.session.rollback()
+                        logger.error(f"Ошибка при добавлении задания в шаблон: {e}", exc_info=True)
+                        flash('Ошибка при добавлении задания в шаблон.', 'danger')
+                        return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type, template_id=template_id))
+                else:
+                    try:
+                        record_usage([task.task_id])
+                        added_to_history = True
+                    except Exception as e:
+                        logger.error(f"Ошибка при добавлении задания в историю принятых: {e}", exc_info=True)
+                        flash('Ошибка при сохранении задания.', 'danger')
+                        return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
+
                 audit_logger.log(
                     action='search_and_add_task',
                     entity='Task',
@@ -216,6 +241,7 @@ def kege_generator(lesson_id=None):
                         'assignment_type': assignment_type,
                         'added_to_lesson': added_to_lesson,
                         'added_to_template': added_to_template,
+                        'added_to_history': added_to_history,
                     }
                 )
                 redirect_url_params = {
@@ -236,7 +262,12 @@ def kege_generator(lesson_id=None):
                     else:
                         flash(f'Задание #{task.task_id} уже есть в уроке. Номер задания: {task.task_number}.', 'warning')
                 else:
-                    flash(f'Задание #{task.task_id} добавлено в поток. Дальше можно продолжать по номеру {task.task_number}.', 'success')
+                    if added_to_template:
+                        flash(f'Задание #{task.task_id} добавлено в шаблон. Номер задания: {task.task_number}.', 'success')
+                    elif added_to_history:
+                        flash(f'Задание #{task.task_id} добавлено в принятые. Номер задания: {task.task_number}.', 'success')
+                    else:
+                        flash(f'Задание #{task.task_id} добавлено в поток. Дальше можно продолжать по номеру {task.task_number}.', 'success')
                 return redirect(url_for('kege_generator.kege_generator', **redirect_url_params))
             else:
                 flash(f'Задание с ID {task_id_str} не найдено в базе данных.', 'warning')
