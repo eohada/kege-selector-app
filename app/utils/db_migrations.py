@@ -839,6 +839,66 @@ def ensure_schema_columns(app):
                 if 'updated_at' not in stats_columns:
                     db.session.execute(text(f'ALTER TABLE "{stats_table}" ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'))
 
+            # Проверяем и создаем таблицу PendingAssignmentNotifications (дебаунс уведомлений)
+            pending_table = 'PendingAssignmentNotifications' if 'PendingAssignmentNotifications' in table_names else ('pendingassignmentnotifications' if 'pendingassignmentnotifications' in table_names else None)
+            if not pending_table:
+                db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+                if 'postgresql' in db_url or 'postgres' in db_url:
+                    db.session.execute(text("""
+                        CREATE TABLE IF NOT EXISTS "PendingAssignmentNotifications" (
+                            pending_id SERIAL PRIMARY KEY,
+                            lesson_id INTEGER NOT NULL REFERENCES "Lessons"(lesson_id) ON DELETE CASCADE,
+                            student_id INTEGER NOT NULL REFERENCES "Students"(student_id) ON DELETE CASCADE,
+                            assignment_type VARCHAR(50) NOT NULL,
+                            task_ids JSON,
+                            link_url TEXT,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            last_activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            UNIQUE(lesson_id, assignment_type)
+                        )
+                    """))
+                    db.session.execute(text("""
+                        CREATE INDEX IF NOT EXISTS ix_pending_assignment_lesson
+                        ON "PendingAssignmentNotifications"(lesson_id)
+                    """))
+                    db.session.execute(text("""
+                        CREATE INDEX IF NOT EXISTS ix_pending_assignment_student
+                        ON "PendingAssignmentNotifications"(student_id)
+                    """))
+                    db.session.execute(text("""
+                        CREATE INDEX IF NOT EXISTS ix_pending_assignment_activity
+                        ON "PendingAssignmentNotifications"(last_activity_at)
+                    """))
+                else:
+                    db.session.execute(text("""
+                        CREATE TABLE IF NOT EXISTS PendingAssignmentNotifications (
+                            pending_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            lesson_id INTEGER NOT NULL REFERENCES Lessons(lesson_id) ON DELETE CASCADE,
+                            student_id INTEGER NOT NULL REFERENCES Students(student_id) ON DELETE CASCADE,
+                            assignment_type VARCHAR(50) NOT NULL,
+                            task_ids TEXT,
+                            link_url TEXT,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            last_activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            UNIQUE(lesson_id, assignment_type)
+                        )
+                    """))
+                    db.session.execute(text("""
+                        CREATE INDEX IF NOT EXISTS ix_pending_assignment_lesson
+                        ON PendingAssignmentNotifications(lesson_id)
+                    """))
+                    db.session.execute(text("""
+                        CREATE INDEX IF NOT EXISTS ix_pending_assignment_student
+                        ON PendingAssignmentNotifications(student_id)
+                    """))
+                    db.session.execute(text("""
+                        CREATE INDEX IF NOT EXISTS ix_pending_assignment_activity
+                        ON PendingAssignmentNotifications(last_activity_at)
+                    """))
+                logger.info("Created PendingAssignmentNotifications table")
+
             # Проверяем и обновляем AuditLog таблицу
             audit_log_table = 'AuditLog' if 'AuditLog' in table_names else ('auditlog' if 'auditlog' in table_names else None)
             if audit_log_table:

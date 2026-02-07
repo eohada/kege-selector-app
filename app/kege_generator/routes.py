@@ -18,7 +18,7 @@ from core.selector_logic import (
     get_accepted_tasks, get_skipped_tasks, get_next_unique_task
 )
 from core.audit_logger import audit_logger
-from app.notifications.service import notify_student_and_parents, build_task_number_summary, build_task_number_counts
+from app.notifications.service import enqueue_assignment_notification
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +166,42 @@ def kege_generator(lesson_id=None):
                 task = Tasks.query.filter_by(task_id=task_id_int).first()
             
             if task:
+                added_to_lesson = False
+                added_to_template = False
+
+                if lesson_id:
+                    lesson = Lesson.query.get(lesson_id)
+                    if not lesson:
+                        flash('Урок не найден.', 'danger')
+                        return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
+
+                    try:
+                        added_to_lesson = _attach_task_to_lesson(task.task_id, lesson, assignment_type)
+                        if template_id:
+                            added_to_template = _attach_task_to_template(task.task_id, template_id)
+
+                        if added_to_lesson and lesson.student:
+                            atype = (assignment_type or 'homework').strip().lower()
+                            link_url = url_for(
+                                'lessons.lesson_homework_view' if atype == 'homework' else (
+                                    'lessons.lesson_classwork_view' if atype == 'classwork' else 'lessons.lesson_exam_view'
+                                ),
+                                lesson_id=lesson.lesson_id
+                            )
+                            enqueue_assignment_notification(
+                                lesson=lesson,
+                                assignment_type=atype,
+                                task_ids=[task.task_id],
+                                link_url=link_url,
+                            )
+
+                        db.session.commit()
+                    except Exception as e:
+                        db.session.rollback()
+                        logger.error(f"Ошибка при добавлении задания по ID: {e}", exc_info=True)
+                        flash('Ошибка при добавлении задания в урок.', 'danger')
+                        return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
+
                 audit_logger.log(
                     action='search_and_add_task',
                     entity='Task',
@@ -177,7 +213,9 @@ def kege_generator(lesson_id=None):
                         'site_task_id': task.site_task_id,
                         'task_number': task.task_number,
                         'lesson_id': lesson_id,
-                        'assignment_type': assignment_type
+                        'assignment_type': assignment_type,
+                        'added_to_lesson': added_to_lesson,
+                        'added_to_template': added_to_template,
                     }
                 )
                 redirect_url_params = {
@@ -189,7 +227,16 @@ def kege_generator(lesson_id=None):
                 if template_id:
                     redirect_url_params['template_id'] = template_id
 
-                flash(f'Задание #{task.task_id} добавлено в поток. Дальше можно продолжать по номеру {task.task_number}.', 'success')
+                if lesson_id:
+                    if added_to_lesson:
+                        if added_to_template:
+                            flash(f'Задание #{task.task_id} добавлено в урок и в шаблон. Номер задания: {task.task_number}.', 'success')
+                        else:
+                            flash(f'Задание #{task.task_id} добавлено в урок. Номер задания: {task.task_number}.', 'success')
+                    else:
+                        flash(f'Задание #{task.task_id} уже есть в уроке. Номер задания: {task.task_number}.', 'warning')
+                else:
+                    flash(f'Задание #{task.task_id} добавлено в поток. Дальше можно продолжать по номеру {task.task_number}.', 'success')
                 return redirect(url_for('kege_generator.kege_generator', **redirect_url_params))
             else:
                 flash(f'Задание с ID {task_id_str} не найдено в базе данных.', 'warning')
@@ -238,6 +285,41 @@ def _task_to_payload(task: Tasks):
         'answer': task.answer,
         'attached_files': task.attached_files,
     }
+
+
+def _attach_task_to_template(task_id: int, template_id: int | None) -> bool:
+    """Добавить задачу в шаблон, если ее там нет."""
+    if not template_id:
+        return False
+    template = TaskTemplate.query.get(template_id)
+    if not template:
+        return False
+    existing = TemplateTask.query.filter_by(template_id=template_id, task_id=task_id).first()
+    if existing:
+        return False
+    max_order = db.session.query(db.func.max(TemplateTask.order)).filter_by(template_id=template_id).scalar() or 0
+    db.session.add(TemplateTask(template_id=template_id, task_id=task_id, order=max_order + 1))
+    return True
+
+
+def _attach_task_to_lesson(task_id: int, lesson: Lesson, assignment_type: str) -> bool:
+    """Добавить задачу в урок, если ее там нет."""
+    if not lesson:
+        return False
+    existing = LessonTask.query.filter_by(lesson_id=lesson.lesson_id, task_id=task_id).first()
+    if existing:
+        return False
+    db.session.add(LessonTask(lesson_id=lesson.lesson_id, task_id=task_id, assignment_type=assignment_type))
+    try:
+        if lesson.student_id:
+            db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=task_id, source=f'lesson:{assignment_type}'))
+    except Exception:
+        pass
+    if assignment_type == 'homework':
+        lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
+        lesson.homework_result_percent = None
+        lesson.homework_result_notes = None
+    return True
 
 
 @kege_generator_bp.route('/kege-generator/stream/start', methods=['POST'])
@@ -374,35 +456,23 @@ def generator_stream_act():
                     lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
                     lesson.homework_result_percent = None
                     lesson.homework_result_notes = None
+
+                if added_count > 0 and lesson.student:
+                    atype = (assignment_type or 'homework').strip().lower()
+                    link_url = url_for(
+                        'lessons.lesson_homework_view' if atype == 'homework' else (
+                            'lessons.lesson_classwork_view' if atype == 'classwork' else 'lessons.lesson_exam_view'
+                        ),
+                        lesson_id=lesson.lesson_id
+                    )
+                    enqueue_assignment_notification(
+                        lesson=lesson,
+                        assignment_type=atype,
+                        task_ids=added_task_ids,
+                        link_url=link_url,
+                    )
+
                 db.session.commit()
-                try:
-                    if added_count > 0 and lesson.student:
-                        atype = (assignment_type or 'homework').strip().lower()
-                        label = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа'}.get(atype, 'Задания')
-                        title = f"Новые задания — {label}"
-                        summary = build_task_number_summary(added_task_ids)
-                        task_numbers = build_task_number_counts(added_task_ids)
-                        body = f"{label}: {summary}"
-                        notify_student_and_parents(
-                            lesson.student,
-                            kind='assignment_assigned',
-                            title=title,
-                            body=body,
-                            link_url=url_for(
-                                'lessons.lesson_homework_view' if atype == 'homework' else (
-                                    'lessons.lesson_classwork_view' if atype == 'classwork' else 'lessons.lesson_exam_view'
-                                ),
-                                lesson_id=lesson.lesson_id
-                            ),
-                            meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': added_count, 'task_numbers': task_numbers},
-                        )
-                        try:
-                            db.session.commit()
-                        except Exception as e:
-                            db.session.rollback()
-                            logger.warning(f"Could not commit assignment_assigned notification (generator accept): {e}")
-                except Exception as e:
-                    logger.warning(f"Failed to notify about assignment_assigned (generator accept): {e}")
                 message = 'Задание добавлено в урок.'
             else:
                 record_usage([task_id])
@@ -609,6 +679,21 @@ def task_action():
                     lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
                     lesson.homework_result_percent = None
                     lesson.homework_result_notes = None
+                if added_count > 0 and lesson.student:
+                    atype = (assignment_type or 'homework').strip().lower()
+                    link_url = url_for(
+                        'lessons.lesson_homework_view' if atype == 'homework' else (
+                            'lessons.lesson_classwork_view' if atype == 'classwork' else 'lessons.lesson_exam_view'
+                        ),
+                        lesson_id=lesson.lesson_id
+                    )
+                    enqueue_assignment_notification(
+                        lesson=lesson,
+                        assignment_type=atype,
+                        task_ids=added_task_ids,
+                        link_url=link_url,
+                    )
+
                 try:
                     db.session.commit()
                     
@@ -634,34 +719,6 @@ def task_action():
                         error=str(e)
                     )
                     return jsonify({'success': False, 'error': f'Ошибка при сохранении: {str(e)}'}), 500
-                try:
-                    if added_count > 0 and lesson.student:
-                        atype = (assignment_type or 'homework').strip().lower()
-                        label = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа'}.get(atype, 'Задания')
-                        title = f"Новые задания — {label}"
-                        summary = build_task_number_summary(added_task_ids)
-                        task_numbers = build_task_number_counts(added_task_ids)
-                        body = f"{label}: {summary}"
-                        notify_student_and_parents(
-                            lesson.student,
-                            kind='assignment_assigned',
-                            title=title,
-                            body=body,
-                            link_url=url_for(
-                                'lessons.lesson_homework_view' if atype == 'homework' else (
-                                    'lessons.lesson_classwork_view' if atype == 'classwork' else 'lessons.lesson_exam_view'
-                                ),
-                                lesson_id=lesson.lesson_id
-                            ),
-                            meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': added_count, 'task_numbers': task_numbers},
-                        )
-                        try:
-                            db.session.commit()
-                        except Exception as e:
-                            db.session.rollback()
-                            logger.warning(f"Could not commit assignment_assigned notification (generator accept many): {e}")
-                except Exception as e:
-                    logger.warning(f"Failed to notify about assignment_assigned (generator accept many): {e}")
 
                 if template_id:
                     # Если есть template_id, сообщаем об этом

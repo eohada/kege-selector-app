@@ -10,7 +10,7 @@ from app.templates_manager import templates_bp
 from app.models import TaskTemplate, TemplateTask, Lesson, LessonTask, UsageHistory, Tasks, Student, User, db, moscow_now
 from app.auth.rbac_utils import has_permission, get_user_scope
 from core.audit_logger import audit_logger
-from app.notifications.service import notify_student_and_parents, build_task_number_summary, build_task_number_counts
+from app.notifications.service import enqueue_assignment_notification
 
 logger = logging.getLogger(__name__)
 
@@ -446,34 +446,25 @@ def template_apply(template_id):
             db.session.rollback()
             raise
 
-        try:
-            if applied_count > 0 and lesson.student:
-                atype = (assignment_type or 'homework').strip().lower()
-                label = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа'}.get(atype, 'Задания')
-                title = f"Новые задания — {label}"
-                summary = build_task_number_summary(applied_task_ids)
-                task_numbers = build_task_number_counts(applied_task_ids)
-                body = f"{label}: {summary}"
-                notify_student_and_parents(
-                    lesson.student,
-                    kind='assignment_assigned',
-                    title=title,
-                    body=body,
-                    link_url=url_for(
-                        'lessons.lesson_homework_view' if atype == 'homework' else (
-                            'lessons.lesson_classwork_view' if atype == 'classwork' else 'lessons.lesson_exam_view'
-                        ),
-                        lesson_id=lesson.lesson_id
-                    ),
-                    meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': applied_count, 'task_numbers': task_numbers},
-                )
-                try:
-                    db.session.commit()
-                except Exception as e:
-                    db.session.rollback()
-                    logger.warning(f"Could not commit assignment_assigned notification (template_apply): {e}")
-        except Exception as e:
-            logger.warning(f"Failed to notify about assignment_assigned (template_apply): {e}")
+        if applied_count > 0 and lesson.student:
+            atype = (assignment_type or 'homework').strip().lower()
+            link_url = url_for(
+                'lessons.lesson_homework_view' if atype == 'homework' else (
+                    'lessons.lesson_classwork_view' if atype == 'classwork' else 'lessons.lesson_exam_view'
+                ),
+                lesson_id=lesson.lesson_id
+            )
+            enqueue_assignment_notification(
+                lesson=lesson,
+                assignment_type=atype,
+                task_ids=applied_task_ids,
+                link_url=link_url,
+            )
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                logger.warning(f"Could not commit pending assignment notification (template_apply): {e}")
         
         audit_logger.log(
             action='apply_template',

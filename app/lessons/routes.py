@@ -19,7 +19,7 @@ from app.lessons.utils import get_sorted_assignments, perform_auto_check, normal
 from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, LessonWhiteboard, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
-from app.notifications.service import notify_student_and_parents, build_task_number_summary, build_task_number_counts
+from app.notifications.service import notify_student_and_parents, enqueue_assignment_notification
 from app.models import FamilyTie  # для доступа родителя к диалогам
 
 logger = logging.getLogger(__name__)
@@ -1488,29 +1488,20 @@ def lesson_homework_save(lesson_id):
         db.session.rollback()
         raise
 
-    # Уведомление о новых заданиях в уроке (ДЗ)
-    try:
-        if lesson.student and prev_status != 'assigned_not_done' and lesson.homework_status == 'assigned_not_done' and homework_tasks:
-            title = 'Новые задания — Домашняя работа'
-            task_ids = [t.task_id for t in homework_tasks]
-            summary = build_task_number_summary(task_ids)
-            task_numbers = build_task_number_counts(task_ids)
-            body = f"Домашняя работа: {summary}"
-            notify_student_and_parents(
-                lesson.student,
-                kind='assignment_assigned',
-                title=title,
-                body=body,
-                link_url=url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id),
-                meta={'lesson_id': lesson.lesson_id, 'assignment_type': 'homework', 'tasks_count': len(homework_tasks), 'task_numbers': task_numbers},
-            )
-            try:
-                db.session.commit()
-            except Exception as e:
-                db.session.rollback()
-                logger.warning(f"Could not commit assignment_assigned notification (homework_save): {e}")
-    except Exception as e:
-        logger.warning(f"Failed to notify about assignment_assigned (homework_save): {e}")
+    # Уведомление о новых заданиях в уроке (ДЗ) — дебаунс 5 минут
+    if lesson.student and prev_status != 'assigned_not_done' and lesson.homework_status == 'assigned_not_done' and homework_tasks:
+        task_ids = [t.task_id for t in homework_tasks]
+        enqueue_assignment_notification(
+            lesson=lesson,
+            assignment_type='homework',
+            task_ids=task_ids,
+            link_url=url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id),
+        )
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.warning(f"Could not commit pending assignment notification (homework_save): {e}")
     
     # Логируем сохранение домашнего задания
     audit_logger.log(
@@ -2296,34 +2287,25 @@ def lesson_manual_create(lesson_id):
                 
             db.session.commit()
 
-            try:
-                if count > 0 and lesson.student:
-                    atype = (assignment_type or 'homework').strip().lower()
-                    label = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа'}.get(atype, 'Задания')
-                    title = f"Новые задания — {label}"
-                    summary = build_task_number_summary(created_task_ids)
-                    task_numbers = build_task_number_counts(created_task_ids)
-                    body = f"{label}: {summary}"
-                    notify_student_and_parents(
-                        lesson.student,
-                        kind='assignment_assigned',
-                        title=title,
-                        body=body,
-                        link_url=url_for(
-                            'lessons.lesson_homework_view' if atype == 'homework' else (
-                                'lessons.lesson_classwork_view' if atype == 'classwork' else 'lessons.lesson_exam_view'
-                            ),
-                            lesson_id=lesson.lesson_id
-                        ),
-                        meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': count, 'task_numbers': task_numbers},
-                    )
-                    try:
-                        db.session.commit()
-                    except Exception as e:
-                        db.session.rollback()
-                        logger.warning(f"Could not commit assignment_assigned notification (manual tasks): {e}")
-            except Exception as e:
-                logger.warning(f"Failed to notify about assignment_assigned (manual tasks): {e}")
+            if count > 0 and lesson.student:
+                atype = (assignment_type or 'homework').strip().lower()
+                link_url = url_for(
+                    'lessons.lesson_homework_view' if atype == 'homework' else (
+                        'lessons.lesson_classwork_view' if atype == 'classwork' else 'lessons.lesson_exam_view'
+                    ),
+                    lesson_id=lesson.lesson_id
+                )
+                enqueue_assignment_notification(
+                    lesson=lesson,
+                    assignment_type=atype,
+                    task_ids=created_task_ids,
+                    link_url=link_url,
+                )
+                try:
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    logger.warning(f"Could not commit pending assignment notification (manual tasks): {e}")
             
             audit_logger.log(
                 action='create_manual_tasks',

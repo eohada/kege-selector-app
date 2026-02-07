@@ -3,6 +3,8 @@
 """
 import os
 import logging
+import threading
+import time
 from flask import Flask
 from flask_login import LoginManager
 from flask_wtf import CSRFProtect
@@ -239,6 +241,31 @@ def create_app(config_name=None):
     app.register_blueprint(billing_bp)
     app.register_blueprint(trainer_bp)
     app.register_blueprint(uploads_bp)
+
+    def _start_assignment_notification_worker() -> None:
+        if app.config.get('_ASSIGNMENT_NOTIFY_WORKER_STARTED'):
+            return
+        poll_seconds = int(os.environ.get('ASSIGNMENT_NOTIFY_POLL_SECONDS', '60'))
+        debounce_seconds = int(os.environ.get('ASSIGNMENT_NOTIFY_DEBOUNCE_SECONDS', '300'))
+
+        def worker():
+            while True:
+                try:
+                    with app.app_context():
+                        from app.notifications.service import process_pending_assignment_notifications
+                        process_pending_assignment_notifications(debounce_seconds=debounce_seconds)
+                except Exception as e:
+                    try:
+                        app.logger.warning(f"Assignment notification worker error: {e}")
+                    except Exception:
+                        pass
+                time.sleep(poll_seconds)
+
+        t = threading.Thread(target=worker, daemon=True)
+        t.start()
+        app.config['_ASSIGNMENT_NOTIFY_WORKER_STARTED'] = True
+
+    _start_assignment_notification_worker()
     
     # Исключаем logout из CSRF защиты
     from app.auth.routes import logout

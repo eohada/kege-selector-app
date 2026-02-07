@@ -639,6 +639,25 @@ class UserNotification(db.Model):
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('notifications', lazy=True, cascade='all, delete-orphan'))
 
 
+class PendingAssignmentNotification(db.Model):
+    """Отложенные уведомления о прикрепленных заданиях (дебаунс 5 минут)."""
+    __tablename__ = 'PendingAssignmentNotifications'
+
+    pending_id = db.Column(db.Integer, primary_key=True)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    assignment_type = db.Column(db.String(50), nullable=False, index=True)  # homework|classwork|exam
+    task_ids = db.Column(db.JSON, nullable=True)
+    link_url = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+    last_activity_at = db.Column(db.DateTime, default=moscow_now, nullable=False, index=True)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('lesson_id', 'assignment_type', name='uq_pending_assignment_notification'),
+    )
+
+
 class LessonMessage(db.Model):
     """Сообщение в диалоге по уроку (ученик ↔ преподаватель)."""
     __tablename__ = 'LessonMessages'

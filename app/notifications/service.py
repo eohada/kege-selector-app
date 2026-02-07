@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import logging
 from typing import Iterable
+from datetime import timedelta
 
-from app.models import db, User, Student, UserNotification, FamilyTie, Tasks
+from app.models import db, User, Student, UserNotification, FamilyTie, Tasks, PendingAssignmentNotification, Lesson, moscow_now
 
 logger = logging.getLogger(__name__)
+
+ASSIGNMENT_NOTIFY_DEBOUNCE_SECONDS = 300
 
 
 def _get_student_user(student: Student) -> User | None:
@@ -99,4 +102,105 @@ def notify_student_and_parents(student: Student, *, kind: str, title: str, body:
     notify_user(st_user.id, kind=kind, title=title, body=body, link_url=link_url, meta=meta)
     for parent_id in _get_parent_user_ids_for_student_user(st_user.id):
         notify_user(parent_id, kind=kind, title=title, body=body, link_url=link_url, meta=meta)
+
+
+def _merge_task_ids(existing: list[int] | None, new_ids: list[int]) -> list[int]:
+    merged = set(int(x) for x in (existing or []) if x)
+    merged.update(int(x) for x in (new_ids or []) if x)
+    return sorted(merged)
+
+
+def enqueue_assignment_notification(*, lesson: Lesson, assignment_type: str, task_ids: list[int], link_url: str | None = None) -> None:
+    """Ставит уведомление о заданиях в очередь (дебаунс 5 минут)."""
+    if not lesson or not lesson.lesson_id or not lesson.student_id:
+        return
+
+    atype = (assignment_type or 'homework').strip().lower()
+    if atype not in {'homework', 'classwork', 'exam'}:
+        atype = 'homework'
+
+    normalized_ids = [int(tid) for tid in (task_ids or []) if tid]
+    if not normalized_ids:
+        return
+
+    now = moscow_now()
+    pending = PendingAssignmentNotification.query.filter_by(
+        lesson_id=lesson.lesson_id,
+        assignment_type=atype
+    ).first()
+
+    if pending:
+        pending.task_ids = _merge_task_ids(pending.task_ids, normalized_ids)
+        pending.last_activity_at = now
+        if link_url:
+            pending.link_url = link_url
+    else:
+        pending = PendingAssignmentNotification(
+            lesson_id=lesson.lesson_id,
+            student_id=lesson.student_id,
+            assignment_type=atype,
+            task_ids=_merge_task_ids([], normalized_ids),
+            link_url=link_url,
+            created_at=now,
+            last_activity_at=now,
+        )
+        db.session.add(pending)
+
+
+def process_pending_assignment_notifications(*, debounce_seconds: int | None = None, force: bool = False) -> int:
+    """Обрабатывает очередь отложенных уведомлений о заданиях."""
+    threshold_seconds = debounce_seconds if debounce_seconds is not None else ASSIGNMENT_NOTIFY_DEBOUNCE_SECONDS
+    now = moscow_now()
+
+    query = PendingAssignmentNotification.query
+    if not force:
+        cutoff = now - timedelta(seconds=threshold_seconds)
+        query = query.filter(PendingAssignmentNotification.last_activity_at <= cutoff)
+
+    pending_rows = query.order_by(PendingAssignmentNotification.last_activity_at.asc()).all()
+    if not pending_rows:
+        return 0
+
+    sent = 0
+    for pending in pending_rows:
+        try:
+            lesson = Lesson.query.get(pending.lesson_id)
+            if not lesson or not lesson.student:
+                db.session.delete(pending)
+                continue
+
+            task_ids = [int(tid) for tid in (pending.task_ids or []) if tid]
+            if not task_ids:
+                db.session.delete(pending)
+                continue
+
+            atype = (pending.assignment_type or 'homework').strip().lower()
+            label = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа'}.get(atype, 'Задания')
+            title = f"Новые задания — {label}"
+            summary = build_task_number_summary(task_ids)
+            task_numbers = build_task_number_counts(task_ids)
+            body = f"{label}: {summary}"
+            link_url = pending.link_url
+
+            notify_student_and_parents(
+                lesson.student,
+                kind='assignment_assigned',
+                title=title,
+                body=body,
+                link_url=link_url,
+                meta={'lesson_id': lesson.lesson_id, 'assignment_type': atype, 'tasks_count': len(task_ids), 'task_numbers': task_numbers},
+            )
+
+            db.session.delete(pending)
+            sent += 1
+        except Exception as e:
+            logger.warning(f"Failed to process pending assignment notification {pending.pending_id}: {e}")
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.warning(f"Could not commit pending assignment notifications: {e}")
+
+    return sent
 
