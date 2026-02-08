@@ -860,7 +860,17 @@
                                         {% set file_url = file.url if file.url is defined else (file if file is string else None) %}
                                         {% set file_name = file.name if file.name is defined else (file.filename if file.filename is defined else (file_url.split('/')[-1] if file_url else 'file')) %}
                                         {% if file_url %}
-                                        <a class="neo-link" href="{{ file_url }}" target="_blank" rel="noopener noreferrer" download>{{ file_name }}</a>
+                                            {% if file_url.startswith('//') %}
+                                                {% set file_url = 'https:' ~ file_url %}
+                                            {% elif file_url.startswith('/') %}
+                                                {% set file_url = 'https://kompege.ru' ~ file_url %}
+                                            {% endif %}
+                                            {% if file_url.startswith('https://kompege.ru/') or file_url.startswith('http://kompege.ru/') %}
+                                                {% set download_url = url_for('assignments.attached_proxy') ~ '?url=' ~ (file_url|urlencode) %}
+                                            {% else %}
+                                                {% set download_url = file_url %}
+                                            {% endif %}
+                                        <a class="neo-link" href="{{ download_url }}" target="_blank" rel="noopener noreferrer" download>{{ file_name }}</a>
                                         {% endif %}
                                     {% endif %}
                                 {% endfor %}
