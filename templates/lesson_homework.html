@@ -850,76 +850,24 @@
                     <div class="task-content">
                         {{ hw_task.task.content_html|safe }}
                         {% if hw_task.task.attached_files %}
-                        <div class="task-attachments" style="margin-top: 1rem; padding: 0.5rem; background: rgba(255,255,255,0.05); border-radius: var(--radius-sm);" data-attached-files='{{ hw_task.task.attached_files|tojson|e }}'>
+                        {% set files = hw_task.task.attached_files | from_json %}
+                        {% if files %}
+                        <div class="task-attachments" style="margin-top: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: var(--radius-sm);">
                             <strong><i class="fas fa-paperclip"></i> Вложения:</strong>
-                            <div class="attached-links" style="margin-top: .5rem;"></div>
+                            <div class="attached-links" style="margin-top: .5rem; display: grid; gap: 0.35rem;">
+                                {% for file in files %}
+                                    {% if file %}
+                                        {% set file_url = file.url if file.url is defined else (file if file is string else None) %}
+                                        {% set file_name = file.name if file.name is defined else (file.filename if file.filename is defined else (file_url.split('/')[-1] if file_url else 'file')) %}
+                                        {% if file_url %}
+                                        <a class="neo-link" href="{{ file_url }}" target="_blank" rel="noopener noreferrer" download>{{ file_name }}</a>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
                         </div>
                         {% endif %}
-                        <script>
-                        (function(){
-                            try {
-                                const PROXY_BASE = '{{ url_for("assignments.attached_proxy") }}';
-                                document.querySelectorAll('.task-attachments[data-attached-files]').forEach(function(el){
-                                    const container = el.querySelector('.attached-links');
-                                    if (!container) return;
-                                    let raw = el.getAttribute('data-attached-files');
-                                    if (!raw) return;
-                                    try {
-                                        let parsed = JSON.parse(raw);
-                                        if (typeof parsed === 'string') {
-                                            try { parsed = JSON.parse(parsed); } catch(e) { /* keep string */ }
-                                        }
-                                        let files = parsed;
-                                        if (!files) return;
-                                        if (!Array.isArray(files)) {
-                                            if (typeof files === 'object') files = [files]; else return;
-                                        }
-                                        container.innerHTML = '';
-                                        files.forEach(function(f){
-                                            const name = (f && f.name) ? f.name : (f && f.filename) ? f.filename : (typeof f === 'string' ? f.split('/').pop() : 'file');
-                                            const url = (f && f.url) ? f.url : (typeof f === 'string' ? f : null);
-                                            if (!url) return;
-                                            const a = document.createElement('a');
-                                            a.href = PROXY_BASE + '?url=' + encodeURIComponent(url);
-                                            a.target = '_blank';
-                                            a.rel = 'noopener noreferrer';
-                                            a.textContent = name;
-                                            a.className = 'neo-link';
-                                            const wrap = document.createElement('div');
-                                            wrap.appendChild(a);
-                                            container.appendChild(wrap);
-
-                                            // Удаляем дублирующие ссылки в тексте условия (если они ведут на тот же файл)
-                                            try {
-                                                const taskContent = el.closest('.task-content');
-                                                if (taskContent) {
-                                                    // ищем все ссылки в тексте условия, которые содержат имя файла или исходный url
-                                                    const filename = (new URL(url, window.location.origin)).pathname.split('/').pop();
-                                                    taskContent.querySelectorAll('a').forEach(function(existingA){
-                                                        try {
-                                                            const href = existingA.getAttribute('href') || '';
-                                                            if (!href) return;
-                                                            // сравниваем по полному url или по имени файла
-                                                            if (href === url || href.indexOf(filename) !== -1 || href.indexOf(encodeURIComponent(filename)) !== -1) {
-                                                                // если в родительском блоке есть явная подпись "Файл к заданию" — удаляем весь блок,
-                                                                // иначе удаляем только ссылку
-                                                                const block = existingA.closest('p,div,li,section') || existingA.parentElement;
-                                                                if (block && /Файл\s+к\s+заданию/i.test(block.textContent)) {
-                                                                    block.remove();
-                                                                } else {
-                                                                    existingA.remove();
-                                                                }
-                                                            }
-                                                        } catch(e) { /* ignore per-link errors */ }
-                                                    });
-                                                }
-                                            } catch(e) { /* ignore duplicate-removal errors */ }
-                                        });
-                                    } catch(e) { console.error('attachments parse', e); }
-                                });
-                            } catch(e) { console.error(e); }
-                        })();
-                        </script>
+                        {% endif %}
                     </div>
                     
                     <!-- Блок ввода ответа -->

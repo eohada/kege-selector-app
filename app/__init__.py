@@ -337,9 +337,25 @@ def create_app(config_name=None):
             return []
         try:
             import json
-            return json.loads(value)
-        except (json.JSONDecodeError, TypeError):
+            import ast
+            if isinstance(value, (list, dict)):
+                return value
+            parsed = json.loads(value)
+            if isinstance(parsed, str):
+                try:
+                    parsed = json.loads(parsed)
+                except Exception:
+                    pass
+            if isinstance(parsed, (list, dict)):
+                return parsed
             return []
+        except (json.JSONDecodeError, TypeError, ValueError):
+            try:
+                import ast
+                parsed = ast.literal_eval(value)
+                return parsed if isinstance(parsed, (list, dict)) else []
+            except Exception:
+                return []
     
     # Инициализируем Jinja2 фильтры (включая mask_contact)
     from app.utils.jinja_filters import init_jinja_filters
