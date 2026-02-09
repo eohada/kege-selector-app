@@ -275,6 +275,15 @@ def check_and_fix_rbac_schema(app):
                         db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN custom_permissions JSON'))
                     db.session.commit()
                     logger.info("custom_permissions column added.")
+                if 'profile_theme' not in cols:
+                    logger.info("Adding profile_theme column to Users...")
+                    db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+                    if 'postgresql' in db_url or 'postgres' in db_url:
+                        db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN profile_theme VARCHAR(50)'))
+                    else:
+                        db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN profile_theme VARCHAR(50)'))
+                    db.session.commit()
+                    logger.info("profile_theme column added.")
 
     except Exception as e:
         logger.error(f"Error in check_and_fix_rbac_schema: {e}")

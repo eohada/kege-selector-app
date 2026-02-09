@@ -1094,6 +1094,7 @@ def remote_admin_api_user(user_id):
                 'roles': user.roles(),
                 'numeric_id': user.numeric_id,
                 'is_active': user.is_active,
+                'profile_theme': getattr(user, 'profile_theme', None),
                 'created_at': user.created_at.isoformat() if user.created_at else None,
                 'last_login': user.last_login.isoformat() if user.last_login else None,
                 'profile': {
@@ -1166,6 +1167,9 @@ def remote_admin_api_user(user_id):
                     db.session.add(UserRole(user_id=user_id, role=user.role))
             if 'is_active' in data:
                 user.is_active = bool(data['is_active'])
+            if 'profile_theme' in data:
+                raw = (data.get('profile_theme') or '').strip() or None
+                user.profile_theme = raw if raw in ('creator', 'admin', 'tutor', 'parent', 'student') else None
             if effective_roles is None:
                 effective_roles = user.roles() if hasattr(user, 'roles') and callable(getattr(user, 'roles')) else [user.role]
             if 'numeric_id' in data and 'student' not in effective_roles:

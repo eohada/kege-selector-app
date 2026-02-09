@@ -44,7 +44,8 @@
     </style>
 </head>
 <body>
-    {% if current_user and current_user.is_creator() %}
+    {% set effective_theme = current_user.effective_profile_theme() if current_user else none %}
+    {% if current_user and effective_theme == 'creator' %}
     <div class="creator-snowflakes" aria-hidden="true">
         {% for i in range(28) %}<span class="snowflake">❄</span>{% endfor %}
     </div>
@@ -54,20 +55,11 @@
         {% include '_primary_nav.html' %}
         {% include '_ux_enhancements.html' %}
 
-        <main class="profile-container
-            {% if current_user and current_user.is_creator() %}theme-creator
-            {% elif current_user and current_user.is_admin() %}theme-admin
-            {% elif current_user and current_user.is_tutor() %}theme-tutor
-            {% elif current_user and current_user.is_content_maker() %}theme-tutor
-            {% elif current_user and current_user.is_parent() %}theme-parent
-            {% elif current_user and current_user.is_student() %}theme-student
-            {% endif %}
-        ">
+        <main class="profile-container{% if effective_theme %} theme-{{ effective_theme }}{% endif %}">
             {% if current_user %}
                 <div class="profile-card">
-                    
                     {% set cover_url = current_user.profile.cover_url if (current_user.profile and current_user.profile.cover_url) else none %}
-                    <div class="profile-cover {% if current_user.is_creator() and cover_url %}has-cover{% endif %}" {% if current_user.is_creator() and cover_url %}style="background-image: url('{{ cover_url }}');"{% endif %}></div>
+                    <div class="profile-cover {% if effective_theme == 'creator' and cover_url %}has-cover{% endif %}" {% if effective_theme == 'creator' and cover_url %}style="background-image: url('{{ cover_url }}');"{% endif %}></div>
 
                     <div class="profile-header">
                         <div class="profile-identity">

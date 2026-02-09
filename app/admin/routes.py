@@ -2596,6 +2596,8 @@ def admin_user_edit(user_id):
             UserRole.query.filter_by(user_id=user.id).delete()
             db.session.add(UserRole(user_id=user.id, role=role))
             user.is_active = is_active
+            profile_theme_raw = request.form.get('profile_theme', '').strip()
+            user.profile_theme = profile_theme_raw if profile_theme_raw in ('creator', 'admin', 'tutor', 'parent', 'student') else None
             
             if current_user.is_creator():
                 custom_perms = {}
@@ -2877,12 +2879,15 @@ def admin_user_new():
                                      all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
                                      family_ties=[], enrollments=[])
             
+            profile_theme_raw = request.form.get('profile_theme', '').strip()
+            profile_theme_new = profile_theme_raw if profile_theme_raw in ('creator', 'admin', 'tutor', 'parent', 'student') else None
             user = User(
                 username=username,
                 email=None,
                 password_hash=generate_password_hash(password),
                 role=role,
-                is_active=is_active
+                is_active=is_active,
+                profile_theme=profile_theme_new
             )
             db.session.add(user)
             db.session.flush()

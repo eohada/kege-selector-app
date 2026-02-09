@@ -273,6 +273,8 @@ def user_edit(user_id):
             roles_list = request.form.getlist('roles')
             if not roles_list:
                 roles_list = [request.form.get('role', 'student').strip() or 'student']
+            profile_theme_raw = request.form.get('profile_theme', '').strip()
+            profile_theme_val = profile_theme_raw if profile_theme_raw in ('creator', 'admin', 'tutor', 'parent', 'student') else None
             data = {
                 'username': request.form.get('username', '').strip(),
                 'telegram_link': request.form.get('telegram_link', '').strip() or None,
@@ -283,7 +285,8 @@ def user_edit(user_id):
                 'numeric_id': request.form.get('numeric_id', '').strip() or None,
                 'tutor_id': request.form.get('tutor_id'),
                 'parent_ids': request.form.getlist('parent_ids'),
-                'child_ids': request.form.getlist('child_ids')
+                'child_ids': request.form.getlist('child_ids'),
+                'profile_theme': profile_theme_val
             }
             
             password = request.form.get('password', '').strip()

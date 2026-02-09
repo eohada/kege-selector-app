@@ -25,8 +25,9 @@
         .public-actions { display:flex; gap: .6rem; flex-wrap: wrap; justify-content: flex-end; }
     </style>
 </head>
-<body class="{% if public_user.is_creator() %}creator-theme-active{% endif %}">
-    {% if public_user.is_creator() %}
+<body class="{% if public_user.effective_profile_theme() == 'creator' %}creator-theme-active{% endif %}">
+    {% set effective_theme = public_user.effective_profile_theme() %}
+    {% if effective_theme == 'creator' %}
     <div class="creator-snowflakes" aria-hidden="true">
         {% for i in range(28) %}<span class="snowflake">❄</span>{% endfor %}
     </div>
@@ -35,7 +36,7 @@
         {% set active_page = None %}
         {% include '_primary_nav.html' %}
 
-        {% if public_user.is_creator() %}
+        {% if effective_theme == 'creator' %}
         
         <main class="profile-container theme-creator">
             <div class="profile-card">
@@ -118,7 +119,7 @@
         </main>
         {% else %}
         
-        <main class="public-profile-wrap {% if public_user.is_admin() %}theme-admin{% elif public_user.is_tutor() %}theme-tutor{% elif public_user.is_content_maker() %}theme-tutor{% elif public_user.is_parent() %}theme-parent{% elif public_user.is_student() %}theme-student{% endif %}">
+        <main class="public-profile-wrap{% if effective_theme %} theme-{{ effective_theme }}{% endif %}">
             <section class="glass-panel">
                 <div class="public-hero">
                     <div class="public-identity">
