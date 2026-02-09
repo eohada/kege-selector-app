@@ -110,3 +110,6 @@ dmypy.json
 
 # Telegram bot (separate repository)
 telegram-task-tracker-bot/
+
+# Visual audit (локальные учётные данные для скрипта)
+visual_audit_ids.json
