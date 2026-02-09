@@ -16,7 +16,7 @@ from app.auth.rbac_utils import check_access, get_user_scope
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, perform_auto_check, normalize_answer_value  # comment
-from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, LessonWhiteboard, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, LessonWhiteboard, MiroUserToken, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, enqueue_assignment_notification
@@ -2596,10 +2596,29 @@ def lesson_whiteboard_create(lesson_id):
             }
         }), 400
     
+    # Для создания доски нужен OAuth-токен пользователя (кнопка «Подключить Miro»)
+    from datetime import datetime
+    miro_token = MiroUserToken.query.filter_by(user_id=current_user.id).first()
+    if not miro_token or not miro_token.access_token:
+        auth_url = url_for('miro_oauth_authorize', lesson_id=lesson_id, _external=True)
+        return jsonify({
+            'success': False,
+            'error': 'Сначала подключите Miro. Нажмите «Подключить Miro» на этой странице.',
+            'auth_required': True,
+            'auth_url': auth_url
+        }), 400
+    if miro_token.expires_at and miro_token.expires_at <= datetime.utcnow():
+        return jsonify({
+            'success': False,
+            'error': 'Сессия Miro истекла. Подключите Miro заново.',
+            'auth_required': True,
+            'auth_url': url_for('miro_oauth_authorize', lesson_id=lesson_id, _external=True)
+        }), 400
+    
     try:
         from app.lessons.miro_service import get_miro_service, MiroAPIError
         
-        miro = get_miro_service()
+        miro = get_miro_service(access_token=miro_token.access_token)
         
         # Формируем название доски
         student = lesson.student
@@ -2751,10 +2770,28 @@ def lesson_whiteboard_invite(lesson_id):
         else:
             return jsonify({'success': False, 'error': 'Email не указан'}), 400
     
+    # Для приглашения нужен OAuth-токен пользователя
+    from datetime import datetime
+    miro_token = MiroUserToken.query.filter_by(user_id=current_user.id).first()
+    if not miro_token or not miro_token.access_token:
+        return jsonify({
+            'success': False,
+            'error': 'Сначала подключите Miro по кнопке «Подключить Miro».',
+            'auth_required': True,
+            'auth_url': url_for('miro_oauth_authorize', lesson_id=lesson_id, _external=True)
+        }), 400
+    if miro_token.expires_at and miro_token.expires_at <= datetime.utcnow():
+        return jsonify({
+            'success': False,
+            'error': 'Сессия Miro истекла. Подключите Miro заново.',
+            'auth_required': True,
+            'auth_url': url_for('miro_oauth_authorize', lesson_id=lesson_id, _external=True)
+        }), 400
+    
     try:
         from app.lessons.miro_service import get_miro_service, MiroAPIError
         
-        miro = get_miro_service()
+        miro = get_miro_service(access_token=miro_token.access_token)
         
         role = "editor" if whiteboard.allow_student_edit else "viewer"
         

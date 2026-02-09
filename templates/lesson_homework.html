@@ -2872,6 +2872,11 @@
                 const data = await res.json();
                 
                 if (!data.success) {
+                    if (data.auth_required && data.auth_url) {
+                        toast.warning(data.error || 'Сначала подключите Miro');
+                        window.location.href = data.auth_url;
+                        return;
+                    }
                     throw new Error(data.error || 'Ошибка создания');
                 }
                 

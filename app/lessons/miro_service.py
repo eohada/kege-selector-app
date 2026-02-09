@@ -24,7 +24,9 @@ class MiroService:
         """
         self.access_token = access_token or current_app.config.get('MIRO_ACCESS_TOKEN')
         if not self.access_token:
-            raise ValueError("MIRO_ACCESS_TOKEN не настроен")
+            raise ValueError(
+                "Нет токена Miro. Сначала авторизуйтесь в Miro по кнопке «Подключить Miro» на странице урока."
+            )
         
         self.headers = {
             "Authorization": f"Bearer {self.access_token}",
@@ -275,12 +277,13 @@ class MiroAPIError(Exception):
         super().__init__(f"Miro API Error {status_code}: {message}")
 
 
-def get_miro_service() -> MiroService:
+def get_miro_service(access_token: Optional[str] = None) -> MiroService:
     """
     Фабрика для создания MiroService.
-    Использует конфигурацию приложения.
+    Использует переданный access_token (OAuth пользователя) или MIRO_ACCESS_TOKEN из конфига.
+    Для создания досок и приглашений нужен токен пользователя после OAuth.
     
     Returns:
         Инстанс MiroService
     """
-    return MiroService()
+    return MiroService(access_token=access_token)
