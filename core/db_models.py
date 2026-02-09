@@ -528,8 +528,10 @@ class User(db.Model):
     email = db.Column(db.String(200), unique=True, nullable=True)  # Email для входа (новое поле)
     password_hash = db.Column(db.String(255), nullable=False)
     
-    # Роли: 'admin', 'tutor', 'student', 'parent', 'tester', 'creator' (старые роли для обратной совместимости)
+    # Роли: 'admin', 'tutor', 'student', 'parent', 'tester', 'creator' (основная роль для отображения; полный набор — в UserRole)
     role = db.Column(db.String(50), default='tester', nullable=False)
+    # Числовой идентификатор для не-учеников (10–99); у учеников — Student.platform_id (100–999)
+    numeric_id = db.Column(db.String(10), nullable=True, index=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=moscow_now)
     last_login = db.Column(db.DateTime, nullable=True)
@@ -551,40 +553,49 @@ class User(db.Model):
     def is_anonymous(self):
         return False
     
-    # Проверки ролей (новые)
+    # Связь с таблицей ролей (несколько ролей у одного пользователя)
+    user_roles = db.relationship('UserRole', backref='user', lazy='select', cascade='all, delete-orphan', foreign_keys='UserRole.user_id')
+
+    def roles(self):
+        """Список ролей пользователя (объединение из UserRole; при отсутствии записей — [role])."""
+        if self.user_roles:
+            return [ur.role for ur in self.user_roles]
+        return [self.role] if self.role else []
+
+    # Проверки ролей (учитывают все присвоенные роли)
     def is_admin(self):
         """Проверка, является ли пользователь администратором"""
-        return self.role == 'admin'
-    
+        return 'admin' in self.roles()
+
     def is_tutor(self):
         """Проверка, является ли пользователь тьютором (creator также может работать как tutor)"""
-        return self.role == 'tutor' or self.role == 'creator'
-    
+        r = self.roles()
+        return 'tutor' in r or 'creator' in r
+
     def is_student(self):
         """Проверка, является ли пользователь учеником"""
-        return self.role == 'student'
-    
+        return 'student' in self.roles()
+
     def is_parent(self):
         """Проверка, является ли пользователь родителем"""
-        return self.role == 'parent'
+        return 'parent' in self.roles()
 
     def is_chief_tester(self):
-        return self.role == 'chief_tester'
+        return 'chief_tester' in self.roles()
 
     def is_designer(self):
-        return self.role == 'designer'
-    
+        return 'designer' in self.roles()
+
     def is_tester(self):
         """Проверка, является ли пользователь тестировщиком (обычным)"""
-        return self.role == 'tester'
-    
-    # Старые методы (для обратной совместимости)
+        return 'tester' in self.roles()
+
     def is_creator(self):
         """Проверка, является ли пользователь создателем"""
-        return self.role == 'creator'
-    
+        return 'creator' in self.roles()
+
     def get_role_display(self):
-        """Возвращает отображаемое название роли"""
+        """Возвращает отображаемое название основной роли."""
         role_map = {
             'creator': 'Создатель',
             'admin': 'Администратор',
@@ -596,6 +607,20 @@ class User(db.Model):
             'parent': 'Родитель',
         }
         return role_map.get(self.role, self.role)
+
+    def get_roles_display(self):
+        """Возвращает список отображаемых названий всех ролей пользователя."""
+        role_map = {
+            'creator': 'Создатель',
+            'admin': 'Администратор',
+            'chief_tester': 'Главный тестировщик',
+            'tutor': 'Преподаватель',
+            'designer': 'Графический дизайнер',
+            'tester': 'Тестировщик',
+            'student': 'Ученик',
+            'parent': 'Родитель',
+        }
+        return [role_map.get(r, r) for r in self.roles()]
     
     def __repr__(self):
         return f'<User {self.username} ({self.role})>'
@@ -616,6 +641,18 @@ class RolePermission(db.Model):
     
     __table_args__ = (
         db.UniqueConstraint('role', 'permission_name', name='uq_role_permission'),
+    )
+
+
+class UserRole(db.Model):
+    """Назначенные роли пользователя (один пользователь может иметь несколько ролей; права объединяются)."""
+    __tablename__ = 'UserRoles'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    role = db.Column(db.String(50), nullable=False, index=True)
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'role', name='uq_user_role'),
     )
 
 

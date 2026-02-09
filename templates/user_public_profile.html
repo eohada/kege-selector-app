@@ -56,7 +56,10 @@
                             <div class="profile-role-badge">{{ public_user.get_role_display() }}</div>
                             <h1>{{ public_display_name }}</h1>
                             <div class="public-sub" style="margin-top: 0.35rem;">
-                                <span class="status-badge status-info" style="opacity:.75;">@{{ public_user.username }}</span>
+                                <span class="status-badge status-info" style="opacity:.75;">{{ public_user.username }}</span>
+                                {% if public_user.custom_status %}
+                                <span class="status-badge" style="opacity:.9;">{{ public_user.custom_status }}</span>
+                                {% endif %}
                             </div>
                             <div style="margin-top: 1rem;">
                                 <a class="neo-button outline" href="{{ request.referrer or url_for('main.dashboard') }}" style="text-decoration:none;">Назад</a>
@@ -81,9 +84,15 @@
                                 <span class="data-value">{{ public_user.get_role_display() }}</span>
                             </div>
                             <div class="data-row">
-                                <span class="data-label">Ник</span>
-                                <span class="data-value">@{{ public_user.username }}</span>
+                                <span class="data-label">Логин</span>
+                                <span class="data-value">{{ public_user.username }}</span>
                             </div>
+                            {% if public_user.custom_status %}
+                            <div class="data-row">
+                                <span class="data-label">Статус</span>
+                                <span class="data-value">{{ public_user.custom_status }}</span>
+                            </div>
+                            {% endif %}
                             <div class="data-row">
                                 <span class="data-label">В системе с</span>
                                 <span class="data-value">{{ public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—' }}</span>
@@ -111,7 +120,10 @@
                             <h1 title="{{ public_display_name }}">{{ public_display_name }}</h1>
                             <div class="public-sub">
                                 <span class="status-badge status-info" style="opacity:.9;">{{ public_user.get_role_display() }}</span>
-                                <span class="status-badge status-info" style="opacity:.75;">@{{ public_user.username }}</span>
+                                <span class="status-badge status-info" style="opacity:.75;">{{ public_user.username }}</span>
+                                {% if public_user.custom_status %}
+                                <span class="status-badge" style="opacity:.9;">{{ public_user.custom_status }}</span>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -137,9 +149,15 @@
                         <span class="data-value" style="font-family: 'JetBrains Mono', monospace;">{{ public_user.get_role_display() }}</span>
                     </div>
                     <div class="data-row">
-                        <span class="data-label">Ник</span>
-                        <span class="data-value">@{{ public_user.username }}</span>
+                        <span class="data-label">Логин</span>
+                        <span class="data-value">{{ public_user.username }}</span>
                     </div>
+                    {% if public_user.custom_status %}
+                    <div class="data-row">
+                        <span class="data-label">Статус</span>
+                        <span class="data-value">{{ public_user.custom_status }}</span>
+                    </div>
+                    {% endif %}
                     <div class="data-row">
                         <span class="data-label">В системе с</span>
                         <span class="data-value">{{ public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—' }}</span>

@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 def has_permission(user, permission_name):
     """
-    Проверяет наличие права у пользователя.
+    Проверяет наличие права у пользователя. Учитываются все роли пользователя (объединение прав).
     1. Индивидуальные права (custom_permissions)
-    2. Права роли (RolePermission)
+    2. Права каждой из ролей (RolePermission)
     3. Дефолтные права (DEFAULT_ROLE_PERMISSIONS)
     """
     if not user or not user.is_authenticated:
@@ -26,30 +26,27 @@ def has_permission(user, permission_name):
         return True
         
     # 1. Индивидуальные права (User override)
-    # Важно: custom_permissions может быть повреждён/не тем типом (например, строка/лист),
-    # тогда не должны падать страницы (это может ломать вход только у одного пользователя).
     try:
         cp = getattr(user, 'custom_permissions', None)
         if isinstance(cp, dict) and (permission_name in cp):
             return bool(cp.get(permission_name))
     except Exception:
-        # игнорируем повреждённые custom_permissions
         pass
         
-    # 2. Права роли из базы
-    try:
-        role_perm = RolePermission.query.filter_by(
-            role=user.role, 
-            permission_name=permission_name
-        ).first()
-        
-        if role_perm:
-            return role_perm.is_enabled
-    except Exception as e:
-        logger.error(f"Error checking DB permissions: {e}")
-        
-    # 3. Дефолтные настройки (если в базе нет записи)
-    return permission_name in DEFAULT_ROLE_PERMISSIONS.get(user.role, [])
+    # 2 и 3. По каждой роли пользователя: БД или дефолты (хватает одной роли с правом)
+    roles = user.roles() if hasattr(user, 'roles') and callable(getattr(user, 'roles')) else [getattr(user, 'role', '')]
+    for role in roles:
+        if not role:
+            continue
+        try:
+            role_perm = RolePermission.query.filter_by(role=role, permission_name=permission_name).first()
+            if role_perm and role_perm.is_enabled:
+                return True
+        except Exception as e:
+            logger.error(f"Error checking DB permissions: {e}")
+        if permission_name in DEFAULT_ROLE_PERMISSIONS.get(role, []):
+            return True
+    return False
 
 def check_access(permission_name):
     """Декоратор для проверки наличия конкретного права"""
@@ -66,12 +63,7 @@ def check_access(permission_name):
 
 def get_user_scope(user):
     """
-    Возвращает область видимости данных для пользователя.
-    Возвращает словарь:
-    {
-        'can_see_all': bool,  # Видит ли всех пользователей
-        'student_ids': list   # Список ID доступных студентов (если can_see_all=False)
-    }
+    Возвращает область видимости данных для пользователя (объединение по всем ролям).
     """
     scope = {
         'role': user.role if user and user.is_authenticated else None,
@@ -86,35 +78,25 @@ def get_user_scope(user):
         scope['can_see_all'] = True
         return scope
     
-    elif user.is_tutor():
-        # Тьютор видит только своих учеников (через Enrollment)
-        # Включаем все статусы, кроме 'archived', чтобы видеть активных и приостановленных
+    student_ids = set()
+    
+    if user.is_tutor():
         enrollments = Enrollment.query.filter(
             Enrollment.tutor_id == user.id,
             Enrollment.status != 'archived'
         ).all()
-        scope['student_ids'] = [e.student_id for e in enrollments]
-        return scope
+        student_ids.update(e.student_id for e in enrollments)
     
-    elif user.is_parent():
-        # Родитель видит только своих детей (через FamilyTie)
-        # В некоторых окружениях подтверждение связи может не использоваться/не проставляться.
-        # Чтобы родителю не "пропадали" дети, делаем fallback: если нет confirmed-связей,
-        # берём все связи родителя.
+    if user.is_parent():
         family_ties = FamilyTie.query.filter_by(parent_id=user.id, is_confirmed=True).all()
         if not family_ties:
             family_ties = FamilyTie.query.filter_by(parent_id=user.id).all()
-        scope['student_ids'] = [ft.student_id for ft in family_ties]
-        return scope
+        student_ids.update(ft.student_id for ft in family_ties)
     
-    elif user.is_student():
-        # Ученик видит только себя
-        scope['student_ids'] = [user.id]
-        return scope
+    if user.is_student():
+        student_ids.add(user.id)
     
-    # Для новых ролей по умолчанию (designer, tester)
-    # Если им нужен доступ к данным студентов, добавить условия выше
-    
+    scope['student_ids'] = list(student_ids)
     return scope
 
 
@@ -167,7 +149,9 @@ def require_role(*allowed_roles):
             if not current_user.is_authenticated:
                 abort(403)
             
-            if current_user.role not in allowed_roles:
+            allowed = set(allowed_roles)
+            user_roles = current_user.roles() if hasattr(current_user, 'roles') and callable(getattr(current_user, 'roles')) else [getattr(current_user, 'role', '')]
+            if not (allowed & set(user_roles)):
                 abort(403)
             
             return f(*args, **kwargs)

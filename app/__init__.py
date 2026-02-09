@@ -78,7 +78,7 @@ def create_app(config_name=None):
     # Аватарки: при деплое файловая система эфемерная — задайте AVATAR_UPLOAD_ROOT (путь к persistent volume).
     # Если задан — файлы сохраняются туда и раздаются по /avatars/...; иначе — в static/uploads/avatars (как раньше).
     app.config['AVATAR_UPLOAD_ROOT'] = (os.environ.get('AVATAR_UPLOAD_ROOT') or '').strip() or None
-    # Баннеры профиля (креатор): при деплое задайте COVER_UPLOAD_ROOT; иначе — static/uploads/covers.
+    # Баннеры профиля (креатор): при деплое задайте COVER_UPLOAD_ROOT (папка на хосте, см. docs/PERSISTENT_UPLOADS.md); иначе — static/uploads/covers (пропадает при обновлении).
     app.config['COVER_UPLOAD_ROOT'] = (os.environ.get('COVER_UPLOAD_ROOT') or '').strip() or None
 
     # Лимит тела запроса (аватар до 5MB + форма). Если перед приложением стоит nginx — там тоже задайте client_max_body_size 10m.

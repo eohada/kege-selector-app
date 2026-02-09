@@ -7,7 +7,7 @@ from flask import request, jsonify
 from werkzeug.security import generate_password_hash
 
 from app.admin import admin_bp
-from app.models import db, User, UserProfile, FamilyTie, Enrollment, moscow_now
+from app.models import db, User, UserProfile, FamilyTie, Enrollment, moscow_now, UserRole
 from app.auth.rbac_utils import require_admin
 from core.audit_logger import audit_logger
 from flask_login import current_user
@@ -26,9 +26,9 @@ def api_users_list():
         
         query = User.query
         
-        # Применяем фильтры
+        # Применяем фильтры (по любой из ролей пользователя)
         if role_filter:
-            query = query.filter(User.role == role_filter)
+            query = query.join(UserRole, User.id == UserRole.user_id).filter(UserRole.role == role_filter).distinct()
         if is_active_filter is not None:
             is_active = is_active_filter.lower() == 'true'
             query = query.filter(User.is_active == is_active)
@@ -281,6 +281,8 @@ def api_users_update(user_id):
             if role not in valid_roles:
                 return jsonify({'success': False, 'error': f'Invalid role. Must be one of: {", ".join(valid_roles)}'}), 400
             user.role = role
+            UserRole.query.filter_by(user_id=user.id).delete()
+            db.session.add(UserRole(user_id=user.id, role=role))
         
         if 'is_active' in data:
             user.is_active = bool(data['is_active'])

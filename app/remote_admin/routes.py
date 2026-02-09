@@ -200,14 +200,19 @@ def user_new():
     
     if request.method == 'POST':
         try:
+            roles_list = request.form.getlist('roles')
+            if not roles_list:
+                roles_list = [request.form.get('role', 'student').strip() or 'student']
             data = {
                 'username': request.form.get('username', '').strip(),
                 'email': request.form.get('email', '').strip() or None,
                 'telegram_link': request.form.get('telegram_link', '').strip() or None,
                 'password': request.form.get('password', '').strip(),
-                'role': request.form.get('role', 'student').strip(),
+                'roles': roles_list,
+                'role': roles_list[0] if roles_list else 'student',
                 'is_active': request.form.get('is_active') == 'on',
                 'platform_id': request.form.get('platform_id', '').strip() or None,
+                'numeric_id': request.form.get('numeric_id', '').strip() or None,
                 'tutor_id': request.form.get('tutor_id'),
                 'parent_ids': request.form.getlist('parent_ids'),
                 'child_ids': request.form.getlist('child_ids')
@@ -274,13 +279,18 @@ def user_edit(user_id):
     
     if request.method == 'POST':
         try:
+            roles_list = request.form.getlist('roles')
+            if not roles_list:
+                roles_list = [request.form.get('role', 'student').strip() or 'student']
             data = {
                 'username': request.form.get('username', '').strip(),
                 'email': request.form.get('email', '').strip() or None,
                 'telegram_link': request.form.get('telegram_link', '').strip() or None,
-                'role': request.form.get('role', 'student').strip(),
+                'roles': roles_list,
+                'role': roles_list[0] if roles_list else 'student',
                 'is_active': request.form.get('is_active') == 'on',
                 'platform_id': request.form.get('platform_id', '').strip() or None,
+                'numeric_id': request.form.get('numeric_id', '').strip() or None,
                 'tutor_id': request.form.get('tutor_id'),
                 'parent_ids': request.form.getlist('parent_ids'),
                 'child_ids': request.form.getlist('child_ids')

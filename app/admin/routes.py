@@ -20,7 +20,7 @@ from werkzeug.security import generate_password_hash  # Хешируем пар�
 
 from app.admin import admin_bp
 from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ, Tasks, Lesson, LessonTask, Topic
-from app.models import UserProfile, FamilyTie, Enrollment, Student
+from app.models import UserProfile, FamilyTie, Enrollment, Student, UserRole
 from core.db_models import Tester, task_topics
 from core.audit_logger import audit_logger
 from app import csrf
@@ -349,6 +349,8 @@ def admin_testers_create():
             old_role = user.role  # Запоминаем старую роль для аудита. # comment
             user.password_hash = generate_password_hash(password)  # Обновляем хеш пароля. # comment
             user.role = 'tester'  # Проставляем роль тестировщика. # comment
+            UserRole.query.filter_by(user_id=user.id).delete()
+            db.session.add(UserRole(user_id=user.id, role='tester'))
             user.is_active = True  # Активируем пользователя. # comment
             db.session.commit()  # Фиксируем изменения. # comment
 
@@ -371,6 +373,13 @@ def admin_testers_create():
             created_at=moscow_now()  # Дата создания. # comment
         )  # Конец инициализации User. # comment
         db.session.add(user)  # Добавляем в сессию. # comment
+        db.session.flush()
+        db.session.add(UserRole(user_id=user.id, role='tester'))
+        try:
+            from app.utils.numeric_id_manager import assign_numeric_id_if_needed
+            assign_numeric_id_if_needed(user)
+        except Exception:
+            pass
         db.session.commit()  # Сохраняем в БД. # comment
 
         audit_logger.log(  # Пишем событие аудита. # comment
@@ -691,12 +700,21 @@ def sandbox_internal_user_tester_create():
         if user:
             user.password_hash = generate_password_hash(password)
             user.role = 'tester'
+            UserRole.query.filter_by(user_id=user.id).delete()
+            db.session.add(UserRole(user_id=user.id, role='tester'))
             user.is_active = True
             db.session.commit()
             return jsonify({'success': True, 'updated': True, 'user_id': user.id}), 200
 
         user = User(username=username, password_hash=generate_password_hash(password), role='tester', is_active=True, created_at=moscow_now())
         db.session.add(user)
+        db.session.flush()
+        db.session.add(UserRole(user_id=user.id, role='tester'))
+        try:
+            from app.utils.numeric_id_manager import assign_numeric_id_if_needed
+            assign_numeric_id_if_needed(user)
+        except Exception:
+            pass
         db.session.commit()
         return jsonify({'success': True, 'created': True, 'user_id': user.id}), 200
     except Exception as e:
@@ -1198,6 +1216,8 @@ def admin_testers_edit(user_id):
         
         user.username = new_username
         user.role = new_role
+        UserRole.query.filter_by(user_id=user.id).delete()
+        db.session.add(UserRole(user_id=user.id, role=new_role))
         try:
             db.session.commit()
         except Exception as e:
@@ -2673,6 +2693,8 @@ def admin_user_edit(user_id):
             user.username = username
             user.email = email
             user.role = role
+            UserRole.query.filter_by(user_id=user.id).delete()
+            db.session.add(UserRole(user_id=user.id, role=role))
             user.is_active = is_active
             
             # Обработка custom_permissions (только для Creator)

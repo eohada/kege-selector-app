@@ -7,7 +7,7 @@ import json
 from sqlalchemy import inspect, text
 from app.models import db
 from core.db_models import (
-    Tester, AuditLog, RolePermission, User,
+    Tester, AuditLog, RolePermission, User, UserRole,
     UserNotification,
     LessonMessage,
     LessonWhiteboard,
@@ -1071,6 +1071,39 @@ def ensure_schema_columns(app):
                     except Exception as e:
                         logger.warning(f"Could not add schedule_ics_token to Users: {e}")
                         db.session.rollback()
+
+                # numeric_id для не-учеников (10–99)
+                if 'numeric_id' not in users_columns:
+                    try:
+                        if _is_postgres(app):
+                            db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN numeric_id VARCHAR(10)'))
+                        else:
+                            db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN numeric_id VARCHAR(10)'))
+                        logger.info("Added numeric_id column to Users table")
+                    except Exception as e:
+                        logger.warning(f"Could not add numeric_id to Users: {e}")
+                        db.session.rollback()
+            
+            # 2. Создаем таблицу UserRoles (несколько ролей на пользователя) и бэкфилл
+            user_roles_table = _resolve_table_name(table_names, 'UserRoles')
+            if not user_roles_table:
+                try:
+                    db.create_all()
+                    logger.info("Created UserRoles table")
+                except Exception as e:
+                    logger.warning(f"Could not create UserRoles table: {e}")
+                table_names = [t for t in inspector.get_table_names()]
+                user_roles_table = _resolve_table_name(table_names, 'UserRoles')
+            if user_roles_table:
+                try:
+                    existing = db.session.query(UserRole).limit(1).first()
+                    if not existing:
+                        for u in User.query.all():
+                            if u.role and not UserRole.query.filter_by(user_id=u.id).first():
+                                db.session.add(UserRole(user_id=u.id, role=u.role))
+                        logger.info("Backfilled UserRoles from User.role (will commit with RBAC)")
+                except Exception as e:
+                    logger.warning(f"Could not backfill UserRoles: {e}")
             
             # 2. Создаем таблицу UserProfiles (если её нет)
             profiles_table = _resolve_table_name(table_names, 'UserProfiles')

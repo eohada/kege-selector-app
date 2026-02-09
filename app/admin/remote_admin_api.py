@@ -14,7 +14,7 @@ from app.admin import admin_bp
 import re
 
 from app.models import User, AuditLog, MaintenanceMode, db, UserProfile, Tasks, TaskReview
-from app.models import FamilyTie, Enrollment, Student, Lesson, RolePermission
+from app.models import FamilyTie, Enrollment, Student, Lesson, RolePermission, UserRole
 from app.models import BotAdmin, BotErrorReport, UserNotification
 from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES, DEFAULT_ROLE_PERMISSIONS
 from core.audit_logger import audit_logger
@@ -304,6 +304,75 @@ def remote_admin_status():
         return jsonify({'error': str(e)}), 500
 
 
+@admin_bp.route('/internal/remote-admin/api/username-available', methods=['GET'])
+@csrf.exempt
+def remote_admin_api_username_available():
+    """API: Проверка доступности логина (для мгновенной проверки в удалённой админке)."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    username = (request.args.get('username') or '').strip()
+    if not username:
+        return jsonify({'available': False, 'error': 'username is required'}), 400
+    try:
+        exclude_user_id = request.args.get('exclude_user_id', type=int)
+        q = User.query.filter(func.lower(User.username) == username.lower())
+        if exclude_user_id is not None:
+            q = q.filter(User.id != exclude_user_id)
+        existing = q.first()
+        return jsonify({'available': existing is None, 'username': username})
+    except Exception as e:
+        logger.error(f"Error in username-available: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/platform-id-available', methods=['GET'])
+@csrf.exempt
+def remote_admin_api_platform_id_available():
+    """API: Проверка доступности числового идентификатора ученика (#100–999) для удалённой админки."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    raw = (request.args.get('platform_id') or '').strip()
+    if not raw:
+        return jsonify({'available': False, 'error': 'platform_id is required'}), 400
+    try:
+        from app.utils.student_id_manager import is_valid_three_digit_id
+        if not is_valid_three_digit_id(raw):
+            return jsonify({'available': False, 'error': 'Идентификатор должен быть числом от 100 до 999', 'platform_id': raw})
+        exclude_user_id = request.args.get('exclude_user_id', type=int)
+        q = Student.query.filter(Student.platform_id == raw)
+        if exclude_user_id is not None:
+            q = q.filter(Student.user_id != exclude_user_id)
+        existing = q.first()
+        return jsonify({'available': existing is None, 'platform_id': raw})
+    except Exception as e:
+        logger.error(f"Error in platform-id-available: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/numeric-id-available', methods=['GET'])
+@csrf.exempt
+def remote_admin_api_numeric_id_available():
+    """API: Проверка доступности двузначного идентификатора (10–99) для не-учеников."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    raw = (request.args.get('numeric_id') or '').strip()
+    if not raw:
+        return jsonify({'available': False, 'error': 'numeric_id is required'}), 400
+    try:
+        from app.utils.numeric_id_manager import is_valid_two_digit_id
+        if not is_valid_two_digit_id(raw):
+            return jsonify({'available': False, 'error': 'Идентификатор должен быть числом от 10 до 99', 'numeric_id': raw})
+        exclude_user_id = request.args.get('exclude_user_id', type=int)
+        q = User.query.filter(User.numeric_id == raw)
+        if exclude_user_id is not None:
+            q = q.filter(User.id != exclude_user_id)
+        existing = q.first()
+        return jsonify({'available': existing is None, 'numeric_id': raw})
+    except Exception as e:
+        logger.error(f"Error in numeric-id-available: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
 @admin_bp.route('/internal/remote-admin/api/users', methods=['GET', 'POST'])
 @csrf.exempt
 def remote_admin_api_users():
@@ -323,9 +392,16 @@ def remote_admin_api_users():
             email = data.get('email', '').strip() or None
             telegram_link = data.get('telegram_link', '').strip() or None
             password = data.get('password', '').strip()
-            role = (data.get('role') or 'student').strip()  # comment
-            is_active = data.get('is_active', True)  # comment
-            platform_id = (data.get('platform_id') or '').strip() or None  # comment
+            roles_raw = data.get('roles')
+            if isinstance(roles_raw, list) and roles_raw:
+                roles = [str(r).strip() for r in roles_raw if r]
+            else:
+                role_single = (data.get('role') or 'student').strip()
+                roles = [role_single] if role_single else ['student']
+            role = roles[0]
+            is_active = data.get('is_active', True)
+            platform_id = (data.get('platform_id') or '').strip() or None
+            numeric_id = (data.get('numeric_id') or '').strip() or None
             
             # Связи
             tutor_id = data.get('tutor_id')
@@ -359,6 +435,16 @@ def remote_admin_api_users():
                 if existing_student:
                     return jsonify({'error': f'platform_id "{platform_id}" already exists'}), 409
             
+            # numeric_id для не-учеников (10–99)
+            if role != 'student' and 'student' not in roles:
+                from app.utils.numeric_id_manager import is_valid_two_digit_id, assign_numeric_id_if_needed, get_next_available_numeric_id
+                if numeric_id:
+                    if not is_valid_two_digit_id(numeric_id):
+                        return jsonify({'error': 'numeric_id должен быть числом от 10 до 99'}), 400
+                    if User.query.filter_by(numeric_id=numeric_id).first():
+                        return jsonify({'error': f'Идентификатор «{numeric_id}» уже занят'}), 409
+                # присвоим ниже после создания user
+            
             # Создаем пользователя
             user = User(
                 username=username,
@@ -369,8 +455,20 @@ def remote_admin_api_users():
                 is_active=is_active,
                 created_at=moscow_now()
             )
+            if role != 'student' and numeric_id:
+                user.numeric_id = numeric_id
             db.session.add(user)
             db.session.flush()
+            
+            # Несколько ролей
+            for r in roles:
+                if r and not UserRole.query.filter_by(user_id=user.id, role=r).first():
+                    db.session.add(UserRole(user_id=user.id, role=r))
+            
+            # numeric_id авто, если не задан (для не-ученика)
+            if role != 'student' and not user.numeric_id:
+                from app.utils.numeric_id_manager import assign_numeric_id_if_needed
+                assign_numeric_id_if_needed(user)
             
             # Создаем профиль
             profile = UserProfile(user_id=user.id)
@@ -458,7 +556,7 @@ def remote_admin_api_users():
             query = User.query
             
             if role_filter:
-                query = query.filter(User.role == role_filter)
+                query = query.join(UserRole, User.id == UserRole.user_id).filter(UserRole.role == role_filter).distinct()
             if is_active_filter is not None:
                 is_active = is_active_filter.lower() == 'true'
                 query = query.filter(User.is_active == is_active)
@@ -1055,6 +1153,8 @@ def remote_admin_api_user(user_id):
                 'email': user.email,
                 'telegram_link': user.telegram_link,
                 'role': user.role,
+                'roles': user.roles(),
+                'numeric_id': user.numeric_id,
                 'is_active': user.is_active,
                 'created_at': user.created_at.isoformat() if user.created_at else None,
                 'last_login': user.last_login.isoformat() if user.last_login else None,
@@ -1108,15 +1208,51 @@ def remote_admin_api_user(user_id):
             
             # Обновляем поля пользователя
             if 'username' in data:
-                user.username = data['username']
+                new_username = (data['username'] or '').strip()
+                if not new_username:
+                    return jsonify({'error': 'username не может быть пустым'}), 400
+                # Проверка уникальности: другой пользователь не должен иметь такой логин
+                other = User.query.filter(func.lower(User.username) == new_username.lower()).filter(User.id != user_id).first()
+                if other:
+                    return jsonify({'error': f'Логин «{new_username}» уже занят'}), 409
+                user.username = new_username
             if 'email' in data:
                 user.email = data['email'] or None
             if 'telegram_link' in data:
                 user.telegram_link = data['telegram_link'] or None
-            if 'role' in data:
+            effective_roles = None
+            if 'roles' in data:
+                roles_list = data['roles'] if isinstance(data['roles'], list) else [data.get('role', user.role)]
+                roles_list = [str(r).strip() for r in roles_list if r]
+                if roles_list:
+                    UserRole.query.filter_by(user_id=user_id).delete()
+                    for r in roles_list:
+                        db.session.add(UserRole(user_id=user_id, role=r))
+                    user.role = roles_list[0]
+                    effective_roles = roles_list
+            elif 'role' in data:
                 user.role = data['role']
+                if not UserRole.query.filter_by(user_id=user_id).first():
+                    db.session.add(UserRole(user_id=user_id, role=user.role))
             if 'is_active' in data:
                 user.is_active = bool(data['is_active'])
+            if effective_roles is None:
+                effective_roles = user.roles() if hasattr(user, 'roles') and callable(getattr(user, 'roles')) else [user.role]
+            if 'numeric_id' in data and 'student' not in effective_roles:
+                from app.utils.numeric_id_manager import is_valid_two_digit_id, assign_numeric_id_if_needed
+                raw = (data.get('numeric_id') or '').strip() or None
+                if raw:
+                    if not is_valid_two_digit_id(raw):
+                        return jsonify({'error': 'numeric_id должен быть числом от 10 до 99'}), 400
+                    other = User.query.filter(User.numeric_id == raw, User.id != user_id).first()
+                    if other:
+                        return jsonify({'error': f'Идентификатор «{raw}» уже занят'}), 409
+                    user.numeric_id = raw
+                else:
+                    user.numeric_id = None
+                    assign_numeric_id_if_needed(user)
+            elif 'student' in effective_roles and not any(r != 'student' for r in effective_roles):
+                user.numeric_id = None
             
             # Обновляем пароль, если указан
             if 'password' in data and data['password']:
