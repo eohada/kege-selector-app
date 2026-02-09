@@ -608,6 +608,28 @@ class User(db.Model):
             'parent': 'Родитель',
         }
         return [role_map.get(r, r) for r in self.roles()]
+
+    ROLE_STRENGTH_ORDER = ('creator', 'admin', 'chief_tester', 'tutor', 'designer', 'tester', 'student', 'parent')
+
+    def get_primary_role_display(self):
+        """Возвращает отображаемое название «главной» роли (для бейджа у авы): creator > admin > chief_tester > tutor > ..."""
+        role_map = {
+            'creator': 'Создатель',
+            'admin': 'Администратор',
+            'chief_tester': 'Главный тестировщик',
+            'tutor': 'Преподаватель',
+            'designer': 'Графический дизайнер',
+            'tester': 'Тестировщик',
+            'student': 'Ученик',
+            'parent': 'Родитель',
+        }
+        r = self.roles()
+        if not r:
+            return role_map.get(self.role, self.role or '—')
+        for slug in self.ROLE_STRENGTH_ORDER:
+            if slug in r:
+                return role_map.get(slug, slug)
+        return role_map.get(r[0], r[0])
     
     def __repr__(self):
         return f'<User {self.username} ({self.role})>'

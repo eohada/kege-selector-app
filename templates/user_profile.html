@@ -81,7 +81,7 @@
                             </div>
                             <div class="profile-info">
                                 <div class="profile-role-badge">
-                                    {{ current_user.get_role_display() }}
+                                    {{ current_user.get_primary_role_display() }}
                                 </div>
                                 <h1>{{ current_user.username }}</h1>
                                 {% if current_user.custom_status %}
@@ -168,7 +168,7 @@
                                 </div>
                                 <div class="data-row">
                                     <span class="data-label">Роль в системе</span>
-                                    <span class="data-value" style="color: var(--accent-color);">{{ current_user.get_role_display() }}</span>
+                                    <span class="data-value" style="color: var(--accent-color);">{{ current_user.get_roles_display() | join(', ') }}</span>
                                 </div>
                                 <div class="data-row">
                                     <span class="data-label">Дата регистрации</span>

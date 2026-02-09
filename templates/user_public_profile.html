@@ -25,8 +25,8 @@
         .public-actions { display:flex; gap: .6rem; flex-wrap: wrap; justify-content: flex-end; }
     </style>
 </head>
-<body class="{% if public_user.role == 'creator' %}creator-theme-active{% endif %}">
-    {% if public_user.role == 'creator' %}
+<body class="{% if public_user.is_creator() %}creator-theme-active{% endif %}">
+    {% if public_user.is_creator() %}
     <div class="creator-snowflakes" aria-hidden="true">
         {% for i in range(28) %}<span class="snowflake">❄</span>{% endfor %}
     </div>
@@ -35,7 +35,7 @@
         {% set active_page = None %}
         {% include '_primary_nav.html' %}
 
-        {% if public_user.role == 'creator' %}
+        {% if public_user.is_creator() %}
         
         <main class="profile-container theme-creator">
             <div class="profile-card">
@@ -53,7 +53,7 @@
                             </div>
                         </div>
                         <div class="profile-info">
-                            <div class="profile-role-badge">{{ public_user.get_role_display() }}</div>
+                            <div class="profile-role-badge">{{ public_user.get_primary_role_display() }}</div>
                             <h1>{{ public_display_name }}</h1>
                             <div class="public-sub" style="margin-top: 0.35rem;">
                                 <span class="status-badge status-info" style="opacity:.75;">{{ public_user.username }}</span>
@@ -83,7 +83,7 @@
                             <h3>Сводка</h3>
                             <div class="data-row">
                                 <span class="data-label">Роль</span>
-                                <span class="data-value">{{ public_user.get_role_display() }}</span>
+                                <span class="data-value">{{ public_user.get_roles_display() | join(', ') }}</span>
                             </div>
                             <div class="data-row">
                                 <span class="data-label">Логин</span>
@@ -118,7 +118,7 @@
         </main>
         {% else %}
         
-        <main class="public-profile-wrap {% if public_user.role == 'admin' %}theme-admin{% elif public_user.role == 'tutor' %}theme-tutor{% elif public_user.role == 'parent' %}theme-parent{% elif public_user.role == 'student' %}theme-student{% endif %}">
+        <main class="public-profile-wrap {% if public_user.is_admin() %}theme-admin{% elif public_user.is_tutor() %}theme-tutor{% elif public_user.is_parent() %}theme-parent{% elif public_user.is_student() %}theme-student{% endif %}">
             <section class="glass-panel">
                 <div class="public-hero">
                     <div class="public-identity">
@@ -133,7 +133,7 @@
                             <div class="hero-eyebrow">профиль</div>
                             <h1 title="{{ public_display_name }}">{{ public_display_name }}</h1>
                             <div class="public-sub">
-                                <span class="status-badge status-info" style="opacity:.9;">{{ public_user.get_role_display() }}</span>
+                                <span class="status-badge status-info" style="opacity:.9;">{{ public_user.get_primary_role_display() }}</span>
                                 <span class="status-badge status-info" style="opacity:.75;">{{ public_user.username }}</span>
                                 {% if public_numeric_id %}<span class="status-badge status-info" style="opacity:.75;">#{{ public_numeric_id }}</span>{% endif %}
                                 {% if public_user.telegram_link %}<span class="status-badge" style="opacity:.8;">{{ public_user.telegram_link }}</span>{% endif %}
@@ -162,7 +162,7 @@
                     <h3>Сводка</h3>
                     <div class="data-row">
                         <span class="data-label">Роль</span>
-                        <span class="data-value" style="font-family: 'JetBrains Mono', monospace;">{{ public_user.get_role_display() }}</span>
+                        <span class="data-value" style="font-family: 'JetBrains Mono', monospace;">{{ public_user.get_roles_display() | join(', ') }}</span>
                     </div>
                     <div class="data-row">
                         <span class="data-label">Логин</span>
