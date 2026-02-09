@@ -470,6 +470,77 @@ def student_profile(student_id):
         return redirect(url_for('main.dashboard'))
 
 
+@students_bp.route('/student/<int:student_id>/info')
+@login_required
+def student_info(student_id: int):
+    """Профиль ученика (карточка): данные, контакты, подписка, родители. Без уроков и ленты."""
+    student = Student.query.options(db.joinedload(Student.user)).get_or_404(student_id)
+    if not _can_access_student(student):
+        from flask import abort
+        abort(403)
+    # Редирект ученика в свой профиль при обращении к чужому
+    if current_user.is_student():
+        me_student = Student.query.filter_by(user_id=current_user.id).first()
+        if not me_student and (current_user.email or '').strip():
+            me_student = Student.query.filter(
+                func.lower(Student.email) == (current_user.email or '').strip().lower()
+            ).first()
+        if me_student and me_student.student_id != student_id:
+            return redirect(url_for('students.student_info', student_id=me_student.student_id))
+    student_user_obj = None
+    if getattr(student, 'user_id', None):
+        student_user_obj = User.query.get(student.user_id)
+    if not student_user_obj and student.email:
+        student_user_obj = User.query.filter_by(email=student.email, role='student').first()
+    student_subscription = None
+    try:
+        if student_user_obj:
+            student_subscription = get_effective_access_for_user(student_user_obj.id)
+    except Exception:
+        student_subscription = None
+    parents_info = []
+    try:
+        can_see_parents = (
+            getattr(current_user, 'is_tutor', None) and current_user.is_tutor()
+        ) or (
+            getattr(current_user, 'is_admin', None) and current_user.is_admin()
+        ) or (
+            getattr(current_user, 'is_creator', None) and current_user.is_creator()
+        )
+        if can_see_parents and student_user_obj:
+            from app.models import UserProfile
+            family_ties = FamilyTie.query.filter_by(
+                student_id=student_user_obj.id,
+                is_confirmed=True
+            ).all()
+            for tie in family_ties:
+                try:
+                    parent_user = User.query.get(tie.parent_id)
+                    if parent_user:
+                        parent_profile = UserProfile.query.filter_by(user_id=parent_user.id).first()
+                        if parent_profile:
+                            name = f"{parent_profile.first_name or ''} {parent_profile.last_name or ''}".strip()
+                            if not name:
+                                name = parent_user.username
+                            parents_info.append({
+                                'name': name,
+                                'phone': parent_profile.phone,
+                                'telegram_id': parent_profile.telegram_id,
+                                'access_level': tie.access_level
+                            })
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    return render_template(
+        'student_info.html',
+        student=student,
+        student_user=student_user_obj,
+        student_subscription=student_subscription,
+        parents_info=parents_info,
+    )
+
+
 @students_bp.route('/student/<int:student_id>/plan')
 @login_required
 def student_learning_plan(student_id: int):

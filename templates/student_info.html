@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ student.name }} · Профиль ученика</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% include '_ux_enhancements.html' %}
+    <style>
+        .info-card { max-width: 720px; }
+        .data-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding: 0.6rem 0; border-bottom: 1px solid var(--stroke-1); }
+        .data-row:last-child { border-bottom: none; }
+        .data-label { color: var(--text-muted); font-size: 0.9rem; flex-shrink: 0; }
+        .data-value { text-align: right; color: var(--text-primary); word-break: break-word; }
+        .info-section { margin-bottom: 1.5rem; }
+        .info-section h3 { margin: 0 0 0.75rem 0; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+        .profile-avatar-big { width: 100%; height: 100%; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.6rem; font-weight: 700; background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); color: #fff; overflow: hidden; }
+        .profile-avatar-big img { width: 100%; height: 100%; object-fit: cover; }
+        .info-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; }
+        @media (max-width: 768px) {
+            .data-row { flex-direction: column; gap: 0.25rem; text-align: left; }
+            .data-value { text-align: left; }
+        }
+    </style>
+</head>
+<body>
+    {% set active_page = 'students' %}
+    {% include '_primary_nav.html' %}
+    {% include '_mobile_menu.html' %}
+
+    <div class="app-shell">
+        <div class="profile-card theme-student info-card" style="margin-bottom: 2rem;">
+            <div class="profile-cover"></div>
+            <div class="profile-header">
+                <div class="profile-identity">
+                    <div class="profile-avatar-wrapper" style="width: 120px; height: 120px;">
+                        <div class="profile-avatar-big">
+                            {% if student_user and student_user.avatar_url %}
+                                <img src="{{ student_user.avatar_url }}" alt="Аватар">
+                            {% else %}
+                                {{ student.name[0]|upper }}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="profile-info" style="min-width: 0;">
+                        <div class="profile-role-badge">Профиль ученика</div>
+                        <h1 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ student.name }}</h1>
+                        <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top:.35rem;">
+                            {% if student.school_class %}<span class="status-badge status-info" style="opacity:.85;">{{ student.school_class }} класс</span>{% endif %}
+                            {% if student.category %}<span class="status-badge status-info" style="opacity:.85;">{{ student.category }}</span>{% endif %}
+                            {% if student.platform_id %}<span class="status-badge status-info" style="opacity:.75;">ID: {{ student.platform_id }}</span>{% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-actions">
+                    <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button accent" style="text-decoration:none;">
+                        <i class="fas fa-door-open ui-icon ui-icon--sm"></i> Комната ученика
+                    </a>
+                    {% if not current_user.is_student() and not current_user.is_parent() %}
+                    <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="neo-button outline" style="text-decoration:none;">
+                        <i class="fas fa-pen ui-icon ui-icon--sm"></i> Редактировать
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button outline" style="text-decoration:none;">
+                        <i class="fas fa-chart-line ui-icon ui-icon--sm"></i> Статистика
+                    </a>
+                    <a href="{{ url_for('students.student_learning_plan', student_id=student.student_id) }}" class="neo-button ghost" style="text-decoration:none;">
+                        <i class="fas fa-route ui-icon ui-icon--sm"></i> Траектория
+                    </a>
+                </div>
+            </div>
+
+            <div style="padding: 0 2rem 2rem;">
+                <div class="info-section">
+                    <h3>Данные</h3>
+                    <div class="glass-panel" style="padding: 1rem;">
+                        <div class="data-row">
+                            <span class="data-label">ID на платформе</span>
+                            <span class="data-value">{% if student.platform_id %}{{ student.platform_id }}{% else %}—{% endif %}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Класс</span>
+                            <span class="data-value">{% if student.school_class %}{{ student.school_class }} класс{% else %}—{% endif %}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Категория</span>
+                            <span class="data-value">{% if student.category %}{{ student.category }}{% else %}—{% endif %}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Целевой балл</span>
+                            <span class="data-value">{% if student.target_score is not none %}{{ student.target_score }}{% else %}—{% endif %}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Сроки</span>
+                            <span class="data-value">{% if student.deadline %}{{ student.deadline }}{% else %}—{% endif %}</span>
+                        </div>
+                        {% if student.description %}
+                        <div class="data-row">
+                            <span class="data-label">Описание</span>
+                            <span class="data-value" style="white-space: pre-wrap;">{{ student.description }}</span>
+                        </div>
+                        {% endif %}
+                        {% if (not current_user.is_student() and not current_user.is_parent()) and student.notes %}
+                        <div class="data-row">
+                            <span class="data-label">Заметки</span>
+                            <span class="data-value" style="white-space: pre-wrap;">{{ student.notes }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>Контакты</h3>
+                    <div class="glass-panel" style="padding: 1rem;">
+                        <div class="data-row">
+                            <span class="data-label">Email</span>
+                            <span class="data-value">{% if student.email %}<a href="mailto:{{ student.email }}" style="color: var(--accent-1);">{{ student.email }}</a>{% else %}—{% endif %}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Телефон</span>
+                            <span class="data-value">{% if student.phone %}{{ student.phone }}{% else %}—{% endif %}</span>
+                        </div>
+                        <div class="data-row">
+                            <span class="data-label">Telegram</span>
+                            <span class="data-value">{% if student.telegram %}{{ student.telegram }}{% else %}—{% endif %}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {% if student_subscription %}
+                <div class="info-section">
+                    <h3>Доступ / подписка</h3>
+                    <div class="glass-panel" style="padding: 1rem;">
+                        {% if student_subscription.subscription and student_subscription.plan %}
+                            <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.5rem;">
+                                <span class="status-badge status-info" style="opacity:0.95;">{{ student_subscription.label }}</span>
+                                <span class="status-badge status-info" style="opacity:0.85;">Тариф: <strong>{{ student_subscription.plan.title }}</strong></span>
+                                {% if student_subscription.ends_at_utc %}
+                                    <span class="status-badge status-info" style="opacity:0.85;">До: <strong>{{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</strong></span>
+                                {% endif %}
+                            </div>
+                            {% if student_subscription.lessons_remaining is not none %}
+                                <div style="color: var(--text-muted);">Осталось уроков: <strong style="color: var(--text-primary);">{{ student_subscription.lessons_remaining }}</strong></div>
+                            {% elif student_subscription.seconds_left is not none %}
+                                {% set days_left = (student_subscription.seconds_left // 86400) %}
+                                <div style="color: var(--text-muted);">Осталось: <strong style="color: var(--text-primary);">{{ days_left }} дн.</strong></div>
+                            {% endif %}
+                        {% elif student_subscription.status == 'expired' %}
+                            <div style="font-weight: 700; color: var(--danger);">Подписка истекла</div>
+                            {% if student_subscription.ends_at_utc %}
+                                <div style="color: var(--text-muted); font-size: 0.9rem;">Закончилась: {{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</div>
+                            {% endif %}
+                        {% else %}
+                            <div style="color: var(--text-muted);">Тариф не задан</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if student.goal_text %}
+                <div class="info-section">
+                    <h3>Цель</h3>
+                    <div class="glass-panel" style="padding: 1rem;">
+                        <p style="margin: 0; line-height: 1.5; white-space: pre-wrap;">{{ student.goal_text }}</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if parents_info %}
+                <div class="info-section">
+                    <h3>Родители</h3>
+                    <div class="glass-panel" style="padding: 1rem;">
+                        {% for p in parents_info %}
+                        <div class="data-row">
+                            <span class="data-label">{{ p.name }}</span>
+                            <span class="data-value">
+                                {% if p.phone %}{{ p.phone }}{% endif %}
+                                {% if p.phone and p.telegram_id %} · {% endif %}
+                                {% if p.telegram_id %}{{ p.telegram_id }}{% endif %}
+                                {% if p.access_level and p.access_level != 'full' %} <span style="color: var(--text-muted); font-size: 0.85em;">({{ p.access_level }})</span>{% endif %}
+                            </span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

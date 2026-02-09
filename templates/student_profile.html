@@ -265,6 +265,9 @@
                     </div>
                 </div>
                 <div class="hero-actions {% if current_user.is_student() or current_user.is_parent() %}student-actions{% endif %}">
+                    <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="neo-button ghost" style="text-decoration:none;">
+                        <i class="fas fa-user ui-icon ui-icon--sm"></i> Профиль ученика
+                    </a>
                     {% if not current_user.is_student() and not current_user.is_parent() %}
                     <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent">
                         <i class="fas fa-plus ui-icon ui-icon--sm"></i> Новый урок

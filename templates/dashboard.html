@@ -259,9 +259,9 @@
                 </a>
                 {% endif %}
                 {% for student in students %}
-                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}"
-                   class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %}"
+                <div class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %}"
                    data-student-id="{{ student.student_id }}">
+                    <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="student-card__main-link" style="text-decoration:none; color:inherit; display:block;">
                     <div class="student-card__head">
                         <div class="student-avatar {% if show_archive %}student-avatar--archived{% endif %}">
                             {% if student.user and student.user.avatar_url %}
@@ -318,7 +318,11 @@
                         <div><img src="{{ url_for('static', filename='icons/ROSTA ZONA.png') }}" alt="Зоны роста" class="ui-icon ui-icon--sm">Зоны роста: <span>{{ student.weaknesses[:60] }}{% if student.weaknesses|length > 60 %}…{% endif %}</span></div>
                         {% endif %}
                     </div>
-                </a>
+                    </a>
+                    <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--stroke-1);">
+                        <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="neo-button ghost" style="font-size: 0.85rem; padding: 0.35rem 0.6rem; text-decoration: none;">Профиль ученика</a>
+                    </div>
+                </div>
                 {% endfor %}
             </div>
 

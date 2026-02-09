@@ -149,7 +149,8 @@
                         {% if active_students %}
                         <div class="students-grid-compact">
                             {% for student in active_students %}
-                            <a class="student-card-compact" href="{{ url_for('students.student_profile', student_id=student.student_id) }}">
+                            <div class="student-card-compact">
+                                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" style="text-decoration:none; color:inherit; display:block;">
                                 <div class="student-head">
                                     <div class="student-avatar">
                                         {% if student.user and student.user.avatar_url %}
@@ -179,7 +180,9 @@
                                     </span>
                                     {% endif %}
                                 </div>
-                            </a>
+                                </a>
+                                <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="neo-button ghost" style="margin-top: 0.5rem; font-size: 0.8rem; padding: 0.3rem 0.5rem; text-decoration: none; display: inline-block;">Профиль</a>
+                            </div>
                             {% endfor %}
                         </div>
                         {% else %}
@@ -198,7 +201,8 @@
                         {% if archived_students %}
                         <div class="students-grid-compact">
                             {% for student in archived_students %}
-                            <a class="student-card-compact" href="{{ url_for('students.student_profile', student_id=student.student_id) }}">
+                            <div class="student-card-compact">
+                                <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" style="text-decoration:none; color:inherit; display:block;">
                                 <div class="student-head">
                                     <div class="student-avatar">
                                         {% if student.user and student.user.avatar_url %}
@@ -223,7 +227,9 @@
                                     <span class="tag">{{ student.school_class }} класс</span>
                                     {% endif %}
                                 </div>
-                            </a>
+                                </a>
+                                <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="neo-button ghost" style="margin-top: 0.5rem; font-size: 0.8rem; padding: 0.3rem 0.5rem; text-decoration: none; display: inline-block;">Профиль</a>
+                            </div>
                             {% endfor %}
                         </div>
                         {% else %}
