@@ -65,10 +65,11 @@ def create_app(config_name=None):
     app.config['TRAINER_URL'] = (os.environ.get('TRAINER_URL') or '').strip() or None
     app.config['TRAINER_SHARED_SECRET'] = (os.environ.get('TRAINER_SHARED_SECRET') or '').strip() or None
     
-    # Miro API для интерактивных досок
+    # Miro API для интерактивных досок. Redirect URI должен совпадать с тем, что указан в приложении Miro (Developer → App → Redirect URI).
     app.config['MIRO_ACCESS_TOKEN'] = (os.environ.get('MIRO_ACCESS_TOKEN') or '').strip() or None
     app.config['MIRO_CLIENT_ID'] = (os.environ.get('MIRO_CLIENT_ID') or '').strip() or None
     app.config['MIRO_CLIENT_SECRET'] = (os.environ.get('MIRO_CLIENT_SECRET') or '').strip() or None
+    app.config['MIRO_REDIRECT_URI'] = (os.environ.get('MIRO_REDIRECT_URI') or '').strip() or None  # например https://boostudy.ru/auth/miro/callback
     
     # Daily.co для видеозвонков
     app.config['DAILY_API_KEY'] = (os.environ.get('DAILY_API_KEY') or '').strip() or None
@@ -553,9 +554,10 @@ def create_app(config_name=None):
         # Обмениваем code на access_token
         client_id = app.config.get('MIRO_CLIENT_ID')
         client_secret = app.config.get('MIRO_CLIENT_SECRET')
-        # Принудительно используем https (Railway прокси скрывает https)
-        base_url = request.url_root.rstrip('/').replace('http://', 'https://')
-        redirect_uri = base_url + '/auth/miro/callback'
+        redirect_uri = app.config.get('MIRO_REDIRECT_URI')
+        if not redirect_uri:
+            base_url = request.url_root.rstrip('/').replace('http://', 'https://')
+            redirect_uri = base_url + '/auth/miro/callback'
         
         try:
             token_response = requests.post(
@@ -622,9 +624,10 @@ def create_app(config_name=None):
             return redirect(url_for('auth.login'))
         
         client_id = app.config.get('MIRO_CLIENT_ID')
-        # Принудительно используем https
-        base_url = request.url_root.rstrip('/').replace('http://', 'https://')
-        redirect_uri = base_url + '/auth/miro/callback'
+        redirect_uri = app.config.get('MIRO_REDIRECT_URI')
+        if not redirect_uri:
+            base_url = request.url_root.rstrip('/').replace('http://', 'https://')
+            redirect_uri = base_url + '/auth/miro/callback'
         
         # Сохраняем lesson_id для редиректа после авторизации
         lesson_id = request.args.get('lesson_id')
