@@ -1138,10 +1138,6 @@ def remote_admin_api_user(user_id):
                 logger.warning("remote_admin_api_user POST user_id=%s early return: user not found", user_id)
                 return jsonify({'error': 'user not found'}), 404
             
-            if user.is_creator():
-                logger.warning("remote_admin_api_user POST user_id=%s early return: cannot modify creator", user_id)
-                return jsonify({'error': 'cannot modify creator'}), 403
-            
             if 'username' in data:
                 new_username = (data['username'] or '').strip()
                 if not new_username:
@@ -1253,9 +1249,6 @@ def remote_admin_api_user(user_id):
             user = User.query.get(user_id)
             if not user:
                 return jsonify({'error': 'user not found'}), 404
-            
-            if user.is_creator():
-                return jsonify({'error': 'cannot delete creator'}), 403
             
             username = user.username
             user_role = user.role
