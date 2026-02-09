@@ -64,7 +64,7 @@
                     <!-- Шапка с аватаром -->
                     <div class="profile-header">
                         <div class="profile-identity">
-                            <div class="profile-avatar-wrapper">
+                            <div class="profile-avatar-wrapper {% if current_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if current_user.avatar_url %}data-avatar-url="{{ current_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
                                 <div class="profile-avatar-big">
                                     {% if current_user.avatar_url %}
                                     <img src="{{ current_user.avatar_url }}" alt="Avatar">
@@ -523,6 +523,13 @@
         </main>
     </div>
 
+    <!-- Модальное окно просмотра аватарки в полном размере -->
+    <div class="modal-overlay avatar-modal-overlay" id="avatarModal" onclick="closeAvatarModal(event)" style="z-index: 10001;">
+        <div class="modal modal-avatar-wrap" onclick="event.stopPropagation()">
+            <img id="avatarModalImg" src="" alt="Аватар в полном размере">
+        </div>
+    </div>
+
     <!-- Модальное окно редактирования профиля (вынесено из app-shell) -->
     {% if current_user %}
     <div class="modal-overlay" id="editProfileModal" style="z-index: 9999;">
@@ -577,6 +584,30 @@
     </div>
 
     <script>
+        function openAvatarModal(url) {
+            var el = document.getElementById('avatarModalImg');
+            var overlay = document.getElementById('avatarModal');
+            if (el && overlay && url) { el.src = url; overlay.classList.add('active'); document.body.style.overflow = 'hidden'; }
+        }
+        function openAvatarModalFromEl(el) {
+            var url = el && el.getAttribute && el.getAttribute('data-avatar-url');
+            if (url) openAvatarModal(url);
+        }
+        function closeAvatarModal(event) {
+            if (!event) return;
+            var t = event.target;
+            if (t.id === 'avatarModal' || t.classList.contains('avatar-modal-overlay')) {
+                document.getElementById('avatarModal').classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('avatarModal').classList.contains('active')) {
+                document.getElementById('avatarModal').classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+
         function openEditProfileModal() {
             document.getElementById('editProfileModal').classList.add('active');
             document.body.style.overflow = 'hidden';

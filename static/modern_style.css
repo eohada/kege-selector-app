@@ -168,15 +168,18 @@ body::after {
     opacity: 0.18;
 }
 
+/* Единая ширина для оболочки и контента — навбар внутри совпадает по ширине */
 .app-shell,
 .container {
     width: min(1480px, calc(100% - 4rem));
-    max-width: 1480px !important; /* КРИТИЧЕСКИ ВАЖНО: фиксируем максимальную ширину для консистентности */
-    margin: 0 auto;
+    max-width: 1480px !important;
+    margin-left: auto;
+    margin-right: auto;
     padding-top: 0;
+    padding-left: 0;
+    padding-right: 0;
     position: relative;
     z-index: 1;
-    /* Гарантируем одинаковую ширину независимо от размера окна */
     box-sizing: border-box;
 }
 
@@ -210,23 +213,24 @@ body::after {
     opacity: 1;
 }
 
+/* Навбар: ширина 100% от app-shell (совпадает с контентом), всегда тёмный фон без прозрачности/зелени */
+header.nav-primary,
 .nav-primary {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 1.8rem;
     padding: 1.2rem 1.8rem;
-    background: #0f111c !important;
+    background-color: #0f111c !important;
     background-image: none !important;
     backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border-radius: var(--radius-lg);
-    border: 1px solid var(--stroke-1);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: var(--shadow-soft);
     margin-bottom: 2.8rem;
-    width: min(1480px, calc(100% - 4rem));
-    max-width: 1480px;
-    margin-left: auto;
-    margin-right: auto;
+    width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
 }
 
@@ -289,6 +293,23 @@ body::after {
 .user-profile-avatar.creator:hover {
     border-color: var(--accent-3);
     box-shadow: 0 0 20px rgba(255, 103, 255, 0.4);
+}
+
+/* Миниатюра аватарки в шапке: не ломается, не слишком приближена (лицо в кадре) */
+.user-profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 22%;
+    display: block;
+    border-radius: inherit;
+}
+
+/* Все аватар-миниатюры: единое позиционирование (лицо в кадре, без излишнего приближения) */
+.profile-avatar-simple img,
+.student-avatar-large img,
+.comment-avatar img {
+    object-position: center 22%;
 }
 
 .brand-mark {
@@ -1175,6 +1196,15 @@ body.creator-theme-active .students-grid {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     flex-shrink: 0;
     overflow: hidden;
+}
+
+.student-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 22%;
+    display: block;
+    border-radius: inherit;
 }
 
 .student-card:hover .student-avatar {
@@ -2453,16 +2483,15 @@ body.creator-theme-active .students-grid {
         padding-bottom: 2rem;
     }
 
-    /* Навигация - мобильное меню */
+    /* Навигация - мобильное меню (ширина 100% от app-shell, как и контент) */
+    header.nav-primary,
     .nav-primary {
         flex-wrap: wrap;
         padding: 1rem 1.2rem;
         gap: 1rem;
         margin-bottom: 1.5rem;
-        width: calc(100% - 2rem);
-        max-width: 1480px;
-        margin-left: auto;
-        margin-right: auto;
+        width: 100%;
+        max-width: 100%;
     }
 
     .nav-brand {
@@ -2736,6 +2765,7 @@ body.creator-theme-active .students-grid {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center 22%;
 }
 
 /* Подсветка аватара для Creator */
@@ -3785,6 +3815,16 @@ body.creator-theme-active .students-grid {
 .modal-close:hover { color: var(--text-primary); }
 .modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
 .modal-footer { padding: 1.5rem; border-top: 1px solid var(--stroke-1); display: flex; justify-content: flex-end; gap: 1rem; background: var(--surface-2); border-bottom-left-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg); }
+
+/* Модальное окно просмотра полной аватарки */
+.avatar-modal-overlay { cursor: pointer; }
+.avatar-modal-overlay .modal { max-width: 95vw; max-height: 95vh; padding: 1rem; cursor: default; }
+.modal-avatar-wrap { display: flex; align-items: center; justify-content: center; min-width: 200px; min-height: 200px; }
+.modal-avatar-wrap img { max-width: 90vw; max-height: 85vh; width: auto; height: auto; object-fit: contain; border-radius: var(--radius-md); display: block; }
+.profile-avatar-wrapper.profile-avatar-clickable { cursor: pointer; }
+.profile-avatar-wrapper.profile-avatar-clickable:hover { opacity: 0.92; }
+.public-avatar.avatar-clickable { cursor: pointer; }
+.public-avatar.avatar-clickable:hover { opacity: 0.92; }
 
 /* GLOBAL CREATOR THEME OVERRIDE - применяется через JS на странице профиля */
 /* Используем класс на body, который добавляется через JS, чтобы не влиять на другие страницы */

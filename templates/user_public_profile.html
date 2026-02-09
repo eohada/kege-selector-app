@@ -15,7 +15,7 @@
         .public-hero { display:flex; gap: 1.25rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
         .public-identity { display:flex; gap: 1.1rem; align-items:center; min-width: 0; }
         .public-avatar { width: 84px; height: 84px; border-radius: 999px; background: rgba(255,255,255,0.04); border: 1px solid var(--stroke-1); display:flex; align-items:center; justify-content:center; font-weight: 900; font-size: 1.9rem; color: var(--text-muted); overflow:hidden; }
-        .public-avatar img { width:100%; height:100%; object-fit: cover; }
+        .public-avatar img { width:100%; height:100%; object-fit: cover; object-position: center 22%; }
         .public-title { min-width:0; }
         .public-title h1 { margin: 0; font-size: 2rem; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .public-sub { margin-top: .35rem; display:flex; gap:.5rem; flex-wrap: wrap; align-items:center; color: var(--text-muted); }
@@ -37,7 +37,7 @@
                 <div class="profile-cover"></div>
                 <div class="profile-header">
                     <div class="profile-identity">
-                        <div class="profile-avatar-wrapper">
+                        <div class="profile-avatar-wrapper {% if public_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if public_user.avatar_url %}data-avatar-url="{{ public_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
                             <div class="profile-avatar-big">
                                 {% if public_user.avatar_url %}
                                     <img src="{{ public_user.avatar_url }}" alt="Avatar">
@@ -93,7 +93,7 @@
             <section class="glass-panel">
                 <div class="public-hero">
                     <div class="public-identity">
-                        <div class="public-avatar">
+                        <div class="public-avatar {% if public_user.avatar_url %}avatar-clickable{% endif %}" {% if public_user.avatar_url %}data-avatar-url="{{ public_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
                             {% if public_user.avatar_url %}
                                 <img src="{{ public_user.avatar_url }}" alt="Avatar">
                             {% else %}
@@ -143,6 +143,39 @@
         </main>
         {% endif %}
     </div>
+
+    <!-- Модальное окно просмотра аватарки в полном размере -->
+    <div class="modal-overlay avatar-modal-overlay" id="avatarModal" onclick="closeAvatarModal(event)" style="z-index: 10001;">
+        <div class="modal modal-avatar-wrap" onclick="event.stopPropagation()">
+            <img id="avatarModalImg" src="" alt="Аватар в полном размере">
+        </div>
+    </div>
+
+    <script>
+        function openAvatarModal(url) {
+            var el = document.getElementById('avatarModalImg');
+            var overlay = document.getElementById('avatarModal');
+            if (el && overlay && url) { el.src = url; overlay.classList.add('active'); document.body.style.overflow = 'hidden'; }
+        }
+        function openAvatarModalFromEl(el) {
+            var url = el && el.getAttribute && el.getAttribute('data-avatar-url');
+            if (url) openAvatarModal(url);
+        }
+        function closeAvatarModal(event) {
+            if (!event) return;
+            var t = event.target;
+            if (t.id === 'avatarModal' || t.classList.contains('avatar-modal-overlay')) {
+                document.getElementById('avatarModal').classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('avatarModal').classList.contains('active')) {
+                document.getElementById('avatarModal').classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+    </script>
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
 </body>
 </html>
