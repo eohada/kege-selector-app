@@ -64,6 +64,9 @@
         
         forms.forEach(form => {
 
+            if (form.id === 'admin-user-edit-form' || form.action && (form.action.includes('/admin/users/') || form.action.includes('/admin/user'))) {
+                return;
+            }
             if (form.id === 'create-student-form' || 
                 form.classList.contains('edit-student-form') ||
                 form.id === 'createLessonForm' ||
@@ -72,10 +75,6 @@
             }
 
             if (form.action && form.action.includes('lesson_complete')) {
-                return;
-            }
-
-            if (form.action && (form.action.includes('/admin/users/') || form.action.includes('/admin/user'))) {
                 return;
             }
 

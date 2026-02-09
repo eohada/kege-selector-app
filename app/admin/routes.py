@@ -2526,6 +2526,7 @@ def admin_user_edit(user_id):
     user = User.query.get_or_404(user_id)
     
     if request.method == 'POST':
+        logger.info("admin_user_edit POST user_id=%s form_keys=%s", user_id, list(request.form.keys()))
         try:
             username = request.form.get('username', '').strip()
             role = request.form.get('role', '').strip()
@@ -2757,7 +2758,9 @@ def admin_user_edit(user_id):
             
             flash(f'Пользователь "{username}" обновлен.', 'success')
             logger.info(f"Redirecting to admin_user_edit for user {user.id}")
-            return redirect(url_for('admin.admin_user_edit', user_id=user.id))
+            r = redirect(url_for('admin.admin_user_edit', user_id=user.id))
+            r.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+            return r
             
         except Exception as e:
             db.session.rollback()
@@ -2808,7 +2811,7 @@ def admin_user_edit(user_id):
         all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
         all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
         
-        return render_template('admin_user_edit.html',
+        resp = make_response(render_template('admin_user_edit.html',
                              user=user,
                              family_ties=family_ties,
                              enrollments=enrollments,
@@ -2816,7 +2819,9 @@ def admin_user_edit(user_id):
                              all_students=all_students,
                              all_tutors=all_tutors,
                              all_permissions=ALL_PERMISSIONS,
-                             permission_categories=PERMISSION_CATEGORIES)
+                             permission_categories=PERMISSION_CATEGORIES))
+        resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        return resp
     except Exception as e:
         logger.error(f"Error in admin_user_edit GET request for user {user_id}: {e}", exc_info=True)
         flash(f'Ошибка при загрузке данных пользователя: {str(e)}', 'error')
