@@ -18,7 +18,7 @@ def admin_permissions():
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('admin.admin_panel'))
         
-    roles = ['creator', 'admin', 'chief_tester', 'tutor', 'designer', 'tester', 'student', 'parent']
+    roles = ['creator', 'chief_admin', 'admin', 'chief_tester', 'content_maker', 'tutor', 'designer', 'tester', 'student', 'parent']
     
     try:
         from flask import current_app

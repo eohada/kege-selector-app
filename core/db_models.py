@@ -551,8 +551,8 @@ class User(db.Model):
         return [self.role] if self.role else []
 
     def is_admin(self):
-        """Проверка, является ли пользователь администратором"""
-        return 'admin' in self.roles()
+        """Проверка, является ли пользователь администратором или главным администратором"""
+        return 'admin' in self.roles() or 'chief_admin' in self.roles()
 
     def is_tutor(self):
         """Проверка, является ли пользователь тьютором (creator также может работать как tutor)"""
@@ -573,6 +573,12 @@ class User(db.Model):
     def is_designer(self):
         return 'designer' in self.roles()
 
+    def is_chief_admin(self):
+        return 'chief_admin' in self.roles()
+
+    def is_content_maker(self):
+        return 'content_maker' in self.roles()
+
     def is_tester(self):
         """Проверка, является ли пользователь тестировщиком (обычным)"""
         return 'tester' in self.roles()
@@ -585,8 +591,10 @@ class User(db.Model):
         """Возвращает отображаемое название основной роли."""
         role_map = {
             'creator': 'Создатель',
+            'chief_admin': 'Главный администратор',
             'admin': 'Администратор',
             'chief_tester': 'Главный тестировщик',
+            'content_maker': 'Контент мейкер',
             'tutor': 'Преподаватель',
             'designer': 'Графический дизайнер',
             'tester': 'Тестировщик',
@@ -599,8 +607,10 @@ class User(db.Model):
         """Возвращает список отображаемых названий всех ролей пользователя."""
         role_map = {
             'creator': 'Создатель',
+            'chief_admin': 'Главный администратор',
             'admin': 'Администратор',
             'chief_tester': 'Главный тестировщик',
+            'content_maker': 'Контент мейкер',
             'tutor': 'Преподаватель',
             'designer': 'Графический дизайнер',
             'tester': 'Тестировщик',
@@ -609,14 +619,16 @@ class User(db.Model):
         }
         return [role_map.get(r, r) for r in self.roles()]
 
-    ROLE_STRENGTH_ORDER = ('creator', 'admin', 'chief_tester', 'tutor', 'designer', 'tester', 'student', 'parent')
+    ROLE_STRENGTH_ORDER = ('creator', 'chief_admin', 'admin', 'chief_tester', 'content_maker', 'tutor', 'designer', 'tester', 'student', 'parent')
 
     def get_primary_role_display(self):
-        """Возвращает отображаемое название «главной» роли (для бейджа у авы): creator > admin > chief_tester > tutor > ..."""
+        """Возвращает отображаемое название «главной» роли (для бейджа у авы): creator > chief_admin > admin > ..."""
         role_map = {
             'creator': 'Создатель',
+            'chief_admin': 'Главный администратор',
             'admin': 'Администратор',
             'chief_tester': 'Главный тестировщик',
+            'content_maker': 'Контент мейкер',
             'tutor': 'Преподаватель',
             'designer': 'Графический дизайнер',
             'tester': 'Тестировщик',

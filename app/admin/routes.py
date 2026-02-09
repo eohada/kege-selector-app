@@ -1958,7 +1958,7 @@ def admin_users():
         users = query.order_by(User.created_at.desc()).all()
         
         role_stats = {}
-        for role in ['admin', 'tutor', 'student', 'parent', 'tester', 'creator']:
+        for role in ['creator', 'chief_admin', 'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer', 'content_maker']:
             role_stats[role] = User.query.filter_by(role=role).count()
         
         environment = os.environ.get('ENVIRONMENT', 'local')
@@ -1989,7 +1989,7 @@ def admin_users_graph_data():
         all_enrollments = str(request.args.get('all_enrollments', 'false')).lower() == 'true'
         roles_raw = (request.args.get('roles') or '').strip()
         roles = [r.strip() for r in roles_raw.split(',') if r.strip()] if roles_raw else ['tutor', 'student', 'parent']
-        roles = [r for r in roles if r in ('creator', 'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer')]
+        roles = [r for r in roles if r in ('creator', 'chief_admin', 'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer', 'content_maker')]
         if not roles:
             roles = ['tutor', 'student', 'parent']
 

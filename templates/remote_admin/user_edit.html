@@ -58,14 +58,16 @@
                     <div class="neo-field">
                         <label class="neo-label">Роли * (можно несколько; права объединяются)</label>
                         <select id="roles" name="roles" class="neo-input" multiple size="6" onchange="toggleStudentFields()" style="min-height: 120px;">
+                            <option value="creator" {% if user and user.roles and 'creator' in user.roles %}selected{% elif user and user.role == 'creator' and not user.roles %}selected{% endif %}>Создатель</option>
+                            <option value="chief_admin" {% if user and user.roles and 'chief_admin' in user.roles %}selected{% elif user and user.role == 'chief_admin' and not user.roles %}selected{% endif %}>Главный администратор</option>
                             <option value="admin" {% if user and user.roles and 'admin' in user.roles %}selected{% elif user and user.role == 'admin' and not user.roles %}selected{% endif %}>Администратор</option>
                             <option value="tutor" {% if user and user.roles and 'tutor' in user.roles %}selected{% elif user and user.role == 'tutor' and not user.roles %}selected{% endif %}>Преподаватель</option>
+                            <option value="content_maker" {% if user and user.roles and 'content_maker' in user.roles %}selected{% elif user and user.role == 'content_maker' and not user.roles %}selected{% endif %}>Контент мейкер</option>
                             <option value="student" {% if user and user.roles and 'student' in user.roles %}selected{% elif user and user.role == 'student' and not user.roles %}selected{% endif %}>Ученик</option>
                             <option value="parent" {% if user and user.roles and 'parent' in user.roles %}selected{% elif user and user.role == 'parent' and not user.roles %}selected{% endif %}>Родитель</option>
                             <option value="tester" {% if user and user.roles and 'tester' in user.roles %}selected{% elif user and user.role == 'tester' and not user.roles %}selected{% endif %}>Тестировщик</option>
                             <option value="chief_tester" {% if user and user.roles and 'chief_tester' in user.roles %}selected{% elif user and user.role == 'chief_tester' and not user.roles %}selected{% endif %}>Главный тестировщик</option>
                             <option value="designer" {% if user and user.roles and 'designer' in user.roles %}selected{% elif user and user.role == 'designer' and not user.roles %}selected{% endif %}>Графический дизайнер</option>
-                            <option value="creator" {% if user and user.roles and 'creator' in user.roles %}selected{% elif user and user.role == 'creator' and not user.roles %}selected{% endif %}>Создатель</option>
                         </select>
                         <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Ctrl+Click для выбора нескольких ролей. Доступ берётся как объединение прав всех ролей.</small>
                         <input type="hidden" name="role" id="role_primary" value="{{ user.role if user else 'student' }}">

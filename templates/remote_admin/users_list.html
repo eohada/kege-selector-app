@@ -47,6 +47,8 @@
         .role-creator { background: rgba(200, 46, 255, 0.15); color: #c82eff; }
         .role-chief_tester { background: rgba(255, 150, 46, 0.15); color: #ff962e; }
         .role-designer { background: rgba(46, 255, 200, 0.15); color: #2effc8; }
+        .role-chief_admin { background: rgba(255, 80, 80, 0.2); color: #ff5050; }
+        .role-content_maker { background: rgba(100, 180, 255, 0.2); color: #64b4ff; }
         .status-active { color: #2eff7d; }
         .status-inactive { color: #ff2e2e; }
 
@@ -243,8 +245,10 @@
                     <a class="chip {% if not selected_roles %}active{% endif %}" href="{{ all_url }}">Все <small>{{ users|length }}</small></a>
                     {% set roles = [
                         ('creator','Создатели'),
+                        ('chief_admin','Гл. админы'),
                         ('admin','Админы'),
                         ('tutor','Преподаватели'),
+                        ('content_maker','Контент мейкеры'),
                         ('student','Ученики'),
                         ('parent','Родители'),
                         ('tester','Тестеры'),
@@ -281,8 +285,10 @@
                         <td>
                             <span class="role-badge role-{{ user.role }}">
                                 {% if user.role == 'creator' %}Создатель
+                                {% elif user.role == 'chief_admin' %}Главный администратор
                                 {% elif user.role == 'admin' %}Администратор
                                 {% elif user.role == 'tutor' %}Преподаватель
+                                {% elif user.role == 'content_maker' %}Контент мейкер
                                 {% elif user.role == 'student' %}Ученик
                                 {% elif user.role == 'parent' %}Родитель
                                 {% elif user.role == 'tester' %}Тестировщик

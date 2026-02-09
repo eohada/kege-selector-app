@@ -58,7 +58,7 @@ def invites_create():
         flash('Укажите логин (имя для входа после регистрации).', 'danger')
         return redirect(url_for('onboarding.invites_list'))
 
-    valid_roles = {'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer', 'creator'}
+    valid_roles = {'creator', 'chief_admin', 'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer', 'content_maker'}
     if role not in valid_roles:
         role = 'student'
 

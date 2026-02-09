@@ -1351,7 +1351,7 @@ def remote_admin_api_stats():
             }
         }
         
-        for role in ['admin', 'tutor', 'student', 'parent', 'tester', 'creator', 'chief_tester', 'designer']:
+        for role in ['creator', 'chief_admin', 'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer', 'content_maker']:
             stats['users']['by_role'][role] = User.query.filter_by(role=role).count()
         
         try:
@@ -1653,7 +1653,7 @@ def remote_admin_api_permissions():
     
     try:
         if request.method == 'GET':
-            ALL_ROLES = ['creator', 'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer']
+            ALL_ROLES = ['creator', 'chief_admin', 'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer', 'content_maker']
             
             try:
                 role_permissions = RolePermission.query.all()

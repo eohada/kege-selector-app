@@ -40,14 +40,16 @@
                     <div class="neo-field">
                         <label class="neo-label" for="role">Роль *</label>
                         <select id="role" name="role" class="neo-input" required>
+                            <option value="creator" {% if user and user.role == 'creator' %}selected{% endif %}>Создатель</option>
+                            <option value="chief_admin" {% if user and user.role == 'chief_admin' %}selected{% endif %}>Главный администратор</option>
                             <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>Администратор</option>
                             <option value="tutor" {% if user and user.role == 'tutor' %}selected{% endif %}>Преподаватель</option>
+                            <option value="content_maker" {% if user and user.role == 'content_maker' %}selected{% endif %}>Контент мейкер</option>
                             <option value="student" {% if user and user.role == 'student' %}selected{% endif %}>Ученик</option>
                             <option value="parent" {% if user and user.role == 'parent' %}selected{% endif %}>Родитель</option>
                             <option value="tester" {% if user and user.role == 'tester' %}selected{% endif %}>Тестировщик</option>
                             <option value="chief_tester" {% if user and user.role == 'chief_tester' %}selected{% endif %}>Главный тестировщик</option>
                             <option value="designer" {% if user and user.role == 'designer' %}selected{% endif %}>Графический дизайнер</option>
-                            <option value="creator" {% if user and user.role == 'creator' %}selected{% endif %}>Создатель</option>
                         </select>
                     </div>
 

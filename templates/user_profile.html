@@ -58,6 +58,7 @@
             {% if current_user and current_user.is_creator() %}theme-creator
             {% elif current_user and current_user.is_admin() %}theme-admin
             {% elif current_user and current_user.is_tutor() %}theme-tutor
+            {% elif current_user and current_user.is_content_maker() %}theme-tutor
             {% elif current_user and current_user.is_parent() %}theme-parent
             {% elif current_user and current_user.is_student() %}theme-student
             {% endif %}

@@ -64,9 +64,18 @@ ALL_PERMISSIONS = {
 }
 
 DEFAULT_ROLE_PERMISSIONS = {
-    'creator': list(ALL_PERMISSIONS.keys()), # Все права
-    'admin': list(ALL_PERMISSIONS.keys()),   # Все права
+    'creator': list(ALL_PERMISSIONS.keys()),
+    'chief_admin': list(ALL_PERMISSIONS.keys()),
+    'admin': list(ALL_PERMISSIONS.keys()),
     'chief_tester': ['tools.testers', 'task.manage', 'user.view_list'],
+    'content_maker': [
+        'lesson.create', 'lesson.edit', 'lesson.delete', 'plan.view', 'plan.edit',
+        'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view', 'rubrics.manage',
+        'gradebook.view', 'gradebook.edit', 'groups.view', 'groups.manage',
+        'onboarding.view', 'onboarding.invite', 'user.view_list',
+        'tools.schedule', 'schedule.view', 'diagnostics.view', 'diagnostics.checkpoints',
+        'trainer.use', 'trainer.manage_knowledge', 'assets.manage',
+    ],
     'designer': ['assets.manage'],
     'tutor': ['lesson.create', 'lesson.edit', 'plan.view', 'plan.edit', 'gradebook.view', 'gradebook.edit', 'groups.view', 'groups.manage', 'onboarding.view', 'onboarding.invite', 'user.view_list', 'tools.schedule', 'schedule.view', 'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view', 'rubrics.manage', 'diagnostics.view', 'diagnostics.checkpoints', 'trainer.use', 'trainer.manage_knowledge'],
     'student': ['plan.view', 'gradebook.view', 'assignment.view', 'schedule.view', 'diagnostics.view', 'trainer.use'],

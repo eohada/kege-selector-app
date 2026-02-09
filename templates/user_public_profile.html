@@ -118,7 +118,7 @@
         </main>
         {% else %}
         
-        <main class="public-profile-wrap {% if public_user.is_admin() %}theme-admin{% elif public_user.is_tutor() %}theme-tutor{% elif public_user.is_parent() %}theme-parent{% elif public_user.is_student() %}theme-student{% endif %}">
+        <main class="public-profile-wrap {% if public_user.is_admin() %}theme-admin{% elif public_user.is_tutor() %}theme-tutor{% elif public_user.is_content_maker() %}theme-tutor{% elif public_user.is_parent() %}theme-parent{% elif public_user.is_student() %}theme-student{% endif %}">
             <section class="glass-panel">
                 <div class="public-hero">
                     <div class="public-identity">

@@ -55,6 +55,8 @@
         .role-parent { background: rgba(255, 200, 46, 0.15); color: #ffc82e; }
         .role-tester { background: rgba(150, 150, 150, 0.15); color: #969696; }
         .role-creator { background: rgba(200, 46, 255, 0.15); color: #c82eff; }
+        .role-chief_admin { background: rgba(255, 80, 80, 0.2); color: #ff5050; }
+        .role-content_maker { background: rgba(100, 180, 255, 0.2); color: #64b4ff; }
         .status-active {
             color: #28a745;
         }
@@ -257,12 +259,16 @@
                     <label class="neo-label" for="role-filter">Роль</label>
                     <select id="role-filter" name="role" class="neo-input">
                         <option value="">Все роли</option>
+                        <option value="creator" {% if role_filter == 'creator' %}selected{% endif %}>Создатель</option>
+                        <option value="chief_admin" {% if role_filter == 'chief_admin' %}selected{% endif %}>Главный администратор</option>
                         <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>Администратор</option>
                         <option value="tutor" {% if role_filter == 'tutor' %}selected{% endif %}>Преподаватель</option>
+                        <option value="content_maker" {% if role_filter == 'content_maker' %}selected{% endif %}>Контент мейкер</option>
                         <option value="student" {% if role_filter == 'student' %}selected{% endif %}>Ученик</option>
                         <option value="parent" {% if role_filter == 'parent' %}selected{% endif %}>Родитель</option>
                         <option value="tester" {% if role_filter == 'tester' %}selected{% endif %}>Тестировщик</option>
-                        <option value="creator" {% if role_filter == 'creator' %}selected{% endif %}>Создатель</option>
+                        <option value="chief_tester" {% if role_filter == 'chief_tester' %}selected{% endif %}>Главный тестировщик</option>
+                        <option value="designer" {% if role_filter == 'designer' %}selected{% endif %}>Графический дизайнер</option>
                     </select>
                 </div>
                 <div class="neo-field">
