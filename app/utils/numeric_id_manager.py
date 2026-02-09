@@ -41,12 +41,21 @@ def get_next_available_numeric_id():
 
 
 def is_valid_two_digit_id(value):
-    """Валидный двузначный идентификатор 10–99."""
     if not value:
         return False
     try:
         n = int(str(value).strip())
         return MIN_NONSTUDENT_ID <= n <= MAX_NONSTUDENT_ID
+    except (ValueError, TypeError):
+        return False
+
+
+def is_valid_numeric_id_manual(value):
+    if not value or not str(value).strip():
+        return False
+    try:
+        n = int(str(value).strip())
+        return n > 0
     except (ValueError, TypeError):
         return False
 

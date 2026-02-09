@@ -215,10 +215,12 @@ def user_public_profile(user_id: int):
     if getattr(u, 'is_student', lambda: False)():
         from app.models import Student
         st = Student.query.filter_by(user_id=u.id).first()
-        if st:
-            public_numeric_id = st.platform_id
+        if st and getattr(st, 'platform_id', None):
+            public_numeric_id = str(st.platform_id)
+    if public_numeric_id is None and getattr(u, 'numeric_id', None):
+        public_numeric_id = str(u.numeric_id)
     if public_numeric_id is None:
-        public_numeric_id = getattr(u, 'numeric_id', None)
+        public_numeric_id = str(u.id)
     return render_template(
         'user_public_profile.html',
         public_user=u,

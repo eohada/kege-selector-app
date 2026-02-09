@@ -159,7 +159,7 @@
                                 {% else %}
                                 <div class="data-row">
                                     <span class="data-label">ID аккаунта</span>
-                                    <span class="data-value" style="font-family: 'MonaspaceNeon', monospace; letter-spacing: 1px; color: var(--accent-color);">#{{ current_user.id }}</span>
+                                    <span class="data-value" style="font-family: 'MonaspaceNeon', monospace; letter-spacing: 1px; color: var(--accent-color);">{% if current_user.numeric_id %}#{{ current_user.numeric_id }}{% else %}—{% endif %}</span>
                                 </div>
                                 {% endif %}
                                 <div class="data-row">

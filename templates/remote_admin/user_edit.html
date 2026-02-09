@@ -76,7 +76,7 @@
                         <input type="text" id="numeric_id" name="numeric_id" class="neo-input" 
                                value="{{ user.numeric_id if user and user.numeric_id else '' }}"
                                placeholder="Пусто — авто (10–99)">
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Двузначный номер для не-учеников (10–99). Ученики используют трёхзначный выше.</small>
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Любое положительное число. При пустом поле автоматически присвоится число из диапазона 10–99.</small>
                         <span id="numeric_id_availability" class="username-availability" aria-live="polite"></span>
                     </div>
 

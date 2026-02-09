@@ -338,16 +338,15 @@ def remote_admin_api_platform_id_available():
 @admin_bp.route('/internal/remote-admin/api/numeric-id-available', methods=['GET'])
 @csrf.exempt
 def remote_admin_api_numeric_id_available():
-    """API: Проверка доступности двузначного идентификатора (10–99) для не-учеников."""
     if not _remote_admin_guard():
         return jsonify({'error': 'unauthorized'}), 401
     raw = (request.args.get('numeric_id') or '').strip()
     if not raw:
         return jsonify({'available': False, 'error': 'numeric_id is required'}), 400
     try:
-        from app.utils.numeric_id_manager import is_valid_two_digit_id
-        if not is_valid_two_digit_id(raw):
-            return jsonify({'available': False, 'error': 'Идентификатор должен быть числом от 10 до 99', 'numeric_id': raw})
+        from app.utils.numeric_id_manager import is_valid_numeric_id_manual
+        if not is_valid_numeric_id_manual(raw):
+            return jsonify({'available': False, 'error': 'Укажите положительное число', 'numeric_id': raw})
         exclude_user_id = request.args.get('exclude_user_id', type=int)
         q = User.query.filter(User.numeric_id == raw)
         if exclude_user_id is not None:
@@ -412,10 +411,10 @@ def remote_admin_api_users():
                     return jsonify({'error': f'platform_id "{platform_id}" already exists'}), 409
             
             if role != 'student' and 'student' not in roles:
-                from app.utils.numeric_id_manager import is_valid_two_digit_id, assign_numeric_id_if_needed, get_next_available_numeric_id
+                from app.utils.numeric_id_manager import is_valid_numeric_id_manual, assign_numeric_id_if_needed
                 if numeric_id:
-                    if not is_valid_two_digit_id(numeric_id):
-                        return jsonify({'error': 'numeric_id должен быть числом от 10 до 99'}), 400
+                    if not is_valid_numeric_id_manual(numeric_id):
+                        return jsonify({'error': 'numeric_id должен быть положительным числом'}), 400
                     if User.query.filter_by(numeric_id=numeric_id).first():
                         return jsonify({'error': f'Идентификатор «{numeric_id}» уже занят'}), 409
             
@@ -1168,11 +1167,11 @@ def remote_admin_api_user(user_id):
             if effective_roles is None:
                 effective_roles = user.roles() if hasattr(user, 'roles') and callable(getattr(user, 'roles')) else [user.role]
             if 'numeric_id' in data and 'student' not in effective_roles:
-                from app.utils.numeric_id_manager import is_valid_two_digit_id, assign_numeric_id_if_needed
+                from app.utils.numeric_id_manager import is_valid_numeric_id_manual, assign_numeric_id_if_needed
                 raw = (data.get('numeric_id') or '').strip() or None
                 if raw:
-                    if not is_valid_two_digit_id(raw):
-                        return jsonify({'error': 'numeric_id должен быть числом от 10 до 99'}), 400
+                    if not is_valid_numeric_id_manual(raw):
+                        return jsonify({'error': 'numeric_id должен быть положительным числом'}), 400
                     other = User.query.filter(User.numeric_id == raw, User.id != user_id).first()
                     if other:
                         return jsonify({'error': f'Идентификатор «{raw}» уже занят'}), 409
