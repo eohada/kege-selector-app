@@ -43,7 +43,6 @@ def _can_access_student(student: Student) -> bool:
             return True
         return False
 
-    # Tutor/прочие роли — через data scope (по user_id ученика)
     scope = get_user_scope(current_user)
     if scope.get('can_see_all'):
         return True

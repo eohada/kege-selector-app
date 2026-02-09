@@ -103,13 +103,10 @@ def _can_manage_schedule() -> bool:
         return False
     if current_user.is_creator() or current_user.is_admin():
         return True
-    # ученику/родителю — только просмотр
     if current_user.is_student() or current_user.is_parent():
         return False
-    # tutor по требованиям QA должен управлять расписанием
     if getattr(current_user, 'is_tutor', None) and current_user.is_tutor():
         return True
-    # тьютор/прочие: по правам
     return bool(
         has_permission(current_user, 'tools.schedule')
         or has_permission(current_user, 'lesson.create')
@@ -163,7 +160,6 @@ def _dt_to_ics_local(dt_naive_msk: datetime, tz) -> str:
             aware = dt_naive_msk
         local = aware.astimezone(tz)
     except Exception:
-        # fallback: считаем, что dt уже в нужной зоне как naive
         local = dt_naive_msk
     return local.strftime('%Y%m%dT%H%M%S')
 
@@ -212,14 +208,11 @@ def _tutor_has_overlap(tutor_user_id: int, start_dt: datetime, duration_min: int
         return False
     end_dt = start_dt + timedelta(minutes=duration_min)
 
-    # ограничим поиском дня
     day_start = start_dt.replace(hour=0, minute=0, second=0, microsecond=0)
     day_end = day_start + timedelta(days=1)
 
-    # tutor scope -> Student.student_id
     allowed_student_ids = _resolve_accessible_student_ids_for_current_user()
     if allowed_student_ids is None:
-        # admin/creator — не проверяем
         return False
     if not allowed_student_ids:
         return False
@@ -244,10 +237,7 @@ def _tutor_has_overlap(tutor_user_id: int, start_dt: datetime, duration_min: int
 @login_required
 def schedule():
     """Расписание уроков"""
-    # Просмотр расписания должен быть доступен ученикам/родителям/тьюторам,
-    # но управлять можно только при наличии прав.
     if not has_permission(current_user, 'schedule.view') and not has_permission(current_user, 'tools.schedule'):
-        # legacy fallback: если права ещё не проставились в RolePermission
         if not (current_user.is_student() or current_user.is_parent() or current_user.is_tutor() or current_user.is_admin() or current_user.is_creator()):
             flash('У вас недостаточно прав для просмотра расписания.', 'danger')
             return redirect(url_for('main.dashboard'))
@@ -268,10 +258,8 @@ def schedule():
     week_days = [week_start + timedelta(days=i) for i in range(7)]
     week_end = week_days[-1]
 
-    # Премиум UX: по умолчанию рабочий диапазон, но можно расширить через query
     slot_minutes = request.args.get('slot', 30, type=int)
     slot_minutes = slot_minutes if slot_minutes in (15, 30, 60) else 30
-    # По умолчанию: полные сутки, как ты просил. Пользователь может сузить диапазон через query.
     day_start_hour = request.args.get('start', 0, type=int)
     day_end_hour = request.args.get('end', 23, type=int)
     if day_start_hour < 0:
@@ -284,19 +272,14 @@ def schedule():
     total_slots = int(total_minutes / slot_minutes)
     time_labels = [f"{hour:02d}:00" for hour in range(day_start_hour, day_end_hour + 1)]
 
-    # Создаем datetime для фильтрации (lesson_date в БД хранится как naive в московском времени)
-    # Используем date() для сравнения, чтобы избежать проблем с timezone
     week_start_datetime = datetime.combine(week_start, time.min)
     week_end_datetime = datetime.combine(week_end, time.max)
     
-    # Добавляем небольшой запас для учета возможных проблем с часовыми поясами
-    # Фильтруем уроки, которые попадают в диапазон недели
     query = Lesson.query.filter(
         Lesson.lesson_date >= week_start_datetime,
         Lesson.lesson_date < week_end_datetime + timedelta(days=1)
     )
 
-    # RBAC scoping
     allowed_student_ids = _resolve_accessible_student_ids_for_current_user()
     if allowed_student_ids is not None:
         if not allowed_student_ids:
@@ -328,16 +311,13 @@ def schedule():
         lesson_date_local = lesson_date_display.date()
         day_index = (lesson_date_local - week_start).days
         
-        # Отладочное логирование для проблемных случаев
         if day_index < 0 or day_index >= 7:
             logger.debug(f"Урок {lesson.lesson_id} вне недели: lesson_date={lesson.lesson_date}, "
                         f"lesson_date_local={lesson_date_local}, week_start={week_start}, day_index={day_index}")
             continue
         
-        # Проверяем, что урок действительно попадает в нужный день недели
         if 0 <= day_index < 7:
             start_time = lesson_date_display.time()
-            # Вычисляем время окончания, но сохраняем исходную длительность из БД
             end_datetime = lesson_date_display + timedelta(minutes=lesson.duration)
             end_time = end_datetime.time()
             status_text = {'planned': 'Запланирован', 'in_progress': 'Идет сейчас', 'completed': 'Проведен', 'cancelled': 'Отменен'}.get(lesson.status, lesson.status)
@@ -362,23 +342,16 @@ def schedule():
                 'duration_minutes': int(lesson.duration or 60)  # Сохраняем исходную длительность из БД
             })
 
-    # Позиционирование отдаём фронтенду: сохраняем start_total/duration и колонку/ширину,
-    # а top/height вычисляются из slot_minutes и pxPerSlot в JS.
     day_events = {i: [] for i in range(7)}
     day_start_minutes = day_start_hour * 60
 
     for event in real_events:
-        # Используем исходную длительность из БД, а не пересчитываем из времени начала/окончания
-        # Это важно, так как при переходе через полночь (например, 23:00 -> 00:00) пересчет даст неправильный результат
         duration_minutes = event.get('duration_minutes', 60)
         duration_minutes = max(duration_minutes, slot_minutes)
         event['start_total'] = event['start'].hour * 60 + event['start'].minute
-        # Вычисляем end_total с учетом возможного перехода через полночь
         end_hour = event['end'].hour
         end_minute = event['end'].minute
-        # Если end_time меньше start_time, значит урок перешел через полночь
         if end_hour * 60 + end_minute < event['start_total']:
-            # Урок перешел через полночь, end_total = 24:00 (1440 минут)
             event['end_total'] = 1440
         else:
             event['end_total'] = end_hour * 60 + end_minute
@@ -403,7 +376,6 @@ def schedule():
             event['columns_total'] = max_columns
             column_width = 100 / max_columns
             event['left_percent'] = column_width * event['column_index']
-            # Ширина урока: минимум 8% для читаемости, но лучше использовать почти всю ширину колонки
             event['width_percent'] = max(column_width - 1.5, 8)
 
     day_events_json = {i: [] for i in range(7)}
@@ -427,7 +399,6 @@ def schedule():
                 'left_percent': event['left_percent'],
                 'width_percent': event['width_percent']
             }
-            # конфликт — любое наложение в колонках (актуально для родителя/тьютора)
             json_event['is_conflict'] = bool((event.get('columns_total') or 1) > 1)
             day_events_json[day_index].append(json_event)
 
@@ -443,7 +414,6 @@ def schedule():
     statuses = ['planned', 'in_progress', 'completed', 'cancelled']
     categories = ['ЕГЭ', 'ОГЭ', 'ЛЕВЕЛАП', 'ПРОГРАММИРОВАНИЕ']
 
-    # agenda: список уроков недели
     agenda = []
     try:
         for l in lessons:
@@ -467,8 +437,6 @@ def schedule():
     except Exception:
         agenda = []
 
-    # Для инспектора "На этой неделе" — скрываем planned по умолчанию для student/tutor,
-    # но НЕ ломаем сетку (week view) и НЕ ломаем режим "Список".
     agenda_week_sidebar = agenda
     try:
         if view_mode == 'week' and (not status_filter) and (current_user.is_student() or current_user.is_tutor()):
@@ -506,7 +474,6 @@ def schedule():
 @login_required
 def schedule_create_lesson():
     """Создание урока из расписания"""
-    # tutor должен иметь возможность создавать уроки из расписания (QA).
     if not _can_manage_schedule() or (not has_permission(current_user, 'lesson.create') and not current_user.is_tutor()):
         flash('У вас недостаточно прав для создания уроков.', 'danger')
         return redirect(url_for('schedule.schedule'))
@@ -560,7 +527,6 @@ def schedule_create_lesson():
                 )
                 continue
 
-            # Пересечение по преподавателю (только для тьютора)
             if current_user.is_tutor() and _tutor_has_overlap(current_user.id, lesson_datetime, duration):
                 logger.warning(
                     f"Пересечение уроков у преподавателя: tutor_id={current_user.id}, "
@@ -584,7 +550,6 @@ def schedule_create_lesson():
             db.session.rollback()
             raise
 
-        # Уведомление о новом уроке (ученик + родители)
         try:
             for created_lesson in created_lessons:
                 if created_lesson.status == 'planned':
@@ -851,7 +816,6 @@ def schedule_update_lesson(lesson_id: int):
     lesson_time = data.get('lesson_time')
     timezone = (data.get('timezone') or 'moscow').strip()
 
-    # Обновление времени урока
     new_lesson_date = None
     if lesson_date is not None and lesson_time is not None:
         date_str = str(lesson_date).strip()
@@ -862,7 +826,6 @@ def schedule_update_lesson(lesson_id: int):
             except Exception as e:
                 return jsonify({'success': False, 'error': f'Ошибка формата даты/времени: {e}'}), 400
 
-    # duration
     if duration is not None:
         try:
             duration = int(duration)
@@ -871,19 +834,16 @@ def schedule_update_lesson(lesson_id: int):
         if duration < 30 or duration > 240 or (duration % 30) != 0:
             return jsonify({'success': False, 'error': 'duration: 30..240 с шагом 30'}), 400
 
-    # lesson_type
     if lesson_type is not None:
         lesson_type = str(lesson_type).strip()
         if lesson_type not in ('regular', 'exam', 'introductory'):
             return jsonify({'success': False, 'error': 'Некорректный lesson_type'}), 400
 
-    # topic
     if topic is not None:
         topic = str(topic).strip()
         if len(topic) > 300:
             return jsonify({'success': False, 'error': 'topic слишком длинная'}), 400
 
-    # Проверка пересечений по времени
     check_date = new_lesson_date if new_lesson_date is not None else lesson.lesson_date
     check_duration = duration if duration is not None else (lesson.duration or 60)
     
@@ -948,7 +908,6 @@ def schedule_update_lesson(lesson_id: int):
             }
         )
 
-        # Формируем ответ с обновленными данными
         response_data = {
             'lesson_id': lesson.lesson_id,
             'duration_minutes': int(lesson.duration or 60),
@@ -956,7 +915,6 @@ def schedule_update_lesson(lesson_id: int):
             'topic': lesson.topic,
         }
         
-        # Если изменилось время, добавляем его в ответ
         if new_lesson_date is not None:
             response_data['lesson_date'] = str(lesson.lesson_date)
         
@@ -1026,10 +984,6 @@ def schedule_api_events():
 @schedule_bp.route('/schedule/api/lesson/<int:lesson_id>/delete', methods=['POST'])
 @login_required
 def schedule_delete_lesson(lesson_id: int):
-    # Удаление должно работать для тех же ролей/прав, кто может управлять расписанием
-    # (в UI кнопка "Удалить" показывается при canManage). Ранее тут требовалось отдельное
-    # право `lesson.delete`, которого может не быть/не быть включенным, из-за чего
-    # удаление "молча" ломалось (403).
     if not _can_manage_schedule():
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
@@ -1067,14 +1021,12 @@ def schedule_export_ics():
         flash('У вас недостаточно прав для экспорта расписания.', 'danger')
         return redirect(url_for('schedule.schedule'))
 
-    # Экспортируем в выбранной таймзоне (как в UI), чтобы Google Calendar не "раскидывал" события.
     tz_param = (request.args.get('timezone') or '').strip().lower()
     if tz_param not in ('moscow', 'tomsk'):
         tz_param = 'moscow'
     export_tz = TOMSK_TZ if tz_param == 'tomsk' else MOSCOW_TZ
     export_tzid = 'Asia/Tomsk' if tz_param == 'tomsk' else 'Europe/Moscow'
 
-    # диапазон: от сегодня-14 до сегодня+60
     today = moscow_now().date()
     start_dt = datetime.combine(today - timedelta(days=14), time.min)
     end_dt = datetime.combine(today + timedelta(days=60), time.max)
@@ -1144,7 +1096,6 @@ def schedule_export_ics_by_token(token: str):
     export_tz = TOMSK_TZ if tz_param == 'tomsk' else MOSCOW_TZ
     export_tzid = 'Asia/Tomsk' if tz_param == 'tomsk' else 'Europe/Moscow'
 
-    # диапазон: от сегодня-14 до сегодня+60
     today = moscow_now().date()
     start_dt = datetime.combine(today - timedelta(days=14), time.min)
     end_dt = datetime.combine(today + timedelta(days=60), time.max)
@@ -1199,7 +1150,6 @@ def schedule_regenerate_ics_token():
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
     try:
-        # уникальный токен
         for _ in range(5):
             token = secrets.token_urlsafe(24)
             exists = User.query.filter(User.schedule_ics_token == token).first()
@@ -1288,7 +1238,6 @@ def schedule_templates_create():
     if allowed is not None and student_id not in allowed:
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
 
-    # избегаем дублей (по студенту+weekday+time)
     exists = RecurringLessonSlot.query.filter_by(student_id=student_id, weekday=weekday, time_hhmm=time_hhmm, is_active=True).first()
     if exists:
         return jsonify({'success': True, 'slot_id': exists.slot_id}), 200
@@ -1415,7 +1364,6 @@ def schedule_templates_apply_week():
         day = week_start + timedelta(days=int(t.weekday))
         dt = _parse_local_datetime(day.strftime('%Y-%m-%d'), t.time_hhmm, t.timezone)
 
-        # не создавать, если уже есть урок в этот момент (с точностью +/- 1 мин)
         exists = Lesson.query.filter(
             Lesson.student_id == t.student_id,
             Lesson.lesson_date >= (dt - timedelta(minutes=1)),
@@ -1424,7 +1372,6 @@ def schedule_templates_apply_week():
         if exists:
             continue
 
-        # пересечения
         if _student_has_overlap(t.student_id, dt, int(t.duration or 60)):
             continue
         if current_user.is_tutor() and _tutor_has_overlap(current_user.id, dt, int(t.duration or 60)):
@@ -1444,7 +1391,6 @@ def schedule_templates_apply_week():
             db.session.rollback()
             continue
 
-        # payload для отрисовки на фронте (в выбранной таймзоне интерфейса)
         display_tz = TOMSK_TZ if (data.get('timezone') or 'moscow') == 'tomsk' else MOSCOW_TZ
         dt_display = l.lesson_date.replace(tzinfo=MOSCOW_TZ).astimezone(display_tz)
         st = Student.query.get(t.student_id)
@@ -1473,7 +1419,6 @@ def schedule_templates_apply_week():
         db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
-    # Уведомление о новых уроках (ученик + родители)
     try:
         for lesson, st in created_pairs:
             if lesson.status == 'planned':

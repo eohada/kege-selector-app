@@ -25,9 +25,6 @@ def save_uploaded_file(
     if not file or not getattr(file, "filename", None):
         raise ValueError("file is required")
 
-    # Важно: secure_filename() выкидывает кириллицу и может "съесть" точку расширения.
-    # Например: "презентация.pptx" -> "pptx" (без ".pptx"), и тогда ext становится пустым.
-    # Поэтому расширение берём из исходного имени, а безопасное имя собираем отдельно.
     raw_name = str(file.filename or "").strip()
     safe_full = secure_filename(raw_name)
 
@@ -50,7 +47,6 @@ def save_uploaded_file(
     stored_name = f"{ts}_{orig}"
     abs_path = os.path.join(base_folder, stored_name)
 
-    # size check (best-effort)
     try:
         file.stream.seek(0, os.SEEK_END)
         size = int(file.stream.tell() or 0)
@@ -63,7 +59,6 @@ def save_uploaded_file(
 
     file.save(abs_path)
 
-    # re-check size from disk
     try:
         size = os.path.getsize(abs_path)
     except Exception:

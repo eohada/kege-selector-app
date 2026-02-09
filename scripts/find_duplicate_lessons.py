@@ -21,7 +21,6 @@ def get_lesson_fill_score(lesson):
     """
     score = 0
     
-    # Статус урока (важнее всего)
     if lesson.status == 'completed':
         score += 40
     elif lesson.status == 'in_progress':
@@ -29,23 +28,18 @@ def get_lesson_fill_score(lesson):
     elif lesson.status == 'planned':
         score += 5
     
-    # Тема урока
     if lesson.topic and lesson.topic.strip():
         score += 15
     
-    # Заметки
     if lesson.notes and lesson.notes.strip():
         score += 15
     
-    # Домашнее задание
     if lesson.homework and lesson.homework.strip():
         score += 15
     
-    # Статус ДЗ
     if lesson.homework_status and lesson.homework_status != 'not_assigned':
         score += 10
     
-    # Результаты автопроверки
     if lesson.homework_result_percent is not None:
         score += 5
     
@@ -62,15 +56,12 @@ def find_duplicate_lessons(dry_run=True, same_day_only=True):
     app = create_app()
     
     with app.app_context():
-        # Получаем все уроки, отсортированные по студенту и дате
         lessons = Lesson.query.order_by(Lesson.student_id, Lesson.lesson_date).all()
         
         duplicates = []
         seen = {}  # {(student_id, lesson_date_normalized): [lesson_ids]}
         
         for lesson in lessons:
-            # Нормализуем дату до дня для поиска дубликатов
-            # Считаем дубликатами уроки одного студента в один день
             lesson_date_normalized = lesson.lesson_date.date()
             
             key = (lesson.student_id, lesson_date_normalized)
@@ -79,18 +70,15 @@ def find_duplicate_lessons(dry_run=True, same_day_only=True):
                 seen[key] = []
             seen[key].append(lesson)
         
-        # Находим дубликаты (больше одного урока на ключ)
         for key, lesson_list in seen.items():
             if len(lesson_list) > 1:
                 student_id, lesson_date = key
                 student = Student.query.get(student_id)
                 student_name = student.name if student else f"ID {student_id}"
                 
-                # Если same_day_only=False, дополнительно фильтруем по времени (в пределах ±3 часов)
                 if not same_day_only:
                     filtered_lessons = []
                     for lesson in lesson_list:
-                        # Проверяем, есть ли другие уроки в пределах ±3 часов
                         has_nearby = False
                         for other_lesson in lesson_list:
                             if other_lesson.lesson_id != lesson.lesson_id:
@@ -114,7 +102,6 @@ def find_duplicate_lessons(dry_run=True, same_day_only=True):
                     'count': len(lesson_list)
                 })
         
-        # Выводим результаты
         if duplicates:
             print(f"\n🔍 Найдено {len(duplicates)} групп дубликатов:\n")
             
@@ -128,16 +115,12 @@ def find_duplicate_lessons(dry_run=True, same_day_only=True):
                 print(f"   📊 Статусы: {[l.status for l in dup['lessons']]}")
                 print()
                 
-                # Определяем, какой урок оставить
-                # Приоритет: более заполненный урок (с большим fill_score)
                 if not dry_run:
-                    # Вычисляем оценку заполненности для каждого урока
                     lessons_with_scores = []
                     for lesson in dup['lessons']:
                         fill_score = get_lesson_fill_score(lesson)
                         lessons_with_scores.append((lesson, fill_score))
                     
-                    # Сортируем по fill_score (убывание), затем по lesson_id (убывание) как запасной вариант
                     lessons_with_scores.sort(key=lambda x: (x[1], x[0].lesson_id), reverse=True)
                     
                     keep_lesson, keep_score = lessons_with_scores[0]

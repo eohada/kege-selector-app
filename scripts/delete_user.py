@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт для удаления пользователя
 Использование: python scripts/delete_user.py <username>

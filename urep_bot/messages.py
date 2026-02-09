@@ -2,7 +2,6 @@
 Тексты сообщений бота.
 """
 
-# Приветственные сообщения
 WELCOME_MESSAGE = """
 👋 Привет! Я бот платформы URep.
 
@@ -33,7 +32,6 @@ HELP_MESSAGE = """
 /help — Эта справка
 """
 
-# Привязка аккаунта
 LINK_SUCCESS = """
 ✅ Аккаунт успешно привязан!
 
@@ -50,21 +48,16 @@ LINK_CODE_EXPIRED = "⏰ Код истёк. Получи новый код в л
 LINK_ALREADY_LINKED = "ℹ️ Этот Telegram уже привязан к аккаунту. Используй /unlink для отвязки."
 LINK_USAGE = "ℹ️ Использование: /link КОД\n\nПолучи код в настройках профиля на сайте."
 
-# Отвязка
 UNLINK_SUCCESS = "✅ Telegram отвязан. Ты больше не будешь получать уведомления."
 UNLINK_NOT_LINKED = "ℹ️ Telegram не привязан к аккаунту."
 UNLINK_CONFIRM = "⚠️ Ты уверен, что хочешь отвязать Telegram?\nНажми /unlink ещё раз для подтверждения."
 
-# Профиль
 PROFILE_NOT_LINKED = "❌ Telegram не привязан к аккаунту.\nИспользуй /link КОД для привязки."
 
-# Уроки
 NO_UPCOMING_LESSONS = "📅 Нет запланированных уроков."
 
-# Статистика
 NO_STATS = "📊 Статистика пока недоступна."
 
-# Настройки
 SETTINGS_TEMPLATE = """
 ⚙️ Настройки уведомлений
 
@@ -76,7 +69,6 @@ SETTINGS_TEMPLATE = """
 NOTIFICATIONS_ENABLED = "✅ Уведомления включены"
 NOTIFICATIONS_DISABLED = "🔕 Уведомления выключены"
 
-# Уведомления
 NOTIFICATION_TEMPLATES = {
     'lesson_scheduled': "📅 Запланирован урок на {date}\n{topic}",
     'lesson_reminder_1h': "⏰ Через 1 час урок!\n{topic}\n\n{link}",
@@ -95,5 +87,4 @@ NOTIFICATION_TEMPLATES = {
     'generic': "📢 {title}\n\n{body}",
 }
 
-# Ошибки
 ERROR_GENERIC = "❌ Произошла ошибка. Попробуй позже."

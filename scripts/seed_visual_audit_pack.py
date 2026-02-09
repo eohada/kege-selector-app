@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Пак профилей для визуального аудита (Applitools): ученик, преподаватель, родитель, администратор.
 Создаёт пользователей, связи, уроки и задания, чтобы поочерёдно запускать visual_audit.py под каждой ролью.
@@ -212,48 +210,40 @@ def run_seed(app, root_dir: str | None = None, write_ids_file: bool = True) -> i
         pass
 
     try:
-        # 1. Администратор
             admin = _get_or_create_user(
                 username="visual_audit_admin",
                 role="admin",
                 email="visual_audit_admin@example.com",
             )
-            # 2. Преподаватель (тьютор)
             tutor = _get_or_create_user(
                 username="visual_audit_tutor",
                 role="tutor",
                 email="visual_audit_tutor@example.com",
             )
-            # 3. Ученик
             student_user = _get_or_create_user(
                 username="visual_audit_student",
                 role="student",
                 email="visual_audit_student@example.com",
             )
-            # 4. Родитель
             parent = _get_or_create_user(
                 username="visual_audit_parent",
                 role="parent",
                 email="visual_audit_parent@example.com",
             )
 
-            # Сущность Student для ученика (связь с User)
             student_entity = _get_or_create_student_entity(
                 name="Визуальный Аудит Ученик",
                 email="visual_audit_student@example.com",
                 user_id=student_user.id,
             )
 
-            # Связи
             _ensure_family_tie(parent, student_user)
             _ensure_enrollment(tutor, student_user)
 
-            # Уроки и задания
             lessons = _seed_lessons(student_entity, tutor.id)
             for lesson in lessons:
                 _attach_tasks_to_lesson(lesson)
 
-            # Группа (тьютор + ученик)
             group = SchoolGroup.query.filter_by(
                 title="Визуальный аудит · Группа",
                 owner_user_id=tutor.id,

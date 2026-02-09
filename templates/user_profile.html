@@ -10,7 +10,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
     <style>
-        /* Profile UX refresh (local overrides) */
+        
         .profile-content-grid {
             grid-template-columns: minmax(420px, 1.05fr) minmax(380px, 0.95fr);
             gap: 1.25rem;
@@ -38,8 +38,9 @@
             background: rgba(255,255,255,0.02);
         }
         .profile-mini-title { font-weight: 900; margin-bottom: .35rem; }
-
-        /* Выпадающие блоки вынесены в global CSS */
+        .lessons-remaining--danger { color: var(--danger); }
+        .lessons-remaining--warning { color: var(--warning); }
+        .lessons-remaining--accent { color: var(--accent-1); }
     </style>
 </head>
 <body>
@@ -63,11 +64,10 @@
         ">
             {% if current_user %}
                 <div class="profile-card">
-                    <!-- Обложка: для креатора — баннер (GIF) и снежинки -->
+                    
                     {% set cover_url = current_user.profile.cover_url if (current_user.profile and current_user.profile.cover_url) else none %}
                     <div class="profile-cover {% if current_user.is_creator() and cover_url %}has-cover{% endif %}" {% if current_user.is_creator() and cover_url %}style="background-image: url('{{ cover_url }}');"{% endif %}></div>
 
-                    <!-- Шапка с аватаром -->
                     <div class="profile-header">
                         <div class="profile-identity">
                             <div class="profile-avatar-wrapper {% if current_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if current_user.avatar_url %}data-avatar-url="{{ current_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
@@ -97,12 +97,46 @@
                         </div>
                     </div>
 
-                    <!-- Сетка контента -->
                     <div style="padding: 0 2.5rem 2.5rem;">
                         {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
                                 {% set ics_tz_param = ('tomsk' if tz_name == 'Asia/Tomsk' else 'moscow') %}
+                                {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
+                                <div id="ics-config" style="display:none" data-tz="{{ ics_tz_param }}" data-regenerate-url="{{ url_for('schedule.schedule_regenerate_ics_token') }}" data-token="{{ current_user.schedule_ics_token or '' }}"></div>
+                                <script>
+                                    (function() {
+                                        var cfg = document.getElementById('ics-config');
+                                        if (!cfg) return;
+                                        var origin = window.location.origin;
+                                        var token = (cfg.getAttribute('data-token') || '').trim() || null;
+                                        var icsTzParam = cfg.getAttribute('data-tz') || 'moscow';
+                                        var regenUrl = cfg.getAttribute('data-regenerate-url') || '';
+                                        var link = token ? origin + '/schedule/ics/' + token + '?timezone=' + icsTzParam : '';
+                                        var el = document.querySelector('.js-ics-input');
+                                        if (el) el.value = link || '(нажмите "Обновить ссылку")';
+                                        window.copyIcsLink = async function() {
+                                            var inp = document.querySelector('.js-ics-input');
+                                            var v = inp ? inp.value || '' : '';
+                                            if (!v || v.indexOf('(') === 0) return;
+                                            try { await navigator.clipboard.writeText(v); if (window.toast) window.toast.success('Скопировано'); } catch(e) { if (window.toast) window.toast.error('Не удалось скопировать'); }
+                                        };
+                                        window.regenerateIcsToken = async function() {
+                                            try {
+                                                var r = await fetch(regenUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': (document.querySelector('meta[name="csrf-token"]') || {}).content || '' }, body: '{}' });
+                                                var data = await r.json().catch(function() { return {}; });
+                                                if (!r.ok || data.success === false) throw new Error(data.error || 'HTTP ' + r.status);
+                                                var newLink = origin + '/schedule/ics/' + data.token + '?timezone=' + icsTzParam;
+                                                var inp = document.querySelector('.js-ics-input');
+                                                if (inp) inp.value = newLink;
+                                                if (window.toast) window.toast.success('Ссылка обновлена');
+                                            } catch (e) {
+                                                if (window.toast) window.toast.error(e.message || 'Ошибка');
+                                            }
+                                        };
+                                    })();
+                                </script>
+                                {% endif %}
                         <div class="profile-content-grid">
-                            <!-- Левая колонка: Данные -->
+                            
                             <div class="profile-section">
                                 <h3>
                                     Учетная запись
@@ -147,7 +181,6 @@
                                     </span>
                                 </div>
 
-                                {# Подписка/доступ для ученика/родителя #}
                                 {% if current_user.is_student() or current_user.is_parent() %}
                                 <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;">
                                     <div class="hero-eyebrow">доступ</div>
@@ -161,13 +194,12 @@
                                                 </span>
                                             {% endif %}
                                         </div>
-                                        {# Показываем оставшиеся уроки (приоритет) или дни #}
+                                        
                                         {% if subscription_access.lessons_remaining is not none %}
                                             <div style="margin-top: .6rem; display: flex; align-items: center; gap: .5rem;">
                                                 <span style="color: var(--text-muted);">Осталось уроков:</span>
-                                                <span style="font-size: 1.5rem; font-weight: 900; color: {% if subscription_access.lessons_remaining <= 2 %}var(--danger){% elif subscription_access.lessons_remaining <= 5 %}var(--warning){% else %}var(--accent-1){% endif %};">
-                                                    {{ subscription_access.lessons_remaining }}
-                                                </span>
+                                                {% set _rem_class = 'lessons-remaining--danger' if subscription_access.lessons_remaining <= 2 else ('lessons-remaining--warning' if subscription_access.lessons_remaining <= 5 else 'lessons-remaining--accent') %}
+                                                <span class="lessons-remaining-val {{ _rem_class }}" style="font-size: 1.5rem; font-weight: 900;">{{ subscription_access.lessons_remaining }}</span>
                                             </div>
                                         {% elif subscription_access.seconds_left is not none %}
                                             {% set days_left = (subscription_access.seconds_left // 86400) %}
@@ -192,14 +224,13 @@
                                     {% endif %}
                                 </div>
                                 {% endif %}
-                                
-                                {# Блок Telegram уведомлений #}
+
                                 <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;" id="telegram-notifications-block">
                                     <div class="hero-eyebrow">уведомления</div>
                                     <h4 style="margin: 0.35rem 0 0.5rem 0;">Telegram бот</h4>
                                     
                                     <div id="telegram-status-content">
-                                        {# Контент загружается через JS #}
+                                        
                                         <div style="color: var(--text-muted);">Загрузка...</div>
                                     </div>
                                 </div>
@@ -214,7 +245,6 @@
                                 {% endif %}
                             </div>
 
-                            <!-- Правая колонка: Соц-блоки + действия -->
                             <div style="display: flex; flex-direction: column; gap: 1.5rem;">
                                 {% if current_user.is_student() %}
                                 <div class="profile-section">
@@ -286,7 +316,7 @@
                                                         Приватная ссылка для внешних календарей (.ics). Не передавайте её другим.
                                                     </p>
                                                     <div style="display:flex; gap: .6rem; flex-wrap: wrap; align-items: center;">
-                                                        <input class="neo-input" id="icsLink" readonly style="flex:1; min-width: 260px;" value="">
+                                                        <input class="neo-input js-ics-input" readonly style="flex:1; min-width: 260px;" value="">
                                                         <button class="neo-button outline" type="button" onclick="copyIcsLink()">Копировать</button>
                                                         <button class="neo-button ghost" type="button" onclick="regenerateIcsToken()">Обновить ссылку</button>
                                                     </div>
@@ -296,41 +326,6 @@
                                                 </div>
                                             </details>
                                         </div>
-                                        <script>
-                                            (function() {
-                                                const origin = window.location.origin;
-                                                const token = {% if current_user.schedule_ics_token %}'{{ current_user.schedule_ics_token }}'{% else %}null{% endif %};
-                                                const icsTzParam = '{{ ics_tz_param }}';
-                                                const regenerateUrl = '{{ url_for('schedule.schedule_regenerate_ics_token') }}';
-                                                const link = token ? `${origin}/schedule/ics/${token}?timezone=${icsTzParam}` : '';
-                                                const el = document.getElementById('icsLink');
-                                                if (el) el.value = link || '(нажмите "Обновить ссылку")';
-                                                window.copyIcsLink = async function() {
-                                                    const v = el?.value || '';
-                                                    if (!v || v.startsWith('(')) return;
-                                                    try { await navigator.clipboard.writeText(v); if (window.toast) window.toast.success('Скопировано'); } catch(e) { if (window.toast) window.toast.error('Не удалось скопировать'); }
-                                                }
-                                                window.regenerateIcsToken = async function() {
-                                                    try {
-                                                        const resp = await fetch(regenerateUrl, {
-                                                            method: 'POST',
-                                                            headers: {
-                                                                'Content-Type': 'application/json',
-                                                                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                                                            },
-                                                            body: JSON.stringify({})
-                                                        });
-                                                        const data = await resp.json().catch(() => ({}));
-                                                        if (!resp.ok || data.success === false) throw new Error(data.error || `HTTP ${resp.status}`);
-                                                        const newLink = `${origin}/schedule/ics/${data.token}?timezone=${icsTzParam}`;
-                                                        if (el) el.value = newLink;
-                                                        if (window.toast) window.toast.success('Ссылка обновлена');
-                                                    } catch (e) {
-                                                        if (window.toast) window.toast.error(e.message || 'Ошибка');
-                                                    }
-                                                }
-                                            })();
-                                        </script>
                                         {% endif %}
                                     {% else %}
                                         <p style="color: var(--text-muted); margin: 0;">
@@ -443,7 +438,7 @@
                                                 Приватная ссылка для внешних календарей (.ics). Не передавайте её другим.
                                             </p>
                                             <div style="display:flex; gap: .6rem; flex-wrap: wrap; align-items: center;">
-                                                <input class="neo-input" id="icsLink" readonly style="flex:1; min-width: 260px;" value="">
+                                                <input class="neo-input js-ics-input" readonly style="flex:1; min-width: 260px;" value="">
                                                 <button class="neo-button outline" type="button" onclick="copyIcsLink()">Копировать</button>
                                                 <button class="neo-button ghost" type="button" onclick="regenerateIcsToken()">Обновить ссылку</button>
                                             </div>
@@ -453,41 +448,6 @@
                                         </div>
                                     </details>
                                 </div>
-                                <script>
-                                    (function() {
-                                        const origin = window.location.origin;
-                                        const token = {% if current_user.schedule_ics_token %}'{{ current_user.schedule_ics_token }}'{% else %}null{% endif %};
-                                        const icsTzParam = '{{ ics_tz_param }}';
-                                        const regenerateUrl = '{{ url_for('schedule.schedule_regenerate_ics_token') }}';
-                                        const link = token ? `${origin}/schedule/ics/${token}?timezone=${icsTzParam}` : '';
-                                        const el = document.getElementById('icsLink');
-                                        if (el) el.value = link || '(нажмите “Обновить ссылку”)';
-                                        window.copyIcsLink = async function() {
-                                            const v = el?.value || '';
-                                            if (!v || v.startsWith('(')) return;
-                                            try { await navigator.clipboard.writeText(v); if (window.toast) window.toast.success('Скопировано'); } catch(e) { if (window.toast) window.toast.error('Не удалось скопировать'); }
-                                        }
-                                        window.regenerateIcsToken = async function() {
-                                            try {
-                                                const resp = await fetch(regenerateUrl, {
-                                                    method: 'POST',
-                                                    headers: {
-                                                        'Content-Type': 'application/json',
-                                                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                                                    },
-                                                    body: JSON.stringify({})
-                                                });
-                                                const data = await resp.json().catch(() => ({}));
-                                                if (!resp.ok || data.success === false) throw new Error(data.error || `HTTP ${resp.status}`);
-                                                const newLink = `${origin}/schedule/ics/${data.token}?timezone=${icsTzParam}`;
-                                                if (el) el.value = newLink;
-                                                if (window.toast) window.toast.success('Ссылка обновлена');
-                                            } catch (e) {
-                                                if (window.toast) window.toast.error(e.message || 'Ошибка');
-                                            }
-                                        }
-                                    })();
-                                </script>
                                 {% endif %}
                                 {% endif %}
 
@@ -529,14 +489,12 @@
         </main>
     </div>
 
-    <!-- Модальное окно просмотра аватарки в полном размере -->
     <div class="modal-overlay avatar-modal-overlay" id="avatarModal" onclick="closeAvatarModal(event)" style="z-index: 10001;">
         <div class="modal modal-avatar-wrap" onclick="event.stopPropagation()">
             <img id="avatarModalImg" src="" alt="Аватар в полном размере">
         </div>
     </div>
 
-    <!-- Модальное окно редактирования профиля (вынесено из app-shell) -->
     {% if current_user %}
     <div class="modal-overlay" id="editProfileModal" style="z-index: 9999;">
         <div class="modal">
@@ -799,8 +757,7 @@
             }
         });
     </script>
-    
-    <!-- Telegram Bot Integration -->
+
     <script>
         let telegramLinkCode = null;
         let telegramCodeExpires = null;

@@ -18,7 +18,6 @@ class ReportDatabase:
         Args:
             db_path: Путь к файлу базы данных SQLite
         """
-        # Создаем директорию, если её нет
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         
         self.db_path = db_path
@@ -29,7 +28,6 @@ class ReportDatabase:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        # Таблица репортов
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS reports (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,21 +48,16 @@ class ReportDatabase:
             )
         """)
         
-        # Добавляем колонку numeric_id, если её нет (для существующих БД)
         try:
             cursor.execute("ALTER TABLE reports ADD COLUMN numeric_id INTEGER")
-            # Заполняем numeric_id значениями из id для существующих записей
             cursor.execute("UPDATE reports SET numeric_id = id WHERE numeric_id IS NULL")
         except sqlite3.OperationalError:
-            # Колонка уже существует, ничего не делаем
             pass
         
-        # Индекс для быстрого поиска по статусу
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_status ON reports(status)
         """)
         
-        # Индекс для поиска по тегу
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_tag ON reports(tag)
         """)
@@ -112,12 +105,10 @@ class ReportDatabase:
                 report_id, group_message_id, group_chat_id, author_id,
                 author_username, author_first_name, tag, content
             ))
-            # Обновляем numeric_id значением из id
             cursor.execute("UPDATE reports SET numeric_id = id WHERE report_id = ?", (report_id,))
             conn.commit()
             return True
         except sqlite3.IntegrityError:
-            # Репорт уже существует
             return False
         finally:
             conn.close()
@@ -239,7 +230,6 @@ class ReportDatabase:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # Формируем запрос с фильтрами
         query = "SELECT * FROM reports WHERE 1=1"
         params = []
         

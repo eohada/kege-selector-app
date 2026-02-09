@@ -36,7 +36,6 @@ def _inject_css():
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-#MainMenu, footer, header { visibility: hidden; }
 html, body, [class*="css"] { font-family: 'Inter', system-ui, sans-serif; }
 
 .stApp {
@@ -328,7 +327,6 @@ def main():
     user = (st.session_state['me'] or {}).get('user', {})
     username = user.get('username', 'пользователь')
 
-    # Load stats
     counts = {}
     try:
         stats = client.get_task_stats()
@@ -349,7 +347,6 @@ def main():
     task_type = st.session_state.get('task_type')
     current_card = st.session_state.get('current_card')
 
-    # ========== SCREEN 1: Number Picker ==========
     if task_type is None and task is None:
         st.markdown(f"""
         <div class="hero-box">
@@ -358,7 +355,6 @@ def main():
         </div>
         """, unsafe_allow_html=True)
 
-        # Number grid using columns
         st.markdown("### Выбери номер задания")
         
         for row_start in [1, 10, 19]:
@@ -374,9 +370,7 @@ def main():
                         st.rerun()
         return
 
-    # ========== SCREEN 2: Task Card (Swipe) ==========
     if task is None:
-        # Get card
         if current_card is None:
             card = _pull_task(client, int(task_type))
             if card:
@@ -391,13 +385,11 @@ def main():
         
         card = st.session_state['current_card']
         
-        # Back button
         if st.button("← Сменить номер", key="back_btn"):
             st.session_state['task_type'] = None
             st.session_state['current_card'] = None
             st.rerun()
         
-        # Header
         st.markdown(f"""
         <div style="text-align:center; margin: 20px 0;">
             <div style="font-size: 1.8rem; font-weight: 800; color: #fff;">Задание №{task_type}</div>
@@ -405,7 +397,6 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # Task Card
         content = (card.get('content_html') or '').strip()
         source_url = card.get('source_url', '')
         source_link = f'<a href="{source_url}" target="_blank" class="task-badge" style="text-decoration:none;">Источник ↗</a>' if source_url else ''
@@ -423,7 +414,6 @@ def main():
         </div>
         """, unsafe_allow_html=True)
         
-        # Action buttons
         col1, col2 = st.columns(2, gap="large")
         
         with col1:
@@ -440,12 +430,10 @@ def main():
         
         return
 
-    # ========== SCREEN 3: Workbench ==========
     tid = int(task.get('task_id', 0))
     knowledge = load_task_knowledge(tid) if tid else None
     tests = (knowledge or {}).get('tests') if isinstance(knowledge, dict) else None
 
-    # Header
     col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
         if st.button("← Назад", use_container_width=True):
@@ -462,7 +450,6 @@ def main():
             _reset_workbench()
             st.rerun()
 
-    # Tabs
     tab1, tab2, tab3, tab4 = st.tabs(["📄 Условие", "💻 Решение", "💡 Помощник", "📚 История"])
 
     with tab1:
@@ -535,7 +522,6 @@ def main():
                     if st.session_state.get('tests'):
                         _render_tests(st.session_state['tests'])
 
-        # Save button
         st.markdown("---")
         if st.button("💾 Сохранить прогресс", use_container_width=True):
             try:

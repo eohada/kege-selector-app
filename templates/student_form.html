@@ -54,8 +54,6 @@
         {% set active_page = 'dashboard' %}
         {% include '_primary_nav.html' %}
 
-        {# Flash messages будут показаны через toast #}
-
         <section class="glass-panel form-hero">
             <div>
                 <p class="hero-eyebrow">форма ученика</p>
@@ -86,39 +84,39 @@
                         {{ form.category(class='neo-select') }}
                         <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Категория ученика для удобной организации</small>
                     </div>
-                    <div class="neo-field"> <!-- Поле выбора класса -->
-                        {{ form.school_class.label(class='neo-label') }} {# Подпись селекта класса #}
-                        {{ form.school_class(class='neo-select') }} {# Выпадающий список с классами #}
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Укажи текущий школьный класс (1-11)</small> <!-- Подсказка по заполнению -->
+                    <div class="neo-field"> 
+                        {{ form.school_class.label(class='neo-label') }} 
+                        {{ form.school_class(class='neo-select') }} 
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Укажи текущий школьный класс (1-11)</small> 
                     </div>
                 </div>
             </section>
             
-            <section class="form-section"> <!-- Блок с целями и сроками -->
+            <section class="form-section"> 
                 <div class="form-section-title"><img src="{{ url_for('static', filename='icons/icons8-мишень-100.png') }}" alt="Цели" class="ui-icon ui-icon--sm"> Цели и сроки</div>
-                <div class="form-grid"> <!-- Сетка для полей блока -->
-                    <div class="neo-field category-field" data-field="numeric-goal"> <!-- Поле числовой цели -->
-                        <label class="neo-label" for="{{ form.target_score.id }}" id="targetScoreLabel">Целевой балл (0-100)</label> <!-- Подпись для числовой цели -->
-                        {{ form.target_score(class='neo-input', placeholder='85', type='number', min=0, max=100, **{'data-tooltip': 'Введите целевой балл от 0 до 100'}) }} <!-- Поле ввода числовой цели -->
-                        <small id="targetScoreHint" style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Целевой балл ЕГЭ (0-100)</small> <!-- Подсказка для числовой цели -->
+                <div class="form-grid"> 
+                    <div class="neo-field category-field" data-field="numeric-goal"> 
+                        <label class="neo-label" for="{{ form.target_score.id }}" id="targetScoreLabel">Целевой балл (0-100)</label> 
+                        {{ form.target_score(class='neo-input', placeholder='85', type='number', min=0, max=100, **{'data-tooltip': 'Введите целевой балл от 0 до 100'}) }} 
+                        <small id="targetScoreHint" style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Целевой балл ЕГЭ (0-100)</small> 
                     </div>
                     
-                    <div class="neo-field category-field" data-field="text-goal"> <!-- Поле текстовой цели -->
-                        {{ form.goal_text.label(class='neo-label') }} <!-- Подпись текстовой цели -->
-                        {{ form.goal_text(class='neo-input', placeholder='Например: подготовиться к хакатону или выйти на определенный уровень', rows=3) }} <!-- Поле ввода текстовой цели -->
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Опиши цель словами для направлений ЛЕВЕЛАП и Программирование</small> <!-- Подсказка текстовой цели -->
+                    <div class="neo-field category-field" data-field="text-goal"> 
+                        {{ form.goal_text.label(class='neo-label') }} 
+                        {{ form.goal_text(class='neo-input', placeholder='Например: подготовиться к хакатону или выйти на определенный уровень', rows=3) }} 
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Опиши цель словами для направлений ЛЕВЕЛАП и Программирование</small> 
                     </div>
                     
-                    <div class="neo-field category-field" data-field="deadline"> <!-- Поле сроков -->
-                        {{ form.deadline.label(class='neo-label') }} <!-- Подпись для срока -->
-                        {{ form.deadline(class='neo-input', placeholder='Июнь 2025') }} <!-- Поле ввода срока -->
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">К какому сроку нужно достичь цели</small> <!-- Подсказка для срока -->
+                    <div class="neo-field category-field" data-field="deadline"> 
+                        {{ form.deadline.label(class='neo-label') }} 
+                        {{ form.deadline(class='neo-input', placeholder='Июнь 2025') }} 
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">К какому сроку нужно достичь цели</small> 
                     </div>
                     
-                    <div class="neo-field category-field" data-field="programming-language"> <!-- Поле языка программирования -->
-                        {{ form.programming_language.label(class='neo-label') }} <!-- Подпись для языка -->
-                        {{ form.programming_language(class='neo-input', placeholder='Python, C++, JavaScript...') }} <!-- Поле ввода языка программирования -->
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Укажи приоритетный язык для занятий</small> <!-- Подсказка для языка -->
+                    <div class="neo-field category-field" data-field="programming-language"> 
+                        {{ form.programming_language.label(class='neo-label') }} 
+                        {{ form.programming_language(class='neo-input', placeholder='Python, C++, JavaScript...') }} 
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Укажи приоритетный язык для занятий</small> 
                     </div>
                 </div>
             </section>

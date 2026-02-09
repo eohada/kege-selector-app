@@ -36,7 +36,6 @@
         gap: 0.4rem;
     }
 
-    /* Tabs */
     .lesson-tabs {
         display: flex;
         gap: 0.5rem;
@@ -79,7 +78,6 @@
         display: block;
     }
 
-    /* Поле конспекта — нормальная высота редактора */
     #theory-markdown-wrap,
     #theory-editor {
         min-height: 320px;
@@ -101,7 +99,6 @@
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Markdown Content */
     .markdown-content {
         line-height: 1.6;
         font-size: 1.1rem;
@@ -133,7 +130,6 @@
         color: var(--text-muted);
     }
 
-    /* Materials */
     .materials-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -178,7 +174,6 @@
         opacity: 1;
     }
 
-    /* Editor Toolbar Fix */
     .editor-toolbar {
         border-color: var(--stroke-1) !important;
         background: var(--surface-2) !important;
@@ -208,8 +203,7 @@
         background: var(--page-bg) !important;
         color: var(--text-primary) !important;
     }
-    
-    /* Task Status Styles */
+
     .task-card.status-correct {
         border-color: var(--success);
         background: linear-gradient(160deg, rgba(0, 254, 202, 0.05), rgba(10, 10, 18, 0.98));
@@ -221,11 +215,10 @@
     .task-card.status-none {
         border-color: var(--stroke-1);
     }
-    
-    /* Updated Task Header Styles */
+
     .task-header {
         display: flex;
-        align-items: center; /* Vertical alignment fix */
+        align-items: center; 
         gap: 1rem;
         margin-bottom: 1.5rem;
         padding-bottom: 1rem;
@@ -260,7 +253,6 @@
         border: 1px solid var(--danger);
     }
 
-    /* Navigation Squares Bar */
     .task-nav-bar {
         display: flex;
         flex-wrap: wrap;
@@ -339,7 +331,6 @@
         border-color: rgba(0, 255, 213, 0.35);
     }
 
-    /* Video Call PiP (Picture-in-Picture) */
     #videocall-iframe.pip-mode {
         position: fixed !important;
         bottom: 20px;
@@ -354,7 +345,7 @@
 
     #videocall-pip-overlay {
         position: fixed;
-        bottom: 220px; /* 240px iframe height - 20px overlap */
+        bottom: 220px; 
         right: 20px;
         width: 320px;
         z-index: 9999;
@@ -411,7 +402,6 @@
         background: var(--danger);
     }
 
-    /* Адаптив для мобильных */
     @media (max-width: 768px) {
         #videocall-iframe.pip-mode {
             width: 240px !important;
@@ -431,7 +421,7 @@
     <div class="app-shell">
         {% set active_page = None %}
         {% include '_primary_nav.html' %}
-        <!-- Header -->
+        
         <header class="lesson-header glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
                 <div>
@@ -526,7 +516,6 @@
             }
         </script>
 
-        <!-- Tabs Navigation -->
         <div class="lesson-tabs" role="tablist">
             <button type="button" class="tab-btn active" data-tab="theory" role="tab" aria-selected="true"><i class="fas fa-book"></i> Конспект</button>
             <button type="button" class="tab-btn" data-tab="tasks" role="tab" aria-selected="false">
@@ -539,11 +528,10 @@
             <button type="button" class="tab-btn" data-tab="videocall" role="tab" aria-selected="false"><i class="fas fa-video"></i> Звонок</button>
         </div>
 
-        <!-- TAB: THEORY -->
         <div id="tab-theory" class="tab-pane active">
             <div class="glass-panel">
                 {% if not is_student_view and not is_parent_view %}
-                <!-- Teacher Edit Mode -->
+                
                 <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; align-items: center;">
                     <h3 style="margin: 0;">Конспект урока</h3>
                     <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
@@ -568,7 +556,7 @@
                     <div id="blocksList" style="display:flex; flex-direction: column; gap: 0.75rem;"></div>
                 </div>
                 {% else %}
-                <!-- Student View Mode -->
+                
                 <h3 style="margin-bottom: 1.5rem;">Конспект урока</h3>
                 {% if content_blocks and content_blocks|length > 0 %}
                 <div class="markdown-content" style="display:flex; flex-direction: column; gap: 0.9rem;">
@@ -641,9 +629,8 @@
         </div>
         {% endif %}
 
-        <!-- TAB: TASKS (Existing Logic) -->
         <div id="tab-tasks" class="tab-pane">
-            <!-- Вставка существующего контента задач -->
+            
             <div class="tasks-container">
                  <form id="homework-form" method="POST" data-no-ajax action="{% if is_student_view %}{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_student_save', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_student_save', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_student_save', lesson_id=lesson.lesson_id) }}{% endif %}{% else %}{% if assignment_type == 'homework' %}{{ url_for('lessons.lesson_homework_save', lesson_id=lesson.lesson_id) }}{% elif assignment_type == 'classwork' %}{{ url_for('lessons.lesson_classwork_save', lesson_id=lesson.lesson_id) }}{% else %}{{ url_for('lessons.lesson_exam_save', lesson_id=lesson.lesson_id) }}{% endif %}{% endif %}">
                 
@@ -763,7 +750,6 @@
                 </div>
                 {% endif %}
 
-                <!-- Navigation Squares -->
                 <div class="task-nav-bar">
                     {% for hw_task in homework_tasks %}
                     {% set nav_class = '' %}
@@ -784,7 +770,7 @@
                 </div>
 
                 {% for hw_task in homework_tasks %}
-                <!-- Определяем статус для стилизации карточки -->
+                
                 {% set status_class = 'status-none' %}
                 {% if hw_task.submission_correct == true %}
                     {% set status_class = 'status-correct' %}
@@ -806,7 +792,7 @@
                         {% endif %}
                         
                         {% set task_status = ((hw_task.status or 'pending')|lower) %}
-                        <!-- Индикатор результата (показываем ученику только после сдачи/проверки/возврата) -->
+                        
                         {% set show_result_for_student = is_student_view and (task_status in ['submitted','graded','returned']) %}
                         {% if (not is_student_view and not is_parent_view) or show_result_for_student %}
                             {% if hw_task.submission_correct == true %}
@@ -879,8 +865,7 @@
                         {% endif %}
                         {% endif %}
                     </div>
-                    
-                    <!-- Блок ввода ответа -->
+
                     <div class="answer-section" style="margin-top: 1.5rem;">
                         <label class="neo-label" for="submission_{{ hw_task.lesson_task_id }}">
                             <i class="fas fa-pen"></i> Ответ ученика:
@@ -903,7 +888,6 @@
                         {% endif %}
                     </div>
 
-                    <!-- Блок с правильным ответом: ученику только после сдачи/проверки/возврата; учителю всегда -->
                     {% set can_show_answer_to_student = is_student_view and (task_status in ['submitted','graded','returned']) and is_read_only %}
                     {% if can_show_answer_to_student or (not is_student_view and not is_parent_view) %}
                         {% set correct_val = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}
@@ -995,7 +979,6 @@
             </div>
         </div>
 
-        <!-- TAB: MATERIALS -->
         <div id="tab-materials" class="tab-pane">
             <div class="glass-panel">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -1057,7 +1040,6 @@
             </div>
         </div>
 
-        <!-- MODAL: Attach from Library -->
         {% if not is_student_view and not is_parent_view %}
         <div id="libraryAttachModal" style="display:none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.65); align-items: center; justify-content: center; padding: 1.25rem;">
             <div class="glass-panel" style="width: min(920px, 100%); max-height: 80vh; overflow: hidden; display:flex; flex-direction: column;">
@@ -1080,7 +1062,6 @@
         </div>
         {% endif %}
 
-        <!-- TAB: NOTES -->
         <div id="tab-notes" class="tab-pane">
             <div class="glass-panel">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; align-items: center;">
@@ -1094,7 +1075,6 @@
             </div>
         </div>
 
-        <!-- TAB: CHAT -->
         <div id="tab-chat" class="tab-pane">
             <div class="glass-panel">
                 <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
@@ -1117,7 +1097,7 @@
                 </div>
 
                 <div id="lessonChatList" style="margin-top: 1rem; display:flex; flex-direction: column; gap: 0.75rem;">
-                    <!-- messages injected by JS -->
+                    
                 </div>
 
                 {% if not is_parent_view %}
@@ -1131,9 +1111,6 @@
             </div>
         </div>
 
-        <!-- ============================================ -->
-        <!-- ВКЛАДКА: ИНТЕРАКТИВНАЯ ДОСКА (MIRO) -->
-        <!-- ============================================ -->
         <div id="tab-whiteboard" class="tab-pane">
             <div class="glass-panel">
                 <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
@@ -1149,19 +1126,18 @@
                         </div>
                     </div>
                     <div id="whiteboard-actions" style="display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content: flex-end;">
-                        <!-- Кнопки загрузятся динамически -->
+                        
                     </div>
                 </div>
 
                 <div id="whiteboard-container" style="min-height: 500px; border-radius: var(--radius-lg); overflow: hidden; position: relative;">
-                    <!-- Контент загрузится динамически -->
+                    
                     <div id="whiteboard-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 500px; background: var(--surface-2); border: 2px dashed var(--stroke-1); border-radius: var(--radius-lg);">
                         <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
                         <span style="color: var(--text-muted);">Загрузка доски...</span>
                     </div>
                 </div>
 
-                <!-- Настройки доски (только для преподавателя) -->
                 {% if not is_student_view and not is_parent_view %}
                 <div id="whiteboard-settings" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
                     <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;">
@@ -1179,9 +1155,6 @@
             </div>
         </div>
 
-        <!-- ============================================ -->
-        <!-- ВКЛАДКА: ВИДЕОЗВОНОК (COMING SOON) -->
-        <!-- ============================================ -->
         <div id="tab-videocall" class="tab-pane">
             <div class="glass-panel">
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; text-align: center;">
@@ -1207,14 +1180,12 @@
 
     </div>
 
-    <!-- HIDDEN FORMS FOR JS -->
     {% for hw_task in homework_tasks %}
     <form id="delete-form-{{ hw_task.lesson_task_id }}" method="POST" action="{{ url_for('lessons.lesson_homework_delete_task', lesson_id=lesson.lesson_id, lesson_task_id=hw_task.lesson_task_id, assignment_type=assignment_type) }}" style="display: none;">
         {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
     </form>
     {% endfor %}
 
-    <!-- SCRIPTS -->
     <script src="https://unpkg.com/easymde/dist/easymde.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>

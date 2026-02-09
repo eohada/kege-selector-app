@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Скрипт для извлечения HTML кодов заданий из базы данных
 Извлекает по 10 заданий каждого типа (1-27) и сохраняет в JSON файл
@@ -9,7 +7,6 @@ import sys
 import json
 from datetime import datetime
 
-# Добавляем корневую директорию проекта в путь
 project_root = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, project_root)
 
@@ -21,10 +18,8 @@ def extract_tasks_html():
     app = create_app()
     
     with app.app_context():
-        # Словарь для хранения заданий по номерам
         tasks_by_number = {}
         
-        # Получаем по 10 заданий для каждого номера (1-27)
         for task_number in range(1, 28):
             tasks = Tasks.query.filter_by(task_number=task_number)\
                               .order_by(Tasks.task_id.desc())\
@@ -51,7 +46,6 @@ def extract_tasks_html():
             
             print(f"Задание {task_number}: извлечено {len(tasks_list)} заданий")
         
-        # Сохраняем в JSON файл
         output_file = f'tasks_html_samples_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json'
         
         with open(output_file, 'w', encoding='utf-8') as f:
@@ -59,7 +53,6 @@ def extract_tasks_html():
         
         print(f"\n[OK] Данные сохранены в файл: {output_file}")
         
-        # Выводим статистику
         total_tasks = sum(data['count'] for data in tasks_by_number.values())
         print(f"[STAT] Всего извлечено заданий: {total_tasks}")
         print(f"[STAT] По номерам:")

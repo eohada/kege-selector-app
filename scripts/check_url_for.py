@@ -6,7 +6,6 @@ import os
 import re
 from pathlib import Path
 
-# Список endpoints, которые должны иметь префикс blueprint
 BLUEPRINT_ENDPOINTS = {
     'login': 'auth.login',
     'logout': 'auth.logout',
@@ -48,13 +47,11 @@ def check_template_file(file_path):
             content = f.read()
             lines = content.split('\n')
             
-            # Ищем все url_for
             pattern = r"url_for\(['\"]([^'\"]+)['\"]"
             for line_num, line in enumerate(lines, 1):
                 matches = re.finditer(pattern, line)
                 for match in matches:
                     endpoint = match.group(1)
-                    # Проверяем, должен ли endpoint иметь префикс blueprint
                     if endpoint in BLUEPRINT_ENDPOINTS:
                         expected = BLUEPRINT_ENDPOINTS[endpoint]
                         if endpoint != expected:

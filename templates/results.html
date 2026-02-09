@@ -101,7 +101,6 @@
             flex-wrap: wrap;
         }
 
-
         .task-content {
             line-height: 1.8;
             font-size: 1.05em;
@@ -236,8 +235,6 @@
         {% set active_page = active_page | default('generator') %}
         {% include '_primary_nav.html' %}
 
-        {# Flash messages будут показаны через toast #}
-
         <section class="glass-panel results-hero">
             <div>
                 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
@@ -369,12 +366,10 @@
         {% endfor %}
     </div>
 
-
     <script src="{{ url_for('static', filename='ajax-utils.js') }}"></script>
-    {# toast.js уже подключается через _ux_enhancements.html #}
+    
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
 
-    <!-- Modal: Create Assignment -->
     <div class="modal-overlay" id="createAssignmentModal" style="display:none; align-items:center; justify-content:center; padding: 2rem; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 1200; backdrop-filter: blur(4px);">
         <div class="glass-panel" style="width: 100%; max-width: 640px; border-radius: var(--radius-lg);">
             <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """Скрипт для проверки данных в Railway PostgreSQL БД"""
 
 import os
@@ -43,11 +41,9 @@ def check_data():
     cursor = conn.cursor()
     
     try:
-        # Проверяем таблицы
         tables = ['Students', 'Lessons', 'LessonTasks', 'Tasks']
         
         for table in tables:
-            # Проверяем существование таблицы
             cursor.execute("""
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables 
@@ -61,7 +57,6 @@ def check_data():
                 print(f"[ERROR] Table {table} does not exist")
                 continue
             
-            # Получаем реальное имя таблицы
             cursor.execute("""
                 SELECT table_name 
                 FROM information_schema.tables 
@@ -71,13 +66,11 @@ def check_data():
             """, (table, table))
             real_name = cursor.fetchone()[0]
             
-            # Считаем записи
             cursor.execute(f'SELECT COUNT(*) FROM "{real_name}"')
             count = cursor.fetchone()[0]
             
             print(f"[INFO] {table}: {count} records")
             
-            # Для Students проверяем is_active
             if table == 'Students':
                 cursor.execute(f'SELECT COUNT(*) FROM "{real_name}" WHERE is_active = TRUE')
                 active_count = cursor.fetchone()[0]
@@ -85,14 +78,12 @@ def check_data():
                 inactive_count = cursor.fetchone()[0]
                 print(f"   [OK] Active: {active_count}, [INACTIVE] Inactive: {inactive_count}")
                 
-                # Показываем несколько примеров
                 cursor.execute(f'SELECT student_id, name, platform_id, category, is_active FROM "{real_name}" LIMIT 5')
                 samples = cursor.fetchall()
                 print(f"   Sample records:")
                 for sample in samples:
                     print(f"      ID: {sample[0]}, Name: {sample[1]}, Platform ID: {sample[2]}, Category: {sample[3]}, Active: {sample[4]}")
             
-            # Для Lessons показываем статусы
             elif table == 'Lessons':
                 cursor.execute(f'SELECT status, COUNT(*) FROM "{real_name}" GROUP BY status')
                 statuses = cursor.fetchall()
@@ -100,7 +91,6 @@ def check_data():
                 for status, cnt in statuses:
                     print(f"      {status}: {cnt}")
         
-        # Проверяем связь между таблицами
         print(f"\n[INFO] Checking relationships:")
         cursor.execute("""
             SELECT table_name 

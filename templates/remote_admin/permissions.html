@@ -97,7 +97,7 @@
             </div>
 
             <div class="rbac-grid">
-                {# Список ролей #}
+                
                 <div class="roles-list">
                     <div style="padding: 1rem; font-weight: 600; background: var(--surface-3); border-bottom: 1px solid var(--stroke-2);">
                         Роли
@@ -115,7 +115,6 @@
                     {% endif %}
                 </div>
 
-                {# Панель прав #}
                 <div class="permissions-panel">
                     <form method="POST" action="{{ url_for('remote_admin.permissions') }}" id="permissions-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

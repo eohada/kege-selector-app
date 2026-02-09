@@ -1,4 +1,4 @@
-/* Подключение шрифтов MonaspaceNeon */
+
 @font-face {
     font-family: 'MonaspaceNeon';
     src: url('/font/MonaspaceNeon-Regular.otf') format('opentype');
@@ -40,9 +40,9 @@
 }
 
 :root {
-    /* Базовые размеры - все в пикселях для консистентности */
-    --base-font-size: 16px; /* Базовый размер шрифта */
-    --rem-base: 16px; /* Базовое значение для rem (1rem = 16px) */
+    
+    --base-font-size: 16px; 
+    --rem-base: 16px; 
     
     --page-bg: #02040c;
     --page-gradient: radial-gradient(140% 120% at 15% 20%, rgba(0, 255, 213, 0.15), transparent 60%),
@@ -76,18 +76,16 @@
     box-sizing: border-box;
 }
 
-/* Явно задаем базовый размер шрифта для консистентности между окружениями */
-/* КРИТИЧЕСКИ ВАЖНО: эти правила должны быть первыми после :root, чтобы переопределить любые другие стили */
 html {
-    font-size: 16px !important; /* Базовый размер - 1rem = 16px, !important для гарантии */
-    -webkit-text-size-adjust: 100% !important; /* Отключаем авто-масштабирование в Safari/iOS */
-    -moz-text-size-adjust: 100% !important; /* Отключаем авто-масштабирование в Firefox */
-    text-size-adjust: 100% !important; /* Стандартное свойство для отключения авто-масштабирования */
+    font-size: 16px !important; 
+    -webkit-text-size-adjust: 100% !important; 
+    -moz-text-size-adjust: 100% !important; 
+    text-size-adjust: 100% !important; 
 }
 
 body {
     font-family: var(--font-base);
-    font-size: 16px !important; /* Явно задаем размер в пикселях, чтобы не зависеть от настроек браузера */
+    font-size: 16px !important; 
     margin: 0;
     min-height: 100vh;
     background-color: var(--page-bg);
@@ -95,44 +93,44 @@ body {
     overflow-x: hidden;
     padding-bottom: 4rem;
     position: relative;
-    /* Дополнительные гарантии консистентности */
+    
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
 }
 
-.icon-slot { /* Слот в правой части навигации */
-    display: flex; /* Центрируем иконку по горизонтали */
-    align-items: center; /* Выравниваем иконку по вертикали */
-    justify-content: center; /* Держим иконку по центру контейнера */
+.icon-slot { 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
 }
 
-.brand-icon { /* Базовый стиль навигационной иконки */
-    width: 40px; /* Делаем иконку крупнее */
-    height: 40px; /* Сохраняем пропорции по высоте */
-    object-fit: contain; /* Не искажаем оригинальное изображение */
-    display: block; /* Убираем лишние отступы как у inline-элемента */
+.brand-icon { 
+    width: 40px; 
+    height: 40px; 
+    object-fit: contain; 
+    display: block; 
 }
 
-.brand-icon.brand-icon--students { /* Отдельный размер для иконки раздела Ученики */
-    width: 44px; /* Чуть шире для выделения основного раздела */
-    height: 44px; /* Синхронно увеличиваем высоту */
+.brand-icon.brand-icon--students { 
+    width: 44px; 
+    height: 44px; 
 }
 
-.nav-link-content { /* Обертка для иконки и подписи в ссылках */
-    display: flex; /* Ставим иконку и текст в одну строку */
-    align-items: center; /* Выравниваем по вертикали */
-    gap: 0.45rem; /* Добавляем воздух между иконкой и текстом */
+.nav-link-content { 
+    display: flex; 
+    align-items: center; 
+    gap: 0.45rem; 
 }
 
-.nav-link-icon { /* Настройки мини-иконки внутри ссылок */
-    width: 20px; /* Чуть больше стандартного 18px для читаемости */
-    height: 20px; /* Держим квадратную форму */
-    object-fit: contain; /* Сохраняем пропорции исходного PNG */
-    display: block; /* Убираем влияние baseline */
+.nav-link-icon { 
+    width: 20px; 
+    height: 20px; 
+    object-fit: contain; 
+    display: block; 
 }
 
-.nav-link-icon:not(img) { /* Стили для не-изображений (эмодзи, иконки) */
+.nav-link-icon:not(img) { 
     width: auto;
     height: 20px;
     display: inline-flex;
@@ -142,9 +140,9 @@ body {
     line-height: 1;
 }
 
-.nav-link-label { /* Текстовая часть ссылки */
-    display: inline-block; /* Гарантируем корректные отступы */
-    line-height: 1.1; /* Компактное вертикальное выравнивание */
+.nav-link-label { 
+    display: inline-block; 
+    line-height: 1.1; 
 }
 
 body::before,
@@ -168,7 +166,6 @@ body::after {
     opacity: 0.18;
 }
 
-/* Единая ширина для оболочки и контента — навбар внутри совпадает по ширине */
 .app-shell,
 .container {
     width: min(1480px, calc(100% - 4rem));
@@ -203,8 +200,6 @@ body::after {
     pointer-events: none;
 }
 
-/* Глобально: не подсвечиваем большие секции при hover.
-   Если когда-то понадобится подсветка для отдельной панели — добавь класс .panel-hover */
 .glass-panel:hover::after {
     opacity: 0;
 }
@@ -213,7 +208,6 @@ body::after {
     opacity: 1;
 }
 
-/* Навбар: ширина 100% от app-shell (совпадает с контентом), всегда тёмный фон без прозрачности/зелени */
 header.nav-primary,
 .nav-primary {
     display: flex;
@@ -295,7 +289,6 @@ header.nav-primary,
     box-shadow: 0 0 20px rgba(255, 103, 255, 0.4);
 }
 
-/* Миниатюра аватарки в шапке: не ломается, не слишком приближена (лицо в кадре) */
 .user-profile-avatar img {
     width: 100%;
     height: 100%;
@@ -305,7 +298,6 @@ header.nav-primary,
     border-radius: inherit;
 }
 
-/* Все аватар-миниатюры: единое позиционирование (лицо в кадре, без излишнего приближения) */
 .profile-avatar-simple img,
 .student-avatar-large img,
 .comment-avatar img {
@@ -337,7 +329,6 @@ header.nav-primary,
     gap: 0.5rem;
 }
 
-/* Контейнер выпадающего меню */
 .nav-dropdown {
     position: relative;
     display: inline-block;
@@ -347,7 +338,6 @@ header.nav-primary,
     cursor: pointer;
 }
 
-/* Само меню */
 .nav-dropdown-content {
     position: absolute;
     top: calc(100% + 15px);
@@ -365,14 +355,12 @@ header.nav-primary,
     padding: 0.75rem;
 }
 
-/* Показываем при ховере */
 .nav-dropdown:hover .nav-dropdown-content {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
 }
 
-/* Треугольник сверху меню */
 .nav-dropdown-content::before {
     content: '';
     position: absolute;
@@ -386,7 +374,6 @@ header.nav-primary,
     transform: rotate(45deg);
 }
 
-/* Пункты внутри выпадающего меню */
 .dropdown-item {
     display: flex;
     align-items: center;
@@ -411,7 +398,6 @@ header.nav-primary,
     color: var(--accent-1);
 }
 
-/* Специальный стиль для Профиля и его выпадающего меню */
 .nav-user-actions {
     display: flex;
     align-items: center;
@@ -447,7 +433,6 @@ header.nav-primary,
     transform: translateY(0);
 }
 
-/* Треугольник для профиля */
 .profile-dropdown-content::before {
     content: '';
     position: absolute;
@@ -523,9 +508,6 @@ header.nav-primary,
     height: 20px;
 }
 
-/* --- PROFILE PAGE & ROLE THEMES --- */
-
-/* Creator (Aggressive Red) Theme Variables */
 .profile-theme--creator {
     --role-accent: #ff3c5f;
     --role-accent-soft: rgba(255, 60, 95, 0.15);
@@ -750,7 +732,6 @@ header.nav-primary,
     transition: all 0.25s ease;
 }
 
-/* Иконки внутри кнопок: используем flex-gap, не margin-right (иначе “отлипают” в гриде) */
 .neo-button .ui-icon,
 .neo-button .ui-icon--sm,
 .neo-button .ui-icon--md,
@@ -955,7 +936,6 @@ header.nav-primary,
     opacity: 0.6;
 }
 
-/* Upload Area - Premium Minimalism */
 .upload-area {
     border: 2px dashed var(--stroke-1);
     border-radius: var(--radius-lg);
@@ -993,7 +973,6 @@ header.nav-primary,
     font-size: 0.9rem;
 }
 
-/* Info Box - Premium Minimalism */
 .info-box {
     background: rgba(31, 123, 255, 0.12);
     border-left: 3px solid var(--accent-2);
@@ -1120,7 +1099,6 @@ header.nav-primary,
     gap: 1.5rem;
 }
 
-/* Гарантируем правильное отображение на десктопе */
 @media (min-width: 769px) {
     .students-grid {
         display: grid !important;
@@ -1129,7 +1107,6 @@ header.nav-primary,
     }
 }
 
-/* Убеждаемся, что красная тема не влияет на grid учеников */
 body.creator-theme-active .students-grid {
     display: grid !important;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)) !important;
@@ -1238,10 +1215,10 @@ body.creator-theme-active .students-grid {
     color: var(--text-muted);
 }
 
-.student-tag.student-class { /* Индивидуальный стиль для бейджа класса */
-    border-color: var(--accent-2); /* Делаем акцент цветом границы */
-    color: var(--accent-2); /* Красим текст в цвет акцента */
-    background: rgba(31, 123, 255, 0.12); /* Добавляем легкий фон для заметности */
+.student-tag.student-class { 
+    border-color: var(--accent-2); 
+    color: var(--accent-2); 
+    background: rgba(31, 123, 255, 0.12); 
 }
 
 .student-insights {
@@ -1281,7 +1258,6 @@ body.creator-theme-active .students-grid {
     color: var(--text-muted);
 }
 
-/* Стили для архивных учеников */
 .student-card--archived {
     opacity: 0.7;
     border-color: rgba(255, 255, 255, 0.1);
@@ -1316,29 +1292,29 @@ body.creator-theme-active .students-grid {
     align-items: center;
 }
 
-.ui-icon { /* Унифицированная inline-иконка для кнопок/лейблов по проекту */
-    width: 18px; /* Базовый размер */
-    height: 18px; /* Базовый размер */
-    margin-right: 0.4rem; /* Отступ справа от иконки до текста */
-    vertical-align: middle; /* Ровняем по baseline текста */
-    object-fit: contain; /* Не искажаем PNG */
-    display: inline-block; /* Стабильная геометрия */
+.ui-icon { 
+    width: 18px; 
+    height: 18px; 
+    margin-right: 0.4rem; 
+    vertical-align: middle; 
+    object-fit: contain; 
+    display: inline-block; 
 }
 
-.ui-icon--sm { /* Компактный вариант */
-    width: 16px; /* Чуть меньше */
-    height: 16px; /* Чуть меньше */
-    margin-right: 0.35rem; /* Чуть меньше отступ */
+.ui-icon--sm { 
+    width: 16px; 
+    height: 16px; 
+    margin-right: 0.35rem; 
 }
 
-.ui-icon--md { /* Чуть крупнее для hero-кнопок */
-    width: 20px; /* Крупнее */
-    height: 20px; /* Крупнее */
-    margin-right: 0.5rem; /* Чуть больше отступ */
+.ui-icon--md { 
+    width: 20px; 
+    height: 20px; 
+    margin-right: 0.5rem; 
 }
 
-.ui-icon--only { /* Для icon-only кнопок */
-    margin-right: 0; /* Убираем отступ */
+.ui-icon--only { 
+    margin-right: 0; 
 }
 
 .pagination-btn {
@@ -1624,7 +1600,6 @@ body.creator-theme-active .students-grid {
     box-shadow: var(--shadow-soft);
 }
 
-/* Template Cards - Premium Minimalism */
 .template-card {
     background: linear-gradient(160deg, rgba(10, 10, 18, 0.98), rgba(20, 20, 32, 0.92));
     border: 1px solid var(--stroke-1);
@@ -1719,7 +1694,6 @@ body.creator-theme-active .students-grid {
     transform: translateY(-2px);
 }
 
-/* Filter Select - Premium Style */
 .filter-select {
     padding: 0.9rem 1.1rem;
     border: 1px solid var(--stroke-1);
@@ -1743,7 +1717,6 @@ body.creator-theme-active .students-grid {
     background: var(--surface-1);
 }
 
-/* Form Sections - Premium Minimalism */
 .form-section {
     background: var(--surface-1);
     border: 1px solid var(--stroke-1);
@@ -1824,7 +1797,6 @@ body.creator-theme-active .students-grid {
     min-width: 120px;
 }
 
-/* Statistics - Premium Minimalism */
 .stat-edit-item {
     display: grid;
     grid-template-columns: 140px 1fr 1fr auto;
@@ -1879,7 +1851,6 @@ body.creator-theme-active .students-grid {
     transform: translateY(-2px);
 }
 
-/* Plans Content - Premium Minimalism */
 .plans-content {
     color: var(--text-primary);
     line-height: 1.9;
@@ -1950,7 +1921,6 @@ body.creator-theme-active .students-grid {
     color: var(--text-primary);
 }
 
-/* Admin Cards - Premium Minimalism */
 .admin-card {
     padding: 1.4rem;
     background: var(--surface-2);
@@ -2004,7 +1974,6 @@ body.creator-theme-active .students-grid {
     justify-content: flex-end;
 }
 
-/* Audit Table - Premium Minimalism */
 .audit-table {
     width: 100%;
     border-collapse: collapse;
@@ -2045,7 +2014,6 @@ body.creator-theme-active .students-grid {
     color: var(--text-primary);
 }
 
-/* Status Badges - Premium Minimalism */
 .status-badge {
     display: inline-flex;
     align-items: center;
@@ -2081,7 +2049,6 @@ body.creator-theme-active .students-grid {
     border: 1px solid rgba(31, 123, 255, 0.3);
 }
 
-/* Audit Stats - Premium Minimalism */
 .audit-stats {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -2326,13 +2293,8 @@ body.creator-theme-active .students-grid {
     to { opacity: 1; transform: translateX(0); }
 }
 
-/* ============================================
-   МОБИЛЬНАЯ АДАПТАЦИЯ
-   ============================================ */
-
-/* Мобильное меню (бургер) */
 .mobile-menu-toggle {
-    display: none; /* Скрыто по умолчанию */
+    display: none; 
     background: transparent;
     border: 1px solid var(--stroke-1);
     border-radius: var(--radius-sm);
@@ -2469,13 +2431,12 @@ body.creator-theme-active .students-grid {
     object-fit: contain;
 }
 
-/* Медиа-запросы для мобильных устройств */
 @media (max-width: 768px) {
-    /* Базовые отступы и размеры */
+    
     .app-shell,
     .container {
         width: calc(100% - 2rem) !important;
-        max-width: 1480px !important; /* КРИТИЧЕСКИ ВАЖНО: фиксируем максимальную ширину даже на мобильных */
+        max-width: 1480px !important; 
         padding-top: 0;
     }
 
@@ -2483,7 +2444,6 @@ body.creator-theme-active .students-grid {
         padding-bottom: 2rem;
     }
 
-    /* Навигация - мобильное меню (ширина 100% от app-shell, как и контент) */
     header.nav-primary,
     .nav-primary {
         flex-wrap: wrap;
@@ -2519,24 +2479,22 @@ body.creator-theme-active .students-grid {
     }
 
     .nav-links {
-        display: none; /* Скрываем обычное меню на мобильных */
+        display: none; 
     }
 
     .nav-actions {
-        display: none; /* Скрываем иконку справа на мобильных */
+        display: none; 
     }
 
     .mobile-menu-toggle {
-        display: flex; /* Показываем бургер-меню */
+        display: flex; 
     }
 
-    /* Glass panels */
     .glass-panel {
         padding: 1.5rem 1.2rem;
         border-radius: var(--radius-md);
     }
 
-    /* Hero секции */
     .dashboard-hero {
         grid-template-columns: 1fr;
         gap: 1.5rem;
@@ -2571,7 +2529,6 @@ body.creator-theme-active .students-grid {
         font-size: 2rem;
     }
 
-    /* Фильтры и формы */
     .filters-grid {
         grid-template-columns: 1fr;
     }
@@ -2583,11 +2540,8 @@ body.creator-theme-active .students-grid {
     .filters-actions .neo-button {
         width: 100%;
     }
-} /* Закрываем media query 768px */
+} 
 
-/* --- USER PROFILE REDESIGN (DESKTOP & GLOBAL) --- */
-
-/* Цветовые темы ролей */
 .theme-creator {
     --accent-color: #ffffff;
     --accent-glow: rgba(255, 255, 255, 0.5);
@@ -2618,7 +2572,6 @@ body.creator-theme-active .students-grid {
     --accent-bg: rgba(255, 176, 32, 0.12);
 }
 
-/* Контейнер профиля */
 .profile-container {
     max-width: 1480px;
     margin: 0 auto;
@@ -2626,7 +2579,6 @@ body.creator-theme-active .students-grid {
     gap: 2rem;
 }
 
-/* Карточка "Паспорт" */
 .profile-card {
     background: var(--surface-1);
     border: 1px solid var(--stroke-1);
@@ -2636,7 +2588,6 @@ body.creator-theme-active .students-grid {
     box-shadow: var(--shadow-soft);
 }
 
-/* “Вау” обводка и глубина */
 .profile-card::before {
     content: '';
     position: absolute;
@@ -2656,20 +2607,6 @@ body.creator-theme-active .students-grid {
     opacity: 0.9;
 }
 
-/* .profile-card::after {
-    content: '';
-    position: absolute;
-    inset: -30px;
-    background: radial-gradient(circle at 15% 30%, var(--accent-glow, rgba(0,198,164,0.35)) 0%, transparent 55%),
-                radial-gradient(circle at 85% 10%, rgba(255,255,255,0.06) 0%, transparent 55%),
-                radial-gradient(circle at 70% 95%, rgba(31,123,255,0.18) 0%, transparent 55%);
-    filter: blur(18px);
-    opacity: 0.55;
-    pointer-events: none;
-    z-index: 0;
-} */
-
-/* Обложка */
 .profile-cover {
     height: 200px;
     width: 100%;
@@ -2700,7 +2637,6 @@ body.creator-theme-active .students-grid {
     z-index: 1;
 }
 
-/* Специфика для Creator (снежная тема): градиент по умолчанию; баннер перекрывает через .profile-cover.has-cover */
 .theme-creator .profile-cover {
     background: linear-gradient(180deg, rgba(220, 235, 255, 0.25) 0%, rgba(180, 210, 255, 0.15) 40%, rgba(140, 180, 220, 0.12) 100%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
@@ -2726,13 +2662,12 @@ body.creator-theme-active .students-grid {
     pointer-events: none;
 }
 
-/* Блок с аватаром и инфо */
 .profile-header {
     padding: 0 2.5rem 2rem;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    margin-top: -60px; /* Наезжаем на обложку */
+    margin-top: -60px; 
     position: relative;
     z-index: 2;
     flex-wrap: wrap;
@@ -2749,8 +2684,8 @@ body.creator-theme-active .students-grid {
     width: 140px;
     height: 140px;
     border-radius: 50%;
-    background: var(--surface-1); /* Цвет фона страницы для обводки */
-    padding: 6px; /* Толщина обводки */
+    background: var(--surface-1); 
+    padding: 6px; 
     flex-shrink: 0;
 }
 
@@ -2777,7 +2712,6 @@ body.creator-theme-active .students-grid {
     object-position: center 22%;
 }
 
-/* Подсветка аватара для Creator (снежная тема) */
 .theme-creator .profile-avatar-big {
     border-color: rgba(255, 255, 255, 0.55);
     color: #ffffff;
@@ -2813,14 +2747,12 @@ body.creator-theme-active .students-grid {
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
 }
 
-/* Секции профиля */
 .profile-content-grid {
     display: grid;
     grid-template-columns: 2fr 1fr;
     gap: 1.5rem;
 }
 
-/* Выпадающие секции (используем в профилях и комнатах) */
 .profile-details > summary {
     cursor: pointer;
     font-weight: 900;
@@ -2864,7 +2796,6 @@ body.creator-theme-active .students-grid {
     background: var(--stroke-1);
 }
 
-/* Поля данных */
 .data-row {
     display: flex;
     justify-content: space-between;
@@ -2884,10 +2815,9 @@ body.creator-theme-active .students-grid {
 .data-value {
     color: var(--text-primary);
     font-weight: 600;
-    font-family: 'JetBrains Mono', monospace; /* Технический шрифт */
+    font-family: 'JetBrains Mono', monospace; 
 }
 
-/* Адаптив */
 @media (max-width: 768px) {
     .profile-header {
         flex-direction: column;
@@ -2906,7 +2836,6 @@ body.creator-theme-active .students-grid {
         grid-template-columns: 1fr;
     }
 
-    /* Статистика */
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 0.8rem;
@@ -2924,7 +2853,6 @@ body.creator-theme-active .students-grid {
         font-size: 0.75rem;
     }
 
-    /* Карточки учеников */
     .students-grid {
         grid-template-columns: 1fr;
         gap: 1rem;
@@ -2944,7 +2872,6 @@ body.creator-theme-active .students-grid {
         font-size: 1.1rem;
     }
 
-    /* Панели */
     .panel-head {
         flex-direction: column;
         align-items: flex-start;
@@ -2963,14 +2890,12 @@ body.creator-theme-active .students-grid {
         width: 100%;
     }
 
-    /* Кнопки */
     .neo-button {
         padding: 0.9rem 1.3rem;
         font-size: 0.95rem;
-        min-height: 44px; /* Touch-friendly размер */
+        min-height: 44px; 
     }
 
-    /* Генератор */
     .generator-hero {
         grid-template-columns: 1fr;
     }
@@ -2987,7 +2912,6 @@ body.creator-theme-active .students-grid {
         flex: 1 1 100%;
     }
 
-    /* Задания */
     .task {
         padding: 1.5rem 1.2rem;
         margin-bottom: 1.5rem;
@@ -3003,7 +2927,6 @@ body.creator-theme-active .students-grid {
         min-height: 44px;
     }
 
-    /* Формы */
     .form-grid {
         grid-template-columns: 1fr;
     }
@@ -3012,7 +2935,6 @@ body.creator-theme-active .students-grid {
         padding: 1.5rem 1.2rem;
     }
 
-    /* Пагинация */
     .pagination {
         flex-wrap: wrap;
         gap: 0.5rem;
@@ -3024,7 +2946,6 @@ body.creator-theme-active .students-grid {
         min-height: 44px;
     }
 
-    /* Now playing pill */
     .now-playing-pill {
         top: 16px;
         padding: 0.7rem 1.5rem;
@@ -3038,12 +2959,10 @@ body.creator-theme-active .students-grid {
         padding: 1rem 1.2rem;
     }
 
-    /* Eyebrow и заголовки */
     .hero-eyebrow {
         font-size: 0.7rem;
     }
 
-    /* Отступы для секций */
     section {
         margin-top: 1.5rem;
     }
@@ -3053,7 +2972,6 @@ body.creator-theme-active .students-grid {
     }
 }
 
-/* Медиа-запросы для очень маленьких экранов */
 @media (max-width: 480px) {
     .app-shell,
     .container {
@@ -3082,7 +3000,7 @@ body.creator-theme-active .students-grid {
     }
 
     .brand-caption {
-        display: none; /* Скрываем текст логотипа на очень маленьких экранах */
+        display: none; 
     }
 
     .mobile-menu {
@@ -3090,9 +3008,8 @@ body.creator-theme-active .students-grid {
     }
 }
 
-/* Адаптация таблиц для мобильных */
 @media (max-width: 768px) {
-    /* Таблицы становятся карточками на мобильных */
+    
     .testers-table,
     .audit-table {
         display: block;
@@ -3137,7 +3054,6 @@ body.creator-theme-active .students-grid {
         min-width: 100px;
     }
 
-    /* Фильтры аудита */
     .audit-filters {
         grid-template-columns: 1fr;
     }
@@ -3147,9 +3063,8 @@ body.creator-theme-active .students-grid {
     }
 }
 
-/* Touch-friendly элементы */
 @media (hover: none) and (pointer: coarse) {
-    /* Увеличиваем области нажатия для touch-устройств */
+    
     .nav-link,
     .neo-button,
     .btn,
@@ -3158,7 +3073,6 @@ body.creator-theme-active .students-grid {
         min-width: 44px;
     }
 
-    /* Убираем hover-эффекты на touch-устройствах */
     .glass-panel:hover::after {
         opacity: 0;
     }
@@ -3172,7 +3086,6 @@ body.creator-theme-active .students-grid {
     }
 }
 
-/* Дополнительные адаптации для форм */
 @media (max-width: 768px) {
     .form-section {
         margin-bottom: 1.5rem;
@@ -3187,7 +3100,6 @@ body.creator-theme-active .students-grid {
         grid-column: 1 / -1;
     }
 
-    /* Модальные окна */
     .modal-content {
         width: calc(100% - 2rem);
         margin: 1rem;
@@ -3196,7 +3108,6 @@ body.creator-theme-active .students-grid {
     }
 }
 
-/* Модальное окно подтверждения */
 .confirm-modal {
     display: none;
     position: fixed;
@@ -3248,9 +3159,8 @@ body.creator-theme-active .students-grid {
     min-width: 120px;
 }
 
-/* Дополнительные адаптации для генератора/мелкого текста */
 @media (max-width: 768px) {
-    /* Генератор контекста */
+    
     .generator-context {
         padding: 1.2rem;
     }
@@ -3260,13 +3170,11 @@ body.creator-theme-active .students-grid {
         padding: 1.2rem;
     }
 
-    /* Заметки и описания */
     small {
         font-size: 0.8rem;
     }
 }
 
-/* Глобальный поиск */
 .global-search-container {
     position: relative;
 }
@@ -3346,7 +3254,6 @@ body.creator-theme-active .students-grid {
     line-height: 1.4;
 }
 
-/* Быстрые действия */
 .quick-actions {
     display: flex;
     gap: 1rem;
@@ -3374,7 +3281,6 @@ body.creator-theme-active .students-grid {
     transform: translateY(-2px);
 }
 
-/* Предпросмотр задания */
 .task-preview-modal {
     display: none;
     position: fixed;
@@ -3440,11 +3346,6 @@ body.creator-theme-active .students-grid {
     color: var(--text-primary);
 }
 
-/* ============================================
-   UX УЛУЧШЕНИЯ
-   ============================================ */
-
-/* Breadcrumbs */
 .breadcrumbs-container {
     margin-bottom: 1.5rem;
 }
@@ -3492,7 +3393,6 @@ body.creator-theme-active .students-grid {
     font-weight: 600;
 }
 
-/* Form Validation */
 .neo-field {
     position: relative;
 }
@@ -3518,7 +3418,6 @@ body.creator-theme-active .students-grid {
     font-size: 1rem;
 }
 
-/* Tooltips */
 .tooltip {
     position: fixed;
     background: var(--surface-2);
@@ -3577,7 +3476,6 @@ body.creator-theme-active .students-grid {
     border-right-color: var(--surface-2);
 }
 
-/* Empty States */
 .empty-state {
     text-align: center;
     padding: 4rem 2rem;
@@ -3612,7 +3510,6 @@ body.creator-theme-active .students-grid {
     flex-wrap: wrap;
 }
 
-/* Undo Notification */
 .undo-notification {
     position: fixed;
     bottom: 2rem;
@@ -3661,7 +3558,6 @@ body.creator-theme-active .students-grid {
     transform: translateY(-2px);
 }
 
-/* Keyboard Shortcuts Hint */
 .keyboard-hint {
     display: inline-flex;
     align-items: center;
@@ -3681,7 +3577,6 @@ body.creator-theme-active .students-grid {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Mobile Responsiveness Improvements */
 @media (max-width: 768px) {
     .breadcrumbs-list {
         font-size: 0.8rem;
@@ -3744,18 +3639,15 @@ body.creator-theme-active .students-grid {
     }
 }
 
-/* ===== Стили для графиков аналитики ===== */
 #skillsChart {
     max-height: 500px !important;
     width: 100% !important;
 }
 
-/* Улучшаем читаемость подписей на радар-чарте */
 .glass-panel canvas {
     filter: contrast(1.05);
 }
 
-/* ===== Кнопка "Наверх" (Scroll to Top) ===== */
 .scroll-to-top {
     position: fixed;
     bottom: 2rem;
@@ -3805,7 +3697,6 @@ body.creator-theme-active .students-grid {
     fill: white;
 }
 
-/* Усиление темы Creator (снежная) */
 .theme-creator .profile-card { border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 0 60px rgba(255, 255, 255, 0.06); }
 .theme-creator .profile-section { border-color: rgba(255, 255, 255, 0.12); background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)); }
 .theme-creator .profile-section h3 { color: #ffffff; text-shadow: 0 0 20px rgba(255, 255, 255, 0.2); }
@@ -3813,7 +3704,6 @@ body.creator-theme-active .students-grid {
 .theme-creator .neo-button.outline { border-color: rgba(255, 255, 255, 0.4); color: #ffffff; }
 .theme-creator .neo-button.outline:hover { background: rgba(255, 255, 255, 0.08); box-shadow: 0 0 20px rgba(255, 255, 255, 0.12); }
 
-/* Global Modal Styles */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 10000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px); opacity: 0; transition: opacity 0.3s ease; }
 .modal-overlay.active { display: flex; opacity: 1; }
 .modal { background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 25px 50px rgba(0,0,0,0.5); transform: translateY(20px); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
@@ -3825,7 +3715,6 @@ body.creator-theme-active .students-grid {
 .modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.5rem; }
 .modal-footer { padding: 1.5rem; border-top: 1px solid var(--stroke-1); display: flex; justify-content: flex-end; gap: 1rem; background: var(--surface-2); border-bottom-left-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg); }
 
-/* Модальное окно просмотра полной аватарки */
 .avatar-modal-overlay { cursor: pointer; }
 .avatar-modal-overlay .modal { max-width: 95vw; max-height: 95vh; padding: 1rem; cursor: default; }
 .modal-avatar-wrap { display: flex; align-items: center; justify-content: center; min-width: 200px; min-height: 200px; }
@@ -3835,7 +3724,6 @@ body.creator-theme-active .students-grid {
 .public-avatar.avatar-clickable { cursor: pointer; }
 .public-avatar.avatar-clickable:hover { opacity: 0.92; }
 
-/* GLOBAL CREATOR THEME OVERRIDE — снежная тема, белые оттенки */
 body.creator-theme-active {
     --page-bg: #08090e;
     --surface-1: rgba(14, 15, 22, 0.96);
@@ -3856,7 +3744,6 @@ body.creator-theme-active .nav-primary {
     box-shadow: var(--shadow-soft);
 }
 
-/* Обложка профиля креатора (без снежинок — гифка/баннер) */
 .theme-creator .profile-cover {
     height: 250px;
     position: relative;
@@ -3869,7 +3756,6 @@ body.creator-theme-active .nav-primary {
     background: transparent;
 }
 
-/* Снежинки по всему экрану: фиксированный слой, летят ВВЕРХ */
 .creator-snowflakes {
     position: fixed;
     inset: 0;

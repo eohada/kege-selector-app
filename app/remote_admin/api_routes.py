@@ -12,11 +12,9 @@ from app.remote_admin.environment_manager import (
     get_environment_config, is_environment_configured
 )
 
-# Импортируем csrf для исключения API endpoints из CSRF защиты
 try:
     from app import csrf
     if csrf:
-        # Исключаем все API endpoints из CSRF защиты
         pass  # Будем использовать декоратор @csrf.exempt
 except ImportError:
     csrf = None
@@ -234,7 +232,6 @@ def api_stats():
         logger.error(f"Error fetching stats: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
-# Исключаем все API endpoints из CSRF защиты после определения функций
 if csrf:
     csrf.exempt(api_users_list)
     csrf.exempt(api_user_manage)
@@ -256,7 +253,6 @@ def api_task_formator_list():
         if not is_environment_configured(env):
             return jsonify({'error': f'Environment {env} is not configured'}), 400
 
-        # forward query params
         qs = request.query_string.decode('utf-8') if request.query_string else ''
         path = '/internal/remote-admin/api/tasks/formator'
         if qs:

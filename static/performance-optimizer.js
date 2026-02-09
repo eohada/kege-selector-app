@@ -1,4 +1,4 @@
-// Оптимизация производительности - ленивая загрузка и виртуализация
+
 
 class PerformanceOptimizer {
     constructor() {
@@ -6,13 +6,11 @@ class PerformanceOptimizer {
     }
     
     init() {
-        // Ленивая загрузка изображений
+
         this.lazyLoadImages();
-        
-        // Оптимизация больших списков
+
         this.optimizeLargeLists();
-        
-        // Дебаунсинг для поиска
+
         this.debounceSearch();
     }
     
@@ -38,12 +36,12 @@ class PerformanceOptimizer {
     }
     
     optimizeLargeLists() {
-        // Виртуализация для списков с более чем 50 элементами
+
         const largeLists = document.querySelectorAll('.students-grid, .lessons-list');
         largeLists.forEach(list => {
             const items = list.querySelectorAll('.student-card, .lesson-card');
             if (items.length > 50) {
-                // Добавляем пагинацию или виртуализацию
+
                 this.addPagination(list, items);
             }
         });
@@ -53,15 +51,13 @@ class PerformanceOptimizer {
         const itemsPerPage = 20;
         let currentPage = 1;
         const totalPages = Math.ceil(items.length / itemsPerPage);
-        
-        // Скрываем все элементы кроме первых
+
         items.forEach((item, index) => {
             if (index >= itemsPerPage) {
                 item.style.display = 'none';
             }
         });
-        
-        // Добавляем контролы пагинации
+
         const pagination = document.createElement('div');
         pagination.className = 'pagination-controls';
         pagination.innerHTML = `
@@ -71,8 +67,7 @@ class PerformanceOptimizer {
         `;
         
         list.parentElement.insertBefore(pagination, list.nextSibling);
-        
-        // Обработчики
+
         pagination.querySelector('[data-action="prev"]').addEventListener('click', () => {
             if (currentPage > 1) {
                 currentPage--;
@@ -110,10 +105,10 @@ class PerformanceOptimizer {
             input.addEventListener('input', () => {
                 clearTimeout(timeout);
                 timeout = setTimeout(() => {
-                    // Автопоиск через 500ms после остановки ввода
+
                     const form = input.closest('form');
                     if (form && form.dataset.autoSubmit !== 'false') {
-                        // Можно добавить автоматическую отправку формы
+
                     }
                 }, 500);
             });
@@ -121,32 +116,7 @@ class PerformanceOptimizer {
     }
 }
 
-// Инициализация
 document.addEventListener('DOMContentLoaded', () => {
     new PerformanceOptimizer();
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

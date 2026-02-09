@@ -11,7 +11,6 @@ def _looks_like_pg_sequence_problem(error):  # Определяем по тек�
 
 def _fix_pg_serial_sequence(table_name, pk_column):  # Поднимаем sequence для SERIAL/IDENTITY, чтобы nextval не выдавал занятый id
     try:  # Пытаемся починить sequence без падения всего запроса
-        # Важно: table_name должен быть с кавычками для case-sensitive таблиц, например '"UsageHistory"'
         db.session.execute(  # Выполняем SQL в рамках текущей транзакции
             text(  # Используем text() для корректного выполнения сырого SQL
                 f"SELECT setval(pg_get_serial_sequence('{table_name}', '{pk_column}'), "  # Находим sequence по таблице+колонке
@@ -241,8 +240,6 @@ def get_accepted_tasks(task_type=None):
     return query.order_by(UsageHistory.date_issued.desc()).all()
 
 def get_skipped_tasks(task_type=None):
-    # По умолчанию показываем только "глобальные" пропуски (session_tag IS NULL),
-    # чтобы lesson-scoped пропуски не засоряли список.
     query = db.session.query(Tasks).join(SkippedTasks).filter(SkippedTasks.session_tag.is_(None))
 
     if task_type:

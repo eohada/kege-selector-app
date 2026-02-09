@@ -6,7 +6,6 @@ from wtforms import StringField, TextAreaField, SelectField, IntegerField, Submi
 from wtforms.validators import DataRequired, Optional, NumberRange, ValidationError
 from app.models import Student
 
-# Вспомогательные функции
 def normalize_school_class(raw_value):
     """Приводит входное значение класса к целому или None"""
     try:
@@ -24,8 +23,6 @@ def validate_platform_id_unique(form, field):
     if field.data:
         platform_id = field.data.strip()
         if platform_id:
-            # При создании нового студента form._student_id не существует
-            # При редактировании form._student_id содержит ID редактируемого студента
             student_id = getattr(form, '_student_id', None)
             existing_student = Student.query.filter_by(platform_id=platform_id).first()
             if existing_student and (student_id is None or existing_student.student_id != student_id):

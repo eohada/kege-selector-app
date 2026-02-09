@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт для синхронизации данных из production в sandbox
 Использование:
@@ -55,7 +54,6 @@ def sync_table(prod_conn, sandbox_conn, table_name, primary_key='id', exclude_co
     print(f"\n📋 Синхронизация таблицы: {table_name}")
     
     try:
-        # Получаем структуру таблицы
         prod_cursor = prod_conn.cursor()
         prod_cursor.execute(f"""
             SELECT column_name, data_type 
@@ -69,7 +67,6 @@ def sync_table(prod_conn, sandbox_conn, table_name, primary_key='id', exclude_co
             print(f"  ⚠️  Таблица {table_name} не найдена или пуста")
             return 0
         
-        # Получаем данные из production
         columns_str = ', '.join(columns)
         prod_cursor.execute(f"SELECT {columns_str} FROM \"{table_name}\"")
         rows = prod_cursor.fetchall()
@@ -78,14 +75,11 @@ def sync_table(prod_conn, sandbox_conn, table_name, primary_key='id', exclude_co
             print(f"  ℹ️  Нет данных для синхронизации")
             return 0
         
-        # Очищаем таблицу в sandbox (опционально, можно закомментировать для инкрементальной синхронизации)
         sandbox_cursor = sandbox_conn.cursor()
         sandbox_cursor.execute(f'TRUNCATE TABLE "{table_name}" CASCADE')
         
-        # Вставляем данные в sandbox
         if primary_key in columns:
             pk_index = columns.index(primary_key)
-            # Используем execute_values для быстрой вставки
             execute_values(
                 sandbox_cursor,
                 f'INSERT INTO "{table_name}" ({columns_str}) VALUES %s ON CONFLICT ({primary_key}) DO UPDATE SET ' + 
@@ -113,7 +107,6 @@ def sync_databases(prod_url=None, sandbox_url=None, include_users=False):
     print("🔄 Синхронизация Production → Sandbox")
     print("=" * 50)
     
-    # Получаем URL баз данных
     prod_url = prod_url or os.environ.get('PRODUCTION_DATABASE_URL')
     sandbox_url = sandbox_url or os.environ.get('SANDBOX_DATABASE_URL')
 
@@ -134,7 +127,6 @@ def sync_databases(prod_url=None, sandbox_url=None, include_users=False):
         print("❌ PRODUCTION_DATABASE_URL и SANDBOX_DATABASE_URL совпадают. Остановлено для безопасности.")
         return False
     
-    # Подключаемся к базам
     prod_conn = get_connection(prod_url_norm, "Production", readonly=True)
     sandbox_conn = get_connection(sandbox_url_norm, "Sandbox", readonly=False)
     
@@ -142,7 +134,6 @@ def sync_databases(prod_url=None, sandbox_url=None, include_users=False):
         return False
     
     try:
-        # Список таблиц для синхронизации (в порядке зависимостей)
         tables = [
             ('Tasks', 'task_id'),
             ('Students', 'student_id'),
@@ -153,12 +144,9 @@ def sync_databases(prod_url=None, sandbox_url=None, include_users=False):
             ('BlacklistTasks', 'blacklist_id'),
         ]
 
-        # Users синкать опасно: это снесёт sandbox тестировщиков (логины/пароли) и оставит только продовых.
-        # Поэтому по умолчанию Users НЕ синхронизируем. Включается явно через include_users=True.
         if include_users:
             tables.insert(2, ('Users', 'id'))
         
-        # Таблицы, которые НЕ синхронизируем (логи, временные данные)
         exclude_tables = ['AuditLog', 'Testers']  # Логи не синхронизируем
         
         total_synced = 0
@@ -168,7 +156,6 @@ def sync_databases(prod_url=None, sandbox_url=None, include_users=False):
                 count = sync_table(prod_conn, sandbox_conn, table_name, primary_key)
                 total_synced += count
         
-        # Исправляем sequences после синхронизации
         print("\n🔧 Исправление sequences...")
         sandbox_cursor = sandbox_conn.cursor()
         

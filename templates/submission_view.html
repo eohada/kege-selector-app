@@ -280,7 +280,7 @@
             {% endif %}
         </form>
         {% elif submission.status in ['SUBMITTED', 'GRADED', 'RETURNED'] %}
-        {# Просмотр сданной работы #}
+        
         {% for task_item in tasks_data %}
         <div class="task-card">
             <div class="task-header">
@@ -314,8 +314,7 @@
         </div>
         {% endif %}
         {% endif %}
-        
-        <!-- Чат / Комментарии -->
+
         <section class="submission-comments" style="margin-top: 3rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem;">
             <h3 style="margin-bottom: 1.5rem;">Комментарии</h3>
             
@@ -536,7 +535,7 @@
                 showConfirmDialog(
                     'Вы уверены, что хотите начать выполнение? Таймер начнёт отсчёт и условия задания станут доступны.',
                     doStart,
-                    () => { /* отмена */ },
+                    () => {  },
                     { title: 'Начать выполнение?', isDanger: false, confirmText: 'Начать', cancelText: 'Отмена' }
                 );
             } else {

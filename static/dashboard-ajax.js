@@ -108,14 +108,12 @@ function initStudentCards() {
                 return; 
             }
 
-            // Сохраняем данные для undo
             const studentData = {
                 id: studentId,
                 name: studentName,
                 card: card ? card.cloneNode(true) : null
             };
-            
-            // Показываем модальное окно подтверждения
+
             showConfirmModal({
                 title: 'Удалить ученика?',
                 message: `Вы уверены, что хотите удалить ученика "${studentName}"? Это действие нельзя отменить!`,
@@ -131,7 +129,7 @@ function initStudentCards() {
         }
         
         async function performDelete(studentId, studentName, card, loaderId, studentData) {
-            // Показываем индикатор загрузки, если его еще нет
+
             if (!loaderId && card) {
                 loaderId = loading.show(card, 'Удаление...');
             } 
@@ -140,7 +138,7 @@ function initStudentCards() {
                 const response = await ajax.delete(`/api/student/${studentId}/delete`); 
                 
                 if (response.success) {
-                    // Добавляем действие в undo manager
+
                     if (typeof undoManager !== 'undefined') {
                         undoManager.addAction({
                             type: 'delete',
@@ -148,8 +146,7 @@ function initStudentCards() {
                             data: studentData,
                             message: `Ученик "${studentName}" удален`,
                             undo: async () => {
-                                // Восстанавливаем ученика через API (если есть такой endpoint)
-                                // Пока просто показываем сообщение
+
                                 toast.info('Восстановление ученика пока не реализовано');
                             }
                         });
@@ -240,4 +237,3 @@ document.addEventListener('DOMContentLoaded', function() {
         message.remove(); 
     });
 });
-

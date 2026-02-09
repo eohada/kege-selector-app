@@ -8,12 +8,9 @@
 import sys
 import os
 
-# Добавляем корневую директорию проекта в path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Если передан флаг --local, используем SQLite
 if '--local' in sys.argv or not os.environ.get('DATABASE_URL'):
-    # Убираем DATABASE_URL чтобы приложение использовало SQLite
     os.environ.pop('DATABASE_URL', None)
     os.environ.pop('DATABASE_EXTERNAL_URL', None)
     os.environ.pop('POSTGRES_URL', None)
@@ -37,11 +34,9 @@ def migrate():
         
         print("[MIGRATE] Creating table LessonWhiteboards...")
         
-        # Определяем тип БД
         is_postgres = 'postgresql' in str(db.engine.url)
         
         if is_postgres:
-            # PostgreSQL
             sql = """
             CREATE TABLE IF NOT EXISTS "LessonWhiteboards" (
                 id SERIAL PRIMARY KEY,
@@ -60,7 +55,6 @@ def migrate():
             CREATE INDEX IF NOT EXISTS ix_lessonwhiteboards_miro_board_id ON "LessonWhiteboards"(miro_board_id);
             """
         else:
-            # SQLite
             sql = """
             CREATE TABLE IF NOT EXISTS LessonWhiteboards (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,7 +74,6 @@ def migrate():
             """
         
         try:
-            # Выполняем SQL
             for statement in sql.strip().split(';'):
                 statement = statement.strip()
                 if statement:

@@ -22,7 +22,6 @@ from app.notifications.service import enqueue_assignment_notification
 
 logger = logging.getLogger(__name__)
 
-# Базовая директория проекта
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 db_path = os.path.join(base_dir, 'data', 'keg_tasks.db')
 
@@ -49,11 +48,9 @@ def kege_generator(lesson_id=None):
     _require_kege_generator_access()
     lesson = None
     student = None
-    # Получаем lesson_id из query-параметров, если не передан в пути
     if lesson_id is None:
         lesson_id = request.args.get('lesson_id', type=int)
     
-    # Получаем assignment_type и template_id из запроса (всегда, независимо от lesson_id)
     assignment_type = request.args.get('assignment_type') or request.form.get('assignment_type') or 'homework'
     assignment_type = assignment_type if assignment_type in ['homework', 'classwork', 'exam'] else 'homework'
     template_id = request.args.get('template_id', type=int)  # Получаем template_id из запроса
@@ -92,14 +89,11 @@ def kege_generator(lesson_id=None):
         try:
             seed_task = Tasks.query.filter_by(task_id=seed_task_id).first()
             if seed_task:
-                # Предвыбираем номер задания в селекте
                 selection_form.task_type.data = seed_task.task_number
         except Exception as e:
             logger.warning(f"Не удалось загрузить seed_task_id={seed_task_id}: {e}")
             seed_task = None
 
-    # Новый UX: генератор работает в одном окне и выдаёт задания по одному через JSON API.
-    # Старый режим подборки оставлен в /results (можно использовать прямым URL).
 
     if reset_form.reset_submit.data and reset_form.validate_on_submit():
         task_type_to_reset = reset_form.task_type_reset.data
@@ -152,7 +146,6 @@ def kege_generator(lesson_id=None):
 
         return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type))
     
-    # Обработчик поиска задания по уникальному ID
     if search_form.search_submit.data and search_form.validate_on_submit():
         if not lesson_id:
             try:
@@ -451,11 +444,9 @@ def generator_stream_act():
     except Exception:
         template_id = None
 
-    # 1) Выполняем действие
     message = None
     try:
         if action == 'accept':
-            # Сначала — в шаблон (если есть), как и в старом режиме
             if template_id:
                 template = TaskTemplate.query.get(template_id)
                 if not template:
@@ -475,7 +466,6 @@ def generator_stream_act():
                 added_task_ids = []
                 if not existing:
                     db.session.add(LessonTask(lesson_id=lesson_id, task_id=task_id, assignment_type=assignment_type))
-                    # record global anti-repeat (best-effort)
                     try:
                         if lesson.student_id:
                             db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=task_id, source=f'lesson:{assignment_type}'))
@@ -553,7 +543,6 @@ def generator_stream_act():
         }
     )
 
-    # 2) Выдаём следующее
     student_id = None
     if lesson_id:
         lesson = Lesson.query.options(db.joinedload(Lesson.student)).get(lesson_id)
@@ -591,7 +580,6 @@ def task_action():
         lesson_id = data.get('lesson_id')  # Сырой ID урока (может прийти строкой)
         template_id = data.get('template_id')  # Получаем template_id из запроса
 
-        # Нормализуем lesson_id в int, чтобы не ловить типовые ошибки БД (integer vs text)
         if lesson_id is not None and lesson_id != '':  # Если lesson_id вообще передали
             try:
                 lesson_id = int(lesson_id)  # Приводим к int
@@ -601,7 +589,6 @@ def task_action():
         else:
             lesson_id = None  # Явно нормализуем пустые значения в None
 
-        # Нормализуем task_ids в список int, чтобы не ловить типовые ошибки БД (integer vs text)
         normalized_task_ids = []  # Сюда соберём только валидные int
         for raw_id in (task_ids or []):  # Проходим по входному списку (или пустому)
             try:
@@ -610,7 +597,6 @@ def task_action():
                 logger.warning(f"⚠️ Пропускаем некорректный task_id: {raw_id}, тип: {type(raw_id)}")  # Логируем мусор
         task_ids = normalized_task_ids  # Подменяем список на нормализованный
         
-        # Преобразуем template_id в int, если он передан
         if template_id is not None:
             try:
                 template_id = int(template_id)
@@ -629,7 +615,6 @@ def task_action():
         logger.info(f"📝 Тип задания: {assignment_type}")
 
         if action == 'accept':
-            # Если есть template_id, добавляем задания в шаблон ПЕРЕД добавлением в урок
             if template_id:
                 logger.info(f"🎯 Принятие заданий с template_id={template_id}, task_ids={task_ids}")
                 try:
@@ -642,14 +627,12 @@ def task_action():
                     
                     logger.info(f"✅ Шаблон найден: {template.name} (ID: {template_id})")
                     
-                    # Получаем текущий максимальный порядок в шаблоне
                     max_order = db.session.query(db.func.max(TemplateTask.order)).filter_by(template_id=template_id).scalar() or 0
                     logger.info(f"📊 Текущий максимальный порядок в шаблоне: {max_order}")
                     
                     added_to_template = 0
                     skipped_tasks = []
                     for task_id in task_ids:
-                        # Проверяем, нет ли уже этого задания в шаблоне
                         existing = TemplateTask.query.filter_by(template_id=template_id, task_id=task_id).first()
                         if not existing:
                             max_order += 1
@@ -666,11 +649,9 @@ def task_action():
                             logger.info(f"⏭️ Задание {task_id} уже есть в шаблоне {template_id}, пропускаем")
                     
                     if added_to_template > 0:
-                        # Коммитим изменения в шаблон отдельно
                         db.session.commit()
                         logger.info(f"✅ Успешно добавлено {added_to_template} заданий в шаблон {template_id}")
                         
-                        # Проверяем, что задания действительно сохранились
                         saved_count = TemplateTask.query.filter_by(template_id=template_id).count()
                         logger.info(f"🔍 Проверка: в шаблоне {template_id} теперь {saved_count} заданий")
                         
@@ -681,7 +662,6 @@ def task_action():
                 except Exception as e:
                     db.session.rollback()
                     logger.error(f"❌ Ошибка при добавлении заданий в шаблон {template_id}: {e}", exc_info=True)
-                    # Возвращаем ошибку, чтобы пользователь знал о проблеме
                     return jsonify({'success': False, 'error': f'Ошибка при добавлении заданий в шаблон: {str(e)}'}), 500
             else:
                 logger.info(f"ℹ️ Принятие заданий без template_id, task_ids={task_ids}")
@@ -700,7 +680,6 @@ def task_action():
                         db.session.add(lesson_task)
                         added_count += 1
                         added_task_ids.append(task_id)
-                        # record global anti-repeat (best-effort)
                         try:
                             if lesson.student_id:
                                 db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=task_id, source=f'lesson:{assignment_type}'))
@@ -752,7 +731,6 @@ def task_action():
                     return jsonify({'success': False, 'error': f'Ошибка при сохранении: {str(e)}'}), 500
 
                 if template_id:
-                    # Если есть template_id, сообщаем об этом
                     message = f'{len(task_ids)} заданий добавлено в домашнее задание и в шаблон.'
                 elif assignment_type == 'classwork':
                     message = f'{len(task_ids)} заданий добавлено в классную работу.'
@@ -830,11 +808,9 @@ def task_action():
         else:
             return jsonify({'success': False, 'error': 'Неизвестное действие'}), 400
 
-        # Если есть template_id, добавляем информацию о шаблоне в ответ
         response_data = {'success': True, 'message': message}
         if template_id:
             response_data['template_id'] = template_id
-            # Получаем информацию о шаблоне для сообщения
             try:
                 template = TaskTemplate.query.get(template_id)
                 if template:
@@ -874,7 +850,6 @@ def clear_accepted():
         except Exception:
             task_type = None
 
-    # Считаем сколько было (best-effort), чтобы дать полезный feedback
     deleted_count = None
     try:
         q = UsageHistory.query

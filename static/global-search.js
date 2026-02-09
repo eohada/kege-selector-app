@@ -1,4 +1,4 @@
-// Глобальный поиск
+
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('global-search-input');
     const resultsContainer = document.getElementById('global-search-results');
@@ -18,22 +18,19 @@ document.addEventListener('DOMContentLoaded', function() {
             resultsContainer.classList.remove('active');
             return;
         }
-        
-        // Задержка перед поиском (debounce)
+
         searchTimeout = setTimeout(() => {
             performSearch(query);
         }, 300);
     });
-    
-    // Закрытие при клике вне области поиска
+
     document.addEventListener('click', function(e) {
         if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
             resultsContainer.style.display = 'none';
             resultsContainer.classList.remove('active');
         }
     });
-    
-    // Закрытие по Escape
+
     searchInput.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             resultsContainer.style.display = 'none';
@@ -74,8 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         let html = '';
-        
-        // Ученики
+
         if (results.students && results.students.length > 0) {
             html += '<div class="search-results-section">';
             html += '<div class="search-results-title">👥 Ученики (' + results.students.length + ')</div>';
@@ -87,8 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             html += '</div>';
         }
-        
-        // Уроки
+
         if (results.lessons && results.lessons.length > 0) {
             html += '<div class="search-results-section">';
             html += '<div class="search-results-title">📚 Уроки (' + results.lessons.length + ')</div>';
@@ -100,8 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             html += '</div>';
         }
-        
-        // Задания
+
         if (results.tasks && results.tasks.length > 0) {
             html += '<div class="search-results-section">';
             html += '<div class="search-results-title">📝 Задания (' + results.tasks.length + ')</div>';
@@ -138,29 +132,4 @@ document.addEventListener('DOMContentLoaded', function() {
         return div.innerHTML;
     }
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

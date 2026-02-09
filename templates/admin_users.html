@@ -218,7 +218,6 @@
                 </a>
             </div>
 
-            {# Статистика по ролям #}
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-value">{{ role_stats.get('admin', 0) }}</div>
@@ -252,7 +251,7 @@
             </div>
 
             <div id="tab-list" role="tabpanel">
-            {# Фильтры #}
+            
             <form method="GET" class="filters-grid" style="margin-bottom: 1.5rem;">
                 <div class="neo-field">
                     <label class="neo-label" for="role-filter">Роль</label>
@@ -280,7 +279,6 @@
                 </div>
             </form>
 
-            {# Таблица пользователей #}
             <table class="users-table">
                 <thead>
                     <tr>

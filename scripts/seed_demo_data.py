@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Seed demo dataset for manual QA.
 
@@ -15,10 +13,8 @@ Creates:
 Passwords for all created users are set to: 123
 
 Run:
-  # Local (SQLite):
   python scripts/seed_demo_data.py --sqlite
 
-  # Railway (seeds remote Postgres):
   railway run python scripts/seed_demo_data.py
 """
 
@@ -28,13 +24,11 @@ from datetime import timedelta
 import argparse
 from sqlalchemy import text
 
-# Fix Windows encoding
 if sys.platform == "win32":
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
-# Add repo root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from werkzeug.security import generate_password_hash
@@ -56,7 +50,6 @@ DEMO_PASSWORD = "123"
 def _get_or_create_user(*, username: str, role: str, email: str | None = None, timezone: str | None = None) -> User:
     u = User.query.filter_by(username=username).first()
     if u:
-        # ensure role/email/password for demo consistency
         u.role = role
         u.is_active = True
         if email:
@@ -102,7 +95,6 @@ def _get_or_create_student_entity(*, name: str, email: str) -> Student:
     )
     db.session.add(s)
     db.session.flush()
-    # platform_id for convenience in UI
     if not s.platform_id:
         s.platform_id = f"DEMO-{s.student_id}"
     return s
@@ -152,7 +144,6 @@ def _ensure_group(*, tutor: User, title: str, student_entities: list[Student]) -
         )
         db.session.add(g)
         db.session.flush()
-    # members
     for s in student_entities:
         link = GroupStudent.query.filter_by(group_id=g.group_id, student_id=s.student_id).first()
         if not link:
@@ -164,7 +155,6 @@ def _seed_lessons(*, student_entity: Student):
     now_naive = moscow_now().replace(tzinfo=None)
 
     def upsert_lesson(key: str, **kwargs):
-        # Use topic+lesson_date uniqueness heuristic to avoid duplicates
         topic = kwargs.get("topic")
         dt = kwargs.get("lesson_date")
         existing = Lesson.query.filter_by(student_id=student_entity.student_id, topic=topic, lesson_date=dt).first()
@@ -176,7 +166,6 @@ def _seed_lessons(*, student_entity: Student):
         db.session.add(l)
         return l
 
-    # Completed regular lesson
     upsert_lesson(
         "completed_regular",
         lesson_type="regular",
@@ -192,7 +181,6 @@ def _seed_lessons(*, student_entity: Student):
         homework_result_notes="Хорошо, но внимательнее с приоритетами операций.",
     )
 
-    # In progress lesson
     upsert_lesson(
         "in_progress",
         lesson_type="regular",
@@ -204,7 +192,6 @@ def _seed_lessons(*, student_entity: Student):
         homework_status="assigned_not_done",
     )
 
-    # Planned exam/checkpoint lesson
     upsert_lesson(
         "planned_exam",
         lesson_type="exam",
@@ -222,8 +209,6 @@ def main():
     parser.add_argument("--sqlite", action="store_true", help="Force local SQLite (ignore DATABASE_URL)")
     args = parser.parse_args()
 
-    # In Windows/local, DATABASE_URL may point to Railway internal host and be unreachable.
-    # Allow forcing sqlite for quick local QA.
     if args.sqlite:
         os.environ.pop("DATABASE_URL", None)
         os.environ.pop("DATABASE_EXTERNAL_URL", None)
@@ -233,7 +218,6 @@ def main():
 
     with app.app_context():
         try:
-            # quick connectivity check (gives a better hint than a giant stacktrace)
             try:
                 db.session.execute(text("SELECT 1"))
             except Exception:
@@ -243,15 +227,12 @@ def main():
                     "or seed via Railway: `railway run python scripts/seed_demo_data.py`."
                 )
 
-            # Ensure schema exists (especially for local SQLite)
             db.create_all()
             try:
                 ensure_schema_columns(app)
             except Exception:
-                # non-fatal for seeding; create_all may already cover most tables
                 pass
 
-            # Tutor
             tutor = _get_or_create_user(
                 username="demo_tutor",
                 role="tutor",
@@ -259,7 +240,6 @@ def main():
                 timezone="Europe/Moscow",
             )
 
-            # Students (users) + Student entities
             stu1_user = _get_or_create_user(
                 username="demo_student_1",
                 role="student",
@@ -276,7 +256,6 @@ def main():
             stu1 = _get_or_create_student_entity(name="Демо Ученик 1", email="demo_student_1@example.com")
             stu2 = _get_or_create_student_entity(name="Демо Ученик 2", email="demo_student_2@example.com")
 
-            # Parents
             parent1 = _get_or_create_user(
                 username="demo_parent_1",
                 role="parent",
@@ -290,17 +269,14 @@ def main():
                 timezone="Europe/Moscow",
             )
 
-            # Links
             _ensure_family_tie(parent=parent1, student_user=stu1_user)
             _ensure_family_tie(parent=parent2, student_user=stu2_user)
             _ensure_enrollment(tutor=tutor, student_user=stu1_user)
             _ensure_enrollment(tutor=tutor, student_user=stu2_user)
 
-            # Lessons
             _seed_lessons(student_entity=stu1)
             _seed_lessons(student_entity=stu2)
 
-            # Group
             _ensure_group(tutor=tutor, title="DEMO · Информатика ЕГЭ", student_entities=[stu1, stu2])
 
             db.session.commit()

@@ -90,7 +90,6 @@ def _can_access_student(student: Student) -> bool:
     if st_user and st_user.id in (scope.get('student_ids') or []):
         return True
 
-    # Fallback: иногда student_id совпадает с user.id в scope.
     return student.student_id in (scope.get('student_ids') or [])
 
 
@@ -110,7 +109,6 @@ def _parse_datetime_local(value: str | None):
     if not value:
         return None
     try:
-        # Ожидаем "YYYY-MM-DDTHH:MM" (или с секундами)
         return datetime.fromisoformat(value)
     except Exception:
         return None
@@ -131,7 +129,6 @@ def students_list():
             active_students = []
             archived_students = []
         else:
-            # FamilyTie/Enrollment оперируют Users.id, а Student — отдельная таблица.
             scoped_students = Student.query.filter(Student.user_id.in_(allowed_user_ids)).all()
             allowed_student_ids = [s.student_id for s in scoped_students]
             if allowed_student_ids:
@@ -150,7 +147,6 @@ def students_list():
 @login_required
 def student_new():
     """Создание нового студента"""
-    # Создание ученика — функция админа/создателя (не доступна тьютору/ученику/родителю).
     if not (current_user.is_admin() or current_user.is_creator()):
         from flask import abort
         abort(403)
@@ -188,14 +184,12 @@ def student_new():
                 programming_language=programming_language_value
             )
             
-            # Автоматически присваиваем трехзначный идентификатор, если не указан
             if not platform_id:
                 assign_platform_id_if_needed(student)
             
             db.session.add(student)
             db.session.commit()
             
-            # Логируем создание ученика
             try:
                 audit_logger.log(
                     action='create_student',
@@ -218,7 +212,6 @@ def student_new():
             db.session.rollback()
             logger.error(f'Ошибка при добавлении ученика: {e}', exc_info=True)
             
-            # Логируем ошибку
             try:
                 audit_logger.log_error(
                     action='create_student',
@@ -232,7 +225,6 @@ def student_new():
             flash(f'Ошибка при добавлении ученика: {str(e)}', 'error')
             return redirect(url_for('students.student_new'))
 
-    # Логируем попытку отправки формы для отладки, если это POST запрос
     if request.method == 'POST' and not form.validate_on_submit():
         logger.warning(f'Ошибки валидации формы при создании ученика: {form.errors}')
 
@@ -245,7 +237,6 @@ def student_profile(student_id):
     try:
         from app.auth.rbac_utils import get_user_scope
 
-        # КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: загружаем уроки отдельным запросом с joinedload для homework_tasks
         try:
             student = Student.query.get_or_404(student_id)
         except Exception as e:
@@ -253,7 +244,6 @@ def student_profile(student_id):
             flash('Ошибка при загрузке профиля ученика.', 'danger')
             return redirect(url_for('main.dashboard'))
         
-        # UX: студент всегда попадает в СВОЙ профиль — редирект при неверном student_id
         if current_user.is_student():
             try:
                 me_student = Student.query.filter_by(user_id=current_user.id).first()
@@ -266,7 +256,6 @@ def student_profile(student_id):
             except Exception:
                 pass
 
-        # Проверка доступа через data scoping
         try:
             if current_user.is_student():
                 if getattr(student, 'user_id', None) == current_user.id:
@@ -286,13 +275,11 @@ def student_profile(student_id):
                     return redirect(url_for('main.dashboard'))
         except Exception as e:
             logger.error(f"Error checking access scope: {e}", exc_info=True)
-            # Если не можем проверить доступ, блокируем
             flash('Ошибка при проверке доступа.', 'danger')
             return redirect(url_for('main.dashboard'))
         
         now = moscow_now()
         
-        # Загружаем активные задания (новая система LMS)
         active_submissions = []
         try:
             active_submissions = Submission.query.filter(
@@ -304,8 +291,6 @@ def student_profile(student_id):
         except Exception as e:
             logger.error(f"Error loading active submissions: {e}")
         
-        # Загружаем уроки с предзагрузкой homework_tasks и task для каждого homework_task
-        # Robust fetch with retry for missing columns
         all_lessons = []
         max_retries = 2
         for attempt in range(max_retries):
@@ -331,23 +316,19 @@ def student_profile(student_id):
                     all_lessons = []
                     break
         
-        # Разделяем уроки на категории для "Актуальные уроки"
         try:
             completed_lessons = [l for l in all_lessons if l.status == 'completed']
             planned_lessons = [l for l in all_lessons if l.status == 'planned']
             in_progress_lesson = next((l for l in all_lessons if l.status == 'in_progress'), None)
             
-            # Последний проведённый урок (самый недавний completed)
             last_completed = completed_lessons[0] if completed_lessons else None
             
-            # Два ближайших запланированных урока (самые ранние по дате)
             try:
                 upcoming_lessons = sorted(planned_lessons, key=lambda x: x.lesson_date if x.lesson_date else now)[:2]
             except Exception as e:
                 logger.warning(f"Error sorting planned lessons: {e}")
                 upcoming_lessons = planned_lessons[:2] if planned_lessons else []
             
-            # Все уроки отображаются в общем списке (ключевые дублируются сверху для удобства)
             other_lessons = all_lessons
         except Exception as e:
             logger.error(f"Error processing lessons: {e}", exc_info=True)
@@ -366,10 +347,8 @@ def student_profile(student_id):
         except Exception:
             student_subscription = None
 
-        # Загружаем информацию о родителях (для тьюторов)
         parents_info = []
         try:
-            # Безопасная проверка ролей с использованием hasattr
             can_see_parents = False
             if current_user.is_authenticated:
                 if hasattr(current_user, 'is_tutor') and current_user.is_tutor():
@@ -381,7 +360,6 @@ def student_profile(student_id):
             
             if can_see_parents and student_user_obj:
                 try:
-                    # Получаем всех родителей этого ученика
                     family_ties = FamilyTie.query.filter_by(
                         student_id=student_user_obj.id,
                         is_confirmed=True
@@ -391,7 +369,6 @@ def student_profile(student_id):
                         try:
                             parent_user = User.query.get(tie.parent_id)
                             if parent_user:
-                                # Безопасно получаем профиль
                                 from app.models import UserProfile
                                 parent_profile = UserProfile.query.filter_by(user_id=parent_user.id).first()
                                 
@@ -411,12 +388,9 @@ def student_profile(student_id):
                             continue
                 except Exception as e:
                     logger.error(f"Ошибка при загрузке информации о родителях: {e}", exc_info=True)
-                    # Не блокируем отображение профиля, просто не показываем родителей
         except Exception as e:
             logger.error(f"Ошибка при проверке доступа к информации о родителях: {e}", exc_info=True)
-            # Продолжаем без информации о родителях
 
-        # Привязанные преподаватели (Enrollment: student_id = User.id ученика)
         tutors_list = []
         if student_user_obj:
             try:
@@ -453,7 +427,6 @@ def student_info(student_id: int):
     if not _can_access_student(student):
         from flask import abort
         abort(403)
-    # Редирект ученика в свой профиль при обращении к чужому
     if current_user.is_student():
         me_student = Student.query.filter_by(user_id=current_user.id).first()
         if not me_student:
@@ -531,7 +504,6 @@ def student_learning_plan(student_id: int):
         from flask import abort
         abort(403)
 
-    # QA/UX: тьютор должен иметь полный функционал траектории даже если RolePermission не заполнены.
     is_teacher_actor = (not current_user.is_student()) and (not current_user.is_parent())
     is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
     can_edit = is_teacher_actor and (has_permission(current_user, 'plan.edit') or is_tutor_actor)
@@ -542,7 +514,6 @@ def student_learning_plan(student_id: int):
         StudentLearningPlanItem.item_id.desc(),
     ).all()
 
-    # Справочники для селектов (только для редактирования, чтобы не делать лишнего)
     topics = []
     modules = []
     if can_edit:
@@ -735,18 +706,15 @@ def student_gradebook(student_id: int):
         from flask import abort
         abort(403)
 
-    # QA/UX: тьютор должен иметь доступ к журналу (редактирование/добавление), даже если RolePermission не заполнены.
     is_teacher_actor = (not current_user.is_student()) and (not current_user.is_parent())
     is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
     can_edit = is_teacher_actor and (has_permission(current_user, 'gradebook.edit') or is_tutor_actor)
 
-    # Ручные/явные записи журнала
     entries = GradebookEntry.query.filter_by(student_id=student.student_id).order_by(
         GradebookEntry.created_at.desc(),
         GradebookEntry.entry_id.desc(),
     ).all()
 
-    # Справочник уроков и работ — только преподавателю, чтобы можно было быстро привязывать записи.
     lessons = []
     submissions = []
     if can_edit:
@@ -793,7 +761,6 @@ def student_gradebook_create(student_id: int):
     submission_id = request.form.get('submission_id', type=int) if kind == 'assignment' else None
 
     if not title:
-        # Автозаголовок для lesson/assignment
         if kind == 'lesson' and lesson_id:
             l = Lesson.query.filter_by(lesson_id=lesson_id, student_id=student.student_id).first()
             title = (l.topic or 'Урок') if l else 'Урок'
@@ -877,7 +844,6 @@ def student_gradebook_update(student_id: int, entry_id: int):
     entry.grade_text = (request.form.get('grade_text') or '').strip() or None
     entry.weight = request.form.get('weight', type=int) or 1
 
-    # Для lesson/assignment можно менять привязку, но строго в рамках ученика.
     if (entry.kind or '').lower() == 'lesson':
         lesson_id = request.form.get('lesson_id', type=int)
         if lesson_id:
@@ -1043,7 +1009,6 @@ def student_gradebook_export_pdf(student_id: int):
         pdf_bytes = html_to_pdf_bytes(html)
     except Exception as e:
         logger.warning(f"PDF export not available, fallback to HTML: {e}")
-        # fallback: printable HTML
         return Response(
             html,
             mimetype='text/html; charset=utf-8',
@@ -1073,8 +1038,6 @@ def student_gradebook_export_pdf(student_id: int):
 def student_diagnostics(student_id: int):
     """Диагностика ученика: слабые темы + сохранённые контрольные точки."""
     student = _guard_student_access(student_id)
-    # QA/UX: тьютор должен видеть диагностику и сохранять контрольные точки по требованиям QA,
-    # даже если RolePermission не заполнены.
     is_tutor_actor = bool(getattr(current_user, 'is_tutor', None) and current_user.is_tutor())
     if not ((has_permission(current_user, 'plan.view') and has_permission(current_user, 'diagnostics.view')) or is_tutor_actor):
         from flask import abort
@@ -1092,13 +1055,11 @@ def student_diagnostics(student_id: int):
         stats = StatsService(student.student_id)
         metrics = stats.get_summary_metrics()
         problem_topics = stats.get_problem_topics(threshold=60)
-        # Fallback: если topics пустые/не заполнены, покажем слабые места по номерам заданий
         try:
             problem_tasks = stats.get_problem_task_numbers(threshold=60, min_attempts=3)
         except Exception:
             problem_tasks = []
 
-        # Диагностическое покрытие: сколько вообще есть проверенных попыток и есть ли темы
         try:
             total = 0
             with_topics = 0
@@ -1135,7 +1096,6 @@ def student_diagnostics(student_id: int):
 
     can_save = (not current_user.is_student()) and (not current_user.is_parent()) and (has_permission(current_user, 'diagnostics.checkpoints') or is_tutor_actor)
 
-    # простые рекомендации MVP: топ-3 слабых темы → "сделать 2 урока + 10 задач"
     recommendations = []
     try:
         for t in problem_topics[:3]:
@@ -1226,17 +1186,13 @@ def student_statistics(student_id):
     """Редирект на единую страницу статистики"""
     return redirect(url_for('students.student_analytics', student_id=student_id))
     
-    # Загружаем все уроки с заданиями
     lessons = Lesson.query.filter_by(student_id=student_id).options(
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
     ).all()
     
-    # Собираем статистику по номерам заданий
     task_stats = {}
     
-    # Сначала собираем автоматическую статистику (из LessonTask)
     for lesson in lessons:
-        # Обрабатываем все типы заданий
         for assignment_type in ['homework', 'classwork', 'exam']:
             assignments = get_sorted_assignments(lesson, assignment_type)
             weight = 2 if assignment_type == 'exam' else 1
@@ -1257,35 +1213,28 @@ def student_statistics(student_id):
                         'total': 0
                     }
                 
-                # Учитываем только задания с проверенными ответами
                 if lt.submission_correct is not None:
                     task_stats[task_num]['auto_total'] += weight
                     if lt.submission_correct:
                         task_stats[task_num]['auto_correct'] += weight
     
-    # Загружаем ручные изменения статистики
     manual_stats = StudentTaskStatistics.query.filter_by(student_id=student_id).all()
     manual_stats_dict = {stat.task_number: stat for stat in manual_stats}
     
     logger.info(f"Автоматическая статистика для ученика {student_id}: {[(k, v['auto_correct'], v['auto_total']) for k, v in task_stats.items()]}")
     logger.info(f"Ручные изменения для ученика {student_id}: {[(s.task_number, s.manual_correct, s.manual_incorrect) for s in manual_stats]}")
     
-    # Применяем ручные изменения к статистике
-    # Сначала применяем к существующим заданиям
     for task_num in list(task_stats.keys()):
         if task_num in manual_stats_dict:
             manual_stat = manual_stats_dict[task_num]
             task_stats[task_num]['manual_correct'] = manual_stat.manual_correct
             task_stats[task_num]['manual_incorrect'] = manual_stat.manual_incorrect
         
-        # Рассчитываем итоговые значения: автоматические + ручные
         task_stats[task_num]['correct'] = task_stats[task_num]['auto_correct'] + task_stats[task_num]['manual_correct']
         task_stats[task_num]['total'] = task_stats[task_num]['auto_total'] + task_stats[task_num]['manual_correct'] + task_stats[task_num]['manual_incorrect']
     
-    # Добавляем задания, для которых есть только ручные изменения (без автоматической статистики)
     for task_num, manual_stat in manual_stats_dict.items():
         if task_num not in task_stats:
-            # Создаем запись только с ручными изменениями
             task_stats[task_num] = {
                 'auto_correct': 0,
                 'auto_total': 0,
@@ -1297,13 +1246,11 @@ def student_statistics(student_id):
     
     logger.info(f"Итоговая статистика для ученика {student_id}: {[(k, v['correct'], v['total']) for k, v in task_stats.items()]}")
     
-    # Вычисляем проценты и формируем данные для диаграммы
     chart_data = []
     for task_num in sorted(task_stats.keys()):
         stats = task_stats[task_num]
         if stats['total'] > 0:
             percent = round((stats['correct'] / stats['total']) * 100, 1)
-            # Определяем цвет: красный (0-40%), желтый (40-80%), зеленый (80-100%)
             if percent < 40:
                 color = '#ef4444'  # красный
             elif percent < 80:
@@ -1329,7 +1276,6 @@ def student_statistics(student_id):
 @login_required
 def update_statistics(student_id):
     """API endpoint для обновления ручной статистики с поддержкой разных режимов редактирования"""
-    # Проверка прав доступа: ученики не могут редактировать статистику
     if current_user.is_student() or current_user.is_parent():
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
@@ -1346,22 +1292,18 @@ def update_statistics(student_id):
             return jsonify({'success': False, 'error': 'Не указан номер задания'}), 400
         
         task_number = int(data['task_number'])
-        # Режим редактирования: 'add' (добавить), 'set' (установить), 'subtract' (вычесть)
         edit_mode = data.get('mode', 'add').lower()
         
         if edit_mode not in ['add', 'set', 'subtract']:
             return jsonify({'success': False, 'error': 'Некорректный режим редактирования. Используйте: add, set или subtract'}), 400
         
-        # Получаем значения
         manual_correct_value = int(data.get('manual_correct', 0))
         manual_incorrect_value = int(data.get('manual_incorrect', 0))
         
-        # Проверяем, что значения неотрицательные (для режимов add и subtract)
         if edit_mode in ['add', 'subtract']:
             if manual_correct_value < 0 or manual_incorrect_value < 0:
                 return jsonify({'success': False, 'error': 'Значения должны быть неотрицательными'}), 400
         
-        # Ищем существующую запись или создаем новую
         stat = StudentTaskStatistics.query.filter_by(
             student_id=student_id,
             task_number=task_number
@@ -1371,7 +1313,6 @@ def update_statistics(student_id):
         old_incorrect = stat.manual_incorrect if stat else 0
         
         if stat:
-            # Применяем изменения в зависимости от режима
             if edit_mode == 'add':
                 stat.manual_correct += manual_correct_value
                 stat.manual_incorrect += manual_incorrect_value
@@ -1385,7 +1326,6 @@ def update_statistics(student_id):
             stat.updated_at = moscow_now()
             logger.info(f"Обновлена запись (режим {edit_mode}): task_number={task_number}, было: correct={old_correct}, incorrect={old_incorrect}, стало: correct={stat.manual_correct}, incorrect={stat.manual_incorrect}")
         else:
-            # Создаем новую запись
             if edit_mode == 'set':
                 stat = StudentTaskStatistics(
                     student_id=student_id,
@@ -1405,12 +1345,10 @@ def update_statistics(student_id):
         
         db.session.commit()
         
-        # Принудительно обновляем объект из базы данных для проверки
         db.session.refresh(stat)
         
         logger.info(f"Статистика успешно обновлена: student_id={student_id}, task_number={task_number}, режим={edit_mode}")
         
-        # Логируем изменение
         try:
             audit_logger.log(
                 action='update_statistics',
@@ -1459,7 +1397,6 @@ def update_statistics(student_id):
 @login_required
 def reset_statistics(student_id):
     """API endpoint для сброса ручных изменений статистики"""
-    # Проверка прав доступа: ученики не могут редактировать статистику
     if current_user.is_student() or current_user.is_parent():
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
@@ -1470,7 +1407,6 @@ def reset_statistics(student_id):
         task_number = data.get('task_number')
         
         if task_number:
-            # Сброс для конкретного задания
             stat = StudentTaskStatistics.query.filter_by(
                 student_id=student_id,
                 task_number=task_number
@@ -1484,7 +1420,6 @@ def reset_statistics(student_id):
             else:
                 return jsonify({'success': False, 'error': 'Запись не найдена'}), 404
         else:
-            # Сброс всех ручных изменений для ученика
             stats = StudentTaskStatistics.query.filter_by(student_id=student_id).all()
             count = len(stats)
             for stat in stats:
@@ -1511,7 +1446,6 @@ def student_analytics(student_id):
         flash('Ошибка при загрузке данных ученика', 'danger')
         return redirect(url_for('main.dashboard'))
     
-    # Проверка доступа через data scoping
     try:
         scope = get_user_scope(current_user)
         if not scope['can_see_all']:
@@ -1528,11 +1462,9 @@ def student_analytics(student_id):
         flash('Ошибка при проверке доступа', 'danger')
         return redirect(url_for('main.dashboard'))
     
-    # Инициализируем сервис статистики с обработкой ошибок
     try:
         stats = StatsService(student_id)
         
-        # Собираем данные для графиков (Навыки)
         try:
             gpa_data = stats.get_gpa_trend(period_days=90)
         except Exception as e:
@@ -1563,7 +1495,6 @@ def student_analytics(student_id):
             logger.error(f"Error getting GPA by type: {e}", exc_info=True)
             gpa_by_type = {}
         
-        # Собираем данные для графиков (Дисциплина)
         try:
             attendance_data = stats.get_attendance_pie()
         except Exception as e:
@@ -1583,7 +1514,6 @@ def student_analytics(student_id):
             punctuality = {}
     except Exception as e:
         logger.error(f"Error initializing StatsService: {e}", exc_info=True)
-        # Устанавливаем значения по умолчанию
         gpa_data = {'dates': [], 'scores': []}
         skill_data = {'labels': [], 'values': []}
         metrics = {}
@@ -1593,7 +1523,6 @@ def student_analytics(student_id):
         attendance_heatmap = {'dates': [], 'values': [], 'statuses': []}
         punctuality = {}
     
-    # Загружаем статистику по заданиям для вкладки "Навыки"
     try:
         lessons = Lesson.query.filter_by(student_id=student_id).options(
             db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
@@ -1629,18 +1558,13 @@ def student_analytics(student_id):
                             'total': 0
                         }
                     
-                    # Учитываем все задания, даже без проверки
-                    # Если есть проверка - учитываем результат
                     if lt.submission_correct is not None:
                         task_stats[task_num]['auto_total'] += weight
                         if lt.submission_correct:
                             task_stats[task_num]['auto_correct'] += weight
-                    # Если проверки нет, но задание есть - считаем как невыполненное для статистики
-                    # Но не добавляем в auto_total, чтобы не искажать процент
     except Exception as e:
         logger.error(f"Error processing lessons for student {student_id}: {e}", exc_info=True)
     
-    # Загружаем ручные изменения статистики
     try:
         manual_stats = StudentTaskStatistics.query.filter_by(student_id=student_id).all()
         for ms in manual_stats:
@@ -1661,20 +1585,16 @@ def student_analytics(student_id):
     except Exception as e:
         logger.error(f"Error loading manual stats for student {student_id}: {e}", exc_info=True)
     
-    # Показываем все задания, по которым есть данные (с проверкой или ручными изменениями)
     chart_data = []
     try:
         for task_num in sorted(task_stats.keys()):
             stats_data = task_stats[task_num]
-            # Учитываем задания с проверкой (auto_total > 0) или с ручными изменениями
             if stats_data['auto_total'] > 0 or stats_data.get('manual_correct', 0) > 0 or stats_data.get('manual_incorrect', 0) > 0:
-                # Вычисляем итоговые значения
                 total = stats_data['auto_total'] + stats_data.get('manual_correct', 0) + stats_data.get('manual_incorrect', 0)
                 correct = stats_data['auto_correct'] + stats_data.get('manual_correct', 0) - stats_data.get('manual_incorrect', 0)
                 
                 if total > 0:
                     percent = round((correct / total) * 100, 1)
-                    # Ограничиваем процент снизу нулем для корректного отображения
                     if percent < 0:
                         percent = 0
                 else:
@@ -1702,7 +1622,6 @@ def student_analytics(student_id):
         logger.error(f"Error building chart_data for student {student_id}: {e}", exc_info=True)
         chart_data = []
     
-    # Сериализуем данные для передачи в JavaScript через Jinja
     charts_context = {
         'trend_dates': json.dumps(gpa_data['dates'], ensure_ascii=False),
         'trend_scores': json.dumps(gpa_data['scores']),
@@ -1715,7 +1634,6 @@ def student_analytics(student_id):
         'heatmap_statuses': json.dumps(attendance_heatmap['statuses'], ensure_ascii=False)
     }
     
-    # Определяем, может ли пользователь редактировать статистику
     try:
         can_edit = not (current_user.is_student() or current_user.is_parent())
     except Exception as e:
@@ -1774,7 +1692,6 @@ def student_edit(student_id):
             student.programming_language = form.programming_language.data.strip() if form.programming_language.data else None
             db.session.commit()
             
-            # Логируем обновление ученика
             audit_logger.log(
                 action='update_student',
                 entity='Student',
@@ -1796,7 +1713,6 @@ def student_edit(student_id):
             db.session.rollback()
             logger.error(f'Ошибка при обновлении ученика {student_id}: {e}')
             
-            # Логируем ошибку
             audit_logger.log_error(
                 action='update_student',
                 entity='Student',
@@ -1822,7 +1738,6 @@ def student_delete(student_id):
         db.session.delete(student)
         db.session.commit()
         
-        # Логируем удаление ученика
         audit_logger.log(
             action='delete_student',
             entity='Student',
@@ -1840,7 +1755,6 @@ def student_delete(student_id):
         db.session.rollback()
         logger.error(f'Ошибка при удалении ученика {student_id}: {e}')
         
-        # Логируем ошибку
         audit_logger.log_error(
             action='delete_student',
             entity='Student',
@@ -1882,13 +1796,11 @@ def lesson_new(student_id):
         flash('У вас недостаточно прав для создания уроков.', 'danger')
         return redirect(url_for('students.student_profile', student_id=student_id))
 
-    # RBAC/Data-scope: тьютор видит только своих учеников, родитель/ученик — только себя/детей
     student = _guard_student_access(student_id)
     form = LessonForm()
     course_module_id = request.args.get('course_module_id', type=int)
     return_to = (request.args.get('return_to') or '').strip().lower()
 
-    # Если пришёл course_module_id — проверяем, что модуль действительно относится к этому ученику
     if course_module_id:
         try:
             from app.models import CourseModule, Course
@@ -1907,29 +1819,20 @@ def lesson_new(student_id):
     if form.validate_on_submit():
         ensure_introductory_without_homework(form)
         
-        # Обрабатываем дату с учетом часового пояса
         lesson_date_local = form.lesson_date.data
         timezone = form.timezone.data
         
-        # Преобразуем локальное время в нужный часовой пояс
-        # Проверяем, что datetime naive (без timezone), иначе делаем его naive
         if lesson_date_local.tzinfo is not None:
-            # Если уже есть timezone, убираем его и работаем с naive datetime
             lesson_date_local = lesson_date_local.replace(tzinfo=None)
         
         if timezone == 'tomsk':
-            # Создаем timezone-aware datetime для томского времени
             lesson_date_local = lesson_date_local.replace(tzinfo=TOMSK_TZ)
-            # Конвертируем в московское время для хранения в БД
             lesson_date_utc = lesson_date_local.astimezone(MOSCOW_TZ)
             logger.debug(f"Томское время: {lesson_date_local}, Московское время: {lesson_date_utc}")
         else:
-            # Создаем timezone-aware datetime для московского времени
             lesson_date_local = lesson_date_local.replace(tzinfo=MOSCOW_TZ)
             lesson_date_utc = lesson_date_local
         
-        # Убираем timezone перед сохранением в БД (SQLAlchemy сохранит как naive)
-        # lesson_date в БД хранится как naive datetime в московском времени
         lesson_date_utc = lesson_date_utc.replace(tzinfo=None) if lesson_date_utc.tzinfo else lesson_date_utc
         
         lesson = Lesson(
@@ -1966,7 +1869,6 @@ def lesson_new(student_id):
             else:  # Если это не sequence‑проблема — не маскируем её
                 raise  # Пробрасываем реальную ошибку дальше
 
-        # Уведомление о новом уроке (ученик + родители)
         try:
             if lesson.status == 'planned':
                 date_str = lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else ''
@@ -1986,7 +1888,6 @@ def lesson_new(student_id):
         except Exception as e:
             logger.warning(f"Failed to notify about lesson_scheduled: {e}")
         
-        # Логируем создание урока
         audit_logger.log(
             action='create_lesson',
             entity='Lesson',
@@ -2028,11 +1929,9 @@ def lesson_mode(student_id):
     student = Student.query.options(db.joinedload(Student.user)).get_or_404(student_id)
     now = moscow_now()
     
-    # Загружаем все уроки одним запросом
     all_lessons = Lesson.query.filter_by(student_id=student_id).order_by(Lesson.lesson_date.desc()).all()
     lessons = all_lessons
     
-    # Находим текущий и ближайший урок из уже загруженных данных
     current_lesson = next((l for l in all_lessons if l.status == 'in_progress'), None)
     planned_lessons = [l for l in all_lessons if l.status == 'planned' and l.lesson_date and l.lesson_date >= now]
     upcoming_lesson = sorted(planned_lessons, key=lambda x: x.lesson_date)[0] if planned_lessons else None
@@ -2050,13 +1949,11 @@ def student_start_lesson(student_id):
     student = Student.query.get_or_404(student_id)
     now = moscow_now()
 
-    # Оптимизация: один запрос вместо двух
     active_lesson = Lesson.query.filter_by(student_id=student_id, status='in_progress').first()
     if active_lesson:
         flash('Урок уже идет!', 'info')
         return redirect(url_for('students.student_profile', student_id=student_id))
 
-    # Оптимизация: используем limit(1) для лучшей производительности
     upcoming_lesson = Lesson.query.filter(
         Lesson.student_id == student_id,
         Lesson.status == 'planned',

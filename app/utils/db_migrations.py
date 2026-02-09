@@ -46,7 +46,6 @@ def _backfill_lesson_materials_to_protected_urls(app, inspector, table_names, li
 
         from app.models import Lesson  # локальный импорт чтобы не ловить циклы
 
-        # Быстрый отбор: только где materials не пустой
         q = Lesson.query.filter(Lesson.materials.isnot(None)).order_by(Lesson.lesson_id.desc()).limit(int(limit))
         lessons = q.all()
         if not lessons:
@@ -160,7 +159,6 @@ def _fix_postgres_sequences(app, inspector):
                 if pk_column not in cols:
                     continue
                 
-                # Проверяем MAX ID
                 try:
                     max_id_result = db.session.execute(text(f'SELECT MAX("{pk_column}") FROM "{real_table}"'))
                     max_id = max_id_result.scalar()
@@ -197,14 +195,12 @@ def check_and_fix_rbac_schema(app):
             inspector = inspect(db.engine)
             table_names = inspector.get_table_names()
             
-            # 1. Ensure RolePermissions table exists
             role_perms_table = _resolve_table_name(table_names, 'RolePermissions')
             if not role_perms_table:
                 logger.info("RolePermissions table missing. Creating...")
                 RolePermission.__table__.create(db.engine)
                 logger.info("RolePermissions table created.")
                 
-                # Fill defaults immediately
                 count = 0
                 for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
                     for perm_name in perms:
@@ -214,7 +210,6 @@ def check_and_fix_rbac_schema(app):
                 db.session.commit()
                 logger.info(f"Filled default permissions ({count} records)")
             else:
-                # Таблица существует, проверяем, есть ли в ней права
                 existing_count = RolePermission.query.count()
                 if existing_count == 0:
                     logger.info("RolePermissions table exists but is empty. Initializing default permissions...")
@@ -222,13 +217,11 @@ def check_and_fix_rbac_schema(app):
                         count = 0
                         for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
                             for perm_name in perms:
-                                # Проверяем, что право существует в ALL_PERMISSIONS
                                 from app.auth.permissions import ALL_PERMISSIONS
                                 if perm_name not in ALL_PERMISSIONS:
                                     logger.warning(f"Permission '{perm_name}' not found in ALL_PERMISSIONS, skipping")
                                     continue
                                 
-                                # Проверяем, нет ли уже такой записи (на случай параллельных запросов)
                                 exists = RolePermission.query.filter_by(
                                     role=role, 
                                     permission_name=perm_name
@@ -244,14 +237,9 @@ def check_and_fix_rbac_schema(app):
                         db.session.rollback()
                         logger.error(f"Error initializing default permissions: {init_error}", exc_info=True)
                 else:
-                    # Таблица не пустая: докидываем новые права так, чтобы RBAC был полностью консистентен:
-                    # - для каждой роли из DEFAULT_ROLE_PERMISSIONS должны существовать записи по ВСЕМ permission'ам
-                    # - если записи не было, ставим is_enabled как в DEFAULT_ROLE_PERMISSIONS
-                    # Это убирает "скрытые дефолты" (fallback) и делает управление правами через админку/remote admin детерминированным.
                     try:
                         from app.auth.permissions import ALL_PERMISSIONS
                         all_perm_keys = list(ALL_PERMISSIONS.keys())
-                        # Собираем существующие пары (role, permission_name) одним запросом
                         try:
                             existing_pairs = set(
                                 (rp.role, rp.permission_name)
@@ -275,7 +263,6 @@ def check_and_fix_rbac_schema(app):
                         db.session.rollback()
                         logger.warning(f"Could not backfill RolePermissions: {backfill_err}")
             
-            # 2. Ensure custom_permissions column in Users
             users_table = _resolve_table_name(table_names, 'Users')
             if users_table:
                 cols = {col['name'] for col in inspector.get_columns(users_table)}
@@ -300,7 +287,6 @@ def ensure_schema_columns(app):
     """
     try:
         with app.app_context():
-            # Создаем таблицы, если их нет
             db.create_all()
             try:
                 db.session.commit()
@@ -308,12 +294,10 @@ def ensure_schema_columns(app):
                 logger.warning(f"Error committing db.create_all(): {e}")
                 db.session.rollback()
 
-            # Run targeted RBAC fix
             check_and_fix_rbac_schema(app)
 
             inspector = inspect(db.engine)
             
-            # Получаем реальное имя таблицы (может быть в нижнем регистре)
             table_names = inspector.get_table_names()
             if 'LessonTaskTeacherComments' not in table_names and 'lessontaskteachercomments' not in table_names:  # comment
                 try:  # comment
@@ -323,7 +307,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create LessonTaskTeacherComments table: {e}")  # comment
                     db.session.rollback()  # comment
 
-            # Фундамент: таблица ревью заданий банка (Formator)
             if 'TaskReviews' not in table_names and 'taskreviews' not in table_names:
                 try:
                     TaskReview.__table__.create(db.engine)
@@ -332,7 +315,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create TaskReviews table: {e}")
                     db.session.rollback()
 
-            # Фундамент: курсы и модули (курс → модуль → урок)
             if 'Courses' not in table_names and 'courses' not in table_names:
                 try:
                     Course.__table__.create(db.engine)
@@ -349,7 +331,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create CourseModules table: {e}")
                     db.session.rollback()
 
-            # Фундамент: учебная траектория (план) ученика
             if 'StudentLearningPlanItems' not in table_names and 'studentlearningplanitems' not in table_names:
                 try:
                     StudentLearningPlanItem.__table__.create(db.engine)
@@ -358,7 +339,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create StudentLearningPlanItems table: {e}")
                     db.session.rollback()
 
-            # Фундамент: диагностические контрольные точки
             if 'StudentDiagnosticCheckpoints' not in table_names and 'studentdiagnosticcheckpoints' not in table_names:
                 try:
                     StudentDiagnosticCheckpoint.__table__.create(db.engine)
@@ -367,7 +347,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create StudentDiagnosticCheckpoints table: {e}")
                     db.session.rollback()
 
-            # Фундамент: журнал оценок
             if 'GradebookEntries' not in table_names and 'gradebookentries' not in table_names:
                 try:
                     GradebookEntry.__table__.create(db.engine)
@@ -376,7 +355,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create GradebookEntries table: {e}")
                     db.session.rollback()
 
-            # Фундамент: попытки сдачи (пересдачи)
             if 'LessonTaskAttempts' not in table_names and 'lessontaskattempts' not in table_names:
                 try:
                     LessonTaskAttempt.__table__.create(db.engine)
@@ -393,7 +371,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create SubmissionAttempts table: {e}")
                     db.session.rollback()
 
-            # Фундамент: группы/классы
             if 'SchoolGroups' not in table_names and 'schoolgroups' not in table_names:
                 try:
                     SchoolGroup.__table__.create(db.engine)
@@ -410,7 +387,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create GroupStudents table: {e}")
                     db.session.rollback()
 
-            # Фундамент: внутренние уведомления
             if 'UserNotifications' not in table_names and 'usernotifications' not in table_names:
                 try:
                     UserNotification.__table__.create(db.engine)
@@ -419,7 +395,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create UserNotifications table: {e}")
                     db.session.rollback()
             else:
-                # Добавляем telegram_sent если таблица уже есть
                 try:
                     un_table = _resolve_table_name(table_names, 'UserNotifications')
                     if un_table:
@@ -434,7 +409,6 @@ def ensure_schema_columns(app):
                 except Exception:
                     pass
 
-            # Фундамент: диалоги по уроку
             if 'LessonMessages' not in table_names and 'lessonmessages' not in table_names:
                 try:
                     LessonMessage.__table__.create(db.engine)
@@ -443,7 +417,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create LessonMessages table: {e}")
                     db.session.rollback()
 
-            # Фундамент: интерактивные доски Miro
             if 'LessonWhiteboards' not in table_names and 'lessonwhiteboards' not in table_names:
                 try:
                     LessonWhiteboard.__table__.create(db.engine)
@@ -452,7 +425,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create LessonWhiteboards table: {e}")
                     db.session.rollback()
 
-            # Фундамент: токены Miro OAuth
             if 'MiroUserTokens' not in table_names and 'mirousertokens' not in table_names:
                 try:
                     from app.models import MiroUserToken
@@ -462,7 +434,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create MiroUserTokens table: {e}")
                     db.session.rollback()
 
-            # Фундамент: приглашения (онбординг)
             if 'InviteLinks' not in table_names and 'invitelinks' not in table_names:
                 try:
                     InviteLink.__table__.create(db.engine)
@@ -471,7 +442,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create InviteLinks table: {e}")
                     db.session.rollback()
 
-            # Фундамент: библиотека материалов и шаблоны комнат/уроков
             if 'MaterialAssets' not in table_names and 'materialassets' not in table_names:
                 try:
                     MaterialAsset.__table__.create(db.engine)
@@ -480,7 +450,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create MaterialAssets table: {e}")
                     db.session.rollback()
             else:
-                # добавляем storage_path, если таблица уже есть
                 try:
                     assets_table = _resolve_table_name(table_names, 'MaterialAssets')
                     if assets_table:
@@ -511,7 +480,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create LessonRoomTemplates table: {e}")
                     db.session.rollback()
 
-            # Фундамент: автоплан расписания (RecurringLessonSlots)
             if 'RecurringLessonSlots' not in table_names and 'recurringlessonslots' not in table_names:
                 try:
                     RecurringLessonSlot.__table__.create(db.engine)
@@ -520,7 +488,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create RecurringLessonSlots table: {e}")
                     db.session.rollback()
 
-            # Фундамент: биллинг/юридический слой
             if 'TariffGroups' not in table_names and 'tariffgroups' not in table_names:
                 try:
                     TariffGroup.__table__.create(db.engine)
@@ -537,7 +504,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create TariffPlans table: {e}")
                     db.session.rollback()
             else:
-                # добавляем колонки группировки/сортировки тарифов, если таблица уже есть
                 try:
                     tp_table = _resolve_table_name(table_names, 'TariffPlans')
                     if tp_table:
@@ -595,7 +561,6 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not create UserSubscriptions table: {e}")
                     db.session.rollback()
             else:
-                # добавляем lessons_remaining если таблица уже есть
                 try:
                     us_table = _resolve_table_name(table_names, 'UserSubscriptions')
                     if us_table:
@@ -629,7 +594,6 @@ def ensure_schema_columns(app):
             db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
             is_postgres = 'postgresql' in db_url or 'postgres' in db_url
             
-            # Функция для безопасного добавления колонки
             def safe_add_column(col_name, col_type):
                 if col_name not in lesson_columns:
                     try:
@@ -646,7 +610,6 @@ def ensure_schema_columns(app):
             safe_add_column('homework_result_notes', 'TEXT')
             safe_add_column('review_summaries', 'JSON')
             
-            # Новые поля для полноценного урока
             safe_add_column('content', 'TEXT')
             safe_add_column('content_blocks', 'JSON')
             safe_add_column('student_notes', 'TEXT')
@@ -654,7 +617,6 @@ def ensure_schema_columns(app):
             safe_add_column('course_module_id', 'INTEGER')
             safe_add_column('published_at', 'TIMESTAMP' if is_postgres else 'DATETIME')
 
-            # Backfill: старые материалы уроков -> защищенные ссылки
             _backfill_lesson_materials_to_protected_urls(app, inspector, table_names, limit=2000)
 
             if lesson_tasks_table:
@@ -682,7 +644,6 @@ def ensure_schema_columns(app):
                 safe_add_lesson_task_column('submission_files', 'JSON')  # comment
                 safe_add_lesson_task_column('teacher_comment', 'TEXT')  # comment
                 try:  # comment
-                    # Убираем устаревший статус in_progress, если он где-то появился
                     if is_postgres:  # comment
                         db.session.execute(text(f'UPDATE "{lesson_tasks_table}" SET status = \'pending\' WHERE status = \'in_progress\''))  # comment
                     else:  # comment
@@ -715,14 +676,11 @@ def ensure_schema_columns(app):
             if 'idx_lessons_lesson_date' not in lesson_indexes:
                 db.session.execute(text(f'CREATE INDEX idx_lessons_lesson_date ON "{lessons_table}"(lesson_date)'))
 
-            # Обновляем старые статусы ДЗ на новые значения, если таблица уже существовала
             db.session.execute(text(f'UPDATE "{lessons_table}" SET homework_status = \'assigned_done\' WHERE homework_status = \'completed\''))  # Старый completed -> assigned_done
             db.session.execute(text(f'UPDATE "{lessons_table}" SET homework_status = \'assigned_not_done\' WHERE homework_status IN (\'pending\', \'not_done\')'))  # pending/not_done -> assigned_not_done
 
-            # Проверяем и создаем таблицу StudentTaskStatistics
             stats_table = 'StudentTaskStatistics' if 'StudentTaskStatistics' in table_names else ('studenttaskstatistics' if 'studenttaskstatistics' in table_names else None)
             if not stats_table:
-                # Создаем таблицу для ручных изменений статистики
                 db.session.execute(text("""
                     CREATE TABLE IF NOT EXISTS "StudentTaskStatistics" (
                         stat_id SERIAL PRIMARY KEY,
@@ -741,14 +699,12 @@ def ensure_schema_columns(app):
                 """))
                 logger.info("Created StudentTaskStatistics table")
             else:
-                # Проверяем наличие всех колонок
                 stats_columns = {col['name'] for col in inspector.get_columns(stats_table)}
                 if 'manual_correct' not in stats_columns:
                     db.session.execute(text(f'ALTER TABLE "{stats_table}" ADD COLUMN manual_correct INTEGER DEFAULT 0 NOT NULL'))
                 if 'manual_incorrect' not in stats_columns:
                     db.session.execute(text(f'ALTER TABLE "{stats_table}" ADD COLUMN manual_incorrect INTEGER DEFAULT 0 NOT NULL'))
             
-            # Проверяем и создаем таблицу Topics (темы/навыки)
             topics_table = 'Topics' if 'Topics' in table_names else ('topics' if 'topics' in table_names else None)
             if not topics_table:
                 if _is_postgres(app):
@@ -766,7 +722,6 @@ def ensure_schema_columns(app):
                         CREATE INDEX IF NOT EXISTS ix_topics_name ON "Topics"(name)
                     """))
                 else:
-                    # SQLite синтаксис
                     db.session.execute(text("""
                         CREATE TABLE IF NOT EXISTS Topics (
                             topic_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -782,7 +737,6 @@ def ensure_schema_columns(app):
                     """))
                 logger.info("Created Topics table")
             
-            # Проверяем и создаем связующую таблицу task_topics
             task_topics_table = 'task_topics' if 'task_topics' in table_names else ('TaskTopics' if 'TaskTopics' in table_names else None)
             if not task_topics_table:
                 if _is_postgres(app):
@@ -795,7 +749,6 @@ def ensure_schema_columns(app):
                         )
                     """))
                 else:
-                    # SQLite синтаксис
                     db.session.execute(text("""
                         CREATE TABLE IF NOT EXISTS task_topics (
                             task_id INTEGER NOT NULL REFERENCES Tasks(task_id) ON DELETE CASCADE,
@@ -806,13 +759,10 @@ def ensure_schema_columns(app):
                     """))
                 logger.info("Created task_topics table")
             
-            # Проверяем и создаем таблицу MaintenanceMode
             maintenance_table = 'MaintenanceMode' if 'MaintenanceMode' in table_names else ('maintenancemode' if 'maintenancemode' in table_names else None)
             if not maintenance_table:
-                # Создаем таблицу для управления режимом тех работ
                 db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
                 if 'postgresql' in db_url or 'postgres' in db_url:
-                    # PostgreSQL синтаксис
                     db.session.execute(text("""
                         CREATE TABLE IF NOT EXISTS "MaintenanceMode" (
                             id SERIAL PRIMARY KEY,
@@ -823,7 +773,6 @@ def ensure_schema_columns(app):
                         )
                     """))
                 else:
-                    # SQLite синтаксис
                     db.session.execute(text("""
                         CREATE TABLE IF NOT EXISTS MaintenanceMode (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -839,7 +788,6 @@ def ensure_schema_columns(app):
                 if 'updated_at' not in stats_columns:
                     db.session.execute(text(f'ALTER TABLE "{stats_table}" ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'))
 
-            # Проверяем и создаем таблицу PendingAssignmentNotifications (дебаунс уведомлений)
             pending_table = 'PendingAssignmentNotifications' if 'PendingAssignmentNotifications' in table_names else ('pendingassignmentnotifications' if 'pendingassignmentnotifications' in table_names else None)
             if not pending_table:
                 db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
@@ -899,16 +847,13 @@ def ensure_schema_columns(app):
                     """))
                 logger.info("Created PendingAssignmentNotifications table")
 
-            # Проверяем и обновляем AuditLog таблицу
             audit_log_table = 'AuditLog' if 'AuditLog' in table_names else ('auditlog' if 'auditlog' in table_names else None)
             if audit_log_table:
                 audit_log_columns = {col['name'] for col in inspector.get_columns(audit_log_table)}
                 
-                # Добавляем колонку user_id если её нет
                 if 'user_id' not in audit_log_columns:
                     db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
                     if 'postgresql' in db_url or 'postgres' in db_url:
-                        # PostgreSQL синтаксис
                         try:
                             db.session.execute(text("""
                                 ALTER TABLE "AuditLog" 
@@ -916,7 +861,6 @@ def ensure_schema_columns(app):
                                 REFERENCES "Users"(id) 
                                 ON DELETE SET NULL
                             """))
-                            # Создаем индекс для user_id
                             db.session.execute(text("""
                                 CREATE INDEX IF NOT EXISTS idx_audit_user_id 
                                 ON "AuditLog"(user_id)
@@ -925,7 +869,6 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add user_id column: {e}")
                     else:
-                        # SQLite синтаксис
                         try:
                             db.session.execute(text("""
                                 ALTER TABLE AuditLog 
@@ -936,7 +879,6 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add user_id column: {e}")
                 
-                # Изменяем session_id на TEXT если он VARCHAR(100)
                 try:
                     pg_cursor = db.session.connection().connection.cursor()
                     pg_cursor.execute("""
@@ -951,12 +893,10 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not update session_id column: {e}")
 
-            # Проверяем и обновляем таблицу Reminders
             reminders_table = 'Reminders' if 'Reminders' in table_names else ('reminders' if 'reminders' in table_names else None)
             if reminders_table:
                 db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
                 if 'postgresql' in db_url or 'postgres' in db_url:
-                    # Для PostgreSQL проверяем через information_schema
                     try:
                         result = db.session.execute(text("""
                             SELECT is_nullable 
@@ -965,22 +905,18 @@ def ensure_schema_columns(app):
                         """), {'table_name': reminders_table})
                         row = result.fetchone()
                         if row and row[0] == 'NO':
-                            # Колонка NOT NULL, делаем её nullable
                             db.session.execute(text(f'ALTER TABLE "{reminders_table}" ALTER COLUMN reminder_time DROP NOT NULL'))
                             logger.info(f"Made reminder_time nullable in {reminders_table}")
                     except Exception as e:
                         logger.warning(f"Could not check/update reminder_time nullable: {e}")
                 else:
-                    # SQLite не поддерживает ALTER COLUMN, но это не критично
                     logger.warning("SQLite does not support ALTER COLUMN, reminder_time will remain NOT NULL")
             
-            # Проверяем и обновляем таблицу Users
             users_table = _resolve_table_name(table_names, 'Users')
             if users_table:
                 try:
                     users_columns = {col['name'] for col in inspector.get_columns(users_table)}
                     
-                    # Поля профиля - добавляем только если их нет, с обработкой ошибок
                     db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
                     is_postgres = 'postgresql' in db_url or 'postgres' in db_url
                     
@@ -1035,9 +971,7 @@ def ensure_schema_columns(app):
                             logger.warning(f"Could not add github_link column (may already exist): {e}")
                 except Exception as e:
                     logger.warning(f"Error checking/updating Users table columns: {e}")
-                    # Не пробрасываем ошибку дальше, чтобы не блокировать запуск приложения
 
-            # КРИТИЧЕСКИ ВАЖНО: коммитим миграции ДО исправления sequences
             try:
                 db.session.commit()
                 logger.info("Database migrations committed successfully")
@@ -1045,11 +979,7 @@ def ensure_schema_columns(app):
                 db.session.rollback()
                 logger.error(f"Error committing migrations: {commit_error}", exc_info=True)
             
-            # ========================================================================
-            # МИГРАЦИИ ДЛЯ НОВОЙ СИСТЕМЫ АВТОРИЗАЦИИ (RBAC) - ОСТАЛЬНЫЕ ТАБЛИЦЫ
-            # ========================================================================
             
-            # 1. Добавляем email в Users (если его нет)
             if users_table:
                 users_columns = {col['name'] for col in inspector.get_columns(users_table)}
                 if 'email' not in users_columns:
@@ -1060,7 +990,6 @@ def ensure_schema_columns(app):
                         logger.warning(f"Could not add email to Users: {e}")
                         db.session.rollback()
 
-                # schedule_ics_token для приватного экспорта календаря
                 if 'schedule_ics_token' not in users_columns:
                     try:
                         if _is_postgres(app):
@@ -1072,7 +1001,6 @@ def ensure_schema_columns(app):
                         logger.warning(f"Could not add schedule_ics_token to Users: {e}")
                         db.session.rollback()
 
-                # numeric_id для не-учеников (10–99)
                 if 'numeric_id' not in users_columns:
                     try:
                         if _is_postgres(app):
@@ -1084,7 +1012,6 @@ def ensure_schema_columns(app):
                         logger.warning(f"Could not add numeric_id to Users: {e}")
                         db.session.rollback()
             
-            # 2. Создаем таблицу UserRoles (несколько ролей на пользователя) и бэкфилл
             user_roles_table = _resolve_table_name(table_names, 'UserRoles')
             if not user_roles_table:
                 try:
@@ -1105,7 +1032,6 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not backfill UserRoles: {e}")
             
-            # 2. Создаем таблицу UserProfiles (если её нет)
             profiles_table = _resolve_table_name(table_names, 'UserProfiles')
             if not profiles_table:
                 try:
@@ -1114,7 +1040,6 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create UserProfiles table: {e}")
             else:
-                # Добавляем поля для Telegram Bot интеграции
                 try:
                     cols = {c['name'] for c in inspector.get_columns(profiles_table)}
                     if 'telegram_chat_id' not in cols:
@@ -1147,7 +1072,6 @@ def ensure_schema_columns(app):
                             logger.warning(f"Could not add telegram_notifications_enabled to {profiles_table}: {e}")
                             db.session.rollback()
                     
-                    # Детальные настройки Telegram уведомлений
                     tg_notify_fields = [
                         'tg_notify_lesson_reminder',
                         'tg_notify_homework_checked',
@@ -1166,7 +1090,6 @@ def ensure_schema_columns(app):
                             except Exception as e:
                                 logger.warning(f"Could not add {field} to {profiles_table}: {e}")
                                 db.session.rollback()
-                    # Принудительно включаем новости по умолчанию
                     try:
                         db.session.execute(text(f'UPDATE "{profiles_table}" SET tg_notify_news = TRUE WHERE tg_notify_news IS NULL OR tg_notify_news = FALSE'))
                         logger.info("Updated tg_notify_news to TRUE for existing profiles")
@@ -1176,7 +1099,6 @@ def ensure_schema_columns(app):
                 except Exception:
                     pass
             
-            # 2.1 Создаем таблицы BotAdmins и BotErrorReports (если их нет)
             bot_admins_table = _resolve_table_name(table_names, 'BotAdmins')
             if not bot_admins_table:
                 try:
@@ -1192,7 +1114,6 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create BotErrorReports table: {e}")
             
-            # 3. Создаем таблицу FamilyTies (если её нет)
             family_ties_table = _resolve_table_name(table_names, 'FamilyTies')
             if not family_ties_table:
                 try:
@@ -1201,7 +1122,6 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create FamilyTies table: {e}")
             
-            # 4. Создаем таблицу Enrollments (если её нет)
             enrollments_table = _resolve_table_name(table_names, 'Enrollments')
             if not enrollments_table:
                 try:
@@ -1210,7 +1130,6 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create Enrollments table: {e}")
             
-            # 5. Создаем таблицы системы заданий (Assignments, AssignmentTasks, Submissions, Answers)
             assignments_table = _resolve_table_name(table_names, 'Assignments')
             if not assignments_table:
                 try:
@@ -1219,7 +1138,6 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create Assignments system tables: {e}")
 
-            # 5.1 Создаем таблицу RubricTemplates (если её нет)
             rubric_templates_table = _resolve_table_name(table_names, 'RubricTemplates')
             if not rubric_templates_table:
                 try:
@@ -1228,7 +1146,6 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create RubricTemplates table: {e}")
 
-            # 5.2 Добавляем недостающие колонки для Rubrics в Assignments/Submissions
             try:
                 assignments_table = _resolve_table_name(table_names, 'Assignments')
                 submissions_table = _resolve_table_name(table_names, 'Submissions')
@@ -1255,7 +1172,6 @@ def ensure_schema_columns(app):
                             db.session.execute(text(f'ALTER TABLE "{submissions_table}" ADD COLUMN rubric_scores JSON'))
                             logger.info(f"Added rubric_scores to {submissions_table}")
                         except Exception as e:
-                            # sqlite может не поддержать JSON тип — пробуем TEXT
                             try:
                                 db.session.execute(text(f'ALTER TABLE "{submissions_table}" ADD COLUMN rubric_scores TEXT'))
                                 logger.info(f"Added rubric_scores (TEXT) to {submissions_table}")
@@ -1265,7 +1181,6 @@ def ensure_schema_columns(app):
             except Exception as e:
                 logger.warning(f"Could not ensure rubric columns: {e}")
             
-            # 6. Создаем таблицу комментариев к заданиям (SubmissionComments)
             comments_table = _resolve_table_name(table_names, 'SubmissionComments')
             if not comments_table:
                 try:
@@ -1274,7 +1189,6 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create SubmissionComments table: {e}")
             
-            # Коммитим миграции RBAC и Assignments
             try:
                 db.session.commit()
                 logger.info("RBAC and Assignments migrations committed successfully")
@@ -1282,10 +1196,7 @@ def ensure_schema_columns(app):
                 db.session.rollback()
                 logger.warning(f"Error committing RBAC/Assignments migrations: {e}")
             
-            # Исправляем sequences ПОСЛЕ коммита миграций
-            # Это не критично, если не получится - просто будет warning
             _fix_postgres_sequences(app, inspector)  # После миграций синхронизируем sequences (чинит 500 duplicate key на SERIAL)
     except Exception as e:
         db.session.rollback()
         logger.error(f"Ошибка при миграции схемы БД: {e}", exc_info=True)
-        # НЕ пробрасываем ошибку дальше, чтобы не блокировать запуск приложения

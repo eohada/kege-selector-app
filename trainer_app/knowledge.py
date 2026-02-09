@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 def _repo_root() -> str:
-    # trainer_app/knowledge.py -> repo root
     return os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 
@@ -109,7 +108,6 @@ def load_task_knowledge(task_id: int) -> dict[str, Any] | None:
         ok, errs = _validate_task_knowledge(data)
         if not ok:
             logger.warning(f'Invalid trainer knowledge file {path}: {errs}')
-            # Strict mode: fail fast
             strict = (os.environ.get('TRAINER_STRICT_KNOWLEDGE') or '').strip().lower() in ('1', 'true', 'yes', 'on')
             if strict:
                 return None

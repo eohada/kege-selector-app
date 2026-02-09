@@ -1,4 +1,4 @@
-// Универсальная функция для модальных окон подтверждения
+
 function showConfirmModal(options) {
     const {
         title = 'Подтверждение',
@@ -10,7 +10,6 @@ function showConfirmModal(options) {
         onCancel = () => {}
     } = options;
 
-    // Создаем модальное окно, если его еще нет
     let modal = document.getElementById('confirm-modal');
     if (!modal) {
         modal = document.createElement('div');
@@ -29,7 +28,6 @@ function showConfirmModal(options) {
         document.body.appendChild(modal);
     }
 
-    // Заполняем содержимое
     const titleEl = modal.querySelector('.confirm-modal-title');
     const messageEl = modal.querySelector('.confirm-modal-message');
     const confirmBtn = modal.querySelector('.confirm-confirm-btn');
@@ -40,16 +38,13 @@ function showConfirmModal(options) {
     confirmBtn.textContent = confirmText;
     cancelBtn.textContent = cancelText;
 
-    // Устанавливаем класс для кнопки подтверждения
     confirmBtn.className = `neo-button ${confirmClass}`;
 
-    // Очищаем предыдущие обработчики
     const newConfirmBtn = confirmBtn.cloneNode(true);
     const newCancelBtn = cancelBtn.cloneNode(true);
     confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
     cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
 
-    // Добавляем обработчики
     newConfirmBtn.addEventListener('click', () => {
         modal.classList.remove('active');
         onConfirm();
@@ -60,7 +55,6 @@ function showConfirmModal(options) {
         onCancel();
     });
 
-    // Закрытие по клику на фон
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             modal.classList.remove('active');
@@ -68,7 +62,6 @@ function showConfirmModal(options) {
         }
     });
 
-    // Закрытие по Escape
     const escapeHandler = (e) => {
         if (e.key === 'Escape') {
             modal.classList.remove('active');
@@ -78,19 +71,16 @@ function showConfirmModal(options) {
     };
     document.addEventListener('keydown', escapeHandler);
 
-    // Показываем модальное окно
     modal.classList.add('active');
 }
 
-// Функция для отправки POST запроса через создание формы (для кнопок вне форм или замены вложенных форм)
 function submitPostRequest(url, csrfToken) {
     console.log('submitPostRequest called with URL:', url);
     const hiddenForm = document.createElement('form');
     hiddenForm.method = 'POST';
     hiddenForm.action = url;
     hiddenForm.style.display = 'none';
-    
-    // Добавляем CSRF токен
+
     const token = csrfToken || document.querySelector('input[name="csrf_token"]')?.value || document.querySelector('meta[name="csrf-token"]')?.content;
     console.log('CSRF token found:', token ? 'yes' : 'no');
     if (token) {
@@ -108,9 +98,8 @@ function submitPostRequest(url, csrfToken) {
     hiddenForm.submit();
 }
 
-// Функция для подтверждения формы
 function confirmFormSubmit(form, options) {
-    // Проверяем, не добавлен ли уже обработчик
+
     if (form.dataset.confirmAttached === 'true') {
         return;
     }
@@ -122,18 +111,17 @@ function confirmFormSubmit(form, options) {
         showConfirmModal({
             ...options,
             onConfirm: () => {
-                // Удаляем обработчик, чтобы форма могла отправиться обычным способом
+
                 form.dataset.confirmAttached = 'false';
-                // Отправляем форму напрямую
+
                 form.submit();
             }
         });
     });
 }
 
-// Инициализация подтверждений при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
-    // Подтверждение удаления ученика
+
     const studentDeleteForms = document.querySelectorAll('form[action*="/student/"][action*="/delete"]');
     studentDeleteForms.forEach(form => {
         confirmFormSubmit(form, {
@@ -145,7 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Подтверждение удаления урока
     const lessonDeleteForms = document.querySelectorAll('form[action*="/lesson/"][action*="/delete"]');
     lessonDeleteForms.forEach(form => {
         confirmFormSubmit(form, {
@@ -157,7 +144,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Подтверждение удаления задания из ДЗ
     const taskDeleteForms = document.querySelectorAll('form[id^="delete-form-"]');
     taskDeleteForms.forEach(form => {
         confirmFormSubmit(form, {
@@ -169,7 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Подтверждение сброса истории
     const resetForms = document.querySelectorAll('form[action*="reset"]');
     resetForms.forEach(form => {
         const resetType = form.querySelector('[name="reset_type"]')?.value || 'unknown';
@@ -195,7 +180,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Подтверждение архивирования ученика
     const archiveForms = document.querySelectorAll('form[action*="/archive"]');
     archiveForms.forEach(form => {
         confirmFormSubmit(form, {
@@ -207,15 +191,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Обработка форм с классом confirm-delete-form
     const confirmDeleteForms = document.querySelectorAll('form.confirm-delete-form');
     confirmDeleteForms.forEach(form => {
-        // Пропускаем формы с data-no-confirm
+
         if (form.hasAttribute('data-no-confirm')) {
             return;
         }
-        
-        // Определяем тип действия по action формы
+
         const action = form.getAttribute('action') || '';
         let title = 'Подтверждение';
         let message = 'Вы уверены?';
@@ -248,8 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmClass: confirmClass
         });
     });
-    
-    // Подтверждение для массовых операций с заданиями
+
     const bulkActionForms = document.querySelectorAll('form[data-bulk-action]');
     bulkActionForms.forEach(form => {
         const actionType = form.getAttribute('data-bulk-action');
@@ -282,7 +263,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Обработка кнопок удаления (замена вложенных форм)
     const deleteButtons = document.querySelectorAll('button.action-delete-btn');
     console.log(`Found ${deleteButtons.length} delete buttons`);
     deleteButtons.forEach((btn, index) => {
@@ -308,7 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Обработка кнопок подтверждения (замена вложенных форм)
     const confirmButtons = document.querySelectorAll('button.action-confirm-btn');
     console.log(`Found ${confirmButtons.length} confirm buttons`);
     confirmButtons.forEach((btn, index) => {

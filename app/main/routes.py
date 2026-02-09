@@ -20,7 +20,6 @@ from core.audit_logger import audit_logger
 from flask_login import current_user
 from app import csrf
 
-# Базовая директория проекта
 base_dir = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 
@@ -106,11 +105,9 @@ def setup_first_user():
     from core.db_models import moscow_now
     
     try:
-        # Проверяем подключение к БД и количество пользователей
         try:
             user_count = User.query.count()
         except Exception as db_error:
-            # Если БД недоступна, возвращаем ошибку
             return jsonify({
                 'success': False,
                 'error': f'Database connection failed: {str(db_error)}',
@@ -125,7 +122,6 @@ def setup_first_user():
             }), 403
         
         if request.method == 'GET':
-            # Показываем форму для создания пользователя
             return jsonify({
                 'message': 'Create first user',
                 'method': 'POST',
@@ -141,7 +137,6 @@ def setup_first_user():
                 }
             }), 200
         
-        # POST - создаем пользователя
         data = request.get_json() if request.is_json else request.form
         
         username = data.get('username', '').strip()
@@ -156,7 +151,6 @@ def setup_first_user():
         if len(password) < 8:
             return jsonify({'success': False, 'error': 'Password must be at least 8 characters'}), 400
         
-        # Проверяем, что пользователь с таким username не существует
         try:
             if User.query.filter_by(username=username).first():
                 return jsonify({'success': False, 'error': 'Username already exists'}), 409
@@ -167,7 +161,6 @@ def setup_first_user():
                 'hint': 'Check DATABASE_URL configuration'
             }), 500
         
-        # Создаем пользователя
         try:
             user = User(
                 username=username,
@@ -207,11 +200,9 @@ def setup_first_user():
 @main_bp.route('/landing')
 def landing():
     """Гостевая страница (landing page) - доступна без авторизации"""
-    # Если это админ-окружение, сразу редиректим в админку
     if os.environ.get('ENVIRONMENT') == 'admin':
         return redirect(url_for('remote_admin.dashboard'))
     
-    # Страница доступна всем, включая авторизованных пользователей
     return render_template('landing.html')
 
 
@@ -219,7 +210,6 @@ def landing():
 @main_bp.route('/home')
 def index():
     """Главная страница с описанием платформы"""
-    # Если это админ-окружение, сразу редиректим в админку
     if os.environ.get('ENVIRONMENT') == 'admin':
         return redirect(url_for('remote_admin.dashboard'))
 
@@ -231,35 +221,26 @@ def index():
 @login_required
 def dashboard():
     """Главная страница (dashboard) со списком студентов"""
-    # Редирект для родителя на его дашборд
     if current_user.is_parent():
         return redirect(url_for('parents.parent_dashboard'))
     
-    # Редирект для ученика на его дашборд
     if current_user.is_student():
         return redirect(url_for('main.student_dashboard'))
     
-    # Для ролей designer и tester - редирект на соответствующие страницы или пустой dashboard
     if current_user.is_designer():
-        # Дизайнер может быть перенаправлен на страницу управления ассетами
-        # Или показать пустой dashboard с сообщением
         pass  # Продолжаем выполнение, покажем пустой dashboard
     elif current_user.role == 'tester' and not current_user.is_chief_tester():
-        # Обычный тестировщик - показываем пустой dashboard
         pass  # Продолжаем выполнение, покажем пустой dashboard
     
     search_query = request.args.get('search', '').strip()
     category_filter = request.args.get('category', '')
     show_archive = request.args.get('show_archive', 'false').lower() == 'true'  # Параметр для просмотра архива
 
-    # Выбираем активных или архивных учеников в зависимости от параметра
     if show_archive:
         query = Student.query.options(db.joinedload(Student.user)).filter_by(is_active=False)
     else:
         query = Student.query.options(db.joinedload(Student.user)).filter_by(is_active=True)
     
-    # Применяем data scoping (фильтрация по ролям)
-    # Для админа и старых ролей - видит всех
     scope = get_user_scope(current_user)
     if not scope['can_see_all'] and scope['student_ids']:
         accessible_students = Student.query.filter(Student.user_id.in_(scope['student_ids'])).all()
@@ -269,7 +250,6 @@ def dashboard():
         else:
             query = query.filter(False)
     elif not scope['can_see_all'] and not scope['student_ids']:
-        # Нет доступа ни к каким ученикам
         query = query.filter(False)
 
     if search_query:
@@ -278,21 +258,14 @@ def dashboard():
             Student.name.ilike(search_pattern)
         ]
         
-        # Если запрос начинается с #, это platform_id
         if search_query.startswith('#'):
-            # Убираем # и ищем по platform_id
             platform_id_query = search_query[1:].strip()
             if platform_id_query:
                 filters.append(Student.platform_id.ilike(f'%{platform_id_query}%'))
         else:
-            # Ищем по platform_id как строке (может содержать числа)
             filters.append(Student.platform_id.ilike(search_pattern))
-            # Если запрос - чисто число, ищем также по student_id
-            # НО только если это не совпадает с User.id текущего пользователя
             try:
                 student_id_num = int(search_query)
-                # Исключаем поиск по student_id, если он совпадает с User.id текущего пользователя
-                # Это предотвращает конфликт идентификаторов
                 if current_user.id != student_id_num:
                     filters.append(Student.student_id == student_id_num)
             except ValueError:
@@ -308,20 +281,15 @@ def dashboard():
     pagination = query.order_by(Student.name).paginate(page=page, per_page=per_page, error_out=False)
     students = pagination.items
 
-    # Статистика зависит от того, показываем ли мы архив
-    # Оптимизация: используем один запрос с группировкой для категорий
     base_is_active = not show_archive
     
     if category_filter:
-        # Если есть фильтр категории, считаем только из текущей выборки
         total_students = len(students)
         ege_students = len([s for s in students if s.category == 'ЕГЭ']) if category_filter != 'ЕГЭ' else total_students
         oge_students = len([s for s in students if s.category == 'ОГЭ']) if category_filter != 'ОГЭ' else total_students
         levelup_students = len([s for s in students if s.category == 'ЛЕВЕЛАП']) if category_filter != 'ЛЕВЕЛАП' else total_students
         programming_students = len([s for s in students if s.category == 'ПРОГРАММИРОВАНИЕ']) if category_filter != 'ПРОГРАММИРОВАНИЕ' else total_students
     else:
-        # Если нет фильтра, используем один запрос с группировкой
-        # Применяем data scoping к подсчету студентов
         count_query = Student.query.filter_by(is_active=base_is_active)
         if not scope['can_see_all'] and scope['student_ids']:
             count_query = count_query.filter(Student.user_id.in_(scope['student_ids']))
@@ -334,7 +302,6 @@ def dashboard():
             logger.warning(f"Error counting total students: {e}")
             total_students = 0
         
-        # Статистика по категориям с учетом data scoping
         try:
             category_stats_query = db.session.query(
                 Student.category,
@@ -360,9 +327,6 @@ def dashboard():
             levelup_students = 0
             programming_students = 0
     
-    # Оптимизация: объединяем запросы статистики где возможно
-    # Статистика по урокам - один запрос с группировкой
-    # Применяем data scoping к урокам
     try:
         lesson_query = db.session.query(
             Lesson.status,
@@ -395,15 +359,12 @@ def dashboard():
         in_progress_lessons = 0
         cancelled_lessons = 0
     
-    # Статистика по архивным ученикам - только если есть доступ
     try:
         archived_students_count = Student.query.filter_by(is_active=False).count()
     except Exception as e:
         logger.warning(f"Error counting archived students: {e}")
         archived_students_count = 0
     
-    # Статистика по заданиям - используем подзапросы для оптимизации
-    # Ученик и родитель не видят общую статистику по задачам
     try:
         if current_user.is_student() or current_user.is_parent() or current_user.is_designer() or (current_user.role == 'tester' and not current_user.is_chief_tester()):
             total_tasks = 0
@@ -412,7 +373,6 @@ def dashboard():
             blacklisted_tasks_count = 0
         else:
             total_tasks = Tasks.query.count()
-            # Используем подзапросы вместо distinct для лучшей производительности
             accepted_tasks_count = db.session.query(func.count(func.distinct(UsageHistory.task_fk))).scalar() or 0
             skipped_tasks_count = db.session.query(func.count(func.distinct(SkippedTasks.task_fk))).scalar() or 0
             blacklisted_tasks_count = db.session.query(func.count(func.distinct(BlacklistTasks.task_fk))).scalar() or 0
@@ -423,13 +383,10 @@ def dashboard():
         skipped_tasks_count = 0
         blacklisted_tasks_count = 0
     
-    # Статистика по последним урокам (за последние 7 дней)
-    # Считаем только уроки, которые были проведены за последние 7 дней
     try:
         now = moscow_now()
         week_ago = now - timedelta(days=7)
         
-        # Уроки, которые были проведены за последние 7 дней
         recent_completed_query = Lesson.query.filter(
             Lesson.status == 'completed',
             Lesson.lesson_date >= week_ago,
@@ -439,7 +396,6 @@ def dashboard():
             recent_completed_query = recent_completed_query.filter(Lesson.student_id.in_(accessible_student_ids))
         recent_completed = recent_completed_query.count()
         
-        # Уроки, запланированные на ближайшие 7 дней (в будущем)
         week_ahead = now + timedelta(days=7)
         recent_planned_query = Lesson.query.filter(
             Lesson.status.in_(['planned', 'in_progress']),
@@ -452,7 +408,6 @@ def dashboard():
         
         recent_lessons = recent_completed + recent_planned
         
-        # Статистика по домашним заданиям (только за последние 7 дней - проведенные уроки)
         homework_query = Lesson.query.filter(
             Lesson.status == 'completed',
             Lesson.lesson_date >= week_ago,
@@ -467,7 +422,6 @@ def dashboard():
         recent_lessons = 0
         lessons_with_homework = 0
 
-    # Teacher overview: очередь проверки + группы (не зависит от фильтров UI)
     review_lesson_tasks_count = 0
     review_submissions_count = 0
     groups_count = 0
@@ -597,7 +551,6 @@ def student_dashboard():
     except Exception:
         problem_topics = []
 
-    # Последние оценки из журнала (MVP, для мотивации)
     try:
         recent_grades = GradebookEntry.query.filter_by(student_id=student.student_id).order_by(
             GradebookEntry.created_at.desc(),
@@ -621,23 +574,17 @@ def student_dashboard():
 def update_plans():
     """Страница планов обновления"""
     try:
-        # Определяем пути относительно текущего файла и рабочей директории
         current_file_dir = os.path.dirname(os.path.abspath(__file__))
-        # app/main/routes.py -> app/ -> корень проекта
         project_root = os.path.dirname(os.path.dirname(current_file_dir))
         cwd = os.getcwd()
         
-        # Список возможных путей (от наиболее вероятных к менее вероятным)
         possible_paths = [
-            # В корне проекта (локально и на Railway)
             os.path.join(project_root, 'UPDATE_PLANS.md'),
             os.path.join(cwd, 'UPDATE_PLANS.md'),
             '/app/UPDATE_PLANS.md',  # Railway стандартный путь
-            # В docs/ (локально и на Railway)
             os.path.join(project_root, 'docs', 'UPDATE_PLANS.md'),
             os.path.join(cwd, 'docs', 'UPDATE_PLANS.md'),
             '/app/docs/UPDATE_PLANS.md',  # Railway стандартный путь
-            # Через base_dir (старый способ)
             os.path.join(base_dir, 'UPDATE_PLANS.md'),
             os.path.join(base_dir, 'docs', 'UPDATE_PLANS.md'),
         ]
@@ -658,13 +605,11 @@ def update_plans():
                 continue
         
         if plans_content is None:
-            # Если файл не найден, логируем для отладки
             logger.warning(f"✗ Файл UPDATE_PLANS.md не найден")
             logger.warning(f"Текущая рабочая директория: {cwd}")
             logger.warning(f"project_root: {project_root}, base_dir: {base_dir}")
             logger.warning(f"Проверенные пути: {possible_paths}")
             
-            # Возвращаем сообщение с информацией для отладки
             debug_info = f"\n\n**Отладочная информация:**\n"
             debug_info += f"- Рабочая директория: `{cwd}`\n"
             debug_info += f"- Корень проекта: `{project_root}`\n"
@@ -688,7 +633,6 @@ def font_files(filename):
     font_dir = os.path.join(base_dir, 'static', 'font')
     return send_from_directory(font_dir, filename, mimetype='font/otf' if filename.endswith('.otf') else 'font/ttf')
 
-# Вспомогательная функция для нормализации статуса домашнего задания
 HOMEWORK_STATUS_VALUES = {'assigned_done', 'assigned_not_done', 'not_assigned'}
 LEGACY_HOMEWORK_STATUS_MAP = {
     'completed': 'assigned_done',
@@ -888,23 +832,18 @@ def backup_db():
         flash('Доступ запрещен. Резервное копирование доступно только администратору/создателю.', 'danger')
         return redirect(url_for('main.dashboard'))
     try:
-        # Для PostgreSQL на Railway резервное копирование должно выполняться через pg_dump
-        # или через интерфейс Railway. Здесь просто логируем попытку.
         logger.info('Попытка создания резервной копии базы данных')
         
-        # Проверяем тип базы данных
         db_url = os.environ.get('DATABASE_URL', '')
         if 'postgresql' in db_url or 'postgres' in db_url:
             flash('Для PostgreSQL резервное копирование должно выполняться через pg_dump или интерфейс Railway. Используйте экспорт данных для создания резервной копии.', 'info')
             return redirect(url_for('main.export_data'))
         
-        # Для SQLite (если используется локально)
         backup_dir = os.path.join(base_dir, 'backups')
         os.makedirs(backup_dir, exist_ok=True)
         backup_filename = f'keg_tasks_backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}.db'
         backup_path = os.path.join(backup_dir, backup_filename)
         
-        # Если используется SQLite, копируем файл
         db_path = os.path.join(base_dir, 'data', 'keg_tasks.db')
         if os.path.exists(db_path):
             shutil.copy2(db_path, backup_path)

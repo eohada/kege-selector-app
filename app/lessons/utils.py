@@ -45,7 +45,6 @@ def perform_auto_check(lesson, assignment_type):
     if not tasks:
         type_name = {'homework': 'ДЗ', 'classwork': 'классной работы', 'exam': 'проверочной'}.get(assignment_type, 'заданий')
         error_msg = f'У этого урока нет заданий {type_name} для проверки.'
-        # Для AJAX возвращаем ошибку в специальном формате
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return {'error': error_msg, 'category': 'warning'}, None
         flash(error_msg, 'warning')
@@ -75,7 +74,6 @@ def perform_auto_check(lesson, assignment_type):
     correct_count = 0
     incorrect_count = 0
     
-    # Для exam вес ×2
     weight = 2 if assignment_type == 'exam' else 1
     
     if len(answers_list) != total_tasks:
@@ -94,7 +92,6 @@ def perform_auto_check(lesson, assignment_type):
         task.student_submission = student_text if student_text else None
         
         is_skip = student_text == '' or student_text == '-1' or student_text.lower() == 'null'
-        # Используем student_answer, если он был введен вручную, иначе ответ из базы данных (task.answer)
         expected_text = (task.student_answer if task.student_answer else (task.task.answer if task.task and task.task.answer else '')) or ''
         
         if not expected_text:
@@ -118,7 +115,6 @@ def perform_auto_check(lesson, assignment_type):
         else:
             incorrect_count += weight
     
-    # Для расчета процента учитываем вес
     total_weighted = correct_count + incorrect_count
     percent = round((correct_count / total_weighted) * 100, 2) if total_weighted > 0 else 0
     

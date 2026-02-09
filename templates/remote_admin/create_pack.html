@@ -31,8 +31,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                    
-                    {# Левая колонка: Ученик #}
+
                     <div class="glass-panel" style="padding: 1.5rem; border: 2px solid var(--accent-primary);">
                         <h2 style="margin-bottom: 1rem; font-size: 1.2rem; color: var(--accent-primary);">
                             👨‍🎓 Ученик
@@ -88,10 +87,8 @@
                         </div>
                     </div>
 
-                    {# Правая колонка: Родитель + Тариф #}
                     <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-                        
-                        {# Родитель #}
+
                         <div class="glass-panel" style="padding: 1.5rem; border: 2px solid var(--warning);">
                             <h2 style="margin-bottom: 1rem; font-size: 1.2rem; color: var(--warning);">
                                 👨‍👩‍👧 Родитель
@@ -118,7 +115,6 @@
                             </div>
                         </div>
 
-                        {# Тариф #}
                         <div class="glass-panel" style="padding: 1.5rem; border: 2px solid var(--success);">
                             <h2 style="margin-bottom: 1rem; font-size: 1.2rem; color: var(--success);">
                                 💳 Тариф
@@ -155,7 +151,6 @@
                     </div>
                 </div>
 
-                {# Учетные данные #}
                 <div class="glass-panel" style="margin-top: 2rem; padding: 1.5rem; background: rgba(255,255,255,0.03);">
                     <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">🔐 Учетные данные для входа</h2>
                     <p style="color: var(--text-muted); margin-bottom: 1rem;">
@@ -194,7 +189,6 @@
                 </div>
             </form>
 
-            {# Результат создания #}
             <div id="result-panel" class="glass-panel" style="margin-top: 2rem; padding: 1.5rem; display: none; border: 2px solid var(--success);">
                 <h2 style="margin-bottom: 1rem; color: var(--success);">✅ Пак успешно создан!</h2>
                 

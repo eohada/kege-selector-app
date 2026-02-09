@@ -51,7 +51,7 @@
       this.data = null;
       this.nodeEls = new Map();
       this.edgeIndexByPair = new Map();
-      this.currentEdge = null; // {kind, id}
+      this.currentEdge = null;
       this.selectedNodeId = null;
 
       this._buildUI();
@@ -116,7 +116,6 @@
       this.selCreateLinkBtn = this.rootEl.querySelector('[data-act="selCreateLink"]');
       this.selOpenBtn = this.rootEl.querySelector('[data-act="selOpen"]');
 
-      // editing dialog (optional)
       this.enableEdgeEdit = !!this.opts.enableEdgeEdit;
       this.ftUrlPrefix = (this.opts.ftUrlPrefix || '').toString();
       this.enrUrlPrefix = (this.opts.enrUrlPrefix || '').toString();
@@ -127,7 +126,6 @@
         this._mountCreateDialog();
       }
 
-      // svg defs: arrowhead
       const defs = createSvgEl('defs');
       const marker = createSvgEl('marker');
       marker.setAttribute('id', 'rg-arrow');
@@ -277,7 +275,7 @@
       });
       this.createDlgTypeSelect?.addEventListener('change', () => this._updateCreateDialog());
       this.createDlgSave.addEventListener('click', () => this._createLink());
-      // Сбрасываем диалог при закрытии через ESC или клик вне диалога
+
       this.createDialogEl.addEventListener('close', () => this._resetCreateDialog());
     }
 
@@ -317,7 +315,6 @@
       const role = selected.role;
       const nodes = (this.data.nodes || []).filter(n => n.id !== this.selectedNodeId);
 
-      // Заполняем список доступных пользователей
       this.createDlgTargetSelect.innerHTML = '<option value="">— выберите —</option>';
       if (role === 'parent') {
         this.createDlgTitle.textContent = 'Создать FamilyTie: родитель → ученик';
@@ -339,7 +336,7 @@
         this.createDlgHint.textContent = `Ученик: ${selected.username}. Выберите тип связи и пользователя.`;
         this.createDlgTypeSelect.value = 'family';
         this._updateCreateDialog();
-        // Показываем и родителей, и преподавателей
+
         const parents = nodes.filter(n => n.role === 'parent');
         const tutors = nodes.filter(n => n.role === 'tutor');
         const updateTargetList = () => {
@@ -354,9 +351,9 @@
           }
           this._updateCreateDialog();
         };
-        // Используем onchange вместо addEventListener, чтобы избежать дублирования
+
         this.createDlgTypeSelect.onchange = updateTargetList;
-        // Инициализируем список для начального значения
+
         updateTargetList();
       } else if (role === 'tutor') {
         this.createDlgTitle.textContent = 'Создать Enrollment: преподаватель → ученик';
@@ -387,7 +384,6 @@
         const role = selected.role;
         let url, payload, kind;
 
-        // Получаем выбранного пользователя из диалога
         const targetUserId = this.createDlgTargetSelect?.value;
         if (!targetUserId) {
           (window.toast || toast)?.error?.('Выберите пользователя');
@@ -402,7 +398,7 @@
         }
 
         if (role === 'parent') {
-          // FamilyTie: parent -> student
+
           if (targetUser.role !== 'student') {
             (window.toast || toast)?.error?.('Выберите ученика');
             this.createDlgSave.disabled = false;
@@ -417,7 +413,7 @@
           };
           kind = 'family';
         } else if (role === 'tutor') {
-          // Enrollment: tutor -> student
+
           if (targetUser.role !== 'student') {
             (window.toast || toast)?.error?.('Выберите ученика');
             this.createDlgSave.disabled = false;
@@ -432,7 +428,7 @@
           };
           kind = 'enrollment';
         } else if (role === 'student') {
-          // Можем создать либо FamilyTie (нужен parent), либо Enrollment (нужен tutor)
+
           const linkType = this.createDlgTypeSelect?.value || 'family';
           if (linkType === 'family') {
             if (targetUser.role !== 'parent') {
@@ -482,8 +478,7 @@
           },
           body: JSON.stringify(payload),
         });
-        
-        // Проверяем content-type перед парсингом JSON
+
         const contentType = resp.headers.get('content-type') || '';
         let data;
         if (contentType.includes('application/json')) {
@@ -538,7 +533,6 @@
           window.open(url, '_blank');
         });
 
-      // Pan (pointer)
       this.viewportEl.addEventListener('pointerdown', (ev) => {
         const target = ev.target;
         if (target && target.closest && target.closest('.rel-node')) return;
@@ -563,7 +557,6 @@
         if (wasClick) this._setSelected(null);
       });
 
-      // Zoom (wheel)
       this.viewportEl.addEventListener('wheel', (ev) => {
         ev.preventDefault();
         const rect = this.viewportEl.getBoundingClientRect();
@@ -575,8 +568,6 @@
         const next = clamp(old * factor, 0.35, 2.2);
         if (Math.abs(next - old) < 0.0001) return;
 
-        // keep cursor point stable:
-        // worldPoint = (mouse - translate) / scale
         const wx = (mx - this.state.tx) / old;
         const wy = (my - this.state.ty) / old;
         this.state.scale = next;
@@ -666,7 +657,7 @@
           el.style.left = `${pos.x}px`;
           el.style.top = `${pos.y}px`;
         }
-        // also restore view if matches
+
         if (stored.view) {
           this.state.tx = stored.view.tx ?? this.state.tx;
           this.state.ty = stored.view.ty ?? this.state.ty;
@@ -686,7 +677,6 @@
         parent: nodes.filter(n => n.role === 'parent'),
       };
 
-      // Order students by number of edges to reduce crossings a bit
       const edgeCounts = new Map();
       const addCnt = (id) => edgeCounts.set(id, (edgeCounts.get(id) || 0) + 1);
       for (const e of this._allEdges()) {
@@ -860,7 +850,6 @@
         visible = new Set([...visible].filter(id => keep.has(id)));
       }
 
-      // show/hide nodes
       for (const n of nodes) {
         const el = this.nodeEls.get(n.id);
         if (!el) continue;
@@ -879,7 +868,7 @@
     }
 
     _scheduleDraw() {
-      // throttle redraw
+
       const t = nowMs();
       if (t - this.state.lastDrawAt < 16) return;
       this.state.lastDrawAt = t;
@@ -898,7 +887,7 @@
 
     _drawEdges(visibleNodeIds, options) {
       options = options || {};
-      // clear everything except defs
+
       const defs = this.svgEl.querySelector('defs');
       this.svgEl.innerHTML = '';
       if (defs) this.svgEl.appendChild(defs);
@@ -908,7 +897,6 @@
         edges = edges.filter(e => e.from_id === this.selectedNodeId || e.to_id === this.selectedNodeId);
       }
 
-      // group by pair to de-overlap via control offset
       const grouped = new Map();
       for (const e of edges) {
         const pk = pairKey(e);
@@ -917,7 +905,7 @@
       }
 
       for (const [pk, list] of grouped.entries()) {
-        // stable sort by id to make offsets stable
+
         list.sort((a, b) => edgeKey(a).localeCompare(edgeKey(b)));
         for (let i = 0; i < list.length; i++) {
           const e = list[i];
@@ -925,7 +913,6 @@
           const to = this._nodeCenter(e.to_id);
           if (!from || !to) continue;
 
-          // route: pick sides based on relative x
           const leftToRight = from.cx <= to.cx;
           const ax = leftToRight ? (from.x + from.w) : from.x;
           const ay = from.cy;
@@ -934,7 +921,7 @@
 
           const dx = Math.abs(bx - ax);
           const base = Math.max(120, dx * 0.45);
-          const offset = (i - (list.length - 1) / 2) * 18; // spreads parallel edges
+          const offset = (i - (list.length - 1) / 2) * 18;
 
           const c1x = ax + (leftToRight ? base : -base);
           const c2x = bx - (leftToRight ? base : -base);
@@ -959,7 +946,6 @@
           }
           this.svgEl.appendChild(path);
 
-          // label
           const label = createSvgEl('text');
           label.setAttribute('class', 'edge-label');
           label.setAttribute('text-anchor', 'middle');
@@ -1095,7 +1081,6 @@
 
       const s = clamp(Math.min(vw / contentW, vh / contentH), minScale, maxScale);
 
-      // center content
       const cx = (minX + maxX) / 2;
       const cy = (minY + maxY) / 2;
       this.state.scale = s;
@@ -1117,4 +1102,3 @@
 
   window.RelationshipGraph = RelationshipGraph;
 })();
-

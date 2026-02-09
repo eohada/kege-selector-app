@@ -19,7 +19,6 @@ def assets_manager():
     static_folder = current_app.static_folder
     assets = []
     
-    # Сканируем папку static/icons и static/images
     target_dirs = ['icons', 'images', 'img']
     
     for subdir in target_dirs:
@@ -54,7 +53,6 @@ def replace_asset():
         return redirect(url_for('designer.assets_manager'))
         
     if file and target_folder and target_filename:
-        # Проверяем безопасность путей (чтобы не вышли за пределы static)
         if '..' in target_folder or '..' in target_filename:
             flash('Недопустимый путь', 'error')
             return redirect(url_for('designer.assets_manager'))
@@ -66,7 +64,6 @@ def replace_asset():
             return redirect(url_for('designer.assets_manager'))
             
         try:
-            # Перезаписываем файл
             file.save(full_path)
             flash(f'Файл {target_filename} успешно обновлен!', 'success')
         except Exception as e:

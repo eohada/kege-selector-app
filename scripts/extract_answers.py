@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт для извлечения ответов из существующих заданий в базе данных.
 Открывает каждое задание отдельно и извлекает ответ.
@@ -10,14 +9,12 @@ from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
 import time
 
-# Добавляем корневую директорию в путь
 project_root = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, project_root)
 
 from app import app, db
 from core.db_models import Tasks, moscow_now
 
-# Импорт ObjectDeletedError для разных версий SQLAlchemy
 try:
     from sqlalchemy.orm.exc import ObjectDeletedError
 except ImportError:
@@ -34,20 +31,16 @@ def extract_answer_from_page(page, task_url):
         
         answer = ''
         
-        # Ждем появления кнопки "показать ответ" (может загружаться динамически)
         try:
-            # Пытаемся дождаться появления кнопки
             page.wait_for_selector('button, a', timeout=5000)
         except:
             pass
         
         page.wait_for_timeout(1000)
         
-        # Ищем элемент "Показать ответ" - это span с классом link
         button_locator = None
         button_found = False
         
-        # Пробуем найти через селекторы (span.link с текстом "Показать ответ")
         button_selectors = [
             'span.link:has-text("Показать ответ")',
             'span.link:has-text("показать ответ")',
@@ -71,10 +64,8 @@ def extract_answer_from_page(page, task_url):
             except:
                 continue
         
-        # Если не нашли через селекторы, ищем через текст всех элементов (особенно span)
         if not button_found:
             try:
-                # Сначала ищем span элементы
                 all_spans = page.locator('span').all()
                 for el in all_spans:
                     try:
@@ -86,7 +77,6 @@ def extract_answer_from_page(page, task_url):
                     except:
                         continue
                 
-                # Если не нашли в span, ищем в других элементах
                 if not button_found:
                     all_elements = page.locator('button, a, div').all()
                     for el in all_elements:
@@ -101,9 +91,7 @@ def extract_answer_from_page(page, task_url):
             except:
                 pass
         
-        # Отладочная информация
         if not button_found:
-            # Проверяем через JavaScript, есть ли кнопка
             check_result = page.evaluate("""
                 () => {
                     const elements = Array.from(document.querySelectorAll('button, a, span, div'));
@@ -123,16 +111,12 @@ def extract_answer_from_page(page, task_url):
         
         if button_found and button_locator:
             try:
-                # Прокручиваем к кнопке
                 button_locator.scroll_into_view_if_needed()
                 page.wait_for_timeout(500)
                 
-                # Нажимаем на кнопку
                 button_locator.click(timeout=5000)
                 page.wait_for_timeout(2500)  # Увеличиваем ожидание для появления ответа
                 
-                # Ищем следующий элемент после кнопки
-                # Используем более надежный метод - находим кнопку через JS и берем следующий элемент
                 answer = page.evaluate("""
                     () => {
                         // Находим элемент "Показать ответ" (обычно это span с классом link)
@@ -220,9 +204,7 @@ def extract_answer_from_page(page, task_url):
                 print(f"  [ERROR] Ошибка при клике на кнопку: {e}")
         
         if answer:
-            # Очищаем от лишнего текста
             answer = answer.strip()
-            # Удаляем "Ответ:" в начале, если есть
             answer = re.sub(r'^[Оо]твет[:\s]*', '', answer, flags=re.IGNORECASE).strip()
             if answer and len(answer) > 0:
                 return answer
@@ -241,8 +223,6 @@ def main():
     print(f"Время начала: {moscow_now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     
     with app.app_context():
-        # Получаем все задания без ответов или с пустыми ответами
-        # Используем order_by для стабильного порядка и получаем только ID
         task_ids = db.session.query(Tasks.task_id).filter(
             (Tasks.answer == None) | (Tasks.answer == '')
         ).order_by(Tasks.task_id).all()
@@ -267,16 +247,13 @@ def main():
             
             for idx, task_id in enumerate(task_ids, 1):
                 try:
-                    # Перезагружаем задание из базы на каждой итерации
                     task = db.session.get(Tasks, task_id)
                     
-                    # Проверяем, что задание существует и еще не имеет ответа
                     if not task:
                         print(f"[{idx}/{total_tasks}] Пропущено: задание {task_id} не найдено в базе")
                         skipped_count += 1
                         continue
                     
-                    # Проверяем, не появился ли ответ с момента начала скрипта
                     if task.answer and task.answer.strip():
                         print(f"[{idx}/{total_tasks}] Пропущено: задание {task_id} уже имеет ответ")
                         skipped_count += 1
@@ -293,7 +270,6 @@ def main():
                     answer = extract_answer_from_page(page, task.source_url)
                     
                     if answer:
-                        # Перезагружаем задание перед обновлением (на случай изменений)
                         db.session.refresh(task)
                         task.answer = answer
                         task.last_scraped = moscow_now()
@@ -304,7 +280,6 @@ def main():
                         error_count += 1
                         print(f"  [WARN] Ответ не найден")
                     
-                    # Задержка между запросами
                     if idx < total_tasks:
                         time.sleep(2)  # 2 секунды между запросами
                         
@@ -317,7 +292,6 @@ def main():
                     print(f"[{idx}/{total_tasks}] Ошибка при обработке задания {task_id}: {e}")
                     error_count += 1
                     db.session.rollback()
-                    # Продолжаем работу со следующим заданием
                     continue
             
             browser.close()

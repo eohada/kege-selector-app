@@ -24,8 +24,6 @@ from telegram.ext import (
 
 from telegram_bot.models import ReportDatabase
 
-# Настройка логирования
-# Можно изменить уровень на DEBUG для более детального логирования
 log_level = os.getenv('TELEGRAM_BOT_LOG_LEVEL', 'INFO').upper()
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -33,10 +31,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Теги для отслеживания
 TRACKED_TAGS = ['#BUG', '#UIFIX', '#FEATURE', '#ADM']
 
-# Статусы репортов
 STATUSES = {
     'new': '🆕 Новый',
     'in_progress': '🔄 В работе',
@@ -44,8 +40,6 @@ STATUSES = {
     'rejected': '❌ Отклонено'
 }
 
-# Инициализация базы данных
-# Путь к БД можно задать через переменную окружения REPORTS_DB_PATH
 db_path = os.getenv('REPORTS_DB_PATH', 'data/reports.db')
 db = ReportDatabase(db_path=db_path)
 
@@ -94,7 +88,6 @@ def is_main_tester(user_id: int) -> bool:
     Returns:
         True если пользователь главный тестировщик
     """
-    # Проверяем первого главного тестировщика
     main_tester_id = os.getenv('TELEGRAM_MAIN_TESTER_ID')
     if main_tester_id:
         try:
@@ -103,7 +96,6 @@ def is_main_tester(user_id: int) -> bool:
         except ValueError:
             pass
     
-    # Проверяем второго главного тестировщика
     main_tester_id_2 = os.getenv('TELEGRAM_MAIN_TESTER_ID_2')
     if main_tester_id_2:
         try:
@@ -121,12 +113,10 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     
     Проверяет наличие тегов и пересылает репорты админу
     """
-    # Логируем все входящие сообщения для отладки
     if update.message:
         message_thread_id = getattr(update.message, 'message_thread_id', None)
         logger.info(f"Получено сообщение: chat_id={update.message.chat.id}, chat_type={update.message.chat.type}, message_id={update.message.message_id}, thread_id={message_thread_id}")
     
-    # Проверяем, что сообщение из группы или супергруппы (не из лички)
     if not update.message:
         return
     
@@ -135,12 +125,10 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     
     logger.info(f"Получено сообщение: chat_id={chat_id}, chat_type={chat_type}")
     
-    # Проверяем тип чата - должны быть только группы и супергруппы
     if chat_type not in ['group', 'supergroup']:
         logger.info(f"Сообщение проигнорировано: не из группы (тип: {chat_type})")
         return
     
-    # ОБЯЗАТЕЛЬНАЯ проверка ID группы - бот должен работать только с указанной группой
     group_id = os.getenv('TELEGRAM_GROUP_ID')
     if not group_id:
         logger.error("TELEGRAM_GROUP_ID не установлен! Бот не будет обрабатывать сообщения из групп.")
@@ -158,40 +146,30 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     
     message = update.message
     
-    # Получаем текст сообщения или подпись к медиа
-    # Для reply-сообщений текст находится в message.text
     text = message.text or message.caption or ""
     
-    # Если это reply, проверяем также текст оригинального сообщения (если нужно)
-    # Но обычно тег должен быть в самом сообщении
     if message.reply_to_message:
         logger.info(f"Это reply-сообщение на message_id={message.reply_to_message.message_id}")
     
     logger.info(f"Текст сообщения (первые 200 символов): {text[:200]}")
     
-    # Если сообщение не содержит текста, игнорируем его
     if not text:
         logger.info("Сообщение проигнорировано: нет текста")
         return
     
-    # Извлекаем теги из сообщения
     tags = extract_tags(text)
     logger.info(f"Найденные теги в сообщении: {tags}")
     
-    # Если нет отслеживаемых тегов, игнорируем сообщение
     if not tags:
         logger.info("Сообщение проигнорировано: нет отслеживаемых тегов")
         return
     
-    # Используем первый найденный тег
     tag = tags[0]
     logger.info(f"Обработка репорта с тегом {tag} из группы {message.chat.id}")
     
-    # Генерируем уникальный ID репорта (внутренний)
     report_id = generate_report_id(message.chat.id, message.message_id)
     logger.debug(f"Сгенерирован report_id: {report_id}")
     
-    # Получаем информацию об авторе
     author = message.from_user
     author_id = author.id
     author_username = author.username
@@ -199,9 +177,6 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     
     logger.info(f"Автор сообщения: ID={author_id}, username={author_username}, first_name={author_first_name}")
     
-    # Проверяем, является ли автор главным тестировщиком
-    # Если да и тег #ADM - не обрабатываем (главный тестировщик должен отправлять #ADM только через личку)
-    # Обычные репорты (#BUG, #UIFIX, #FEATURE) от главного тестировщика обрабатываются как обычно
     if is_main_tester(author_id) and tag == '#ADM':
         logger.info(f"Репорт #ADM от главного тестировщика (ID: {author_id}), пропускаем обработку из группы")
         logger.info(f"💡 Главный тестировщик должен отправлять репорты #ADM через личку боту, а не в группу")
@@ -209,12 +184,10 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     
     logger.info(f"Продолжаем обработку репорта (тег: {tag}, автор: {author_id})")
     
-    # Получаем контент сообщения
     content = text
     if not content and message.caption:
         content = message.caption
     
-    # Сохраняем репорт в базу данных
     added = db.add_report(
         report_id=report_id,
         group_message_id=message.message_id,
@@ -226,16 +199,13 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
         content=content
     )
     
-    # Если репорт уже существует, не обрабатываем повторно
     if not added:
         logger.info(f"Репорт {report_id} уже существует, пропускаем")
         return
     
-    # Получаем числовой ID репорта из базы данных для отображения
     report_data = db.get_report(report_id)
     numeric_id = report_data.get('numeric_id') or report_data.get('id') if report_data else None
     
-    # Получаем ID админа из переменных окружения
     admin_id = os.getenv('TELEGRAM_ADMIN_ID')
     if not admin_id:
         logger.error("TELEGRAM_ADMIN_ID не установлен в переменных окружения")
@@ -248,7 +218,6 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
         logger.error(f"TELEGRAM_ADMIN_ID должен быть числом, получено: {admin_id}")
         return
     
-    # Определяем тип медиа, если есть
     media_type = ""
     if message.photo:
         media_type = "📷 Фото"
@@ -265,7 +234,6 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     elif message.sticker:
         media_type = "😀 Стикер"
     
-    # Формируем сообщение для админа
     media_info = f"\n📎 <b>Тип:</b> {media_type}" if media_type else ""
     display_id = f"#{numeric_id}" if numeric_id else f"<code>{report_id}</code>"
     admin_message = f"""
@@ -281,7 +249,6 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
 📅 <b>Дата:</b> {datetime.now().strftime('%d.%m.%Y %H:%M')}
 """
     
-    # Создаем inline-кнопки для управления статусом
     keyboard = [
         [
             InlineKeyboardButton("🔄 В работе", callback_data=f"status_{report_id}_in_progress"),
@@ -294,11 +261,8 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    # Отправляем сообщение админу
     try:
-        # Если есть медиа, пересылаем его вместе с текстом
         if message.photo:
-            # Берем фото наибольшего размера
             photo = message.photo[-1]
             sent_message = await context.bot.send_photo(
                 chat_id=admin_id,
@@ -340,7 +304,6 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
                 reply_markup=reply_markup
             )
         else:
-            # Обычное текстовое сообщение
             sent_message = await context.bot.send_message(
                 chat_id=admin_id,
                 text=admin_message,
@@ -348,7 +311,6 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
                 reply_markup=reply_markup
             )
         
-        # Сохраняем ID сообщения в личке админа
         db.update_status(
             report_id=report_id,
             status='new',
@@ -373,25 +335,17 @@ async def handle_status_callback(update: Update, context: ContextTypes.DEFAULT_T
     
     await query.answer()
     
-    # Парсим callback_data: status_{report_id}_{status}
-    # ВАЖНО: report_id может содержать подчеркивания (например: -1003460839712_71)
-    # И статус тоже может содержать подчеркивания (например: in_progress)
-    # Поэтому ищем известные статусы в конце строки
     data = query.data
     
     if not data.startswith('status_'):
         logger.warning(f"[CALLBACK] Неизвестный callback: {data}")
         return
     
-    # Убираем префикс "status_"
     data_without_prefix = data[7:]  # "status_" = 7 символов
     
-    # Ищем известные статусы в конце строки
-    # Статусы могут быть: new, in_progress, resolved, rejected
     found_status = None
     found_status_suffix = None
     
-    # Проверяем статусы в порядке от самого длинного к короткому
     for status in ['in_progress', 'resolved', 'rejected', 'new']:
         status_suffix = f"_{status}"
         if data_without_prefix.endswith(status_suffix):
@@ -403,14 +357,12 @@ async def handle_status_callback(update: Update, context: ContextTypes.DEFAULT_T
         logger.error(f"[CALLBACK] Неизвестный статус в callback_data: {data}")
         return
     
-    # Извлекаем report_id - все что до найденного статуса
     report_id = data_without_prefix[:-len(found_status_suffix)]
     new_status = found_status
     
     logger.info(f"[CALLBACK] Парсинг: data={data}, report_id={report_id}, status={new_status}")
     logger.info(f"[CALLBACK] Обработка: report_id={report_id}, new_status={new_status}")
     
-    # Получаем данные репорта
     report = db.get_report(report_id)
     if not report:
         logger.error(f"[CALLBACK] Репорт {report_id} не найден в базе данных")
@@ -419,14 +371,11 @@ async def handle_status_callback(update: Update, context: ContextTypes.DEFAULT_T
     
     logger.info(f"[CALLBACK] Репорт найден: {report_id}, текущий статус: {report['status']}")
     
-    # Обновляем статус в базе данных
     db.update_status(report_id=report_id, status=new_status)
     logger.info(f"[CALLBACK] Статус обновлен в БД: {new_status}")
     
-    # Получаем числовой ID для отображения
     numeric_id = report.get('numeric_id') or report.get('id', '?')
     
-    # Формируем сообщение об обновлении статуса
     status_text = STATUSES.get(new_status, new_status)
     status_message = f"""
 {report['tag']} <b>Статус обновлен</b> #{numeric_id}
@@ -438,19 +387,14 @@ async def handle_status_callback(update: Update, context: ContextTypes.DEFAULT_T
 🆔 <b>ID:</b> #{numeric_id}
 """
     
-    # Проверяем, является ли автор репорта главным тестировщиком
     author_id = report.get('author_id')
     is_from_main_tester = author_id and is_main_tester(author_id)
     
-    # Отправляем обновление статуса
     try:
         if is_from_main_tester:
-            # Если репорт от главного тестировщика, отправляем уведомление в личку
-            # Отправляем обоим главным тестировщикам (если они настроены)
             main_tester_id = os.getenv('TELEGRAM_MAIN_TESTER_ID')
             main_tester_id_2 = os.getenv('TELEGRAM_MAIN_TESTER_ID_2')
             
-            # Отправляем первому главному тестировщику
             if main_tester_id:
                 try:
                     tester_id = int(main_tester_id)
@@ -467,7 +411,6 @@ async def handle_status_callback(update: Update, context: ContextTypes.DEFAULT_T
                 except Exception as e:
                     logger.error(f"[CALLBACK] Ошибка при отправке сообщения главному тестировщику: {e}")
             
-            # Отправляем второму главному тестировщику
             if main_tester_id_2:
                 try:
                     tester_id_2 = int(main_tester_id_2)
@@ -487,8 +430,6 @@ async def handle_status_callback(update: Update, context: ContextTypes.DEFAULT_T
             if not main_tester_id and not main_tester_id_2:
                 logger.warning(f"[CALLBACK] TELEGRAM_MAIN_TESTER_ID и TELEGRAM_MAIN_TESTER_ID_2 не установлены, не могу отправить уведомление")
         else:
-            # Если репорт не от главного тестировщика, отправляем в группу как обычно
-            # Получаем ID топика из переменных окружения (если указан)
             topic_id = os.getenv('TELEGRAM_TOPIC_ID')
             message_thread_id = None
             
@@ -501,24 +442,16 @@ async def handle_status_callback(update: Update, context: ContextTypes.DEFAULT_T
             else:
                 logger.info(f"[CALLBACK] TELEGRAM_TOPIC_ID не установлен, отправка в основной чат")
             
-            # Параметры для отправки сообщения
             send_params = {
                 'chat_id': report['group_chat_id'],
                 'text': status_message,
                 'parse_mode': 'HTML'
             }
             
-            # Если указан топик, добавляем message_thread_id
-            # ВАЖНО: если отправляем в топик, reply_to_message_id может не работать,
-            # если оригинальное сообщение было в другом топике
             if message_thread_id:
                 send_params['message_thread_id'] = message_thread_id
                 logger.info(f"[CALLBACK] Параметры отправки: chat_id={send_params['chat_id']}, thread_id={message_thread_id}")
-                # Не используем reply_to_message_id при отправке в топик, если оригинальное сообщение было в другом топике
-                # Можно попробовать добавить, но это может вызвать ошибку
-                # send_params['reply_to_message_id'] = report['group_message_id']
             else:
-                # Если не указан топик, используем reply_to_message_id
                 send_params['reply_to_message_id'] = report['group_message_id']
                 logger.info(f"[CALLBACK] Параметры отправки: chat_id={send_params['chat_id']}, без топика, reply_to={report['group_message_id']}")
             
@@ -526,7 +459,6 @@ async def handle_status_callback(update: Update, context: ContextTypes.DEFAULT_T
             sent_message = await context.bot.send_message(**send_params)
             logger.info(f"[CALLBACK] Сообщение отправлено в группу: message_id={sent_message.message_id}")
         
-        # Обновляем сообщение в личке админа
         current_text = query.message.text or query.message.caption or ""
         new_text = current_text + f"\n\n✅ <b>Статус изменен на:</b> {status_text}"
         
@@ -553,7 +485,6 @@ async def handle_details_callback(update: Update, context: ContextTypes.DEFAULT_
     query = update.callback_query
     await query.answer()
     
-    # Парсим callback_data: details_{report_id}
     data = query.data
     
     if not data.startswith('details_'):
@@ -561,16 +492,13 @@ async def handle_details_callback(update: Update, context: ContextTypes.DEFAULT_
     
     report_id = data.replace('details_', '')
     
-    # Получаем данные репорта
     report = db.get_report(report_id)
     if not report:
         await query.edit_message_text("❌ Репорт не найден")
         return
     
-    # Получаем числовой ID для отображения
     numeric_id = report.get('numeric_id') or report.get('id', '?')
     
-    # Формируем детальное сообщение
     details_message = f"""
 {report['tag']} <b>Детали репорта</b> #{numeric_id}
 
@@ -586,7 +514,6 @@ async def handle_details_callback(update: Update, context: ContextTypes.DEFAULT_
 🔄 <b>Обновлен:</b> {report['updated_at']}
 """
     
-    # Создаем кнопки для изменения статуса
     keyboard = [
         [
             InlineKeyboardButton("🔄 В работе", callback_data=f"status_{report_id}_in_progress"),
@@ -613,7 +540,6 @@ async def handle_back_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     query = update.callback_query
     await query.answer()
     
-    # Парсим callback_data: back_{report_id}
     data = query.data
     
     if not data.startswith('back_'):
@@ -621,16 +547,13 @@ async def handle_back_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     
     report_id = data.replace('back_', '')
     
-    # Получаем данные репорта
     report = db.get_report(report_id)
     if not report:
         await query.edit_message_text("❌ Репорт не найден")
         return
     
-    # Получаем числовой ID для отображения
     numeric_id = report.get('numeric_id') or report.get('id', '?')
     
-    # Формируем краткое сообщение
     admin_message = f"""
 {report['tag']} <b>Репорт</b> #{numeric_id}
 
@@ -644,7 +567,6 @@ async def handle_back_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 📅 <b>Дата:</b> {report['created_at']}
 """
     
-    # Создаем inline-кнопки
     keyboard = [
         [
             InlineKeyboardButton("🔄 В работе", callback_data=f"status_{report_id}_in_progress"),
@@ -670,11 +592,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     user_id = update.effective_user.id
     
-    # Проверяем, что команда вызвана админом
     admin_id = os.getenv('TELEGRAM_ADMIN_ID')
     is_admin = admin_id and str(user_id) == admin_id
     
-    # Проверяем, является ли пользователь главным тестировщиком
     is_main_tester_user = is_main_tester(user_id)
     
     message = "🤖 Бот-трекер репортов запущен!\n\n"
@@ -713,52 +633,40 @@ async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_T
     if not update.message:
         return
     
-    # Проверяем, что сообщение из лички
     if update.message.chat.type != 'private':
         return
     
     user_id = update.effective_user.id
     
-    # Проверяем, что это главный тестировщик
     if not is_main_tester(user_id):
         return
     
     message = update.message
     
-    # Получаем текст сообщения или подпись к медиа
     text = message.text or message.caption or ""
     
-    # Если сообщение не содержит текста, игнорируем его
     if not text:
         return
     
-    # Извлекаем теги из сообщения
     tags = extract_tags(text)
     
-    # Если нет отслеживаемых тегов, игнорируем сообщение
     if not tags:
         return
     
-    # Используем первый найденный тег
     tag = tags[0]
     logger.info(f"Получен репорт от главного тестировщика с тегом {tag}")
     
-    # Генерируем уникальный ID репорта (используем chat_id и message_id из лички)
     report_id = generate_report_id(message.chat.id, message.message_id)
     
-    # Получаем информацию об авторе
     author = message.from_user
     author_id = author.id
     author_username = author.username
     author_first_name = author.first_name
     
-    # Получаем контент сообщения
     content = text
     if not content and message.caption:
         content = message.caption
     
-    # Сохраняем репорт в базу данных
-    # Для репортов из лички group_chat_id и group_message_id будут ID лички
     added = db.add_report(
         report_id=report_id,
         group_message_id=message.message_id,
@@ -770,17 +678,14 @@ async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_T
         content=content
     )
     
-    # Если репорт уже существует, не обрабатываем повторно
     if not added:
         logger.info(f"Репорт {report_id} уже существует, пропускаем")
         await update.message.reply_text("✅ Репорт уже был обработан ранее")
         return
     
-    # Получаем числовой ID репорта из базы данных для отображения
     report_data = db.get_report(report_id)
     numeric_id = report_data.get('numeric_id') or report_data.get('id') if report_data else None
     
-    # Получаем ID админа из переменных окружения
     admin_id = os.getenv('TELEGRAM_ADMIN_ID')
     if not admin_id:
         logger.error("TELEGRAM_ADMIN_ID не установлен в переменных окружения")
@@ -794,7 +699,6 @@ async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_T
         await update.message.reply_text("❌ Ошибка конфигурации")
         return
     
-    # Определяем тип медиа, если есть
     media_type = ""
     if message.photo:
         media_type = "📷 Фото"
@@ -811,7 +715,6 @@ async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_T
     elif message.sticker:
         media_type = "😀 Стикер"
     
-    # Формируем сообщение для админа
     media_info = f"\n📎 <b>Тип:</b> {media_type}" if media_type else ""
     display_id = f"#{numeric_id}" if numeric_id else f"<code>{report_id}</code>"
     admin_message = f"""
@@ -827,7 +730,6 @@ async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_T
 📅 <b>Дата:</b> {datetime.now().strftime('%d.%m.%Y %H:%M')}
 """
     
-    # Создаем inline-кнопки для управления статусом
     keyboard = [
         [
             InlineKeyboardButton("🔄 В работе", callback_data=f"status_{report_id}_in_progress"),
@@ -840,9 +742,7 @@ async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_T
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    # Отправляем сообщение админу
     try:
-        # Если есть медиа, пересылаем его вместе с текстом
         if message.photo:
             photo = message.photo[-1]
             sent_message = await context.bot.send_photo(
@@ -885,7 +785,6 @@ async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_T
                 reply_markup=reply_markup
             )
         else:
-            # Обычное текстовое сообщение
             sent_message = await context.bot.send_message(
                 chat_id=admin_id,
                 text=admin_message,
@@ -893,7 +792,6 @@ async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_T
                 reply_markup=reply_markup
             )
         
-        # Сохраняем ID сообщения админу в базу данных
         db.update_status(
             report_id=report_id,
             status='new',
@@ -901,7 +799,6 @@ async def handle_private_message(update: Update, context: ContextTypes.DEFAULT_T
             admin_chat_id=admin_id
         )
         
-        # Подтверждаем главному тестировщику
         await update.message.reply_text(f"✅ Репорт {display_id} отправлен администратору")
         
     except Exception as e:
@@ -913,18 +810,15 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /stats - показывает статистику репортов"""
     user_id = update.effective_user.id
     
-    # Проверяем, что команда вызвана админом (не главным тестировщиком)
     admin_id = os.getenv('TELEGRAM_ADMIN_ID')
     if not admin_id or str(user_id) != admin_id:
         await update.message.reply_text("❌ Эта команда доступна только администратору")
         return
     
-    # Дополнительная проверка - главный тестировщик не должен видеть статистику
     if is_main_tester(user_id):
         await update.message.reply_text("❌ Эта команда недоступна")
         return
     
-    # Получаем статистику по статусам
     stats = {}
     for status in STATUSES.keys():
         reports = db.get_reports_by_status(status)
@@ -948,25 +842,21 @@ async def list_reports_command(update: Update, context: ContextTypes.DEFAULT_TYP
     """Обработчик команды /list - показывает список репортов"""
     user_id = update.effective_user.id
     
-    # Проверяем, что команда вызвана админом (не главным тестировщиком)
     admin_id = os.getenv('TELEGRAM_ADMIN_ID')
     if not admin_id or str(user_id) != admin_id:
         await update.message.reply_text("❌ Эта команда доступна только администратору")
         return
     
-    # Дополнительная проверка - главный тестировщик не должен видеть список репортов
     if is_main_tester(user_id):
         await update.message.reply_text("❌ Эта команда недоступна")
         return
     
-    # Получаем фильтр из аргументов команды (если есть)
     tag_filter = None
     if context.args and len(context.args) > 0:
         tag_arg = context.args[0].upper()
         if tag_arg in ['BUG', 'UIFIX', 'FEATURE', 'ADM']:
             tag_filter = f"#{tag_arg}"
     
-    # Получаем список репортов
     reports = db.get_all_reports(tag=tag_filter, limit=10, offset=0)
     total_count = db.count_reports(tag=tag_filter)
     
@@ -975,7 +865,6 @@ async def list_reports_command(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(f"📋 Репортов{filter_text} не найдено")
         return
     
-    # Формируем сообщение со списком
     filter_text = f" ({tag_filter})" if tag_filter else ""
     message_text = f"📋 <b>Список репортов</b>{filter_text}\n\n"
     
@@ -996,10 +885,8 @@ async def list_reports_command(update: Update, context: ContextTypes.DEFAULT_TYP
     
     message_text += f"<i>Показано {len(reports)} из {total_count}</i>"
     
-    # Создаем кнопки для фильтрации и навигации
     keyboard = []
     
-    # Кнопки фильтров по тегам
     filter_row = []
     if tag_filter != '#BUG':
         filter_row.append(InlineKeyboardButton("🐛 #BUG", callback_data="list_tag_#BUG"))
@@ -1012,11 +899,9 @@ async def list_reports_command(update: Update, context: ContextTypes.DEFAULT_TYP
     if filter_row:
         keyboard.append(filter_row)
     
-    # Кнопка "Все репорты"
     if tag_filter:
         keyboard.append([InlineKeyboardButton("📋 Все репорты", callback_data="list_all")])
     
-    # Кнопки для просмотра репортов (первые 5)
     view_row = []
     for i, report in enumerate(reports[:5]):
         numeric_id = report.get('numeric_id') or report.get('id', '?')
@@ -1039,7 +924,6 @@ async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     
     data = query.data
     
-    # Обработка фильтров по тегам
     if data.startswith('list_tag_'):
         tag = data.replace('list_tag_', '')
         reports = db.get_all_reports(tag=tag, limit=10, offset=0)
@@ -1068,7 +952,6 @@ async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         
         message_text += f"<i>Показано {len(reports)} из {total_count}</i>"
         
-        # Кнопки
         keyboard = []
         filter_row = []
         if tag != '#BUG':
@@ -1097,7 +980,6 @@ async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
         await query.edit_message_text(message_text, parse_mode='HTML', reply_markup=reply_markup)
         
-    # Обработка "Все репорты"
     elif data == 'list_all':
         reports = db.get_all_reports(limit=10, offset=0)
         total_count = db.count_reports()
@@ -1125,7 +1007,6 @@ async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         
         message_text += f"<i>Показано {len(reports)} из {total_count}</i>"
         
-        # Кнопки
         keyboard = [
             [
                 InlineKeyboardButton("🐛 #BUG", callback_data="list_tag_#BUG"),
@@ -1150,7 +1031,6 @@ async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
         await query.edit_message_text(message_text, parse_mode='HTML', reply_markup=reply_markup)
     
-    # Обработка просмотра конкретного репорта
     elif data.startswith('view_'):
         report_id = data.replace('view_', '')
         report = db.get_report(report_id)
@@ -1176,7 +1056,6 @@ async def handle_list_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 🔄 <b>Обновлен:</b> {report['updated_at']}
 """
         
-        # Кнопки для управления статусом
         keyboard = [
             [
                 InlineKeyboardButton("🔄 В работе", callback_data=f"status_{report_id}_in_progress"),
@@ -1220,16 +1099,12 @@ def main():
     """
     Основная функция запуска бота
     """
-    # Получаем токен бота из переменных окружения
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
     if not bot_token:
         raise ValueError("TELEGRAM_BOT_TOKEN не установлен в переменных окружения")
     
-    # Создаем приложение
     application = ApplicationBuilder().token(bot_token).build()
     
-    # Добавляем обработчик для отладки - логируем ВСЕ входящие сообщения
-    # Важно: этот обработчик НЕ должен блокировать обработку команд
     async def debug_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Временный обработчик для отладки - показывает все входящие сообщения"""
         if update.message:
@@ -1243,21 +1118,14 @@ def main():
             logger.info(f"[DEBUG] Отредактированное сообщение: chat_id={update.edited_message.chat.id}, type={update.edited_message.chat.type}, text={text_preview}")
         else:
             logger.info(f"[DEBUG] Update без message: update_id={update.update_id}, type={type(update)}")
-        # НЕ блокируем обработку - просто логируем
     
-    # Регистрируем обработчики команд ПЕРВЫМИ (group=0)
-    # Команды должны обрабатываться до других обработчиков
     application.add_handler(CommandHandler("start", start_command), group=0)
     application.add_handler(CommandHandler("stats", stats_command), group=0)
     application.add_handler(CommandHandler("getid", getid_command), group=0)  # Команда для получения ID чата
     application.add_handler(CommandHandler("list", list_reports_command), group=0)  # Команда для просмотра списка репортов
     
-    # Временно включаем отладку всех сообщений для диагностики
-    # Этот обработчик регистрируется ПОСЛЕ команд, чтобы не мешать их обработке
     application.add_handler(MessageHandler(filters.ALL, debug_handler), group=1)
     
-    # Регистрируем обработчик сообщений из лички от главного тестировщика (ПЕРЕД обработчиком группы)
-    # Обрабатываем сообщения из лички (private), кроме команд
     application.add_handler(
         MessageHandler(
             filters.ChatType.PRIVATE & ~filters.COMMAND,
@@ -1266,9 +1134,6 @@ def main():
         group=2
     )
     
-    # Регистрируем обработчик сообщений из группы
-    # Обрабатываем все типы сообщений (текст, фото, видео и т.д.), кроме команд
-    # Включаем обработку reply-сообщений
     application.add_handler(
         MessageHandler(
             ~filters.COMMAND,
@@ -1277,22 +1142,18 @@ def main():
         group=3
     )
     
-    # Добавляем обработчик для отладки всех callback-запросов
     async def debug_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Обработчик для отладки всех callback-запросов"""
         if update.callback_query:
             logger.info(f"[CALLBACK DEBUG] Получен callback_query: data={update.callback_query.data}, from_user={update.callback_query.from_user.id}")
     
-    # Регистрируем отладочный обработчик callback-запросов первым
     application.add_handler(CallbackQueryHandler(debug_callback_handler), group=0)
     
-    # Регистрируем обработчики callback-запросов
     application.add_handler(CallbackQueryHandler(handle_list_callback, pattern="^(list_|view_)"), group=1)  # Обработчик списка репортов
     application.add_handler(CallbackQueryHandler(handle_status_callback, pattern="^status_"), group=1)
     application.add_handler(CallbackQueryHandler(handle_details_callback, pattern="^details_"), group=1)
     application.add_handler(CallbackQueryHandler(handle_back_callback, pattern="^back_"), group=1)
     
-    # Проверяем настройки перед запуском
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
     admin_id = os.getenv('TELEGRAM_ADMIN_ID')
     group_id = os.getenv('TELEGRAM_GROUP_ID')
@@ -1316,7 +1177,6 @@ def main():
         logger.warning("   Бот не будет обрабатывать сообщения из групп.")
         logger.warning("   Используйте команду /getid в группе, чтобы узнать ID.")
     
-    # Запускаем бота
     logger.info("Бот запущен и готов к работе")
     logger.info("Ожидание сообщений...")
     logger.info("")
@@ -1327,8 +1187,6 @@ def main():
     logger.info("   4. Попробуйте отправить /start боту в личке - это проверит, работает ли бот вообще")
     logger.info("")
     
-    # Запускаем бота с явным указанием типов обновлений
-    # ВАЖНО: для супергрупп с топиками есть известная проблема - боты не получают сообщения из топиков
     logger.info("Запуск polling...")
     logger.warning("⚠️  ВАЖНО: Если группа использует топики, бот может не получать сообщения!")
     logger.warning("   Решения:")
@@ -1337,7 +1195,6 @@ def main():
     logger.warning("   3. Использовать обычную группу вместо супергруппы с топиками")
     logger.info("")
     
-    # Пробуем получить информацию о группе для диагностики
     async def check_group_info(app):
         """Проверка информации о группе"""
         try:
@@ -1357,7 +1214,6 @@ def main():
         except Exception as e:
             logger.error(f"Ошибка при проверке информации: {e}")
     
-    # Запускаем проверку после старта приложения
     application.post_init = check_group_info
     
     application.run_polling(

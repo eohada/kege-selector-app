@@ -19,11 +19,9 @@ def mask_contact_if_tutor(value):
     if not value:
         return value
     
-    # Если пользователь - тьютор, маскируем контакты
     if current_user.is_authenticated and current_user.is_tutor():
         return mask_contact_info(value)
     
-    # Для администраторов и других ролей показываем полную информацию
     return value
 
 

@@ -40,7 +40,6 @@ def _get_allowed_imports() -> list[str]:
     raw = (os.environ.get('TRAINER_RUNNER_ALLOW_IMPORTS') or '').strip()
     if raw:
         items = [x.strip() for x in raw.replace(';', ',').split(',') if x.strip()]
-        # normalize to top-level module names
         out = []
         seen = set()
         for it in items:
@@ -49,7 +48,6 @@ def _get_allowed_imports() -> list[str]:
                 seen.add(top)
                 out.append(top)
         return out[:50]
-    # safe-ish minimal stdlib set (no filesystem/network/process)
     return ['math', 'itertools', 'collections', 'functools', 'heapq', 'bisect', 'string', 're']
 
 
@@ -113,7 +111,6 @@ def validate_python_code_for_runner(code: str) -> dict[str, Any]:
             self.generic_visit(node)
 
         def visit_Call(self, node: ast.Call):
-            # block calling dangerous names even via alias
             fn = node.func
             name = None
             if isinstance(fn, ast.Name):
@@ -138,7 +135,6 @@ def run_python_solve_tests(*, code: str, tests: list[dict[str, Any]], timeout_se
     code = code or ''
     tests = tests or []
 
-    # security gate
     v = validate_python_code_for_runner(code)
     if not v.get('ok'):
         return {'ok': False, 'error': 'security_block', 'details': 'Код содержит запрещённые конструкции.', 'validation': v}
@@ -185,13 +181,9 @@ class _CappedIO:
 
 try:
     import resource  # type: ignore
-    # CPU seconds
     resource.setrlimit(resource.RLIMIT_CPU, (3, 3))
-    # 512MB address space
     resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
-    # 1MB output files
     resource.setrlimit(resource.RLIMIT_FSIZE, (1 * 1024 * 1024, 1 * 1024 * 1024))
-    # limit open files
     resource.setrlimit(resource.RLIMIT_NOFILE, (32, 32))
 except Exception:
     pass
@@ -202,19 +194,15 @@ tests = json.loads(sys.stdin.read() or '[]')
 ns = {}
 try:
     safe_builtins = {
-        # basic types / helpers
         "abs": abs, "all": all, "any": any, "bool": bool, "chr": chr, "divmod": divmod,
         "enumerate": enumerate, "float": float, "int": int, "len": len, "list": list, "map": map,
         "max": max, "min": min, "pow": pow, "range": range, "str": str, "sum": sum, "zip": zip,
         "sorted": sorted, "reversed": reversed,
-        # exceptions
         "Exception": Exception, "ValueError": ValueError, "TypeError": TypeError, "RuntimeError": RuntimeError,
         "IndexError": IndexError, "KeyError": KeyError, "ZeroDivisionError": ZeroDivisionError,
-        # controlled import
         "__import__": _safe_import,
     }
     ns["__builtins__"] = safe_builtins
-    # cap output
     _out = _CappedIO(OUT_LIMIT)
     _err = _CappedIO(OUT_LIMIT)
     sys.stdout = _out
@@ -283,13 +271,8 @@ def run_python_program(*, code: str, stdin: str = '', timeout_seconds: float = 2
     if len(stdin) > 20000:
         stdin = stdin[:20000]
 
-    # Less strict than solve-tests: allow input() here, but still block dangerous stuff
-    # We'll reuse validator but allow "input" by removing it from banned list via env toggle.
-    # Simpler: temporarily accept input() by not AST-blocking it — so validator above currently blocks input().
-    # For program-run, allow input() calls by skipping validation's input ban:
     v = validate_python_code_for_runner(code)
     if not v.get('ok'):
-        # If only the "input" ban is triggered, allow program-run.
         issues = v.get('issues') or []
         non_input = [i for i in issues if 'input' not in str(i.get('message') or '')]
         if non_input:

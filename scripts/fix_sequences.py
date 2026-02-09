@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """Быстрое исправление sequences в PostgreSQL"""
 
 import os
@@ -53,7 +51,6 @@ def fix_sequences():
     
     for table_name, pk_column in sequences_map.items():
         try:
-            # Получаем реальное имя таблицы
             cursor.execute("""
                 SELECT table_name 
                 FROM information_schema.tables 
@@ -66,14 +63,12 @@ def fix_sequences():
                 continue
             real_table_name = result[0]
             
-            # Получаем максимальный ID
             cursor.execute(f'SELECT MAX("{pk_column}") FROM "{real_table_name}"')
             max_id = cursor.fetchone()[0]
             
             if max_id is None:
                 max_id = 0
             
-            # Пробуем разные варианты имени sequence
             sequence_variants = [
                 f'"{real_table_name}_{pk_column}_seq"',
                 f'"{real_table_name.lower()}_{pk_column}_seq"',

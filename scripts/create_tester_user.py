@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт для создания пользователей
 Использование: 
@@ -14,7 +13,6 @@
 import os
 import sys
 
-# Добавляем корневую директорию в путь
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app import create_app, db
@@ -25,10 +23,8 @@ def create_user(username, password, role='tester', force_production=False):
     """Создает или обновляет пользователя"""
     app = create_app()
     with app.app_context():
-        # Проверяем окружение
         environment = os.environ.get('ENVIRONMENT', 'local')
         
-        # Если пытаемся создать тестера в production - блокируем
         if role == 'tester' and environment == 'production' and not force_production:
             print("❌ ОШИБКА: Тестеры могут создаваться только в sandbox окружении!")
             print(f"   Текущее окружение: {environment}")
@@ -41,18 +37,15 @@ def create_user(username, password, role='tester', force_production=False):
             print(f"❌ Ошибка: роль должна быть 'tester' или 'creator'")
             return False
         
-        # Проверяем, существует ли пользователь
         user = User.query.filter_by(username=username).first()
         
         if user:
-            # Обновляем пароль и роль
             user.password_hash = generate_password_hash(password)
             user.role = role
             user.is_active = True
             db.session.commit()
             print(f"✅ Пользователь '{username}' обновлен.")
         else:
-            # Создаем нового пользователя
             user = User(
                 username=username,
                 password_hash=generate_password_hash(password),

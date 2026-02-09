@@ -10,12 +10,10 @@ from flask import session, current_app
 
 logger = logging.getLogger(__name__)
 
-# Конфигурация окружений - динамически загружается из переменных окружения
 def _load_environments() -> Dict:
     """Загрузить конфигурацию окружений из переменных окружения"""
     envs = {}
     
-    # Production окружение
     prod_url = os.environ.get('PRODUCTION_URL', '').strip()
     prod_token = os.environ.get('PRODUCTION_ADMIN_TOKEN', '').strip()
     if prod_url or prod_token:
@@ -26,7 +24,6 @@ def _load_environments() -> Dict:
             'description': 'Основное рабочее окружение'
         }
     
-    # Sandbox окружение
     sandbox_url = os.environ.get('SANDBOX_URL', '').strip()
     sandbox_token = os.environ.get('SANDBOX_ADMIN_TOKEN', '').strip()
     if sandbox_url or sandbox_token:
@@ -37,7 +34,6 @@ def _load_environments() -> Dict:
             'description': 'Тестовое окружение'
         }
     
-    # Admin окружение (новое отдельное окружение для удаленной админки)
     admin_url = os.environ.get('ADMIN_URL', '').strip()
     admin_token = os.environ.get('ADMIN_ADMIN_TOKEN', '').strip()
     if admin_url or admin_token:
@@ -48,8 +44,6 @@ def _load_environments() -> Dict:
             'description': 'Окружение удаленной админки'
         }
     
-    # Поддержка произвольных окружений через переменные вида ENV_<NAME>_URL и ENV_<NAME>_TOKEN
-    # Например: ENV_STAGING_URL и ENV_STAGING_TOKEN создадут окружение 'staging'
     env_vars = {}
     for key, value in os.environ.items():
         if key.startswith('ENV_') and key.endswith('_URL'):
@@ -62,7 +56,6 @@ def _load_environments() -> Dict:
                 env_vars[env_name] = {}
             env_vars[env_name]['token'] = value.strip()
     
-    # Добавляем произвольные окружения
     for env_name, config in env_vars.items():
         if config.get('url') or config.get('token'):
             envs[env_name] = {
@@ -75,7 +68,6 @@ def _load_environments() -> Dict:
     return envs
 
 
-# Глобальный словарь окружений (обновляется при каждом обращении)
 def get_environments() -> Dict:
     """Получить актуальный список окружений"""
     return _load_environments()
@@ -125,7 +117,6 @@ def make_remote_request(method: str, path: str, payload: Optional[Dict] = None, 
     token = config.get('token', '')
     
     if not base_url or not token:
-        # Вместо RuntimeError возвращаем мок-ответ с ошибкой, чтобы не валить приложение 500-й
         logger.warning(f"Environment {env} is not configured correctly")
         mock_resp = requests.Response()
         mock_resp.status_code = 503
@@ -155,7 +146,6 @@ def make_remote_request(method: str, path: str, payload: Optional[Dict] = None, 
         else:
             raise ValueError(f'Unsupported HTTP method: {method}')
         
-        # Логируем ответ для отладки
         logger.debug(f"Response from {url}: status={resp.status_code}, content-type={resp.headers.get('Content-Type', 'unknown')}, body-preview={resp.text[:200]}")
         
         if resp.status_code != 200:
@@ -182,7 +172,6 @@ def get_environment_status(env: str) -> Dict:
         }
     
     try:
-        # Используем отдельный таймаут для проверки статуса
         resp = make_remote_request('GET', '/internal/remote-admin/status', env=env)
         if resp.status_code == 200:
             try:
@@ -194,14 +183,12 @@ def get_environment_status(env: str) -> Dict:
                     'stats': data.get('stats', {})
                 }
             except ValueError as json_error:
-                # Ответ не JSON - возможно, HTML страница ошибки
                 error_msg = str(json_error)
                 response_preview = resp.text[:500] if resp.text else "(empty response)"
                 logger.error(f"Failed to parse JSON from {env} status endpoint: {error_msg}")
                 logger.error(f"Response status: {resp.status_code}, Content-Type: {resp.headers.get('Content-Type', 'unknown')}")
                 logger.error(f"Response preview: {response_preview}")
                 
-                # Проверяем, не является ли это HTML страницей входа
                 if resp.text and ('<html' in resp.text.lower() or '<!doctype' in resp.text.lower()):
                     logger.error(f"Received HTML page instead of JSON - likely redirected to login page")
                     return {
@@ -216,7 +203,6 @@ def get_environment_status(env: str) -> Dict:
                     'error': f'Invalid response format: {error_msg[:100]}'
                 }
         else:
-            # Пытаемся получить текст ошибки
             error_text = resp.text[:100] if resp.text else f'HTTP {resp.status_code}'
             return {
                 'configured': True,

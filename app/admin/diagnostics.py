@@ -86,7 +86,6 @@ def diagnostics_db_check():
         from datetime import datetime
         result['timestamp'] = datetime.now().isoformat()
         
-        # Проверка DATABASE_URL
         try:
             database_url = os.environ.get('DATABASE_URL', 'NOT SET')
             result['database']['DATABASE_URL_set'] = 'YES' if database_url != 'NOT SET' else 'NO'
@@ -96,7 +95,6 @@ def diagnostics_db_check():
             result['errors'].append(f"Error checking DATABASE_URL: {str(e)}")
             logger.error(f"Error checking DATABASE_URL: {e}", exc_info=True)
         
-        # Проверка подключения
         try:
             from flask import current_app, has_app_context
             if not has_app_context():
@@ -108,7 +106,6 @@ def diagnostics_db_check():
             
             with current_app.app_context():
                 try:
-                    # Проверяем, что db.engine доступен
                     if not hasattr(db, 'engine') or db.engine is None:
                         result['status'] = 'error'
                         result['error'] = 'Database engine not initialized'
@@ -117,19 +114,16 @@ def diagnostics_db_check():
                         return jsonify(result), 200
                     
                     with db.engine.connect() as conn:
-                        # Простой запрос для проверки
                         conn.execute(text("SELECT 1"))
                         result['database']['connection_status'] = 'OK'
                         result['status'] = 'success'
                         
-                        # Проверка таблиц
                         try:
                             inspector = inspect(db.engine)
                             tables = inspector.get_table_names()
                             result['database']['tables_count'] = len(tables)
                             result['database']['tables'] = sorted(tables)
                             
-                            # Проверка основных таблиц
                             important_tables = ['Users', 'Students', 'Lessons', 'Tasks']
                             result['database']['important_tables'] = {}
                             for table in important_tables:
@@ -173,7 +167,6 @@ def diagnostics_db_check():
         result['errors'].append(f"Unexpected error: {str(e)}")
         logger.error(f"Unexpected error in diagnostics_db_check: {e}", exc_info=True)
     
-    # Всегда возвращаем 200, даже при ошибках, чтобы показать информацию
     return jsonify(result), 200
 
 def get_diagnostics_data():
@@ -187,7 +180,6 @@ def get_diagnostics_data():
         'errors': []
     }
     
-    # Информация об окружении
     diagnostics['environment'] = {
         'ENVIRONMENT': os.environ.get('ENVIRONMENT', 'NOT SET'),
         'RAILWAY_ENVIRONMENT': os.environ.get('RAILWAY_ENVIRONMENT', 'NOT SET'),
@@ -196,7 +188,6 @@ def get_diagnostics_data():
         'PYTHON_VERSION': os.environ.get('PYTHON_VERSION', 'NOT SET'),
     }
     
-    # Информация о базе данных
     database_url = os.environ.get('DATABASE_URL', 'NOT SET')
     external_db_url = os.environ.get('DATABASE_EXTERNAL_URL') or os.environ.get('POSTGRES_URL')
     
@@ -209,7 +200,6 @@ def get_diagnostics_data():
         'database_type': _get_database_type(database_url),
     }
     
-    # Проверка подключения к БД
     try:
         from flask import current_app
         with current_app.app_context():
@@ -223,7 +213,6 @@ def get_diagnostics_data():
         diagnostics['database']['connection_error'] = str(e)
         diagnostics['errors'].append(f"Database connection error: {str(e)}")
     
-    # Проверка таблиц
     try:
         from flask import current_app
         with current_app.app_context():
@@ -235,7 +224,6 @@ def get_diagnostics_data():
         diagnostics['database']['tables_error'] = str(e)
         diagnostics['errors'].append(f"Tables inspection error: {str(e)}")
     
-    # Проверка данных в БД
     try:
         from flask import current_app
         with current_app.app_context():
@@ -249,14 +237,12 @@ def get_diagnostics_data():
         diagnostics['database']['data_counts_error'] = str(e)
         diagnostics['errors'].append(f"Data counts error: {str(e)}")
     
-    # Информация о приложении
     diagnostics['application'] = {
         'SECRET_KEY_set': 'YES' if os.environ.get('SECRET_KEY') else 'NO',
         'SECRET_KEY_length': len(os.environ.get('SECRET_KEY', '')) if os.environ.get('SECRET_KEY') else 0,
         'WTF_CSRF_ENABLED': os.environ.get('WTF_CSRF_ENABLED', 'NOT SET'),
     }
     
-    # Проверка конфигурации Flask
     try:
         from flask import has_app_context, current_app
         if has_app_context():
@@ -275,7 +261,6 @@ def get_diagnostics_data():
         diagnostics['application']['flask_config_error'] = str(e)
         diagnostics['errors'].append(f"Flask config error: {str(e)}")
     
-    # Проверка переменных окружения Railway
     railway_vars = {k: v for k, v in os.environ.items() if 'RAILWAY' in k}
     diagnostics['environment']['railway_variables'] = railway_vars
     
@@ -288,7 +273,6 @@ def _mask_url(url):
     
     if isinstance(url, str):
         if '@' in url:
-            # Маскируем пароль в URL
             parts = url.split('@')
             if len(parts) == 2:
                 user_pass = parts[0].split('://')
@@ -300,7 +284,6 @@ def _mask_url(url):
                         return f"{protocol}://{user}:***@{parts[1]}"
         return url[:50] + '...' if len(url) > 50 else url
     else:
-        # SQLAlchemy URL object
         return str(url).split('@')[0] + '@***' if '@' in str(url) else str(url)
 
 def _get_database_type(database_url):

@@ -1,26 +1,20 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Скрипт для создания или сброса пароля пользователя в admin окружении
 Работает через прямое подключение к базе данных
 
 Использование:
-    # Локально (если есть доступ к БД)
     python scripts/reset_admin_user.py admin newpassword123 creator
     
-    # Через Railway shell
     railway run python scripts/reset_admin_user.py admin newpassword123 creator
 """
 import os
 import sys
 
-# Исправляем кодировку для Windows
 if sys.platform == 'win32':
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-# Добавляем корневую директорию в путь
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app import create_app, db
@@ -34,7 +28,6 @@ def reset_or_create_user(username, password, role='creator'):
     app = create_app()
     with app.app_context():
         try:
-            # Проверяем окружение
             environment = os.environ.get('ENVIRONMENT', 'local')
             print("=" * 60)
             print("СБРОС/СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ В ADMIN ОКРУЖЕНИИ")
@@ -44,11 +37,9 @@ def reset_or_create_user(username, password, role='creator'):
             print(f"Role: {role}")
             print()
             
-            # Проверяем, существует ли пользователь
             user = User.query.filter_by(username=username).first()
             
             if user:
-                # Обновляем пароль и роль
                 old_role = user.role
                 user.password_hash = generate_password_hash(password)
                 user.role = role
@@ -59,7 +50,6 @@ def reset_or_create_user(username, password, role='creator'):
                     print(f"   Роль изменена: {old_role} → {role}")
                 print(f"   Пароль сброшен")
             else:
-                # Создаем нового пользователя
                 user = User(
                     username=username,
                     password_hash=generate_password_hash(password),

@@ -27,7 +27,6 @@ def _find_invite_by_token(token: str) -> InviteLink | None:
     invite = InviteLink.query.filter_by(token_hash=token_hash).first()
     if not invite:
         return None
-    # extra safety: constant-time compare
     if not hmac.compare_digest(invite.token_hash, token_hash):
         return None
     return invite
@@ -113,7 +112,6 @@ def invite_accept(token: str):
         flash('Ссылка приглашения недействительна.', 'danger')
         return render_template('invite_accept.html', invite=None), 404
 
-    # Проверка срока
     try:
         if invite.expires_at and moscow_now().replace(tzinfo=None) > invite.expires_at:
             flash('Срок действия приглашения истёк.', 'danger')
@@ -168,7 +166,6 @@ def invite_accept(token: str):
     db.session.add(user)
     db.session.flush()
 
-    # Профиль (минимальный)
     try:
         prof = UserProfile(user_id=user.id, timezone='Europe/Moscow')
         db.session.add(prof)
@@ -190,8 +187,6 @@ def invite_accept(token: str):
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        # Здесь пользователь ещё не залогинен, поэтому обычный audit_logger может не записать событие.
-        # Но error лог важен для диагностики (в tester-mode тоже отработает).
         audit_logger.log_error(action='invite_accept', entity='InviteLink', entity_id=invite.invite_id, error=str(e))
         flash('Не удалось создать аккаунт. Попробуйте ещё раз.', 'danger')
         return render_template('invite_accept.html', invite=invite, token=token), 500

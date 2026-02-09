@@ -154,8 +154,6 @@
             </div>
         </section>
 
-        {# Flash messages будут показаны через toast #}
-
         <section class="glass-panel filters-panel">
             <form method="GET" action="{{ url_for('main.dashboard') }}" class="filters-grid">
                 <input type="hidden" name="show_archive" value="{{ 'true' if show_archive else 'false' }}">
@@ -169,8 +167,8 @@
                         <option value="">Все категории</option>
                         <option value="ЕГЭ" {% if category_filter == 'ЕГЭ' %}selected{% endif %}>ЕГЭ</option>
                         <option value="ОГЭ" {% if category_filter == 'ОГЭ' %}selected{% endif %}>ОГЭ</option>
-                        <option value="ЛЕВЕЛАП" {% if category_filter == 'ЛЕВЕЛАП' %}selected{% endif %}>ЛЕВЕЛАП</option> <!-- Фильтр по направлению ЛЕВЕЛАП -->
-                        <option value="ПРОГРАММИРОВАНИЕ" {% if category_filter == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option> <!-- Фильтр по направлению программирования -->
+                        <option value="ЛЕВЕЛАП" {% if category_filter == 'ЛЕВЕЛАП' %}selected{% endif %}>ЛЕВЕЛАП</option> 
+                        <option value="ПРОГРАММИРОВАНИЕ" {% if category_filter == 'ПРОГРАММИРОВАНИЕ' %}selected{% endif %}>ПРОГРАММИРОВАНИЕ</option> 
                     </select>
                 </div>
                 <div class="filters-actions">
@@ -307,7 +305,7 @@
                     <span class="student-tag student-category">{{ student.category }}</span>
                     {% endif %}
                     {% if student.school_class %}
-                    <span class="student-tag student-class">{{ student.school_class }} класс</span> {# Отображаем класс ученика прямо на карточке #}
+                    <span class="student-tag student-class">{{ student.school_class }} класс</span> 
                     {% endif %}
                     {% if student.description %}
                     <p class="hero-subtitle" style="font-size: 0.9rem;">
@@ -316,20 +314,20 @@
                     {% endif %}
                     <div class="student-insights">
                         {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.goal_text %}
-                        <div><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--sm">Цель: {{ student.goal_text }}</div> <!-- Текстовая цель для программирования -->
+                        <div><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--sm">Цель: {{ student.goal_text }}</div> 
                         {% elif student.category == 'ЛЕВЕЛАП' and student.goal_text %}
-                        <div><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--sm">Цель: {{ student.goal_text }}</div> <!-- Текстовая цель для ЛЕВЕЛАП -->
+                        <div><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--sm">Цель: {{ student.goal_text }}</div> 
                         {% elif student.target_score %}
-                        <div><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--sm">{% if student.category == 'ОГЭ' %}Целевая оценка{% else %}Цель{% endif %}: {{ student.target_score }}{% if student.category != 'ОГЭ' %} баллов{% endif %}</div> <!-- Числовая цель -->
+                        <div><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--sm">{% if student.category == 'ОГЭ' %}Целевая оценка{% else %}Цель{% endif %}: {{ student.target_score }}{% if student.category != 'ОГЭ' %} баллов{% endif %}</div> 
                         {% endif %}
                         {% if student.category != 'ПРОГРАММИРОВАНИЕ' and student.deadline %}
-                        <div><img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Срок" class="ui-icon ui-icon--sm">Срок: {{ student.deadline }}</div> <!-- Срок достижения цели -->
+                        <div><img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Срок" class="ui-icon ui-icon--sm">Срок: {{ student.deadline }}</div> 
                         {% endif %}
                         {% if student.school_class %}
-                        <div><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Класс" class="ui-icon ui-icon--sm">Класс: {{ student.school_class }}</div> {# Информация о текущем классе #}
+                        <div><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Класс" class="ui-icon ui-icon--sm">Класс: {{ student.school_class }}</div> 
                         {% endif %}
                         {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.programming_language %}
-                        <div>Язык: {{ student.programming_language }}</div> <!-- Предпочитаемый язык программирования -->
+                        <div>Язык: {{ student.programming_language }}</div> 
                         {% endif %}
                         {% if student.diagnostic_level %}
                         <div><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Диагностика" class="ui-icon ui-icon--sm">Диагностика: <span>{{ student.diagnostic_level }}</span></div>

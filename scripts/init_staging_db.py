@@ -33,7 +33,6 @@ def get_postgres_connection():
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
 
-    # Проверяем, не внутренний ли это URL Railway
     parsed = urlparse(database_url)
     if 'railway.internal' in parsed.hostname or parsed.hostname == 'postgres.railway.internal':
         print("⚠️  Обнаружен внутренний Railway URL (postgres.railway.internal)")
@@ -61,8 +60,6 @@ def get_postgres_connection():
         return None
 
 def table_exists(pg_cursor, table_name):
-    # PostgreSQL хранит имена таблиц в нижнем регистре, но может быть и в кавычках
-    # Проверяем оба варианта
     pg_cursor.execute("""
         SELECT EXISTS (
             SELECT FROM information_schema.tables 
@@ -72,7 +69,6 @@ def table_exists(pg_cursor, table_name):
     """, (table_name, table_name))
     exists = pg_cursor.fetchone()[0]
     if not exists:
-        # Проверяем с кавычками (чувствительный к регистру)
         pg_cursor.execute("""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables 
@@ -87,7 +83,6 @@ def update_sequences(pg_conn):
     """Обновляет sequences в PostgreSQL после копирования данных"""
     pg_cursor = pg_conn.cursor()
     
-    # Маппинг таблиц и их primary key колонок
     sequences_map = {
         'Students': 'student_id',
         'Lessons': 'lesson_id',
@@ -102,7 +97,6 @@ def update_sequences(pg_conn):
     
     try:
         for table_name, pk_column in sequences_map.items():
-            # Проверяем существование таблицы
             pg_cursor.execute("""
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables 
@@ -114,7 +108,6 @@ def update_sequences(pg_conn):
             if not pg_cursor.fetchone()[0]:
                 continue
             
-            # Получаем реальное имя таблицы
             pg_cursor.execute("""
                 SELECT table_name 
                 FROM information_schema.tables 
@@ -127,22 +120,18 @@ def update_sequences(pg_conn):
                 continue
             real_table_name = real_table_name[0]
             
-            # Получаем максимальный ID
             pg_cursor.execute(f'SELECT MAX("{pk_column}") FROM "{real_table_name}"')
             max_id = pg_cursor.fetchone()[0]
             
             if max_id is None:
                 max_id = 0
             
-            # Обновляем sequence
-            # Имя sequence обычно: tablename_columnname_seq
             sequence_name = f'"{real_table_name}_{pk_column}_seq"'
             try:
                 pg_cursor.execute(f'SELECT setval(\'{sequence_name}\', %s, true)', (max_id,))
                 pg_conn.commit()
                 print(f"  ✅ Обновлена sequence для {table_name}: установлено значение {max_id}")
             except Exception as seq_error:
-                # Пробуем альтернативные варианты имени sequence
                 alt_sequences = [
                     f'"{real_table_name.lower()}_{pk_column}_seq"',
                     f'"{real_table_name}_{pk_column}_seq"'.lower(),
@@ -189,8 +178,6 @@ def copy_table_data(sqlite_conn, pg_conn, table_name, valid_tester_ids=None):
         sqlite_columns = {col[1]: col[2] for col in sqlite_cursor.fetchall()}  # name -> type
         sqlite_column_names = list(sqlite_columns.keys())
         
-        # Получаем список колонок из PostgreSQL
-        # Проверяем оба варианта: с кавычками и без
         pg_cursor.execute("""
             SELECT column_name, data_type 
             FROM information_schema.columns 
@@ -201,11 +188,9 @@ def copy_table_data(sqlite_conn, pg_conn, table_name, valid_tester_ids=None):
         pg_columns_info = {row[0]: row[1] for row in pg_cursor.fetchall()}
         pg_column_names = list(pg_columns_info.keys())
         
-        # Сопоставляем колонки: берем только те, что есть в обеих БД
         matching_columns = []
         column_indices = []
         for idx, col_name in enumerate(sqlite_column_names):
-            # Проверяем в нижнем регистре (PostgreSQL обычно хранит в нижнем)
             if col_name.lower() in pg_column_names or col_name in pg_column_names:
                 matching_columns.append(col_name)
                 column_indices.append(idx)
@@ -214,7 +199,6 @@ def copy_table_data(sqlite_conn, pg_conn, table_name, valid_tester_ids=None):
             print(f"  ⚠️  Нет совпадающих колонок между SQLite и PostgreSQL, пропускаем")
             return 0
         
-        # Показываем пропущенные колонки
         skipped_cols = set(sqlite_column_names) - set(matching_columns)
         if skipped_cols:
             print(f"  ⚠️  Пропущены колонки (нет в PostgreSQL): {', '.join(skipped_cols)}")
@@ -222,18 +206,15 @@ def copy_table_data(sqlite_conn, pg_conn, table_name, valid_tester_ids=None):
         columns_str = ', '.join([f'"{col}"' for col in matching_columns])
         placeholders = ', '.join(['%s'] * len(matching_columns))
 
-        # Очищаем таблицу перед копированием
         pg_cursor.execute(f'TRUNCATE TABLE "{table_name}" CASCADE')
         pg_conn.commit()
 
-        # Используем COPY для быстрой массовой вставки
         print(f"  📊 Всего записей: {len(rows)}, колонок: {len(matching_columns)}")
         print(f"  ⚡ Используем COPY для быстрой вставки...")
         
         import time
         start_time = time.time()
         
-        # Конвертируем все данные
         converted_rows = []
         nullified_fk_count = 0
         for row in rows:
@@ -243,14 +224,11 @@ def copy_table_data(sqlite_conn, pg_conn, table_name, valid_tester_ids=None):
             for idx in column_indices:
                 val = row[idx]
                 
-                # Конвертация boolean: SQLite хранит как 0/1, PostgreSQL ожидает True/False
                 col_name = sqlite_column_names[idx]
                 pg_col_name = col_name.lower() if col_name.lower() in pg_column_names else col_name
                 
-                # Проверка внешнего ключа для AuditLog.tester_id
                 if table_name == 'AuditLog' and pg_col_name == 'tester_id' and val is not None:
                     if valid_tester_ids is not None and val not in valid_tester_ids:
-                        # Устанавливаем tester_id в NULL, если тестер не существует
                         val = None
                         if not row_nullified:
                             nullified_fk_count += 1
@@ -270,11 +248,9 @@ def copy_table_data(sqlite_conn, pg_conn, table_name, valid_tester_ids=None):
                         else:
                             val = bool(val)
                 
-                # SQLite возвращает datetime как строку, PostgreSQL ожидает datetime объект
                 elif isinstance(val, str) and ('T' in val or (len(val) > 10 and val[4] == '-' and val[7] == '-')):
                     try:
                         from datetime import datetime
-                        # Пробуем распарсить как datetime
                         if 'T' in val:
                             val = datetime.fromisoformat(val.replace('Z', '+00:00'))
                         else:
@@ -282,10 +258,8 @@ def copy_table_data(sqlite_conn, pg_conn, table_name, valid_tester_ids=None):
                     except:
                         pass  # Оставляем как строку, если не получилось
                 
-                # Обрезаем длинные строки для VARCHAR полей
                 if isinstance(val, str) and pg_col_name in pg_columns_info:
                     if 'varying' in pg_columns_info[pg_col_name] or 'character' in pg_columns_info[pg_col_name]:
-                        # Извлекаем длину из типа, например: character varying(100)
                         import re
                         match = re.search(r'\((\d+)\)', pg_columns_info[pg_col_name])
                         if match:
@@ -301,10 +275,8 @@ def copy_table_data(sqlite_conn, pg_conn, table_name, valid_tester_ids=None):
         if nullified_fk_count > 0:
             print(f"  ⚠️  Обнулено {nullified_fk_count} невалидных tester_id в AuditLog")
         
-        # Используем execute_values для быстрой вставки
         try:
             insert_query = f'INSERT INTO "{table_name}" ({columns_str}) VALUES %s'
-            # Вставляем все данные одним запросом через execute_values
             execute_values(
                 pg_cursor,
                 insert_query,
@@ -321,7 +293,6 @@ def copy_table_data(sqlite_conn, pg_conn, table_name, valid_tester_ids=None):
             print(f"  ❌ Ошибка при COPY: {copy_error}")
             print(f"  🔄 Пробую использовать обычный INSERT...")
             
-            # Fallback на обычный INSERT с батчами
             insert_query = f'INSERT INTO "{table_name}" ({columns_str}) VALUES ({placeholders})'
             batch_size = 100
             total_batches = (len(converted_rows) + batch_size - 1) // batch_size
@@ -380,7 +351,6 @@ def init_staging_db():
             print("✅ Миграции применены")
 
         print("\n📦 Копирование данных...")
-        # Порядок важен: сначала основные таблицы, потом связанные
         tables = [
             'Tasks',           # Основные данные
             'Students',         # Ученики
@@ -394,23 +364,19 @@ def init_staging_db():
         ]
         total_copied = 0
         
-        # Получаем список валидных tester_id из PostgreSQL перед копированием AuditLog
         valid_tester_ids = None
 
         for idx, table in enumerate(tables, 1):
             print(f"\n[{idx}/{len(tables)}] Обработка таблицы: {table}")
             try:
-                # Если это Testers, после копирования получаем список ID
                 if table == 'Testers':
                     count = copy_table_data(sqlite_conn, pg_conn, table)
                     total_copied += count
-                    # Получаем список всех tester_id из PostgreSQL
                     pg_cursor = pg_conn.cursor()
                     pg_cursor.execute('SELECT "tester_id" FROM "Testers"')
                     valid_tester_ids = {row[0] for row in pg_cursor.fetchall()}
                     print(f"  ✅ Загружено {len(valid_tester_ids)} валидных tester_id для проверки внешних ключей")
                 elif table == 'AuditLog' and valid_tester_ids is not None:
-                    # Передаем список валидных tester_id для фильтрации
                     count = copy_table_data(sqlite_conn, pg_conn, table, valid_tester_ids=valid_tester_ids)
                     total_copied += count
                 else:
@@ -423,7 +389,6 @@ def init_staging_db():
                 print(f"  ⚠️  Продолжаю со следующей таблицей...")
                 continue
 
-        # Обновляем sequences для автоинкремента
         print(f"\n🔄 Обновление sequences для автоинкремента...")
         update_sequences(pg_conn)
         

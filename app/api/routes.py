@@ -80,7 +80,6 @@ def api_student_create():
             programming_language=programming_language_value
         )
         
-        # Автоматически присваиваем трехзначный идентификатор, если не указан
         if not platform_id:
             assign_platform_id_if_needed(student)
         
@@ -199,24 +198,18 @@ def api_global_search():
     }
     
     try:
-        # Поиск по ученикам
         search_pattern = f'%{query}%'
         filters = [
             Student.name.ilike(search_pattern),
             Student.category.ilike(search_pattern)
         ]
         
-        # Если запрос начинается с #, это platform_id
         if query.startswith('#'):
-            # Убираем # и ищем по platform_id
             platform_id_query = query[1:].strip()
             if platform_id_query:
                 filters.append(Student.platform_id.ilike(f'%{platform_id_query}%'))
         else:
-            # Ищем по platform_id как строке
             filters.append(Student.platform_id.ilike(search_pattern))
-            # Если запрос - чисто число, ищем также по student_id
-            # НО только если это не совпадает с User.id текущего пользователя
             try:
                 student_id_num = int(query)
                 if current_user.id != student_id_num:
@@ -236,7 +229,6 @@ def api_global_search():
                 'url': url_for('students.student_profile', student_id=student.student_id)
             })
         
-        # Поиск по урокам
         try:
             lesson_id = int(query)
             lessons = Lesson.query.filter(Lesson.lesson_id == lesson_id).limit(5).all()
@@ -260,7 +252,6 @@ def api_global_search():
                 'url': url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id)
             })
         
-        # Поиск по заданиям
         try:
             task_id = int(query)
             tasks = Tasks.query.filter(
@@ -343,7 +334,6 @@ def api_lesson_create():
         db.session.add(lesson)
         db.session.commit()
 
-        # Уведомление о новом уроке (ученик + родители)
         try:
             student = Student.query.get(lesson.student_id)
             if student and lesson.status == 'planned':
@@ -387,11 +377,9 @@ def api_templates():
     try:
         from app.models import TaskTemplate
         
-        # Получаем параметры фильтрации
         template_type = request.args.get('type', '')
         category = request.args.get('category', '')
         
-        # Строим запрос
         query = TaskTemplate.query.filter_by(is_active=True)
         
         if template_type:
@@ -420,22 +408,17 @@ def api_templates():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ============================================
-# TELEGRAM BOT INTEGRATION
-# ============================================
 
 @api_bp.route('/api/telegram/link-code', methods=['POST'])
 @login_required
 def api_telegram_link_code():
     """Генерация одноразового кода для привязки Telegram аккаунта"""
     try:
-        # Получаем или создаём профиль пользователя
         profile = current_user.profile
         if not profile:
             profile = UserProfile(user_id=current_user.id)
             db.session.add(profile)
         
-        # Генерируем 6-символьный код (hex)
         code = secrets.token_hex(3).upper()  # Например: "A1B2C3"
         profile.telegram_link_code = code
         profile.telegram_link_code_expires = datetime.utcnow() + timedelta(minutes=10)

@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Скрипт для проверки подключений к новым централизованным базам данных в Railway
 Использование:
@@ -34,14 +32,12 @@ def check_database_connection(name, url):
         return False, None
     
     try:
-        # Нормализуем URL (postgres:// -> postgresql://)
         if url.startswith('postgres://'):
             url = url.replace('postgres://', 'postgresql://', 1)
         
         engine = create_engine(url, pool_pre_ping=True, connect_args={'connect_timeout': 10})
         
         with engine.connect() as conn:
-            # Простой запрос для проверки подключения
             result = conn.execute(text("SELECT 1"))
             result.fetchone()
         
@@ -92,11 +88,8 @@ def main():
     print("=" * 70)
     print()
     
-    # Определяем текущее окружение
     environment = os.environ.get('ENVIRONMENT', 'unknown').upper()
     
-    # В Railway каждая база доступна через DATABASE_URL в соответствующем сервисе
-    # Проверяем текущую базу
     database_url = os.environ.get('DATABASE_URL')
     
     if not database_url:
@@ -119,7 +112,6 @@ def main():
         print()
         return False
     
-    # Определяем имя базы для вывода
     if environment == 'PRODUCTION':
         db_name = f'Production DB ({environment})'
     elif environment == 'SANDBOX':
@@ -133,14 +125,12 @@ def main():
     print(f"📊 Проверяем: {db_name}")
     print()
     
-    # Проверяем подключение
     success, engine = check_database_connection(db_name, database_url)
     
     if success and engine:
         has_tables, tables = check_database_structure(engine, db_name)
         
         if has_tables and tables:
-            # Проверяем основные таблицы
             important_tables = ['Users', 'Students', 'Lessons', 'Tasks']
             print(f"   📊 Проверка основных таблиц:")
             for table in important_tables:

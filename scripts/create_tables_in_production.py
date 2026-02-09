@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт для создания таблиц TaskTemplates и TemplateTasks в production базе данных
 Использование:
@@ -42,7 +41,6 @@ def create_tables(conn):
     cursor = conn.cursor()
     
     try:
-        # Проверяем, существует ли таблица TaskTemplates
         cursor.execute("""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables 
@@ -71,7 +69,6 @@ def create_tables(conn):
         else:
             print("ℹ️  Таблица TaskTemplates уже существует")
         
-        # Проверяем, существует ли таблица TemplateTasks
         cursor.execute("""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables 
@@ -96,7 +93,6 @@ def create_tables(conn):
         else:
             print("ℹ️  Таблица TemplateTasks уже существует")
         
-        # Создаем индексы для производительности
         print("📋 Создание индексов...")
         try:
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_template_tasks_template_id ON "TemplateTasks"(template_id);')

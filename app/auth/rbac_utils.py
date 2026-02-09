@@ -25,7 +25,6 @@ def has_permission(user, permission_name):
     if user.is_creator():
         return True
         
-    # 1. Индивидуальные права (User override)
     try:
         cp = getattr(user, 'custom_permissions', None)
         if isinstance(cp, dict) and (permission_name in cp):
@@ -33,7 +32,6 @@ def has_permission(user, permission_name):
     except Exception:
         pass
         
-    # 2 и 3. По каждой роли пользователя: БД или дефолты (хватает одной роли с правом)
     roles = user.roles() if hasattr(user, 'roles') and callable(getattr(user, 'roles')) else [getattr(user, 'role', '')]
     for role in roles:
         if not role:
@@ -113,20 +111,16 @@ def apply_data_scope(query, model_class, student_id_field='student_id'):
         Отфильтрованный query объект
     """
     if not current_user.is_authenticated:
-        # Неавторизованные пользователи не видят ничего
         return query.filter(False)
     
     scope = get_user_scope(current_user)
     
     if scope['can_see_all']:
-        # Администратор или старые роли - видит всё
         return query
     
     if not scope['student_ids']:
-        # Нет доступных учеников - не видит ничего
         return query.filter(False)
     
-    # Применяем фильтр по student_id
     if hasattr(model_class, student_id_field):
         return query.filter(getattr(model_class, student_id_field).in_(scope['student_ids']))
     
@@ -212,20 +206,15 @@ def mask_contact_info(contact_string):
     if not contact_string:
         return ""
 
-    # Маскирование email
     if '@' in contact_string:
         parts = contact_string.split('@')
         if len(parts[0]) > 1:
             return parts[0][0] + '***' + '@' + parts[1]
         return '***@' + parts[1]
-    # Маскирование телефона (предполагаем формат +7 9XX XXX XX XX)
     else:
         import re
         digits = re.sub(r'\D', '', contact_string) # Оставляем только цифры
         if len(digits) >= 4:
-            # Маскируем среднюю часть, оставляя первые 3-4 и последние 2-3 цифры
-            # Например, для 10-значного номера: 9001234567 -> 900***4567
-            # Для 11-значного номера: 79001234567 -> 7900***4567
             if len(digits) > 7:
                 return contact_string.replace(digits[len(digits)-7:len(digits)-2], '*****')
             elif len(digits) > 4:

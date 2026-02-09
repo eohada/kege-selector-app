@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт для проверки пользователя в базе данных
 Использование: python scripts/check_user.py <username>
@@ -6,7 +5,6 @@
 import os
 import sys
 
-# Добавляем корневую директорию в путь
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app import create_app, db

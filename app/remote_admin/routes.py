@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 @login_required
 def dashboard():
     """Главная страница удаленной админки"""
-    # Только для создателя
     if not current_user.is_creator():
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
@@ -92,7 +91,6 @@ def users_list():
         return redirect(url_for('remote_admin.dashboard'))
     
     try:
-        # filters (applied client-side/server-side after fetch; remote API supports role/is_active)
         q = (request.args.get('q') or '').strip().lower()
         roles_raw = (request.args.get('roles') or '').strip()
         role_single = (request.args.get('role') or '').strip()
@@ -104,7 +102,6 @@ def users_list():
         elif role_single:
             selected_roles = [role_single]
 
-        # Build query string for remote API (only single role supported there)
         api_path = '/internal/remote-admin/api/users'
         qs_parts = []
         if len(selected_roles) == 1:
@@ -126,7 +123,6 @@ def users_list():
         users = []
         flash(f'Ошибка загрузки пользователей: {str(e)}', 'error')
 
-    # extra filtering (multi-role and query) on remote-admin side
     if users:
         if selected_roles:
             users = [u for u in users if (u.get('role') in selected_roles)]
@@ -138,7 +134,6 @@ def users_list():
                 ]).lower()
             users = [u for u in users if q in _hay(u)]
 
-    # stats for quick role filters (within current result set)
     role_stats = {}
     for u in users or []:
         r = (u.get('role') or 'unknown')
@@ -158,7 +153,6 @@ def _get_users_by_role(role):  # comment
     """Получает список пользователей по роли через API. Для 'tutor' также включает 'creator'."""  # comment
     try:  # comment
         if role == 'tutor':
-            # Для tutor также получаем creator'ов (creator может работать как tutor)
             path = f"/internal/remote-admin/api/users?role=tutor&is_active=true"
             resp = make_remote_request('GET', path)
             tutors = resp.json().get('users', []) if resp.status_code == 200 else []
@@ -167,7 +161,6 @@ def _get_users_by_role(role):  # comment
             resp_creator = make_remote_request('GET', path_creator)
             creators = resp_creator.json().get('users', []) if resp_creator.status_code == 200 else []
             
-            # Объединяем списки, убирая дубликаты по id
             all_users = {u['id']: u for u in tutors}
             for creator in creators:
                 all_users[creator['id']] = creator
@@ -249,7 +242,6 @@ def user_new():
             logger.error(f"Error creating user: {e}", exc_info=True)
             flash(f'Ошибка создания пользователя: {str(e)}', 'error')
     
-    # Загружаем списки для селектов
     tutors = _get_users_by_role('tutor')
     parents = _get_users_by_role('parent')
     students = _get_users_by_role('student')
@@ -293,7 +285,6 @@ def user_edit(user_id):
                 'child_ids': request.form.getlist('child_ids')
             }
             
-            # Пароль обновляется только если указан
             password = request.form.get('password', '').strip()
             if password:
                 data['password'] = password
@@ -311,7 +302,6 @@ def user_edit(user_id):
             logger.error(f"Error updating user: {e}", exc_info=True)
             flash(f'Ошибка обновления пользователя: {str(e)}', 'error')
     
-    # Загружаем данные пользователя
     try:
         resp = make_remote_request('GET', f'/internal/remote-admin/api/users/{user_id}')
         if resp.status_code == 200:
@@ -324,7 +314,6 @@ def user_edit(user_id):
         flash(f'Ошибка загрузки пользователя: {str(e)}', 'error')
         return redirect(url_for('remote_admin.users_list'))
     
-    # Загружаем списки для селектов
     tutors = _get_users_by_role('tutor')
     parents = _get_users_by_role('parent')
     students = _get_users_by_role('student')
@@ -350,7 +339,6 @@ def testers():
         flash(f'Окружение {environments.get(current_env, {}).get("name", current_env)} не настроено', 'error')
         return redirect(url_for('remote_admin.dashboard'))
     
-    # Тестеры обычно только в sandbox, но дадим возможность проверить везде
     
     if request.method == 'POST':
         try:
@@ -372,7 +360,6 @@ def testers():
             
         return redirect(url_for('remote_admin.testers'))
     
-    # GET - список тестеров
     try:
         resp = make_remote_request('GET', '/internal/remote-admin/api/testers')
         if resp.status_code == 200:
@@ -403,12 +390,7 @@ def tester_toggle(tester_id):
         return redirect(url_for('main.dashboard'))
     
     try:
-        # Сначала получаем текущее состояние, чтобы инвертировать
-        # Но у нас нет отдельного GET для одного тестера в API списка, 
-        # поэтому просто передаем нужное состояние если бы знали, 
-        # но проще добавить endpoint для toggle или передать is_active
         
-        # В данном случае проще передать is_active из формы
         is_active = request.form.get('is_active') == 'true' # Новое состояние
         
         resp = make_remote_request('POST', f'/internal/remote-admin/api/testers/{tester_id}', payload={'is_active': is_active})
@@ -781,7 +763,6 @@ def maintenance():
             if action == 'toggle':
                 enabled = request.form.get('enabled') == 'on'
                 message = request.form.get('message', '').strip()
-                # allowed_ips = request.form.get('allowed_ips', '').strip() # В будущем можно добавить
                 
                 payload = {
                     'enabled': enabled,
@@ -802,7 +783,6 @@ def maintenance():
             
         return redirect(url_for('remote_admin.maintenance'))
     
-    # GET запрос - получаем текущий статус
     try:
         resp = make_remote_request('GET', '/internal/remote-admin/api/maintenance')
         if resp.status_code == 200:
@@ -846,7 +826,6 @@ def permissions():
             role = request.form.get('role', '').strip()
             permissions_list = []
             
-            # Собираем все разрешения из формы (только включенные)
             for key, value in request.form.items():
                 if key.startswith('perm_') and value == 'on':
                     perm_name = key[5:]  # Убираем префикс 'perm_'
@@ -873,7 +852,6 @@ def permissions():
             
         return redirect(url_for('remote_admin.permissions'))
     
-    # GET запрос - получаем текущие права
     try:
         logger.info(f"Fetching permissions from environment: {current_env}")
         resp = make_remote_request('GET', '/internal/remote-admin/api/permissions')
@@ -907,15 +885,11 @@ def permissions():
         flash(f'Ошибка загрузки прав: {str(e)}', 'error')
     
     try:
-        # Подготавливаем данные для шаблона
-        # Список ролей из roles_permissions
         roles_list = list(roles_permissions.keys()) if roles_permissions else []
         logger.info(f"Preparing template data: roles_list={len(roles_list)}, roles={roles_list}")
         
-        # Группируем права по категориям
         categories_dict = {}
         if all_permissions and permission_categories:
-            # Если all_permissions - это словарь вида {'perm_key': {'name': '...', 'category': '...'}}
             for perm_key, perm_data in all_permissions.items():
                 if isinstance(perm_data, dict):
                     category = perm_data.get('category', 'other')
@@ -923,10 +897,8 @@ def permissions():
                         categories_dict[category] = []
                     categories_dict[category].append(perm_key)
                 else:
-                    # Если perm_data - не словарь, используем ключ категории из permission_categories
                     category = 'other'
                     for cat_key, cat_name in permission_categories.items():
-                        # Попробуем найти категорию по ключу разрешения
                         if perm_key.startswith(cat_key) or cat_key in perm_key:
                             category = cat_key
                             break
@@ -934,7 +906,6 @@ def permissions():
                         categories_dict[category] = []
                     categories_dict[category].append(perm_key)
         elif all_permissions:
-            # Если есть только all_permissions без категорий, создаем одну категорию
             categories_dict['other'] = list(all_permissions.keys())
         
         logger.info(f"Categories prepared: {len(categories_dict)} categories, keys: {list(categories_dict.keys())}")
@@ -1029,7 +1000,6 @@ def create_pack():
         try:
             data = request.get_json() or {}
             
-            # Отправляем на API целевого окружения
             resp = make_remote_request('POST', '/internal/remote-admin/api/create-pack', payload=data)
             
             if resp.status_code in (200, 201):
@@ -1042,10 +1012,8 @@ def create_pack():
             logger.error(f"Error creating pack: {e}", exc_info=True)
             return jsonify({'success': False, 'error': str(e)}), 500
     
-    # GET — показываем форму
     tutors = _get_users_by_role('tutor')
     
-    # Получаем тарифы
     tariffs = []
     try:
         resp = make_remote_request('GET', '/internal/remote-admin/api/tariffs')

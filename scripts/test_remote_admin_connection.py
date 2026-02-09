@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт для проверки подключения к remote-admin API
 Проверяет, что токены правильно настроены и endpoints доступны
@@ -20,7 +19,6 @@ def test_connection(env_name, url, token):
         print("❌ URL или токен не настроены")
         return False
     
-    # Тестируем endpoint /internal/remote-admin/status
     test_url = f"{url.rstrip('/')}/internal/remote-admin/status"
     headers = {
         'X-Admin-Token': token,
@@ -68,19 +66,16 @@ if __name__ == '__main__':
     print("Проверка подключения к Remote Admin API")
     print("=" * 60)
     
-    # Проверяем production
     prod_url = os.environ.get('PRODUCTION_URL', '').strip()
     prod_token = os.environ.get('PRODUCTION_ADMIN_TOKEN', '').strip()
     if prod_url and prod_token:
         test_connection('Production', prod_url, prod_token)
     
-    # Проверяем sandbox
     sandbox_url = os.environ.get('SANDBOX_URL', '').strip()
     sandbox_token = os.environ.get('SANDBOX_ADMIN_TOKEN', '').strip()
     if sandbox_url and sandbox_token:
         test_connection('Sandbox', sandbox_url, sandbox_token)
     
-    # Проверяем admin
     admin_url = os.environ.get('ADMIN_URL', '').strip()
     admin_token = os.environ.get('ADMIN_ADMIN_TOKEN', '').strip()
     if admin_url and admin_token:

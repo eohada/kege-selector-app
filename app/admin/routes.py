@@ -104,7 +104,6 @@ def admin_panel():
         creators_count = User.query.filter_by(role='creator').count()
         testers_count = User.query.filter_by(role='tester').count()
         
-        # Статистика по логам - с обработкой ошибок
         try:
             db.session.query(AuditLog).limit(1).all()
             audit_log_exists = True
@@ -128,7 +127,6 @@ def admin_panel():
             total_logs = 0
             today_logs = 0
         
-        # Получаем статус тех работ
         maintenance_status = MaintenanceMode.get_status()
 
         sandbox_summary = None
@@ -276,7 +274,6 @@ def admin_sandbox_db_sync_run():
         flash('PROD и SANDBOX DB URL совпадают. Остановлено для безопасности.', 'danger')
         return redirect(url_for('admin.admin_panel'))
 
-    # Опция: синхронизировать Users (по умолчанию выключено, чтобы не сносить sandbox тестеров)
     include_users = request.form.get('include_users') == 'on'
     current_app.config['DB_SYNC_INCLUDE_USERS'] = include_users
 
@@ -333,7 +330,6 @@ def admin_testers_create():
     is_production = environment == 'production' or ('production' in railway_environment.lower() and 'sandbox' not in railway_environment.lower())  # Признак production. # comment
     is_sandbox = environment == 'sandbox' or 'sandbox' in railway_environment.lower()  # Признак sandbox. # comment
 
-    # В production блокируем без явного подтверждения, в sandbox разрешаем без подтверждения
     if is_production and not is_sandbox and not force_production:  # В production блокируем без явного подтверждения. # comment
         flash('Тестировщиков нельзя создавать в production без подтверждения. Включите чекбокс "force production".', 'danger')  # Предупреждаем. # comment
         return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
@@ -483,11 +479,9 @@ def admin_sandbox_user_delete(user_id):
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
-    # Проверяем, настроен ли удаленный API
     base_url, token = _sandbox_remote_config()
     
     if base_url and token:
-        # Если удаленный API настроен, используем его
         try:
             resp = _sandbox_remote_request('POST', f'/internal/sandbox-admin/user/{user_id}/delete', {})
             data = resp.json() if resp.headers.get('Content-Type', '').startswith('application/json') else {}
@@ -498,7 +492,6 @@ def admin_sandbox_user_delete(user_id):
         except Exception as e:
             flash(f'Ошибка запроса: {str(e)}', 'error')
     else:
-        # Если удаленный API не настроен, используем обычное удаление (как в продакшене)
         user = User.query.get_or_404(user_id)
         
         if user.is_creator():
@@ -509,7 +502,6 @@ def admin_sandbox_user_delete(user_id):
         
         try:
             try:
-                # Удаляем логи пользователя
                 from sqlalchemy import delete
                 from app.models import AuditLog
                 deleted_logs = db.session.execute(
@@ -520,7 +512,6 @@ def admin_sandbox_user_delete(user_id):
                 db.session.rollback()
                 deleted_logs = 0
             
-            # Удаляем профиль пользователя перед удалением пользователя
             try:
                 from app.models import UserProfile
                 user_profile = UserProfile.query.filter_by(user_id=user_id).first()
@@ -529,7 +520,6 @@ def admin_sandbox_user_delete(user_id):
                     logger.info(f"Deleted UserProfile for user {user_id}")
             except Exception as e:
                 logger.warning(f"Error deleting user profile: {e}")
-                # Продолжаем удаление пользователя даже если профиль не найден
             
             db.session.delete(user)
             db.session.commit()
@@ -859,12 +849,10 @@ def admin_audit():
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
-    # Аудит перенесён в удалённую админку (remote_admin сервис).
     flash('Журнал аудита перенесён в «Удалённую админку» → «Логи действий».', 'info')
     return redirect(url_for('remote_admin.audit_logs'))
 
     try:
-        # Проверяем, существует ли таблица AuditLog
         try:
             db.session.query(AuditLog).limit(1).all()
             audit_log_exists = True
@@ -889,7 +877,6 @@ def admin_audit():
                                  entities=[],
                                  users=users)
 
-        # Backward compatibility: раньше фильтр был только по user_id
         actor = request.args.get('actor', '')
         user_id = request.args.get('user_id', '')
         tester_id = request.args.get('tester_id', '')
@@ -911,15 +898,12 @@ def admin_audit():
 
         query = AuditLog.query
 
-        # По умолчанию показываем ВСЕ действия тестеров: User(role=tester) + tester entities.
-        # При желании можно включить создателя или вообще всё.
         if source == 'testers':
             query = query.filter(or_(
                 AuditLog.user.has(User.role == 'tester'),
                 AuditLog.tester_id.isnot(None)
             ))
             if not include_creator:
-                # include_creator влияет только на user-часть (creator)
                 pass
         elif source == 'tester_users':
             query = query.filter(AuditLog.user.has(User.role == 'tester'))
@@ -928,17 +912,14 @@ def admin_audit():
         elif source == 'creators':
             query = query.filter(AuditLog.user.has(User.role == 'creator'))
         elif source == 'all':
-            # Без ограничений
             pass
         else:
-            # неизвестное значение — фоллбэк на testers
             query = query.filter(or_(
                 AuditLog.user.has(User.role == 'tester'),
                 AuditLog.tester_id.isnot(None)
             ))
 
         if include_creator and source in ('testers', ''):
-            # Добавляем creator-логи к "testers" режиму
             query = query.filter(or_(
                 AuditLog.user.has(User.role.in_(['tester', 'creator'])),
                 AuditLog.tester_id.isnot(None)
@@ -982,7 +963,6 @@ def admin_audit():
             db.session.rollback()
             total_events = 0
         
-        # Считаем уникальных “исполнителей” в текущей выборке
         try:
             distinct_user_ids = db.session.query(AuditLog.user_id).filter(
                 AuditLog.user_id.isnot(None)
@@ -990,7 +970,6 @@ def admin_audit():
             distinct_tester_ids = db.session.query(AuditLog.tester_id).filter(
                 AuditLog.tester_id.isnot(None)
             )
-            # Применяем те же ограничения по source/include_creator (кроме фильтра actor/action/etc)
             base_for_distinct = AuditLog.query
             if source == 'testers':
                 base_for_distinct = base_for_distinct.filter(or_(
@@ -1017,7 +996,6 @@ def admin_audit():
             distinct_tester_ids = db.session.query(AuditLog.tester_id).select_from(AuditLog).filter(
                 AuditLog.tester_id.isnot(None)
             )
-            # Применяем условия base_for_distinct через подзапрос
             base_subq = base_for_distinct.with_entities(AuditLog.id).subquery()
             distinct_user_ids = distinct_user_ids.filter(AuditLog.id.in_(base_subq))
             distinct_tester_ids = distinct_tester_ids.filter(AuditLog.id.in_(base_subq))
@@ -1143,7 +1121,6 @@ def admin_testers():
     try:
         logger.info("Starting admin_testers query")
         
-        # Проверяем, существует ли таблица AuditLog
         try:
             db.session.query(AuditLog).limit(1).all()
             audit_log_exists = True
@@ -1268,7 +1245,6 @@ def admin_testers_delete(user_id):
             db.session.rollback()
             deleted_logs = 0
         
-        # Удаляем профиль пользователя перед удалением пользователя
         try:
             from app.models import UserProfile
             user_profile = UserProfile.query.filter_by(user_id=user_id).first()
@@ -1277,7 +1253,6 @@ def admin_testers_delete(user_id):
                 logger.info(f"Deleted UserProfile for user {user_id}")
         except Exception as e:
             logger.warning(f"Error deleting user profile: {e}")
-            # Продолжаем удаление пользователя даже если профиль не найден
         
         db.session.delete(user)
         try:
@@ -1484,7 +1459,6 @@ def admin_audit_export():
 @admin_bp.route('/maintenance')
 def maintenance_page():
     """Страница технических работ"""
-    # Приоритет: 1) сообщение из query параметра (от редиректа), 2) сообщение из БД, 3) дефолтное
     message_from_query = request.args.get('message', '').strip()
     status = MaintenanceMode.get_status()
     
@@ -1534,14 +1508,8 @@ def toggle_maintenance():
         status.updated_by = current_user.id
         db.session.commit()
         
-        # В продакшене: устанавливаем переменную окружения для песочницы через Railway API
-        # Но так как мы не можем напрямую менять переменные окружения другого сервиса,
-        # используем другой подход: сохраняем статус в БД, а песочница будет проверять БД продакшена
-        # Или проще: используем переменную окружения MAINTENANCE_ENABLED, которую нужно установить вручную в Railway
         
         if is_production:
-            # В продакшене: песочница автоматически проверит статус через API /api/maintenance-status
-            # Убедитесь, что в песочнице установлена переменная окружения PRODUCTION_URL с URL продакшена
             if status.is_enabled:
                 flash(f'Режим технических работ включен. Песочница автоматически проверит статус через API. Убедитесь, что в песочнице установлена переменная PRODUCTION_URL.', 'success')
             else:
@@ -1610,15 +1578,12 @@ def debug_export():
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
     
-    # Получаем параметры из запроса
     task_id = request.args.get('task_id', type=int)
     task_number = request.args.get('task_number', type=int)
     custom_html = request.args.get('custom_html', '')
     
-    # Получаем список номеров заданий (1-27)
     available_numbers = sorted([n for n in range(1, 28) if Tasks.query.filter_by(task_number=n).first()])
     
-    # Получаем список заданий для выбора
     tasks_list = []
     
     if task_id:
@@ -1627,16 +1592,13 @@ def debug_export():
             tasks_list = [task]
             task_number = task.task_number  # Устанавливаем номер для отображения
     elif task_number:
-        # Получаем до 10 заданий выбранного номера
         tasks_list = Tasks.query.filter_by(task_number=task_number).order_by(Tasks.task_id.desc()).limit(10).all()
     
-    # Если передан task_id или custom_html, обрабатываем экспорт
     original_html = ''
     exported_markdown = ''
     task_info = None
     
     if custom_html:
-        # Тестируем с пользовательским HTML
         original_html = custom_html
         from app.lessons.export import html_to_text
         try:
@@ -1652,7 +1614,6 @@ def debug_export():
                 'site_task_id': task.site_task_id
             }
             original_html = task.content_html or ''
-            # Импортируем и вызываем функцию экспорта
             from app.lessons.export import html_to_text
             try:
                 exported_markdown = html_to_text(original_html)
@@ -1683,7 +1644,6 @@ def admin_tester_entities():
         is_sandbox = _is_sandbox(environment, railway_environment)
         sandbox_base_url, _ = _sandbox_remote_config()
 
-        # Получаем всех тестировщиков с количеством логов
         query = db.session.query(
             Tester,
             func.count(AuditLog.id).label('logs_count'),
@@ -1692,7 +1652,6 @@ def admin_tester_entities():
             AuditLog, Tester.tester_id == AuditLog.tester_id
         )
         
-        # Всегда скрываем legacy записи "Anonymous" (это не "профили", а исторический мусор)
         query = query.filter(Tester.name != 'Anonymous')
         
         testers = query.group_by(
@@ -1701,7 +1660,6 @@ def admin_tester_entities():
             Tester.last_seen.desc()
         ).all()
         
-        # Показываем только созданные вручную записи; Anonymous держим отдельно для очистки
         anonymous_count = Tester.query.filter_by(name='Anonymous').count()
         
         return render_template('admin/tester_entities.html', 
@@ -1731,13 +1689,11 @@ def admin_tester_entities_create():
                 flash('Имя тестировщика обязательно.', 'error')
                 return render_template('admin/tester_entities_form.html', tester=None)
             
-            # Проверяем, нет ли уже тестировщика с таким именем
             existing = Tester.query.filter_by(name=name).first()
             if existing:
                 flash('Тестировщик с таким именем уже существует.', 'error')
                 return render_template('admin/tester_entities_form.html', tester=None)
             
-            # Создаем нового тестировщика
             import uuid
             tester = Tester(
                 tester_id=str(uuid.uuid4()),
@@ -1787,13 +1743,11 @@ def admin_tester_entities_edit(tester_id):
                 flash('Имя тестировщика обязательно.', 'error')
                 return render_template('admin/tester_entities_form.html', tester=tester)
             
-            # Проверяем, нет ли другого тестировщика с таким именем
             existing = Tester.query.filter(Tester.name == name, Tester.tester_id != tester_id).first()
             if existing:
                 flash('Тестировщик с таким именем уже существует.', 'error')
                 return render_template('admin/tester_entities_form.html', tester=tester)
             
-            # Обновляем данные
             old_name = tester.name
             tester.name = name
             tester.ip_address = request.form.get('ip_address', '').strip() or None
@@ -1834,8 +1788,6 @@ def admin_tester_entities_delete(tester_id):
     tester_name = tester.name
     
     try:
-        # Удаляем связанные логи (опционально, можно оставить)
-        # AuditLog.query.filter_by(tester_id=tester_id).delete()
         
         db.session.delete(tester)
         db.session.commit()
@@ -1866,7 +1818,6 @@ def admin_tester_entities_delete_anonymous():
         return redirect(url_for('main.dashboard'))
     
     try:
-        # Находим все записи с именем "Anonymous"
         anonymous_testers = Tester.query.filter_by(name='Anonymous').all()
         count = len(anonymous_testers)
         
@@ -1874,7 +1825,6 @@ def admin_tester_entities_delete_anonymous():
             flash('Записи Anonymous не найдены.', 'info')
             return redirect(url_for('admin.admin_tester_entities'))
         
-        # Удаляем все записи
         for tester in anonymous_testers:
             db.session.delete(tester)
         
@@ -1907,7 +1857,6 @@ def admin_topics():
     topics = Topic.query.order_by(Topic.name).all()
     total_topics = len(topics)
     
-    # Статистика по использованию тем
     topics_stats = []
     for topic in topics:
         tasks_count = len(topic.tasks) if topic.tasks else 0
@@ -1936,7 +1885,6 @@ def admin_topic_create():
         if not name:
             return jsonify({'success': False, 'error': 'Название темы обязательно'}), 400
         
-        # Проверяем, нет ли уже такой темы
         existing = Topic.query.filter_by(name=name).first()
         if existing:
             return jsonify({'success': False, 'error': 'Тема с таким названием уже существует'}), 400
@@ -1996,13 +1944,11 @@ def admin_users():
         return redirect(url_for('main.dashboard'))
     
     try:
-        # Параметры фильтрации
         role_filter = request.args.get('role')
         is_active_filter = request.args.get('is_active')
         
         query = User.query
         
-        # Применяем фильтры
         if role_filter:
             query = query.filter(User.role == role_filter)
         if is_active_filter is not None:
@@ -2011,12 +1957,10 @@ def admin_users():
         
         users = query.order_by(User.created_at.desc()).all()
         
-        # Статистика по ролям
         role_stats = {}
         for role in ['admin', 'tutor', 'student', 'parent', 'tester', 'creator']:
             role_stats[role] = User.query.filter_by(role=role).count()
         
-        # Определяем, находимся ли мы в песочнице
         environment = os.environ.get('ENVIRONMENT', 'local')
         railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
         is_sandbox = _is_sandbox(environment, railway_environment)
@@ -2583,14 +2527,12 @@ def admin_user_edit(user_id):
     
     if request.method == 'POST':
         try:
-            # Обновляем основные поля
             username = request.form.get('username', '').strip()
             role = request.form.get('role', '').strip()
             is_active = request.form.get('is_active') == 'on'
             
             if not username:
                 flash('Имя пользователя обязательно.', 'error')
-                # Перезагружаем данные для отображения формы
                 family_ties = []
                 enrollments = []
                 if user.is_student():
@@ -2602,9 +2544,7 @@ def admin_user_edit(user_id):
                     enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
                 all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
                 all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
-                # Всегда формируем список tutor'ов (включая creator), так как он может понадобиться для разных ролей
                 all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
-                # Определяем, находимся ли мы в песочнице
                 environment = os.environ.get('ENVIRONMENT', 'local')
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
                 is_sandbox = _is_sandbox(environment, railway_environment)
@@ -2618,11 +2558,9 @@ def admin_user_edit(user_id):
                                      all_students=all_students,
                                      all_tutors=all_tutors)
             
-            # Проверка уникальности username
             existing_user = User.query.filter_by(username=username).first()
             if existing_user and existing_user.id != user.id:
                 flash('Пользователь с таким именем уже существует.', 'error')
-                # Перезагружаем данные для отображения формы
                 family_ties = []
                 enrollments = []
                 if user.is_student():
@@ -2634,9 +2572,7 @@ def admin_user_edit(user_id):
                     enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
                 all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
                 all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
-                # Всегда формируем список tutor'ов (включая creator), так как он может понадобиться для разных ролей
                 all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
-                # Определяем, находимся ли мы в песочнице
                 environment = os.environ.get('ENVIRONMENT', 'local')
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
                 is_sandbox = _is_sandbox(environment, railway_environment)
@@ -2650,7 +2586,6 @@ def admin_user_edit(user_id):
                                      all_students=all_students,
                                      all_tutors=all_tutors)
             
-            # Обновляем пароль, если указан
             new_password = request.form.get('password', '').strip()
             if new_password:
                 user.password_hash = generate_password_hash(new_password)
@@ -2661,20 +2596,10 @@ def admin_user_edit(user_id):
             db.session.add(UserRole(user_id=user.id, role=role))
             user.is_active = is_active
             
-            # Обработка custom_permissions (только для Creator)
             if current_user.is_creator():
                 custom_perms = {}
-                # Собираем права из формы
                 for perm_key in ALL_PERMISSIONS.keys():
-                    # Три состояния: on (true), off (false), или default (удалить ключ)
-                    # Но в HTML чекбоксы передают значение только если отмечены.
-                    # Поэтому лучше использовать hidden input для "default" или просто checkbox для вкл/выкл.
-                    # Реализуем простую логику: если чекбокс отмечен -> True, иначе -> False (если это переопределение)
                     
-                    # Однако, нам нужно знать, переопределено право или нет.
-                    # Сделаем так:
-                    # perm_{key}_override = on/off (чекбокс "Переопределить")
-                    # perm_{key}_value = on/off (чекбокс "Значение")
                     
                     override = request.form.get(f"perm_override_{perm_key}") == 'on'
                     if override:
@@ -2688,7 +2613,6 @@ def admin_user_edit(user_id):
                 
                 logger.info(f"Updated custom permissions for user {user.id}: {user.custom_permissions}")
 
-            # Обновляем профиль
             profile_data = {
                 'first_name': request.form.get('first_name', '').strip() or None,
                 'last_name': request.form.get('last_name', '').strip() or None,
@@ -2716,7 +2640,6 @@ def admin_user_edit(user_id):
                 else:
                     logger.info(f"POST: Profile for user {user.id} - no changes detected")
             
-            # Если роль - ученик, обеспечиваем наличие записи в таблице Student
             if role == 'student':
                 student_record = Student.query.filter_by(user_id=user.id).first()
                 profile_name = f"{profile_data.get('first_name', '')} {profile_data.get('last_name', '')}".strip()
@@ -2740,10 +2663,8 @@ def admin_user_edit(user_id):
                     student_record.is_active = is_active
                     logger.info(f"Updated existing Student record {student_record.student_id} for user {user.id}")
 
-            # Обрабатываем добавление новых связей
             logger.debug(f"POST: Processing new relations for user {user.id} (role: {user.role}). Form data keys: {list(request.form.keys())}")
             if role == 'student':
-                # Добавляем нового родителя, если указан
                 new_parent_id_str = request.form.get('new_parent_id', '').strip()
                 logger.debug(f"POST: new_parent_id from form: '{new_parent_id_str}'")
                 if new_parent_id_str:
@@ -2761,14 +2682,12 @@ def admin_user_edit(user_id):
                     except (ValueError, TypeError) as e:
                         logger.warning(f"POST: Invalid new_parent_id value: '{new_parent_id_str}': {e}")
                 
-                # Добавляем нового преподавателя, если указан
                 new_tutor_id_str = request.form.get('new_tutor_id', '').strip()
                 new_tutor_subject = request.form.get('new_tutor_subject', '').strip()
                 logger.debug(f"POST: new_tutor_id from form: '{new_tutor_id_str}', new_tutor_subject: '{new_tutor_subject}'")
                 if new_tutor_id_str and new_tutor_subject:
                     try:
                         new_tutor_id = int(new_tutor_id_str)
-                        # Проверяем, нет ли уже такого контракта
                         existing = Enrollment.query.filter_by(student_id=user.id, tutor_id=new_tutor_id, subject=new_tutor_subject).first()
                         if not existing:
                             status = request.form.get('new_tutor_status', 'active')
@@ -2783,7 +2702,6 @@ def admin_user_edit(user_id):
                     logger.debug(f"POST: Enrollment not added for student: tutor_id={new_tutor_id_str}, subject={new_tutor_subject}")
             
             elif user.is_parent():
-                # Добавляем нового ученика, если указан
                 new_student_id = request.form.get('new_student_id', type=int)
                 if new_student_id:
                     existing = FamilyTie.query.filter_by(parent_id=user.id, student_id=new_student_id).first()
@@ -2799,11 +2717,9 @@ def admin_user_edit(user_id):
                     logger.debug(f"Family tie not added: student_id={new_student_id}")
             
             elif user.is_tutor():
-                # Добавляем нового ученика, если указан
                 new_enrollment_student_id = request.form.get('new_enrollment_student_id', type=int)
                 new_enrollment_subject = request.form.get('new_enrollment_subject', '').strip()
                 if new_enrollment_student_id and new_enrollment_subject:
-                    # Проверяем, нет ли уже такого контракта
                     existing = Enrollment.query.filter_by(student_id=new_enrollment_student_id, tutor_id=user.id, subject=new_enrollment_subject).first()
                     if not existing:
                         status = request.form.get('new_enrollment_status', 'active')
@@ -2823,10 +2739,8 @@ def admin_user_edit(user_id):
                 logger.error(f"Error committing changes for user {user.id}: {commit_error}", exc_info=True)
                 raise commit_error
             
-            # Перезагружаем пользователя из базы для получения актуальных данных
             user = User.query.get(user.id)
             if user:
-                # Принудительно загружаем профиль (теперь это скаляр)
                 profile = user.profile
                 if profile:
                     logger.info(f"POST: After reload - profile data: first_name={profile.first_name}, last_name={profile.last_name}, phone={profile.phone}, telegram_id={profile.telegram_id}")
@@ -2843,7 +2757,6 @@ def admin_user_edit(user_id):
             
             flash(f'Пользователь "{username}" обновлен.', 'success')
             logger.info(f"Redirecting to admin_user_edit for user {user.id}")
-            # Редиректим обратно на страницу редактирования, чтобы видеть изменения
             return redirect(url_for('admin.admin_user_edit', user_id=user.id))
             
         except Exception as e:
@@ -2851,12 +2764,10 @@ def admin_user_edit(user_id):
             logger.error(f"Error updating user {user.id}: {e}", exc_info=True)
             logger.error(f"Form data: {dict(request.form)}")
             flash(f'Ошибка при обновлении пользователя: {str(e)}', 'error')
-            # Перезагружаем пользователя из базы данных заново
             user = User.query.get(user_id)
             if not user:
                 flash('Пользователь не найден.', 'error')
                 return redirect(url_for('admin.admin_users'))
-            # Перезагружаем данные для отображения формы с ошибкой
             family_ties = []
             enrollments = []
             if user.is_student():
@@ -2868,9 +2779,7 @@ def admin_user_edit(user_id):
                 enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
             all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
             all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
-            # Всегда формируем список tutor'ов (включая creator), так как он может понадобиться для разных ролей
             all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
-            # Определяем, находимся ли мы в песочнице
             environment = os.environ.get('ENVIRONMENT', 'local')
             railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
             is_sandbox = _is_sandbox(environment, railway_environment)
@@ -2883,7 +2792,6 @@ def admin_user_edit(user_id):
                                  all_students=all_students,
                                  all_tutors=all_tutors)
     
-    # Получаем связанные данные
     try:
         family_ties = []
         enrollments = []
@@ -2896,10 +2804,8 @@ def admin_user_edit(user_id):
         elif user.is_tutor():
             enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
         
-        # Получаем списки пользователей для выпадающих списков
         all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
         all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
-        # Всегда формируем список tutor'ов (включая creator), так как он может понадобиться для разных ролей
         all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
         
         return render_template('admin_user_edit.html',
@@ -2932,14 +2838,12 @@ def admin_user_new():
             role = request.form.get('role', 'student').strip()
             is_active = request.form.get('is_active') == 'on'
             
-            # Формируем списки для выпадающих списков (нужно для всех случаев)
             all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
             all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all()
             all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all()
             
             if not username:
                 flash('Имя пользователя обязательно.', 'error')
-                # Определяем, находимся ли мы в песочнице
                 environment = os.environ.get('ENVIRONMENT', 'local')
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
                 is_sandbox = _is_sandbox(environment, railway_environment)
@@ -2950,7 +2854,6 @@ def admin_user_new():
             
             if not password:
                 flash('Пароль обязателен.', 'error')
-                # Определяем, находимся ли мы в песочнице
                 environment = os.environ.get('ENVIRONMENT', 'local')
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
                 is_sandbox = _is_sandbox(environment, railway_environment)
@@ -2959,10 +2862,8 @@ def admin_user_new():
                                      all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
                                      family_ties=[], enrollments=[])
             
-            # Проверка уникальности
             if User.query.filter_by(username=username).first():
                 flash('Пользователь с таким именем уже существует.', 'error')
-                # Определяем, находимся ли мы в песочнице
                 environment = os.environ.get('ENVIRONMENT', 'local')
                 railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
                 is_sandbox = _is_sandbox(environment, railway_environment)
@@ -2971,7 +2872,6 @@ def admin_user_new():
                                      all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
                                      family_ties=[], enrollments=[])
             
-            # Создаем пользователя
             user = User(
                 username=username,
                 email=None,
@@ -2982,7 +2882,6 @@ def admin_user_new():
             db.session.add(user)
             db.session.flush()
             
-            # Создаем профиль
             profile_data = {
                 'first_name': request.form.get('first_name', '').strip() or None,
                 'last_name': request.form.get('last_name', '').strip() or None,
@@ -2996,7 +2895,6 @@ def admin_user_new():
             db.session.add(profile)
             db.session.flush()  # Получаем ID профиля
             
-            # Если роль - ученик, создаем запись в таблице Student
             if role == 'student':
                 profile_name = f"{profile_data.get('first_name', '')} {profile_data.get('last_name', '')}".strip()
                 if not profile_name:
@@ -3012,9 +2910,7 @@ def admin_user_new():
                 db.session.add(student_record)
                 logger.info(f"Created new Student record for new user {user.id}")
             
-            # Создаем связи, если они указаны в форме
             if role == 'student':
-                # Семейные связи (родители)
                 parent_ids = request.form.getlist('parent_ids')  # Множественный выбор
                 for parent_id_str in parent_ids:
                     if parent_id_str:
@@ -3023,7 +2919,6 @@ def admin_user_new():
                             access_level = request.form.get(f'parent_access_level_{parent_id}', 'full')
                             is_confirmed = request.form.get(f'parent_confirmed_{parent_id}') == 'on'
                             
-                            # Проверяем существование связи
                             existing = FamilyTie.query.filter_by(parent_id=parent_id, student_id=user.id).first()
                             if not existing:
                                 family_tie = FamilyTie(parent_id=parent_id, student_id=user.id, access_level=access_level, is_confirmed=is_confirmed)
@@ -3031,13 +2926,11 @@ def admin_user_new():
                         except (ValueError, TypeError):
                             continue
                 
-                # Учебные контракты (тьюторы) - из селектов с предметами
                 tutor_ids = request.form.getlist('tutor_ids')
                 for idx, tutor_id_str in enumerate(tutor_ids):
                     if tutor_id_str:
                         try:
                             tutor_id = int(tutor_id_str)
-                            # Пробуем разные варианты имен полей (с индексом и без)
                             subject = request.form.get(f'tutor_subject_{idx}', '').strip() or request.form.get(f'tutor_subject_{tutor_id}', '').strip()
                             if subject:
                                 status = request.form.get(f'tutor_status_{idx}', 'active') or request.form.get(f'tutor_status_{tutor_id}', 'active')
@@ -3047,7 +2940,6 @@ def admin_user_new():
                             continue
             
             elif role == 'parent':
-                # Семейные связи (дети)
                 student_ids = request.form.getlist('student_ids')
                 for student_id_str in student_ids:
                     if student_id_str:
@@ -3064,13 +2956,11 @@ def admin_user_new():
                             continue
             
             elif role == 'tutor':
-                # Учебные контракты (ученики) - из селектов с предметами
                 student_ids = request.form.getlist('student_ids')
                 for idx, student_id_str in enumerate(student_ids):
                     if student_id_str:
                         try:
                             student_id = int(student_id_str)
-                            # Пробуем разные варианты имен полей (с индексом и без)
                             subject = request.form.get(f'student_subject_{idx}', '').strip() or request.form.get(f'student_subject_{student_id}', '').strip()
                             if subject:
                                 status = request.form.get(f'student_status_{idx}', 'active') or request.form.get(f'student_status_{student_id}', 'active')
@@ -3097,12 +2987,10 @@ def admin_user_new():
             logger.error(f"Error creating user: {e}", exc_info=True)
             flash(f'Ошибка при создании пользователя: {str(e)}', 'error')
     
-    # Определяем, находимся ли мы в песочнице
     environment = os.environ.get('ENVIRONMENT', 'local')
     railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
     is_sandbox = _is_sandbox(environment, railway_environment)
     
-    # Формируем списки для выпадающих списков
     all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
     all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all()
     all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all()
@@ -3132,12 +3020,10 @@ def admin_task_topics(task_id):
             data = request.get_json()
             topic_ids = data.get('topic_ids', [])
             
-            # Удаляем все текущие связи
             db.session.execute(
                 task_topics.delete().where(task_topics.c.task_id == task_id)
             )
             
-            # Добавляем новые связи
             for topic_id in topic_ids:
                 db.session.execute(
                     task_topics.insert().values(task_id=task_id, topic_id=topic_id)
@@ -3159,7 +3045,6 @@ def admin_task_topics(task_id):
             logger.error(f"Error updating task topics: {e}", exc_info=True)
             return jsonify({'success': False, 'error': str(e)}), 500
     
-    # GET - возвращаем список всех тем и текущие связи
     all_topics = Topic.query.order_by(Topic.name).all()
     current_topic_ids = {t.topic_id for t in task.topics} if task.topics else set()
     

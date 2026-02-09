@@ -74,12 +74,10 @@
 
     const meta = JSON.parse(lessonEl.dataset.meta || '{}');
     inspectorTitle.textContent = meta.student || 'Урок';
-    
-    // Извлекаем дату из родительской колонки дня
+
     const dayCol = lessonEl.closest('.day-col');
     const dayIso = dayCol?.dataset.day || '';
-    
-    // Парсим дату и время из meta или используем значения по умолчанию
+
     const startTime = meta.start_time || '';
     const dateValue = dayIso || '';
     const timeValue = startTime || '';
@@ -187,8 +185,7 @@
     const saveBtn = qs('#inspectorSave', inspectorBody);
     const deleteBtn = qs('#inspectorDelete', inspectorBody);
     const recurringBtn = qs('#inspectorMakeRecurring', inspectorBody);
-    
-    // Сохраняем ссылку на dayCol для использования в обработчике сохранения
+
     const currentDayCol = dayCol;
 
     saveBtn?.addEventListener('click', async () => {
@@ -201,7 +198,7 @@
       const currentTz = document.querySelector('[data-timezone-toggle]')?.dataset.timezone || 'moscow';
 
       try {
-        // status
+
         if (nextStatus && nextStatus !== meta.status_code) {
           const url = setStatusUrlTpl.replace('0', String(meta.lesson_id));
           await postJSON(url, { status: nextStatus });
@@ -210,7 +207,6 @@
           lessonEl.classList.add(`status-${nextStatus}`);
         }
 
-        // other fields
         let resp = null;
         if (updateUrlTpl) {
           const url = updateUrlTpl.replace('0', String(meta.lesson_id));
@@ -219,8 +215,7 @@
             lesson_type: nextType,
             topic: nextTopic,
           };
-          
-          // Добавляем время, если оно изменилось
+
           if (nextDate && nextTime) {
             payload.lesson_date = nextDate;
             payload.lesson_time = nextTime;
@@ -231,8 +226,7 @@
           meta.duration_minutes = resp?.lesson?.duration_minutes ?? nextDuration;
           meta.lesson_type = resp?.lesson?.lesson_type ?? nextType;
           meta.topic = resp?.lesson?.topic ?? nextTopic;
-          
-          // Обновляем время в meta, если оно изменилось
+
           if (nextDate && nextTime) {
             meta.start_date = nextDate;
             meta.start_time = nextTime;
@@ -247,31 +241,27 @@
           }
         }
 
-        // resize card
         const height = Math.max((parseInt(meta.duration_minutes || '60', 10) / slotMinutes) * pxPerSlot - 4, pxPerSlot * 0.9);
         lessonEl.style.height = `${height}px`;
 
-        // Обновляем время на карточке, если оно изменилось
         if (nextDate && nextTime) {
           const timeEl = lessonEl.querySelector('[data-role="time"]');
           if (timeEl) timeEl.textContent = nextTime;
-          
-          // Если изменилось время, нужно перерисовать карточку в новом месте
+
           const [hours, minutes] = nextTime.split(':').map(Number);
           const newStartTotal = hours * 60 + minutes;
           
           meta.start_total = newStartTotal;
           meta.start_time = nextTime;
-          
-          // Находим новую колонку дня
+
           const newDayCol = qs(`.day-col[data-day="${nextDate}"]`);
           if (newDayCol && newDayCol !== currentDayCol) {
-            // Перемещаем карточку в новую колонку
+
             const newTop = minutesToY(newStartTotal);
             lessonEl.style.top = `${newTop}px`;
             newDayCol.appendChild(lessonEl);
           } else if (currentDayCol) {
-            // Обновляем позицию в той же колонке
+
             const newTop = minutesToY(newStartTotal);
             lessonEl.style.top = `${newTop}px`;
           }
@@ -289,7 +279,7 @@
         if (!deleteUrlTpl) throw new Error('delete url not configured');
         const url = deleteUrlTpl.replace('0', String(meta.lesson_id));
         await postJSON(url, {});
-        // remove chip
+
         lessonEl.remove();
         closeInspector();
         if (window.toast) window.toast.success('Урок удалён');
@@ -366,7 +356,6 @@
 
     dayCol.querySelector('.day-col__body')?.appendChild(el);
 
-    // View-only: click to open inspector (no drag)
     if (!canManage) {
       el.addEventListener('click', (e) => {
         e.preventDefault();
@@ -386,7 +375,6 @@
     } catch (_) {}
   });
 
-  // Click on grid -> create lesson at snapped time (only for managers)
   const createModal = qs('#createLessonModal');
   const createForm = qs('#createLessonForm');
   const modalDate = qs('#modalLessonDate');
@@ -418,7 +406,6 @@
     });
   }
 
-  // Create lesson without reload
   if (canManage) createForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(createForm);
@@ -452,7 +439,6 @@
     }
   });
 
-  // Drag & drop reschedule (only for managers)
   let drag = null;
 
   const onPointerDown = (e) => {
@@ -493,7 +479,6 @@
   const onPointerUp = async (e) => {
     if (!drag) return;
 
-    // Важно: сразу обрываем drag-состояние, чтобы карточка НЕ ехала за мышью во время await.
     const d = drag;
     drag = null;
 
@@ -501,17 +486,15 @@
     el.classList.remove('is-dragging');
     try { el.releasePointerCapture?.(e.pointerId); } catch (_) {}
 
-    // If it was a click (no move) — open inspector
     if (!d.moved) {
       openInspector(el);
       return;
     }
 
-    // Snap and persist
     const top = parseFloat(el.style.top || '0');
     const mins = yToMinutes(top);
     const timeStr = formatMinutes(mins);
-    const dayIso = dayCol.dataset.day; // YYYY-MM-DD
+    const dayIso = dayCol.dataset.day;
 
     const meta = JSON.parse(el.dataset.meta || '{}');
     const url = rescheduleUrlTpl.replace('0', String(meta.lesson_id));
@@ -524,7 +507,7 @@
       if (window.toast) window.toast.success('Перенесено');
     } catch (err) {
       if (window.toast) window.toast.error(err.message || 'Ошибка переноса');
-      // rollback by reloading is safer for now
+
       setTimeout(() => window.location.reload(), 600);
     }
   };
@@ -545,7 +528,6 @@
     document.addEventListener('pointercancel', onPointerCancel, true);
   }
 
-  // Линия текущего времени + автоскролл
   const tzName = tz === 'tomsk' ? 'Asia/Tomsk' : 'Europe/Moscow';
 
   const getNowInTz = () => {
@@ -594,7 +576,6 @@
     }
     line.style.top = `${minutesToY(now.minutes)}px`;
 
-    // автоскролл к "сейчас" только на текущей неделе
     if (weekOffset === 0 && deck) {
       const targetTop = Math.max(minutesToY(now.minutes) - 220, 0);
       deck.scrollTo({ top: targetTop, behavior: 'smooth' });
@@ -604,5 +585,4 @@
   placeNowLine();
   setInterval(placeNowLine, 30_000);
 })();
-
 

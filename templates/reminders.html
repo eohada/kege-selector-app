@@ -125,8 +125,7 @@
         .filter-toggle .neo-button {
             font-size: 0.9rem;
         }
-        
-        /* Modal */
+
         .modal-overlay {
             display: none;
             position: fixed;
@@ -312,8 +311,7 @@
             </div>
         </main>
     </div>
-    
-    <!-- Modal для создания напоминания -->
+
     <div class="modal-overlay" id="createModal">
         <div class="modal">
             <div class="modal-header">
@@ -366,8 +364,7 @@
             </form>
         </div>
     </div>
-    
-    {# toast.js уже подключается через _ux_enhancements.html #}
+
     <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>
     <script>

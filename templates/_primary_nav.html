@@ -1,5 +1,5 @@
-{# Единая шапка/навигация для всего проекта (премиум-минимализм) #}
-{# Ожидаемые переменные: active_page (dashboard|schedule|generator|plans|reminders|templates|admin|None) #}
+
+
 <header class="nav-primary">
     <div class="nav-brand">
         {% if current_user and current_user.is_authenticated %}
@@ -50,7 +50,7 @@
 
     <nav class="nav-links">
         {% if current_user.is_parent() %}
-        {# Навигация для родителя #}
+        
         {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
         <a href="{{ url_for('parents.parent_dashboard') }}" class="nav-link {% if active_page == 'parent_dashboard' %}active{% endif %}">
             <span class="nav-link-content">
@@ -73,7 +73,7 @@
             </span>
         </a>
         {% elif current_user.is_student() %}
-        {# Навигация для ученика #}
+        
         {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
         {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
         {% if current_student %}
@@ -115,7 +115,7 @@
         </a>
         {% endif %}
         {% else %}
-        {# Навигация для админа, тьютора и остальных #}
+        
         <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
             <span class="nav-link-content">
                 <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="nav-link-icon">
@@ -130,7 +130,6 @@
             </span>
         </a>
 
-        {# Группируем часто используемые разделы, чтобы не перегружать верхнее меню #}
         <div class="nav-dropdown">
             <div class="nav-link nav-dropdown-trigger {% if active_page in ['assignments', 'review_queue', 'reminders'] %}active{% endif %}">
                 <span class="nav-link-content">
@@ -166,7 +165,7 @@
         {% endif %}
 
         {% if not current_user.is_parent() and not current_user.is_student() %}
-        {# Выпадающее меню для инструментов (только для админа, тьютора и старых ролей) #}
+        
         <div class="nav-dropdown">
             <div class="nav-link nav-dropdown-trigger {% if active_page in ['generator', 'plans', 'templates', 'groups', 'onboarding', 'rubrics', 'library', 'billing', 'assets'] %}active{% endif %}">
                 <span class="nav-link-content">
@@ -230,5 +229,4 @@
         {% endif %}
     </nav>
 </header>
-
 

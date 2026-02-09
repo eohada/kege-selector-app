@@ -3,18 +3,18 @@
     'use strict';  
 
     function isUserAuthenticated() {
-        // Проверяем наличие аватара пользователя в DOM - он отображается только для авторизованных
+
         return !!document.querySelector('.user-profile-avatar');
     }
 
     function getTesterUUID() {
-        // Для авторизованных пользователей не нужен UUID тестировщика
+
         if (isUserAuthenticated()) {
             return null;
         }
         let testerUUID = localStorage.getItem('tester_uuid');
         if (!testerUUID) {
-            // Генерируем UUID один раз и сохраняем навсегда
+
             testerUUID = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                 const r = Math.random() * 16 | 0;
                 const v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -26,9 +26,9 @@
     }
 
     function getTesterName() {
-        // Для авторизованных пользователей не запрашиваем имя тестировщика
+
         if (isUserAuthenticated()) {
-            return null; // Возвращаем null, чтобы не отправлять заголовки тестировщика
+            return null;
         }
         
         let testerName = localStorage.getItem('tester_name');  
@@ -45,8 +45,7 @@
     }
 
     function sendAuditEvent(action, entity, entityId, status, metadata, durationMs) {
-        // Для авторизованных пользователей не отправляем заголовки тестировщика
-        // Логирование будет происходить через Flask-Login на сервере
+
         if (isUserAuthenticated()) {
             const headers = {
                 'Content-Type': 'application/json',  
@@ -72,7 +71,6 @@
         const testerName = getTesterName();
         const testerUUID = getTesterUUID();
 
-        // Кодируем имя тестировщика в base64, если оно содержит не-ASCII символы
         const hasNonASCII = testerName && /[^\x00-\x7F]/.test(testerName);
         const headers = {
             'Content-Type': 'application/json',  
@@ -188,33 +186,29 @@
         if (typeof url === 'string' && url.includes('/api/audit-log')) {  
             return originalFetch.apply(this, args);  
         }
-        
-        // Добавляем заголовки тестировщика во все fetch запросы
-        // Преобразуем Headers объект в обычный объект, если нужно
+
         let headersObj = {};
         if (options.headers) {
             if (options.headers instanceof Headers) {
-                // Если это Headers объект, преобразуем в обычный объект
+
                 options.headers.forEach((value, key) => {
                     headersObj[key] = value;
                 });
             } else if (typeof options.headers === 'object') {
-                // Если это обычный объект, копируем его
+
                 headersObj = { ...options.headers };
             }
         }
-        
-        // Для авторизованных пользователей не отправляем заголовки тестировщика
+
         if (!isUserAuthenticated()) {
             const testerName = getTesterName();
             const testerUUID = getTesterUUID();
-            // Кодируем имя тестировщика в base64, если оно содержит не-ASCII символы
-            // HTTP заголовки должны содержать только ISO-8859-1 символы
+
             if (testerName && testerName !== 'Anonymous') {
-                // Проверяем, содержит ли имя не-ASCII символы
+
                 const hasNonASCII = /[^\x00-\x7F]/.test(testerName);
                 if (hasNonASCII) {
-                    // Кодируем в base64 для безопасной передачи в заголовке
+
                     headersObj['X-Tester-Name'] = btoa(encodeURIComponent(testerName));
                     headersObj['X-Tester-Name-Encoded'] = 'base64';
                 } else {
@@ -225,8 +219,7 @@
                 headersObj['X-Tester-UUID'] = testerUUID;
             }
         }
-        
-        // Устанавливаем обновленные заголовки обратно
+
         options.headers = headersObj;
         args[1] = options;
         

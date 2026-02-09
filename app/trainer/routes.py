@@ -20,18 +20,15 @@ logger = logging.getLogger(__name__)
 
 
 def _extract_trainer_token_from_request() -> str:
-    # Header takes priority
     h = (request.headers.get('X-Trainer-Token') or '').strip()
     if h:
         return h
     auth = (request.headers.get('Authorization') or '').strip()
     if auth.lower().startswith('bearer '):
         return auth.split(' ', 1)[1].strip()
-    # Fallback to JSON token field
     data = request.get_json(silent=True) or {}
     if isinstance(data, dict) and data.get('token'):
         return str(data.get('token')).strip()
-    # Query param (for convenience)
     q = (request.args.get('token') or '').strip()
     return q
 
@@ -171,14 +168,12 @@ def trainer_embed():
     except Exception as e:
         return render_template('trainer_embed.html', trainer_url=trainer_url, iframe_url=None, config_error=str(e))
 
-    # Forward a few optional query params into the iframe URL
     passthrough = {}
     for k in ('lesson_id', 'task_id', 'task_type', 'template_id', 'assignment_type'):
         v = (request.args.get(k) or '').strip()
         if v:
             passthrough[k] = v
 
-    # Always include token as query param (Streamlit runs in separate origin)
     qs = urlencode({'token': token, **passthrough})
     iframe_url = f"{trainer_url.rstrip('/')}/?{qs}"
 
@@ -190,9 +185,6 @@ def trainer_embed():
     return render_template('trainer_embed.html', trainer_url=trainer_url, iframe_url=iframe_url, config_error=None)
 
 
-# -----------------------------
-# Internal API for Streamlit
-# -----------------------------
 
 @trainer_bp.route('/internal/trainer/token/validate', methods=['POST'])
 @csrf.exempt
@@ -212,7 +204,6 @@ def trainer_token_validate():
 @trainer_bp.route('/internal/trainer/me', methods=['GET'])
 def trainer_me():
     user = _get_trainer_user_from_token(require_permission='trainer.use')
-    # Return only minimal data; permissions are computed on demand.
     perms = [k for k in ALL_PERMISSIONS.keys() if has_permission(user, k)]
     return jsonify({'success': True, 'user': {'id': user.id, 'username': user.username, 'role': user.role}, 'permissions': perms})
 
@@ -248,7 +239,6 @@ def trainer_llm_ping():
             max_tokens=5,
         )
         duration_ms = int((time.time() - started) * 1000)
-        # Store to DB (best-effort)
         try:
             picked = (info.get('picked') or {}) if isinstance(info, dict) else {}
             st = _map_user_to_student(user) if getattr(user, 'role', None) == 'student' else None
@@ -298,7 +288,6 @@ def trainer_llm_chat():
     if not isinstance(raw_msgs, list) or not raw_msgs:
         return jsonify({'success': False, 'error': 'messages_required'}), 400
 
-    # sanitize / limit
     messages: list[dict[str, str]] = []
     for m in raw_msgs[-24:]:
         if not isinstance(m, dict):
@@ -324,7 +313,6 @@ def trainer_llm_chat():
         max_tokens = 700
     max_tokens = max(16, min(max_tokens, 1200))
 
-    # Optional task context for logging
     try:
         task_id = int(data.get('task_id')) if data.get('task_id') not in (None, '') else None
     except Exception:
@@ -348,7 +336,6 @@ def trainer_llm_chat():
         answer = llm.chat(messages=messages, temperature=temperature, max_tokens=max_tokens)
         duration_ms = int((time.time() - started) * 1000)
 
-        # Store to DB (best-effort)
         try:
             picked = (info.get('picked') or {}) if isinstance(info, dict) else {}
             st = _map_user_to_student(user) if getattr(user, 'role', None) == 'student' else None
@@ -387,7 +374,6 @@ def trainer_llm_chat():
         )
         return jsonify({'success': True, 'answer': (answer or ''), 'llm': info, 'duration_ms': duration_ms})
     except Exception as e:
-        # Store error (best-effort)
         try:
             info2 = None
             try:
@@ -459,7 +445,6 @@ def trainer_stream_start():
 
     st = _map_user_to_student(user) if getattr(user, 'role', None) == 'student' else None
 
-    # Optional: pin a specific task_id
     task_id = data.get('task_id')
     pinned_task: Tasks | None = None
     if task_id not in (None, ''):
@@ -469,7 +454,6 @@ def trainer_stream_start():
         except Exception:
             pinned_task = None
 
-    # Optional: exclude already seen tasks (avoid repeats within a session)
     exclude_ids: list[int] = []
     raw_exclude = data.get('exclude_task_ids')
     if isinstance(raw_exclude, list):
@@ -486,7 +470,6 @@ def trainer_stream_start():
         q = Tasks.query.filter(Tasks.task_number == task_type)
         if exclude_ids:
             q = q.filter(~Tasks.task_id.in_(exclude_ids))
-        # Anti-repeat with lessons and trainer history for this student
         if st:
             q = q.filter(~Tasks.task_id.in_(
                 db.session.query(LessonTask.task_id).join(Lesson).filter(Lesson.student_id == st.student_id)
@@ -526,7 +509,6 @@ def trainer_stream_act():
 
     st = _map_user_to_student(user) if getattr(user, 'role', None) == 'student' else None
 
-    # Optional: exclude already seen tasks (avoid repeats within a session)
     exclude_ids: list[int] = []
     raw_exclude = data.get('exclude_task_ids')
     if isinstance(raw_exclude, list):
@@ -564,7 +546,6 @@ def trainer_session_save():
     if not isinstance(data, dict):
         return jsonify({'success': False, 'error': 'bad_request'}), 400
 
-    # Store attempt in DB (and keep audit log as a baseline).
     try:
         task_id = int(data.get('task_id')) if data.get('task_id') not in (None, '') else None
     except Exception:
@@ -573,7 +554,6 @@ def trainer_session_save():
     if isinstance(code, str) and len(code) > 20000:
         code = code[:20000]
 
-    # Persist to TrainerSessions
     try:
         st = _map_user_to_student(user)
         sess = TrainerSession(

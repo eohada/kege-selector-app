@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт для переноса всех тестеров из production в sandbox
 Использование:
@@ -45,7 +44,6 @@ def move_testers():
     print("🔄 Перенос тестеров из Production → Sandbox")
     print("=" * 50)
     
-    # Получаем URL баз данных
     prod_url = os.environ.get('PRODUCTION_DATABASE_URL')
     sandbox_url = os.environ.get('SANDBOX_DATABASE_URL')
     
@@ -59,7 +57,6 @@ def move_testers():
         print("   3. Скопируйте 'Public Network' URL")
         return False
     
-    # Подключаемся к базам
     prod_conn = get_connection(prod_url, "Production")
     sandbox_conn = get_connection(sandbox_url, "Sandbox")
     
@@ -70,7 +67,6 @@ def move_testers():
         prod_cursor = prod_conn.cursor()
         sandbox_cursor = sandbox_conn.cursor()
         
-        # Получаем всех тестеров из production (role = 'tester')
         print("\n📋 Получение списка тестеров из production...")
         prod_cursor.execute("""
             SELECT id, username, password_hash, role, is_active, created_at, last_login
@@ -86,7 +82,6 @@ def move_testers():
             print("ℹ️  Тестеров для переноса не найдено")
             return True
         
-        # Проверяем, существует ли таблица Users в sandbox
         sandbox_cursor.execute("""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables 
@@ -101,11 +96,9 @@ def move_testers():
             print("💡 Сначала создайте структуру базы данных в sandbox")
             return False
         
-        # Получаем существующих пользователей в sandbox (чтобы не дублировать)
         sandbox_cursor.execute("SELECT username FROM \"Users\"")
         existing_usernames = {row[0] for row in sandbox_cursor.fetchall()}
         
-        # Переносим тестеров
         moved_count = 0
         skipped_count = 0
         updated_count = 0
@@ -115,7 +108,6 @@ def move_testers():
             user_id, username, password_hash, role, is_active, created_at, last_login = tester
             
             if username in existing_usernames:
-                # Пользователь уже существует - обновляем данные
                 print(f"  🔄 Обновление: {username}")
                 sandbox_cursor.execute("""
                     UPDATE "Users"
@@ -128,7 +120,6 @@ def move_testers():
                 """, (password_hash, role, is_active, created_at, last_login, username))
                 updated_count += 1
             else:
-                # Создаем нового пользователя
                 print(f"  ➕ Создание: {username}")
                 sandbox_cursor.execute("""
                     INSERT INTO "Users" (username, password_hash, role, is_active, created_at, last_login)
@@ -136,7 +127,6 @@ def move_testers():
                 """, (username, password_hash, role, is_active, created_at, last_login))
                 moved_count += 1
         
-        # Удаляем тестеров из production (только тестеров, не создателей!)
         print(f"\n🗑️  Удаление тестеров из production...")
         prod_cursor.execute("""
             DELETE FROM "Users"
@@ -144,7 +134,6 @@ def move_testers():
         """)
         deleted_count = prod_cursor.rowcount
         
-        # Коммитим изменения
         sandbox_conn.commit()
         prod_conn.commit()
         
@@ -220,7 +209,6 @@ def move_testers():
     print("🔄 Перенос тестеров из Production → Sandbox")
     print("=" * 50)
     
-    # Получаем URL баз данных
     prod_url = os.environ.get('PRODUCTION_DATABASE_URL')
     sandbox_url = os.environ.get('SANDBOX_DATABASE_URL')
     
@@ -234,7 +222,6 @@ def move_testers():
         print("   3. Скопируйте 'Public Network' URL")
         return False
     
-    # Подключаемся к базам
     prod_conn = get_connection(prod_url, "Production")
     sandbox_conn = get_connection(sandbox_url, "Sandbox")
     
@@ -245,7 +232,6 @@ def move_testers():
         prod_cursor = prod_conn.cursor()
         sandbox_cursor = sandbox_conn.cursor()
         
-        # Получаем всех тестеров из production (role = 'tester')
         print("\n📋 Получение списка тестеров из production...")
         prod_cursor.execute("""
             SELECT id, username, password_hash, role, is_active, created_at, last_login
@@ -261,7 +247,6 @@ def move_testers():
             print("ℹ️  Тестеров для переноса не найдено")
             return True
         
-        # Проверяем, существует ли таблица Users в sandbox
         sandbox_cursor.execute("""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables 
@@ -276,11 +261,9 @@ def move_testers():
             print("💡 Сначала создайте структуру базы данных в sandbox")
             return False
         
-        # Получаем существующих пользователей в sandbox (чтобы не дублировать)
         sandbox_cursor.execute("SELECT username FROM \"Users\"")
         existing_usernames = {row[0] for row in sandbox_cursor.fetchall()}
         
-        # Переносим тестеров
         moved_count = 0
         skipped_count = 0
         updated_count = 0
@@ -290,7 +273,6 @@ def move_testers():
             user_id, username, password_hash, role, is_active, created_at, last_login = tester
             
             if username in existing_usernames:
-                # Пользователь уже существует - обновляем данные
                 print(f"  🔄 Обновление: {username}")
                 sandbox_cursor.execute("""
                     UPDATE "Users"
@@ -303,7 +285,6 @@ def move_testers():
                 """, (password_hash, role, is_active, created_at, last_login, username))
                 updated_count += 1
             else:
-                # Создаем нового пользователя
                 print(f"  ➕ Создание: {username}")
                 sandbox_cursor.execute("""
                     INSERT INTO "Users" (username, password_hash, role, is_active, created_at, last_login)
@@ -311,7 +292,6 @@ def move_testers():
                 """, (username, password_hash, role, is_active, created_at, last_login))
                 moved_count += 1
         
-        # Удаляем тестеров из production (только тестеров, не создателей!)
         print(f"\n🗑️  Удаление тестеров из production...")
         prod_cursor.execute("""
             DELETE FROM "Users"
@@ -319,7 +299,6 @@ def move_testers():
         """)
         deleted_count = prod_cursor.rowcount
         
-        # Коммитим изменения
         sandbox_conn.commit()
         prod_conn.commit()
         

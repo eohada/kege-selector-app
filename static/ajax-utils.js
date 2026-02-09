@@ -122,4 +122,3 @@ const ajax = new AjaxUtils();
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = AjaxUtils; 
 }
-

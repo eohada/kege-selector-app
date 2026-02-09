@@ -1,4 +1,4 @@
-/* Модальное окно подтверждения в стиле сайта */
+
 
 .confirm-dialog-overlay {
   position: fixed;
@@ -139,7 +139,6 @@
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
-/* Responsive design */
 @media (max-width: 600px) {
   .confirm-dialog {
     max-width: 90vw;
@@ -163,7 +162,6 @@
   }
 }
 
-/* Закрывающая анимация */
 .confirm-dialog-overlay.closing {
   animation: fadeOutOverlay 300ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }

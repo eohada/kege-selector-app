@@ -6,7 +6,6 @@ import os
 import re
 from pathlib import Path
 
-# Все известные blueprints и их префиксы
 BLUEPRINTS = {
     'auth': ['login', 'logout', 'user_profile', 'register'],
     'main': ['index', 'dashboard', 'home', 'update_plans', 'export_data', 'import_data', 'backup_db'],
@@ -19,26 +18,21 @@ BLUEPRINTS = {
     'templates': ['templates_list', 'template_new', 'template_view', 'template_edit', 'template_delete', 'template_apply']
 }
 
-# Endpoints, которые не требуют префикса
 NO_PREFIX_NEEDED = ['static']
 
 def check_url_for_in_content(content, file_path):
     """Проверяет url_for в содержимом файла"""
     issues = []
-    # Паттерн для поиска url_for('endpoint' или url_for("endpoint"
     pattern = r"url_for\(['\"]([^'\"]+)['\"]"
     
     matches = re.finditer(pattern, content)
     for match in matches:
         endpoint = match.group(1)
         
-        # Пропускаем static и другие специальные endpoints
         if endpoint in NO_PREFIX_NEEDED:
             continue
         
-        # Проверяем, есть ли префикс blueprint
         if '.' not in endpoint:
-            # Это может быть проблема, но нужно проверить, есть ли такой endpoint в blueprints
             found_in_blueprint = False
             for blueprint, endpoints in BLUEPRINTS.items():
                 if endpoint in endpoints:
@@ -52,9 +46,7 @@ def check_url_for_in_content(content, file_path):
                     found_in_blueprint = True
                     break
             
-            # Если endpoint не найден в blueprints, но не является static, это может быть проблема
             if not found_in_blueprint and endpoint not in ['index', 'home']:
-                # Проверяем, может быть это старый endpoint без blueprint
                 if endpoint in ['login', 'logout', 'dashboard', 'user_profile', 'admin_panel', 'student_profile', 'schedule', 'kege_generator']:
                     issues.append({
                         'file': str(file_path),
@@ -74,7 +66,6 @@ def check_all_files():
     
     all_issues = []
     
-    # Проверяем шаблоны
     if templates_dir.exists():
         for template_file in templates_dir.rglob('*.html'):
             try:
@@ -85,13 +76,11 @@ def check_all_files():
             except Exception as e:
                 print(f"Ошибка при чтении {template_file}: {e}")
     
-    # Проверяем Python файлы в app/
     if app_dir.exists():
         for py_file in app_dir.rglob('*.py'):
             try:
                 with open(py_file, 'r', encoding='utf-8') as f:
                     content = f.read()
-                # Проверяем только url_for в строках (не в комментариях)
                 issues = check_url_for_in_content(content, py_file)
                 all_issues.extend(issues)
             except Exception as e:

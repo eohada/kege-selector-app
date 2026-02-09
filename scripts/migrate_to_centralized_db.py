@@ -1,14 +1,10 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Скрипт для переноса данных из старых баз в новые централизованные базы Railway
 Использование:
-    # Для production:
     export OLD_PRODUCTION_DATABASE_URL="postgresql://..."  # Старая база
     export NEW_PRODUCTION_DATABASE_URL="postgresql://..."  # Новая централизованная база
     python scripts/migrate_to_centralized_db.py production
     
-    # Для sandbox:
     export OLD_SANDBOX_DATABASE_URL="postgresql://..."
     export NEW_SANDBOX_DATABASE_URL="postgresql://..."
     python scripts/migrate_to_centralized_db.py sandbox
@@ -61,7 +57,6 @@ def create_tables_if_not_exist(new_conn):
     print("\n📋 Проверка структуры таблиц в новой базе...")
     
     try:
-        # Импортируем Flask app для создания таблиц через SQLAlchemy
         sys.path.insert(0, project_root)
         os.chdir(project_root)
         
@@ -69,11 +64,9 @@ def create_tables_if_not_exist(new_conn):
         
         app = create_app()
         with app.app_context():
-            # Создаем все таблицы
             db.create_all()
             print("✅ Структура таблиц создана/проверена")
             
-            # Применяем дополнительные миграции, если есть
             try:
                 from app import ensure_schema_columns
                 ensure_schema_columns()
@@ -97,7 +90,6 @@ def migrate_table(old_conn, new_conn, table_name, primary_key='id', exclude_colu
     try:
         old_cursor = old_conn.cursor()
         
-        # Проверяем, существует ли таблица в старой базе
         old_cursor.execute("""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables 
@@ -109,7 +101,6 @@ def migrate_table(old_conn, new_conn, table_name, primary_key='id', exclude_colu
             print(f"  ⚠️  Таблица {table_name} не найдена в старой базе, пропускаем")
             return 0
         
-        # Получаем структуру таблицы
         old_cursor.execute(f"""
             SELECT column_name, data_type 
             FROM information_schema.columns 
@@ -123,7 +114,6 @@ def migrate_table(old_conn, new_conn, table_name, primary_key='id', exclude_colu
             print(f"  ⚠️  Таблица {table_name} не имеет колонок")
             return 0
         
-        # Получаем данные из старой базы
         columns_str = ', '.join([f'"{col}"' for col in columns])
         old_cursor.execute(f'SELECT {columns_str} FROM "{table_name}"')
         rows = old_cursor.fetchall()
@@ -134,7 +124,6 @@ def migrate_table(old_conn, new_conn, table_name, primary_key='id', exclude_colu
         
         print(f"  📊 Найдено записей: {len(rows)}")
         
-        # Проверяем, существует ли таблица в новой базе
         new_cursor = new_conn.cursor()
         new_cursor.execute("""
             SELECT EXISTS (
@@ -147,15 +136,11 @@ def migrate_table(old_conn, new_conn, table_name, primary_key='id', exclude_colu
             print(f"  ⚠️  Таблица {table_name} не найдена в новой базе, пропускаем")
             return 0
         
-        # Очищаем таблицу в новой базе (опционально)
-        # Закомментируйте следующую строку, если хотите добавить данные, а не заменить
         new_cursor.execute(f'TRUNCATE TABLE "{table_name}" CASCADE')
         print(f"  🗑️  Таблица очищена")
         
-        # Вставляем данные в новую базу
         if primary_key in columns:
             pk_index = columns.index(primary_key)
-            # Используем ON CONFLICT для обновления существующих записей
             update_cols = ', '.join([f'"{col}" = EXCLUDED."{col}"' for col in columns if col != primary_key])
             execute_values(
                 new_cursor,
@@ -188,12 +173,10 @@ def fix_sequences(new_conn, tables):
     
     for table_name, primary_key in tables:
         try:
-            # Получаем максимальный ID
             new_cursor.execute(f'SELECT MAX("{primary_key}") FROM "{table_name}"')
             max_id = new_cursor.fetchone()[0]
             max_id = int(max_id) if max_id is not None else 0
 
-            # Получаем имя sequence
             new_cursor.execute(
                 "SELECT pg_get_serial_sequence(%s, %s)",
                 (f'"{table_name}"', primary_key)
@@ -224,7 +207,6 @@ def migrate_environment(env_name):
     print(f"ПЕРЕНОС ДАННЫХ ДЛЯ ОКРУЖЕНИЯ: {env_name.upper()}")
     print("=" * 70)
     
-    # Определяем переменные окружения в зависимости от окружения
     if env_name.lower() == 'production':
         old_url_var = 'OLD_PRODUCTION_DATABASE_URL'
         new_url_var = 'NEW_PRODUCTION_DATABASE_URL'
@@ -249,7 +231,6 @@ def migrate_environment(env_name):
         print("❌ Старая и новая базы совпадают. Остановлено для безопасности.")
         return False
     
-    # Подключаемся к базам
     old_conn = get_connection(old_url, f"Старая {env_name}", readonly=True)
     new_conn = get_connection(new_url, f"Новая {env_name}", readonly=False)
     
@@ -257,11 +238,9 @@ def migrate_environment(env_name):
         return False
     
     try:
-        # Создаем структуру таблиц в новой базе
         if not create_tables_if_not_exist(new_conn):
             print("⚠️  Продолжаем без создания структуры...")
         
-        # Список таблиц для переноса (в порядке зависимостей)
         tables = [
             ('Tasks', 'task_id'),
             ('Topics', 'topic_id'),
@@ -287,7 +266,6 @@ def migrate_environment(env_name):
             ('AuditLog', 'id'),
         ]
         
-        # Таблицы, которые НЕ переносим (опционально)
         exclude_tables = []  # Можно добавить таблицы, которые не нужно переносить
         
         total_migrated = 0
@@ -297,7 +275,6 @@ def migrate_environment(env_name):
                 count = migrate_table(old_conn, new_conn, table_name, primary_key)
                 total_migrated += count
         
-        # Исправляем sequences
         fix_sequences(new_conn, tables)
         
         print("\n" + "=" * 70)

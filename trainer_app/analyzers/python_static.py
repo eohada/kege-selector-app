@@ -84,18 +84,15 @@ def analyze_python_code(code: str) -> dict[str, Any]:
 
     V().visit(tree)
 
-    # Warnings
     bad = sorted(m for m in imports if m in _DANGEROUS_MODULES)
     for m in bad:
         issues.append(Issue('security', f'Подозрительный импорт: {m}. В учебных задачах обычно не нужен.', line=None))
 
-    # Heuristics
     if not has_open and not has_input:
         hints.append('Похоже, в коде нет чтения данных (нет open()/input()). Убедись, что ты берёшь входные данные.')
     if not has_print:
         hints.append('Похоже, нет вывода результата (print). В конце нужно вывести ответ.')
 
-    # Style/helpful hints
     if 're' in imports and 'findall' in calls:
         hints.append('Регулярки могут быть ок, но проверь, что они не пропускают перекрывающиеся случаи (если это важно).')
 

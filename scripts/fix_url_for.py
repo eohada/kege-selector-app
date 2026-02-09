@@ -5,18 +5,14 @@ import os
 import re
 from pathlib import Path
 
-# Маппинг endpoints на blueprints
 ENDPOINT_MAPPING = {
-    # auth
     'user_profile': 'auth.user_profile',
     
-    # main
     'index': 'main.index',
     'dashboard': 'main.dashboard',
     'home': 'main.index',
     'update_plans': 'main.update_plans',
     
-    # students
     'student_profile': 'students.student_profile',
     'student_edit': 'students.student_edit',
     'student_delete': 'students.student_delete',
@@ -27,7 +23,6 @@ ENDPOINT_MAPPING = {
     'students_list': 'students.students_list',
     'student_new': 'students.student_new',
     
-    # lessons
     'lesson_complete': 'lessons.lesson_complete',
     'lesson_start': 'lessons.lesson_start',
     'lesson_delete': 'lessons.lesson_delete',
@@ -46,18 +41,15 @@ ENDPOINT_MAPPING = {
     'lesson_classwork_export_md': 'lessons.lesson_classwork_export_md',
     'lesson_exam_export_md': 'lessons.lesson_exam_export_md',
     
-    # kege_generator
     'kege_generator': 'kege_generator.kege_generator',
     'show_accepted': 'kege_generator.show_accepted',
     'show_skipped': 'kege_generator.show_skipped',
     'results': 'kege_generator.results',
     'action': 'kege_generator.action',
     
-    # schedule
     'schedule': 'schedule.schedule',
     'create_lesson': 'schedule.create_lesson',
     
-    # templates_manager
     'templates_list': 'templates_manager.templates_list',
     'template_view': 'templates_manager.template_view',
     'template_new': 'templates_manager.template_new',
@@ -65,7 +57,6 @@ ENDPOINT_MAPPING = {
     'template_delete': 'templates_manager.template_delete',
     'template_apply': 'templates_manager.template_apply',
     
-    # admin
     'admin': 'admin.admin',
     'admin_panel': 'admin.admin_panel',
     'admin_audit': 'admin.admin_audit',
@@ -75,11 +66,9 @@ ENDPOINT_MAPPING = {
     'admin_testers_clear_all': 'admin.admin_testers_clear_all',
     'admin_audit_export': 'admin.admin_audit_export',
     
-    # main (дополнительные)
     'update_plans': 'main.update_plans',
 }
 
-# Специальные случаи (update_plans и другие)
 SPECIAL_CASES = {
     'update_plans': 'main.update_plans',  # если есть такой endpoint
 }
@@ -91,17 +80,14 @@ def fix_url_for_in_file(file_path):
     
     original_content = content
     
-    # Паттерн для поиска url_for('endpoint' или "endpoint")
     pattern = r"url_for\(['\"]([^'\"]+)['\"]"
     
     def replace_endpoint(match):
         endpoint = match.group(1)
         
-        # Если endpoint уже с префиксом blueprint, пропускаем
         if '.' in endpoint:
             return match.group(0)
         
-        # Проверяем маппинг
         if endpoint in ENDPOINT_MAPPING:
             new_endpoint = ENDPOINT_MAPPING[endpoint]
             return f"url_for('{new_endpoint}'"
@@ -109,8 +95,6 @@ def fix_url_for_in_file(file_path):
             new_endpoint = SPECIAL_CASES[endpoint]
             return f"url_for('{new_endpoint}'"
         else:
-            # Если endpoint не найден в маппинге, оставляем как есть
-            # (может быть static, или другой специальный endpoint)
             return match.group(0)
     
     content = re.sub(pattern, replace_endpoint, content)

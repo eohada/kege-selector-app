@@ -60,10 +60,8 @@ class MiroService:
                 **kwargs
             )
             
-            # Логируем запрос
             logger.debug(f"Miro API {method} {endpoint}: {response.status_code}")
             
-            # Проверяем статус
             if response.status_code >= 400:
                 error_data = response.json() if response.text else {}
                 logger.error(f"Miro API error: {response.status_code} - {error_data}")
@@ -73,7 +71,6 @@ class MiroService:
                     details=error_data
                 )
             
-            # Возвращаем JSON или пустой dict
             return response.json() if response.text else {}
             
         except requests.RequestException as e:
@@ -238,8 +235,6 @@ class MiroService:
         Returns:
             Содержимое файла в байтах
         """
-        # Для Business плана экспорт напрямую недоступен
-        # Возвращаем ссылку на доску для ручного экспорта
         raise MiroAPIError(
             status_code=403,
             message="Export API доступен только на Enterprise плане. Используйте встроенный экспорт Miro."
@@ -258,7 +253,6 @@ class MiroService:
         if team_id:
             return self._request("GET", f"/teams/{team_id}")
         
-        # Получить все доступные команды
         return self._request("GET", "/teams")
 
 

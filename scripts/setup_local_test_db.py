@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Создаёт локальную тестовую БД (SQLite) и заполняет её паком для визуального аудита.
 Файл БД: data/keg_tasks.db
@@ -16,11 +14,9 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-# Использовать локальную SQLite — убираем переменные удалённой БД
 for key in ("DATABASE_URL", "DATABASE_EXTERNAL_URL", "POSTGRES_URL"):
     os.environ.pop(key, None)
 
-# Создать каталог data/ при необходимости
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 data_dir = os.path.join(root_dir, "data")
 os.makedirs(data_dir, exist_ok=True)

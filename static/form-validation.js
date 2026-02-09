@@ -1,4 +1,4 @@
-// Клиентская валидация форм с показом ошибок в реальном времени
+
 
 class FormValidator {
     constructor(form) {
@@ -8,16 +8,15 @@ class FormValidator {
     }
     
     init() {
-        // Добавляем обработчики для всех полей
+
         const fields = this.form.querySelectorAll('input, textarea, select');
         fields.forEach(field => {
-            // Валидация при потере фокуса
+
             field.addEventListener('blur', () => this.validateField(field));
-            // Валидация при вводе (для очистки ошибок)
+
             field.addEventListener('input', () => this.clearFieldError(field));
         });
-        
-        // Валидация при отправке формы
+
         this.form.addEventListener('submit', (e) => {
             if (!this.validateAll()) {
                 e.preventDefault();
@@ -30,11 +29,9 @@ class FormValidator {
         const fieldName = field.name;
         const value = field.value.trim();
         const rules = this.getFieldRules(field);
-        
-        // Очищаем предыдущую ошибку
+
         this.clearFieldError(field);
-        
-        // Проверяем каждое правило
+
         for (const rule of rules) {
             const error = this.checkRule(value, rule, field);
             if (error) {
@@ -48,42 +45,36 @@ class FormValidator {
     
     getFieldRules(field) {
         const rules = [];
-        
-        // Обязательное поле
+
         if (field.hasAttribute('required') || field.classList.contains('required')) {
             rules.push({type: 'required'});
         }
-        
-        // Минимальная длина
+
         if (field.hasAttribute('minlength')) {
             rules.push({
                 type: 'minlength',
                 value: parseInt(field.getAttribute('minlength'))
             });
         }
-        
-        // Максимальная длина
+
         if (field.hasAttribute('maxlength')) {
             rules.push({
                 type: 'maxlength',
                 value: parseInt(field.getAttribute('maxlength'))
             });
         }
-        
-        // Паттерн (regex)
+
         if (field.hasAttribute('pattern')) {
             rules.push({
                 type: 'pattern',
                 value: field.getAttribute('pattern')
             });
         }
-        
-        // Email
+
         if (field.type === 'email') {
             rules.push({type: 'email'});
         }
-        
-        // Число
+
         if (field.type === 'number') {
             rules.push({type: 'number'});
             if (field.hasAttribute('min')) {
@@ -99,8 +90,7 @@ class FormValidator {
                 });
             }
         }
-        
-        // Специфичные правила по имени поля
+
         if (fieldName === 'name') {
             rules.push({type: 'minlength', value: 2});
         }
@@ -172,8 +162,7 @@ class FormValidator {
     
     setFieldError(field, message) {
         field.classList.add('error');
-        
-        // Создаем или обновляем элемент с ошибкой
+
         let errorElement = field.parentElement.querySelector('.field-error');
         if (!errorElement) {
             errorElement = document.createElement('div');
@@ -216,35 +205,10 @@ class FormValidator {
     }
 }
 
-// Инициализация валидации для всех форм
 document.addEventListener('DOMContentLoaded', () => {
     const forms = document.querySelectorAll('form[data-validate]');
     forms.forEach(form => {
         new FormValidator(form);
     });
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

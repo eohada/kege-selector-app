@@ -74,7 +74,6 @@ class StatsService:
 
         subs = self._get_submissions()
         for sub in subs:
-            # Считаем только те ответы, где есть результат проверки
             try:
                 atype = (sub.assignment.assignment_type if sub.assignment else None) or 'homework'
             except Exception:
@@ -94,7 +93,6 @@ class StatsService:
                 if ans.is_correct is not None:
                     yield (bool(ans.is_correct), None, weight, topics)
                 else:
-                    # если есть баллы — считаем "правильно" только при 100% на задачу
                     try:
                         mx = int(ans.max_score or 0)
                         sc = int(ans.score or 0)
@@ -112,7 +110,6 @@ class StatsService:
         now = moscow_now()
         start_date = now - timedelta(days=period_days)
         
-        # Группируем оценки по неделям
         weekly_scores = {}
         
         for lesson in lessons:
@@ -123,7 +120,6 @@ class StatsService:
             if lesson_date.tzinfo:
                 lesson_date = lesson_date.replace(tzinfo=None)
 
-            # Не берем будущие уроки в тренд
             now_naive = now.replace(tzinfo=None) if now.tzinfo else now
             if lesson_date > now_naive:
                 continue
@@ -131,25 +127,20 @@ class StatsService:
             if lesson_date < start_date.replace(tzinfo=None):
                 continue
             
-            # Группируем по неделям (начало недели как ключ)
             week_start = lesson_date - timedelta(days=lesson_date.weekday())
             week_key = week_start.strftime('%Y-%m-%d')
             
-            # Собираем оценки из заданий урока
             lesson_scores = []
             for assignment_type in ['homework', 'classwork', 'exam']:
                 assignments = get_sorted_assignments(lesson, assignment_type)
                 for lt in assignments:
                     st = (getattr(lt, 'status', None) or '').lower()
-                    # В тренде учитываем только реально сданные/проверенные/возвращенные задачи
                     if lt.submission_correct is not None and (st in ['submitted', 'graded', 'returned'] or st == ''):
-                        # Оценка: 1 если правильно, 0 если неправильно
                         score = 1.0 if lt.submission_correct else 0.0
                         weight = 2.0 if assignment_type == 'exam' else 1.0
                         lesson_scores.append((score, weight))
             
             if lesson_scores:
-                # Средний балл за урок (с учетом весов)
                 total_weight = sum(w for _, w in lesson_scores)
                 avg_score = sum(s * w for s, w in lesson_scores) / total_weight if total_weight > 0 else 0
                 
@@ -157,7 +148,6 @@ class StatsService:
                     weekly_scores[week_key] = []
                 weekly_scores[week_key].append(avg_score)
         
-        # Вычисляем средний балл за каждую неделю
         dates = []
         scores = []
         
@@ -173,7 +163,6 @@ class StatsService:
         Получить карту навыков (радар-чарт)
         Возвращает: {'labels': [...], 'values': [...]}
         """
-        # Собираем статистику по темам
         topic_stats = {}  # {topic_id: {'correct': 0, 'total': 0, 'name': ''}}
 
         for is_correct, _ratio, weight, topics in self._iter_scored_items():
@@ -191,7 +180,6 @@ class StatsService:
                 if is_correct is True:
                     topic_stats[topic_id]['correct'] += weight
         
-        # Вычисляем проценты
         labels = []
         values = []
         
@@ -222,12 +210,10 @@ class StatsService:
         
         for lesson in lessons:
             status = lesson.status or 'planned'
-            # Нормализуем статусы
             if status == 'cancelled':
                 status = 'canceled_student'
             status_counts[status] = status_counts.get(status, 0) + 1
         
-        # Формируем данные для графика
         labels = []
         values = []
         
@@ -263,7 +249,6 @@ class StatsService:
         total_weight = 0
         
         for lesson in lessons:
-            # Домашние задания
             hw_assignments = get_sorted_assignments(lesson, 'homework')
             for lt in hw_assignments:
                 if lt.submission_correct is not None:
@@ -273,7 +258,6 @@ class StatsService:
                         hw_score += 1
                         total_score += 1
             
-            # Контрольные работы
             exam_assignments = get_sorted_assignments(lesson, 'exam')
             for lt in exam_assignments:
                 if lt.submission_correct is not None:
@@ -304,7 +288,6 @@ class StatsService:
         now = moscow_now()
         start_date = now - timedelta(weeks=weeks)
         
-        # Группируем уроки по датам
         date_statuses = {}  # {date: 'completed' | 'canceled_teacher' | 'canceled_student' | None}
         
         for lesson in lessons:
@@ -318,15 +301,12 @@ class StatsService:
             if lesson_date < start_date.replace(tzinfo=None):
                 continue
             
-            # Используем дату без времени как ключ
             date_key = lesson_date.date().isoformat()
             
-            # Определяем статус урока
             status = lesson.status or 'planned'
             if status == 'cancelled':
                 status = 'canceled_student'
             
-            # Маппинг статусов на три состояния
             status_map = {
                 'completed': 'completed',  # Проведен
                 'in_progress': 'completed',  # В процессе считаем как проведен
@@ -338,11 +318,9 @@ class StatsService:
             
             mapped_status = status_map.get(status)
             
-            # Если для этой даты уже есть статус, приоритет: completed > canceled_student > canceled_teacher
             if date_key not in date_statuses or mapped_status == 'completed':
                 date_statuses[date_key] = mapped_status
         
-        # Формируем список дат и значений
         dates = []
         values = []  # Для совместимости, но не используется
         statuses = []  # Реальные статусы
@@ -355,7 +333,6 @@ class StatsService:
             dates.append(date_key)
             status = date_statuses.get(date_key)
             statuses.append(status)
-            # Для совместимости со старым кодом
             values.append(1 if status == 'completed' else (-1 if status == 'canceled_student' else 0))
             current_date += timedelta(days=1)
         
@@ -382,13 +359,11 @@ class StatsService:
             hw_assignments = get_sorted_assignments(lesson, 'homework')
             
             for lt in hw_assignments:
-                # Проверяем только задания с загруженными ответами
                 if lt.submission_correct is None:
                     continue
                 
                 total_count += 1
                 
-                # Если есть дата загрузки, сравниваем с датой урока
                 if lesson.lesson_date and hasattr(lt, 'submitted_at') and lt.submitted_at:
                     lesson_date = lesson.lesson_date
                     if lesson_date.tzinfo:
@@ -398,20 +373,15 @@ class StatsService:
                     if submitted_at.tzinfo:
                         submitted_at = submitted_at.replace(tzinfo=None)
                     
-                    # Считаем разницу в днях
                     days_diff = (submitted_at.date() - lesson_date.date()).days
                     
                     if days_diff < 0:
-                        # Сдано заранее (до урока)
                         early_count += 1
                     elif days_diff <= 1:
-                        # Сдано вовремя (в день урока или на следующий день)
                         on_time_count += 1
                     else:
-                        # Сдано с опозданием
                         late_count += 1
                 else:
-                    # Если нет данных о времени загрузки, считаем "вовремя"
                     on_time_count += 1
         
         return {
@@ -428,7 +398,6 @@ class StatsService:
         """
         lessons = self._get_lessons()
 
-        # Общий GPA (процент выполнения работ) — учитываем и уроки, и "работы" (Submissions)
         total_score = 0.0
         total_weight = 0.0
 
@@ -441,7 +410,6 @@ class StatsService:
         
         current_gpa = round((total_score / total_weight * 100), 1) if total_weight > 0 else 0
         
-        # Процент сданных ДЗ (классная комната)
         total_hw = 0
         submitted_hw = 0
         
@@ -452,7 +420,6 @@ class StatsService:
         
         hw_submit_rate = round((submitted_hw / total_hw * 100), 1) if total_hw > 0 else 0
         
-        # Дельта за последний месяц
         now = moscow_now()
         month_ago = now - timedelta(days=30)
         
@@ -483,7 +450,6 @@ class StatsService:
         old_avg = sum(old_scores) / len(old_scores) * 100 if old_scores else 0
         delta = round(recent_avg - old_avg, 1)
         
-        # GPA по типам работ
         gpa_by_type = self.get_gpa_by_type()
         
         return {
@@ -507,7 +473,6 @@ class StatsService:
         
         for i, (label, value) in enumerate(zip(skills['labels'], skills['values'])):
             if value < threshold:
-                # Находим topic_id по имени
                 topic = Topic.query.filter_by(name=label).first()
                 if topic:
                     problem_topics.append({
@@ -516,7 +481,6 @@ class StatsService:
                         'avg_score': value
                     })
         
-        # Сортируем по проценту (от худшего к лучшему)
         problem_topics.sort(key=lambda x: x['avg_score'])
         
         return problem_topics
@@ -529,11 +493,9 @@ class StatsService:
         Возвращает список:
         [{'task_number': 7, 'avg_score': 42.0, 'attempts': 12}, ...]
         """
-        # Считаем по весам (exam=2), аналогично другим метрикам.
         totals = {}   # task_number -> total_weight
         corrects = {} # task_number -> correct_weight
 
-        # LessonTask (классная комната)
         lessons = self._get_lessons()
         for lesson in lessons:
             for assignment_type in ['homework', 'classwork', 'exam']:
@@ -549,7 +511,6 @@ class StatsService:
                     if lt.submission_correct is None:
                         continue
                     st = (getattr(lt, 'status', None) or '').lower()
-                    # учитываем только те, которые реально дошли до проверки/сдачи
                     if st not in ['submitted', 'graded', 'returned', '']:
                         continue
 
@@ -557,7 +518,6 @@ class StatsService:
                     if bool(lt.submission_correct):
                         corrects[tnum] = float(corrects.get(tnum, 0.0)) + float(weight)
 
-        # Answer внутри Submission (работы)
         subs = self._get_submissions()
         for sub in subs:
             try:
@@ -568,7 +528,6 @@ class StatsService:
             for ans in (sub.answers or []):
                 if ans is None:
                     continue
-                # Берём номер задания из task
                 try:
                     t = ans.assignment_task.task if ans.assignment_task else None
                     tnum = t.task_number if t else None

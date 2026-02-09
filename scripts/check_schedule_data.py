@@ -17,11 +17,9 @@ def check_schedule_data():
     app = create_app()
     
     with app.app_context():
-        # Получаем последние 3 недели
         today = datetime.now(MOSCOW_TZ).date()
         current_week_start = today - timedelta(days=today.weekday())
         
-        # Начинаем с 3 недель назад
         week_start = current_week_start - timedelta(weeks=2)
         week_end = current_week_start + timedelta(days=6)  # До конца текущей недели
         
@@ -30,7 +28,6 @@ def check_schedule_data():
         
         print(f"📅 Проверяем период: {week_start} - {week_end} (3 недели)\n")
         
-        # Получаем все уроки за неделю
         lessons = Lesson.query.filter(
             Lesson.lesson_date >= week_start_datetime,
             Lesson.lesson_date < week_end_datetime + timedelta(days=1)
@@ -38,7 +35,6 @@ def check_schedule_data():
         
         print(f"📚 Всего уроков за неделю: {len(lessons)}\n")
         
-        # Группируем по дням
         lessons_by_day = defaultdict(list)
         lessons_by_student_day = defaultdict(list)
         
@@ -60,7 +56,6 @@ def check_schedule_data():
                 key = (student_name, lesson_date_local)
                 lessons_by_student_day[key].append(lesson)
         
-        # Выводим статистику по дням
         print("📊 Уроки по дням недели:")
         for day_name in ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']:
             day_lessons = lessons_by_day[day_name]
@@ -74,7 +69,6 @@ def check_schedule_data():
                     print(f"      ... и еще {len(day_lessons) - 5} уроков")
         print()
         
-        # Проверяем дубликаты (один студент в один день)
         print("🔍 Проверка дубликатов (один студент в один день):")
         duplicates_found = False
         for (student_name, lesson_date), lesson_list in lessons_by_student_day.items():
@@ -93,7 +87,6 @@ def check_schedule_data():
             print("   ✅ Дубликатов не найдено")
         print()
         
-        # Проверяем уроки без студентов
         print("👤 Проверка уроков без студентов:")
         lessons_without_student = [l for l in lessons if not l.student]
         if lessons_without_student:
@@ -106,7 +99,6 @@ def check_schedule_data():
             print("   ✅ Все уроки имеют студентов")
         print()
         
-        # Проверяем уроки с неправильными датами (вне недели)
         print("📅 Проверка уроков вне текущей недели:")
         lessons_outside_week = []
         for lesson in lessons:

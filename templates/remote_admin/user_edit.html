@@ -27,7 +27,6 @@
             <form method="POST" action="{% if user %}{{ url_for('remote_admin.user_edit', user_id=user.id) }}{% else %}{{ url_for('remote_admin.user_new') }}{% endif %}" class="neo-form" data-no-ajax>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-                {# Основная информация #}
                 <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
                     <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Основная информация</h2>
                     
@@ -81,11 +80,9 @@
                         <span id="numeric_id_availability" class="username-availability" aria-live="polite"></span>
                     </div>
 
-                    {# Связи (показываются динамически) #}
                     <div class="glass-panel" id="connections_panel" style="margin-top: 1.5rem; padding: 1.5rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; background: rgba(0,0,0,0.2); display: none;">
                         <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: var(--accent-primary);">Связи и привязки</h3>
-                        
-                        {# Для студента: Тьютор и Родители #}
+
                         <div id="student_connections" style="display: none;">
                             <div class="neo-field">
                                 <label class="neo-label" for="tutor_id">Преподаватель (Тьютор)</label>
@@ -111,8 +108,7 @@
                                 </select>
                             </div>
                         </div>
-                        
-                        {# Для родителя: Дети #}
+
                         <div id="parent_connections" style="display: none;">
                             <div class="neo-field">
                                 <label class="neo-label" for="child_ids">Дети (ученики) (Ctrl+Click для выбора нескольких)</label>

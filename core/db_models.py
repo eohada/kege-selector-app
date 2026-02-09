@@ -14,8 +14,6 @@ TOMSK_TZ = ZoneInfo("Asia/Tomsk")
 def moscow_now():
     return datetime.now(MOSCOW_TZ)
 
-# Связующая таблица для связи Заданий и Тем (many-to-many)
-# Используем правильный синтаксис для SQLAlchemy Table
 task_topics = Table('task_topics',
     db.metadata,
     Column('task_id', Integer, ForeignKey('Tasks.task_id'), primary_key=True),
@@ -45,7 +43,6 @@ class TaskReview(db.Model):
     review_id = db.Column(db.Integer, primary_key=True)
     task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, unique=True, index=True)
 
-    # new | ok | needs_fix | skip
     status = db.Column(db.String(30), default='new', nullable=False, index=True)
     notes = db.Column(db.Text, nullable=True)
 
@@ -106,7 +103,6 @@ class Student(db.Model):
     email = db.Column(db.String(200), nullable=True)
     telegram = db.Column(db.String(100), nullable=True)
     
-    # Связь с User
     user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('student_profile', uselist=False))
 
     target_score = db.Column(db.Integer, nullable=True)
@@ -145,7 +141,6 @@ class StudentTaskStatistics(db.Model):
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     
-    # Уникальный индекс для пары student_id + task_number
     __table_args__ = (Index('ix_student_task_statistics', 'student_id', 'task_number', unique=True),)
     
     student = db.relationship('Student', back_populates='task_statistics')
@@ -163,7 +158,6 @@ class StudentLearningPlanItem(db.Model):
     item_id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
 
-    # Можно связать с темой (навыком) и/или с модулем курса
     topic_id = db.Column(db.Integer, db.ForeignKey('Topics.topic_id'), nullable=True, index=True)
     course_module_id = db.Column(db.Integer, db.ForeignKey('CourseModules.module_id'), nullable=True, index=True)
 
@@ -448,7 +442,6 @@ class LessonTask(db.Model):
     student_submission = db.Column(db.Text, nullable=True)
     submission_correct = db.Column(db.Boolean, nullable=True)
     
-    # Новые поля для полноценной системы сдачи
     status = db.Column(db.String(20), default='pending') # pending, submitted, graded, returned
     submission_files = db.Column(db.JSON, nullable=True) # Список путей к файлам
     teacher_comment = db.Column(db.Text, nullable=True) # Комментарий преподавателя к задаче
@@ -528,22 +521,18 @@ class User(db.Model):
     email = db.Column(db.String(200), unique=True, nullable=True)  # Email для входа (новое поле)
     password_hash = db.Column(db.String(255), nullable=False)
     
-    # Роли: 'admin', 'tutor', 'student', 'parent', 'tester', 'creator' (основная роль для отображения; полный набор — в UserRole)
     role = db.Column(db.String(50), default='tester', nullable=False)
-    # Числовой идентификатор для не-учеников (10–99); у учеников — Student.platform_id (100–999)
     numeric_id = db.Column(db.String(10), nullable=True, index=True)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=moscow_now)
     last_login = db.Column(db.DateTime, nullable=True)
 
-    # Старые поля профиля (оставляем для обратной совместимости)
     avatar_url = db.Column(db.String(500), nullable=True)
     about_me = db.Column(db.Text, nullable=True)
     custom_status = db.Column(db.String(100), nullable=True)
     telegram_link = db.Column(db.String(200), nullable=True)
     github_link = db.Column(db.String(200), nullable=True)
     
-    # Flask-Login методы
     def get_id(self):
         return str(self.id)
     
@@ -553,7 +542,6 @@ class User(db.Model):
     def is_anonymous(self):
         return False
     
-    # Связь с таблицей ролей (несколько ролей у одного пользователя)
     user_roles = db.relationship('UserRole', backref='user', lazy='select', cascade='all, delete-orphan', foreign_keys='UserRole.user_id')
 
     def roles(self):
@@ -562,7 +550,6 @@ class User(db.Model):
             return [ur.role for ur in self.user_roles]
         return [self.role] if self.role else []
 
-    # Проверки ролей (учитывают все присвоенные роли)
     def is_admin(self):
         """Проверка, является ли пользователь администратором"""
         return 'admin' in self.roles()
@@ -625,13 +612,10 @@ class User(db.Model):
     def __repr__(self):
         return f'<User {self.username} ({self.role})>'
 
-    # JSON поле для индивидуальных прав пользователя
     custom_permissions = db.Column(db.JSON, nullable=True)
 
-    # Приватная ссылка для синхронизации календаря (iCalendar .ics)
     schedule_ics_token = db.Column(db.String(120), nullable=True, unique=True, index=True)
 
-# Новая модель для хранения настроек ролей
 class RolePermission(db.Model):
     __tablename__ = 'RolePermissions'
     id = db.Column(db.Integer, primary_key=True)
@@ -717,21 +701,17 @@ class LessonWhiteboard(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=False, unique=True, index=True)
     
-    # Данные Miro доски
     miro_board_id = db.Column(db.String(100), nullable=False, index=True)  # ID доски в Miro
     miro_board_url = db.Column(db.String(500), nullable=True)  # Полная ссылка на доску (для редактирования)
     miro_view_link = db.Column(db.String(500), nullable=True)  # Публичная ссылка для просмотра
     
-    # Статус и права
     is_active = db.Column(db.Boolean, default=True, nullable=False)  # Активна ли доска (во время урока = True)
     allow_student_edit = db.Column(db.Boolean, default=True, nullable=False)  # Может ли ученик редактировать
     
-    # Метаданные
     board_name = db.Column(db.String(200), nullable=True)  # Название доски
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     
-    # Связь с уроком
     lesson = db.relationship('Lesson', foreign_keys=[lesson_id], backref=db.backref('whiteboard', uselist=False, lazy=True))
 
 
@@ -742,23 +722,18 @@ class MiroUserToken(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, unique=True, index=True)
     
-    # OAuth токены
     access_token = db.Column(db.Text, nullable=False)
     refresh_token = db.Column(db.Text, nullable=True)
     token_type = db.Column(db.String(50), default='bearer')
     
-    # Срок действия
     expires_at = db.Column(db.DateTime, nullable=True)  # Когда истекает access_token
     
-    # Miro user info
     miro_user_id = db.Column(db.String(100), nullable=True)
     miro_team_id = db.Column(db.String(100), nullable=True)
     
-    # Метаданные
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     
-    # Связь с пользователем
     user = db.relationship('User', backref=db.backref('miro_token', uselist=False, lazy=True))
 
 
@@ -780,7 +755,6 @@ class InviteLink(db.Model):
     role = db.Column(db.String(50), nullable=False, index=True)  # student|parent|tutor|...
     note = db.Column(db.Text, nullable=True)
 
-    # Если это приглашение ученика — можно привязать к Students.student_id, чтобы заполнить email
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
 
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
@@ -876,7 +850,6 @@ class Reminder(db.Model):
         """Проверяет, просрочено ли напоминание"""
         if self.is_completed or not self.reminder_time:
             return False
-        # Сравниваем naive datetime с naive datetime
         now = moscow_now()
         now_naive = now.replace(tzinfo=None) if now.tzinfo else now
         reminder_naive = self.reminder_time.replace(tzinfo=None) if self.reminder_time.tzinfo else self.reminder_time
@@ -898,7 +871,6 @@ class TaskTemplate(db.Model):
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     is_active = db.Column(db.Boolean, default=True)
     
-    # Связи
     template_tasks = db.relationship('TemplateTask', back_populates='template', lazy=True, cascade='all, delete-orphan')
     creator = db.relationship('User', foreign_keys=[created_by])
     
@@ -914,7 +886,6 @@ class TemplateTask(db.Model):
     order = db.Column(db.Integer, default=0)  # Порядок задания в шаблоне
     created_at = db.Column(db.DateTime, default=moscow_now)
     
-    # Связи
     template = db.relationship('TaskTemplate', back_populates='template_tasks')
     task = db.relationship('Tasks')
     
@@ -937,7 +908,6 @@ class MaintenanceMode(db.Model):
         """Получить текущий статус тех работ"""
         status = cls.query.first()
         if not status:
-            # Создаем запись по умолчанию, если её нет
             status = cls(is_enabled=False, message='Ведутся технические работы. Пожалуйста, зайдите позже.')
             db.session.add(status)
             try:
@@ -953,9 +923,6 @@ class MaintenanceMode(db.Model):
         return status.is_enabled
 
 
-# ============================================================================
-# НОВАЯ СИСТЕМА АВТОРИЗАЦИИ И РОЛЕЙ (RBAC)
-# ============================================================================
 
 class UserProfile(db.Model):
     """Расширенный профиль пользователя (1-to-1 с User)"""
@@ -972,13 +939,11 @@ class UserProfile(db.Model):
     avatar_url = db.Column(db.String(500), nullable=True)
     cover_url = db.Column(db.String(500), nullable=True)  # Баннер/обложка профиля (GIF или изображение), для креатора
 
-    # Telegram Bot интеграция
     telegram_chat_id = db.Column(db.BigInteger, nullable=True, unique=True, index=True)  # Chat ID для отправки уведомлений
     telegram_link_code = db.Column(db.String(32), nullable=True)  # Одноразовый код привязки
     telegram_link_code_expires = db.Column(db.DateTime, nullable=True)  # Срок действия кода
     telegram_notifications_enabled = db.Column(db.Boolean, default=True, nullable=False)  # Включены ли уведомления
     
-    # Детальные настройки Telegram уведомлений
     tg_notify_lesson_reminder = db.Column(db.Boolean, default=True, nullable=False)  # Напоминания об уроках
     tg_notify_homework_checked = db.Column(db.Boolean, default=True, nullable=False)  # ДЗ проверено
     tg_notify_homework_returned = db.Column(db.Boolean, default=True, nullable=False)  # ДЗ возвращено на доработку
@@ -987,13 +952,11 @@ class UserProfile(db.Model):
     tg_notify_low_lessons = db.Column(db.Boolean, default=True, nullable=False)  # Уроки заканчиваются
     tg_notify_news = db.Column(db.Boolean, default=True, nullable=False)  # Новости платформы (по умолчанию вкл)
     
-    # Приватные заметки (видны только админу и тьютору)
     internal_notes = db.Column(db.Text, nullable=True)
     
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     
-    # Связь с User
     user = db.relationship('User', backref=db.backref('profile', uselist=False), uselist=False)
     
     def __repr__(self):
@@ -1046,18 +1009,15 @@ class FamilyTie(db.Model):
     parent_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
     student_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
     
-    # Уровень доступа: 'full', 'financial_only', 'schedule_only'
     access_level = db.Column(db.String(50), default='full', nullable=False)
     is_confirmed = db.Column(db.Boolean, default=False, nullable=False)  # Подтверждение связи
     
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     
-    # Связи
     parent = db.relationship('User', foreign_keys=[parent_id], backref='parent_children')
     student = db.relationship('User', foreign_keys=[student_id], backref='student_parents')
     
-    # Уникальный индекс для защиты от дублей
     __table_args__ = (Index('ix_family_tie_unique', 'parent_id', 'student_id', unique=True),)
     
     def __repr__(self):
@@ -1072,19 +1032,15 @@ class Enrollment(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
     tutor_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
     
-    # Предмет (например, "INFORMATICS_EGE_2025", "MATH_EGE_2025")
     subject = db.Column(db.String(100), nullable=False)
     
-    # Статус: 'active', 'paused', 'archived'
     status = db.Column(db.String(50), default='active', nullable=False)
     
-    # Индивидуальные настройки (JSON)
     settings = db.Column(JSON, nullable=True)  # Например, цена часа, особые условия
     
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     
-    # Связи
     student = db.relationship('User', foreign_keys=[student_id], backref='student_enrollments')
     tutor = db.relationship('User', foreign_keys=[tutor_id], backref='tutor_enrollments')
     
@@ -1092,9 +1048,6 @@ class Enrollment(db.Model):
         return f'<Enrollment student:{self.student_id} - tutor:{self.tutor_id} ({self.subject})>'
 
 
-# ============================================================================
-# БИЛЛИНГ + ЮРИДИЧЕСКИЙ СЛОЙ (MVP, без платежных интеграций)
-# ============================================================================
 
 class TariffGroup(db.Model):
     """Группа тарифов для ручной сортировки/группировки в UI."""
@@ -1125,7 +1078,6 @@ class TariffPlan(db.Model):
     period_days = db.Column(db.Integer, nullable=True)   # длительность доступа (информативно)
     lessons_count = db.Column(db.Integer, nullable=True)  # количество уроков в тарифе
 
-    # Форматы доступа (для продажи): уроки / тренажёр / уроки+тренажёр
     allow_lessons = db.Column(db.Boolean, nullable=True)   # None => не ограничиваем (backward compatible)
     allow_trainer = db.Column(db.Boolean, nullable=True)   # None => не ограничиваем (backward compatible)
 
@@ -1169,7 +1121,6 @@ class TrainerSession(db.Model):
     session_id = db.Column(db.Integer, primary_key=True)
 
     user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False, index=True)
-    # Student.student_id (таблица Students) — заполняется, если удалось сопоставить по email или id fallback.
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=True, index=True)
 
     task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=True, index=True)
@@ -1217,7 +1168,6 @@ class TrainerLlmLog(db.Model):
     provider = db.Column(db.String(30), nullable=True, index=True)  # groq|gemini
     model = db.Column(db.String(120), nullable=True)
 
-    # Тело запроса (усеченное/санitized) и ответ
     messages = db.Column(db.JSON, nullable=True)
     answer = db.Column(db.Text, nullable=True)
     error = db.Column(db.Text, nullable=True)
@@ -1251,9 +1201,6 @@ class UserConsent(db.Model):
     user = db.relationship('User', foreign_keys=[user_id])
 
 
-# ============================================================================
-# СИСТЕМА ЗАДАНИЙ И СДАЧИ РАБОТ (ASSIGNMENT/SUBMISSION)
-# ============================================================================
 
 class Assignment(db.Model):
     """
@@ -1267,24 +1214,19 @@ class Assignment(db.Model):
     description = db.Column(db.Text, nullable=True)  # Описание/инструкции
     assignment_type = db.Column(db.String(50), nullable=False)  # 'homework', 'classwork', 'exam', 'test'
     
-    # Временные рамки
     deadline = db.Column(db.DateTime, nullable=False)  # Дедлайн сдачи
     hard_deadline = db.Column(db.Boolean, default=False)  # Если True - нельзя сдать после дедлайна
     time_limit_minutes = db.Column(db.Integer, nullable=True)  # Ограничение времени выполнения (для exam/test)
     
-    # Создатель и связь с уроком (опционально)
     created_by_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)  # Учитель, создавший работу
     lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=True)  # Связь с уроком (если есть)
 
-    # Рубрика/критерии проверки (опционально)
     rubric_template_id = db.Column(db.Integer, db.ForeignKey('RubricTemplates.rubric_id'), nullable=True, index=True)
     
-    # Метаданные
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)  # Можно ли еще работать с этой работой
     
-    # Связи
     created_by = db.relationship('User', foreign_keys=[created_by_id], backref='created_assignments')
     lesson = db.relationship('Lesson', backref='assignments')
     tasks = db.relationship('AssignmentTask', back_populates='assignment', lazy=True, cascade='all, delete-orphan')
@@ -1306,19 +1248,14 @@ class AssignmentTask(db.Model):
     assignment_id = db.Column(db.Integer, db.ForeignKey('Assignments.assignment_id'), nullable=False)
     task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False)
     
-    # Порядок задачи в работе
     order_index = db.Column(db.Integer, nullable=False, default=0)  # Порядок отображения
     
-    # Оценка задачи
     max_score = db.Column(db.Integer, nullable=False, default=1)  # Максимальный балл за задачу
     
-    # Тип проверки
     requires_manual_grading = db.Column(db.Boolean, default=False, nullable=False)  # Требует ли ручной проверки
     
-    # Метаданные
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     
-    # Связи
     assignment = db.relationship('Assignment', back_populates='tasks')
     task = db.relationship('Tasks', backref='assignment_tasks')
     answers = db.relationship('Answer', back_populates='assignment_task', lazy=True, cascade='all, delete-orphan')
@@ -1338,36 +1275,27 @@ class Submission(db.Model):
     assignment_id = db.Column(db.Integer, db.ForeignKey('Assignments.assignment_id'), nullable=False)
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False)
     
-    # Статус сдачи
     status = db.Column(db.String(50), nullable=False, default='ASSIGNED')  
-    # Возможные статусы: ASSIGNED, IN_PROGRESS, SUBMITTED, GRADED, RETURNED, LATE
     
-    # Временные метки
     assigned_at = db.Column(db.DateTime, default=moscow_now, nullable=False)  # Когда назначено
     started_at = db.Column(db.DateTime, nullable=True)  # Когда ученик начал выполнение
     submitted_at = db.Column(db.DateTime, nullable=True)  # Когда сдано
     graded_at = db.Column(db.DateTime, nullable=True)  # Когда проверено
     
-    # Флаги
     is_late = db.Column(db.Boolean, default=False, nullable=False)  # Сдано с опозданием
     
-    # Оценка
     total_score = db.Column(db.Integer, nullable=True)  # Общий балл
     max_score = db.Column(db.Integer, nullable=True)  # Максимальный возможный балл
     percentage = db.Column(db.Float, nullable=True)  # Процент выполнения
     
-    # Комментарий учителя
     teacher_feedback = db.Column(db.Text, nullable=True)
 
-    # Рубрика: снимок выбранной рубрики и заполненные значения
     rubric_template_id = db.Column(db.Integer, db.ForeignKey('RubricTemplates.rubric_id'), nullable=True, index=True)
     rubric_scores = db.Column(db.JSON, nullable=True)  # {"crit1": {"score": 1, "comment": "..."}, ...}
     
-    # Метаданные
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
     
-    # Связи
     assignment = db.relationship('Assignment', back_populates='submissions')
     student = db.relationship('Student', backref='submissions')
     answers = db.relationship('Answer', back_populates='submission', lazy=True, cascade='all, delete-orphan')
@@ -1388,27 +1316,21 @@ class Answer(db.Model):
     submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id'), nullable=False)
     assignment_task_id = db.Column(db.Integer, db.ForeignKey('AssignmentTasks.assignment_task_id'), nullable=False)
     
-    # Ответ ученика
     value = db.Column(db.Text, nullable=True)  # Текст ответа или JSON для сложных ответов
     files = db.Column(JSON, nullable=True)  # Массив путей к прикрепленным файлам
     
-    # Результат проверки
     is_correct = db.Column(db.Boolean, nullable=True)  # Правильность ответа (для авто-проверки)
     score = db.Column(db.Integer, nullable=True)  # Балл за ответ
     max_score = db.Column(db.Integer, nullable=True)  # Максимальный балл (копия из AssignmentTask)
     
-    # Комментарий учителя к конкретному ответу
     teacher_comment = db.Column(db.Text, nullable=True)
     
-    # Метаданные
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
     
-    # Связи
     submission = db.relationship('Submission', back_populates='answers')
     assignment_task = db.relationship('AssignmentTask', back_populates='answers')
     
-    # Уникальность: один ответ на задачу в одной сдаче
     __table_args__ = (
         db.UniqueConstraint('submission_id', 'assignment_task_id', name='uq_submission_task'),
     )
@@ -1460,7 +1382,6 @@ class SubmissionComment(db.Model):
     
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     
-    # Связи
     submission = db.relationship('Submission', backref=db.backref('comments', lazy=True, cascade='all, delete-orphan'))
     author = db.relationship('User')
     
@@ -1468,9 +1389,6 @@ class SubmissionComment(db.Model):
         return f'<Comment {self.comment_id}: submission {self.submission_id} by {self.author_id}>'
 
 
-# ============================================================================
-# ЕДИНАЯ СИСТЕМА ОЦЕНИВАНИЯ (ЖУРНАЛ)
-# ============================================================================
 
 class GradebookEntry(db.Model):
     """

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт предварительной проверки системы (Pre-flight Checks)
 Проверяет готовность инфраструктуры перед запуском
@@ -31,12 +30,10 @@ def check_database_connection():
     
     try:
         with app.app_context():
-            # Простой запрос для проверки подключения
             db.session.execute(text('SELECT 1'))
             db.session.commit()
             print("✅ Подключение к БД: OK")
             
-            # Проверяем тип БД
             db_url = os.environ.get('DATABASE_URL', '')
             if 'postgresql' in db_url.lower() or 'postgres' in db_url.lower():
                 print("✅ Тип БД: PostgreSQL")
@@ -180,7 +177,6 @@ def check_rbac_models():
     
     try:
         with app.app_context():
-            # Проверяем, что модели можно импортировать
             models = [User, UserProfile, FamilyTie, Enrollment]
             for model in models:
                 try:
@@ -190,7 +186,6 @@ def check_rbac_models():
                     print(f"❌ {model.__name__}: ошибка - {e}")
                     return False
             
-            # Проверяем методы User
             test_user = User.query.first()
             if test_user:
                 methods = ['is_admin', 'is_tutor', 'is_student', 'is_parent']
@@ -219,7 +214,6 @@ def check_rbac_utilities():
     try:
         from app.auth.rbac_utils import get_user_scope, apply_data_scope, mask_contact_info
         
-        # Проверяем функции
         functions = [
             ('get_user_scope', get_user_scope),
             ('apply_data_scope', apply_data_scope),
@@ -233,7 +227,6 @@ def check_rbac_utilities():
                 print(f"❌ {func_name}(): функция отсутствует")
                 return False
         
-        # Тестируем mask_contact_info
         test_email = "test@example.com"
         masked = mask_contact_info(test_email)
         if masked and masked != test_email:
@@ -255,7 +248,6 @@ def check_routes():
     print("=" * 60)
     
     try:
-        # Проверяем, что blueprint'ы зарегистрированы
         blueprints = [
             'auth',
             'main',
@@ -273,7 +265,6 @@ def check_routes():
                 print(f"❌ Blueprint '{bp_name}': НЕ зарегистрирован")
                 return False
         
-        # Проверяем наличие ключевых маршрутов через список правил
         required_paths = [
             '/login',
             '/logout',
@@ -336,7 +327,6 @@ def check_test_data():
     
     try:
         with app.app_context():
-            # Проверяем наличие тестовых пользователей
             test_usernames = ['admin', 'tutor1', 'student1', 'parent1']
             found_users = []
             
@@ -344,7 +334,6 @@ def check_test_data():
                 user = User.query.filter_by(username=username).first()
                 if user:
                     found_users.append(username)
-                    # Проверяем профиль
                     profile = UserProfile.query.filter_by(user_id=user.id).first()
                     if profile:
                         print(f"✅ {username}: User + Profile")
@@ -359,21 +348,18 @@ def check_test_data():
                 print("\n⚠️  Тестовые пользователи не найдены")
                 print("💡 Выполните: python scripts/seed_rbac_data.py --sandbox")
             
-            # Проверяем Enrollment
             enrollments_count = Enrollment.query.count()
             if enrollments_count > 0:
                 print(f"✅ Enrollment: {enrollments_count} связей")
             else:
                 print("ℹ️  Enrollment: нет связей (можно создать через seed)")
             
-            # Проверяем FamilyTie
             family_ties_count = FamilyTie.query.count()
             if family_ties_count > 0:
                 print(f"✅ FamilyTie: {family_ties_count} связей")
             else:
                 print("ℹ️  FamilyTie: нет связей (можно создать через seed)")
             
-            # Проверяем Student записи для учеников
             student_users = User.query.filter_by(role='student').all()
             students_with_records = 0
             for user in student_users:
@@ -423,7 +409,6 @@ def main():
             print(f"\n❌ Критическая ошибка при проверке '{check_name}': {e}")
             results.append((check_name, False))
     
-    # Итоговая сводка
     print("\n" + "=" * 60)
     print("ИТОГОВАЯ СВОДКА")
     print("=" * 60)

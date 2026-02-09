@@ -13,7 +13,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
     <style>
-        /* Табы */
+        
         .stats-tabs {
             display: flex;
             gap: 0.5rem;
@@ -53,28 +53,26 @@
         .stats-tab-content.active {
             display: block;
         }
-        
-        /* Выравнивание графиков */
+
         .charts-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
             gap: 1.5rem;
             margin-bottom: 2rem;
-            align-items: start; /* Выравнивание по верху */
+            align-items: start; 
         }
         
         .chart-container {
             display: flex;
             flex-direction: column;
-            height: 400px; /* Фиксированная высота для выравнивания */
+            height: 400px; 
         }
         
         .chart-container canvas {
             flex: 1;
             max-height: 100%;
         }
-        
-        /* Метрики в стиле премиум минимализма */
+
         .metrics-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -138,8 +136,7 @@
                 grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
             }
         }
-        
-        /* Heatmap посещаемости */
+
         .heatmap-wrapper {
             overflow-x: auto;
             margin-top: 1rem;
@@ -156,7 +153,7 @@
             display: flex;
             gap: 0.5rem;
             align-items: flex-end;
-            margin-left: 60px; /* Отступ для меток месяцев */
+            margin-left: 60px; 
         }
         
         .heatmap-day-header-label {
@@ -264,8 +261,7 @@
             font-weight: 500;
             color: var(--text-primary);
         }
-        
-        /* Пунктуальность */
+
         .punctuality-stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -325,8 +321,7 @@
     <div class="app-shell">
         {% set active_page = 'dashboard' %}
         {% include '_primary_nav.html' %}
-        
-        <!-- Заголовок страницы -->
+
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
                 <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost" style="text-decoration: none;">
@@ -336,16 +331,14 @@
             <p class="hero-eyebrow">статистика и аналитика</p>
             <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Статистика" class="ui-icon ui-icon--md"> {{ student.name }}</h1>
         </section>
-        
-        <!-- Табы -->
+
         <div class="stats-tabs">
             <button class="stats-tab active" onclick="switchTab('skills')">Навыки</button>
             <button class="stats-tab" onclick="switchTab('discipline')">Дисциплина</button>
         </div>
-        
-        <!-- Вкладка: Навыки -->
+
         <div id="tab-skills" class="stats-tab-content active">
-            <!-- Метрики -->
+            
             <div class="metrics-grid">
                 <div class="metric-card">
                     <div class="metric-label">Процент выполнения работ</div>
@@ -373,10 +366,9 @@
                     <div class="metric-delta">из {{ metrics.total_lessons }}</div>
                 </div>
             </div>
-            
-            <!-- Графики -->
+
             <div class="charts-grid">
-                <!-- График динамики GPA -->
+                
                 <section class="glass-panel">
                     <div class="panel-head">
                         <div>
@@ -388,8 +380,7 @@
                         <canvas id="trendChart"></canvas>
                     </div>
                 </section>
-                
-                <!-- График навыков (радар) -->
+
                 <section class="glass-panel">
                     <div class="panel-head">
                         <div>
@@ -402,8 +393,7 @@
                     </div>
                 </section>
             </div>
-            
-            <!-- Статистика по заданиям -->
+
             {% if chart_data %}
             <section class="glass-panel" style="margin-bottom: 2rem;">
                 <div class="panel-head">
@@ -419,8 +409,7 @@
                     <canvas id="statisticsChart" style="max-height: 400px;"></canvas>
                 </div>
             </section>
-            
-            <!-- Редактор статистики -->
+
             {% if can_edit is defined and can_edit %}
             <section class="glass-panel" style="margin-bottom: 2rem;">
                 <div class="panel-head">
@@ -437,11 +426,10 @@
                 <p style="margin-top: 1rem; color: var(--text-muted); font-size: 0.9em;">
                     Гибкая система редактирования статистики. Выберите режим редактирования и введите значения для каждого задания.
                 </p>
-                
-                <!-- Глобальный выбор режима редактирования и массовое редактирование -->
+
                 <div style="margin-top: 1.5rem; padding: 1rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1);">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                        <!-- Режим редактирования -->
+                        
                         <div>
                             <label style="display: block; font-size: 0.9em; margin-bottom: 0.75rem; color: var(--text-muted); font-weight: 500;">
                                 Режим редактирования:
@@ -464,8 +452,7 @@
                                 </label>
                             </div>
                         </div>
-                        
-                        <!-- Массовое редактирование -->
+
                         <div>
                             <label style="display: block; font-size: 0.9em; margin-bottom: 0.75rem; color: var(--text-muted); font-weight: 500;">
                                 Массовое редактирование:
@@ -512,8 +499,7 @@
                         </div>
                     </div>
                 </div>
-                
-                <!-- Форма добавления нового задания -->
+
                 <div style="margin-top: 2rem; padding: 1rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1); border-style: dashed;">
                     <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
                         <div style="flex: 1; min-width: 200px;">
@@ -573,7 +559,7 @@
                     <div id="statisticsEditor" style="display: grid; gap: 1rem;">
                         {% for item in chart_data %}
                         <div class="stat-edit-item" data-task-number="{{ item.task_number }}" style="padding: 1.25rem; background: var(--surface-2); border-radius: 8px; border: 1px solid var(--stroke-1);">
-                            <!-- Заголовок с информацией -->
+                            
                             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--stroke-1);">
                                 <div>
                                     <strong style="font-size: 1.1em;">Задание {{ item.task_number }}</strong>
@@ -597,8 +583,7 @@
                                 </button>
                                 {% endif %}
                             </div>
-                            
-                            <!-- Поля редактирования -->
+
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div>
                                     <label style="display: block; font-size: 0.9em; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 500;">
@@ -635,8 +620,7 @@
                                     {% endif %}
                                 </div>
                             </div>
-                            
-                            <!-- Кнопка сохранения -->
+
                             <div style="margin-top: 1rem; display: flex; justify-content: flex-end;">
                                 <button type="button" 
                                         class="neo-button accent stat-save-btn" 
@@ -663,8 +647,7 @@
             </section>
             {% endif %}
             {% endif %}
-            
-            <!-- Проблемные темы -->
+
             {% if problem_topics %}
             <section class="glass-panel" style="margin-bottom: 2rem;">
                 <div class="panel-head">
@@ -691,10 +674,9 @@
             </section>
             {% endif %}
         </div>
-        
-        <!-- Вкладка: Дисциплина -->
+
         <div id="tab-discipline" class="stats-tab-content">
-            <!-- Метрики дисциплины -->
+            
             <div class="metrics-grid">
                 <div class="metric-card">
                     <div class="metric-label">Rate выполнения ДЗ</div>
@@ -713,8 +695,7 @@
                     <div class="metric-value">{{ metrics.missed_lessons }}</div>
                 </div>
             </div>
-            
-            <!-- Heatmap посещаемости -->
+
             <section class="glass-panel" style="margin-bottom: 2rem;">
                 <div class="panel-head">
                     <div>
@@ -727,7 +708,7 @@
                 </p>
                 <div class="heatmap-wrapper">
                     <div class="heatmap-container">
-                        <!-- Заголовок дней недели -->
+                        
                         <div class="heatmap-days-header">
                             <div class="heatmap-day-header-label">Пн</div>
                             <div class="heatmap-day-header-label">Вт</div>
@@ -737,7 +718,7 @@
                             <div class="heatmap-day-header-label">Сб</div>
                             <div class="heatmap-day-header-label">Вс</div>
                         </div>
-                        <!-- Основная часть с месяцами и сеткой -->
+                        
                         <div class="heatmap-main">
                             <div id="heatmapMonths" class="heatmap-months"></div>
                             <div id="attendanceHeatmap" class="heatmap-grid"></div>
@@ -762,8 +743,7 @@
                     </div>
                 </div>
             </section>
-            
-            <!-- График посещаемости (pie) -->
+
             <section class="glass-panel" style="margin-bottom: 2rem;">
                 <div class="panel-head">
                     <div>
@@ -775,8 +755,7 @@
                     <canvas id="attendanceChart" style="max-height: 300px;"></canvas>
                 </div>
             </section>
-            
-            <!-- Пунктуальность сдачи -->
+
             <section class="glass-panel" style="margin-bottom: 2rem;">
                 <div class="panel-head">
                     <div>

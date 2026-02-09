@@ -1,4 +1,4 @@
-// Клавиатурные сокращения для частых действий
+
 
 class KeyboardShortcuts {
     constructor() {
@@ -13,7 +13,7 @@ class KeyboardShortcuts {
     }
     
     register(keys, callback, description = '') {
-        // keys: 'ctrl+s', 'esc', 'ctrl+shift+n'
+
         const key = this.normalizeKey(keys);
         this.shortcuts.set(key, {callback, description, keys});
     }
@@ -39,15 +39,14 @@ class KeyboardShortcuts {
         
         const shortcut = this.shortcuts.get(keyCombo);
         if (shortcut) {
-            // Проверяем, что фокус не в поле ввода
+
             const activeElement = document.activeElement;
             const isInputFocused = activeElement && (
                 activeElement.tagName === 'INPUT' ||
                 activeElement.tagName === 'TEXTAREA' ||
                 activeElement.isContentEditable
             );
-            
-            // Для некоторых комбинаций разрешаем даже в полях ввода
+
             const allowedInInput = ['escape', 'ctrl+s', 'ctrl+enter'];
             if (isInputFocused && !allowedInInput.includes(keyCombo)) {
                 return;
@@ -59,12 +58,10 @@ class KeyboardShortcuts {
     }
 }
 
-// Глобальный экземпляр
 const keyboard = new KeyboardShortcuts();
 
-// Регистрируем стандартные сокращения
 document.addEventListener('DOMContentLoaded', () => {
-    // Ctrl+S - сохранение формы
+
     keyboard.register('ctrl+s', (e) => {
         const form = document.querySelector('form:not([data-no-save])');
         if (form) {
@@ -74,8 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }, 'Сохранить форму');
-    
-    // Escape - закрыть модальное окно
+
     keyboard.register('escape', () => {
         const modal = document.querySelector('.modal.active, .confirm-modal.active');
         if (modal) {
@@ -87,16 +83,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }, 'Закрыть модальное окно');
-    
-    // Ctrl+N - создать новый элемент (ученик, урок)
+
     keyboard.register('ctrl+n', () => {
         const createBtn = document.querySelector('a[href*="/new"], a[href*="/create"], button[data-action="create"]');
         if (createBtn) {
             createBtn.click();
         }
     }, 'Создать новый элемент');
-    
-    // Ctrl+F - фокус на поиск
+
     keyboard.register('ctrl+f', () => {
         const searchInput = document.querySelector('input[type="search"], input[name="search"], input[placeholder*="Поиск" i]');
         if (searchInput) {
@@ -104,8 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
             searchInput.select();
         }
     }, 'Фокус на поиск');
-    
-    // Ctrl+Enter - отправить форму (если в textarea)
+
     keyboard.register('ctrl+enter', (e) => {
         const activeElement = document.activeElement;
         if (activeElement && activeElement.tagName === 'TEXTAREA') {
@@ -119,28 +112,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 'Отправить форму');
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

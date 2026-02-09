@@ -1,4 +1,4 @@
-// Система tooltips для подсказок
+
 
 class TooltipManager {
     constructor() {
@@ -7,12 +7,11 @@ class TooltipManager {
     }
     
     init() {
-        // Инициализируем tooltips для элементов с атрибутом data-tooltip
+
         document.addEventListener('DOMContentLoaded', () => {
             this.initTooltips();
         });
-        
-        // Также инициализируем для динамически добавленных элементов
+
         const observer = new MutationObserver(() => {
             this.initTooltips();
         });
@@ -40,8 +39,7 @@ class TooltipManager {
         tooltip.className = 'tooltip';
         tooltip.textContent = text;
         tooltip.setAttribute('role', 'tooltip');
-        
-        // Показываем tooltip при наведении
+
         element.addEventListener('mouseenter', () => {
             this.showTooltip(element, tooltip, position);
         });
@@ -87,8 +85,7 @@ class TooltipManager {
                 left = rect.right + 8;
                 break;
         }
-        
-        // Корректируем позицию, чтобы tooltip не выходил за границы экрана
+
         const padding = 8;
         if (left < padding) left = padding;
         if (left + tooltipRect.width > window.innerWidth - padding) {
@@ -114,30 +111,5 @@ class TooltipManager {
     }
 }
 
-// Инициализация
 const tooltipManager = new TooltipManager();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

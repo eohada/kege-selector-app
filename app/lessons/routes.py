@@ -58,7 +58,6 @@ def _upsert_gradebook_from_lesson_review(lesson: Lesson, assignment_type: str, p
     if (payload.get('status') or '').strip().lower() != 'graded':
         return
 
-    # Upsert по (student_id, kind=lesson, lesson_id, category)
     entry = GradebookEntry.query.filter_by(
         student_id=lesson.student_id,
         kind='lesson',
@@ -116,7 +115,6 @@ def _resolve_accessible_student_ids(scope: dict) -> list[int]:
     except Exception as e:
         logger.warning(f"Failed to map scope user_ids->student_ids via id fallback: {e}")
 
-    # unique, stable order
     seen = set()
     out: list[int] = []
     for sid in student_ids:
@@ -129,7 +127,6 @@ def _resolve_accessible_student_ids(scope: dict) -> list[int]:
 @login_required
 def lesson_edit(lesson_id):
     """Редактирование урока"""
-    # Оптимизация: используем joinedload для избежания N+1 проблем
     lesson = Lesson.query.options(
         db.joinedload(Lesson.student),
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
@@ -137,9 +134,7 @@ def lesson_edit(lesson_id):
     student = lesson.student
     form = LessonForm(obj=lesson)
     
-    # При редактировании правильно заполняем дату и часовой пояс
     if request.method == 'GET':
-        # Определяем часовой пояс пользователя
         user_tz = 'moscow'
         if current_user.profile and current_user.profile.timezone:
             if 'tomsk' in current_user.profile.timezone.lower() or 'Asia/Tomsk' in current_user.profile.timezone:
@@ -147,46 +142,33 @@ def lesson_edit(lesson_id):
         
         form.timezone.data = user_tz
         
-        # Конвертируем lesson_date из БД (naive в московском времени) в локальное время для формы
         if lesson.lesson_date:
-            # lesson_date в БД хранится как naive datetime в московском времени
             lesson_date_msk = lesson.lesson_date.replace(tzinfo=MOSCOW_TZ) if lesson.lesson_date.tzinfo is None else lesson.lesson_date
             
-            # Конвертируем в часовой пояс пользователя
             if user_tz == 'tomsk':
                 lesson_date_local = lesson_date_msk.astimezone(TOMSK_TZ)
             else:
                 lesson_date_local = lesson_date_msk
             
-            # Убираем timezone для DateTimeLocalField (он ожидает naive datetime)
             form.lesson_date.data = lesson_date_local.replace(tzinfo=None)
 
     if form.validate_on_submit():
         ensure_introductory_without_homework(form)
         
-        # Обрабатываем дату с учетом часового пояса
         lesson_date_local = form.lesson_date.data
         timezone = form.timezone.data
         
-        # Преобразуем локальное время в нужный часовой пояс
-        # Проверяем, что datetime naive (без timezone), иначе делаем его naive
         if lesson_date_local.tzinfo is not None:
-            # Если уже есть timezone, убираем его и работаем с naive datetime
             lesson_date_local = lesson_date_local.replace(tzinfo=None)
         
         if timezone == 'tomsk':
-            # Создаем timezone-aware datetime для томского времени
             lesson_date_local = lesson_date_local.replace(tzinfo=TOMSK_TZ)
-            # Конвертируем в московское время для хранения в БД
             lesson_date_utc = lesson_date_local.astimezone(MOSCOW_TZ)
             logger.debug(f"Томское время: {lesson_date_local}, Московское время: {lesson_date_utc}")
         else:
-            # Создаем timezone-aware datetime для московского времени
             lesson_date_local = lesson_date_local.replace(tzinfo=MOSCOW_TZ)
             lesson_date_utc = lesson_date_local
         
-        # Убираем timezone перед сохранением в БД (SQLAlchemy сохранит как naive)
-        # lesson_date в БД хранится как naive datetime в московском времени
         lesson_date_utc = lesson_date_utc.replace(tzinfo=None) if lesson_date_utc.tzinfo else lesson_date_utc
         
         lesson.lesson_type = form.lesson_type.data
@@ -203,7 +185,6 @@ def lesson_edit(lesson_id):
             db.session.rollback()
             raise
         
-        # Логируем обновление урока
         audit_logger.log(
             action='update_lesson',
             entity='Lesson',
@@ -236,9 +217,6 @@ def lesson_view(lesson_id):
 @login_required
 def lesson_delete(lesson_id):
     """Удаление урока"""
-    # Удаление урока должно быть недоступно ученику/родителю.
-    # Для тьютора разрешаем, если есть хотя бы права управления уроками/расписанием
-    # (т.к. `lesson.delete` может быть не включён в RolePermission/DEFAULT_ROLE_PERMISSIONS).
     try:
         if current_user.is_student() or current_user.is_parent():
             from flask import abort
@@ -272,7 +250,6 @@ def lesson_delete(lesson_id):
         db.session.rollback()
         raise
     
-    # Логируем удаление урока
     audit_logger.log(
         action='delete_lesson',
         entity='Lesson',
@@ -311,17 +288,14 @@ def lesson_complete(lesson_id):
     
     lesson = Lesson.query.get_or_404(lesson_id)
 
-    # Обновление темы
     lesson.topic = request.form.get('topic', lesson.topic)
     lesson.notes = request.form.get('notes', lesson.notes)
     lesson.homework = request.form.get('homework', lesson.homework)
     
-    # Обновление времени урока, если указано
     lesson_date_str = request.form.get('lesson_date', '').strip()
     lesson_time_str = request.form.get('lesson_time', '').strip()
     if lesson_date_str and lesson_time_str:
         try:
-            # Определяем часовой пояс пользователя
             user_tz = 'moscow'
             if current_user.profile and current_user.profile.timezone:
                 if 'tomsk' in current_user.profile.timezone.lower() or 'Asia/Tomsk' in current_user.profile.timezone:
@@ -334,7 +308,6 @@ def lesson_complete(lesson_id):
     
     lesson.status = 'completed'
 
-    # Уменьшаем счетчик оставшихся уроков у студента
     try:
         if lesson.student and lesson.student.user_id:
             from app.models import UserSubscription
@@ -361,13 +334,10 @@ def lesson_complete(lesson_id):
 def lesson_homework_view(lesson_id):
     """Просмотр домашних заданий урока"""
     
-    # --- AUTO-FIX FOR SCHEMA ISSUES ---
-    # Try to load lesson. If it fails due to missing columns, run migration and retry.
     lesson = None
     max_retries = 2
     for attempt in range(max_retries):
         try:
-            # Оптимизация: используем joinedload для избежания N+1 проблем
             lesson = Lesson.query.options(
                 db.joinedload(Lesson.student),
                 db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
@@ -386,10 +356,8 @@ def lesson_homework_view(lesson_id):
                     raise e # Re-raise original error if fix fails
             else:
                 raise e # Re-raise if not a schema issue or retries exhausted
-    # ----------------------------------
 
     student = lesson.student
-    # Контент-блоки (конструктор): приводим к list для шаблона
     content_blocks = []
     try:
         cb = lesson.content_blocks
@@ -400,7 +368,6 @@ def lesson_homework_view(lesson_id):
     except Exception:
         content_blocks = []
     homework_tasks = get_sorted_assignments(lesson, 'homework')  # comment
-    # Материалы из библиотеки, прикрепленные к уроку
     library_materials = []
     try:
         links = LessonMaterialLink.query.filter_by(lesson_id=lesson.lesson_id).options(
@@ -426,7 +393,6 @@ def lesson_homework_view(lesson_id):
     if is_parent_view:  # comment
         is_read_only = True  # comment
     elif is_student_view:  # comment
-        # Если есть задачи "на доработку" — разрешаем редактирование/пересдачу даже после общей финализации.
         finalized = _is_submission_finalized(lesson, homework_tasks)  # comment
         has_returned = any((t.status or '').lower() == 'returned' for t in (homework_tasks or []))  # comment
         is_read_only = bool(finalized and (not has_returned))  # comment
@@ -453,7 +419,6 @@ def lesson_homework_view(lesson_id):
 @login_required
 def lesson_classwork_view(lesson_id):
     """Просмотр заданий классной работы"""
-    # Оптимизация: используем joinedload для избежания N+1 проблем
     lesson = Lesson.query.options(
         db.joinedload(Lesson.student),
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
@@ -520,7 +485,6 @@ def lesson_classwork_view(lesson_id):
 @login_required
 def lesson_exam_view(lesson_id):
     """Просмотр заданий проверочной работы"""
-    # Оптимизация: используем joinedload для избежания N+1 проблем
     lesson = Lesson.query.options(
         db.joinedload(Lesson.student),
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
@@ -598,7 +562,6 @@ def lesson_review_summary_save(lesson_id: int, assignment_type: str):
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.attempts),
     ).get_or_404(lesson_id)
 
-    # RBAC: проверяем доступ к ученику урока
     scope = get_user_scope(current_user)
     if not scope.get('can_see_all'):
         accessible_student_ids = _resolve_accessible_student_ids(scope)
@@ -668,9 +631,6 @@ def lesson_review_summary_save(lesson_id: int, assignment_type: str):
     summaries[assignment_type] = payload
     lesson.review_summaries = summaries
 
-    # Важно: очередь "Проверка" работает по LessonTask.status.
-    # Если учитель сохранил итог (graded/returned), то логично массово обновить статусы задач,
-    # иначе в "Проверке" визуально ничего не меняется.
     try:
         if payload.get('status') in ('graded', 'returned'):
             q = LessonTask.query.filter(LessonTask.lesson_id == lesson.lesson_id)
@@ -680,23 +640,19 @@ def lesson_review_summary_save(lesson_id: int, assignment_type: str):
                 q = q.filter(LessonTask.assignment_type == assignment_type)
 
             if payload.get('status') == 'graded':
-                # Отмечаем сданные/возвращённые как проверенные
                 q = q.filter(LessonTask.status.in_(['submitted', 'returned']))
                 q.update({'status': 'graded'}, synchronize_session=False)
             elif payload.get('status') == 'returned':
-                # Возвращаем сданные на доработку
                 q = q.filter(LessonTask.status.in_(['submitted']))
                 q.update({'status': 'returned'}, synchronize_session=False)
     except Exception as e:
         logger.warning(f"Could not bulk update LessonTask statuses from review summary: {e}")
 
-    # Авто-журнал: создаём/обновляем запись только если итог = graded
     try:
         _upsert_gradebook_from_lesson_review(lesson, assignment_type, payload, actor_user_id=current_user.id)
     except Exception as e:
         logger.warning(f"Could not upsert gradebook entry from lesson review: {e}")
 
-    # Уведомление ученику/родителю при значимом статусе
     try:
         st = lesson.student
         if st and payload.get('status') in ('graded', 'returned'):
@@ -737,7 +693,6 @@ def review_queue():
     - работы новой системы (Submission/Assignment)
     Показывает очередь "что проверить" с фильтрами.
     """
-    # Параметры фильтров
     status = (request.args.get('status') or 'submitted').strip().lower()
     source = (request.args.get('source') or 'all').strip().lower()  # all|lessons|assignments
     assignment_type = (request.args.get('assignment_type') or '').strip().lower()  # homework|classwork|exam
@@ -770,7 +725,6 @@ def review_queue():
     if not scope.get('can_see_all'):
         accessible_student_ids = _resolve_accessible_student_ids(scope) or []
 
-    # Счётчики для фильтра статуса (в пределах текущих фильтров type/student/source)
     status_counts_lessons = {'submitted': 0, 'returned': 0, 'graded': 0, 'pending': 0}
     status_counts_assignments = {'submitted': 0, 'returned': 0, 'graded': 0, 'pending': 0}
 
@@ -864,7 +818,6 @@ def review_queue():
                     'tasks': [],
                     '_seen_task_ids': set(),
                 }
-            # safety: не допускаем дублей задач в одной карточке (на случай странных JOIN/данных)
             try:
                 tid = int(getattr(lt, 'lesson_task_id', 0) or 0)
             except Exception:
@@ -875,9 +828,7 @@ def review_queue():
                 by_lesson[lid]['_seen_task_ids'].add(tid)
             by_lesson[lid]['tasks'].append(lt)
 
-        # сохраняем порядок по дате урока
         for item in by_lesson.values():
-            # чистим служебное поле
             try:
                 item.pop('_seen_task_ids', None)
             except Exception:
@@ -887,7 +838,6 @@ def review_queue():
 
     assignment_cards = []
     if source in {'all', 'assignments'}:
-        # mapping фильтра статуса с UI -> Submission.status
         status_map = {
             'submitted': ['SUBMITTED', 'LATE'],
             'returned': ['RETURNED'],
@@ -912,7 +862,6 @@ def review_queue():
                 Assignment.title.ilike(f'%{student_query}%'),
             ))
 
-        # доступ в assignments.submission_grade_view дополнительно ограничен created_by_id
         if not scope.get('can_see_all'):
             qs = qs.filter(Assignment.created_by_id == current_user.id)
             if accessible_student_ids is not None:
@@ -924,7 +873,6 @@ def review_queue():
         now_local = moscow_now()
 
         def _sub_key(s: Submission):
-            # приоритет: просрочено по дедлайну > LATE > время сдачи/обновления
             try:
                 deadline = s.assignment.deadline if (s and s.assignment) else None
             except Exception:
@@ -948,13 +896,11 @@ def review_queue():
                     '_sort_key': _sub_key(sub),
                 }
             by_assignment[aid]['submissions'].append(sub)
-            # обновляем sort_key по самой свежей сдаче
             if _sub_key(sub) > by_assignment[aid]['_sort_key']:
                 by_assignment[aid]['_sort_key'] = _sub_key(sub)
 
         assignment_cards = list(by_assignment.values())
         assignment_cards.sort(key=lambda x: x.get('_sort_key') or (0, 0, now_local), reverse=True)
-        # чистим служебное поле
         for c in assignment_cards:
             c.pop('_sort_key', None)
 
@@ -996,7 +942,6 @@ def review_lesson_task(lesson_task_id: int):
     if not lesson:
         return make_response('Not found', 404)
 
-    # RBAC: проверяем доступ к ученику урока
     scope = get_user_scope(current_user)
     if not scope.get('can_see_all'):
         accessible_student_ids = _resolve_accessible_student_ids(scope)
@@ -1053,14 +998,12 @@ def review_bulk_update_lesson(lesson_id: int):
         flash('Некорректное действие.', 'danger')
         return redirect(url_for('lessons.review_queue', status=status_filter, assignment_type=assignment_type, student=student_query))
 
-    # QA: массовые действия доступны только из статуса "Сдано"
     if status_filter != 'submitted':
         flash('Массовые действия доступны только в статусе «Сдано».', 'warning')
         return redirect(url_for('lessons.review_queue', status=status_filter, assignment_type=assignment_type, student=student_query))
 
     lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
 
-    # RBAC: проверяем доступ к ученику урока
     scope = get_user_scope(current_user)
     if not scope.get('can_see_all'):
         accessible_student_ids = _resolve_accessible_student_ids(scope)
@@ -1107,7 +1050,6 @@ def lesson_task_teacher_comment_add(lesson_id, lesson_task_id):  # comment
         return jsonify({'success': False, 'error': 'Пустой комментарий'}), 400  # comment
     comment = LessonTaskTeacherComment(lesson_task_id=lesson_task.lesson_task_id, author_user_id=getattr(current_user, 'id', None), body=body)  # comment
     db.session.add(comment)  # comment
-    # Для обратной совместимости держим последний комментарий в поле teacher_comment
     lesson_task.teacher_comment = body  # comment
     try:  # comment
         db.session.commit()  # comment
@@ -1121,7 +1063,6 @@ def lesson_task_teacher_comment_add(lesson_id, lesson_task_id):  # comment
             tz = current_user.profile.timezone  # comment
     except Exception:  # comment
         tz = 'Europe/Moscow'  # comment
-    # format_dt_tz фильтр доступен в шаблонах; здесь отдаем ISO и сырой текст, отображение делаем на клиенте
     return jsonify({  # comment
         'success': True,  # comment
         'comment': {  # comment
@@ -1147,7 +1088,6 @@ def lesson_task_teacher_comment_update(comment_id):  # comment
     if not body:  # comment
         return jsonify({'success': False, 'error': 'Пустой комментарий'}), 400  # comment
     comment.body = body  # comment
-    # sync last comment to LessonTask.teacher_comment if this comment is latest
     try:  # comment
         lesson_task = LessonTask.query.filter_by(lesson_task_id=comment.lesson_task_id).first()  # comment
         if lesson_task:  # comment
@@ -1179,7 +1119,6 @@ def lesson_task_teacher_comment_delete(comment_id):  # comment
         db.session.rollback()  # comment
         logger.error(f"Failed to delete teacher comment: {e}", exc_info=True)  # comment
         return jsonify({'success': False, 'error': 'Ошибка удаления'}), 500  # comment
-    # Re-sync latest to LessonTask.teacher_comment
     try:  # comment
         lesson_task = LessonTask.query.filter_by(lesson_task_id=lesson_task_id).first()  # comment
         if lesson_task:  # comment
@@ -1212,7 +1151,6 @@ def lesson_tasks_bulk_update(lesson_id):  # comment
         if status:  # comment
             t.status = status  # comment
         if submission_correct != 'unset':  # comment
-            # допускаем true/false/null
             if submission_correct in (True, False, None):  # comment
                 t.submission_correct = submission_correct  # comment
     try:  # comment
@@ -1245,7 +1183,6 @@ def _get_current_lesson_student(lesson):  # comment
             student = None
     if not student:
         return None  # comment
-    # Бест-эффорт привязка user_id, если нашли по старому способу
     if student.user_id is None:
         try:
             student.user_id = current_user.id
@@ -1261,7 +1198,6 @@ def _is_submission_finalized(lesson, tasks):  # comment
     """После сдачи (submitted/graded) — финализация: редактирование запрещено, кроме задач со статусом returned."""  # comment
     if tasks and any((t.status or '').lower() in ('submitted', 'graded') for t in tasks):  # comment
         return True  # comment
-    # Fallback для старых данных, где status еще не проставлялся
     return getattr(lesson, 'homework_status', None) == 'assigned_done'  # comment
 
 
@@ -1278,7 +1214,6 @@ def _save_student_submissions(lesson, assignment_type):  # comment
     is_finalized = _is_submission_finalized(lesson, tasks)  # comment
     for task in tasks:  # comment
         field_name = f'submission_{task.lesson_task_id}'  # comment
-        # Если работа уже сдана — разрешаем правки только по возвращенным задачам
         if is_finalized and (task.status or '').lower() != 'returned':  # comment
             continue  # comment
         if field_name in request.form:  # comment
@@ -1292,7 +1227,6 @@ def _submit_student_submissions(lesson, assignment_type):  # comment
     tasks = get_sorted_assignments(lesson, assignment_type)  # comment
     is_finalized = _is_submission_finalized(lesson, tasks)  # comment
     for task in tasks:  # comment
-        # После сдачи повторно "сдаем" только возвращенные задачи
         if is_finalized and (task.status or '').lower() != 'returned':  # comment
             continue  # comment
         field_name = f'submission_{task.lesson_task_id}'  # comment
@@ -1311,7 +1245,6 @@ def _submit_student_submissions(lesson, assignment_type):  # comment
         normalized_expected = normalize_answer_value(expected)  # comment
         task.submission_correct = normalized_value == normalized_expected and normalized_expected != ''  # comment
         task.status = 'submitted'  # comment
-        # Сохраняем попытку сдачи (история)
         try:
             _record_lesson_task_attempt(task)
         except Exception as e:
@@ -1475,7 +1408,6 @@ def lesson_homework_save(lesson_id):
         db.session.rollback()
         raise
 
-    # Уведомление о новых заданиях в уроке (ДЗ) — дебаунс 5 минут
     if lesson.student and prev_status != 'assigned_not_done' and lesson.homework_status == 'assigned_not_done' and homework_tasks:
         task_ids = [t.task_id for t in homework_tasks]
         enqueue_assignment_notification(
@@ -1490,7 +1422,6 @@ def lesson_homework_save(lesson_id):
             db.session.rollback()
             logger.warning(f"Could not commit pending assignment notification (homework_save): {e}")
     
-    # Логируем сохранение домашнего задания
     audit_logger.log(
         action='save_homework',
         entity='Lesson',
@@ -1585,10 +1516,8 @@ def lesson_task_set_status(lesson_id, lesson_task_id):
         lesson_id=lesson_id
     ).first_or_404()
     
-    # Получаем статус из запроса
     status = request.json.get('status') if request.is_json else request.form.get('status')
     
-    # Преобразуем строковый статус в Boolean или None
     if status == 'correct':
         lesson_task.submission_correct = True
     elif status == 'incorrect':
@@ -1657,7 +1586,6 @@ def lesson_task_teacher_feedback_save(lesson_id, lesson_task_id):  # comment
         logger.error(f"Failed to save teacher feedback: {e}", exc_info=True)  # comment
         return jsonify({'success': False, 'error': 'Ошибка сохранения'}), 500  # comment
 
-    # Уведомление ученику/родителю при смене статуса на graded/returned
     try:
         if lesson_task.lesson and lesson_task.lesson.student and status in ('graded', 'returned'):
             if status == 'graded':
@@ -1693,7 +1621,6 @@ def lesson_task_teacher_feedback_save(lesson_id, lesson_task_id):  # comment
 def lesson_messages_list(lesson_id: int):
     lesson = Lesson.query.options(db.joinedload(Lesson.student)).get_or_404(lesson_id)
 
-    # Доступ: студент урока, родитель студента, или преподаватель с доступом к ученику
     scope = get_user_scope(current_user)
     if not scope.get('can_see_all'):
         if current_user.is_student():
@@ -1702,7 +1629,6 @@ def lesson_messages_list(lesson_id: int):
         elif current_user.is_parent():
             ties = FamilyTie.query.filter_by(parent_id=current_user.id, is_confirmed=True).all()
             child_user_ids = [t.student_id for t in ties]
-            # fallback: в некоторых окружениях Student.student_id == User.id ученика
             allowed_students = Student.query.filter(Student.student_id.in_(child_user_ids)).all()
             if lesson.student_id not in [s.student_id for s in allowed_students]:
                 return jsonify({'success': False, 'error': 'Forbidden'}), 403
@@ -1757,9 +1683,6 @@ def lesson_messages_send(lesson_id: int):
             if lesson.student_id not in accessible_student_ids:
                 return jsonify({'success': False, 'error': 'Forbidden'}), 403
 
-    # Дедуп: если пользователь много раз нажал "Отправить" (лаг/двойной клик),
-    # не плодим одинаковые сообщения.
-    # Окно маленькое, чтобы не мешать реальному повтору.
     try:
         from datetime import timedelta
         now_dt = moscow_now().replace(tzinfo=None)
@@ -1783,7 +1706,6 @@ def lesson_messages_send(lesson_id: int):
     msg = LessonMessage(lesson_id=lesson.lesson_id, author_user_id=current_user.id, body=body)
     db.session.add(msg)
 
-    # Уведомление ученику/родителям, если пишет преподаватель
     try:
         if not current_user.is_student():
             notify_student_and_parents(
@@ -1826,7 +1748,6 @@ def lesson_homework_auto_check(lesson_id):
     lesson = Lesson.query.get_or_404(lesson_id)
     result = perform_auto_check(lesson, 'homework')
     
-    # Если это AJAX-запрос, возвращаем JSON
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         if isinstance(result[0], dict) and 'error' in result[0]:
             return jsonify({'success': False, 'error': result[0]['error'], 'category': result[0].get('category', 'error')}), 400
@@ -1876,7 +1797,6 @@ def lesson_homework_auto_check(lesson_id):
             'percent': percent
         })
     
-    # Обычный POST-запрос (fallback)
     if isinstance(result[0], dict) and 'error' in result[0]:
         flash(result[0]['error'], result[0].get('category', 'error'))
         return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id))
@@ -1931,7 +1851,6 @@ def lesson_classwork_auto_check(lesson_id):
     lesson = Lesson.query.get_or_404(lesson_id)
     result = perform_auto_check(lesson, 'classwork')
     
-    # Если это AJAX-запрос, возвращаем JSON
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         if result[0] is None:
             return jsonify({'success': False, 'error': 'Ошибка при выполнении автопроверки'}), 400
@@ -1973,7 +1892,6 @@ def lesson_classwork_auto_check(lesson_id):
             'percent': percent
         })
     
-    # Обычный POST-запрос (fallback)
     if isinstance(result[0], dict) and 'error' in result[0]:
         flash(result[0]['error'], result[0].get('category', 'error'))
         return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id))
@@ -2022,7 +1940,6 @@ def lesson_exam_auto_check(lesson_id):
     lesson = Lesson.query.get_or_404(lesson_id)
     result = perform_auto_check(lesson, 'exam')
     
-    # Если это AJAX-запрос, возвращаем JSON
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         if result[0] is None:
             return jsonify({'success': False, 'error': 'Ошибка при выполнении автопроверки'}), 400
@@ -2065,7 +1982,6 @@ def lesson_exam_auto_check(lesson_id):
             'percent': percent
         })
     
-    # Обычный POST-запрос (fallback)
     if isinstance(result[0], dict) and 'error' in result[0]:
         flash(result[0]['error'], result[0].get('category', 'error'))
         return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson_id))
@@ -2238,7 +2154,6 @@ def lesson_manual_create(lesson_id):
             data = request.get_json()
             tasks_data = data.get('tasks', [])
 
-            # Фикс для PostgreSQL: если sequence у Tasks.task_id сбит, ручное создание заданий падает на duplicate key
             try:  # Пытаемся выровнять sequence превентивно (без падения, если не Postgres)
                 db_url = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')  # Берём URI базы
                 is_pg = ('postgresql' in db_url) or ('postgres' in db_url)  # Проверяем, что это Postgres
@@ -2251,7 +2166,6 @@ def lesson_manual_create(lesson_id):
             count = 0
             created_task_ids = []
             for task_data in tasks_data:
-                # Create Task
                 new_task = Tasks(
                     task_number=int(task_data.get('number', 1)),
                     content_html=f'<div class="task-text">{task_data.get("content", "")}</div>',
@@ -2263,7 +2177,6 @@ def lesson_manual_create(lesson_id):
                 db.session.flush() # Get task_id
                 created_task_ids.append(new_task.task_id)
                 
-                # Link to Lesson
                 lesson_task = LessonTask(
                     lesson_id=lesson.lesson_id,
                     task_id=new_task.task_id,
@@ -2342,7 +2255,6 @@ def lesson_content_blocks_save(lesson_id):
     if not isinstance(blocks, list):
         return jsonify({'success': False, 'error': 'blocks must be a list'}), 400
 
-    # sanitize structure
     cleaned = []
     for b in blocks:
         if not isinstance(b, dict):
@@ -2383,7 +2295,6 @@ def lesson_content_blocks_save(lesson_id):
 def lesson_student_notes_save(lesson_id):
     """Сохранение заметок ученика"""
     lesson = Lesson.query.get_or_404(lesson_id)
-    # Здесь можно добавить проверку прав доступа
     
     data = request.get_json()
     if data and 'notes' in data:
@@ -2419,7 +2330,6 @@ def lesson_upload_material(lesson_id):
         return jsonify({'success': False, 'error': 'No selected file'}), 400
         
     if file:
-        # Create folder: static/uploads/lessons/<lesson_id>/
         upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'lessons', str(lesson_id))
         try:
             filename, file_path, _size = save_uploaded_file(
@@ -2431,9 +2341,7 @@ def lesson_upload_material(lesson_id):
         except Exception as e:
             return jsonify({'success': False, 'error': f'Не удалось загрузить файл: {e}'}), 400
         
-        # Update JSON materials
         materials = lesson.materials or []
-        # Ensure it's a list
         if isinstance(materials, str):
             try:
                 materials = json.loads(materials)
@@ -2487,8 +2395,6 @@ def lesson_delete_material(lesson_id):
         db.session.commit()
         
         try:
-             # Удаляем файл физически
-             # Удаляем файл физически (берём последнюю часть URL, поддерживаем и /static/ и /files/)
              filename = (url_to_delete.split('?')[0] or '').split('/')[-1]
              file_path = os.path.join(current_app.root_path, 'static', 'uploads', 'lessons', str(lesson_id), secure_filename(filename))
              if os.path.exists(file_path):
@@ -2501,9 +2407,6 @@ def lesson_delete_material(lesson_id):
     return jsonify({'success': False, 'error': 'Material not found'}), 404
 
 
-# ============================================================================
-# ИНТЕРАКТИВНАЯ ДОСКА (MIRO)
-# ============================================================================
 
 @lessons_bp.route('/lesson/<int:lesson_id>/whiteboard', methods=['GET'])
 @login_required
@@ -2512,12 +2415,10 @@ def lesson_whiteboard_info(lesson_id):
     try:
         lesson = Lesson.query.get_or_404(lesson_id)
         
-        # Пробуем получить whiteboard (может не существовать таблица)
         try:
             whiteboard = lesson.whiteboard
         except Exception as e:
             logger.warning(f"Whiteboard relationship error, trying to create table: {e}")
-            # Пробуем создать таблицу
             try:
                 from sqlalchemy import inspect
                 inspector = inspect(db.engine)
@@ -2528,7 +2429,6 @@ def lesson_whiteboard_info(lesson_id):
             except Exception as create_err:
                 logger.warning(f"Could not create LessonWhiteboards table: {create_err}")
             
-            # Возвращаем как будто доски нет
             return jsonify({
                 'success': True,
                 'exists': False,
@@ -2566,13 +2466,11 @@ def lesson_whiteboard_info(lesson_id):
 @login_required
 def lesson_whiteboard_create(lesson_id):
     """Создать новую доску Miro для урока."""
-    # Только преподаватель может создавать доску
     if current_user.is_student() or current_user.is_parent():
         return jsonify({'success': False, 'error': 'Только преподаватель может создать доску'}), 403
     
     lesson = Lesson.query.get_or_404(lesson_id)
     
-    # Проверяем, не существует ли уже доска
     if lesson.whiteboard:
         return jsonify({
             'success': False, 
@@ -2583,7 +2481,6 @@ def lesson_whiteboard_create(lesson_id):
             }
         }), 400
     
-    # Для создания доски нужен OAuth-токен пользователя (кнопка «Подключить Miro»)
     from datetime import datetime, timedelta
     miro_token = MiroUserToken.query.filter_by(user_id=current_user.id).first()
     if not miro_token or not miro_token.access_token:
@@ -2594,7 +2491,6 @@ def lesson_whiteboard_create(lesson_id):
             'auth_required': True,
             'auth_url': auth_url
         }), 400
-    # Истёк только если явно задан срок и он уже прошёл (запас 60 сек на рассинхрон времени)
     now = datetime.utcnow()
     if miro_token.expires_at is not None and miro_token.expires_at <= (now - timedelta(seconds=60)):
         return jsonify({
@@ -2609,19 +2505,16 @@ def lesson_whiteboard_create(lesson_id):
         
         miro = get_miro_service(access_token=miro_token.access_token)
         
-        # Формируем название доски
         student = lesson.student
         board_name = f"Урок: {lesson.topic or 'Без темы'}"
         if student:
             board_name = f"{student.name} - {board_name}"
         
-        # Создаём доску в Miro
         board_data = miro.create_board(
             name=board_name,
             description=f"Интерактивная доска для урока #{lesson_id}"
         )
         
-        # Сохраняем в БД
         whiteboard = LessonWhiteboard(
             lesson_id=lesson_id,
             miro_board_id=board_data.get('id'),
@@ -2635,7 +2528,6 @@ def lesson_whiteboard_create(lesson_id):
         db.session.add(whiteboard)
         db.session.commit()
         
-        # Логируем
         audit_logger.log(
             action='whiteboard_created',
             entity='Lesson',
@@ -2674,7 +2566,6 @@ def lesson_whiteboard_settings(lesson_id):
     
     lesson = Lesson.query.get_or_404(lesson_id)
     
-    # Доступ к доске проверен выше (is_student/is_parent)
     
     whiteboard = lesson.whiteboard
     if not whiteboard:
@@ -2682,7 +2573,6 @@ def lesson_whiteboard_settings(lesson_id):
     
     data = request.get_json() or {}
     
-    # Обновляем настройки
     if 'is_active' in data:
         whiteboard.is_active = bool(data['is_active'])
     
@@ -2709,7 +2599,6 @@ def lesson_whiteboard_delete(lesson_id):
     
     lesson = Lesson.query.get_or_404(lesson_id)
     
-    # Доступ к доске проверен выше (is_student/is_parent)
     
     whiteboard = lesson.whiteboard
     if not whiteboard:
@@ -2717,11 +2606,9 @@ def lesson_whiteboard_delete(lesson_id):
     
     miro_board_id = whiteboard.miro_board_id
     
-    # Удаляем запись из БД (доска в Miro остаётся)
     db.session.delete(whiteboard)
     db.session.commit()
     
-    # Логируем
     audit_logger.log(
         action='whiteboard_deleted',
         entity='Lesson',
@@ -2742,7 +2629,6 @@ def lesson_whiteboard_invite(lesson_id):
     
     lesson = Lesson.query.get_or_404(lesson_id)
     
-    # Доступ к доске проверен выше (is_student/is_parent)
     
     whiteboard = lesson.whiteboard
     if not whiteboard:
@@ -2755,7 +2641,6 @@ def lesson_whiteboard_invite(lesson_id):
     if not email:
         return jsonify({'success': False, 'error': 'Укажите идентификатор для приглашения (identifier)'}), 400
 
-    # Для приглашения нужен OAuth-токен пользователя
     from datetime import datetime, timedelta
     miro_token = MiroUserToken.query.filter_by(user_id=current_user.id).first()
     if not miro_token or not miro_token.access_token:
@@ -2808,37 +2693,30 @@ def lesson_whiteboard_embed_url(lesson_id):
     """Получить URL для встраивания доски."""
     lesson = Lesson.query.get_or_404(lesson_id)
     
-    # Доступ к доске проверен выше (is_student/is_parent)
     
     whiteboard = lesson.whiteboard
     if not whiteboard:
         return jsonify({'success': False, 'error': 'Доска не найдена'}), 404
     
-    # Определяем режим встраивания
     is_teacher = not (current_user.is_student() or current_user.is_parent())
     is_active = whiteboard.is_active
     can_edit = whiteboard.allow_student_edit or is_teacher
     
-    # Формируем URL
     board_id = whiteboard.miro_board_id
     
     if is_teacher or (is_active and can_edit):
-        # Режим редактирования
         embed_url = f"https://miro.com/app/live-embed/{board_id}/?moveToViewport=-1000,-1000,2000,2000&embedAutoplay=false"
         mode = "edit"
     else:
-        # Режим только просмотра (для ученика после урока)
         embed_url = f"https://miro.com/app/live-embed/{board_id}/?moveToViewport=-1000,-1000,2000,2000&embedAutoplay=false"
         mode = "view"
     
-    # Проверяем Miro авторизацию пользователя
     miro_authorized = False
     try:
         from app.models import MiroUserToken
         from datetime import datetime
         miro_token = MiroUserToken.query.filter_by(user_id=current_user.id).first()
         if miro_token and miro_token.access_token:
-            # Проверяем не истёк ли токен
             if miro_token.expires_at is None or miro_token.expires_at > datetime.utcnow():
                 miro_authorized = True
     except Exception as e:
@@ -2872,7 +2750,6 @@ def lesson_whiteboard_miro_auth_status(lesson_id):
                 'auth_url': url_for('miro_oauth_authorize', lesson_id=lesson_id, _external=True)
             })
         
-        # Проверяем срок действия
         if miro_token.expires_at and miro_token.expires_at <= datetime.utcnow():
             return jsonify({
                 'success': True,
@@ -2892,7 +2769,6 @@ def lesson_whiteboard_miro_auth_status(lesson_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ==================== ВИДЕОЗВОНКИ (DAILY.CO) ====================
 
 @lessons_bp.route('/lesson/<int:lesson_id>/videocall/room', methods=['POST'])
 @login_required
@@ -2908,18 +2784,15 @@ def lesson_videocall_create_room(lesson_id):
     if not api_key:
         return jsonify({'success': False, 'error': 'Daily.co API key not configured'}), 500
     
-    # Уникальное имя комнаты для урока
     room_name = f"lesson-{lesson_id}"
     
     try:
-        # Проверяем, существует ли комната
         check_response = requests.get(
             f'https://api.daily.co/v1/rooms/{room_name}',
             headers={'Authorization': f'Bearer {api_key}'}
         )
         
         if check_response.status_code == 200:
-            # Комната уже существует
             room_data = check_response.json()
             return jsonify({
                 'success': True,
@@ -2928,7 +2801,6 @@ def lesson_videocall_create_room(lesson_id):
                 'exists': True
             })
         
-        # Создаём новую комнату
         create_response = requests.post(
             'https://api.daily.co/v1/rooms',
             headers={

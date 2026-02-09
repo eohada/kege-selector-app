@@ -28,7 +28,6 @@ APPLITOOLS_API_KEY = os.environ.get("APPLITOOLS_API_KEY") or "J8hlf7Mh67bajekkrs
 BASE_URL = os.environ.get("VISUAL_AUDIT_BASE_URL", "https://boostudy.ru").rstrip("/")
 IDS_FILE = "visual_audit_ids.json"
 
-# Роли в порядке прохода (--all-roles)
 ROLES = ("student", "tutor", "parent", "admin")
 
 

@@ -63,8 +63,7 @@
     <div class="app-shell">
         {% set active_page = 'dashboard' %}
         {% include '_primary_nav.html' %}
-        
-        <!-- Заголовок страницы -->
+
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
                 <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost" style="text-decoration: none;">
@@ -78,8 +77,7 @@
             <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Аналитика" class="ui-icon ui-icon--md"> {{ student.name }}</h1>
             <p class="hero-subtitle">Детальный анализ успеваемости и навыков</p>
         </section>
-        
-        <!-- Метрики (карточки) -->
+
         <div class="analytics-metrics-grid">
             <div class="glass-panel">
                 <div class="panel-head">
@@ -129,10 +127,9 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Графики -->
+
         <div class="analytics-charts-grid">
-            <!-- График динамики GPA -->
+            
             <section class="glass-panel">
                 <div class="panel-head">
                     <div>
@@ -144,8 +141,7 @@
                     <canvas id="trendChart" style="max-height: 300px;"></canvas>
                 </div>
             </section>
-            
-            <!-- График навыков (радар) -->
+
             <section class="glass-panel">
                 <div class="panel-head">
                     <div>
@@ -158,8 +154,7 @@
                 </div>
             </section>
         </div>
-        
-        <!-- График посещаемости -->
+
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div class="panel-head">
                 <div>
@@ -171,8 +166,7 @@
                 <canvas id="attendanceChart" style="max-height: 300px;"></canvas>
             </div>
         </section>
-        
-        <!-- Проблемные зоны -->
+
         {% if problem_topics %}
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div class="panel-head">

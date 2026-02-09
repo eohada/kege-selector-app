@@ -96,4 +96,3 @@ const loading = new LoadingManager();
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = LoadingManager; 
 }
-

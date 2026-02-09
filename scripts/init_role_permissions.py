@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт для инициализации прав ролей из DEFAULT_ROLE_PERMISSIONS
 Запускать на production и sandbox серверах для заполнения прав по умолчанию
@@ -20,7 +19,6 @@ def init_role_permissions():
         print("Инициализация прав ролей из DEFAULT_ROLE_PERMISSIONS")
         print("=" * 60)
         
-        # Проверяем, что таблица существует
         try:
             count_before = RolePermission.query.count()
             print(f"Текущее количество записей в RolePermissions: {count_before}")
@@ -29,7 +27,6 @@ def init_role_permissions():
             print("Создаем таблицу...")
             db.create_all()
         
-        # Заполняем дефолтные права для ролей
         print("\nЗаполняем права по умолчанию...")
         added_count = 0
         updated_count = 0
@@ -40,19 +37,16 @@ def init_role_permissions():
                 print(f"  Права по умолчанию: {len(perms)}")
                 
                 for perm_name in perms:
-                    # Проверяем, что право существует в ALL_PERMISSIONS
                     if perm_name not in ALL_PERMISSIONS:
                         print(f"  ⚠️  Предупреждение: право '{perm_name}' не найдено в ALL_PERMISSIONS, пропускаем")
                         continue
                     
-                    # Проверяем, есть ли уже такая запись
                     existing = RolePermission.query.filter_by(
                         role=role, 
                         permission_name=perm_name
                     ).first()
                     
                     if not existing:
-                        # Создаем новую запись
                         rp = RolePermission(
                             role=role, 
                             permission_name=perm_name, 
@@ -62,7 +56,6 @@ def init_role_permissions():
                         added_count += 1
                         print(f"  ✅ Добавлено: {perm_name}")
                     else:
-                        # Обновляем существующую запись, если она была отключена
                         if not existing.is_enabled:
                             existing.is_enabled = True
                             updated_count += 1

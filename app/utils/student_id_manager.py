@@ -7,7 +7,6 @@ from app.models import Student, db
 
 logger = logging.getLogger(__name__)
 
-# Диапазон идентификаторов: от 100 до 999 (включительно)
 MIN_ID = 100
 MAX_ID = 999
 
@@ -22,10 +21,8 @@ def get_next_available_id():
         None: Если все идентификаторы заняты (максимум 900 учеников)
     """
     try:
-        # Получаем все занятые идентификаторы, которые являются трехзначными числами
         occupied_ids = set()
         
-        # Запрашиваем все platform_id
         students = Student.query.filter(
             Student.platform_id.isnot(None)
         ).with_entities(Student.platform_id).all()
@@ -35,30 +32,24 @@ def get_next_available_id():
             if not platform_id:
                 continue
             
-            # Проверяем, что это трехзначное число в диапазоне 100-999
             platform_id_str = str(platform_id).strip()
-            # Проверяем длину (3 символа) и что это число
             if len(platform_id_str) == 3 and platform_id_str.isdigit():
                 try:
                     id_num = int(platform_id_str)
                     if MIN_ID <= id_num <= MAX_ID:
                         occupied_ids.add(id_num)
                 except (ValueError, TypeError):
-                    # Пропускаем некорректные идентификаторы
                     continue
         
-        # Ищем первый свободный идентификатор
         for candidate_id in range(MIN_ID, MAX_ID + 1):
             if candidate_id not in occupied_ids:
                 return str(candidate_id)
         
-        # Если все идентификаторы заняты
         logger.error(f"Все идентификаторы от {MIN_ID} до {MAX_ID} заняты!")
         return None
         
     except Exception as e:
         logger.error(f"Ошибка при получении следующего доступного идентификатора: {e}", exc_info=True)
-        # В случае ошибки пытаемся найти любой свободный идентификатор простым способом
         try:
             for candidate_id in range(MIN_ID, MAX_ID + 1):
                 existing = Student.query.filter_by(platform_id=str(candidate_id)).first()
@@ -101,11 +92,9 @@ def assign_platform_id_if_needed(student):
     Returns:
         bool: True если идентификатор был присвоен, False если уже был указан или не удалось присвоить
     """
-    # Если platform_id уже указан, не меняем его
     if student.platform_id:
         return False
     
-    # Получаем следующий доступный идентификатор
     new_id = get_next_available_id()
     
     if new_id:

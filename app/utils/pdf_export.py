@@ -24,9 +24,6 @@ def html_to_pdf_bytes(html: str, base_url: Optional[str] = None) -> bytes:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-        # Важно: печатные шаблоны должны быть self-contained (inline CSS), чтобы не зависеть от сети.
-        # Playwright Python не поддерживает base_url в set_content; параметр оставляем в сигнатуре
-        # на будущее (если решим перейти на data: URL + page.goto).
         _ = base_url
         page.set_content(html, wait_until="load")
         pdf_bytes = page.pdf(

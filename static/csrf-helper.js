@@ -48,4 +48,3 @@ document.addEventListener('DOMContentLoaded', function() {
     const helper = new CsrfFormHelper(); 
     helper.processAllForms(); 
 }); 
-

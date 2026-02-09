@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 def api_family_ties_list():
     """API: Список всех семейных связей (только для администратора)"""
     try:
-        # Параметры фильтрации
         parent_id = request.args.get('parent_id', type=int)
         student_id = request.args.get('student_id', type=int)
         is_confirmed = request.args.get('is_confirmed')
@@ -76,7 +75,6 @@ def api_family_ties_create():
         if not parent_id or not student_id:
             return jsonify({'success': False, 'error': 'parent_id and student_id are required'}), 400
         
-        # Проверяем, что пользователи существуют и имеют правильные роли
         parent = User.query.get(parent_id)
         student = User.query.get(student_id)
         
@@ -90,7 +88,6 @@ def api_family_ties_create():
         if not student.is_student():
             return jsonify({'success': False, 'error': 'User is not a student'}), 400
         
-        # Проверяем, что связь еще не существует
         existing = FamilyTie.query.filter_by(
             parent_id=parent_id,
             student_id=student_id
@@ -99,12 +96,10 @@ def api_family_ties_create():
         if existing:
             return jsonify({'success': False, 'error': 'Family tie already exists'}), 409
         
-        # Проверяем уровень доступа
         valid_access_levels = ['full', 'financial_only', 'schedule_only']
         if access_level not in valid_access_levels:
             return jsonify({'success': False, 'error': f'Invalid access_level. Must be one of: {", ".join(valid_access_levels)}'}), 400
         
-        # Создаем связь
         family_tie = FamilyTie(
             parent_id=parent_id,
             student_id=student_id,
@@ -114,7 +109,6 @@ def api_family_ties_create():
         db.session.add(family_tie)
         db.session.commit()
         
-        # Логируем создание
         audit_logger.log(
             action='family_tie_created',
             entity='FamilyTie',
@@ -160,7 +154,6 @@ def api_family_ties_update(tie_id):
         
         db.session.commit()
         
-        # Логируем обновление
         audit_logger.log(
             action='family_tie_updated',
             entity='FamilyTie',
@@ -196,7 +189,6 @@ def api_family_ties_delete(tie_id):
         db.session.delete(tie)
         db.session.commit()
         
-        # Логируем удаление
         audit_logger.log(
             action='family_tie_deleted',
             entity='FamilyTie',
@@ -229,7 +221,6 @@ def api_family_ties_confirm(tie_id):
         tie.is_confirmed = True
         db.session.commit()
         
-        # Логируем подтверждение
         audit_logger.log(
             action='family_tie_confirmed',
             entity='FamilyTie',

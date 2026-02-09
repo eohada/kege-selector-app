@@ -166,7 +166,7 @@
                     </div>
                     
                     {% if children %}
-                    <!-- Селектор детей -->
+                    
                     <div class="child-selector">
                         {% for child in children %}
                         <a href="{{ url_for('parents.parent_dashboard', student_id=child.user_id) }}" 
@@ -177,11 +177,10 @@
                     </div>
                     
                     {% if selected_child %}
-                    <!-- Информация о выбранном ребенке -->
+                    
                     <div style="margin-top: 2rem;">
                         <h2 style="margin-bottom: 1rem;">{{ selected_child.name }}</h2>
-                        
-                        <!-- Блок финансов -->
+
                         {% if financial_data.can_topup %}
                         <section class="glass-panel" style="margin-bottom: 1.5rem;">
                             <div class="panel-head">
@@ -200,8 +199,7 @@
                             
                         </section>
                         {% endif %}
-                        
-                        <!-- Блок успеваемости (AI Summary) -->
+
                         {% if child_stats and child_stats.ai_summary %}
                         <section class="ai-summary" style="margin-bottom: 1.5rem;">
                             <h3>📊 Успеваемость за неделю</h3>
@@ -221,8 +219,7 @@
                             {% endif %}
                         </section>
                         {% endif %}
-                        
-                        <!-- Метрики -->
+
                         {% if child_stats and child_stats.metrics %}
                         <section class="glass-panel" style="margin-bottom: 1.5rem;">
                             <div class="panel-head">
@@ -254,8 +251,7 @@
                             </div>
                         </section>
                         {% endif %}
-                        
-                        <!-- Задания (Assignments) -->
+
                         {% if pending_assignments or recent_submissions %}
                         <section class="glass-panel" style="margin-bottom: 1.5rem;">
                             <div class="panel-head">
@@ -266,7 +262,7 @@
                             </div>
                             
                             <div style="display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
-                                <!-- Активные задания -->
+                                
                                 <div>
                                     <h3 style="font-size: 1rem; color: var(--text-muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">Нужно выполнить</h3>
                                     {% if pending_assignments %}
@@ -293,8 +289,7 @@
                                         <p style="color: var(--text-muted); font-size: 0.9em; font-style: italic;">Нет активных заданий</p>
                                     {% endif %}
                                 </div>
-                                
-                                <!-- Недавние результаты -->
+
                                 <div>
                                     <h3 style="font-size: 1rem; color: var(--text-muted); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;">Недавние результаты</h3>
                                     {% if recent_submissions %}
@@ -328,8 +323,7 @@
                             </div>
                         </section>
                         {% endif %}
-                        
-                        <!-- Предстоящие уроки -->
+
                         {% if upcoming_lessons %}
                         <section class="glass-panel" style="margin-bottom: 1.5rem;">
                             <div class="panel-head">
@@ -357,8 +351,7 @@
                             </div>
                         </section>
                         {% endif %}
-                        
-                        <!-- Последние уроки -->
+
                         {% if recent_lessons %}
                         <section class="glass-panel" style="margin-bottom: 1.5rem;">
                             <div class="panel-head">
@@ -394,8 +387,7 @@
                             </div>
                         </section>
                         {% endif %}
-                        
-                        <!-- Проблемные темы -->
+
                         {% if child_stats and child_stats.problem_topics %}
                         <section class="glass-panel" style="margin-bottom: 1.5rem;">
                             <div class="panel-head">

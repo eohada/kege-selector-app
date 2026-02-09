@@ -4,21 +4,16 @@
 import sys
 import os
 
-# Исправляем кодировку для Windows
 if sys.platform == 'win32':
     import io
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-# Добавляем корневую директорию в путь
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app import create_app, db
 from app.models import Topic, Tasks, task_topics
 
-# Маппинг номеров заданий на темы (из скриншотов)
-# Примечание: задания 19, 20, 21 все хранятся в базе под номером 19
-# Все записи отсортированы по возрастанию номеров заданий (1-27)
 TASK_TOPIC_MAPPING = {
     1: "Анализ информационных моделей",  # Задание №1
     2: "Таблицы истинности логических выражений",  # Задание №2
@@ -56,7 +51,6 @@ def create_topics_and_link():
         print("Создание тем и связывание с заданиями")
         print("=" * 60)
         
-        # ШАГ 1: Создаем уникальные темы
         unique_topics = set(TASK_TOPIC_MAPPING.values())
         topics_dict = {}
         created_count = 0
@@ -81,16 +75,13 @@ def create_topics_and_link():
         print(f"\n  Создано новых тем: {created_count}")
         print(f"  Существующих тем: {existing_count}")
         
-        # ШАГ 2: Связываем задания с темами
         print(f"\n[2/2] Связывание заданий с темами...")
         
-        # Загружаем все существующие связи одним запросом для оптимизации
         print("  Загрузка существующих связей...", flush=True)
         existing_links_query = db.session.query(task_topics).all()
         existing_links_set = {(link.task_id, link.topic_id) for link in existing_links_query}
         print(f"  Найдено существующих связей: {len(existing_links_set)}", flush=True)
         
-        # Обрабатываем каждый номер задания отдельно
         total_linked = 0
         total_skipped = 0
         tasks_not_found = set()
@@ -100,14 +91,12 @@ def create_topics_and_link():
         for task_number, topic_name in TASK_TOPIC_MAPPING.items():
             topic = topics_dict[topic_name]
             
-            # Находим все задания с этим номером
             tasks = Tasks.query.filter_by(task_number=task_number).all()
             
             if not tasks:
                 tasks_not_found.add(task_number)
                 continue
             
-            # Для каждого задания проверяем и собираем связи для создания
             for task in tasks:
                 link_key = (task.task_id, topic.topic_id)
                 if link_key not in existing_links_set:
@@ -124,7 +113,6 @@ def create_topics_and_link():
         print(f"\n  Всего связей для создания: {len(links_to_create)}", flush=True)
         print(f"  Уже существует: {total_skipped}", flush=True)
         
-        # Создаем связи батчами с обработкой дубликатов через ON CONFLICT
         if links_to_create:
             print(f"\n  Создание связей батчами по 500...", flush=True)
             batch_size = 500
@@ -136,7 +124,6 @@ def create_topics_and_link():
                 batch = links_to_create[i:i + batch_size]
                 batch_num = i // batch_size + 1
                 
-                # Используем PostgreSQL ON CONFLICT для пропуска дубликатов
                 stmt = pg_insert(task_topics).values(batch)
                 stmt = stmt.on_conflict_do_nothing(index_elements=['task_id', 'topic_id'])
                 result = db.session.execute(stmt)

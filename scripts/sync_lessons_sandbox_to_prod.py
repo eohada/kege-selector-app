@@ -1,14 +1,11 @@
-#!/usr/bin/env python3
 """
 Скрипт для синхронизации уроков, домашних и классных работ из песочницы в прод.
 
 Использование:
-    # Через переменные окружения:
     export SANDBOX_DATABASE_URL="postgresql://..."
     export PROD_DATABASE_URL="postgresql://..."
     python scripts/sync_lessons_sandbox_to_prod.py
     
-    # Или через аргументы командной строки:
     python scripts/sync_lessons_sandbox_to_prod.py --sandbox-url "postgresql://..." --prod-url "postgresql://..."
 
 Требования:
@@ -25,7 +22,6 @@ from datetime import datetime
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-# Добавляем корневую директорию проекта в путь
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def get_db_connection(database_url):
@@ -36,12 +32,6 @@ def get_db_connection(database_url):
 
 def is_lesson_filled(lesson_data):
     """Проверяет, заполнен ли урок (есть ли данные помимо базовых)"""
-    # Урок считается заполненным, если есть:
-    # - topic
-    # - notes
-    # - homework
-    # - homework_result_percent или homework_result_notes
-    # - или есть связанные LessonTask
     
     if lesson_data.get('topic'):
         return True
@@ -105,7 +95,6 @@ def get_student_by_platform_id(session, platform_id):
 
 def copy_lesson(sandbox_session, prod_session, sandbox_lesson, prod_student_id):
     """Копирует урок из песочницы в прод"""
-    # Создаем новый урок в проде
     insert_query = text("""
         INSERT INTO "Lessons" 
         (student_id, lesson_type, lesson_date, duration, status, topic, notes, 
@@ -151,7 +140,6 @@ def copy_lesson_tasks(sandbox_session, prod_session, sandbox_lesson_id, prod_les
     
     copied_count = 0
     for task in tasks:
-        # Проверяем, существует ли task_id в проде
         check_task_query = text("SELECT task_id FROM \"Tasks\" WHERE task_id = :task_id")
         task_exists = prod_session.execute(check_task_query, {'task_id': task['task_id']}).fetchone()
         
@@ -159,7 +147,6 @@ def copy_lesson_tasks(sandbox_session, prod_session, sandbox_lesson_id, prod_les
             print(f"  ⚠️  Задание {task['task_id']} не найдено в проде, пропускаем")
             continue
         
-        # Копируем задание
         insert_query = text("""
             INSERT INTO "LessonTasks"
             (lesson_id, task_id, date_assigned, notes, student_answer, 
@@ -186,7 +173,6 @@ def copy_lesson_tasks(sandbox_session, prod_session, sandbox_lesson_id, prod_les
 
 def sync_lessons(sandbox_url=None, prod_url=None, dry_run=False):
     """Основная функция синхронизации"""
-    # Получаем URL баз данных из аргументов или переменных окружения
     if not sandbox_url:
         sandbox_url = os.environ.get('SANDBOX_DATABASE_URL')
     if not prod_url:
@@ -202,7 +188,6 @@ def sync_lessons(sandbox_url=None, prod_url=None, dry_run=False):
         print("   Используйте --prod-url или установите PROD_DATABASE_URL")
         return
     
-    # Нормализуем URL (заменяем postgres:// на postgresql://)
     if sandbox_url.startswith('postgres://'):
         sandbox_url = sandbox_url.replace('postgres://', 'postgresql://', 1)
     if prod_url.startswith('postgres://'):
@@ -213,7 +198,6 @@ def sync_lessons(sandbox_url=None, prod_url=None, dry_run=False):
     prod_session, _ = get_db_connection(prod_url)
     
     try:
-        # Получаем все уроки из песочницы
         print("📚 Получаю уроки из песочницы...")
         query = text("""
             SELECT l.lesson_id, l.student_id, l.lesson_type, l.lesson_date, l.duration, l.status,
@@ -241,14 +225,12 @@ def sync_lessons(sandbox_url=None, prod_url=None, dry_run=False):
             
             print(f"\n📝 Обрабатываю урок от {lesson_date} для ученика {sandbox_lesson['student_name']} (ID: {platform_id})")
             
-            # Находим ученика в проде по platform_id
             prod_student = get_student_by_platform_id(prod_session, platform_id)
             if not prod_student:
                 print(f"  ⚠️  Ученик с platform_id={platform_id} не найден в проде, пропускаем")
                 skipped_count += 1
                 continue
             
-            # Проверяем, есть ли такой урок в проде
             prod_lesson = find_matching_lesson(
                 prod_session, 
                 prod_student['student_id'], 
@@ -257,7 +239,6 @@ def sync_lessons(sandbox_url=None, prod_url=None, dry_run=False):
             )
             
             if prod_lesson:
-                # Урок существует - проверяем, заполнен ли он
                 if is_lesson_filled(prod_lesson):
                     print(f"  ✅ Урок уже существует и заполнен в проде, пропускаем")
                     skipped_count += 1
@@ -268,7 +249,6 @@ def sync_lessons(sandbox_url=None, prod_url=None, dry_run=False):
                         print(f"  [DRY-RUN] Будет обновлен урок {prod_lesson['lesson_id']}")
                         synced_count += 1
                     else:
-                        # Обновляем существующий урок
                         update_query = text("""
                             UPDATE "Lessons"
                             SET topic = :topic, notes = :notes, homework = :homework,
@@ -291,7 +271,6 @@ def sync_lessons(sandbox_url=None, prod_url=None, dry_run=False):
                         })
                         prod_session.commit()
                         
-                        # Копируем задания урока
                         tasks_count = copy_lesson_tasks(
                             sandbox_session, 
                             prod_session, 
@@ -302,7 +281,6 @@ def sync_lessons(sandbox_url=None, prod_url=None, dry_run=False):
                         print(f"  ✅ Обновлен урок и скопировано {tasks_count} заданий")
                         synced_count += 1
             else:
-                # Урока нет - создаем новый
                 print(f"  ➕ Урок не найден в проде - создаю новый")
                 if dry_run:
                     print(f"  [DRY-RUN] Будет создан новый урок для ученика {prod_student['name']}")
@@ -316,7 +294,6 @@ def sync_lessons(sandbox_url=None, prod_url=None, dry_run=False):
                             prod_student['student_id']
                         )
                         
-                        # Копируем задания урока
                         tasks_count = copy_lesson_tasks(
                             sandbox_session, 
                             prod_session, 

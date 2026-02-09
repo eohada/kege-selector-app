@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Скрипт для обновления БД под новый RBAC (RolePermissions, custom_permissions)"""
 import os
 import sys
@@ -15,11 +14,9 @@ def update_db():
     with app.app_context():
         print("Начинаем обновление БД...")
         
-        # 1. Создаем новые таблицы (RolePermissions)
         db.create_all()
         print("Tables synchronized (RolePermissions should be created)")
         
-        # 2. Добавляем поле custom_permissions в Users
         try:
             inspector = db.inspect(db.engine)
             columns = [col['name'] for col in inspector.get_columns('Users')]
@@ -28,12 +25,9 @@ def update_db():
                 print("Adding field 'custom_permissions' to Users table...")
                 db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
                 
-                # JSON тип зависит от БД
                 if 'postgresql' in db_url or 'postgres' in db_url:
                     db.session.execute(text('ALTER TABLE "Users" ADD COLUMN custom_permissions JSON'))
                 else:
-                    # SQLite не имеет нативного JSON, но SQLAlchemy эмулирует его
-                    # В SQLite добавляем просто как столбец (он динамический)
                     db.session.execute(text('ALTER TABLE Users ADD COLUMN custom_permissions JSON'))
                 
                 db.session.commit()
@@ -45,13 +39,11 @@ def update_db():
             db.session.rollback()
             print(f"Error adding custom_permissions field: {e}")
 
-        # 3. Заполняем дефолтные права для ролей
         print("Filling default permissions...")
         try:
             count = 0
             for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
                 for perm_name in perms:
-                    # Проверяем, есть ли уже такая запись
                     exists = RolePermission.query.filter_by(role=role, permission_name=perm_name).first()
                     if not exists:
                         rp = RolePermission(role=role, permission_name=perm_name, is_enabled=True)

@@ -1,12 +1,9 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 """
 Скрипт для создания таблиц TaskTemplates и TemplateTasks в базе данных
 """
 import sys
 import os
 
-# Добавляем корневую директорию в путь
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app import app, db
@@ -16,11 +13,9 @@ def create_tables():
     """Создает таблицы для шаблонов в базе данных"""
     with app.app_context():
         try:
-            # Создаем все таблицы (если их еще нет)
             db.create_all()
             print("✅ Таблицы созданы успешно!")
             
-            # Проверяем, что таблицы действительно созданы
             inspector = db.inspect(db.engine)
             tables = inspector.get_table_names()
             

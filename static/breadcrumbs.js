@@ -1,6 +1,6 @@
-// Компонент breadcrumbs для навигации
+
 function createBreadcrumbs(items) {
-    // items: [{label: 'Главная', url: '/'}, {label: 'Ученики', url: '/dashboard'}, {label: 'Иван Иванов'}]
+
     const breadcrumbs = document.createElement('nav');
     breadcrumbs.className = 'breadcrumbs';
     breadcrumbs.setAttribute('aria-label', 'Навигационная цепочка');
@@ -13,14 +13,14 @@ function createBreadcrumbs(items) {
         listItem.className = 'breadcrumbs-item';
         
         if (index === items.length - 1) {
-            // Последний элемент - текущая страница
+
             listItem.setAttribute('aria-current', 'page');
             const span = document.createElement('span');
             span.className = 'breadcrumbs-current';
             span.textContent = item.label;
             listItem.appendChild(span);
         } else {
-            // Обычная ссылка
+
             const link = document.createElement('a');
             link.href = item.url || '#';
             link.className = 'breadcrumbs-link';
@@ -35,26 +35,24 @@ function createBreadcrumbs(items) {
     return breadcrumbs;
 }
 
-// Функция для автоматического создания breadcrumbs на основе текущего URL
 function initBreadcrumbs() {
     const breadcrumbsContainer = document.querySelector('.breadcrumbs-container');
     if (!breadcrumbsContainer) return;
     
     const path = window.location.pathname;
     const items = [{label: 'Главная', url: '/'}];
-    
-    // Парсим путь и создаем breadcrumbs
+
     const pathParts = path.split('/').filter(p => p);
     
     if (pathParts.length === 0) {
         items[0].label = 'Главная';
     } else {
-        // Определяем тип страницы по пути
+
         if (pathParts[0] === 'dashboard' || pathParts[0] === 'student') {
             items.push({label: 'Ученики', url: '/dashboard'});
             
             if (pathParts[0] === 'student' && pathParts[1]) {
-                // Страница профиля ученика
+
                 const studentName = document.querySelector('h1')?.textContent || 'Профиль ученика';
                 items.push({label: studentName});
             }
@@ -85,6 +83,4 @@ function initBreadcrumbs() {
     breadcrumbsContainer.appendChild(breadcrumbs);
 }
 
-// Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', initBreadcrumbs);
-

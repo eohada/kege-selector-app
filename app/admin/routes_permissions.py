@@ -14,41 +14,30 @@ logger = logging.getLogger(__name__)
 @login_required
 def admin_permissions():
     """Управление правами ролей (Рубильники)"""
-    # Только для Создателя (или супер-админа)
     if not current_user.is_creator():
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('admin.admin_panel'))
         
-    # Order of influence: Creator -> Admin -> Chief Tester -> Tutor -> Designer -> Tester -> Student -> Parent
     roles = ['creator', 'admin', 'chief_tester', 'tutor', 'designer', 'tester', 'student', 'parent']
     
-    # Self-healing check using the centralized utility from flask app context
     try:
         from flask import current_app
         check_and_fix_rbac_schema(current_app)
     except Exception as e:
         logger.error(f"Critical error during RBAC schema check: {e}")
-        # Continue execution, hoping the table exists or error was non-fatal
     
     if request.method == 'POST':
         try:
-            # Очищаем старые права (или обновляем)
             changes_count = 0
-            # Note: We iterate over roles except creator for saving, unless we decide creator is editable.
-            # Usually creator has all permissions hardcoded in is_creator(), so DB values are irrelevant.
-            # But let's save them anyway for consistency if the user toggles them (though we might disable UI for creator).
             
             for role in roles:
                 for perm_key in ALL_PERMISSIONS.keys():
-                    # For checkboxes, if not checked, it's missing from form data
                     is_enabled = request.form.get(f"{role}_{perm_key}") == 'on'
                     
-                    # Ищем существующую запись или создаем новую
                     perm_record = RolePermission.query.filter_by(role=role, permission_name=perm_key).first()
                     if not perm_record:
                         perm_record = RolePermission(role=role, permission_name=perm_key)
                         db.session.add(perm_record)
-                        # Count only enabled new ones as "changes" effectively, or just any add
                         if is_enabled: 
                             perm_record.is_enabled = True
                             changes_count += 1
@@ -66,25 +55,20 @@ def admin_permissions():
             flash(f'Ошибка: {e}', 'error')
             logger.error(f"Error saving permissions: {e}", exc_info=True)
             
-    # Загружаем текущие настройки с защитой от ошибок
     role_permissions = {}
     try:
         current_perms = RolePermission.query.all()
     except Exception as e:
         logger.error(f"Error loading permissions: {e}")
-        # If still failing, try one more desperate fix or just empty list
         current_perms = []
         flash("Не удалось загрузить текущие права. Попробуйте обновить страницу.", "error")
     
-    # Заполняем структуру: role -> permission -> enabled
     for role in roles:
         role_permissions[role] = {}
-        # Сначала заполняем из БД
         for perm in current_perms:
             if perm.role == role:
                 role_permissions[role][perm.permission_name] = perm.is_enabled
         
-        # Если в БД нет записи, берем дефолтное значение (для отображения)
         defaults = DEFAULT_ROLE_PERMISSIONS.get(role, [])
         for perm_key in ALL_PERMISSIONS.keys():
             if perm_key not in role_permissions[role]:

@@ -32,13 +32,9 @@ def _resolve_student_for_user(student_user):
 def parent_dashboard():
     """Дашборд родителя с информацией о детях"""
     try:
-        # Получаем всех детей родителя.
-        # В проде подтверждение связи может быть не настроено/не проставлено,
-        # из-за чего родитель "не видит" уже привязанных детей.
         family_ties = FamilyTie.query.filter_by(parent_id=current_user.id).all()
         
         if not family_ties:
-            # Нет привязанных детей
             return render_template('parent_dashboard.html',
                                  children=[],
                                  selected_child=None,
@@ -46,30 +42,24 @@ def parent_dashboard():
                                  upcoming_lessons=[],
                                  recent_lessons=[])
         
-        # Получаем ID выбранного ребенка из параметра
         selected_student_id = request.args.get('student_id', type=int)
         
-        # Если не указан, берем первого ребенка
         if not selected_student_id:
             selected_student_id = family_ties[0].student_id
         
-        # Проверяем, что выбранный ребенок действительно принадлежит родителю
         selected_tie = next((ft for ft in family_ties if ft.student_id == selected_student_id), None)
         if not selected_tie:
             selected_student_id = family_ties[0].student_id
             selected_tie = family_ties[0]
         
-        # Собираем информацию о детях
         children_data = []
         for tie in family_ties:
             student_user = User.query.get(tie.student_id)
             if not student_user:
                 continue
             
-            # Находим связанного Student по user_id
             student = _resolve_student_for_user(student_user)
             
-            # Формируем имя для отображения
             student_name = student_user.username
             if student_user.profile:
                 if student_user.profile.first_name and student_user.profile.last_name:
@@ -88,7 +78,6 @@ def parent_dashboard():
                 'is_selected': tie.student_id == selected_student_id
             })
         
-        # Получаем статистику для выбранного ребенка
         child_stats = None
         upcoming_lessons = []
         recent_lessons = []
@@ -98,33 +87,25 @@ def parent_dashboard():
         selected_student = None
         selected_student_user = User.query.get(selected_student_id)
         
-        # Находим связанного Student для выбранного User по user_id
         if selected_student_user:
             selected_student = _resolve_student_for_user(selected_student_user)
         
         if selected_student:
-            # Статистика через StatsService
             stats = StatsService(selected_student.student_id)
             metrics = stats.get_summary_metrics()
             problem_topics = stats.get_problem_topics(threshold=60)
             
-            # Получаем GPA тренд для AI Summary
             gpa_data = stats.get_gpa_trend(period_days=7)  # За последнюю неделю
             
-            # Подсчитываем решенные задачи за неделю
             lessons = Lesson.query.filter_by(student_id=selected_student.student_id).all()
             tasks_solved_week = 0
-            # Важно: Lesson.lesson_date хранится как naive datetime (MSK), а moscow_now() timezone-aware.
-            # Приводим "сейчас" к naive, иначе будет TypeError и 500.
             now_dt = moscow_now().replace(tzinfo=None)
             for lesson in lessons:
-                # lesson.lesson_date обычно datetime; сравниваем datetime с datetime (иначе TypeError и 500)
                 if lesson.lesson_date and (now_dt - lesson.lesson_date).days <= 7:
                     for hw_task in lesson.homework_tasks:
                         if hw_task.submission_correct is not None:
                             tasks_solved_week += 1
             
-            # Формируем AI Summary
             ai_summary = {
                 'tasks_solved_week': tasks_solved_week,
                 'problem_topic': problem_topics[0].name if problem_topics else None,
@@ -138,7 +119,6 @@ def parent_dashboard():
                 'ai_summary': ai_summary
             }
             
-            # Загружаем задания (Assignments)
             try:
                 all_submissions = Submission.query.filter(
                     Submission.student_id == selected_student.student_id
@@ -154,9 +134,7 @@ def parent_dashboard():
             except Exception as e:
                 logger.error(f"Error loading submissions for parent dashboard: {e}")
             
-            # Предстоящие уроки (ближайшие 7 дней)
             from datetime import timedelta
-            # повторно используем naive now_dt для корректных сравнений с Lesson.lesson_date
             week_later_dt = now_dt + timedelta(days=7)
             
             upcoming_lessons = Lesson.query.filter(
@@ -165,7 +143,6 @@ def parent_dashboard():
                 Lesson.lesson_date <= week_later_dt
             ).order_by(Lesson.lesson_date.asc()).all()
             
-            # Последние уроки (за последние 30 дней)
             month_ago_dt = now_dt - timedelta(days=30)
             recent_lessons = Lesson.query.filter(
                 Lesson.student_id == selected_student.student_id,
@@ -173,15 +150,12 @@ def parent_dashboard():
                 Lesson.lesson_date < now_dt
             ).order_by(Lesson.lesson_date.desc()).limit(10).all()
         
-        # Финансы (пока заглушка - нужно будет добавить модель для баланса)
-        # Можно использовать количество активных enrollments как "оплаченные уроки"
         financial_data = {
             'lessons_remaining': 0,  # TODO: реализовать систему баланса
             'total_paid': 0,
             'can_topup': selected_tie.access_level in ['full', 'financial_only']
         }
         
-        # Формируем имя выбранного ребенка
         selected_child_name = None
         if selected_student:
             selected_child_name = selected_student.name
@@ -236,7 +210,6 @@ def api_parent_children():
             if not student_user:
                 continue
             
-            # Находим связанного Student по user_id
             student = _resolve_student_for_user(student_user)
             
             children_data.append({

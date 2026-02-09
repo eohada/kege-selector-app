@@ -9,7 +9,6 @@ from urep_bot.config import DATABASE_URL
 
 logger = logging.getLogger(__name__)
 
-# Создаём engine
 engine = None
 Session = None
 
@@ -21,7 +20,6 @@ def init_db():
     if not DATABASE_URL:
         raise ValueError("DATABASE_URL не задан")
     
-    # Преобразуем postgres:// в postgresql:// (Railway использует старый формат)
     db_url = DATABASE_URL
     if db_url.startswith('postgres://'):
         db_url = db_url.replace('postgres://', 'postgresql://', 1)

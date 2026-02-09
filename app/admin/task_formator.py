@@ -46,7 +46,6 @@ def _run_quick_checks(task: Tasks):
     html = (task.content_html or '').strip()
     ans = _normalize_answer(task.answer)
 
-    # 1) Условие
     if not html:
         checks.append({
             'level': 'fail',
@@ -68,7 +67,6 @@ def _run_quick_checks(task: Tasks):
                 'details': 'В условии встречается "undefined"/"null". Часто это артефакт парсинга.'
             })
 
-    # 2) Ответ (для 1-23 обычно обязателен)
     if task.task_number in list(range(1, 24)):
         if not ans:
             checks.append({
@@ -95,7 +93,6 @@ def _run_quick_checks(task: Tasks):
                     'title': 'Многострочный ответ',
                     'details': 'Для 1–23 ответ обычно однострочный. Проверьте корректность.'
                 })
-            # эвристика: ответ должен содержать буквы/цифры/простые знаки
             if not re.fullmatch(r"[0-9A-Za-zА-Яа-я\-\+\*/=(),.\s:;%№]+", ans):
                 checks.append({
                     'level': 'warn',
@@ -103,7 +100,6 @@ def _run_quick_checks(task: Tasks):
                     'details': 'Ответ содержит необычные символы. Возможно, попали лишние куски.'
                 })
     else:
-        # 24-27 часто требуют ручной проверки: отсутствие ответа — не ошибка
         if not ans:
             checks.append({
                 'level': 'ok',
@@ -111,8 +107,6 @@ def _run_quick_checks(task: Tasks):
                 'details': 'Для заданий 24–27 ответ может отсутствовать/быть неформальным.'
             })
 
-    # 3) Ссылка-источник (не критично, но полезно)
-    # Не превращаем это в постоянный WARN для старых данных: если есть site_task_id, ок.
     src_db = (task.source_url or '').strip()
     src_html = _extract_source_url_from_html(task.content_html or '')
     if not src_db:
@@ -177,7 +171,6 @@ def admin_task_formator():
     total = base.count()
     items = base.order_by(Tasks.last_scraped.desc(), Tasks.task_id.desc()).offset((page - 1) * per_page).limit(per_page).all()
 
-    # Сводка по статусам в текущем наборе (учитывая фильтры q/task_number)
     summary_base = db.session.query(Tasks.task_id, TaskReview.status).outerjoin(TaskReview, TaskReview.task_id == Tasks.task_id)
     if task_number:
         summary_base = summary_base.filter(Tasks.task_number == task_number)
@@ -212,7 +205,6 @@ def admin_task_formator():
         'skip': skip_count,
     }
 
-    # для селекта
     task_numbers = list(range(1, 28))
 
     return render_template(

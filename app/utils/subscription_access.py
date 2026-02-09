@@ -18,28 +18,22 @@ class EffectiveAccess:
     - All timestamps in subscriptions are stored as naive UTC in this project (datetime.utcnow()).
     """
 
-    # subscription / plan
     subscription: Optional[UserSubscription]
     plan: Optional[TariffPlan]
 
-    # effective module flags
     allow_lessons: Optional[bool]  # None => unknown / not defined by plan
     allow_trainer: Optional[bool]  # None => unknown / not defined by plan
 
-    # timing
     status: str  # none|active|expired|cancelled|paused
     ends_at_utc: Optional[datetime]
     seconds_left: Optional[int]
 
-    # lessons
     lessons_remaining: Optional[int]  # оставшееся количество уроков
 
-    # display
     label: str
 
 
 def _now_utc_naive() -> datetime:
-    # Always compare naive UTC datetimes (matches datetime.utcnow() usage across codebase).
     return datetime.utcnow().replace(tzinfo=None)
 
 
@@ -81,13 +75,10 @@ def get_effective_access_for_user(user_id: int) -> EffectiveAccess:
     ends_at = sub.ends_at
     lessons_remaining = getattr(sub, 'lessons_remaining', None)
     
-    # Проверка на истечение по дате
     time_expired = ends_at and ends_at < now
-    # Проверка на истечение по урокам (если lessons_remaining = 0 и он был установлен)
     lessons_expired = lessons_remaining is not None and lessons_remaining <= 0
     
     if time_expired or lessons_expired:
-        # subscription is logically expired
         return EffectiveAccess(
             subscription=sub,
             plan=TariffPlan.query.get(sub.plan_id) if sub.plan_id else None,

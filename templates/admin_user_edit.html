@@ -28,7 +28,6 @@
             <form method="POST" action="{% if user %}{{ url_for('admin.admin_user_edit', user_id=user.id) }}{% else %}{{ url_for('admin.admin_user_new') }}{% endif %}" class="neo-form" data-no-ajax>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-                {# Основная информация #}
                 <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
                     <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Основная информация</h2>
                     
@@ -67,7 +66,6 @@
                     </div>
                 </div>
 
-                {# Профиль #}
                 <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
                     <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Профиль</h2>
                     
@@ -112,14 +110,12 @@
 
                 {% include '_user_permissions_form.html' %}
 
-                {# Связанные данные (интегрированы в основную форму) #}
                 {% if user %}
-                {# Семейные связи #}
+                
                 {% if user.is_student() or user.is_parent() %}
                 <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
                     <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Семейные связи</h2>
-                    
-                    {# Форма добавления связи - интегрирована в основную форму #}
+
                     {% if user.is_student() and all_parents %}
                     <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--surface-3); border-radius: var(--radius-sm);">
                         <div style="display: grid; grid-template-columns: 2fr 1.5fr 1fr; gap: 1rem; align-items: end;">
@@ -179,8 +175,7 @@
                         </div>
                     </div>
                     {% endif %}
-                    
-                    {# Список существующих связей #}
+
                     {% if family_ties %}
                     <div style="display: grid; gap: 0.75rem; margin-bottom: 1rem;">
                         {% for tie in family_ties %}
@@ -226,8 +221,7 @@
                 {% if user.is_student() or user.is_tutor() %}
                 <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
                     <h2 style="margin-bottom: 1rem; font-size: 1.2rem;">Учебные контракты</h2>
-                    
-                    {# Форма добавления контракта - интегрирована в основную форму #}
+
                     {% if user.is_student() and all_tutors %}
                     <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--surface-3); border-radius: var(--radius-sm);">
                         <div style="display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 1rem; align-items: end;">
@@ -281,8 +275,7 @@
                         </div>
                     </div>
                     {% endif %}
-                    
-                    {# Список существующих контрактов #}
+
                     {% if enrollments %}
                     <div style="display: grid; gap: 0.75rem; margin-bottom: 1rem;">
                         {% for enrollment in enrollments %}
@@ -313,7 +306,7 @@
                 </div>
                 {% endif %}
                 {% else %}
-                    {# При создании - множественный выбор в основной форме #}
+                    
                     <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--surface-3); border-radius: var(--radius-sm);">
                         <p style="margin-bottom: 1rem; color: var(--text-muted); font-size: 0.9rem;">Выберите связи, которые нужно создать вместе с пользователем (можно выбрать несколько):</p>
                         <div id="family-ties-container" style="display: none;">
@@ -433,7 +426,6 @@
                     </div>
                 {% endif %}
 
-                {# Кнопки действий #}
                 <div class="hero-actions">
                     <button type="submit" class="neo-button accent">
                         <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm">
@@ -464,7 +456,6 @@
         </section>
     </div>
 
-    {# toast.js уже подключен в _ux_enhancements.html #}
     <script src="{{ url_for('static', filename='csrf-helper.js') }}"></script>
     <script src="{{ url_for('static', filename='confirm-modal.js') }}"></script>
     <script>

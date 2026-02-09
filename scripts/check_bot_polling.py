@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Проверка статуса Telegram-бота: webhook/long-polling конфликт.
 """
@@ -48,7 +47,6 @@ def main() -> int:
     print("\n[getWebhookInfo]")
     print(json.dumps(webhook, ensure_ascii=False, indent=2))
 
-    # Проверка long-polling: конфликт означает запущен другой getUpdates
     updates = _tg_get(
         base_url,
         "getUpdates",

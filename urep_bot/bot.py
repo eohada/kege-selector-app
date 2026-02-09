@@ -26,9 +26,6 @@ from urep_bot.db import get_session, close_session
 logger = logging.getLogger(__name__)
 
 
-# ============================================
-# ТЕКСТЫ СООБЩЕНИЙ
-# ============================================
 
 WELCOME_MESSAGE = """
 👋 <b>Привет! Я бот платформы URep.</b>
@@ -101,9 +98,6 @@ ERROR_REPORT_PROMPT = (
 ERROR_REPORT_RECEIVED = "✅ Сообщение об ошибке отправлено. Спасибо! Мы разберёмся и ответим."
 
 
-# ============================================
-# КЛАВИАТУРЫ
-# ============================================
 
 def get_main_keyboard():
     """Главное меню."""
@@ -172,9 +166,6 @@ def get_unlink_confirm_keyboard():
     ])
 
 
-# ============================================
-# УТИЛИТЫ
-# ============================================
 
 def esc(text) -> str:
     """Экранирование HTML."""
@@ -217,7 +208,6 @@ async def start_error_report_flow(update: Update, context: ContextTypes.DEFAULT_
 
 def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
     """Получить пользователя по chat_id Telegram."""
-    # Базовый запрос без новых колонок (для совместимости)
     result = session.execute(text("""
         SELECT u.id, u.username, u.email, u.role, up.first_name, up.last_name,
                up.telegram_notifications_enabled
@@ -237,7 +227,6 @@ def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
         "first_name": row[4],
         "last_name": row[5],
         "notifications_enabled": row[6] if row[6] is not None else True,
-        # Значения по умолчанию для настроек уведомлений
         "tg_notify_lesson_reminder": True,
         "tg_notify_homework_checked": True,
         "tg_notify_homework_returned": True,
@@ -247,7 +236,6 @@ def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
         "tg_notify_news": True,
     }
     
-    # Пробуем получить детальные настройки (если колонки существуют)
     try:
         settings_result = session.execute(text("""
             SELECT 
@@ -271,7 +259,6 @@ def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
             user["tg_notify_low_lessons"] = settings[5]
             user["tg_notify_news"] = settings[6]
     except Exception:
-        # Колонки ещё не созданы - используем значения по умолчанию
         pass
     
     return user
@@ -381,7 +368,6 @@ def get_lessons(session, student_id: int, upcoming: bool = True, limit: int = 10
 
 def get_detailed_stats(session, student_id: int) -> dict:
     """Получить подробную статистику."""
-    # Статистика уроков
     lessons_result = session.execute(text("""
         SELECT 
             COUNT(*) as total,
@@ -394,7 +380,6 @@ def get_detailed_stats(session, student_id: int) -> dict:
     """), {"student_id": student_id})
     lr = lessons_result.fetchone()
     
-    # Статистика ДЗ
     hw_result = session.execute(text("""
         SELECT 
             COUNT(*) as total,
@@ -408,14 +393,12 @@ def get_detailed_stats(session, student_id: int) -> dict:
     """), {"student_id": student_id})
     hr = hw_result.fetchone()
     
-    # Последний урок
     last_lesson = session.execute(text("""
         SELECT lesson_date, topic FROM "Lessons"
         WHERE student_id = :student_id AND status = 'completed'
         ORDER BY lesson_date DESC LIMIT 1
     """), {"student_id": student_id}).fetchone()
     
-    # Следующий урок
     next_lesson = session.execute(text("""
         SELECT lesson_date, topic FROM "Lessons"
         WHERE student_id = :student_id AND status = 'planned' AND lesson_date >= NOW()
@@ -464,9 +447,6 @@ def format_hw_status(s: str) -> str:
     return statuses.get(s, '')
 
 
-# ============================================
-# КОМАНДЫ
-# ============================================
 
 def _call_link_api(url: str, code: str, chat_id: int, telegram_id: Optional[str]):
     """Вызов API привязки по указанному URL."""
@@ -618,7 +598,6 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     session = get_session()
     try:
-        # Проверяем, не привязан ли уже
         existing = session.execute(text(
             'SELECT user_id FROM "UserProfiles" WHERE telegram_chat_id = :chat_id'
         ), {"chat_id": chat_id}).fetchone()
@@ -631,7 +610,6 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         
-        # Ищем код
         result = session.execute(text("""
             SELECT up.profile_id, up.user_id, up.telegram_link_code_expires, u.username
             FROM "UserProfiles" up
@@ -658,7 +636,6 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
         
-        # Привязываем
         session.execute(text("""
             UPDATE "UserProfiles"
             SET telegram_chat_id = :chat_id,
@@ -910,9 +887,6 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
         close_session(session)
 
 
-# ============================================
-# ПОСТРОИТЕЛИ ТЕКСТА
-# ============================================
 
 async def build_profile_text(session, user: dict) -> str:
     """Построить текст профиля."""
@@ -924,7 +898,6 @@ async def build_profile_text(session, user: dict) -> str:
     lines.append(f"📧 {esc(user['email']) if user['email'] else 'Email не указан'}")
     lines.append("")
     
-    # Информация о студенте
     if student:
         lines.append("📚 <b>Учебный профиль:</b>")
         if student['school_class']:
@@ -941,7 +914,6 @@ async def build_profile_text(session, user: dict) -> str:
             lines.append(f"   📊 Уровень: {esc(student['diagnostic_level'])}")
         lines.append("")
     
-    # Подписка
     lines.append("💳 <b>Подписка:</b>")
     if sub:
         if sub['plan_title']:
@@ -972,7 +944,6 @@ async def build_stats_text(session, user: dict) -> str:
     
     lines = ["📊 <b>Твоя статистика</b>", ""]
     
-    # Уроки
     lines.append("📚 <b>Уроки:</b>")
     lines.append(f"   ✅ Проведено: {stats['lessons_completed']}")
     lines.append(f"   📅 Запланировано: {stats['lessons_planned']}")
@@ -984,7 +955,6 @@ async def build_stats_text(session, user: dict) -> str:
         lines.append(f"   ⏱ Всего времени: {hours}ч {mins}м")
     lines.append("")
     
-    # Следующий/последний урок
     if stats['next_lesson_date']:
         lines.append(f"⏰ <b>Следующий урок:</b>")
         lines.append(f"   {stats['next_lesson_date'].strftime('%d.%m в %H:%M')}")
@@ -999,7 +969,6 @@ async def build_stats_text(session, user: dict) -> str:
             lines.append(f"   {esc(stats['last_lesson_topic'][:50])}")
         lines.append("")
     
-    # ДЗ
     if stats['hw_total']:
         lines.append("📝 <b>Домашние задания:</b>")
         lines.append(f"   ✅ Проверено: {stats['hw_checked']}")
@@ -1012,7 +981,6 @@ async def build_stats_text(session, user: dict) -> str:
             lines.append(f"   🎯 Точность: {accuracy}%")
         lines.append("")
     
-    # Баланс
     if sub and sub['lessons_remaining'] is not None:
         emoji = "🟢" if sub['lessons_remaining'] > 5 else ("🟡" if sub['lessons_remaining'] > 2 else "🔴")
         lines.append(f"{emoji} <b>Баланс:</b> {sub['lessons_remaining']} уроков")
@@ -1070,9 +1038,6 @@ def build_lessons_text(lessons: list, upcoming: bool) -> str:
     return "\n".join(lines)
 
 
-# ============================================
-# CALLBACK HANDLER
-# ============================================
 
 async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик callback-запросов."""
@@ -1233,9 +1198,6 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         close_session(session)
 
 
-# ============================================
-# СОЗДАНИЕ ПРИЛОЖЕНИЯ
-# ============================================
 
 def create_bot_application() -> Application:
     """Создание приложения бота."""

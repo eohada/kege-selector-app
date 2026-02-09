@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Скрипт для тестирования новой системы авторизации и RBAC
 Проверяет создание моделей, миграции и базовую функциональность
@@ -8,12 +6,10 @@ import sys
 import os
 import io
 
-# Настраиваем кодировку для Windows
 if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-# Добавляем корневую директорию в путь
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
@@ -50,7 +46,6 @@ def test_user_model_methods():
     print("=" * 60)
     
     try:
-        # Создаем тестового пользователя (не сохраняем в БД)
         test_user = User(
             username='test_admin',
             password_hash='test_hash',
@@ -64,7 +59,6 @@ def test_user_model_methods():
         print(f"   - is_parent(): {test_user.is_parent()}")
         print(f"   - get_role_display(): {test_user.get_role_display()}")
         
-        # Проверяем все роли
         roles_to_test = ['admin', 'tutor', 'student', 'parent']
         for role in roles_to_test:
             test_user.role = role
@@ -99,7 +93,6 @@ def test_database_tables(app):
             missing_tables = []
             
             for table in required_tables:
-                # Проверяем оба варианта регистра
                 if table in table_names or table.lower() in table_names:
                     found_tables.append(table)
                     print(f"[OK] Таблица '{table}' найдена")
@@ -114,7 +107,6 @@ def test_database_tables(app):
                     db.session.commit()
                     print("✅ db.create_all() выполнен успешно")
                     
-                    # Проверяем снова
                     table_names_after = inspector.get_table_names()
                     for table in missing_tables:
                         if table in table_names_after or table.lower() in table_names_after:
@@ -126,7 +118,6 @@ def test_database_tables(app):
                     db.session.rollback()
                     return False
             
-            # Проверяем колонки в таблице Users
             users_table = 'Users' if 'Users' in table_names else ('users' if 'users' in table_names else None)
             if users_table:
                 users_columns = {col['name'] for col in inspector.get_columns(users_table)}
@@ -154,7 +145,6 @@ def test_rbac_utils(app):
     
     try:
         with app.app_context():
-            # Тест маскирования контактов
             print("📞 Тест маскирования контактов:")
             test_contacts = [
                 "+7 900 123 45 67",
@@ -166,12 +156,10 @@ def test_rbac_utils(app):
                 masked = mask_contact_info(contact)
                 print(f"   '{contact}' -> '{masked}'")
             
-            # Тест get_user_scope (без реального пользователя)
             print("\n👤 Тест get_user_scope (без пользователя):")
             scope = get_user_scope(None)
             print(f"   Scope: {scope}")
             
-            # Создаем тестовых пользователей для проверки scope
             print("\n👥 Тест get_user_scope для разных ролей:")
             test_users = [
                 User(username='test_admin', role='admin', password_hash='hash'),
@@ -207,7 +195,6 @@ def test_migrations():
             ensure_schema_columns(app)
             print("[OK] Миграции выполнены успешно")
             
-            # Проверяем, что колонка email добавлена
             inspector = inspect(db.engine)
             table_names = inspector.get_table_names()
             users_table = 'Users' if 'Users' in table_names else ('users' if 'users' in table_names else None)
@@ -235,23 +222,17 @@ def main():
     
     results = []
     
-    # Тест 1: Импорт моделей
     results.append(("Импорт моделей", test_models_import()))
     
-    # Тест 2: Методы User
     results.append(("Методы модели User", test_user_model_methods()))
     
-    # Тест 3: Таблицы БД
     app = create_app()
     results.append(("Создание таблиц БД", test_database_tables(app)))
     
-    # Тест 4: RBAC утилиты
     results.append(("Утилиты RBAC", test_rbac_utils(app)))
     
-    # Тест 5: Миграции
     results.append(("Миграции БД", test_migrations()))
     
-    # Итоговый отчет
     print("\n" + "=" * 60)
     print("ИТОГОВЫЙ ОТЧЕТ")
     print("=" * 60)

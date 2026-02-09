@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт для безопасного перепарсинга заданий с сохранением всех данных:
 - Пропущенные задания (SkippedTasks)
@@ -12,7 +11,6 @@ import sys
 import json
 from datetime import datetime
 
-# Добавляем корневую директорию в путь
 project_root = os.path.abspath(os.path.dirname(__file__))
 sys.path.insert(0, project_root)
 
@@ -26,7 +24,6 @@ def backup_related_data():
     print("ШАГ 1: Сохранение связанных данных")
     print("="*60)
     
-    # Сохраняем пропущенные задания
     skipped_backup = []
     skipped_tasks = SkippedTasks.query.all()
     for st in skipped_tasks:
@@ -41,7 +38,6 @@ def backup_related_data():
             })
     print(f"✓ Сохранено {len(skipped_backup)} пропущенных заданий")
     
-    # Сохраняем черный список
     blacklist_backup = []
     blacklist_tasks = BlacklistTasks.query.all()
     for bt in blacklist_tasks:
@@ -56,7 +52,6 @@ def backup_related_data():
             })
     print(f"✓ Сохранено {len(blacklist_backup)} заданий в черном списке")
     
-    # Сохраняем историю использования
     usage_backup = []
     usage_history = UsageHistory.query.all()
     for uh in usage_history:
@@ -71,7 +66,6 @@ def backup_related_data():
             })
     print(f"✓ Сохранено {len(usage_backup)} записей истории использования")
     
-    # Сохраняем задания в уроках
     lesson_tasks_backup = []
     lesson_tasks = LessonTask.query.all()
     for lt in lesson_tasks:
@@ -91,7 +85,6 @@ def backup_related_data():
             })
     print(f"✓ Сохранено {len(lesson_tasks_backup)} заданий в уроках")
     
-    # Сохраняем в файл для подстраховки
     backup_data = {
         'timestamp': datetime.now().isoformat(),
         'skipped': skipped_backup,
@@ -114,7 +107,6 @@ def restore_related_data(backup_data):
     print("ШАГ 3: Проверка и восстановление связей")
     print("="*60)
     
-    # Создаем индекс заданий по source_url для быстрого поиска
     all_tasks = Tasks.query.all()
     tasks_by_url = {task.source_url: task for task in all_tasks if task.source_url}
     tasks_by_site_id = {task.site_task_id: task for task in all_tasks if task.site_task_id}
@@ -124,9 +116,7 @@ def restore_related_data(backup_data):
     restored_usage = 0
     restored_lesson_tasks = 0
     
-    # Восстанавливаем пропущенные задания
     for skipped_data in backup_data['skipped']:
-        # Ищем задание по source_url или site_task_id
         task = None
         if skipped_data.get('source_url'):
             task = tasks_by_url.get(skipped_data['source_url'])
@@ -134,10 +124,8 @@ def restore_related_data(backup_data):
             task = tasks_by_site_id.get(skipped_data['site_task_id'])
         
         if task:
-            # Проверяем, существует ли уже запись
             existing = SkippedTasks.query.filter_by(task_fk=task.task_id).first()
             if not existing:
-                # Восстанавливаем только если записи нет
                 new_skipped = SkippedTasks(
                     task_fk=task.task_id,
                     date_skipped=datetime.fromisoformat(skipped_data['date_skipped']) if skipped_data.get('date_skipped') else moscow_now(),
@@ -146,7 +134,6 @@ def restore_related_data(backup_data):
                 db.session.add(new_skipped)
                 restored_skipped += 1
     
-    # Восстанавливаем черный список
     for blacklist_data in backup_data['blacklist']:
         task = None
         if blacklist_data.get('source_url'):
@@ -165,7 +152,6 @@ def restore_related_data(backup_data):
                 db.session.add(new_blacklist)
                 restored_blacklist += 1
     
-    # Восстанавливаем историю использования (опционально, обычно не нужно)
     for usage_data in backup_data['usage_history']:
         task = None
         if usage_data.get('source_url'):
@@ -187,7 +173,6 @@ def restore_related_data(backup_data):
                 db.session.add(new_usage)
                 restored_usage += 1
     
-    # Восстанавливаем задания в уроках (обновляем task_id, если изменился)
     for lt_data in backup_data['lesson_tasks']:
         task = None
         if lt_data.get('source_url'):
@@ -196,10 +181,8 @@ def restore_related_data(backup_data):
             task = tasks_by_site_id.get(lt_data['site_task_id'])
         
         if task:
-            # Находим существующую запись LessonTask
             existing_lt = db.session.get(LessonTask, lt_data['lesson_task_id'])
             if existing_lt and existing_lt.task_id != task.task_id:
-                # Обновляем task_id, если он изменился
                 existing_lt.task_id = task.task_id
                 restored_lesson_tasks += 1
     
@@ -209,7 +192,6 @@ def restore_related_data(backup_data):
     else:
         print("✓ Все связи сохранены, восстановление не требуется")
     
-    # Финальная проверка
     final_skipped = SkippedTasks.query.count()
     final_blacklist = BlacklistTasks.query.count()
     final_usage = UsageHistory.query.count()
@@ -230,10 +212,8 @@ def main():
     
     with app.app_context():
         try:
-            # Шаг 1: Сохраняем все связанные данные
             backup_data = backup_related_data()
             
-            # Шаг 2: Запускаем парсер
             print("\n" + "="*60)
             print("ШАГ 2: Запуск парсера")
             print("="*60)
@@ -241,7 +221,6 @@ def main():
             run_parser()
             print("✓ Парсинг завершен")
             
-            # Шаг 3: Проверяем и восстанавливаем связи (если нужно)
             restore_related_data(backup_data)
             
             print("\n" + "="*60)

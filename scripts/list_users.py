@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт для вывода списка всех пользователей
 Использование: python scripts/list_users.py
@@ -6,7 +5,6 @@
 import os
 import sys
 
-# Добавляем корневую директорию в путь
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app import create_app, db

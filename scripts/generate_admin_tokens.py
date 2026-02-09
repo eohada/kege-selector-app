@@ -6,13 +6,11 @@ import secrets
 import sys
 import io
 
-# Исправление кодировки для Windows
 if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 def generate_token(length=64):
     """Генерирует безопасный случайный токен"""
-    # Используем secrets для криптографически стойкой генерации
     return secrets.token_urlsafe(length)
 
 def main():
@@ -22,7 +20,6 @@ def main():
     print("=" * 60)
     print()
     
-    # Генерируем токены
     production_token = generate_token()
     sandbox_token = generate_token()
     admin_token = generate_token()
@@ -69,7 +66,6 @@ def main():
     print("3. Сохраните токены в безопасном месте!")
     print("=" * 60)
     
-    # Сохраняем в файл для удобства
     output_file = "admin_tokens.txt"
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write("Токены для удаленной админки\n")

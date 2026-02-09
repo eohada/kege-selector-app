@@ -20,13 +20,11 @@ logger = logging.getLogger(__name__)
 def api_users_list():
     """API: Список всех пользователей (только для администратора)"""
     try:
-        # Параметры фильтрации
         role_filter = request.args.get('role')  # Фильтр по роли
         is_active_filter = request.args.get('is_active')  # Фильтр по активности
         
         query = User.query
         
-        # Применяем фильтры (по любой из ролей пользователя)
         if role_filter:
             query = query.join(UserRole, User.id == UserRole.user_id).filter(UserRole.role == role_filter).distinct()
         if is_active_filter is not None:
@@ -35,7 +33,6 @@ def api_users_list():
         
         users = query.order_by(User.created_at.desc()).all()
         
-        # Формируем ответ
         users_data = []
         for user in users:
             user_data = {
@@ -48,7 +45,6 @@ def api_users_list():
                 'last_login': user.last_login.isoformat() if user.last_login else None,
             }
             
-            # Добавляем информацию о профиле, если есть
             if user.profile:
                 user_data['profile'] = {
                     'first_name': user.profile.first_name,
@@ -78,7 +74,6 @@ def api_users_create():
     try:
         data = request.get_json()
         
-        # Валидация обязательных полей
         username = data.get('username', '').strip()
         password = data.get('password', '')
         role = data.get('role', 'student').strip()
@@ -89,16 +84,13 @@ def api_users_create():
         if not password:
             return jsonify({'success': False, 'error': 'Password is required'}), 400
         
-        # Проверка допустимых ролей
         valid_roles = ['admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer', 'creator']
         if role not in valid_roles:
             return jsonify({'success': False, 'error': f'Invalid role. Must be one of: {", ".join(valid_roles)}'}), 400
         
-        # Проверка уникальности username
         if User.query.filter_by(username=username).first():
             return jsonify({'success': False, 'error': 'Username already exists'}), 409
         
-        # Создаем пользователя
         user = User(
             username=username,
             email=None,
@@ -109,7 +101,6 @@ def api_users_create():
         db.session.add(user)
         db.session.flush()  # Получаем ID пользователя
         
-        # Создаем профиль, если указаны данные
         profile_data = data.get('profile', {})
         if profile_data:
             profile = UserProfile(
@@ -126,7 +117,6 @@ def api_users_create():
         
         db.session.commit()
         
-        # Логируем создание
         audit_logger.log(
             action='user_created',
             entity='User',
@@ -168,7 +158,6 @@ def api_users_get(user_id):
             'last_login': user.last_login.isoformat() if user.last_login else None,
         }
         
-        # Добавляем профиль
         if user.profile:
             user_data['profile'] = {
                 'first_name': user.profile.first_name,
@@ -180,9 +169,7 @@ def api_users_get(user_id):
                 'avatar_url': user.profile.avatar_url,
             }
         
-        # Добавляем связи (для учеников и родителей)
         if user.is_student():
-            # Список родителей
             family_ties = FamilyTie.query.filter_by(student_id=user.id).all()
             user_data['parents'] = [
                 {
@@ -194,7 +181,6 @@ def api_users_get(user_id):
                 for ft in family_ties
             ]
             
-            # Список enrollments (тьюторы)
             enrollments = Enrollment.query.filter_by(student_id=user.id, status='active').all()
             user_data['enrollments'] = [
                 {
@@ -208,7 +194,6 @@ def api_users_get(user_id):
             ]
         
         if user.is_parent():
-            # Список детей
             family_ties = FamilyTie.query.filter_by(parent_id=user.id).all()
             user_data['children'] = [
                 {
@@ -221,7 +206,6 @@ def api_users_get(user_id):
             ]
         
         if user.is_tutor():
-            # Список учеников
             enrollments = Enrollment.query.filter_by(tutor_id=user.id, status='active').all()
             user_data['students'] = [
                 {
@@ -251,11 +235,9 @@ def api_users_update(user_id):
         user = User.query.get_or_404(user_id)
         data = request.get_json()
         
-        # Обновляем основные поля
         if 'username' in data:
             new_username = data['username'].strip()
             if new_username != user.username:
-                # Проверяем уникальность
                 if User.query.filter_by(username=new_username).first():
                     return jsonify({'success': False, 'error': 'Username already exists'}), 409
                 user.username = new_username
@@ -272,11 +254,9 @@ def api_users_update(user_id):
         if 'is_active' in data:
             user.is_active = bool(data['is_active'])
         
-        # Обновляем профиль
         if 'profile' in data:
             profile_data = data['profile']
             if not user.profile:
-                # Создаем профиль, если его нет
                 profile = UserProfile(user_id=user.id)
                 db.session.add(profile)
                 db.session.flush()
@@ -299,7 +279,6 @@ def api_users_update(user_id):
         
         db.session.commit()
         
-        # Логируем обновление
         audit_logger.log(
             action='user_updated',
             entity='User',
@@ -337,7 +316,6 @@ def api_users_reset_password(user_id):
         user.password_hash = generate_password_hash(new_password)
         db.session.commit()
         
-        # Логируем сброс пароля
         audit_logger.log(
             action='password_reset',
             entity='User',
@@ -373,7 +351,6 @@ def api_users_activate(user_id):
         
         action = 'activated' if is_active else 'deactivated'
         
-        # Логируем
         audit_logger.log(
             action=f'user_{action}',
             entity='User',

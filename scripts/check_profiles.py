@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Проверка профилей в БД"""
 import sys
 import os

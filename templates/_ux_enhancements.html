@@ -1,17 +1,12 @@
-{# Общий файл для всех UX улучшений #}
 
-{# Breadcrumbs container - добавляется в начале контента #}
+
 <div class="breadcrumbs-container"></div>
 
-{# Подключаем toast.js для отображения уведомлений #}
 <script src="{{ url_for('static', filename='toast.js') }}"></script>
 
-{# Универсальный обработчик форм для немедленного показа toast-уведомлений #}
 <script src="{{ url_for('static', filename='form-toast-handler.js') }}"></script>
 <script src="{{ url_for('static', filename='ux-utils.js') }}"></script>
 
-{# Универсальный обработчик flash сообщений - работает на всех страницах #}
-{# Сохраняем flash сообщения в JSON для последующего использования #}
 {% with messages = get_flashed_messages(with_categories=true) %}
 {% if messages %}
 <script type="application/json" id="flash-messages-data">
@@ -117,7 +112,6 @@
 })();
 </script>
 
-{# КРИТИЧЕСКИ ВАЖНО: Принудительная установка базового размера шрифта для консистентности между окружениями #}
 <script>
 (function() {
     'use strict';
@@ -222,8 +216,5 @@
 })();
 </script>
 
-{# Примечание: UX скрипты были удалены, но breadcrumbs container оставлен для совместимости #}
-
-{# Подключаем модальный диалог подтверждения для всех страниц #}
 <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
 <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>

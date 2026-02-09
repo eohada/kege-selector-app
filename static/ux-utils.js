@@ -1,9 +1,8 @@
-// Функция для инициализации кнопки "Наверх"
+
 function initScrollToTop() {
-    // Проверяем, есть ли уже кнопка
+
     if (document.querySelector('.scroll-to-top')) return;
 
-    // Создаем кнопку
     const scrollButton = document.createElement('button');
     scrollButton.className = 'scroll-to-top';
     scrollButton.setAttribute('aria-label', 'Наверх');
@@ -13,14 +12,13 @@ function initScrollToTop() {
         </svg>
     `;
     document.body.appendChild(scrollButton);
-    
-    // Обработчик прокрутки
+
     let ticking = false;
     function handleScroll() {
         if (!ticking) {
             window.requestAnimationFrame(() => {
                 const scrollY = window.scrollY || window.pageYOffset;
-                const showThreshold = 300; // Показывать после 300px прокрутки
+                const showThreshold = 300;
                 
                 if (scrollY > showThreshold) {
                     scrollButton.classList.add('visible');
@@ -35,18 +33,15 @@ function initScrollToTop() {
     }
     
     window.addEventListener('scroll', handleScroll, { passive: true });
-    
-    // Обработчик клика
+
     scrollButton.addEventListener('click', () => {
         window.scrollTo({
             top: 0,
             behavior: 'smooth'
         });
     });
-    
-    // Проверяем начальное состояние
+
     handleScroll();
 }
 
-// Инициализация при загрузке страницы
 document.addEventListener('DOMContentLoaded', initScrollToTop);

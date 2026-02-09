@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт для наполнения БД тестовыми данными RBAC системы
 Аналог Prisma db seed для Flask/SQLAlchemy
@@ -13,12 +12,9 @@
   --yes                 Автоматически подтвердить удаление данных (для --reset)
 
 Примеры:
-  # Наполнить sandbox базу
   ENVIRONMENT=sandbox python scripts/seed_rbac_data.py
-  # или
   python scripts/seed_rbac_data.py --sandbox
   
-  # Наполнить sandbox с удалением старых данных
   python scripts/seed_rbac_data.py --sandbox --reset --yes
 
 Создает:
@@ -31,12 +27,10 @@ import os
 import sys
 import io
 
-# Обработка кодировки для Windows
 if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-# Добавляем корневую директорию в путь
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app import create_app, db
@@ -44,13 +38,10 @@ from core.db_models import User, UserProfile, FamilyTie, Enrollment, moscow_now
 from app.models import Student
 from werkzeug.security import generate_password_hash
 
-# Создаем приложение (будет пересоздано в seed_database если нужно)
 app = None
 
 
-# Тестовые данные
 TEST_USERS = [
-    # Администратор
     {
         'username': 'admin',
         'email': 'admin@example.com',
@@ -63,7 +54,6 @@ TEST_USERS = [
             'telegram_id': '@admin_support'
         }
     },
-    # Главный тестировщик
     {
         'username': 'chief_tester',
         'email': 'chief_tester@example.com',
@@ -76,7 +66,6 @@ TEST_USERS = [
             'telegram_id': '@chief_tester'
         }
     },
-    # Графический дизайнер
     {
         'username': 'designer',
         'email': 'designer@example.com',
@@ -89,7 +78,6 @@ TEST_USERS = [
             'telegram_id': '@designer'
         }
     },
-    # Тьюторы
     {
         'username': 'tutor1',
         'email': 'tutor1@example.com',
@@ -114,7 +102,6 @@ TEST_USERS = [
             'telegram_id': '@tutor_ivan'
         }
     },
-    # Ученики
     {
         'username': 'student1',
         'email': 'student1@example.com',
@@ -151,7 +138,6 @@ TEST_USERS = [
             'telegram_id': '@student_alex'
         }
     },
-    # Родители
     {
         'username': 'parent1',
         'email': 'parent1@example.com',
@@ -178,14 +164,12 @@ TEST_USERS = [
     }
 ]
 
-# Связи FamilyTie (родитель -> ученик)
 FAMILY_TIES = [
     {'parent_username': 'parent1', 'student_username': 'student1', 'access_level': 'full'},
     {'parent_username': 'parent1', 'student_username': 'student2', 'access_level': 'full'},
     {'parent_username': 'parent2', 'student_username': 'student3', 'access_level': 'full'},
 ]
 
-# Связи Enrollment (ученик -> тьютор -> предмет)
 ENROLLMENTS = [
     {'student_username': 'student1', 'tutor_username': 'tutor1', 'subject': 'INFORMATICS_EGE_2025'},
     {'student_username': 'student2', 'tutor_username': 'tutor1', 'subject': 'INFORMATICS_EGE_2025'},
@@ -199,7 +183,6 @@ def reset_test_data():
     
     test_usernames = [u['username'] for u in TEST_USERS]
     
-    # Получаем ID тестовых пользователей
     test_user_ids = db.session.query(User.id).filter(User.username.in_(test_usernames)).all()
     test_user_ids = [uid[0] for uid in test_user_ids]
     
@@ -207,7 +190,6 @@ def reset_test_data():
         print("  ℹ️  Тестовые пользователи не найдены, пропускаем удаление")
         return
     
-    # Удаляем в правильном порядке (сначала зависимые таблицы)
     from sqlalchemy import or_
     
     Enrollment.query.filter(Enrollment.student_id.in_(test_user_ids)).delete(synchronize_session=False)
@@ -235,18 +217,15 @@ def create_users():
     for user_data in TEST_USERS:
         username = user_data['username']
         
-        # Проверяем, существует ли пользователь
         user = User.query.filter_by(username=username).first()
         
         if user:
-            # Обновляем существующего пользователя
             user.email = user_data['email']
             user.password_hash = generate_password_hash(user_data['password'])
             user.role = user_data['role']
             user.is_active = True
             print(f"  ✅ Обновлен: {username} ({user_data['role']})")
         else:
-            # Создаем нового пользователя
             user = User(
                 username=username,
                 email=user_data['email'],
@@ -259,7 +238,6 @@ def create_users():
             db.session.flush()  # Получаем ID
             print(f"  ✅ Создан: {username} ({user_data['role']})")
         
-        # Создаем или обновляем профиль
         profile_data = user_data.get('profile', {})
         if not profile_data:
             print(f"  ⚠️  Нет данных профиля для {username}, пропускаем")
@@ -286,11 +264,9 @@ def create_users():
             db.session.add(profile)
             print(f"    📝 Профиль создан для {username}")
         
-        # Для учеников создаем соответствующую запись Student
         if user_data['role'] == 'student' and user.email:
             student = Student.query.filter_by(email=user.email).first()
             if not student:
-                # Создаем Student запись для ученика
                 profile_name = f"{profile_data.get('first_name', '')} {profile_data.get('last_name', '')}".strip()
                 if not profile_name:
                     profile_name = user.username
@@ -305,7 +281,6 @@ def create_users():
                 db.session.add(student)
                 print(f"    👨‍🎓 Student запись создана для {username}")
             else:
-                # Обновляем существующую запись
                 profile_name = f"{profile_data.get('first_name', '')} {profile_data.get('last_name', '')}".strip()
                 if profile_name:
                     student.name = profile_name
@@ -335,17 +310,14 @@ def create_family_ties(users_dict):
             print(f"  ⚠️  Пропущено: {tie_data['parent_username']} -> {tie_data['student_username']} (пользователь не найден)")
             continue
         
-        # Проверяем, существует ли связь
         family_tie = FamilyTie.query.filter_by(
             parent_id=parent.id,
             student_id=student.id
         ).first()
         
-        # Получаем имена для вывода
         def get_user_name(user):
             """Безопасно получает имя пользователя из профиля"""
             try:
-                # Загружаем профиль через запрос
                 profile = UserProfile.query.filter_by(user_id=user.id).first()
                 if profile and profile.first_name:
                     return f"{profile.first_name} {profile.last_name or ''}".strip()
@@ -387,18 +359,15 @@ def create_enrollments(users_dict):
             print(f"  ⚠️  Пропущено: {enrollment_data['student_username']} -> {enrollment_data['tutor_username']} (пользователь не найден)")
             continue
         
-        # Проверяем, существует ли контракт
         enrollment = Enrollment.query.filter_by(
             student_id=student.id,
             tutor_id=tutor.id,
             subject=enrollment_data['subject']
         ).first()
         
-        # Получаем имена для вывода
         def get_user_name(user):
             """Безопасно получает имя пользователя из профиля"""
             try:
-                # Загружаем профиль через запрос
                 profile = UserProfile.query.filter_by(user_id=user.id).first()
                 if profile and profile.first_name:
                     return f"{profile.first_name} {profile.last_name or ''}".strip()
@@ -439,7 +408,6 @@ def print_summary(users_dict):
         if users_by_role:
             print(f"  {role.upper()}: {len(users_by_role)}")
             for user in users_by_role:
-                # Безопасно получаем имя из профиля
                 profile = UserProfile.query.filter_by(user_id=user.id).first()
                 if profile and profile.first_name:
                     profile_name = f"{profile.first_name} {profile.last_name or ''}".strip()
@@ -454,7 +422,6 @@ def print_summary(users_dict):
     for tie in family_ties:
         parent = User.query.get(tie.parent_id)
         student = User.query.get(tie.student_id)
-        # Безопасно получаем имена из профилей
         parent_profile = UserProfile.query.filter_by(user_id=parent.id).first() if parent else None
         student_profile = UserProfile.query.filter_by(user_id=student.id).first() if student else None
         parent_name = f"{parent_profile.first_name} {parent_profile.last_name or ''}".strip() if parent_profile and parent_profile.first_name else (parent.username if parent else 'N/A')
@@ -468,7 +435,6 @@ def print_summary(users_dict):
     for enrollment in enrollments:
         student = User.query.get(enrollment.student_id)
         tutor = User.query.get(enrollment.tutor_id)
-        # Безопасно получаем имена из профилей
         student_profile = UserProfile.query.filter_by(user_id=student.id).first() if student else None
         tutor_profile = UserProfile.query.filter_by(user_id=tutor.id).first() if tutor else None
         student_name = f"{student_profile.first_name} {student_profile.last_name or ''}".strip() if student_profile and student_profile.first_name else (student.username if student else 'N/A')
@@ -484,7 +450,6 @@ def seed_database(reset=False, force_production=False, target_environment=None, 
     """Основная функция наполнения БД"""
     global app
     
-    # Если нужно использовать sandbox, переключаем DATABASE_URL
     if use_sandbox:
         sandbox_url = os.environ.get('SANDBOX_DATABASE_URL')
         if not sandbox_url:
@@ -496,12 +461,10 @@ def seed_database(reset=False, force_production=False, target_environment=None, 
             print("      $env:SANDBOX_DATABASE_URL='postgresql://...'")
             return False
         
-        # Сохраняем оригинальный DATABASE_URL
         original_db_url = os.environ.get('DATABASE_URL')
         os.environ['DATABASE_URL'] = sandbox_url
         print(f"🔄 Переключено на SANDBOX базу данных")
         
-        # Пересоздаем app с новым DATABASE_URL
         app = create_app()
         os.environ['ENVIRONMENT'] = 'sandbox'
     
@@ -509,13 +472,10 @@ def seed_database(reset=False, force_production=False, target_environment=None, 
         app = create_app()
     
     with app.app_context():
-        # Проверяем окружение
         environment = target_environment or os.environ.get('ENVIRONMENT', 'local')
         
-        # Показываем информацию о подключении
         database_url = os.environ.get('DATABASE_URL', '')
         if database_url:
-            # Маскируем пароль в URL для безопасности
             masked_url = database_url.split('@')[-1] if '@' in database_url else database_url[:50] + '...'
             print(f"🔌 Подключение к БД: {masked_url}")
         print(f"🌍 Окружение: {environment}")
@@ -552,7 +512,6 @@ if __name__ == '__main__':
     force_production = '--force-production' in sys.argv
     auto_yes = '--yes' in sys.argv
     
-    # Если указан --sandbox, используем sandbox базу
     use_sandbox = '--sandbox' in sys.argv
     if use_sandbox:
         print("🌍 Режим: SANDBOX")
@@ -578,7 +537,6 @@ if __name__ == '__main__':
                     print("❌ Отменено")
                     sys.exit(0)
             except EOFError:
-                # Если нет интерактивного ввода (например, в CI/CD)
                 print("⚠️  Нет интерактивного ввода. Используйте --yes для автоматического подтверждения.")
                 sys.exit(1)
     

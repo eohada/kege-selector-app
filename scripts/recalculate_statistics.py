@@ -12,7 +12,6 @@
 import sys
 import os
 
-# Добавляем корневую директорию в путь
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from app import create_app, db
@@ -24,32 +23,25 @@ def recalculate_submission_correct(lesson_task):
     Пересчитывает submission_correct для задания на основе student_submission/student_answer
     Использует ту же логику, что и perform_auto_check
     """
-    # Получаем ответ ученика
     student_value = lesson_task.student_submission or lesson_task.student_answer
     if not student_value:
-        # Если нет ответа, оставляем submission_correct как есть
         return None
     
     student_text = str(student_value).strip()
     
-    # Проверяем, является ли это пропуском
     is_skip = student_text == '' or student_text == '-1' or student_text.lower() == 'null'
     if is_skip:
         return False
     
-    # Получаем правильный ответ
-    # Используем student_answer, если он был введен вручную, иначе ответ из базы данных
     expected_text = (lesson_task.student_answer if lesson_task.student_answer else 
                      (lesson_task.task.answer if lesson_task.task and lesson_task.task.answer else '')) or ''
     
     if not expected_text:
         return False
     
-    # Нормализуем ответы для сравнения
     normalized_student = normalize_answer_value(student_text)
     normalized_expected = normalize_answer_value(expected_text)
     
-    # Сравниваем
     is_correct = normalized_student == normalized_expected and normalized_expected != ''
     return is_correct
 
@@ -61,7 +53,6 @@ def collect_statistics(student_id=None, fix_tasks=False):
     """
     stats = {}
     
-    # Определяем, для каких учеников собираем статистику
     if student_id:
         students = [Student.query.get(student_id)]
         if not students[0]:
@@ -80,16 +71,12 @@ def collect_statistics(student_id=None, fix_tasks=False):
             'tasks_fixed': 0
         }
         
-        # Загружаем все уроки с заданиями
         lessons = Lesson.query.filter_by(student_id=student.student_id).options(
             db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
         ).all()
         
-        # Собираем статистику по номерам заданий
         for lesson in lessons:
-            # Обрабатываем все типы заданий
             for assignment_type in ['homework', 'classwork', 'exam']:
-                # Получаем задания по типу
                 if assignment_type == 'homework':
                     assignments = lesson.homework_assignments
                 elif assignment_type == 'classwork':
@@ -116,25 +103,21 @@ def collect_statistics(student_id=None, fix_tasks=False):
                             'before_total': 0
                         }
                     
-                    # Проверяем, есть ли ответ
                     has_submission = bool(lt.student_submission or lt.student_answer)
                     if has_submission:
                         student_stats['tasks_with_submission'] += 1
                     
-                    # Статистика ДО исправления (всегда собираем)
                     if lt.submission_correct is not None:
                         student_stats['task_stats'][task_num]['before_total'] += weight
                         if lt.submission_correct:
                             student_stats['task_stats'][task_num]['before_correct'] += weight
                     
-                    # Пересчитываем submission_correct, если нужно
                     if fix_tasks and has_submission and lt.submission_correct is None:
                         new_correct = recalculate_submission_correct(lt)
                         if new_correct is not None:
                             lt.submission_correct = new_correct
                             student_stats['tasks_fixed'] += 1
                     
-                    # Статистика ПОСЛЕ исправления (собираем только если fix_tasks=True)
                     if lt.submission_correct is not None:
                         student_stats['task_stats'][task_num]['total'] += weight
                         if lt.submission_correct:
@@ -162,7 +145,6 @@ def print_statistics(stats, before_commit=True):
         else:
             print(f"Заданий с submission_correct (ПОСЛЕ): {sum(s['total'] for s in student_stats['task_stats'].values())}")
         
-        # Выводим статистику по номерам заданий
         print(f"\nСтатистика по номерам заданий ({prefix}):")
         print(f"{'Номер':<8} {'Правильно':<12} {'Всего':<8} {'Процент':<10}")
         print("-" * 40)
@@ -190,7 +172,6 @@ def main():
         print("ПЕРЕСЧЕТ СТАТИСТИКИ ВЫПОЛНЕНИЯ ЗАДАНИЙ")
         print("="*80)
         
-        # Собираем статистику ДО исправления (без изменений)
         print("\n📊 Сбор статистики ДО исправления...")
         stats_before = collect_statistics(fix_tasks=False)
         
@@ -198,10 +179,8 @@ def main():
             print("❌ Не найдено активных учеников")
             return
         
-        # Выводим статистику ДО
         print_statistics(stats_before, before_commit=True)
         
-        # Пересчитываем submission_correct для всех заданий
         print("\n🔧 Пересчет submission_correct для заданий с ответами...")
         stats_fixed = collect_statistics(fix_tasks=True)
         
@@ -209,7 +188,6 @@ def main():
             print("❌ Ошибка при пересчете")
             return
         
-        # Коммитим изменения
         print("\n💾 Сохранение изменений в базу данных...")
         try:
             db.session.commit()
@@ -219,14 +197,11 @@ def main():
             print(f"❌ Ошибка при сохранении: {e}")
             return
         
-        # Собираем статистику ПОСЛЕ исправления (пересчитываем без изменений)
         print("\n📊 Сбор статистики ПОСЛЕ исправления...")
         stats_after = collect_statistics(fix_tasks=False)
         
-        # Выводим статистику ПОСЛЕ
         print_statistics(stats_after, before_commit=False)
         
-        # Сводка
         print("\n" + "="*80)
         print("СВОДКА")
         print("="*80)
@@ -235,7 +210,6 @@ def main():
         print(f"Всего учеников обработано: {total_students}")
         print(f"Всего заданий исправлено: {total_fixed}")
         
-        # Показываем учеников с наибольшим количеством исправлений
         if total_fixed > 0:
             print("\nТоп-10 учеников с наибольшим количеством исправлений:")
             sorted_students = sorted(

@@ -29,10 +29,8 @@ class LoginForm(FlaskForm):
 def login():
     """Страница входа"""
     try:
-        # Если это админ-окружение и пользователь уже авторизован - сразу в админку
         is_admin_env = os.environ.get('ENVIRONMENT') == 'admin'
         
-        # Безопасная проверка авторизации
         try:
             is_authenticated = current_user.is_authenticated if hasattr(current_user, 'is_authenticated') else False
         except Exception as e:
@@ -49,13 +47,10 @@ def login():
             username = form.username.data.strip()
             password = form.password.data
             
-            # Ищем пользователя по логину
             user = User.query.filter_by(username=username).first()
             
             if user and user.is_active:
-                # Проверяем пароль
                 if check_password_hash(user.password_hash, password):
-                    # Проверка для админ-окружения: только creator
                     try:
                         is_creator = user.is_creator() if hasattr(user, 'is_creator') else False
                     except Exception as e:
@@ -66,7 +61,6 @@ def login():
                         flash('Доступ к админ-панели разрешен только Создателю', 'danger')
                         return render_template('remote_admin/login.html' if is_admin_env else 'auth/login.html', form=form)
                     
-                    # Обновляем время последнего входа
                     user.last_login = moscow_now()
                     try:
                         db.session.commit()
@@ -74,10 +68,8 @@ def login():
                         db.session.rollback()
                         raise
                     
-                    # Входим
                     login_user(user, remember=True)
                     
-                    # Логируем вход
                     audit_logger.log(
                         action='login',
                         entity='User',
@@ -86,41 +78,33 @@ def login():
                         metadata={'username': user.username, 'role': user.role}
                     )
                     
-                    # Редирект в зависимости от роли
                     next_page = request.args.get('next')
                     if next_page and next_page.startswith('/'):
-                        # Если есть next параметр, используем его
                         pass
                     elif is_admin_env:
                         next_page = url_for('remote_admin.dashboard')
                     elif user.is_parent():
-                        # Родитель идет на свой дашборд
                         next_page = url_for('parents.parent_dashboard')
                     elif user.is_student():
-                        # Ученик: landing зависит от тарифа (уроки/тренажёр/оба)
                         eff = get_effective_access_for_user(user.id)
                         allow_lessons = True if eff.allow_lessons is None else bool(eff.allow_lessons)
                         allow_trainer = True if eff.allow_trainer is None else bool(eff.allow_trainer)
                         if eff.status == 'expired':
                             next_page = url_for('auth.user_profile')
 
-                        # Если явно "только тренажёр" — сразу в тренажёр
                         elif (allow_lessons is False) and (allow_trainer is True):
                             next_page = url_for('trainer.trainer_embed')
                         elif (allow_lessons is False) and (allow_trainer is False):
                             next_page = url_for('auth.user_profile')
                         else:
-                            # По умолчанию: ученик идёт в свою комнату/профиль (по Student)
                             student = Student.query.filter_by(user_id=user.id).first()
                             if student:
                                 next_page = url_for('students.student_profile', student_id=student.student_id)
                             else:
                                 next_page = url_for('main.student_dashboard')
                     elif user.is_admin():
-                        # Админ может выбрать dashboard или админку
                         next_page = url_for('main.dashboard')
                     else:
-                        # Тьютор и остальные - на dashboard
                         next_page = url_for('main.dashboard')
                     
                     flash('Вход выполнен успешно!', 'success')
@@ -179,7 +163,6 @@ def user_profile():
     recent_lessons = []
     lesson_counts = {'total': 0, 'planned': 0, 'completed': 0}
     try:
-        # Привязка аккаунта ученика к сущности Student
         if current_user.is_student():
             linked_student = Student.query.filter_by(user_id=current_user.id).first()
             if linked_student:
@@ -215,8 +198,6 @@ def user_public_profile(user_id: int):
 
     u = User.query.get_or_404(user_id)
 
-    # Только для авторизованных; доп. ограничения на роли тут не вводим,
-    # но можно ужесточить позже (например, ученику — только tutor/admin).
     display_name = None
     try:
         if u.profile:
@@ -230,7 +211,6 @@ def user_public_profile(user_id: int):
     creator_cover_url = None
     if getattr(u, 'role', None) == 'creator' and getattr(u, 'profile', None):
         creator_cover_url = getattr(u.profile, 'cover_url', None)
-    # Числовой ID: у ученика — Student.platform_id, у остальных — User.numeric_id
     public_numeric_id = None
     if getattr(u, 'is_student', lambda: False)():
         from app.models import Student
@@ -253,25 +233,21 @@ def profile_update():
     """Обновление данных профиля (AJAX)"""
     from werkzeug.exceptions import RequestEntityTooLarge
     
-    # Проверка CSRF токена
     try:
         validate_csrf(request.form.get('csrf_token') or request.headers.get('X-CSRFToken'))
     except CSRFError as e:
         logger.warning(f"CSRF validation failed: {e}")
         return jsonify({'success': False, 'error': 'Ошибка безопасности. Обновите страницу.'}), 403
     
-    # Поддерживаем и JSON, и FormData
     if request.is_json:
         data = request.get_json()
     else:
         data = request.form
 
     try:
-        # Обработка аватарки (только если пришел файл)
         if 'avatar_file' in request.files:
             file = request.files['avatar_file']
             if file and file.filename:
-                # Проверка типа файла
                 allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
                 filename = secure_filename(file.filename)
                 ext = os.path.splitext(filename)[1].lower()
@@ -279,7 +255,6 @@ def profile_update():
                 if ext not in allowed_extensions:
                     return jsonify({'success': False, 'error': 'Недопустимый формат файла. Используйте JPG, PNG, GIF или WEBP'}), 400
                 
-                # Проверка размера (макс 5MB)
                 file.seek(0, os.SEEK_END)
                 file_size = file.tell()
                 file.seek(0)
@@ -289,11 +264,9 @@ def profile_update():
                 unique_filename = f"avatar_{current_user.id}{ext}"
                 avatar_upload_root = current_app.config.get('AVATAR_UPLOAD_ROOT')
                 if avatar_upload_root:
-                    # Persistent storage (переживает деплой): сохраняем в AVATAR_UPLOAD_ROOT, URL — /avatars/...
                     upload_folder = os.path.abspath(avatar_upload_root)
                     avatar_url = f"/avatars/{unique_filename}"
                 else:
-                    # Локальная разработка: static/uploads/avatars
                     app_root = os.path.dirname(current_app.root_path)
                     upload_folder = os.path.join(app_root, 'static', 'uploads', 'avatars')
                     upload_folder = os.path.abspath(upload_folder)
@@ -315,7 +288,6 @@ def profile_update():
                     current_user.profile.avatar_url = avatar_url
                 logger.info(f"Avatar uploaded for user {current_user.id}: {avatar_url}")
 
-        # Баннер профиля (только для креатора): GIF или изображение
         if getattr(current_user, 'is_creator', lambda: False)() and 'cover_file' in request.files:
             file = request.files['cover_file']
             if file and file.filename:
@@ -350,7 +322,6 @@ def profile_update():
                     current_user.profile.cover_url = cover_url
                 logger.info(f"Cover uploaded for user {current_user.id}: {cover_url}")
 
-        # Обновляем текстовые поля
         if 'custom_status' in data:
             current_user.custom_status = data['custom_status'].strip()[:100]
         
@@ -388,7 +359,6 @@ def profile_update():
         return jsonify({'success': False, 'error': f'Ошибка сохранения: {str(e)}'}), 500
 
 
-# ==================== MIRO OAUTH ====================
 
 @auth_bp.route('/miro/callback', methods=['GET', 'POST'])
 def miro_oauth_callback():
@@ -396,7 +366,6 @@ def miro_oauth_callback():
     Callback endpoint для Miro OAuth 2.0.
     Miro редиректит сюда после авторизации пользователя.
     """
-    # Получаем код авторизации
     code = request.args.get('code')
     error = request.args.get('error')
     state = request.args.get('state')  # Для CSRF защиты
@@ -407,11 +376,8 @@ def miro_oauth_callback():
         return redirect(url_for('main.dashboard'))
     
     if not code:
-        # Если нет code - это просто проверка URL от Miro
         return jsonify({'status': 'ok', 'message': 'Miro OAuth callback endpoint'}), 200
     
-    # TODO: Обменять code на access_token
-    # Это будет реализовано позже
     
     logger.info(f"Miro OAuth callback received with code: {code[:10]}...")
     flash('Miro авторизация успешна!', 'success')

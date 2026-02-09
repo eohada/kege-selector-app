@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Добавляет колонку cover_url в таблицу UserProfiles (баннер профиля креатора)."""
 import os
 import sys

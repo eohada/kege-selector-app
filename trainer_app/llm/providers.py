@@ -14,7 +14,6 @@ def _strip_html(s: str) -> str:
     s = (s or '').strip()
     if not s:
         return ''
-    # Very lightweight HTML stripping (no external deps)
     s = re.sub(r'<script[\s\S]*?</script>', ' ', s, flags=re.IGNORECASE)
     s = re.sub(r'<style[\s\S]*?</style>', ' ', s, flags=re.IGNORECASE)
     s = re.sub(r'<[^>]+>', ' ', s)
@@ -107,7 +106,6 @@ class GroqClient(LlmClient):
             max_attempts=int(os.environ.get('TRAINER_LLM_MAX_ATTEMPTS') or 3),
         )
         if r.status_code >= 400:
-            # surface a compact error for UI
             try:
                 data = r.json()
                 msg = (data.get('error') or {}).get('message') or data.get('message') or r.text
@@ -129,7 +127,6 @@ class GeminiClient(LlmClient):
         self.model = model
 
     def chat(self, *, messages: list[dict[str, str]], temperature: float = 0.2, max_tokens: int = 800) -> str:
-        # Convert OpenAI-like messages -> Gemini contents (+ systemInstruction)
         sys_parts: list[str] = []
         contents = []
         for m in messages:
@@ -186,7 +183,6 @@ def get_llm_client() -> LlmClient | None:
         model = (os.environ.get('GROQ_MODEL') or 'llama-3.3-70b-versatile').strip()
         return GroqClient(api_key=groq_key, model=model)
 
-    # Auto pick
     if groq_key:
         model = (os.environ.get('GROQ_MODEL') or 'llama-3.3-70b-versatile').strip()
         return GroqClient(api_key=groq_key, model=model)
@@ -259,12 +255,10 @@ def build_messages_for_help(*, task: dict[str, Any], code: str, analysis: dict[s
     if analysis:
         ctx.append({'role': 'system', 'content': f'Статический анализ: {analysis}'})
     if knowledge:
-        # Важно: reference_solution существует для ориентирования, но не должен быть выдан ученику целиком.
         ctx.append({'role': 'system', 'content': f"Примеры/знания по задаче: common_mistakes={knowledge.get('common_mistakes')}, hint_ladder={knowledge.get('hint_ladder')}."})
         if knowledge.get('reference_solution'):
             ctx.append({'role': 'system', 'content': "reference_solution присутствует, но его НЕЛЬЗЯ выдавать ученику целиком. Используй только для понимания правильной идеи."})
 
-    # Keep last 12 messages max
     trimmed = [m for m in (history or []) if (m.get('role') or '').strip().lower() in ('user', 'assistant')][-12:]
     msgs = ctx + [{'role': m.get('role') or 'user', 'content': m.get('content') or ''} for m in trimmed if (m.get('content') or '').strip()]
     return msgs

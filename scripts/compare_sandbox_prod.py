@@ -25,7 +25,6 @@ def compare_lessons(sandbox_url, prod_url):
     print("🔍 Сравнение данных между песочницей и продом\n")
     print("=" * 80)
     
-    # Подключаемся к обеим БД
     try:
         sandbox_session = get_db_session(sandbox_url)
         prod_session = get_db_session(prod_url)
@@ -34,11 +33,9 @@ def compare_lessons(sandbox_url, prod_url):
         print(f"❌ Ошибка подключения к БД: {e}")
         return
     
-    # Получаем последние 3 недели
     today = datetime.now(MOSCOW_TZ).date()
     current_week_start = today - timedelta(days=today.weekday())
     
-    # Начинаем с 3 недель назад
     week_start = current_week_start - timedelta(weeks=2)
     week_end = current_week_start + timedelta(days=6)  # До конца текущей недели
     
@@ -47,7 +44,6 @@ def compare_lessons(sandbox_url, prod_url):
     
     print(f"📅 Проверяем период: {week_start} - {week_end} (3 недели)\n")
     
-    # Получаем уроки из обеих БД
     sandbox_lessons = sandbox_session.query(Lesson).filter(
         Lesson.lesson_date >= week_start_datetime,
         Lesson.lesson_date < week_end_datetime + timedelta(days=1)
@@ -62,7 +58,6 @@ def compare_lessons(sandbox_url, prod_url):
     print(f"📚 Продакшн: {len(prod_lessons)} уроков")
     print(f"📊 Разница: {len(prod_lessons) - len(sandbox_lessons)} уроков\n")
     
-    # Группируем по студентам и дням
     def group_lessons(lessons):
         grouped = defaultdict(list)
         for lesson in lessons:
@@ -80,10 +75,8 @@ def compare_lessons(sandbox_url, prod_url):
     sandbox_grouped = group_lessons(sandbox_lessons)
     prod_grouped = group_lessons(prod_lessons)
     
-    # Находим различия
     print("🔍 Поиск различий:\n")
     
-    # 1. Дубликаты в проде
     print("1️⃣ Дубликаты в проде (один студент в один день):")
     prod_duplicates = []
     for key, lessons in prod_grouped.items():
@@ -106,7 +99,6 @@ def compare_lessons(sandbox_url, prod_url):
         print("   ✅ Дубликатов в проде не найдено")
     print()
     
-    # 2. Дубликаты в песочнице
     print("2️⃣ Дубликаты в песочнице (один студент в один день):")
     sandbox_duplicates = []
     for key, lessons in sandbox_grouped.items():
@@ -122,7 +114,6 @@ def compare_lessons(sandbox_url, prod_url):
         print("   ✅ Дубликатов в песочнице не найдено")
     print()
     
-    # 3. Уроки, которые есть в проде, но нет в песочнице
     print("3️⃣ Уроки, которые есть только в проде:")
     prod_only = []
     for key, prod_lesson_list in prod_grouped.items():
@@ -145,7 +136,6 @@ def compare_lessons(sandbox_url, prod_url):
         print("   ✅ Все уроки из прода есть в песочнице")
     print()
     
-    # 4. Уроки с разным временем для одного студента в один день
     print("4️⃣ Уроки с разным временем (возможные проблемы с часовыми поясами):")
     time_differences = []
     for key in set(list(sandbox_grouped.keys()) + list(prod_grouped.keys())):
@@ -172,7 +162,6 @@ def compare_lessons(sandbox_url, prod_url):
         print("   ✅ Время уроков совпадает")
     print()
     
-    # 5. Статистика по дням
     print("5️⃣ Статистика по дням недели:")
     def count_by_day(lessons):
         by_day = defaultdict(int)
@@ -196,7 +185,6 @@ def compare_lessons(sandbox_url, prod_url):
             print(f"   {day}: Песочница={sandbox_count}, Продакшн={prod_count}, Разница={diff:+d}")
     print()
     
-    # Закрываем сессии
     sandbox_session.close()
     prod_session.close()
     

@@ -39,7 +39,6 @@ def format_notification(kind: str, title: str, body: Optional[str], link_url: Op
     """Форматирование уведомления для отправки."""
     template = NOTIFICATION_TEMPLATES.get(kind, NOTIFICATION_TEMPLATES['generic'])
     
-    # Формируем текст
     text_parts = []
     
     try:
@@ -53,13 +52,11 @@ def format_notification(kind: str, title: str, body: Optional[str], link_url: Op
         )
         text_parts.append(formatted)
     except Exception:
-        # Fallback
         if title:
             text_parts.append(title)
         if body:
             text_parts.append(body)
     
-    # Добавляем ссылку если есть
     if link_url:
         full_url = link_url if link_url.startswith('http') else f"{APP_URL}{link_url}"
         text_parts.append(f"\n🔗 {full_url}")
@@ -79,7 +76,6 @@ async def send_telegram_notification(bot: Bot, chat_id: int, text: str) -> bool:
         return True
     except TelegramError as e:
         logger.warning(f"Failed to send notification to {chat_id}: {e}")
-        # Если пользователь заблокировал бота - отвязываем
         if "blocked" in str(e).lower() or "deactivated" in str(e).lower():
             session = get_session()
             try:
@@ -104,8 +100,6 @@ async def process_pending_notifications(bot: Bot):
     """Обработка ожидающих уведомлений из UserNotification."""
     session = get_session()
     try:
-        # Получаем непрочитанные уведомления для пользователей с привязанным Telegram
-        # Используем COALESCE для совместимости с БД без новых колонок
         result = session.execute(text("""
             SELECT 
                 un.notification_id,
@@ -173,7 +167,6 @@ async def process_pending_notifications(bot: Bot):
                 """), {"notif_id": notif_id})
                 continue
             
-            # Агрегация уведомлений о заданиях по уроку/типу
             if kind == 'assignment_assigned':
                 lesson_id = (meta or {}).get('lesson_id')
                 assignment_type = (meta or {}).get('assignment_type')
@@ -223,7 +216,6 @@ async def process_pending_notifications(bot: Bot):
                         'task_numbers': (n_meta_obj or {}).get('task_numbers') or {},
                     })
 
-                # Собираем суммарные количества
                 merged_counts: dict[int, int] = {}
                 for p in pending:
                     for k, v in (p.get('task_numbers') or {}).items():
@@ -267,13 +259,11 @@ async def process_pending_notifications(bot: Bot):
                     sent_count += 1
                 continue
 
-            # Форматируем и отправляем
             message_text = format_notification(kind, title, body, link_url, meta)
             
             success = await send_telegram_notification(bot, chat_id, message_text)
             
             if success:
-                # Помечаем как отправленное
                 session.execute(text("""
                     UPDATE "UserNotifications"
                     SET telegram_sent = TRUE
@@ -281,7 +271,6 @@ async def process_pending_notifications(bot: Bot):
                 """), {"notif_id": notif_id})
                 sent_count += 1
             else:
-                # При ошибке тоже помечаем, чтобы не спамить
                 session.execute(text("""
                     UPDATE "UserNotifications"
                     SET telegram_sent = TRUE
@@ -309,15 +298,12 @@ async def process_lesson_reminders(bot: Bot):
     try:
         now = datetime.utcnow()
         
-        # Уроки через ~1 час (55-65 минут)
         hour_from = now + timedelta(minutes=55)
         hour_to = now + timedelta(minutes=65)
         
-        # Уроки через ~15 минут (10-20 минут)
         fifteen_from = now + timedelta(minutes=10)
         fifteen_to = now + timedelta(minutes=20)
         
-        # Получаем уроки для напоминаний
         result = session.execute(text("""
             SELECT 
                 l.lesson_id,
@@ -379,7 +365,6 @@ async def process_lesson_reminders(bot: Bot):
             success = await send_telegram_notification(bot, chat_id, message)
             
             if success:
-                # Создаём запись в UserNotifications чтобы не отправлять повторно
                 session.execute(text("""
                     INSERT INTO "UserNotifications" (user_id, kind, title, body, meta, telegram_sent, created_at)
                     SELECT s.user_id, :kind, :title, :body, :meta, TRUE, NOW()
@@ -414,7 +399,6 @@ async def check_low_lessons(bot: Bot):
     """Проверка пользователей с малым количеством оставшихся уроков."""
     session = get_session()
     try:
-        # Пользователи с 2 или менее уроками
         result = session.execute(text("""
             SELECT 
                 u.id as user_id,

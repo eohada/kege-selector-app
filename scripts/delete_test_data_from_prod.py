@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт для удаления тестовых данных RBAC из production базы
 ВНИМАНИЕ: Используйте только если данные случайно попали в production!
@@ -16,7 +15,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from app import create_app, db
 from core.db_models import User, UserProfile, FamilyTie, Enrollment
 
-# Тестовые пользователи для удаления
 TEST_USERNAMES = ['admin', 'tutor1', 'tutor2', 'student1', 'student2', 'student3', 'parent1', 'parent2']
 
 app = create_app()
@@ -24,7 +22,6 @@ app = create_app()
 def delete_test_data():
     """Удаляет тестовые данные из текущей базы"""
     with app.app_context():
-        # Проверяем окружение
         environment = os.environ.get('ENVIRONMENT', 'local')
         database_url = os.environ.get('DATABASE_URL', '')
         
@@ -41,7 +38,6 @@ def delete_test_data():
         
         print("\n🗑️  Удаление тестовых данных...")
         
-        # Получаем ID тестовых пользователей
         test_users = User.query.filter(User.username.in_(TEST_USERNAMES)).all()
         test_user_ids = [u.id for u in test_users]
         
@@ -51,7 +47,6 @@ def delete_test_data():
         
         print(f"   Найдено пользователей: {len(test_user_ids)}")
         
-        # Удаляем в правильном порядке
         from sqlalchemy import or_
         
         deleted_enrollments = Enrollment.query.filter(Enrollment.student_id.in_(test_user_ids)).delete(synchronize_session=False)

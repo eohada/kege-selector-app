@@ -129,7 +129,6 @@ def billing_plan_update(plan_id: int):
     plan.lessons_count = request.form.get('lessons_count', type=int)
     plan.group_id = request.form.get('group_id', type=int) or None
     plan.order_index = request.form.get('order_index', type=int) or 0
-    # access flags
     plan.allow_lessons = True if (request.form.get('allow_lessons') or 'off') == 'on' else False
     plan.allow_trainer = True if (request.form.get('allow_trainer') or 'off') == 'on' else False
     try:
@@ -231,18 +230,15 @@ def billing_subscription_assign():
 
     active = UserSubscription.query.filter_by(user_id=user_id, status='active').order_by(UserSubscription.ends_at.desc().nullslast(), UserSubscription.subscription_id.desc()).all()
     sub = active[0] if active else None
-    # оставляем одну активную, остальные отменяем (чтобы не было “двух активных”)
     for extra in active[1:]:
         extra.status = 'cancelled'
 
     if sub:
-        # Продление по дням (если указано)
         if days:
             base_end = sub.ends_at or now
             if base_end < now:
                 base_end = now
             sub.ends_at = base_end + timedelta(days=int(days))
-        # Добавление уроков (если указано)
         if lessons:
             current_lessons = sub.lessons_remaining or 0
             sub.lessons_remaining = current_lessons + int(lessons)

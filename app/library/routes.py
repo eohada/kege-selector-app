@@ -91,14 +91,12 @@ def materials_library():
     tag = (request.args.get('tag') or '').strip().lower()
 
     base = MaterialAsset.query.filter(MaterialAsset.is_active.is_(True))
-    # приватная библиотека (foundation): только свои
     base = base.filter(MaterialAsset.owner_user_id == current_user.id)
 
     if q:
         like = f"%{q.lower()}%"
         base = base.filter(func.lower(MaterialAsset.title).like(like))
     if tag:
-        # JSON search portable: фильтруем на python после лимита
         pass
 
     assets = base.order_by(MaterialAsset.updated_at.desc(), MaterialAsset.created_at.desc()).limit(200).all()
@@ -151,7 +149,6 @@ def materials_upload():
     description = (request.form.get('description') or '').strip() or None
     tags = _normalize_tags((request.form.get('tags') or '').strip())
 
-    # Хранилище: static/uploads/library/<user_id>/
     folder = os.path.join(current_app.root_path, 'static', 'uploads', 'library', str(current_user.id))
     try:
         orig, abs_path, size = save_uploaded_file(
@@ -166,7 +163,6 @@ def materials_upload():
 
     storage_path = os.path.relpath(abs_path, current_app.root_path).replace('\\', '/')
     mime = getattr(file, 'mimetype', None)
-    # file_url будет защищённым endpoint'ом (после flush)
 
     asset = MaterialAsset(
         owner_user_id=current_user.id,
@@ -356,7 +352,6 @@ def lesson_template_create_from_lesson():
     if not title:
         title = lesson.topic or f"Урок #{lesson.lesson_id}"
 
-    # asset ids attached to this lesson
     asset_ids: list[int] = []
     try:
         links = LessonMaterialLink.query.filter_by(lesson_id=lesson.lesson_id).all()
@@ -433,7 +428,6 @@ def lesson_template_apply(template_id: int):
         lesson.materials = mats
         flag_modified(lesson, "materials")
 
-    # replace library links
     asset_ids = payload.get('asset_ids') or []
     if not isinstance(asset_ids, list):
         asset_ids = []
@@ -448,7 +442,6 @@ def lesson_template_apply(template_id: int):
             asset = MaterialAsset.query.filter_by(asset_id=aid, is_active=True).first()
             if not asset:
                 continue
-            # приватная библиотека: разрешаем только свои ассеты
             if asset.owner_user_id != current_user.id:
                 continue
             db.session.add(LessonMaterialLink(lesson_id=lesson.lesson_id, asset_id=aid, created_by_user_id=current_user.id, order_index=0))

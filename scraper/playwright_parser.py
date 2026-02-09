@@ -66,32 +66,23 @@ def clean_html_content(html: str, task_number: int = None) -> str:
     if not html:
         return html
     
-    # Парсим HTML с помощью BeautifulSoup для более точной обработки
     soup = BeautifulSoup(html, 'html.parser')
     
-    # 1. УДАЛЕНИЕ ФАМИЛИЙ (более агрессивное)
-    # Сначала обрабатываем весь HTML как строку для более надежного удаления
     html_str = str(soup)
     
-    # Удаление фамилий в скобках (все возможные форматы):
-    # (И.О. Фамилия), (И.О.Фамилия), (И. Фамилия), (И.Фамилия), (Фамилия)
     html_str = re.sub(r'\(\s*[А-ЯЁ]\.\s*[А-ЯЁ]\.\s*[А-ЯЁ][а-яё]+\s*\)', '', html_str)  # (И.О. Фамилия) или (И.О.Фамилия)
     html_str = re.sub(r'\(\s*[А-ЯЁ]\.[А-ЯЁ][а-яё]+\s*\)', '', html_str)  # (И.Фамилия) - БЕЗ пробела после точки
     html_str = re.sub(r'\(\s*[А-ЯЁ]\.\s*[А-ЯЁ][а-яё]+\s*\)', '', html_str)  # (И. Фамилия) - С пробелом
     html_str = re.sub(r'\(\s*[А-ЯЁ][а-яё]{3,}\s*\)', '', html_str)  # (Фамилия) - только фамилия в скобках
     
-    # Удаление фамилий без скобок: Фамилия И.О., Фамилия И., Фамилия Имя
     html_str = re.sub(r'\b[А-ЯЁ][а-яё]{3,}\s+[А-ЯЁ]\.\s*[А-ЯЁ]\.', '', html_str)  # Фамилия И.О.
     html_str = re.sub(r'\b[А-ЯЁ][а-яё]{3,}\s+[А-ЯЁ]\.', '', html_str)  # Фамилия И.
     html_str = re.sub(r'\b[А-ЯЁ][а-яё]{3,}\s+[А-ЯЁ][а-яё]{2,}', '', html_str)  # Фамилия Имя
     
-    # Удаляем множественные пробелы, оставшиеся после удаления фамилий
     html_str = re.sub(r'\s{2,}', ' ', html_str)
     
-    # Пересоздаем soup после удаления фамилий
     soup = BeautifulSoup(html_str, 'html.parser')
     
-    # 2. УДАЛЕНИЕ СТРОК "Файлы к заданию" и подобных
     for text_node in soup.find_all(string=True):
         if text_node.parent and text_node.parent.name not in ['script', 'style']:
             text = str(text_node)
@@ -101,21 +92,16 @@ def clean_html_content(html: str, task_number: int = None) -> str:
             if cleaned != text:
                 text_node.replace_with(cleaned)
     
-    # 3. ДЛЯ 6-Х ЗАДАНИЙ: удаление ответов и видео
     if task_number == 6:
-        # Удаление всех элементов, содержащих слово "ответ" или "видео"
         for elem in soup.find_all(string=re.compile(r'[Оо]твет|[Вв]идео', re.IGNORECASE)):
             parent = elem.parent
             if parent:
-                # Удаляем весь родительский элемент, если он содержит ответ/видео
                 if any(keyword in parent.get_text().lower() for keyword in ['ответ', 'видео']):
                     parent.decompose()
         
-        # Удаление iframe и video тегов
         for tag in soup.find_all(['iframe', 'video']):
             tag.decompose()
         
-        # Удаление блоков с ответами через регулярные выражения (на случай, если BeautifulSoup не поймал)
         html_str = str(soup)
         html_str = re.sub(r'<[^>]*>.*?[Оо]твет[а-яё]*[:\s]*[^<]*</[^>]*>', '', html_str, flags=re.IGNORECASE | re.DOTALL)
         html_str = re.sub(r'[Оо]твет[а-яё]*[:\s]*[^\n<]+', '', html_str, flags=re.IGNORECASE)
@@ -123,98 +109,72 @@ def clean_html_content(html: str, task_number: int = None) -> str:
         html_str = re.sub(r'<video[^>]*>.*?</video>', '', html_str, flags=re.IGNORECASE | re.DOTALL)
         soup = BeautifulSoup(html_str, 'html.parser')
     
-    # 3.1. ДЛЯ 5-Х ЗАДАНИЙ: особо агрессивное удаление пустых строк
     if task_number == 5:
-        # Удаляем все множественные <br> сразу
         html_str = str(soup)
         html_str = re.sub(r'(<br\s*/?>[\s\n]*)+', ' ', html_str, flags=re.IGNORECASE)
-        # Удаляем пустые параграфы и div более агрессивно
         html_str = re.sub(r'<p>\s*</p>', '', html_str, flags=re.IGNORECASE)
         html_str = re.sub(r'<div>\s*</div>', '', html_str, flags=re.IGNORECASE)
         soup = BeautifulSoup(html_str, 'html.parser')
     
-    # 3.2. ДЛЯ 8-Х ЗАДАНИЙ: правильная обработка списков
     if task_number == 8:
-        # Убеждаемся, что списки (ul, ol) правильно форматируются
         for list_tag in soup.find_all(['ul', 'ol']):
-            # Добавляем переносы строк между элементами списка
             for li in list_tag.find_all('li', recursive=False):
                 if li.next_sibling and li.next_sibling.name == 'li':
-                    # Вставляем перенос строки между элементами
                     li.insert_after('\n')
     
-    # 4. УДАЛЕНИЕ ПУСТЫХ СТРОК И ЛИШНИХ ПРОБЕЛОВ (АГРЕССИВНОЕ)
     html_str = str(soup)
     
-    # Удаляем ВСЕ множественные <br> (более 1 подряд заменяем на пробел, затем удалим лишние пробелы)
     html_str = re.sub(r'(<br\s*/?>[\s\n]*){2,}', ' ', html_str, flags=re.IGNORECASE)
-    # Удаляем одиночные <br>, заменяя на пробел
     html_str = re.sub(r'<br\s*/?>', ' ', html_str, flags=re.IGNORECASE)
     
     soup = BeautifulSoup(html_str, 'html.parser')
     
-    # Удаляем пустые параграфы и div (включая те, что содержат только пробелы)
     for tag in soup.find_all(['p', 'div']):
         text_content = tag.get_text(strip=True)
-        # Удаляем, если нет текста или только пробелы/переносы строк
         if not text_content or text_content.isspace():
-            # Но сохраняем, если внутри есть важные элементы (изображения, списки)
             if not tag.find_all(['img', 'iframe', 'video', 'ul', 'ol', 'table']):
                 tag.decompose()
     
-    # Удаляем пустые теги, которые не несут смысла
     for tag in soup.find_all(['span', 'strong', 'em', 'b', 'i']):
         if not tag.get_text(strip=True):
             tag.unwrap()  # Удаляем тег, но сохраняем содержимое (если есть)
     
-    # Удаляем множественные пробелы внутри тегов
     for tag in soup.find_all(True):
         if tag.string:
-            # Нормализуем пробелы в текстовых узлах
             normalized = re.sub(r'\s+', ' ', tag.string)
             if normalized != tag.string:
                 tag.string = normalized
     
-    # 5. УДАЛЕНИЕ data-v-* атрибутов
     for tag in soup.find_all(True):
         attrs_to_remove = [attr for attr in tag.attrs if attr.startswith('data-v-')]
         for attr in attrs_to_remove:
             del tag[attr]
     
-    # 6. НОРМАЛИЗАЦИЯ ПРОБЕЛОВ И УДАЛЕНИЕ ПУСТЫХ СТРОК
     html = str(soup)
     
-    # Нормализация пробелов: множественные пробелы/табы заменяем на один пробел
     html = re.sub(r'[ \t]+', ' ', html)
     
-    # Удаляем пустые строки между тегами (множественные переносы строк)
     html = re.sub(r'>\s*\n\s*\n\s*<', '><', html)  # Удаляем пустые строки между тегами
     html = re.sub(r'\n{3,}', '\n', html)  # Более 2 переносов строк заменяем на 1
     
-    # 7. ФИНАЛЬНАЯ ОЧИСТКА ПУСТЫХ СТРОК (АГРЕССИВНАЯ)
     lines = html.split('\n')
     cleaned_lines = []
     prev_empty = False
     
     for line in lines:
         stripped = line.strip()
-        # Если строка содержит только пробелы, табы или пуста - считаем её пустой
         if not stripped or stripped.isspace():
-            # Оставляем максимум ОДНУ пустую строку подряд
             if not prev_empty:
                 cleaned_lines.append('')
             prev_empty = True
         else:
-            # Непустая строка
             cleaned_lines.append(stripped)
             prev_empty = False
     
     html = '\n'.join(cleaned_lines)
     
-    # Финальная очистка: удаляем пустые строки в начале и конце
     html = html.strip()
     
-    # Дополнительно: удаляем множественные пробелы, которые могли остаться
     html = re.sub(r' {2,}', ' ', html)
     
     return html
@@ -277,7 +237,6 @@ def fetch_tasks(page: Page, task_number: int, task_value_url: str):
             raise Exception("Не удалось найти выпадающий список на странице")
 
         try:
-            # Получаем все доступные значения опций из селекта
             available_options = page.evaluate("""
                 (selector) => {
                     const select = document.querySelector(selector);
@@ -340,12 +299,10 @@ def fetch_tasks(page: Page, task_number: int, task_value_url: str):
 
         page.wait_for_timeout(2000)  # Увеличиваем ожидание после нажатия кнопки
 
-        # Ждем появления таблицы с заданиями
         try:
             page.wait_for_selector("table tbody tr", timeout=20000)
         except Exception as e:
             print(f"[ETL] Предупреждение: таблица не найдена за 20 сек: {e}")
-            # Пытаемся найти альтернативные селекторы
             try:
                 page.wait_for_selector("table tr", timeout=5000)
             except:
@@ -356,10 +313,8 @@ def fetch_tasks(page: Page, task_number: int, task_value_url: str):
         except Exception:
             pass
         
-        # Дополнительное ожидание для полной загрузки
         page.wait_for_timeout(1000)
         
-        # Отладочная информация
         rows_count = page.locator("table tbody tr").count()
         print(f"[ETL] Найдено строк в таблице: {rows_count}")
         
@@ -474,16 +429,13 @@ def fetch_tasks(page: Page, task_number: int, task_value_url: str):
 
                 source_url = f"{SITE_DOMAIN}/task?id={it['taskId']}"
                 
-                # Извлекаем ответ с отдельной страницы задания
                 answer = it.get('answer', '').strip()
                 if not answer and it.get('taskId'):
                     try:
-                        # Открываем страницу задания для извлечения ответа
                         task_page_url = f"{SITE_DOMAIN}/task?id={it['taskId']}"
                         page.goto(task_page_url, wait_until='domcontentloaded', timeout=30000)
                         page.wait_for_timeout(1000)  # Небольшая задержка для загрузки
                         
-                        # Ищем ответ на странице
                         answer_selectors = [
                             '.answer',
                             '[class*="answer"]',
@@ -505,14 +457,12 @@ def fetch_tasks(page: Page, task_number: int, task_value_url: str):
                             except:
                                 continue
                         
-                        # Если ответ не найден, пытаемся нажать кнопку "Показать ответ"
                         if not answer:
                             try:
                                 show_answer_btn = page.locator('button:has-text("Показать ответ"), button:has-text("показать ответ"), button[onclick*="answer"]').first
                                 if show_answer_btn.count() > 0:
                                     show_answer_btn.click()
                                     page.wait_for_timeout(500)
-                                    # Теперь ищем ответ
                                     for selector in answer_selectors:
                                         try:
                                             answer_elem = page.locator(selector).first
@@ -526,12 +476,10 @@ def fetch_tasks(page: Page, task_number: int, task_value_url: str):
                             except:
                                 pass
                         
-                        # Возвращаемся на страницу списка
                         page.goto(f"{MAIN_PAGE_URL}?tasktype={task_value_url}", wait_until='domcontentloaded', timeout=30000)
                         page.wait_for_timeout(500)
                     except Exception as e:
                         print(f"[ETL] Предупреждение: не удалось извлечь ответ для задания {it.get('taskId')}: {e}")
-                        # Продолжаем работу даже если не удалось извлечь ответ
 
                 existing_task = existing_by_url.get(source_url)
 
@@ -545,7 +493,6 @@ def fetch_tasks(page: Page, task_number: int, task_value_url: str):
                         existing_task.attached_files = attached_files_json
                         existing_task.last_scraped = moscow_now()
                         updated = True
-                    # Обновляем ответ, если он извлечен
                     if answer and existing_task.answer != answer:
                         existing_task.answer = answer
                         existing_task.last_scraped = moscow_now()

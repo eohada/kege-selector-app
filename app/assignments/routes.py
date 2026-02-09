@@ -31,7 +31,6 @@ def _ensure_aware_datetime(dt):
     if dt is None:
         return None
     if dt.tzinfo is None:
-        # Naive datetime - добавляем Moscow timezone
         return dt.replace(tzinfo=MOSCOW_TZ)
     return dt
 
@@ -107,8 +106,6 @@ def assignment_review_bulk_update(assignment_id: int):
         flash('Некорректное действие.', 'danger')
         return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
 
-    # QA: массовые действия доступны только из статуса "Сдано",
-    # иначе в списках "на доработку/проверено" это вводит в заблуждение.
     if status_filter != 'submitted':
         flash('Массовые действия доступны только в статусе «Сдано».', 'warning')
         return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
@@ -121,7 +118,6 @@ def assignment_review_bulk_update(assignment_id: int):
         return redirect(url_for('assignments.assignments_list'))
 
     q = Submission.query.options(joinedload(Submission.student)).filter(Submission.assignment_id == assignment.assignment_id)
-    # Массовые действия применяем только к реально сданным
     q = q.filter(Submission.status.in_(['SUBMITTED', 'LATE']))
 
     subs = q.all()
@@ -135,19 +131,16 @@ def assignment_review_bulk_update(assignment_id: int):
         if action == 'mark_returned':
             sub.status = 'RETURNED'
         else:
-            # mark_graded: только если есть итоговые баллы
             if sub.total_score is None or sub.max_score is None:
                 skipped += 1
                 continue
             sub.status = 'GRADED'
             sub.graded_at = moscow_now()
         try:
-            # Снимок попытки: полезно для истории пересдач (returned тоже важен)
             _record_submission_attempt(sub)
         except Exception:
             pass
 
-        # Уведомления: только внутренние (email не используем)
         try:
             if sub.student:
                 if action == 'mark_returned':
@@ -236,7 +229,6 @@ def submission_quick_return(submission_id: int):
         flash('Доступ запрещен', 'danger')
         return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
 
-    # Возвращать можно только из "сдано" (SUBMITTED/LATE)
     if (submission.status or '').upper() not in {'SUBMITTED', 'LATE'}:
         flash('Эту сдачу нельзя вернуть из текущего статуса.', 'warning')
         return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
@@ -346,9 +338,6 @@ def _record_submission_attempt(submission: Submission) -> None:
     db.session.add(attempt)
 
 
-# ============================================================================
-# УТИЛИТЫ
-# ============================================================================
 
 def get_student_by_user_id(user_id):
     """Получить Student по User.id"""
@@ -356,7 +345,6 @@ def get_student_by_user_id(user_id):
     if not user:
         return None
 
-    # 1) user_id -> Student.user_id (новый способ — прямая связь)
     st = Student.query.filter_by(user_id=user_id).first()
     if st:
         return st
@@ -411,9 +399,7 @@ def auto_grade_answer(answer, assignment_task):
     """
     task = assignment_task.task
     
-    # Для SINGLE_CHOICE (задания с одним правильным ответом)
     if task.task_number in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]:
-        # Сравниваем ответ ученика с эталоном
         student_answer = answer.value.strip() if answer.value else ""
         correct_answer = task.answer.strip() if task.answer else ""
         
@@ -422,18 +408,12 @@ def auto_grade_answer(answer, assignment_task):
         else:
             return False, 0
     
-    # Для CODE (задания 24-27) - можно добавить более сложную логику
-    # Пока возвращаем None - требует ручной проверки
     if task.task_number in [24, 25, 26, 27]:
         return None, None
     
-    # По умолчанию - требует ручной проверки
     return None, None
 
 
-# ============================================================================
-# API: СОЗДАНИЕ И РАСПРЕДЕЛЕНИЕ РАБОТ (TEACHER)
-# ============================================================================
 
 @assignments_bp.route('/assignments/distribute', methods=['POST'])
 @login_required
@@ -466,7 +446,6 @@ def distribute_assignment():
         recipient_ids = data.get('recipientIds', [])  # Список student_id
         group_id = data.get('groupId')  # "all" или конкретная группа
         
-        # Валидация
         if not title:
             return jsonify({'success': False, 'error': 'Название работы обязательно'}), 400
         
@@ -483,20 +462,15 @@ def distribute_assignment():
         if not tasks_data:
             return jsonify({'success': False, 'error': 'Добавьте хотя бы одну задачу'}), 400
         
-        # Определяем получателей
         scope = get_user_scope(current_user)
         student_ids = []
         
         if group_id == 'all' and scope['can_see_all']:
-            # Все ученики
             student_ids = [s.student_id for s in Student.query.filter_by(is_active=True).all()]
         elif group_id == 'all' and not scope['can_see_all']:
-            # Все доступные ученики тьютора
             students = get_students_for_tutor(current_user.id)
             student_ids = [s.student_id for s in students]
         elif recipient_ids:
-            # Конкретные ученики
-            # Проверяем доступ
             if not scope['can_see_all']:
                 accessible_students = get_students_for_tutor(current_user.id)
                 accessible_ids = [s.student_id for s in accessible_students]
@@ -506,7 +480,6 @@ def distribute_assignment():
         if not student_ids:
             return jsonify({'success': False, 'error': 'Не выбраны получатели работы'}), 400
         
-        # Создаем Assignment
         assignment = Assignment(
             title=title,
             description=description,
@@ -521,7 +494,6 @@ def distribute_assignment():
         db.session.add(assignment)
         db.session.flush()  # Получаем assignment_id
         
-        # Создаем AssignmentTask
         for idx, task_data in enumerate(tasks_data):
             task_id = task_data.get('task_id')
             max_score = task_data.get('max_score', 1)
@@ -535,7 +507,6 @@ def distribute_assignment():
             if not task:
                 continue
             
-            # Определяем, требует ли задача ручной проверки
             if task.task_number in [24, 25, 26, 27] or requires_manual:
                 requires_manual_grading = True
             else:
@@ -550,7 +521,6 @@ def distribute_assignment():
             )
             db.session.add(assignment_task)
         
-        # Создаем Submission для каждого ученика
         for student_id in student_ids:
             submission = Submission(
                 assignment_id=assignment.assignment_id,
@@ -588,9 +558,6 @@ def distribute_assignment():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ============================================================================
-# ПРОСМОТР РАБОТ (TEACHER)
-# ============================================================================
 
 @assignments_bp.route('/assignments')
 @login_required
@@ -685,7 +652,6 @@ def assignments_list():
         needle = f"%{q_text.lower()}%"
         base_query = base_query.filter(func.lower(Assignment.title).like(needle))
 
-    # KPI считаем на "базовом" наборе (без status_filter и sort), чтобы табы были понятными
     kpi_rows = base_query.all()
 
     def _derive_flags(a: Assignment, row) -> dict:
@@ -696,7 +662,6 @@ def assignments_list():
         assigned = _safe_int(getattr(row, 'assigned', 0))
         pending = assigned + in_progress + returned
 
-        # Нормализуем deadline для сравнения (убираем timezone)
         deadline_naive = None
         if a.deadline:
             deadline_naive = a.deadline.replace(tzinfo=None) if a.deadline.tzinfo else a.deadline
@@ -742,7 +707,6 @@ def assignments_list():
         if flags['is_completed']:
             kpis['completed'] += 1
 
-    # Применяем status_filter
     filtered_query = base_query
     if status_filter == 'active':
         filtered_query = filtered_query.filter(Assignment.deadline >= now).filter((pending_col > 0) | (to_grade_col > 0))
@@ -757,7 +721,6 @@ def assignments_list():
     elif status_filter == 'archived':
         filtered_query = filtered_query.filter(Assignment.is_active.is_(False))
 
-    # Сортировка
     if sort == 'deadline_asc':
         filtered_query = filtered_query.order_by(Assignment.deadline.asc(), Assignment.created_at.desc())
     elif sort == 'deadline_desc':
@@ -782,7 +745,6 @@ def assignments_list():
         tasks_count = _safe_int(getattr(row, 'tasks_count', 0))
         pending = assigned + in_progress + returned
 
-        # Нормализуем deadline для сравнения (убираем timezone)
         deadline_naive = None
         if assignment.deadline:
             deadline_naive = assignment.deadline.replace(tzinfo=None) if assignment.deadline.tzinfo else assignment.deadline
@@ -824,9 +786,6 @@ def assignments_list():
     )
 
 
-# ============================================================================
-# TASK POOL (ACCEPTED) — unified entrypoint for assignment creation
-# ============================================================================
 
 @assignments_bp.route('/assignments/accepted')
 @login_required
@@ -848,7 +807,6 @@ def assignments_accepted():
             flash('Нет принятых заданий.' if not task_type else f'Нет принятых заданий типа {task_type}.', 'info')
             return redirect(url_for('assignments.assignments_list'))
 
-        # Recipients list for the "create assignment" modal
         recipient_options = []
         try:
             scope = get_user_scope(current_user)
@@ -860,7 +818,6 @@ def assignments_accepted():
                     .all()
                 )
             else:
-                # Reuse mapping logic from assignments utils
                 tutor_students = get_students_for_tutor(current_user.id) or []
                 ids = [int(s.student_id) for s in tutor_students if getattr(s, 'student_id', None)]
                 if ids:
@@ -1068,7 +1025,6 @@ def assignment_create():
     if source not in {'accepted', 'template', 'manual', 'lesson'}:
         source = 'accepted'
 
-    # Prefill assignment type
     assignment_type = _normalize_assignment_type(request.args.get('assignment_type')) or 'homework'
     task_type = request.args.get('task_type', type=int, default=None)
     template_id = request.args.get('template_id', type=int, default=None)
@@ -1112,7 +1068,6 @@ def assignment_create():
             flash(f'Не удалось открыть урок: {e}', 'danger')
             return redirect(url_for('assignments.assignments_list'))
 
-        # Access check: must be able to see this student
         try:
             scope = get_user_scope(current_user)
             if not scope.get('can_see_all'):
@@ -1123,7 +1078,6 @@ def assignment_create():
         except Exception:
             pass
 
-        # Pull tasks from lesson by assignment_type
         lt_list = list(getattr(lesson, 'homework_tasks', []) or [])
         picked: list[LessonTask] = []
         for lt in lt_list:
@@ -1134,7 +1088,6 @@ def assignment_create():
             else:
                 if lt_type == assignment_type:
                     picked.append(lt)
-        # unique tasks in stable order
         seen = set()
         out_tasks: list[Tasks] = []
         for lt in picked:
@@ -1154,7 +1107,6 @@ def assignment_create():
         }
         default_recipient_ids = [int(lesson.student_id)]
 
-    # Recipients list (for modal/form)
     recipient_options: list[Student] = []
     try:
         if source == 'lesson' and default_recipient_ids:
@@ -1185,7 +1137,6 @@ def assignment_create():
     except Exception:
         recipient_options = []
 
-    # Templates list for picker
     templates: list[TaskTemplate] = []
     try:
         templates = (
@@ -1286,7 +1237,6 @@ def assignment_duplicate(assignment_id: int):
     db.session.add(new_assignment)
     db.session.flush()
 
-    # Копируем задачи
     for t in (src.tasks or []):
         db.session.add(AssignmentTask(
             assignment_id=new_assignment.assignment_id,
@@ -1296,12 +1246,10 @@ def assignment_duplicate(assignment_id: int):
             requires_manual_grading=bool(t.requires_manual_grading),
         ))
 
-    # Копируем получателей (student_id из Submissions)
     student_ids = []
     for s in (src.submissions or []):
         if getattr(s, 'student_id', None):
             student_ids.append(int(s.student_id))
-    # уникализируем, сохраняя порядок
     uniq_ids = []
     seen = set()
     for sid in student_ids:
@@ -1344,10 +1292,8 @@ def assignment_view(assignment_id):
         flash('Ошибка при загрузке работы', 'danger')
         return redirect(url_for('assignments.assignments_list'))
     
-    # Проверка доступа
     try:
         scope = get_user_scope(current_user)
-        # Разрешаем доступ если: админ/тьютор видит все ИЛИ пользователь является создателем работы
         can_access = scope.get('can_see_all', False) or (assignment.created_by_id == current_user.id)
         if not can_access:
             flash('Доступ запрещен', 'danger')
@@ -1427,7 +1373,6 @@ def assignment_view(assignment_id):
                 'GRADED': 4,
             }
             st = (getattr(s, 'status', '') or '').upper()
-            # сначала то, что проверять; затем по времени сдачи
             ts = getattr(s, 'submitted_at', None) or getattr(s, 'assigned_at', None) or getattr(s, 'created_at', None)
             try:
                 ts_val = ts.timestamp() if ts else 0
@@ -1454,21 +1399,16 @@ def assignment_view(assignment_id):
         return redirect(url_for('assignments.assignments_list'))
 
 
-# ============================================================================
-# API: ВЫПОЛНЕНИЕ РАБОТЫ (STUDENT)
-# ============================================================================
 
 @assignments_bp.route('/submissions')
 @login_required
 def submissions_list():
     """Список назначенных работ для ученика"""
-    # Получаем Student по текущему пользователю
     student = get_student_by_user_id(current_user.id)
     if not student:
         flash('Профиль ученика не найден', 'warning')
         return redirect(url_for('auth.user_profile'))
     
-    # Получаем все назначенные работы
     submissions = Submission.query.filter_by(
         student_id=student.student_id
     ).options(
@@ -1477,7 +1417,6 @@ def submissions_list():
         joinedload(Submission.answers)
     ).order_by(Submission.assigned_at.desc()).all()
     
-    # Если работ по новой системе нет — показываем fallback: последние уроки с практикой
     lesson_workspaces = []
     try:
         lessons = Lesson.query.filter_by(student_id=student.student_id).options(
@@ -1485,7 +1424,6 @@ def submissions_list():
         ).order_by(Lesson.lesson_date.desc()).limit(10).all()
 
         for l in lessons:
-            # Берём все задачи урока (все типы), но показываем кратко
             all_tasks = []
             for t in get_sorted_assignments(l, 'homework'):
                 all_tasks.append(t)
@@ -1530,7 +1468,6 @@ def submission_view(submission_id):
         flash('Ошибка при загрузке работы', 'danger')
         return redirect(url_for('assignments.submissions_list'))
     
-    # Проверка доступа
     try:
         student = get_student_by_user_id(current_user.id)
         if not student or submission.student_id != student.student_id:
@@ -1547,7 +1484,6 @@ def submission_view(submission_id):
         return redirect(url_for('assignments.submissions_list'))
     
     try:
-        # Проверка дедлайна
         now = moscow_now()
         deadline = _ensure_aware_datetime(assignment.deadline)
         
@@ -1557,7 +1493,6 @@ def submission_view(submission_id):
             is_deadline_passed = False
         can_submit = not (is_deadline_passed and assignment.hard_deadline)
         
-        # Подготовка данных для отображения
         tasks_data = []
         for assignment_task in sorted(assignment.tasks, key=lambda t: t.order_index):
             answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
@@ -1589,7 +1524,6 @@ def submission_start(submission_id):
         submission = Submission.query.get_or_404(submission_id)
         logger.info(f"Found submission {submission_id}")
         
-        # Проверка доступа
         student = get_student_by_user_id(current_user.id)
         logger.info(f"Student for user {current_user.id}: {student}")
         
@@ -1597,12 +1531,10 @@ def submission_start(submission_id):
             logger.warning(f"Access denied: student={student}, submission.student_id={submission.student_id}")
             return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
         
-        # Проверка статуса
         if submission.status != 'ASSIGNED':
             logger.warning(f"Invalid status for submission {submission_id}: {submission.status}")
             return jsonify({'success': False, 'error': 'Работа уже начата или сдана'}), 400
         
-        # Проверка дедлайна
         now = moscow_now()
         deadline = _ensure_aware_datetime(submission.assignment.deadline)
         logger.info(f"Current time: {now}, deadline: {deadline}, hard_deadline: {submission.assignment.hard_deadline}")
@@ -1611,7 +1543,6 @@ def submission_start(submission_id):
             logger.warning(f"Deadline passed for submission {submission_id}")
             return jsonify({'success': False, 'error': 'Дедлайн истек'}), 400
         
-        # Устанавливаем статус и время начала
         submission.status = 'IN_PROGRESS'
         submission.started_at = now
         logger.info(f"Saving submission {submission_id} with status IN_PROGRESS and started_at {now}")
@@ -1636,7 +1567,6 @@ def attached_proxy():
     if not url:
         abort(400)
 
-    # Разрешённый список префиксов — ограничиваем до известных хостов, чтобы не открывать прокси
     allowed_prefixes = ('https://kompege.ru/', 'http://kompege.ru/')
     if not any(url.startswith(p) for p in allowed_prefixes):
         logger.warning(f'Attempt to proxy disallowed url: {url}')
@@ -1677,12 +1607,10 @@ def submission_autosave(submission_id):
     """
     submission = Submission.query.get_or_404(submission_id)
     
-    # Проверка доступа
     student = get_student_by_user_id(current_user.id)
     if not student or submission.student_id != student.student_id:
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
-    # Проверка статуса
     if submission.status not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
         return jsonify({'success': False, 'error': 'Нельзя сохранять ответы для этой работы'}), 400
     
@@ -1697,7 +1625,6 @@ def submission_autosave(submission_id):
             if not assignment_task_id:
                 continue
             
-            # Проверяем, что задача принадлежит этой работе
             assignment_task = AssignmentTask.query.filter_by(
                 assignment_task_id=assignment_task_id,
                 assignment_id=submission.assignment_id
@@ -1706,7 +1633,6 @@ def submission_autosave(submission_id):
             if not assignment_task:
                 continue
             
-            # Ищем существующий ответ или создаем новый
             answer = Answer.query.filter_by(
                 submission_id=submission_id,
                 assignment_task_id=assignment_task_id
@@ -1723,7 +1649,6 @@ def submission_autosave(submission_id):
             answer.value = value
             answer.updated_at = moscow_now()
         
-        # Обновляем статус, если еще не начата или возвращена на доработку
         if submission.status in ['ASSIGNED', 'RETURNED']:
             submission.status = 'IN_PROGRESS'
             if not submission.started_at:
@@ -1749,12 +1674,10 @@ def submission_submit(submission_id):
             joinedload(Submission.answers)
         ).get_or_404(submission_id)
         
-        # Проверка доступа
         student = get_student_by_user_id(current_user.id)
         if not student or submission.student_id != student.student_id:
             return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
         
-        # Проверка статуса
         if submission.status not in ['IN_PROGRESS', 'ASSIGNED']:
             return jsonify({'success': False, 'error': 'Работа уже сдана'}), 400
         
@@ -1762,17 +1685,14 @@ def submission_submit(submission_id):
         now = moscow_now()
         deadline = _ensure_aware_datetime(assignment.deadline)
         
-        # Проверка дедлайна
         is_late = deadline and now > deadline
         if is_late and assignment.hard_deadline:
             return jsonify({'success': False, 'error': 'Дедлайн истек, сдача невозможна'}), 403
         
-        # Устанавливаем статус
         submission.status = 'SUBMITTED'
         submission.submitted_at = now
         submission.is_late = is_late
         
-        # Автоматическая проверка
         all_auto_graded = True
         total_score = 0
         max_score = 0
@@ -1784,7 +1704,6 @@ def submission_submit(submission_id):
             
             if not answer:
                 if not assignment_task.requires_manual_grading:
-                    # Нет ответа на задачу с авто-проверкой - 0 баллов
                     answer = Answer(
                         submission_id=submission_id,
                         assignment_task_id=assignment_task.assignment_task_id,
@@ -1798,7 +1717,6 @@ def submission_submit(submission_id):
                     all_auto_graded = False
                 continue
             
-            # Авто-проверка, если не требует ручной проверки
             if not assignment_task.requires_manual_grading:
                 is_correct, score = auto_grade_answer(answer, assignment_task)
                 if is_correct is not None:
@@ -1814,14 +1732,11 @@ def submission_submit(submission_id):
         submission.max_score = max_score
         submission.percentage = (total_score / max_score * 100) if max_score > 0 else 0
         
-        # Если все задачи проверены автоматически, сразу ставим GRADED
         if all_auto_graded:
             submission.status = 'GRADED'
             submission.graded_at = now
-            # Авто-добавление в журнал
             _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
 
-        # Фиксируем попытку сдачи (для истории пересдач)
         try:
             _record_submission_attempt(submission)
         except Exception as e:
@@ -1855,9 +1770,6 @@ def submission_submit(submission_id):
         return jsonify({'success': False, 'error': f'Ошибка при сдаче работы: {str(e)}'}), 500
 
 
-# ============================================================================
-# ПРОВЕРКА РАБОТ (TEACHER)
-# ============================================================================
 
 @assignments_bp.route('/submissions/<int:submission_id>/grade')
 @login_required
@@ -1875,13 +1787,11 @@ def submission_grade_view(submission_id):
     
     assignment = submission.assignment
     
-    # Проверка доступа
     scope = get_user_scope(current_user)
     if not scope['can_see_all'] and assignment.created_by_id != current_user.id:
         flash('Доступ запрещен', 'danger')
         return redirect(url_for('assignments.assignments_list'))
     
-    # Подготовка данных
     tasks_data = []
     for assignment_task in sorted(assignment.tasks, key=lambda t: t.order_index):
         answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
@@ -1943,12 +1853,10 @@ def submission_grade_save(submission_id):
     
     assignment = submission.assignment
     
-    # Проверка доступа
     scope = get_user_scope(current_user)
     if not scope['can_see_all'] and assignment.created_by_id != current_user.id:
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
-    # Проверка статуса
     if submission.status != 'SUBMITTED':
         return jsonify({'success': False, 'error': 'Работа не сдана или уже проверена'}), 400
     
@@ -1966,7 +1874,6 @@ def submission_grade_save(submission_id):
         total_score = 0
         max_score = 0
         
-        # Обновляем оценки
         for score_data in scores_data:
             assignment_task_id = score_data.get('assignment_task_id')
             score = score_data.get('score', 0)
@@ -1985,7 +1892,6 @@ def submission_grade_save(submission_id):
             
             max_score += assignment_task.max_score
             
-            # Находим или создаем ответ
             answer = Answer.query.filter_by(
                 submission_id=submission_id,
                 assignment_task_id=assignment_task_id
@@ -2003,28 +1909,23 @@ def submission_grade_save(submission_id):
             answer.teacher_comment = comment
             total_score += answer.score
         
-        # Обновляем общую оценку
         submission.total_score = total_score
         submission.max_score = max_score
         submission.percentage = (total_score / max_score * 100) if max_score > 0 else 0
         submission.teacher_feedback = teacher_feedback
 
-        # Рубрика/критерии (чек-лист)
         try:
             selected_rubric = None
-            # 1) берём выбранную в UI (если есть)
             if rubric_template_id is not None and str(rubric_template_id).strip() != '':
                 rid = int(rubric_template_id)
                 q = RubricTemplate.query.filter_by(rubric_id=rid, is_active=True)
                 if not _can_manage_all_rubrics():
                     q = q.filter(RubricTemplate.owner_user_id == current_user.id)
                 selected_rubric = q.first()
-            # 2) иначе — текущая закреплённая на работе
             if not selected_rubric and assignment.rubric_template_id:
                 selected_rubric = RubricTemplate.query.filter_by(rubric_id=assignment.rubric_template_id, is_active=True).first()
 
             if selected_rubric:
-                # закрепляем на Assignment (чтобы все проверки были консистентны)
                 if not assignment.rubric_template_id:
                     assignment.rubric_template_id = selected_rubric.rubric_id
                 submission.rubric_template_id = selected_rubric.rubric_id
@@ -2067,16 +1968,13 @@ def submission_grade_save(submission_id):
         submission.status = status
         submission.graded_at = moscow_now()
 
-        # Авто-добавление/обновление записи журнала при проверке
         if status == 'GRADED':
             _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
-        # История попыток: фиксируем результат проверки для текущей попытки
         try:
             _record_submission_attempt(submission)
         except Exception as e:
             logger.warning(f"Could not record SubmissionAttempt (grade) for {submission.submission_id}: {e}")
 
-        # Уведомление ученику/родителю
         try:
             student = Student.query.get(submission.student_id)
             if student:
@@ -2116,7 +2014,6 @@ def submission_grade_save(submission_id):
             }
         )
         
-        # TODO: Отправить уведомление ученику и родителю
         
         return jsonify({
             'success': True,
@@ -2137,7 +2034,6 @@ def submission_comment_create(submission_id):
     """Добавление комментария к сдаче"""
     submission = Submission.query.get_or_404(submission_id)
     
-    # Проверка доступа
     scope = get_user_scope(current_user)
     student = get_student_by_user_id(current_user.id)
     
@@ -2163,7 +2059,6 @@ def submission_comment_create(submission_id):
         db.session.add(comment)
         db.session.commit()
         
-        # Получаем данные автора для ответа
         author_name = current_user.username
         if current_user.profile:
             author_name = f"{current_user.profile.first_name or ''} {current_user.profile.last_name or ''}".strip() or current_user.username

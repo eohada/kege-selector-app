@@ -14,7 +14,6 @@
     <style>
         .schedule-hero { margin-bottom: 2rem; }
 
-        /* Prevent dropdown clipping inside glass panels */
         .schedule-shell { overflow: visible; }
         .schedule-controls, .schedule-filters, .actions-menu { overflow: visible; }
 
@@ -72,7 +71,6 @@
             border-radius: var(--radius-sm);
         }
 
-        /* Page actions dropdown (reduce button overload) */
         .actions-menu {
             position: relative;
             display: inline-block;
@@ -97,7 +95,6 @@
             gap: 0.5rem;
         }
 
-        /* Autoplan modal layout */
         .tpl-grid-2 {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -293,7 +290,6 @@
             opacity: 0.85;
         }
 
-        /* Сильно различимые статусы (план ≠ проведён) */
         .lesson-chip.status-planned { border-color: rgba(23, 96, 216, 0.55); background: rgba(23, 96, 216, 0.12); }
         .lesson-chip.status-planned::before { background: rgba(23, 96, 216, 0.95); }
 
@@ -306,7 +302,6 @@
         .lesson-chip.status-cancelled { border-color: rgba(255, 77, 109, 0.65); background: rgba(255, 77, 109, 0.12); }
         .lesson-chip.status-cancelled::before { background: rgba(255, 77, 109, 0.95); }
 
-        /* Конфликт (наложение уроков) — подсветка */
         .lesson-chip.is-conflict {
             box-shadow: 0 0 0 2px rgba(255, 77, 109, 0.55), var(--shadow-soft);
         }
@@ -978,5 +973,4 @@
     </script>
 </body>
 </html>
-
 

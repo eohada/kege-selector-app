@@ -10,7 +10,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
     <style>
-        /* Role Cards Grid */
+        
         .role-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -89,7 +89,6 @@
             border-radius: 4px;
         }
 
-        /* Role Colors */
         .role-creator { --role-color: #ff2e2e; }
         .role-admin { --role-color: #ff6b2e; }
         .role-chief_tester { --role-color: #ffb32e; }
@@ -99,7 +98,6 @@
         .role-student { --role-color: #2eff7d; }
         .role-parent { --role-color: #ffe02e; }
 
-        /* Permissions Section */
         .permissions-section {
             display: none;
             animation: fadeIn 0.4s ease;
@@ -135,7 +133,6 @@
             gap: 1rem;
         }
 
-        /* Neo Toggle Switch */
         .perm-item {
             background: var(--surface-2);
             border: 1px solid var(--stroke-1);
@@ -169,7 +166,6 @@
             font-family: monospace;
         }
 
-        /* Custom Toggle */
         .neo-switch {
             position: relative;
             display: inline-block;
@@ -194,7 +190,7 @@
             background-color: var(--surface-3);
             transition: .3s;
             border: 1px solid var(--stroke-2);
-            border-radius: 4px; /* Boxy look */
+            border-radius: 4px; 
         }
 
         .slider:before {
@@ -206,7 +202,7 @@
             bottom: 3px;
             background-color: var(--text-muted);
             transition: .3s;
-            border-radius: 2px; /* Boxy look */
+            border-radius: 2px; 
         }
 
         input:checked + .slider {
@@ -223,8 +219,7 @@
         input:focus + .slider {
             box-shadow: 0 0 1px var(--accent-1);
         }
-        
-        /* Creator special */
+
         .role-creator-perms input:checked + .slider {
             background-color: rgba(255, 46, 46, 0.15);
             border-color: #ff2e2e;
@@ -234,7 +229,6 @@
             box-shadow: 0 0 10px #ff2e2e;
         }
 
-        /* Disabled state */
         input:disabled + .slider {
             opacity: 0.5;
             cursor: not-allowed;
@@ -268,8 +262,7 @@
 
             <form method="POST" class="neo-form" id="permissionsForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                
-                <!-- Role Selection Grid -->
+
                 <div class="role-grid">
                     {% for role in roles %}
                     <div class="role-card role-{{ role }}" onclick="selectRole('{{ role }}')">
@@ -289,7 +282,6 @@
                     {% endfor %}
                 </div>
 
-                <!-- Permissions Editors (One per role, hidden/shown via JS) -->
                 <div id="permissionsContainer">
                     {% for role in roles %}
                     <div id="perms-{{ role }}" class="permissions-section {% if role == 'creator' %}role-creator-perms{% endif %}">

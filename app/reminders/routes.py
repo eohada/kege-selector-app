@@ -23,15 +23,12 @@ def reminders_list():
     try:
         show_completed = request.args.get('show_completed', 'false').lower() == 'true'
         
-        # Убеждаемся, что таблица существует и миграции применены
         try:
             query = Reminder.query.filter_by(user_id=current_user.id)
         except Exception as e:
-            # Если таблицы нет, создаем её
             db.create_all()
             query = Reminder.query.filter_by(user_id=current_user.id)
         
-        # Принудительно проверяем и применяем миграцию для reminder_time
         try:
             inspector = inspect(db.engine)
             table_names = inspector.get_table_names()
@@ -40,7 +37,6 @@ def reminders_list():
             if reminders_table:
                 db_url = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
                 if 'postgresql' in db_url or 'postgres' in db_url:
-                    # Проверяем через information_schema
                     result = db.session.execute(text("""
                         SELECT is_nullable 
                         FROM information_schema.columns 
@@ -48,19 +44,16 @@ def reminders_list():
                     """), {'table_name': reminders_table})
                     row = result.fetchone()
                     if row and row[0] == 'NO':
-                        # Колонка NOT NULL, делаем её nullable
                         db.session.execute(text(f'ALTER TABLE "{reminders_table}" ALTER COLUMN reminder_time DROP NOT NULL'))
                         db.session.commit()
                         logger.info(f"Made reminder_time nullable in {reminders_table}")
         except Exception as e:
-            # Игнорируем ошибки миграции, чтобы не блокировать работу
             logger.warning(f"Could not check/update reminder_time nullable: {e}")
             db.session.rollback()
         
         if not show_completed:
             query = query.filter_by(is_completed=False)
         
-        # Сортируем: сначала с временем (по времени), потом без времени (по дате создания)
         try:
             from sqlalchemy import asc, desc
             reminders = query.order_by(
@@ -69,17 +62,13 @@ def reminders_list():
                 desc(Reminder.created_at)
             ).all()
         except Exception as e:
-            # Если сортировка не работает, используем простую
             import logging
             logging.warning(f"Reminders sorting error: {e}, using simple sort")
             reminders = query.order_by(Reminder.created_at.desc()).all()
         
-        # Получаем текущее время для сравнения
         now = moscow_now()
-        # Убираем timezone для сравнения в шаблоне
         now_naive = now.replace(tzinfo=None) if now.tzinfo else now
         
-        # Подготавливаем данные для отображения времени в локальном часовом поясе
         reminders_data = []
         for reminder in reminders:
             reminder_dict = {
@@ -87,7 +76,6 @@ def reminders_list():
                 'time_iso': None
             }
             if reminder.reminder_time:
-                # Создаем ISO строку с московским timezone для правильной конвертации на клиенте
                 reminder_time_moscow = reminder.reminder_time.replace(tzinfo=MOSCOW_TZ) if not reminder.reminder_time.tzinfo else reminder.reminder_time
                 reminder_dict['time_iso'] = reminder_time_moscow.isoformat()
             reminders_data.append(reminder_dict)
@@ -100,7 +88,6 @@ def reminders_list():
         import traceback
         error_msg = f"Ошибка в reminders_list: {str(e)}\n{traceback.format_exc()}"
         flash(f'Ошибка загрузки напоминаний: {str(e)}', 'error')
-        # Возвращаем пустой список, чтобы страница хотя бы открылась
         now_naive = moscow_now().replace(tzinfo=None) if moscow_now().tzinfo else moscow_now()
         return render_template('reminders.html', 
                              reminders_data=[],
@@ -120,7 +107,6 @@ def reminder_create_page():
 @login_required
 def reminder_create():
     """Создание нового напоминания"""
-    # Принудительно проверяем и применяем миграцию для reminder_time перед созданием
     try:
         inspector = inspect(db.engine)
         table_names = inspector.get_table_names()
@@ -166,26 +152,19 @@ def reminder_create():
         reminder_time = None
         if reminder_time_str:
             try:
-                # datetime-local возвращает строку в формате YYYY-MM-DDTHH:MM
-                # Это локальное время устройства пользователя
                 reminder_time_naive = datetime.strptime(reminder_time_str, '%Y-%m-%dT%H:%M')
                 
-                # Если есть смещение часового пояса, используем его
                 if timezone_offset is not None:
                     try:
                         offset_minutes = int(timezone_offset)
-                        # Создаем timezone с учетом смещения
                         from datetime import timedelta
                         offset = timedelta(minutes=offset_minutes)
                         tz = ZoneInfo(f"Etc/GMT{-offset_minutes//60:+d}" if offset_minutes != 0 else "UTC")
                         reminder_time = reminder_time_naive.replace(tzinfo=tz)
-                        # Конвертируем в московское время для хранения
                         reminder_time = reminder_time.astimezone(MOSCOW_TZ).replace(tzinfo=None)
                     except (ValueError, TypeError):
-                        # Если не удалось обработать смещение, используем локальное время как московское
                         reminder_time = reminder_time_naive
                 else:
-                    # Если смещения нет, считаем что это московское время
                     reminder_time = reminder_time_naive
                     
             except ValueError as e:
@@ -256,11 +235,9 @@ def reminder_toggle(reminder_id):
             metadata={'is_completed': reminder.is_completed}
         )
         
-        # Если это AJAX запрос, возвращаем JSON
         if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': True, 'is_completed': reminder.is_completed})
         
-        # Иначе редиректим обратно
         flash('Статус напоминания обновлен', 'success')
         return redirect(url_for('reminders.reminders_list'))
     except Exception as e:

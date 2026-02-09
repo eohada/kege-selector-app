@@ -22,7 +22,7 @@
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 300px; gap: 2rem;">
-                {# Список тестеров #}
+                
                 <div>
                     {% if testers %}
                     <table class="neo-table" style="width: 100%;">
@@ -75,7 +75,6 @@
                     {% endif %}
                 </div>
 
-                {# Форма создания #}
                 <div class="glass-panel" style="background: var(--surface-2); height: fit-content; padding: 1.5rem;">
                     <h3 style="margin-top: 0;">Новый тестер</h3>
                     <form method="POST" action="{{ url_for('remote_admin.testers') }}">

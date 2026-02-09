@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 def api_enrollments_list():
     """API: Список всех учебных контрактов (только для администратора)"""
     try:
-        # Параметры фильтрации
         student_id = request.args.get('student_id', type=int)
         tutor_id = request.args.get('tutor_id', type=int)
         subject = request.args.get('subject')
@@ -84,7 +83,6 @@ def api_enrollments_create():
         if not subject:
             return jsonify({'success': False, 'error': 'subject is required'}), 400
         
-        # Проверяем, что пользователи существуют и имеют правильные роли
         student = User.query.get(student_id)
         tutor = User.query.get(tutor_id)
         
@@ -98,15 +96,11 @@ def api_enrollments_create():
         if not tutor.is_tutor():
             return jsonify({'success': False, 'error': 'User is not a tutor'}), 400
         
-        # Проверяем допустимые статусы
         valid_statuses = ['active', 'paused', 'archived']
         if status not in valid_statuses:
             return jsonify({'success': False, 'error': f'Invalid status. Must be one of: {", ".join(valid_statuses)}'}), 400
         
-        # Проверяем, что контракт еще не существует (опционально - можно разрешить несколько контрактов по разным предметам)
-        # Для простоты разрешаем несколько контрактов между одними и теми же student и tutor, но с разными предметами
         
-        # Создаем контракт
         enrollment = Enrollment(
             student_id=student_id,
             tutor_id=tutor_id,
@@ -118,7 +112,6 @@ def api_enrollments_create():
         db.session.add(enrollment)
         db.session.commit()
         
-        # Логируем создание
         audit_logger.log(
             action='enrollment_created',
             entity='Enrollment',
@@ -168,7 +161,6 @@ def api_enrollments_update(enrollment_id):
         
         db.session.commit()
         
-        # Логируем обновление
         audit_logger.log(
             action='enrollment_updated',
             entity='Enrollment',
@@ -204,7 +196,6 @@ def api_enrollments_delete(enrollment_id):
         db.session.delete(enrollment)
         db.session.commit()
         
-        # Логируем удаление
         audit_logger.log(
             action='enrollment_deleted',
             entity='Enrollment',

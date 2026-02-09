@@ -58,7 +58,6 @@ class AuditLogger:
 
     def _worker_loop(self):
 
-        # Небольшая задержка, чтобы приложение успело полностью инициализироваться
         time.sleep(0.5)
         
         while self.is_running:
@@ -67,7 +66,6 @@ class AuditLogger:
                 if log_data is None:
                     break
 
-                # Создаем контекст приложения для каждой операции записи
                 if self.app:
                     try:
                         with self.app.app_context():
@@ -92,12 +90,10 @@ class AuditLogger:
             tester_id = log_data.get('tester_id')
             tester_name = log_data.get('tester_name')
 
-            # Не пишем мусор: нужен либо авторизованный user_id, либо tester_id (entity)
             if not user_id and not tester_id:
                 logger.debug("Skipping audit log: no user_id and no tester_id")
                 return
             
-            # Если пришёл user_id — проверяем, что пользователь существует
             if user_id:
                 from app.models import User
                 user = User.query.get(user_id)
@@ -105,7 +101,6 @@ class AuditLogger:
                     logger.warning(f"User {user_id} not found in database, skipping audit log")
                     return
 
-            # Если пришёл tester_id — гарантируем, что entity существует/обновлена
             if tester_id:
                 self._ensure_tester_exists(
                     tester_id=tester_id,
@@ -127,7 +122,6 @@ class AuditLogger:
             audit_log.set_metadata(log_data.get('metadata', {}))
             audit_log.ip_address = log_data.get('ip_address')
             audit_log.user_agent = log_data.get('user_agent')
-            # Обрезаем session_id если слишком длинный
             session_id = log_data.get('session_id')
             if session_id and len(session_id) > 500:
                 session_id = session_id[:500]
@@ -143,18 +137,15 @@ class AuditLogger:
                 f"(user_id: {user_id}, tester_id: {tester_id})"
             )
         except (OperationalError, ProgrammingError) as e:
-            # Ошибка структуры БД - возможно, таблица не обновлена
             db.session.rollback()
             error_msg = str(e)
             if 'user_id' in error_msg.lower() or 'column' in error_msg.lower():
                 logger.error(f"Database schema error in AuditLog: {e}. Table may need migration.")
-                # Пытаемся вызвать миграцию
                 try:
                     from app.utils.db_migrations import ensure_schema_columns
                     from flask import current_app
                     ensure_schema_columns(current_app)
                     logger.info("Attempted to fix AuditLog schema, retrying log write...")
-                    # Не повторяем запись автоматически, чтобы избежать бесконечного цикла
                 except Exception as migration_error:
                     logger.error(f"Failed to migrate AuditLog schema: {migration_error}")
             else:
@@ -162,7 +153,6 @@ class AuditLogger:
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error writing audit log: {e}", exc_info=True)
-            # Пробуем вывести детали ошибки
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
 
@@ -177,12 +167,10 @@ class AuditLogger:
         session_id = None
 
         if has_request_context():
-            # Приоритет: используем авторизованного пользователя из Flask-Login
             if current_user.is_authenticated:
                 user_id = current_user.id
                 user_name = current_user.username
             else:
-                # Для неавторизованных разрешаем логирование только если пришёл tester UUID
                 tester_id = request.headers.get('X-Tester-UUID')
 
                 raw_name = request.headers.get('X-Tester-Name')
@@ -224,7 +212,6 @@ class AuditLogger:
                 tester = Tester(tester_id=tester_id, name=(tester_name or 'Anonymous'))
                 db.session.add(tester)
             else:
-                # Обновляем имя, если пришло более “сильное” чем Anonymous
                 if tester_name and tester_name != 'Anonymous' and tester.name != tester_name:
                     tester.name = tester_name
 
@@ -264,7 +251,6 @@ class AuditLogger:
             logger.debug(f"Skipping audit log for action '{action}': no request context")
             return
 
-        # Ленивая инициализация worker thread при первом вызове
         if not self.is_running:
             if not self.app:
                 logger.warning("Cannot log: audit logger app not initialized")
@@ -275,7 +261,6 @@ class AuditLogger:
             user_info = self._get_tester_info()
             request_info = self._get_request_info()
 
-            # Пишем только если есть user_id (авторизован) или tester_id (tester entity)
             if not user_info.get('user_id') and not user_info.get('tester_id'):
                 logger.debug(f"Skipping audit log for action '{action}': no user_id and no tester_id")
                 return

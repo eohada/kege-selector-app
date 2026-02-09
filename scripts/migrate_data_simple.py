@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Упрощенный скрипт для переноса данных из старой базы в новую
 Использование:
@@ -57,7 +55,6 @@ def migrate_table(old_conn, new_conn, table_name, primary_key='id', exclude_colu
     try:
         old_cursor = old_conn.cursor()
         
-        # Проверяем, существует ли таблица в старой базе
         old_cursor.execute("""
             SELECT EXISTS (
                 SELECT FROM information_schema.tables 
@@ -69,7 +66,6 @@ def migrate_table(old_conn, new_conn, table_name, primary_key='id', exclude_colu
             print(f"  ⚠️  Таблица {table_name} не найдена в старой базе, пропускаем")
             return 0
         
-        # Получаем структуру таблицы
         old_cursor.execute(f"""
             SELECT column_name, data_type 
             FROM information_schema.columns 
@@ -83,7 +79,6 @@ def migrate_table(old_conn, new_conn, table_name, primary_key='id', exclude_colu
             print(f"  ⚠️  Таблица {table_name} не имеет колонок")
             return 0
         
-        # Получаем данные из старой базы
         columns_str = ', '.join([f'"{col}"' for col in columns])
         old_cursor.execute(f'SELECT {columns_str} FROM "{table_name}"')
         rows = old_cursor.fetchall()
@@ -94,7 +89,6 @@ def migrate_table(old_conn, new_conn, table_name, primary_key='id', exclude_colu
         
         print(f"  📊 Найдено записей: {len(rows)}")
         
-        # Проверяем, существует ли таблица в новой базе
         new_cursor = new_conn.cursor()
         new_cursor.execute("""
             SELECT EXISTS (
@@ -107,11 +101,9 @@ def migrate_table(old_conn, new_conn, table_name, primary_key='id', exclude_colu
             print(f"  ⚠️  Таблица {table_name} не найдена в новой базе, пропускаем")
             return 0
         
-        # Очищаем таблицу в новой базе
         new_cursor.execute(f'TRUNCATE TABLE "{table_name}" CASCADE')
         print(f"  🗑️  Таблица очищена")
         
-        # Вставляем данные в новую базу
         if primary_key in columns:
             pk_index = columns.index(primary_key)
             update_cols = ', '.join([f'"{col}" = EXCLUDED."{col}"' for col in columns if col != primary_key])
@@ -145,7 +137,6 @@ def main():
     print("=" * 70)
     print()
     
-    # Запрашиваем URL баз данных
     print("Введите URL старой базы данных (откуда переносим):")
     print("Пример: postgresql://user:pass@host:port/database")
     old_url = input("Старая база: ").strip()
@@ -172,8 +163,6 @@ def main():
         return False
     
     try:
-        # Список таблиц для переноса (в порядке зависимостей)
-        # Формат: (имя_таблицы, primary_key)
         tables = [
             ('Tasks', 'task_id'),
             ('Topics', 'topic_id'),
@@ -205,7 +194,6 @@ def main():
             count = migrate_table(old_conn, new_conn, table_name, primary_key)
             total_migrated += count
         
-        # Исправляем sequences
         print("\n🔧 Исправление sequences...")
         new_cursor = new_conn.cursor()
         

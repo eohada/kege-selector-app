@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Скрипт для синхронизации локальной SQLite базы с production PostgreSQL
 Использование:
@@ -44,7 +43,6 @@ def get_sqlite_connection():
     """Подключение к локальной SQLite базе"""
     db_path = os.path.join(project_root, 'data', 'keg_tasks.db')
     
-    # Создаем директорию, если её нет
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     
     conn = sqlite3.connect(db_path)
@@ -56,7 +54,6 @@ def sync_table(pg_conn, sqlite_conn, table_name, primary_key='id', disable_fk=Tr
     print(f"\n📋 Синхронизация таблицы: {table_name}")
     
     try:
-        # Получаем структуру таблицы из PostgreSQL
         pg_cursor = pg_conn.cursor()
         pg_cursor.execute(f"""
             SELECT column_name, data_type 
@@ -70,7 +67,6 @@ def sync_table(pg_conn, sqlite_conn, table_name, primary_key='id', disable_fk=Tr
             print(f"  ⚠️  Таблица {table_name} не найдена в production")
             return 0
         
-        # Получаем данные из PostgreSQL
         columns_str = ', '.join(columns)
         pg_cursor.execute(f'SELECT {columns_str} FROM "{table_name}"')
         rows = pg_cursor.fetchall()
@@ -81,7 +77,6 @@ def sync_table(pg_conn, sqlite_conn, table_name, primary_key='id', disable_fk=Tr
         
         sqlite_cursor = sqlite_conn.cursor()
         
-        # Проверяем, существует ли таблица в SQLite
         sqlite_cursor.execute(f"""
             SELECT name FROM sqlite_master 
             WHERE type='table' AND name='{table_name}'
@@ -90,21 +85,16 @@ def sync_table(pg_conn, sqlite_conn, table_name, primary_key='id', disable_fk=Tr
             print(f"  ⚠️  Таблица {table_name} не существует в локальной БД, пропускаем")
             return 0
         
-        # Отключаем foreign keys для удаления
         if disable_fk:
             sqlite_cursor.execute('PRAGMA foreign_keys = OFF')
         
-        # Очищаем таблицу в SQLite
         sqlite_cursor.execute(f'DELETE FROM "{table_name}"')
         
-        # Создаем плейсхолдеры для INSERT
         placeholders = ', '.join(['?' for _ in columns])
         insert_sql = f'INSERT OR REPLACE INTO "{table_name}" ({columns_str}) VALUES ({placeholders})'
         
-        # Вставляем данные
         sqlite_cursor.executemany(insert_sql, rows)
         
-        # Включаем foreign keys обратно
         if disable_fk:
             sqlite_cursor.execute('PRAGMA foreign_keys = ON')
         
@@ -115,7 +105,6 @@ def sync_table(pg_conn, sqlite_conn, table_name, primary_key='id', disable_fk=Tr
         
     except Exception as e:
         sqlite_conn.rollback()
-        # Включаем foreign keys обратно в случае ошибки
         try:
             sqlite_conn.execute('PRAGMA foreign_keys = ON')
         except:
@@ -130,7 +119,6 @@ def sync_databases():
     print("🔄 Синхронизация Production PostgreSQL → Локальная SQLite")
     print("=" * 60)
     
-    # Подключаемся к базам
     pg_conn = get_postgres_connection()
     if not pg_conn:
         return False
@@ -138,8 +126,6 @@ def sync_databases():
     sqlite_conn = get_sqlite_connection()
     
     try:
-        # Список таблиц для синхронизации (в порядке зависимостей)
-        # Сначала независимые таблицы, потом зависимые
         tables = [
             ('Tasks', 'task_id'),           # Независимая
             ('Students', 'student_id'),     # Независимая
@@ -150,12 +136,10 @@ def sync_databases():
             ('BlacklistTasks', 'id'),       # Зависит от Tasks
         ]
         
-        # Таблицы, которые НЕ синхронизируем (логи, временные данные)
         exclude_tables = ['AuditLog', 'Testers', 'Users']  # Users может не быть в старой локальной БД
         
         total_synced = 0
         
-        # Отключаем foreign keys для всей синхронизации
         sqlite_cursor = sqlite_conn.cursor()
         sqlite_cursor.execute('PRAGMA foreign_keys = OFF')
         
@@ -164,7 +148,6 @@ def sync_databases():
                 count = sync_table(pg_conn, sqlite_conn, table_name, primary_key, disable_fk=False)
                 total_synced += count
         
-        # Включаем foreign keys обратно
         sqlite_cursor.execute('PRAGMA foreign_keys = ON')
         sqlite_conn.commit()
         

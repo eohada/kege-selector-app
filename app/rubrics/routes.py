@@ -42,7 +42,6 @@ def _parse_items(raw: str) -> list[dict]:
             continue
         if not key:
             key = f"c{idx+1}"
-        # уникальность key
         base = key
         suffix = 1
         while key in seen:

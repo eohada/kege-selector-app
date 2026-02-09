@@ -168,9 +168,6 @@ def template_new():
             if not name:
                 return jsonify({'success': False, 'error': 'Название шаблона обязательно'}), 400
             
-            # Единый эндпоинт: поддерживаем оба режима создания
-            # - task_ids: выбрать из базы/генератора
-            # - tasks: создать задачи вручную (manual cards)
             template = _create_template_from_payload(data)
 
             created_manual = 0
@@ -336,7 +333,6 @@ def template_manual_create():
     """Ручное создание шаблона с заданиями"""
     if not _can_manage_templates():
         return _deny_templates_access()
-    # Держим как алиас: канонично всё создаётся через /templates/new?mode=manual
     if request.method == 'GET':
         return redirect(url_for('templates.template_new', mode='manual'))
     if request.method == 'POST':
@@ -367,11 +363,6 @@ def template_manual_create():
             return jsonify({'success': False, 'error': str(e)}), 500
 
     return redirect(url_for('templates.template_new', mode='manual'))
-    # try:
-    #     return render_template('template_manual_create.html')
-    # except Exception as e:
-    #     logger.error(f"Error rendering template: {e}", exc_info=True)
-    #     return str(e), 500
 
 @templates_bp.route('/templates/<int:template_id>/apply', methods=['POST'])
 @login_required

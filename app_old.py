@@ -38,8 +38,6 @@ if database_url:
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     
-    # В Railway внутренний URL должен работать, но если нет - используем внешний
-    # Проверяем, есть ли переменная для внешнего подключения
     external_db_url = os.environ.get('DATABASE_EXTERNAL_URL') or os.environ.get('POSTGRES_URL')
     if external_db_url:
         if external_db_url.startswith('postgres://'):
@@ -54,12 +52,10 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'local-dev-key-12345')
 app.config['WTF_CSRF_ENABLED'] = True
 app.config['WTF_CSRF_TIME_LIMIT'] = None
 
-# Определение окружения (production, sandbox, local)
 ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
 
 csrf = CSRFProtect(app)
 
-# Настройка логирования: вывод в консоль и в файл
 log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 logging.basicConfig(
     level=logging.INFO,
@@ -72,7 +68,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.info("Логирование инициализировано. Логи также сохраняются в файл app.log")
 
-# Логируем информацию о БД после инициализации logger
 if database_url:
     external_db_url = os.environ.get('DATABASE_EXTERNAL_URL') or os.environ.get('POSTGRES_URL')
     if external_db_url:
@@ -85,7 +80,6 @@ else:
 db.init_app(app)
 audit_logger.init_app(app)
 
-# Настройка Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -97,7 +91,6 @@ def load_user(user_id):
     """Загрузка пользователя для Flask-Login"""
     return User.query.get(int(user_id))
 
-# Запускаем worker thread для audit logger при первом запросе
 @app.before_request
 def ensure_audit_logger_worker():
     if not audit_logger.is_running:
@@ -112,7 +105,6 @@ def ensure_schema_columns():
 
             inspector = inspect(db.engine)
             
-            # Получаем реальное имя таблицы (может быть в нижнем регистре)
             table_names = inspector.get_table_names()
             lessons_table = 'Lessons' if 'Lessons' in table_names else ('lessons' if 'lessons' in table_names else None)
             students_table = 'Students' if 'Students' in table_names else ('students' if 'students' in table_names else None)
@@ -158,15 +150,12 @@ def ensure_schema_columns():
             if 'idx_lessons_lesson_date' not in lesson_indexes:
                 db.session.execute(text(f'CREATE INDEX idx_lessons_lesson_date ON "{lessons_table}"(lesson_date)'))
 
-            # Обновляем старые статусы ДЗ на новые значения, если таблица уже существовала
             db.session.execute(text(f'UPDATE "{lessons_table}" SET homework_status = \'assigned_done\' WHERE homework_status = \'completed\''))  # Старый completed -> assigned_done
             db.session.execute(text(f'UPDATE "{lessons_table}" SET homework_status = \'assigned_not_done\' WHERE homework_status IN (\'pending\', \'not_done\')'))  # pending/not_done -> assigned_not_done
 
-            # Проверяем и обновляем AuditLog таблицу
             audit_log_table = 'AuditLog' if 'AuditLog' in table_names else ('auditlog' if 'auditlog' in table_names else None)
             if audit_log_table:
                 audit_log_columns = {col['name'] for col in inspector.get_columns(audit_log_table)}
-                # Изменяем session_id на TEXT если он VARCHAR(100)
                 try:
                     pg_cursor = db.session.connection().connection.cursor()
                     pg_cursor.execute("""
@@ -187,14 +176,12 @@ def ensure_schema_columns():
         logger.error(f"Ошибка при миграции схемы БД: {e}", exc_info=True)
         raise  # Пробрасываем ошибку дальше
 
-# Флаг для отслеживания, была ли выполнена инициализация схемы
 _schema_initialized = False
 
 @app.before_request
 def initialize_on_first_request():
     global _schema_initialized
     
-    # Инициализируем схему БД при первом запросе
     if not _schema_initialized:
         try:
             ensure_schema_columns()
@@ -202,17 +189,14 @@ def initialize_on_first_request():
             logger.info("Database schema initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize database schema: {e}", exc_info=True)
-            # Не блокируем запрос, если миграция не удалась
             _schema_initialized = True  # Помечаем как инициализированную, чтобы не повторять
             logger.info("Database schema initialized")
         except Exception as e:
             logger.error(f"Error initializing schema: {e}", exc_info=True)
     
-    # Запускаем worker thread для audit logger при первом запросе
     if not audit_logger.is_running:
         audit_logger.start_worker()
 
-# Кеш для отслеживания времени последней проверки уроков
 _last_lesson_check = None
 _lesson_check_interval = timedelta(minutes=5)  # Проверяем не чаще раза в 5 минут для оптимизации
 
@@ -221,28 +205,20 @@ def auto_update_lesson_status():
     """Автоматически обновляет статус запланированных уроков на 'completed' после их окончания"""
     global _last_lesson_check
     
-    # Пропускаем статические файлы
     if request.endpoint in ('static', 'favicon') or request.path.startswith('/static/'):
         return
     
     try:
-        # Проверяем не чаще чем раз в минуту
         now = moscow_now()
         if _last_lesson_check and (now - _last_lesson_check) < _lesson_check_interval:
             return
         
         _last_lesson_check = now
         
-        # Оптимизация: обновляем статусы напрямую через SQL, без загрузки всех уроков
-        # Находим уроки, которые должны быть завершены (время окончания прошло)
-        # lesson_date + duration <= now означает, что урок уже закончился
         try:
-            # Используем SQL для массового обновления
             from sqlalchemy import text
-            # Проверяем тип БД и используем соответствующий синтаксис
             db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
             if 'postgresql' in db_url or 'postgres' in db_url:
-                # PostgreSQL синтаксис
                 result = db.session.execute(text("""
                     UPDATE "Lessons" 
                     SET status = 'completed', updated_at = :now
@@ -250,7 +226,6 @@ def auto_update_lesson_status():
                     AND (lesson_date + (duration || ' minutes')::interval) <= :now
                 """), {'now': now})
             else:
-                # SQLite синтаксис
                 result = db.session.execute(text("""
                     UPDATE Lessons 
                     SET status = 'completed', updated_at = :now
@@ -262,14 +237,11 @@ def auto_update_lesson_status():
             
             if updated_count > 0:
                 db.session.commit()
-                # Уменьшаем логирование - только если обновлено больше 0
                 if updated_count > 5:  # Логируем только если обновлено много уроков
                     logger.info(f"Автоматически обновлено статусов уроков: {updated_count}")
         except Exception as e:
-            # Fallback на старый метод, если SQL не работает
             logger.warning(f"Ошибка при массовом обновлении статусов, используем старый метод: {e}")
             try:
-                # Фильтруем только уроки, которые могли закончиться (за последние 24 часа)
                 yesterday = now - timedelta(days=1)
                 planned_lessons = Lesson.query.filter(
                     Lesson.status == 'planned',
@@ -296,19 +268,15 @@ def auto_update_lesson_status():
     
     except Exception as e:
         logger.error(f"Ошибка при автоматическом обновлении статуса уроков: {e}", exc_info=True)
-        # Не блокируем запрос при ошибке
         db.session.rollback()
 
 @app.before_request
 def require_login():
     """Проверка авторизации для всех маршрутов кроме login, logout и static"""
-    # Исключаем маршруты, которые не требуют авторизации
     if request.endpoint in ('login', 'logout', 'static', 'font_files') or request.path.startswith('/static/') or request.path.startswith('/font/'):
         return
     
-    # Проверяем авторизацию
     if not current_user.is_authenticated:
-        # Сохраняем URL для редиректа после входа
         if request.endpoint and request.endpoint != 'login':
             return redirect(url_for('login', next=request.url))
 
@@ -316,37 +284,25 @@ def require_login():
 def identify_tester():
     """Идентификация тестировщика (только для неавторизованных пользователей)"""
     try:
-        # Пропускаем для статических файлов
         if request.endpoint in ('static', 'favicon') or request.path.startswith('/static/'):
             return
 
-        # Для авторизованных пользователей не создаем тестировщиков
-        # Логирование будет происходить через Flask-Login
         if current_user.is_authenticated:
             return
 
-        # Получаем имя тестировщика из заголовка, декодируя если нужно
-        # HTTP заголовки должны содержать только ISO-8859-1 символы
-        # Если имя содержит не-ASCII символы, оно кодируется в base64
         tester_name_raw = request.headers.get('X-Tester-Name')
         tester_name_encoded = request.headers.get('X-Tester-Name-Encoded')
         if tester_name_raw and tester_name_encoded == 'base64':
-            # Декодируем из base64
             try:
                 import base64
                 import urllib.parse
-                # Декодируем base64
                 decoded_bytes = base64.b64decode(tester_name_raw)
-                # Декодируем URI компонент
                 tester_name = urllib.parse.unquote(decoded_bytes.decode('utf-8'))
             except Exception as e:
                 logger.warning(f"Ошибка декодирования имени тестировщика: {e}")
                 tester_name = tester_name_raw
         else:
             tester_name = tester_name_raw
-        # Для неавторизованных пользователей больше не создаем тестировщиков
-        # Логирование происходит только для авторизованных пользователей через Flask-Login
-        # Старая логика создания тестировщиков удалена
 
     except Exception as e:
         logger.error(f"Error identifying tester: {e}", exc_info=True)
@@ -355,7 +311,6 @@ def identify_tester():
 def log_page_view(response):
 
     try:
-        # Пропускаем статику, админку, AJAX, JSON
         if (request.endpoint in ('static', 'favicon') or
             request.path.startswith('/static/') or
             request.path.startswith('/admin-audit') or
@@ -363,7 +318,6 @@ def log_page_view(response):
             request.is_json):
             return response
 
-        # Фильтруем ботов и health checks
         user_agent = request.headers.get('User-Agent', '').lower()
         bot_patterns = [
             'bot', 'crawler', 'spider', 'scraper', 'monitor', 'health',
@@ -373,7 +327,6 @@ def log_page_view(response):
         if any(pattern in user_agent for pattern in bot_patterns):
             return response
 
-        # Логируем все GET запросы (даже для анонимных)
         if request.method == 'GET' and response.status_code == 200:
             page_name = request.endpoint or request.path
             audit_logger.log_page_view(
@@ -385,7 +338,6 @@ def log_page_view(response):
 
     return response
 
-# Кеш для active_lesson, чтобы не делать запрос на каждом рендере
 _active_lesson_cache = None
 _active_lesson_cache_time = None
 _active_lesson_cache_ttl = timedelta(seconds=5)  # Кешируем на 5 секунд
@@ -401,14 +353,12 @@ def inject_active_lesson():
     global _active_lesson_cache, _active_lesson_cache_time
     
     try:
-        # Используем кеш, если он еще актуален
         now = moscow_now()
         if (_active_lesson_cache is not None and 
             _active_lesson_cache_time is not None and 
             (now - _active_lesson_cache_time) < _active_lesson_cache_ttl):
             return _active_lesson_cache
         
-        # Обновляем кеш
         from sqlalchemy.orm import joinedload
         active_lesson = Lesson.query.options(joinedload(Lesson.student)).filter_by(status='in_progress').first()
         active_student = active_lesson.student if active_lesson else None
@@ -650,20 +600,15 @@ def login():
         username = form.username.data.strip()
         password = form.password.data
         
-        # Ищем пользователя по логину
         user = User.query.filter_by(username=username).first()
         
         if user and user.is_active:
-            # Проверяем пароль
             if check_password_hash(user.password_hash, password):
-                # Обновляем время последнего входа
                 user.last_login = moscow_now()
                 db.session.commit()
                 
-                # Входим
                 login_user(user, remember=True)
                 
-                # Логируем вход
                 audit_logger.log(
                     action='login',
                     entity='User',
@@ -729,7 +674,6 @@ def admin_panel():
         return redirect(url_for('dashboard'))
     
     try:
-        # Статистика для админ панели
         from core.db_models import User, Tester, AuditLog
         from sqlalchemy import func
         from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -739,9 +683,7 @@ def admin_panel():
         creators_count = User.query.filter_by(role='creator').count()
         testers_count = User.query.filter_by(role='tester').count()
         
-        # Статистика по логам - с обработкой ошибок
         try:
-            # Проверяем, существует ли таблица AuditLog
             db.session.query(AuditLog).limit(1).all()
             audit_log_exists = True
         except (OperationalError, ProgrammingError) as e:
@@ -774,7 +716,6 @@ def admin_panel():
     except Exception as e:
         logger.error(f"Error in admin_panel route: {e}", exc_info=True)
         flash(f'Ошибка при загрузке статистики: {str(e)}', 'error')
-        # Fallback: возвращаем минимальную статистику
         try:
             from core.db_models import User
             total_users = User.query.count()
@@ -807,7 +748,6 @@ def dashboard():
     category_filter = request.args.get('category', '')
     show_archive = request.args.get('show_archive', 'false').lower() == 'true'  # Параметр для просмотра архива
 
-    # Выбираем активных или архивных учеников в зависимости от параметра
     if show_archive:
         query = Student.query.filter_by(is_active=False)
     else:
@@ -834,20 +774,16 @@ def dashboard():
     pagination = query.order_by(Student.name).paginate(page=page, per_page=per_page, error_out=False)
     students = pagination.items
 
-    # Статистика зависит от того, показываем ли мы архив
-    # Оптимизация: используем один запрос с группировкой для категорий
     from sqlalchemy import func
     base_is_active = not show_archive
     
     if category_filter:
-        # Если есть фильтр категории, считаем только из текущей выборки
         total_students = len(students)
         ege_students = len([s for s in students if s.category == 'ЕГЭ']) if category_filter != 'ЕГЭ' else total_students
         oge_students = len([s for s in students if s.category == 'ОГЭ']) if category_filter != 'ОГЭ' else total_students
         levelup_students = len([s for s in students if s.category == 'ЛЕВЕЛАП']) if category_filter != 'ЛЕВЕЛАП' else total_students
         programming_students = len([s for s in students if s.category == 'ПРОГРАММИРОВАНИЕ']) if category_filter != 'ПРОГРАММИРОВАНИЕ' else total_students
     else:
-        # Если нет фильтра, используем один запрос с группировкой
         total_students = Student.query.filter_by(is_active=base_is_active).count()
         category_stats = db.session.query(
             Student.category,
@@ -860,8 +796,6 @@ def dashboard():
         levelup_students = category_dict.get('ЛЕВЕЛАП', 0)
         programming_students = category_dict.get('ПРОГРАММИРОВАНИЕ', 0)
     
-    # Оптимизация: объединяем запросы статистики где возможно
-    # Статистика по урокам - один запрос с группировкой
     lesson_stats = db.session.query(
         Lesson.status,
         func.count(Lesson.lesson_id).label('count')
@@ -876,26 +810,20 @@ def dashboard():
     
     archived_students_count = Student.query.filter_by(is_active=False).count()
     
-    # Статистика по заданиям - используем подзапросы для оптимизации
     total_tasks = Tasks.query.count()
-    # Используем подзапросы вместо distinct для лучшей производительности
     accepted_tasks_count = db.session.query(func.count(func.distinct(UsageHistory.task_fk))).scalar() or 0
     skipped_tasks_count = db.session.query(func.count(func.distinct(SkippedTasks.task_fk))).scalar() or 0
     blacklisted_tasks_count = db.session.query(func.count(func.distinct(BlacklistTasks.task_fk))).scalar() or 0
     
-    # Статистика по последним урокам (за последние 7 дней)
-    # Считаем только уроки, которые были проведены за последние 7 дней
     now = moscow_now()
     week_ago = now - timedelta(days=7)
     
-    # Уроки, которые были проведены за последние 7 дней
     recent_completed = Lesson.query.filter(
         Lesson.status == 'completed',
         Lesson.lesson_date >= week_ago,
         Lesson.lesson_date <= now
     ).count()
     
-    # Уроки, запланированные на ближайшие 7 дней (в будущем)
     week_ahead = now + timedelta(days=7)
     recent_planned = Lesson.query.filter(
         Lesson.status.in_(['planned', 'in_progress']),
@@ -905,7 +833,6 @@ def dashboard():
     
     recent_lessons = recent_completed + recent_planned
     
-    # Статистика по домашним заданиям (только за последние 7 дней - проведенные уроки)
     lessons_with_homework = Lesson.query.filter(
         Lesson.status == 'completed',
         Lesson.lesson_date >= week_ago,
@@ -944,18 +871,14 @@ def debug_db():
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
         
-        # Проверяем подключение
         db.session.execute(text('SELECT 1'))
         
-        # Получаем список таблиц
         tables = inspector.get_table_names()
         
-        # Проверяем данные
         students_count = db.session.execute(text('SELECT COUNT(*) FROM "Students"')).scalar()
         students_active = db.session.execute(text('SELECT COUNT(*) FROM "Students" WHERE is_active = TRUE')).scalar()
         lessons_count = db.session.execute(text('SELECT COUNT(*) FROM "Lessons"')).scalar()
         
-        # Пробуем через SQLAlchemy
         try:
             sa_students = Student.query.count()
             sa_students_active = Student.query.filter_by(is_active=True).count()
@@ -965,7 +888,6 @@ def debug_db():
             sa_students_active = f"Error: {e}"
             sa_lessons = f"Error: {e}"
         
-        # Проверяем DATABASE_URL
         db_url = app.config.get('SQLALCHEMY_DATABASE_URI', 'Not set')
         db_url_masked = db_url.split('@')[1] if '@' in db_url else db_url
         
@@ -1041,7 +963,6 @@ def student_new():
             db.session.commit()
             
 
-            # Логируем создание ученика (с обработкой ошибок, чтобы не ломать функционал)
             try:
                 audit_logger.log(
                     action='create_student',
@@ -1064,7 +985,6 @@ def student_new():
             db.session.rollback()
             logger.error(f'Ошибка при добавлении ученика: {e}', exc_info=True)
             
-            # Логируем ошибку
             try:
                 audit_logger.log_error(
                     action='create_student',
@@ -1076,10 +996,8 @@ def student_new():
                 logger.error(f'Ошибка при логировании: {log_error}')
             
             flash(f'Ошибка при добавлении ученика: {str(e)}', 'error')
-            # Редирект на GET запрос, чтобы избежать проблемы с повторной отправкой формы
             return redirect(url_for('student_new'))
 
-    # Логируем попытку отправки формы для отладки, если это POST запрос
     if request.method == 'POST' and not form.validate_on_submit():
         logger.warning(f'Ошибки валидации формы при создании ученика: {form.errors}')
 
@@ -1087,11 +1005,8 @@ def student_new():
 
 @app.route('/student/<int:student_id>')
 def student_profile(student_id):
-    # КРИТИЧЕСКАЯ ОПТИМИЗАЦИЯ: загружаем уроки отдельным запросом с joinedload для homework_tasks
-    # Это избегает N+1 проблем при обращении к lesson.homework_assignments в шаблоне
     student = Student.query.get_or_404(student_id)
     
-    # Загружаем уроки с предзагрузкой homework_tasks и task для каждого homework_task
     lessons = Lesson.query.filter_by(student_id=student_id).options(
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
     ).order_by(Lesson.lesson_date.desc()).all()
@@ -1103,17 +1018,13 @@ def student_statistics(student_id):
     """Страница статистики выполнения заданий по номерам"""
     student = Student.query.get_or_404(student_id)
     
-    # Загружаем все уроки с заданиями
     lessons = Lesson.query.filter_by(student_id=student_id).options(
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
     ).all()
     
-    # Собираем статистику по номерам заданий
-    # Ключ: номер задания (task_number), значение: {correct: вес, total: вес}
     task_stats = {}
     
     for lesson in lessons:
-        # Обрабатываем все типы заданий
         for assignment_type in ['homework', 'classwork', 'exam']:
             assignments = get_sorted_assignments(lesson, assignment_type)
             weight = 2 if assignment_type == 'exam' else 1
@@ -1127,19 +1038,16 @@ def student_statistics(student_id):
                 if task_num not in task_stats:
                     task_stats[task_num] = {'correct': 0, 'total': 0}
                 
-                # Учитываем только задания с проверенными ответами
                 if lt.submission_correct is not None:
                     task_stats[task_num]['total'] += weight
                     if lt.submission_correct:
                         task_stats[task_num]['correct'] += weight
     
-    # Вычисляем проценты и формируем данные для диаграммы
     chart_data = []
     for task_num in sorted(task_stats.keys()):
         stats = task_stats[task_num]
         if stats['total'] > 0:
             percent = round((stats['correct'] / stats['total']) * 100, 1)
-            # Определяем цвет: красный (0-40%), желтый (40-80%), зеленый (80-100%)
             if percent < 40:
                 color = '#ef4444'  # красный
             elif percent < 80:
@@ -1195,7 +1103,6 @@ def student_edit(student_id):
             student.programming_language = form.programming_language.data.strip() if form.programming_language.data else None  # Сохраняем язык программирования
             db.session.commit()
             
-            # Логируем обновление ученика
             audit_logger.log(
                 action='update_student',
                 entity='Student',
@@ -1217,7 +1124,6 @@ def student_edit(student_id):
             db.session.rollback()
             logger.error(f'Ошибка при обновлении ученика {student_id}: {e}')
             
-            # Логируем ошибку
             audit_logger.log_error(
                 action='update_student',
                 entity='Student',
@@ -1241,7 +1147,6 @@ def student_delete(student_id):
         db.session.delete(student)
         db.session.commit()
         
-        # Логируем удаление ученика
         audit_logger.log(
             action='delete_student',
             entity='Student',
@@ -1259,7 +1164,6 @@ def student_delete(student_id):
         db.session.rollback()
         logger.error(f'Ошибка при удалении ученика {student_id}: {e}')
         
-        # Логируем ошибку
         audit_logger.log_error(
             action='delete_student',
             entity='Student',
@@ -1291,18 +1195,13 @@ def lesson_new(student_id):
     if form.validate_on_submit():
         ensure_introductory_without_homework(form)  # Вводный урок не содержит ДЗ
         
-        # Обрабатываем дату с учетом часового пояса
         lesson_date_local = form.lesson_date.data
         timezone = form.timezone.data
         
-        # Преобразуем локальное время в нужный часовой пояс
         if timezone == 'tomsk':
-            # Если выбран томский часовой пояс, создаем datetime с TOMSK_TZ
             lesson_date_local = lesson_date_local.replace(tzinfo=TOMSK_TZ)
-            # Конвертируем в московское время для хранения в БД
             lesson_date_utc = lesson_date_local.astimezone(MOSCOW_TZ)
         else:
-            # Если выбран московский часовой пояс
             lesson_date_local = lesson_date_local.replace(tzinfo=MOSCOW_TZ)
             lesson_date_utc = lesson_date_local
         
@@ -1320,7 +1219,6 @@ def lesson_new(student_id):
         db.session.add(lesson)
         db.session.commit()
         
-        # Логируем создание урока
         audit_logger.log(
             action='create_lesson',
             entity='Lesson',
@@ -1342,7 +1240,6 @@ def lesson_new(student_id):
 
 @app.route('/lesson/<int:lesson_id>/edit', methods=['GET', 'POST'])
 def lesson_edit(lesson_id):
-    # Оптимизация: используем joinedload для избежания N+1 проблем
     lesson = Lesson.query.options(
         db.joinedload(Lesson.student),
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
@@ -1350,26 +1247,19 @@ def lesson_edit(lesson_id):
     student = lesson.student
     form = LessonForm(obj=lesson)
     
-    # При редактировании устанавливаем московский часовой пояс по умолчанию
-    # (все уроки в БД хранятся в московском времени)
     if request.method == 'GET':
         form.timezone.data = 'moscow'
 
     if form.validate_on_submit():
         ensure_introductory_without_homework(form)  # Чистим ДЗ, если переключились на вводный урок
         
-        # Обрабатываем дату с учетом часового пояса
         lesson_date_local = form.lesson_date.data
         timezone = form.timezone.data
         
-        # Преобразуем локальное время в нужный часовой пояс
         if timezone == 'tomsk':
-            # Если выбран томский часовой пояс, создаем datetime с TOMSK_TZ
             lesson_date_local = lesson_date_local.replace(tzinfo=TOMSK_TZ)
-            # Конвертируем в московское время для хранения в БД
             lesson_date_utc = lesson_date_local.astimezone(MOSCOW_TZ)
         else:
-            # Если выбран московский часовой пояс
             lesson_date_local = lesson_date_local.replace(tzinfo=MOSCOW_TZ)
             lesson_date_utc = lesson_date_local
         
@@ -1383,7 +1273,6 @@ def lesson_edit(lesson_id):
         lesson.homework_status = form.homework_status.data
         db.session.commit()
         
-        # Логируем обновление урока
         audit_logger.log(
             action='update_lesson',
             entity='Lesson',
@@ -1420,7 +1309,6 @@ def lesson_delete(lesson_id):
     db.session.delete(lesson)
     db.session.commit()
     
-    # Логируем удаление урока
     audit_logger.log(
         action='delete_lesson',
         entity='Lesson',
@@ -1439,15 +1327,12 @@ def lesson_delete(lesson_id):
 
 @app.route('/student/<int:student_id>/lesson-mode')
 def lesson_mode(student_id):
-    # Оптимизация: загружаем все данные одним запросом
     student = Student.query.get_or_404(student_id)
     now = moscow_now()
     
-    # Загружаем все уроки одним запросом
     all_lessons = Lesson.query.filter_by(student_id=student_id).order_by(Lesson.lesson_date.desc()).all()
     lessons = all_lessons
     
-    # Находим текущий и ближайший урок из уже загруженных данных
     current_lesson = next((l for l in all_lessons if l.status == 'in_progress'), None)
     planned_lessons = [l for l in all_lessons if l.status == 'planned' and l.lesson_date and l.lesson_date >= now]
     upcoming_lesson = sorted(planned_lessons, key=lambda x: x.lesson_date)[0] if planned_lessons else None
@@ -1463,13 +1348,11 @@ def student_start_lesson(student_id):
     student = Student.query.get_or_404(student_id)
     now = moscow_now()
 
-    # Оптимизация: один запрос вместо двух
     active_lesson = Lesson.query.filter_by(student_id=student_id, status='in_progress').first()
     if active_lesson:
         flash('Урок уже идет!', 'info')
         return redirect(url_for('student_profile', student_id=student_id))
 
-    # Оптимизация: используем limit(1) для лучшей производительности
     upcoming_lesson = Lesson.query.filter(
         Lesson.student_id == student_id,
         Lesson.status == 'planned',
@@ -1533,7 +1416,6 @@ def get_sorted_assignments(lesson, assignment_type):
 
 @app.route('/lesson/<int:lesson_id>/homework-tasks')
 def lesson_homework_view(lesson_id):
-    # Оптимизация: используем joinedload для избежания N+1 проблем
     lesson = Lesson.query.options(
         db.joinedload(Lesson.student),
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
@@ -1548,7 +1430,6 @@ def lesson_homework_view(lesson_id):
 
 @app.route('/lesson/<int:lesson_id>/classwork-tasks')
 def lesson_classwork_view(lesson_id):
-    # Оптимизация: используем joinedload для избежания N+1 проблем
     lesson = Lesson.query.options(
         db.joinedload(Lesson.student),
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
@@ -1563,7 +1444,6 @@ def lesson_classwork_view(lesson_id):
 
 @app.route('/lesson/<int:lesson_id>/exam-tasks')
 def lesson_exam_view(lesson_id):
-    # Оптимизация: используем joinedload для избежания N+1 проблем
     lesson = Lesson.query.options(
         db.joinedload(Lesson.student),
         db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
@@ -1584,9 +1464,7 @@ def lesson_homework_save(lesson_id):
     for hw_task in homework_tasks:
         answer_key = f'answer_{hw_task.lesson_task_id}'
         if answer_key in request.form:
-            # Сохраняем ответ в student_answer (для ручного ввода или переопределения ответа из базы)
             submitted_answer = request.form.get(answer_key).strip()
-            # Если ответ из базы был изменен вручную, сохраняем новый ответ
             hw_task.student_answer = submitted_answer if submitted_answer else None
 
     percent_value = request.form.get('homework_result_percent', '').strip()
@@ -1613,7 +1491,6 @@ def lesson_homework_save(lesson_id):
 
     db.session.commit()
     
-    # Логируем сохранение домашнего задания
     audit_logger.log(
         action='save_homework',
         entity='Lesson',
@@ -1656,7 +1533,6 @@ def perform_auto_check(lesson, assignment_type):
     if not tasks:
         type_name = {'homework': 'ДЗ', 'classwork': 'классной работы', 'exam': 'проверочной'}.get(assignment_type, 'заданий')
         error_msg = f'У этого урока нет заданий {type_name} для проверки.'
-        # Для AJAX возвращаем ошибку в специальном формате
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return {'error': error_msg, 'category': 'warning'}, None
         flash(error_msg, 'warning')
@@ -1686,7 +1562,6 @@ def perform_auto_check(lesson, assignment_type):
     correct_count = 0
     incorrect_count = 0
     
-    # Для exam вес ×2
     weight = 2 if assignment_type == 'exam' else 1
     
     if len(answers_list) != total_tasks:
@@ -1705,7 +1580,6 @@ def perform_auto_check(lesson, assignment_type):
         task.student_submission = student_text if student_text else None
         
         is_skip = student_text == '' or student_text == '-1' or student_text.lower() == 'null'
-        # Используем student_answer, если он был введен вручную, иначе ответ из базы данных (task.answer)
         expected_text = (task.student_answer if task.student_answer else (task.task.answer if task.task and task.task.answer else '')) or ''
         
         if not expected_text:
@@ -1729,7 +1603,6 @@ def perform_auto_check(lesson, assignment_type):
         else:
             incorrect_count += weight  # Учитываем вес для exam
     
-    # Для расчета процента учитываем вес
     total_weighted = correct_count + incorrect_count
     percent = round((correct_count / total_weighted) * 100, 2) if total_weighted > 0 else 0
     
@@ -1740,10 +1613,8 @@ def lesson_homework_auto_check(lesson_id):
     lesson = Lesson.query.get_or_404(lesson_id)
     result = perform_auto_check(lesson, 'homework')
     
-    # Если это AJAX-запрос, возвращаем JSON
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         if isinstance(result[0], dict) and 'error' in result[0]:
-            # Ошибка из perform_auto_check
             return jsonify({'success': False, 'error': result[0]['error'], 'category': result[0].get('category', 'error')}), 400
         if result[0] is None:
             return jsonify({'success': False, 'error': 'Ошибка при выполнении автопроверки'}), 400
@@ -1765,7 +1636,6 @@ def lesson_homework_auto_check(lesson_id):
 
         db.session.commit()
         
-        # Логируем автопроверку ДЗ
         audit_logger.log(
             action='auto_check_homework',
             entity='Lesson',
@@ -1789,7 +1659,6 @@ def lesson_homework_auto_check(lesson_id):
             'percent': percent
         })
     
-    # Обычный POST-запрос (fallback)
     if isinstance(result[0], dict) and 'error' in result[0]:
         flash(result[0]['error'], result[0].get('category', 'error'))
         return redirect(url_for('lesson_homework_view', lesson_id=lesson_id))
@@ -1814,7 +1683,6 @@ def lesson_homework_auto_check(lesson_id):
 
     db.session.commit()
     
-    # Логируем автопроверку ДЗ
     audit_logger.log(
         action='auto_check_homework',
         entity='Lesson',
@@ -1837,14 +1705,12 @@ def lesson_classwork_auto_check(lesson_id):
     lesson = Lesson.query.get_or_404(lesson_id)
     result = perform_auto_check(lesson, 'classwork')
     
-    # Если это AJAX-запрос, возвращаем JSON
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         if result[0] is None:
             return jsonify({'success': False, 'error': 'Ошибка при выполнении автопроверки'}), 400
         
         correct_count, incorrect_count, percent, total_tasks = result
         
-        # Для классной работы сохраняем результат в notes (так как нет отдельного поля)
         summary = f"Автопроверка классной работы {moscow_now().strftime('%d.%m.%Y %H:%M')}: {correct_count}/{total_tasks} верных ({percent}%)."
         if lesson.notes:
             lesson.notes = lesson.notes + "\n" + summary
@@ -1876,7 +1742,6 @@ def lesson_classwork_auto_check(lesson_id):
             'percent': percent
         })
     
-    # Обычный POST-запрос (fallback)
     if isinstance(result[0], dict) and 'error' in result[0]:
         flash(result[0]['error'], result[0].get('category', 'error'))
         return redirect(url_for('lesson_classwork_view', lesson_id=lesson_id))
@@ -1886,7 +1751,6 @@ def lesson_classwork_auto_check(lesson_id):
     
     correct_count, incorrect_count, percent, total_tasks = result
     
-    # Для классной работы сохраняем результат в notes (так как нет отдельного поля)
     summary = f"Автопроверка классной работы {moscow_now().strftime('%d.%m.%Y %H:%M')}: {correct_count}/{total_tasks} верных ({percent}%)."
     if lesson.notes:
         lesson.notes = lesson.notes + "\n" + summary
@@ -1917,14 +1781,12 @@ def lesson_exam_auto_check(lesson_id):
     lesson = Lesson.query.get_or_404(lesson_id)
     result = perform_auto_check(lesson, 'exam')
     
-    # Если это AJAX-запрос, возвращаем JSON
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         if result[0] is None:
             return jsonify({'success': False, 'error': 'Ошибка при выполнении автопроверки'}), 400
         
         correct_count, incorrect_count, percent, total_tasks = result
         
-        # Для проверочной работы сохраняем результат в notes
         summary = f"Автопроверка проверочной {moscow_now().strftime('%d.%m.%Y %H:%M')}: {correct_count}/{total_tasks} верных ({percent}%). Вес ×2."
         if lesson.notes:
             lesson.notes = lesson.notes + "\n" + summary
@@ -1957,7 +1819,6 @@ def lesson_exam_auto_check(lesson_id):
             'percent': percent
         })
     
-    # Обычный POST-запрос (fallback)
     if isinstance(result[0], dict) and 'error' in result[0]:
         flash(result[0]['error'], result[0].get('category', 'error'))
         return redirect(url_for('lesson_exam_view', lesson_id=lesson_id))
@@ -1967,7 +1828,6 @@ def lesson_exam_auto_check(lesson_id):
     
     correct_count, incorrect_count, percent, total_tasks = result
     
-    # Для проверочной работы сохраняем результат в notes
     summary = f"Автопроверка проверочной {moscow_now().strftime('%d.%m.%Y %H:%M')}: {correct_count}/{total_tasks} верных ({percent}%). Вес ×2."
     if lesson.notes:
         lesson.notes = lesson.notes + "\n" + summary
@@ -2009,7 +1869,6 @@ def lesson_homework_delete_task(lesson_id, lesson_task_id):
     db.session.delete(lesson_task)
     db.session.commit()
     
-    # Логируем удаление задачи из ДЗ
     audit_logger.log(
         action='delete_homework_task',
         entity='LessonTask',
@@ -2051,7 +1910,6 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
     lesson = Lesson.query.get_or_404(lesson_id)
     student = lesson.student
 
-    # Получаем задания по типу
     if assignment_type == 'homework':
         tasks = sorted(lesson.homework_assignments, key=lambda ht: (ht.task.task_number if ht.task and ht.task.task_number is not None else ht.lesson_task_id))
         title = "Домашнее задание"
@@ -2184,8 +2042,6 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
 
             img.replace_with(soup.new_string(f'\n\n{markdown_img}\n\n'))
 
-        # Обработка списков (ul, ol) - сохраняем структуру для правильного экспорта
-        # ВАЖНО: обрабатываем ДО обработки блочных элементов, чтобы сохранить структуру
         def extract_list_item_text(li):
             """Извлекает текст из элемента списка с сохранением переносов строк"""
             parts = []
@@ -2198,7 +2054,6 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
                     if child.name == 'br':
                         parts.append('\n')
                     elif child.name in ['p', 'div']:
-                        # Для блочных элементов внутри li сохраняем переносы строк
                         p_text = child.get_text(separator='\n', strip=True)
                         if p_text:
                             parts.append(p_text)
@@ -2242,7 +2097,6 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
                 else:
                     ol.decompose()
         
-        # Заменяем <br> на переносы строк (не на пробелы!) для сохранения форматирования
         for br in soup.find_all('br'):
             br.replace_with(soup.new_string('\n'))
 
@@ -2260,26 +2114,21 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
         for div in soup.find_all('div'):
             process_element(div)
 
-        # Удаление строк "Файлы к заданию" и подобных перед экспортом
         for text_node in soup.find_all(string=True):
             if text_node.parent and text_node.parent.name not in ['script', 'style']:
                 text = str(text_node)
-                # Удаляем строки с "Файлы к заданию"
                 cleaned_text = re.sub(r'[Фф]айлы?\s+к\s+заданию[:\s-]*[^\n]*', '', text, flags=re.IGNORECASE)
                 cleaned_text = re.sub(r'[Фф]айлы?\s+к\s+задаче[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
                 cleaned_text = re.sub(r'[Пп]рикреплен[а-яё]*\s+файл[а-яё]*[:\s-]*[^\n]*', '', cleaned_text, flags=re.IGNORECASE)
                 if cleaned_text != text:
                     text_node.replace_with(cleaned_text)
         
-        # Используем separator='\n' вместо ' ' для сохранения переносов строк
         text = soup.get_text(separator='\n', strip=False)
         text = unescape(text)
         text = re.sub(r'\r\n?', '\n', text)
-        # Очистка пробелов в строках (но сохраняем переносы строк)
         lines = text.split('\n')
         cleaned_lines = []
         for line in lines:
-            # Схлопываем множественные пробелы/табы в строке, но сохраняем саму строку
             cleaned_line = re.sub(r'[ \t]+', ' ', line)
             cleaned_lines.append(cleaned_line)
         text = '\n'.join(cleaned_lines)
@@ -2289,7 +2138,6 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
         text = re.sub(r'\$ ', '$ ', text)
         text = re.sub(r' \n', '\n', text)
         text = re.sub(r'\n ', '\n', text)
-        # Удаляем множественные пустые строки (оставляем максимум 2 подряд для разделения блоков)
         text = re.sub(r'\n{4,}', '\n\n\n', text)
         text = re.sub(r'\$\s+([^$]+)\s+\$', r'$\1$', text)
         lines = [line.rstrip() for line in text.splitlines()]
@@ -2301,7 +2149,6 @@ def lesson_export_md(lesson_id, assignment_type='homework'):
                 cleaned.append(stripped)
                 prev_blank = False
             else:
-                # Оставляем максимум одну пустую строку подряд
                 if not prev_blank:
                     cleaned.append('')
                 prev_blank = True
@@ -2533,7 +2380,6 @@ def api_global_search():
     }
     
     try:
-        # Поиск по ученикам
         search_pattern = f'%{query}%'
         students = Student.query.filter(
             or_(
@@ -2553,7 +2399,6 @@ def api_global_search():
                 'url': url_for('student_profile', student_id=student.student_id)
             })
         
-        # Поиск по урокам
         try:
             lesson_id = int(query)
             lessons = Lesson.query.filter(Lesson.lesson_id == lesson_id).limit(5).all()
@@ -2577,7 +2422,6 @@ def api_global_search():
                 'url': url_for('lesson_edit', lesson_id=lesson.lesson_id)
             })
         
-        # Поиск по заданиям
         try:
             task_id = int(query)
             tasks = Tasks.query.filter(
@@ -2870,7 +2714,6 @@ def schedule_create_lesson():
 
         db.session.commit()
         
-        # Логируем создание урока(ов) из расписания
         for created_lesson in created_lessons:
             audit_logger.log(
                 action='create_lesson_from_schedule',
@@ -2944,11 +2787,9 @@ def schedule_create_lesson():
 def kege_generator(lesson_id=None):
     lesson = None
     student = None
-    # Получаем lesson_id из query-параметров, если не передан в пути
     if lesson_id is None:
         lesson_id = request.args.get('lesson_id', type=int)
     assignment_type = request.args.get('assignment_type') or request.form.get('assignment_type') or 'homework'
-    # Поддерживаем 'exam' тип задания
     assignment_type = assignment_type if assignment_type in ['homework', 'classwork', 'exam'] else 'homework'
     if not lesson_id and assignment_type == 'classwork':
         assignment_type = 'homework'
@@ -2982,7 +2823,6 @@ def kege_generator(lesson_id=None):
         limit_count = selection_form.limit_count.data
         use_skipped = selection_form.use_skipped.data
         
-        # Логируем запрос на генерацию заданий
         audit_logger.log(
             action='request_task_generation',
             entity='Generator',
@@ -3054,30 +2894,21 @@ def kege_generator(lesson_id=None):
 
         return redirect(url_for('kege_generator', lesson_id=lesson_id, assignment_type=assignment_type) if lesson_id else url_for('kege_generator', assignment_type=assignment_type))
     
-    # Обработчик поиска задания по уникальному ID
     if search_form.search_submit.data and search_form.validate_on_submit():
         task_id_str = search_form.task_id.data.strip()
         try:
-            # Пытаемся найти задание по уникальному ID
-            # ВАЖНО: пользователь ищет по site_task_id (ID с сайта, который он видит на странице)
-            # Поэтому сначала ищем по site_task_id, а не по внутреннему task_id
             task_id_int = int(task_id_str)
             logger.info(f"Поиск задания с ID: {task_id_str} (пользователь ищет по site_task_id)")
             
-            # Ищем СНАЧАЛА по site_task_id (ID с сайта, например 2565, 16330)
-            # site_task_id хранится как Text, поэтому ищем по строке
-            # ВАЖНО: пользователь видит на сайте site_task_id, поэтому ищем именно по нему
             logger.info(f"Поиск по site_task_id='{task_id_str}' (тип: {type(task_id_str).__name__})")
             task = Tasks.query.filter(Tasks.site_task_id == task_id_str).first()
             found_by_site_task_id = bool(task)
             
-            # Для отладки: проверяем, есть ли вообще задания с похожим site_task_id
             if not task:
                 sample = Tasks.query.filter(Tasks.site_task_id.isnot(None)).limit(5).all()
                 sample_site_ids = [str(t.site_task_id) for t in sample if t.site_task_id]
                 logger.info(f"Задание с site_task_id='{task_id_str}' не найдено. Примеры site_task_id в базе: {sample_site_ids}")
             
-            # Если не найдено по site_task_id, ищем по task_id (внутренний ID базы данных)
             if not task:
                 logger.info(f"Не найдено по site_task_id={task_id_str}, ищу по task_id (внутренний ID): {task_id_int}")
                 task = Tasks.query.filter_by(task_id=task_id_int).first()
@@ -3089,19 +2920,15 @@ def kege_generator(lesson_id=None):
                 logger.info(f"Задание найдено по site_task_id: task_id={task.task_id}, site_task_id={task.site_task_id}, task_number={task.task_number}")
             
             if task:
-                # Проверяем, что найденное задание соответствует запросу
                 found_by_task_id = (task.task_id == task_id_int)
-                # found_by_site_task_id уже определен выше
                 
                 logger.info(f"Задание найдено: task_id={task.task_id}, site_task_id={task.site_task_id}, task_number={task.task_number}")
                 logger.info(f"Найдено по site_task_id: {found_by_site_task_id}, найдено по task_id: {found_by_task_id}")
                 
-                # ВАЖНО: если пользователь искал по site_task_id, но нашли по task_id - это может быть не то задание!
                 if not found_by_site_task_id and found_by_task_id:
                     logger.warning(f"ВНИМАНИЕ: Пользователь искал site_task_id={task_id_str}, но найдено задание с site_task_id={task.site_task_id} по внутреннему task_id={task_id_int}")
                     flash(f'Найдено задание по внутреннему ID {task_id_int}, но его site_task_id={task.site_task_id}, а не {task_id_str}. Возможно, вы искали другое задание.', 'warning')
                 
-                # Если задание найдено, добавляем его в результаты
                 audit_logger.log(
                     action='search_and_add_task',
                     entity='Task',
@@ -3118,9 +2945,6 @@ def kege_generator(lesson_id=None):
                         'assignment_type': assignment_type
                     }
                 )
-                # Перенаправляем на страницу результатов с найденным заданием
-                # Используем task_number найденного задания для корректного отображения
-                # ВАЖНО: передаем task.task_id (внутренний ID), а не site_task_id
                 redirect_url_params = {
                     'task_type': task.task_number,
                     'limit_count': 1,
@@ -3136,15 +2960,12 @@ def kege_generator(lesson_id=None):
             else:
                 logger.warning(f"Задание с ID {task_id_int} не найдено ни по task_id, ни по site_task_id")
                 
-                # Показываем примеры существующих ID для помощи пользователю
                 sample_tasks = Tasks.query.order_by(Tasks.task_id).limit(5).all()
                 sample_ids = [str(t.task_id) for t in sample_tasks] if sample_tasks else []
                 
-                # Показываем примеры site_task_id
                 sample_site_ids = Tasks.query.filter(Tasks.site_task_id.isnot(None)).limit(5).all()
                 sample_site_task_ids = [str(t.site_task_id) for t in sample_site_ids if t.site_task_id] if sample_site_ids else []
                 
-                # Также проверяем общее количество заданий в базе
                 total_count = Tasks.query.count()
                 logger.info(f"Всего заданий в базе: {total_count}")
                 
@@ -3191,7 +3012,6 @@ def generate_results():
         assignment_type = request.args.get('assignment_type', default='homework')
         search_task_id = request.args.get('search_task_id', type=int)  # ID конкретного задания для поиска (внутренний task_id)
         
-        # Логируем все параметры для отладки
         logger.info(f"generate_results вызван с параметрами: task_type={task_type}, limit_count={limit_count}, search_task_id={search_task_id}, lesson_id={lesson_id}")
     except Exception as e:
         logger.error(f"Ошибка при получении параметров запроса: {e}", exc_info=True)
@@ -3216,22 +3036,16 @@ def generate_results():
             return redirect(url_for('kege_generator', assignment_type=assignment_type))
 
     try:
-        # Если передан search_task_id, получаем конкретное задание и ИГНОРИРУЕМ остальные параметры
         if search_task_id:
-            # Убираем избыточное логирование для оптимизации
-            # Используем filter_by для надежного поиска по внутреннему task_id
             task = Tasks.query.filter_by(task_id=search_task_id).first()
             if task:
                 tasks = [task]  # Возвращаем ТОЛЬКО найденное задание
-                # Обновляем task_type на правильный номер типа найденного задания
                 task_type = task.task_number
             else:
                 logger.error(f"✗ Задание с search_task_id={search_task_id} не найдено в базе данных!")
                 flash(f'Задание с ID {search_task_id} не найдено.', 'warning')
-                # Если задание не найдено, не генерируем случайные - просто возвращаем пустой список
                 tasks = []
         else:
-            # Обычная генерация заданий - убираем избыточное логирование
             tasks = get_unique_tasks(task_type, limit_count, use_skipped=use_skipped, student_id=student_id)
     except Exception as e:
         logger.error(f"Error getting unique tasks: {e}", exc_info=True)
@@ -3240,7 +3054,6 @@ def generate_results():
             return redirect(url_for('kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
         return redirect(url_for('kege_generator', assignment_type=assignment_type))
     
-    # Логируем генерацию заданий
     try:
         audit_logger.log(
             action='generate_tasks',
@@ -3267,7 +3080,6 @@ def generate_results():
             flash(f'Задания типа {task_type} закончились! Попробуйте включить пропущенные задания или сбросьте историю.', 'warning')
         return redirect(url_for('kege_generator'))
 
-    # Финальная проверка: если был передан search_task_id, убеждаемся, что вернули правильное задание
     if search_task_id:
         task_ids_in_results = [t.task_id for t in tasks]
         if search_task_id not in task_ids_in_results:
@@ -3275,7 +3087,6 @@ def generate_results():
             flash(f'Ошибка: запрошено задание {search_task_id}, но получено другое задание.', 'error')
         else:
             logger.info(f"✓ Подтверждение: в результатах присутствует запрошенное задание search_task_id={search_task_id}")
-            # Показываем информацию о найденном задании
             found_task = next((t for t in tasks if t.task_id == search_task_id), None)
             if found_task:
                 logger.info(f"✓ Найденное задание: task_id={found_task.task_id}, site_task_id={found_task.site_task_id}, task_number={found_task.task_number}")
@@ -3320,7 +3131,6 @@ def task_action():
                 try:
                     db.session.commit()
                     
-                    # Логируем принятие заданий для урока
                     audit_logger.log(
                         action='accept_tasks',
                         entity='Lesson',
@@ -3351,7 +3161,6 @@ def task_action():
                 try:
                     record_usage(task_ids)
                     
-                    # Логируем принятие заданий (без урока)
                     audit_logger.log(
                         action='accept_tasks',
                         entity='Task',
@@ -3582,7 +3391,6 @@ def import_data():
         db.session.commit()
         logger.info(f'Импорт завершен: {imported_students} учеников, {imported_lessons} уроков')
         
-        # Логируем импорт данных
         audit_logger.log(
             action='import_data',
             entity='Data',
@@ -3618,7 +3426,6 @@ def backup_db():
         shutil.copy2(db_path, backup_path)
         logger.info(f'Резервная копия создана: {backup_path}')
         
-        # Логируем создание бэкапа
         audit_logger.log(
             action='backup_database',
             entity='Database',
@@ -3736,7 +3543,6 @@ def admin_audit():
         from sqlalchemy import func, and_
         from sqlalchemy.exc import OperationalError, ProgrammingError
         
-        # Проверяем, существует ли таблица AuditLog
         try:
             db.session.query(AuditLog).limit(1).all()
             audit_log_exists = True
@@ -3746,7 +3552,6 @@ def admin_audit():
             audit_log_exists = False
         
         if not audit_log_exists:
-            # Если таблицы нет, возвращаем пустую страницу
             from core.db_models import User
             users = User.query.order_by(User.id).all()
             return render_template('admin_audit.html',
@@ -3770,7 +3575,6 @@ def admin_audit():
         date_from = request.args.get('date_from', '')
         date_to = request.args.get('date_to', '')
 
-        # Логируем только действия авторизованных пользователей
         query = AuditLog.query.filter(AuditLog.user_id.isnot(None))
 
         if user_id:
@@ -3800,7 +3604,6 @@ def admin_audit():
             except:
                 pass
 
-        # Получаем статистику с обработкой ошибок
         try:
             total_events = AuditLog.query.filter(AuditLog.user_id.isnot(None)).count()
         except Exception as e:
@@ -3881,7 +3684,6 @@ def admin_audit():
         logger.error(f"Error in admin_audit route: {e}", exc_info=True)
         db.session.rollback()  # Откатываем транзакцию после ошибки
         flash(f'Ошибка при загрузке журнала аудита: {str(e)}', 'error')
-        # Fallback: возвращаем пустую страницу
         try:
             from core.db_models import User
             users = User.query.order_by(User.id).all()
@@ -3921,19 +3723,15 @@ def admin_testers():
         from sqlalchemy import func
         from sqlalchemy.exc import OperationalError, ProgrammingError
         
-        # Проверяем, существует ли таблица AuditLog
         try:
-            # Пробуем выполнить простой запрос к таблице AuditLog
             db.session.query(AuditLog).limit(1).all()
             audit_log_exists = True
         except (OperationalError, ProgrammingError) as e:
-            # Если таблицы нет, работаем без неё
             logger.warning(f"AuditLog table not found or not accessible: {e}")
             db.session.rollback()  # Откатываем транзакцию после ошибки
             audit_log_exists = False
         
         if audit_log_exists:
-            # Получаем всех авторизованных пользователей с статистикой
             try:
                 users = db.session.query(
                     User,
@@ -3949,10 +3747,8 @@ def admin_testers():
             except Exception as e:
                 logger.error(f"Error querying users with AuditLog: {e}", exc_info=True)
                 db.session.rollback()  # Откатываем транзакцию после ошибки
-                # Fallback: получаем пользователей без статистики
                 users = [(user, 0, None) for user in User.query.order_by(User.id.desc()).all()]
         else:
-            # Если таблицы AuditLog нет, получаем только пользователей
             users = [(user, 0, None) for user in User.query.order_by(User.id.desc()).all()]
         
         logger.info(f"admin_testers: found {len(users)} users, rendering template")
@@ -3963,7 +3759,6 @@ def admin_testers():
         logger.error(f"Traceback: {traceback.format_exc()}")
         db.session.rollback()  # Откатываем транзакцию после ошибки
         flash(f'Ошибка при загрузке данных: {str(e)}', 'error')
-        # Fallback: возвращаем пустой список пользователей
         try:
             from core.db_models import User
             users = [(user, 0, None) for user in User.query.order_by(User.id.desc()).all()]
@@ -3997,7 +3792,6 @@ def admin_testers_edit(user_id):
         old_username = user.username
         old_role = user.role
         
-        # Проверяем, что не меняем роль создателя
         if user.is_creator() and new_role != 'creator':
             flash('Нельзя изменить роль создателя', 'error')
             return redirect(url_for('admin_testers_edit', user_id=user_id))
@@ -4006,7 +3800,6 @@ def admin_testers_edit(user_id):
         user.role = new_role
         db.session.commit()
         
-        # Логируем изменение
         audit_logger.log(
             action='edit_user',
             entity='User',
@@ -4038,7 +3831,6 @@ def admin_testers_delete(user_id):
     
     user = User.query.get_or_404(user_id)
     
-    # Нельзя удалить создателя
     if user.is_creator():
         flash('Нельзя удалить создателя', 'error')
         return redirect(url_for('admin_testers'))
@@ -4046,7 +3838,6 @@ def admin_testers_delete(user_id):
     username = user.username
     
     try:
-        # Удаляем все логи пользователя
         try:
             deleted_logs = db.session.execute(
                 delete(AuditLog).where(AuditLog.user_id == user_id)
@@ -4056,11 +3847,9 @@ def admin_testers_delete(user_id):
             db.session.rollback()
             deleted_logs = 0
         
-        # Удаляем пользователя
         db.session.delete(user)
         db.session.commit()
         
-        # Логируем удаление
         audit_logger.log(
             action='delete_user',
             entity='User',
@@ -4103,7 +3892,6 @@ def admin_testers_clear_all():
             flash('Нет логов для очистки', 'info')
             return redirect(url_for('admin_testers'))
         
-        # Удаляем все логи авторизованных пользователей
         try:
             deleted_logs = db.session.execute(
                 delete(AuditLog).where(AuditLog.user_id.isnot(None))
@@ -4114,7 +3902,6 @@ def admin_testers_clear_all():
             db.session.rollback()
             raise
         
-        # Логируем очистку
         audit_logger.log(
             action='clear_all_user_logs',
             entity='AuditLog',
@@ -4144,7 +3931,6 @@ def admin_audit_export():
     from io import StringIO
 
     try:
-        # Проверяем, существует ли таблица AuditLog
         try:
             db.session.query(AuditLog).limit(1).all()
             audit_log_exists = True
@@ -4212,7 +3998,6 @@ def rotate_audit_logs():
     try:
         from sqlalchemy.exc import OperationalError, ProgrammingError
         
-        # Проверяем, существует ли таблица AuditLog
         try:
             db.session.query(AuditLog).limit(1).all()
             audit_log_exists = True
@@ -4256,7 +4041,6 @@ def clear_testers_data():
         from sqlalchemy.exc import OperationalError, ProgrammingError
         from sqlalchemy import delete
         
-        # Проверяем, существуют ли таблицы
         try:
             db.session.query(Tester).limit(1).all()
             testers_table_exists = True
@@ -4273,7 +4057,6 @@ def clear_testers_data():
             db.session.rollback()
             audit_log_exists = False
         
-        # Подсчитываем количество записей перед удалением
         testers_count = 0
         logs_count = 0
         
@@ -4295,7 +4078,6 @@ def clear_testers_data():
             print("Нет данных тестировщиков для очистки")
             return
         
-        # Удаляем все логи (сначала, чтобы не было проблем с foreign key)
         deleted_logs = 0
         if audit_log_exists:
             try:
@@ -4304,7 +4086,6 @@ def clear_testers_data():
                 logger.warning(f"Error deleting logs: {e}")
                 db.session.rollback()
         
-        # Удаляем всех тестировщиков
         deleted_testers = 0
         if testers_table_exists:
             try:
@@ -4315,7 +4096,6 @@ def clear_testers_data():
         
         db.session.commit()
         
-        # Проверяем, что действительно удалилось
         remaining_testers = 0
         remaining_logs = 0
         
@@ -4346,7 +4126,6 @@ def clear_testers_data():
         logger.error(f"Ошибка при очистке данных тестировщиков: {e}", exc_info=True)
         print(f"❌ Ошибка: {e}")
 
-# ==================== БИБЛИОТЕКА ШАБЛОНОВ ====================
 
 @app.route('/templates')
 @login_required
@@ -4366,7 +4145,6 @@ def templates_list():
         db.joinedload(TaskTemplate.template_tasks).joinedload(TemplateTask.task)
     ).order_by(TaskTemplate.created_at.desc()).all()
     
-    # Группируем по типам для отображения
     templates_by_type = {
         'homework': [],
         'classwork': [],
@@ -4405,7 +4183,6 @@ def template_new():
             db.session.add(template)
             db.session.flush()  # Получаем template_id
             
-            # Добавляем задания в шаблон
             task_ids = data.get('task_ids', [])
             for order, task_id in enumerate(task_ids):
                 template_task = TemplateTask(
@@ -4442,7 +4219,6 @@ def template_new():
             flash(f'Ошибка при создании шаблона: {e}', 'error')
             return redirect(url_for('templates_list'))
     
-    # GET запрос - показываем форму создания
     return render_template('template_form.html', template=None, is_new=True)
 
 @app.route('/templates/<int:template_id>')
@@ -4453,7 +4229,6 @@ def template_view(template_id):
         db.joinedload(TaskTemplate.template_tasks).joinedload(TemplateTask.task)
     ).get_or_404(template_id)
     
-    # Сортируем задания по порядку
     template_tasks = sorted(template.template_tasks, key=lambda tt: tt.order)
     
     return render_template('template_view.html',
@@ -4478,13 +4253,10 @@ def template_edit(template_id):
             template.category = data.get('category') or None
             template.updated_at = moscow_now()
             
-            # Обновляем задания
             task_ids = data.get('task_ids', [])
             
-            # Удаляем старые задания
             TemplateTask.query.filter_by(template_id=template_id).delete()
             
-            # Добавляем новые задания
             for order, task_id in enumerate(task_ids):
                 template_task = TemplateTask(
                     template_id=template_id,
@@ -4516,7 +4288,6 @@ def template_edit(template_id):
             flash(f'Ошибка при редактировании шаблона: {e}', 'error')
             return redirect(url_for('template_edit', template_id=template_id))
     
-    # GET запрос - показываем форму редактирования
     template_tasks = sorted(template.template_tasks, key=lambda tt: tt.order)
     return render_template('template_form.html',
                          template=template,
@@ -4560,16 +4331,13 @@ def template_apply(template_id):
             db.joinedload(TaskTemplate.template_tasks).joinedload(TemplateTask.task)
         ).get_or_404(template_id)
         
-        # Получаем задания из шаблона в правильном порядке
         template_tasks = sorted(template.template_tasks, key=lambda tt: tt.order)
         assignment_type = template.template_type  # homework, classwork, exam
         
-        # Применяем задания к уроку
         applied_count = 0
         skipped_count = 0
         
         for template_task in template_tasks:
-            # Проверяем, не добавлено ли уже это задание
             existing = LessonTask.query.filter_by(
                 lesson_id=lesson_id,
                 task_id=template_task.task_id
@@ -4584,8 +4352,6 @@ def template_apply(template_id):
                 db.session.add(lesson_task)
                 applied_count += 1
                 
-                # Автоматически помечаем задание как использованное для этого ученика
-                # Создаем запись в UsageHistory
                 usage = UsageHistory(
                     task_fk=template_task.task_id,
                     session_tag=f"student_{lesson.student_id}"
@@ -4594,15 +4360,12 @@ def template_apply(template_id):
             else:
                 skipped_count += 1
         
-        # Обновляем статус ДЗ урока
         if assignment_type == 'homework':
             if lesson.lesson_type != 'introductory':
                 lesson.homework_status = 'assigned_not_done'
         elif assignment_type == 'classwork':
-            # Для классной работы статус не меняем
             pass
         elif assignment_type == 'exam':
-            # Для проверочной работы статус не меняем
             pass
         
         db.session.commit()

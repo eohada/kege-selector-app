@@ -1,4 +1,4 @@
-// Система отмены действий (undo)
+
 
 class UndoManager {
     constructor() {
@@ -8,7 +8,7 @@ class UndoManager {
     }
     
     init() {
-        // Создаем контейнер для уведомлений об undo
+
         this.createUndoNotification();
     }
     
@@ -20,15 +20,13 @@ class UndoManager {
     }
     
     addAction(action) {
-        // action: {type: 'delete', entity: 'student', data: {...}, undo: async () => {...}}
+
         this.history.unshift(action);
-        
-        // Ограничиваем размер истории
+
         if (this.history.length > this.maxHistory) {
             this.history.pop();
         }
-        
-        // Показываем уведомление об undo
+
         this.showUndoNotification(action);
     }
     
@@ -63,8 +61,7 @@ class UndoManager {
         `;
         
         container.appendChild(notification);
-        
-        // Автоматически скрываем через 5 секунд
+
         setTimeout(() => {
             if (notification.parentElement) {
                 notification.style.opacity = '0';
@@ -76,10 +73,8 @@ class UndoManager {
     }
 }
 
-// Глобальный экземпляр
 const undoManager = new UndoManager();
 
-// Хелпер для создания undo-действия при удалении
 function createDeleteUndoAction(entityType, entityId, entityData, restoreCallback) {
     return {
         type: 'delete',
@@ -91,28 +86,4 @@ function createDeleteUndoAction(entityType, entityId, entityData, restoreCallbac
         }
     };
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

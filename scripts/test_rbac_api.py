@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Скрипт для тестирования API endpoints системы авторизации
 Проверяет доступность и базовую функциональность endpoints
@@ -8,12 +6,10 @@ import sys
 import os
 import io
 
-# Настраиваем кодировку для Windows
 if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-# Добавляем корневую директорию в путь
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
@@ -31,13 +27,11 @@ def test_api_endpoints_registered():
         app = create_app()
         
         with app.app_context():
-            # Получаем список всех зарегистрированных routes
             routes = []
             for rule in app.url_map.iter_rules():
                 if rule.endpoint.startswith('admin.'):
                     routes.append(rule.rule)
             
-            # Проверяем наличие нужных endpoints
             required_endpoints = [
                 '/api/users',
                 '/api/users/<int:user_id>',
@@ -54,10 +48,8 @@ def test_api_endpoints_registered():
             missing_endpoints = []
             
             for endpoint in required_endpoints:
-                # Проверяем наличие endpoint в списке routes
                 found = False
                 for route in routes:
-                    # Упрощенная проверка (без учета параметров)
                     if endpoint.split('<')[0] in route:
                         found = True
                         break
@@ -93,8 +85,6 @@ def test_models_relationships():
         app = create_app()
         
         with app.app_context():
-            # Проверяем, что модели имеют правильные связи
-            # backref создается динамически, поэтому проверяем через __mapper__
             user_mapper = User.__mapper__
             
             print("[OK] Проверка связей User -> UserProfile")
@@ -130,13 +120,10 @@ def main():
     
     results = []
     
-    # Тест 1: Регистрация endpoints
     results.append(("Регистрация API endpoints", test_api_endpoints_registered()))
     
-    # Тест 2: Связи моделей
     results.append(("Связи между моделями", test_models_relationships()))
     
-    # Итоговый отчет
     print("\n" + "=" * 60)
     print("ИТОГОВЫЙ ОТЧЕТ")
     print("=" * 60)

@@ -13,9 +13,7 @@ from app.auth.rbac_utils import check_access, get_user_scope
 
 logger = logging.getLogger(__name__)
 
-# Допустимые имена файлов аватарок: avatar_<user_id>.<ext> (без path traversal)
 AVATAR_FILENAME_RE = re.compile(r'^avatar_\d+\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
-# Баннеры профиля (креатор): cover_<user_id>.<ext>
 COVER_FILENAME_RE = re.compile(r'^cover_\d+\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
 
 def _resolve_accessible_student_ids(scope: dict) -> list[int]:
@@ -66,7 +64,6 @@ def _can_access_lesson(lesson: Lesson) -> bool:
     except Exception:
         pass
 
-    # parent/tutor/etc: via data-scope
     scope = get_user_scope(current_user)
     if scope.get('can_see_all'):
         return True
@@ -81,12 +78,10 @@ def library_file(asset_id: int):
     """Защищённая выдача файлов из библиотеки материалов."""
     asset = MaterialAsset.query.get_or_404(asset_id)
 
-    # MVP: приватная библиотека — только владелец
     if asset.owner_user_id != getattr(current_user, 'id', None):
         abort(403)
 
     if not asset.storage_path:
-        # fallback: если старый asset без storage_path — даём public URL
         abort(404)
 
     abs_path = os.path.join(current_app.root_path, asset.storage_path)
@@ -100,7 +95,6 @@ def library_file(asset_id: int):
 @login_required
 def lesson_file(lesson_id: int, stored_name: str):
     """Защищённая выдача файлов урока (материалы)."""
-    # защита от path traversal
     if not stored_name or stored_name != os.path.basename(stored_name):
         abort(400)
 

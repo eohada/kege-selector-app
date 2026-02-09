@@ -36,7 +36,7 @@
         {% include '_primary_nav.html' %}
 
         {% if public_user.role == 'creator' %}
-        {# Полноценный «красивый» профиль создателя — та же структура, что и в личном кабинете #}
+        
         <main class="profile-container theme-creator">
             <div class="profile-card">
                 {% set creator_cover = creator_cover_url|default(none) %}
@@ -117,7 +117,7 @@
             </div>
         </main>
         {% else %}
-        {# Обычный публичный профиль для остальных ролей #}
+        
         <main class="public-profile-wrap {% if public_user.role == 'admin' %}theme-admin{% elif public_user.role == 'tutor' %}theme-tutor{% elif public_user.role == 'parent' %}theme-parent{% elif public_user.role == 'student' %}theme-student{% endif %}">
             <section class="glass-panel">
                 <div class="public-hero">
@@ -196,7 +196,6 @@
         {% endif %}
     </div>
 
-    <!-- Модальное окно просмотра аватарки в полном размере -->
     <div class="modal-overlay avatar-modal-overlay" id="avatarModal" onclick="closeAvatarModal(event)" style="z-index: 10001;">
         <div class="modal modal-avatar-wrap" onclick="event.stopPropagation()">
             <img id="avatarModalImg" src="" alt="Аватар в полном размере">

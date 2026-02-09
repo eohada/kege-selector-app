@@ -233,8 +233,6 @@
             </div>
         </section>
 
-        {# Flash messages будут показаны через toast #}
-
         {% if lesson and student %}
         <section class="glass-panel generator-mode {{ mode_class }}">
             <div class="generator-mode__icon"><img src="{{ url_for('static', filename=banner_icon_path) }}" alt="Режим" class="ui-icon ui-icon--md ui-icon--only"></div>

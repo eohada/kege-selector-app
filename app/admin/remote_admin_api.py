@@ -38,12 +38,10 @@ def _task_formator_extract_source_url(content_html: str) -> str:
 
     html = str(content_html)
 
-    # 1) Явные ссылки в HTML
     m = re.search(r'href\s*=\s*["\'](https?://[^"\']+)["\']', html, flags=re.IGNORECASE)
     if m:
         return m.group(1).strip()
 
-    # 2) Иногда URL просто текстом в конце задания
     m2 = re.search(r'(https?://[^\s<>"\']+)', html, flags=re.IGNORECASE)
     if m2:
         return m2.group(1).strip().rstrip(').,;')
@@ -81,18 +79,14 @@ def _task_formator_quick_checks(task: Tasks):
         if not ans:
             checks.append({'level': 'ok', 'title': 'Ответ не задан (нормально для ручной проверки)', 'details': 'Для заданий 24–27 ответ может отсутствовать/быть неформальным.'})
 
-    # source_url полезен, но в старых данных его может не быть — не шумим WARN,
-    # если есть хотя бы site_task_id (можно верифицировать по нему).
     src_db = (task.source_url or '').strip()
     src_html = _task_formator_extract_source_url(task.content_html or '')
     if not src_db:
         if src_html:
             checks.append({'level': 'ok', 'title': 'Источник найден в условии', 'details': f'Поле source_url пустое, но в HTML найден URL: {src_html}'})
         elif (task.site_task_id or '').strip():
-            # Если есть site_task_id, но нет URL — это реально проблема для спаршенных задач
             checks.append({'level': 'warn', 'title': 'Нет source_url', 'details': 'Есть site_task_id, но source_url пустой — вероятно, потерялась ссылка при парсинге/импорте.'})
         else:
-            # Это может быть "ручное" задание (созданное в конструкторе/шаблонах), там источника может не быть
             checks.append({'level': 'ok', 'title': 'Нет источника (ручное задание?)', 'details': 'У задания нет source_url и site_task_id. Для ручных задач это нормально.'})
 
     if not checks:
@@ -100,11 +94,9 @@ def _task_formator_quick_checks(task: Tasks):
 
     return checks
 
-# Импортируем csrf безопасным способом (после всех других импортов)
 try:
     from app import csrf
 except ImportError:
-    # Если циклический импорт, используем current_app
     csrf = None
 
 
@@ -141,7 +133,6 @@ def _manage_student_tutor(student_user_id, tutor_id, replace=False):
         if not tutor_id_int:
             return
         
-        # Check if enrollment already exists
         existing = Enrollment.query.filter_by(
             student_id=student_user_id,
             tutor_id=tutor_id_int,
@@ -171,14 +162,12 @@ def _manage_family_ties(target_user_id, target_role, related_ids, replace=False)
         return
         
     try:
-        # related_ids can be a list of IDs
         if isinstance(related_ids, str):
             related_ids = [int(x.strip()) for x in related_ids.split(',') if x.strip()]
         
         new_ids = set(int(x) for x in related_ids if x)
         
         if target_role == 'student':
-            # Add or remove parents
             current_ties = FamilyTie.query.filter_by(student_id=target_user_id).all()
             current_parent_ids = {t.parent_id for t in current_ties}
             
@@ -198,7 +187,6 @@ def _manage_family_ties(target_user_id, target_role, related_ids, replace=False)
                     db.session.add(tie)
                     
         elif target_role == 'parent':
-            # Add or remove children
             current_ties = FamilyTie.query.filter_by(parent_id=target_user_id).all()
             current_child_ids = {t.student_id for t in current_ties}
             
@@ -233,26 +221,21 @@ def _remote_admin_guard() -> bool:
         logger.warning(f"Remote admin API request without X-Admin-Token header: {request.path}")
         return False
     
-    # Проверяем все возможные токены из переменных окружения
-    # Production
     expected_prod = (os.environ.get('PRODUCTION_ADMIN_TOKEN') or '').strip()
     if expected_prod and hmac.compare_digest(provided, expected_prod):
         logger.debug(f"Remote admin request authenticated with PRODUCTION_ADMIN_TOKEN")
         return True
     
-    # Sandbox
     expected_sandbox = (os.environ.get('SANDBOX_ADMIN_TOKEN') or '').strip()
     if expected_sandbox and hmac.compare_digest(provided, expected_sandbox):
         logger.debug(f"Remote admin request authenticated with SANDBOX_ADMIN_TOKEN")
         return True
     
-    # Admin
     expected_admin = (os.environ.get('ADMIN_ADMIN_TOKEN') or '').strip()
     if expected_admin and hmac.compare_digest(provided, expected_admin):
         logger.debug(f"Remote admin request authenticated with ADMIN_ADMIN_TOKEN")
         return True
     
-    # Произвольные окружения (ENV_<NAME>_TOKEN)
     for key, value in os.environ.items():
         if key.startswith('ENV_') and key.endswith('_TOKEN'):
             token = value.strip()
@@ -281,7 +264,6 @@ def remote_admin_status():
         total_users = User.query.count()
         active_users = User.query.filter_by(is_active=True).count()
         
-        # Статистика по логам
         try:
             total_logs = AuditLog.query.count()
             today_logs = AuditLog.query.filter(
@@ -291,7 +273,6 @@ def remote_admin_status():
             total_logs = 0
             today_logs = 0
         
-        # Статус тех работ
         maintenance_status = MaintenanceMode.get_status()
         
         return jsonify({
@@ -387,7 +368,6 @@ def remote_admin_api_users():
     
     try:
         if request.method == 'POST':
-            # Создание нового пользователя
             from werkzeug.security import generate_password_hash
             from core.db_models import moscow_now
             
@@ -407,7 +387,6 @@ def remote_admin_api_users():
             platform_id = (data.get('platform_id') or '').strip() or None
             numeric_id = (data.get('numeric_id') or '').strip() or None
             
-            # Связи
             tutor_id = data.get('tutor_id')
             parent_ids = data.get('parent_ids', [])
             child_ids = data.get('child_ids', [])
@@ -418,25 +397,20 @@ def remote_admin_api_users():
             if not password:
                 return jsonify({'error': 'password is required'}), 400
             
-            # Проверка уникальности
             if User.query.filter_by(username=username).first():
                 return jsonify({'error': 'username already exists'}), 409
             
-            # Если роль - студент, проверяем уникальность platform_id
             if role == 'student' and platform_id:
                 from app.models import Student
                 from app.utils.student_id_manager import is_valid_three_digit_id
                 
-                # Проверяем формат идентификатора
                 if not is_valid_three_digit_id(platform_id):
                     return jsonify({'error': 'platform_id must be a three-digit number between 100 and 999'}), 400
                 
-                # Проверяем уникальность
                 existing_student = Student.query.filter_by(platform_id=platform_id).first()
                 if existing_student:
                     return jsonify({'error': f'platform_id "{platform_id}" already exists'}), 409
             
-            # numeric_id для не-учеников (10–99)
             if role != 'student' and 'student' not in roles:
                 from app.utils.numeric_id_manager import is_valid_two_digit_id, assign_numeric_id_if_needed, get_next_available_numeric_id
                 if numeric_id:
@@ -444,9 +418,7 @@ def remote_admin_api_users():
                         return jsonify({'error': 'numeric_id должен быть числом от 10 до 99'}), 400
                     if User.query.filter_by(numeric_id=numeric_id).first():
                         return jsonify({'error': f'Идентификатор «{numeric_id}» уже занят'}), 409
-                # присвоим ниже после создания user
             
-            # Создаем пользователя
             user = User(
                 username=username,
                 email=None,
@@ -461,21 +433,17 @@ def remote_admin_api_users():
             db.session.add(user)
             db.session.flush()
             
-            # Несколько ролей
             for r in roles:
                 if r and not UserRole.query.filter_by(user_id=user.id, role=r).first():
                     db.session.add(UserRole(user_id=user.id, role=r))
             
-            # numeric_id авто, если не задан (для не-ученика)
             if role != 'student' and not user.numeric_id:
                 from app.utils.numeric_id_manager import assign_numeric_id_if_needed
                 assign_numeric_id_if_needed(user)
             
-            # Создаем профиль
             profile = UserProfile(user_id=user.id)
             db.session.add(profile)
             
-            # Если роль - студент, создаем запись Student
             if role == 'student':
                 from app.models import Student
                 from app.utils.student_id_manager import assign_platform_id_if_needed
@@ -501,15 +469,12 @@ def remote_admin_api_users():
                     elif not student_record.platform_id:
                         assign_platform_id_if_needed(student_record)
                         db.session.flush()
-                # Привязка тьютора
                 if tutor_id:
                     _manage_student_tutor(user.id, tutor_id)
                 
-                # Привязка родителей
                 if parent_ids:
                     _manage_family_ties(user.id, 'student', parent_ids)
             
-            # Если роль - родитель, привязываем детей
             if role == 'parent' and child_ids:
                 _manage_family_ties(user.id, 'parent', child_ids)
             
@@ -538,7 +503,6 @@ def remote_admin_api_users():
             }), 201
         
         else:
-            # GET - список пользователей
             role_filter = request.args.get('role')
             is_active_filter = request.args.get('is_active')
             
@@ -616,7 +580,6 @@ def remote_admin_api_users_graph():
                 'timezone': (p.timezone if p else None),
             })
 
-        # Enrollments: default show only the "best" one per tutor->student to avoid visual confusion
         enrollment_edges = []
         enr_q = Enrollment.query
         try:
@@ -969,7 +932,6 @@ def remote_admin_api_task_formator_list():
     total = base.count()
     rows = base.order_by(Tasks.last_scraped.desc(), Tasks.task_id.desc()).offset((page - 1) * per_page).limit(per_page).all()
 
-    # summary within current q/task_number (but ignoring review_status)
     summary_base = db.session.query(Tasks.task_id, TaskReview.status).outerjoin(TaskReview, TaskReview.task_id == Tasks.task_id)
     if only_parsed:
         summary_base = summary_base.filter(
@@ -1117,10 +1079,8 @@ def remote_admin_api_user(user_id):
             if not user:
                 return jsonify({'error': 'user not found'}), 404
             
-            # Получаем профиль
             profile = UserProfile.query.filter_by(user_id=user_id).first()
             
-            # Получаем Student, если роль - студент
             student = None
             if user.role == 'student':
                 from app.models import Student
@@ -1143,16 +1103,13 @@ def remote_admin_api_user(user_id):
                 } if profile else None
             }
             
-            # Добавляем platform_id для студентов
             if student:
                 user_data['student'] = {
                     'platform_id': student.platform_id,
                     'name': student.name
                 }
             
-            # Enrich with relationships
             if user.role == 'student':
-                # Get tutor
                 active_enrollment = Enrollment.query.filter_by(
                     student_id=user.id, 
                     status='active',
@@ -1161,12 +1118,10 @@ def remote_admin_api_user(user_id):
                 if active_enrollment:
                     user_data['tutor_id'] = active_enrollment.tutor_id
                 
-                # Get parents
                 ties = FamilyTie.query.filter_by(student_id=user.id).all()
                 user_data['parent_ids'] = [t.parent_id for t in ties]
                 
             elif user.role == 'parent':
-                # Get children
                 ties = FamilyTie.query.filter_by(parent_id=user.id).all()
                 user_data['child_ids'] = [t.student_id for t in ties]
             
@@ -1184,12 +1139,10 @@ def remote_admin_api_user(user_id):
             if user.is_creator():
                 return jsonify({'error': 'cannot modify creator'}), 403
             
-            # Обновляем поля пользователя
             if 'username' in data:
                 new_username = (data['username'] or '').strip()
                 if not new_username:
                     return jsonify({'error': 'username не может быть пустым'}), 400
-                # Проверка уникальности: другой пользователь не должен иметь такой логин
                 other = User.query.filter(func.lower(User.username) == new_username.lower()).filter(User.id != user_id).first()
                 if other:
                     return jsonify({'error': f'Логин «{new_username}» уже занят'}), 409
@@ -1230,19 +1183,16 @@ def remote_admin_api_user(user_id):
             elif 'student' in effective_roles and not any(r != 'student' for r in effective_roles):
                 user.numeric_id = None
             
-            # Обновляем пароль, если указан
             if 'password' in data and data['password']:
                 from werkzeug.security import generate_password_hash
                 user.password_hash = generate_password_hash(data['password'])
             
-            # Если роль - студент, обновляем или создаем запись Student
             if user.role == 'student':
                 from app.models import Student
                 from app.utils.student_id_manager import is_valid_three_digit_id, assign_platform_id_if_needed
                 
                 platform_id = (data.get('platform_id') or '').strip() or None  # comment
                 
-                # Проверяем формат идентификатора, если указан
                 if platform_id and not is_valid_three_digit_id(platform_id):
                     return jsonify({'error': 'platform_id must be a three-digit number between 100 and 999'}), 400
                 
@@ -1264,9 +1214,7 @@ def remote_admin_api_user(user_id):
                     student_record.name = user.username
                     student_record.is_active = user.is_active
                     
-                    # Обновляем platform_id, если указан
                     if platform_id:
-                        # Проверяем уникальность (кроме текущего студента)
                         existing = Student.query.filter(
                             Student.platform_id == platform_id,
                             Student.student_id != student_record.student_id
@@ -1275,20 +1223,16 @@ def remote_admin_api_user(user_id):
                             return jsonify({'error': f'platform_id "{platform_id}" already exists'}), 409
                         student_record.platform_id = platform_id
                     elif not student_record.platform_id:
-                        # Присваиваем идентификатор, если его нет
                         assign_platform_id_if_needed(student_record)
                         db.session.flush()
 
-                # Привязка тьютора (обновление)
                 if 'tutor_id' in data:
                     tutor_id = data['tutor_id']
                     _manage_student_tutor(user.id, tutor_id, replace=True)
                 
-                # Привязка родителей (обновление)
                 if 'parent_ids' in data:
                     _manage_family_ties(user.id, 'student', data['parent_ids'], replace=True)
             
-            # Если роль - родитель, обновляем детей
             if user.role == 'parent' and 'child_ids' in data:
                 _manage_family_ties(user.id, 'parent', data['child_ids'], replace=True)
             
@@ -1307,7 +1251,6 @@ def remote_admin_api_user(user_id):
             username = user.username
             user_role = user.role
             
-            # Удаляем логи
             deleted_logs = 0
             try:
                 deleted_logs = db.session.execute(
@@ -1316,7 +1259,6 @@ def remote_admin_api_user(user_id):
             except Exception as e:
                 logger.warning(f"Error deleting user logs: {e}")
             
-            # Удаляем FamilyTie (связи родитель-ученик)
             try:
                 if user_role == 'parent':
                     FamilyTie.query.filter_by(parent_id=user_id).delete()
@@ -1325,7 +1267,6 @@ def remote_admin_api_user(user_id):
             except Exception as e:
                 logger.warning(f"Error deleting family ties: {e}")
             
-            # Удаляем Enrollment (записи на курсы)
             try:
                 if user_role == 'student':
                     Enrollment.query.filter_by(student_id=user_id).delete()
@@ -1334,21 +1275,18 @@ def remote_admin_api_user(user_id):
             except Exception as e:
                 logger.warning(f"Error deleting enrollments: {e}")
             
-            # Удаляем подписки
             try:
                 from app.models import UserSubscription
                 UserSubscription.query.filter_by(user_id=user_id).delete()
             except Exception as e:
                 logger.warning(f"Error deleting subscriptions: {e}")
             
-            # Удаляем уведомления
             try:
                 from app.models import UserNotification
                 UserNotification.query.filter_by(user_id=user_id).delete()
             except Exception as e:
                 logger.warning(f"Error deleting notifications: {e}")
             
-            # Удаляем Student (если есть связь через user_id)
             try:
                 student_record = Student.query.filter_by(user_id=user_id).first()
                 if student_record:
@@ -1356,7 +1294,6 @@ def remote_admin_api_user(user_id):
             except Exception as e:
                 logger.warning(f"Error deleting student record: {e}")
             
-            # Удаляем профиль
             try:
                 profile = UserProfile.query.filter_by(user_id=user_id).first()
                 if profile:
@@ -1412,11 +1349,9 @@ def remote_admin_api_stats():
             }
         }
         
-        # Статистика по ролям
         for role in ['admin', 'tutor', 'student', 'parent', 'tester', 'creator', 'chief_tester', 'designer']:
             stats['users']['by_role'][role] = User.query.filter_by(role=role).count()
         
-        # Статистика по логам
         try:
             stats['audit_logs'] = {
                 'total': AuditLog.query.count(),
@@ -1459,7 +1394,6 @@ def remote_admin_api_audit_logs():
             if not s:
                 return None
             try:
-                # поддерживаем ISO и datetime-local; 'Z' -> +00:00
                 dt = datetime.fromisoformat(s.replace('Z', '+00:00'))
                 return dt.replace(tzinfo=None)
             except Exception:
@@ -1487,7 +1421,6 @@ def remote_admin_api_audit_logs():
             page=page, per_page=per_page, error_out=False
         )
 
-        # Справочники для UI (ограничены, чтобы не грузить БД)
         try:
             available_actions = [
                 r[0] for r in AuditLog.query.with_entities(AuditLog.action).distinct().order_by(AuditLog.action.asc()).limit(500).all()
@@ -1574,7 +1507,6 @@ def remote_admin_api_maintenance():
             enabled = bool(data.get('enabled', False))
             message = data.get('message', '').strip()
             
-            # Устанавливаем статус напрямую
             status = MaintenanceMode.get_status()
             status.is_enabled = enabled
             status.message = message
@@ -1607,7 +1539,6 @@ def remote_admin_api_testers():
     if not _remote_admin_guard():
         return jsonify({'error': 'unauthorized'}), 401
     
-    # Тестеры доступны только если модель существует (обычно Sandbox)
     try:
         from core.db_models import Tester
     except ImportError:
@@ -1675,7 +1606,6 @@ def remote_admin_api_tester(tester_id):
             return jsonify({'error': 'tester not found'}), 404
             
         if request.method == 'POST':
-            # Обновление (toggle active или edit)
             data = request.get_json() or {}
             
             if 'is_active' in data:
@@ -1721,21 +1651,17 @@ def remote_admin_api_permissions():
     
     try:
         if request.method == 'GET':
-            # Все возможные роли в системе
             ALL_ROLES = ['creator', 'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer']
             
-            # Получаем все права из БД
             try:
                 role_permissions = RolePermission.query.all()
                 
-                # Если в базе нет прав, инициализируем их из DEFAULT_ROLE_PERMISSIONS
                 if len(role_permissions) == 0:
                     logger.info("No role permissions found in database. Initializing from DEFAULT_ROLE_PERMISSIONS...")
                     try:
                         count = 0
                         for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
                             for perm_name in perms:
-                                # Проверяем, что право существует в ALL_PERMISSIONS
                                 if perm_name not in ALL_PERMISSIONS:
                                     logger.warning(f"Permission '{perm_name}' not found in ALL_PERMISSIONS, skipping")
                                     continue
@@ -1751,15 +1677,11 @@ def remote_admin_api_permissions():
                         db.session.commit()
                         logger.info(f"Initialized {count} default permission records")
                         
-                        # Перезагружаем права из БД
                         role_permissions = RolePermission.query.all()
                     except Exception as init_error:
                         db.session.rollback()
                         logger.error(f"Error initializing default permissions: {init_error}", exc_info=True)
-                        # Продолжаем работу, даже если инициализация не удалась
                 else:
-                    # Таблица не пустая: докидываем новые дефолтные права, которые могли появиться позже.
-                    # Важно для релизов: новые permissions должны появляться в удаленной админке сразу включенными (если они дефолтные).
                     try:
                         added = 0
                         for role, perms in DEFAULT_ROLE_PERMISSIONS.items():
@@ -1780,15 +1702,12 @@ def remote_admin_api_permissions():
                 
                 permissions_map = {}
                 
-                # Инициализируем все роли пустыми списками
                 for role in ALL_ROLES:
                     permissions_map[role] = []
                 
-                # Заполняем правами из БД
                 for rp in role_permissions:
                     if rp.role not in permissions_map:
                         permissions_map[rp.role] = []
-                    # Используем только включенные права (is_enabled=True)
                     if rp.is_enabled:
                         permissions_map[rp.role].append(rp.permission_name)
                 
@@ -1800,7 +1719,6 @@ def remote_admin_api_permissions():
                 logger.error(f"Database error in permissions GET: {db_error}", exc_info=True)
                 raise
             
-            # Проверяем, что ALL_PERMISSIONS и PERMISSION_CATEGORIES доступны
             try:
                 all_perms = dict(ALL_PERMISSIONS) if ALL_PERMISSIONS else {}
                 perm_cats = dict(PERMISSION_CATEGORIES) if PERMISSION_CATEGORIES else {}
@@ -1824,15 +1742,10 @@ def remote_admin_api_permissions():
             if not role:
                 return jsonify({'error': 'role is required'}), 400
                 
-            # Полная матрица прав для роли:
-            # - удалённая админка передаёт список ВКЛЮЧЕННЫХ прав
-            # - но в БД мы храним и выключенные тоже, чтобы убрать "скрытые дефолты" (fallback)
             enabled = set(p for p in (permissions or []) if p in ALL_PERMISSIONS)
 
-            # Удаляем старые права для роли
             db.session.execute(delete(RolePermission).where(RolePermission.role == role))
 
-            # Добавляем все права (вкл/выкл)
             for perm_key in ALL_PERMISSIONS.keys():
                 db.session.add(RolePermission(role=role, permission_name=perm_key, is_enabled=(perm_key in enabled)))
             
@@ -2227,7 +2140,6 @@ def remote_admin_api_create_pack():
         data = request.get_json() or {}
         logger.info(f"Creating pack via remote admin API: {data}")
         
-        # === Данные ученика ===
         student_name = (data.get('student_name') or '').strip()
         student_telegram = (data.get('student_telegram') or '').strip()
         student_phone = (data.get('student_phone') or '').strip()
@@ -2240,10 +2152,8 @@ def remote_admin_api_create_pack():
         if not student_name:
             return jsonify({'error': 'Имя ученика обязательно'}), 400
         
-        # Генерируем username для ученика
         student_username = _generate_username(student_name, 'student')
         
-        # === Данные родителя ===
         create_parent = data.get('create_parent', False)
         parent_name = (data.get('parent_name') or '').strip()
         parent_telegram = (data.get('parent_telegram') or '').strip()
@@ -2255,12 +2165,10 @@ def remote_admin_api_create_pack():
         
         parent_username = _generate_username(parent_name, 'parent') if create_parent else None
         
-        # === Данные тарифа ===
         assign_tariff = data.get('assign_tariff', False)
         tariff_id = data.get('tariff_id')
         lessons_count = data.get('lessons_count')
         
-        # ========== СОЗДАНИЕ УЧЕНИКА ==========
         student_user = User(
             username=student_username,
             email=None,
@@ -2273,7 +2181,6 @@ def remote_admin_api_create_pack():
         db.session.add(student_user)
         db.session.flush()
         
-        # Профиль ученика
         student_profile = UserProfile(
             user_id=student_user.id,
             first_name=student_name.split()[0] if student_name else None,
@@ -2282,7 +2189,6 @@ def remote_admin_api_create_pack():
         )
         db.session.add(student_profile)
         
-        # Запись Student (связываем с User через user_id)
         student_record = Student(
             user_id=student_user.id,  # Прямая связь с User
             name=student_name,
@@ -2295,11 +2201,9 @@ def remote_admin_api_create_pack():
         db.session.add(student_record)
         db.session.flush()
         
-        # Автоматический platform_id
         assign_platform_id_if_needed(student_record)
         db.session.flush()
         
-        # Привязка тьютора через Enrollment
         if tutor_id:
             enrollment = Enrollment(
                 student_id=student_user.id,
@@ -2319,7 +2223,6 @@ def remote_admin_api_create_pack():
             }
         }
         
-        # ========== СОЗДАНИЕ РОДИТЕЛЯ ==========
         if create_parent and parent_name:
             parent_user = User(
                 username=parent_username,
@@ -2333,7 +2236,6 @@ def remote_admin_api_create_pack():
             db.session.add(parent_user)
             db.session.flush()
             
-            # Профиль родителя
             parent_profile = UserProfile(
                 user_id=parent_user.id,
                 first_name=parent_name.split()[0] if parent_name else None,
@@ -2342,7 +2244,6 @@ def remote_admin_api_create_pack():
             )
             db.session.add(parent_profile)
             
-            # Связь родитель-ученик
             family_tie = FamilyTie(
                 parent_id=parent_user.id,
                 student_id=student_user.id,
@@ -2357,7 +2258,6 @@ def remote_admin_api_create_pack():
                 'password': parent_password,
             }
         
-        # ========== НАЗНАЧЕНИЕ ТАРИФА ==========
         if assign_tariff and (tariff_id or lessons_count):
             plan = None
             if tariff_id:
@@ -2410,7 +2310,6 @@ def _generate_username(name: str, role: str) -> str:
     import re
     import secrets
     
-    # Транслитерация
     translit_map = {
         'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
         'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
@@ -2429,18 +2328,15 @@ def _generate_username(name: str, role: str) -> str:
         elif char == ' ':
             result += '_'
     
-    # Убираем лишние подчёркивания
     result = re.sub(r'_+', '_', result).strip('_')
     
     if not result:
         result = role
     
-    # Добавляем суффикс для уникальности
     base_username = result[:20]
     suffix = secrets.token_hex(2)
     username = f"{base_username}_{suffix}"
     
-    # Проверяем уникальность
     while User.query.filter_by(username=username).first():
         suffix = secrets.token_hex(2)
         username = f"{base_username}_{suffix}"

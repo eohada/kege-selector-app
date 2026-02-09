@@ -171,8 +171,6 @@
         {% set active_page = 'dashboard' %}
         {% include '_primary_nav.html' %}
 
-        {# Flash messages будут показаны через toast #}
-
         <section class="glass-panel student-context">
             <h3><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Ученик" class="ui-icon ui-icon--sm"> Ученик: {{ student.name }}</h3>
             <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Вернуться к профилю</a>

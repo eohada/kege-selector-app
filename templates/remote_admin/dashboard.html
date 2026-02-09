@@ -157,7 +157,6 @@
                 Управление платформой через удаленные API окружений
             </p>
 
-            {# Выбор окружения #}
             <div style="margin-bottom: 2rem;">
                 <h2 style="margin-bottom: 1rem;">Окружения</h2>
                 <div class="environment-selector">
@@ -209,7 +208,6 @@
                 </div>
             </div>
 
-            {# Статистика текущего окружения #}
             {% if env_statuses.get(current_environment, {}).get('available') %}
             <div class="stats-grid" id="stats-container">
                 <div class="stat-card">
@@ -231,7 +229,6 @@
             </div>
             {% endif %}
 
-            {# Навигация по функциям #}
             <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--stroke-2);">
                 <h2 style="margin-bottom: 1.5rem;">Функции управления</h2>
                 <div class="functions-grid">
