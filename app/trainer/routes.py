@@ -157,7 +157,7 @@ def _audit_log_token_user(
         return
 
 
-@trainer_bp.route('/trainer')
+@trainer_bp.route('/trainer', strict_slashes=False)
 @login_required
 def trainer_embed():
     if not has_permission(current_user, 'trainer.use'):
