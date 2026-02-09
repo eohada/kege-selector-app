@@ -23,13 +23,13 @@
         </div>
       {% else %}
         <div style="color: var(--text-muted);">
-          Email: <strong>{{ invite.email }}</strong> · роль: <strong>{{ invite.role }}</strong>
+          Логин: <strong>{{ invite.email }}</strong> · роль: <strong>{{ invite.role }}</strong>
         </div>
         <form method="POST" action="{{ url_for('onboarding.invite_accept', token=token) }}" data-no-ajax="1" style="margin-top: 1rem;">
           {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
           <div class="neo-field">
             <label class="neo-label">Логин (опционально)</label>
-            <input class="neo-input" name="username" placeholder="По умолчанию будет взят из email">
+            <input class="neo-input" name="username" placeholder="По умолчанию: {{ invite.email }}">
           </div>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;" class="profile-grid-responsive">
             <div class="neo-field">

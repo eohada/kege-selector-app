@@ -57,15 +57,10 @@ def _resolve_accessible_student_ids(scope: dict) -> list[int]:
 
     student_ids: list[int] = []
     try:
-        student_users = User.query.filter(User.id.in_(user_ids)).all()
-        emails = [u.email for u in student_users if u and u.email]
-        if emails:
-            students_by_email = Student.query.filter(Student.email.in_(emails)).all()
-            student_ids.extend([s.student_id for s in students_by_email if s])
+        by_user_id = Student.query.filter(Student.user_id.in_(user_ids)).all()
+        student_ids.extend([s.student_id for s in by_user_id if s])
     except Exception as e:
-        logger.warning(f"Groups: failed map user_ids->student_ids via email: {e}")
-
-    # fallback: иногда Student.student_id == User.id
+        logger.warning(f"Groups: failed map user_ids->student_ids: {e}")
     try:
         students_by_id = Student.query.filter(Student.student_id.in_(user_ids)).all()
         student_ids.extend([s.student_id for s in students_by_id if s])
@@ -325,10 +320,10 @@ def group_export_csv(group_id: int):
 
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(['group_id', 'group_title', 'student_id', 'student_name', 'student_email'])
+    w.writerow(['group_id', 'group_title', 'student_id', 'student_name', 'platform_id'])
     for m in members:
         s = m.student
-        w.writerow([group.group_id, group.title, m.student_id, (s.name if s else ''), (s.email if s else '')])
+        w.writerow([group.group_id, group.title, m.student_id, (s.name if s else ''), (s.platform_id if s else '')])
 
     csv_bytes = buf.getvalue().encode('utf-8-sig')
     filename = f'group-{group.group_id}.csv'

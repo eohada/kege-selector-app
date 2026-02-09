@@ -41,12 +41,6 @@
                     </div>
 
                     <div class="neo-field">
-                        <label class="neo-label" for="email">Email (опционально)</label>
-                        <input type="email" id="email" name="email" class="neo-input" 
-                               value="{{ user.email if user else '' }}" placeholder="Можно оставить пустым">
-                    </div>
-
-                    <div class="neo-field">
                         <label class="neo-label" for="telegram_link">Telegram</label>
                         <input type="text" id="telegram_link" name="telegram_link" class="neo-input" 
                                value="{{ user.telegram_link if user else '' }}" placeholder="@username или https://t.me/username">
@@ -99,7 +93,7 @@
                                     <option value="">-- Выберите тьютора --</option>
                                     {% for tutor in tutors %}
                                     <option value="{{ tutor.id }}" {% if user and user.tutor_id == tutor.id %}selected{% endif %}>
-                                        {{ tutor.username }} ({{ tutor.email }})
+                                        {{ tutor.username }}
                                     </option>
                                     {% endfor %}
                                 </select>
@@ -111,7 +105,7 @@
                                 <select id="parent_ids" name="parent_ids" class="neo-input" multiple style="height: 120px;">
                                     {% for parent in parents %}
                                     <option value="{{ parent.id }}" {% if user and user.parent_ids and parent.id in user.parent_ids %}selected{% endif %}>
-                                        {{ parent.username }} ({{ parent.email }})
+                                        {{ parent.username }}
                                     </option>
                                     {% endfor %}
                                 </select>
@@ -125,7 +119,7 @@
                                 <select id="child_ids" name="child_ids" class="neo-input" multiple style="height: 120px;">
                                     {% for student in students %}
                                     <option value="{{ student.id }}" {% if user and user.child_ids and student.id in user.child_ids %}selected{% endif %}>
-                                        {{ student.username }} ({{ student.email }})
+                                        {{ student.username }}
                                     </option>
                                     {% endfor %}
                                 </select>

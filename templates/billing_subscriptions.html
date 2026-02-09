@@ -31,7 +31,7 @@
         <section class="glass-panel">
           <div class="panel-head"><div><p class="eyebrow">создать</p><h2>Новая подписка</h2></div></div>
           <form method="GET" action="{{ url_for('billing.billing_subscriptions') }}" style="margin-top: .75rem; display:flex; gap:.6rem; flex-wrap: wrap; align-items: center;">
-            <input class="neo-input" name="q" value="{{ q or '' }}" placeholder="Поиск пользователя (логин/email)…" style="min-width: 280px;">
+            <input class="neo-input" name="q" value="{{ q or '' }}" placeholder="Поиск по логину…" style="min-width: 280px;">
             <button class="neo-button outline sm" type="submit">Найти</button>
             <a class="neo-button ghost sm" href="{{ url_for('billing.billing_subscriptions', plan_id=preselect_plan_id) }}" style="text-decoration:none;">Сброс</a>
           </form>

@@ -132,14 +132,12 @@ def setup_first_user():
                 'fields': {
                     'username': 'string (required)',
                     'password': 'string (required)',
-                    'role': 'string (optional, default: creator)',
-                    'email': 'string (optional)'
+                    'role': 'string (optional, default: creator)'
                 },
                 'example': {
                     'username': 'admin',
                     'password': 'your_secure_password',
-                    'role': 'creator',
-                    'email': 'admin@example.com'
+                    'role': 'creator'
                 }
             }), 200
         
@@ -149,8 +147,6 @@ def setup_first_user():
         username = data.get('username', '').strip()
         password = data.get('password', '')
         role = data.get('role', 'creator').strip()
-        email = data.get('email', '').strip() or None
-        
         if not username:
             return jsonify({'success': False, 'error': 'Username is required'}), 400
         
@@ -175,7 +171,7 @@ def setup_first_user():
         try:
             user = User(
                 username=username,
-                email=email,
+                email=None,
                 password_hash=generate_password_hash(password),
                 role=role,
                 is_active=True,
@@ -266,28 +262,11 @@ def dashboard():
     # Для админа и старых ролей - видит всех
     scope = get_user_scope(current_user)
     if not scope['can_see_all'] and scope['student_ids']:
-        # Enrollment и FamilyTie содержат user_id (User.id), а не student_id (Student.student_id)
-        # Нужно найти Student записи по email пользователей
-        student_users = User.query.filter(User.id.in_(scope['student_ids'])).all()
-        student_emails = [u.email for u in student_users if u.email]
-        
-        # Логируем для отладки
-        logger.debug(f"Dashboard: scope student_ids={scope['student_ids']}, found {len(student_users)} users, emails={student_emails}")
-        
-        if student_emails:
-            # Находим Student записи по email
-            accessible_students = Student.query.filter(Student.email.in_(student_emails)).all()
-            logger.debug(f"Dashboard: found {len(accessible_students)} Student records for emails {student_emails}")
-            if accessible_students:
-                accessible_student_ids = [s.student_id for s in accessible_students]
-                query = query.filter(Student.student_id.in_(accessible_student_ids))
-            else:
-                # Если Student записи не найдены, логируем и показываем пустой список
-                logger.warning(f"Dashboard: No Student records found for emails {student_emails}, user_ids={scope['student_ids']}")
-                query = query.filter(False)
+        accessible_students = Student.query.filter(Student.user_id.in_(scope['student_ids'])).all()
+        if accessible_students:
+            accessible_student_ids = [s.student_id for s in accessible_students]
+            query = query.filter(Student.student_id.in_(accessible_student_ids))
         else:
-            # Если у пользователей нет email, логируем и показываем пустой список
-            logger.warning(f"Dashboard: Users {scope['student_ids']} have no email addresses")
             query = query.filter(False)
     elif not scope['can_see_all'] and not scope['student_ids']:
         # Нет доступа ни к каким ученикам
@@ -345,12 +324,7 @@ def dashboard():
         # Применяем data scoping к подсчету студентов
         count_query = Student.query.filter_by(is_active=base_is_active)
         if not scope['can_see_all'] and scope['student_ids']:
-            student_users = User.query.filter(User.id.in_(scope['student_ids'])).all()
-            student_emails = [u.email for u in student_users if u.email]
-            if student_emails:
-                count_query = count_query.filter(Student.email.in_(student_emails))
-            else:
-                count_query = count_query.filter(False)
+            count_query = count_query.filter(Student.user_id.in_(scope['student_ids']))
         elif not scope['can_see_all']:
             count_query = count_query.filter(False)
         
@@ -368,17 +342,7 @@ def dashboard():
             ).filter_by(is_active=base_is_active)
             
             if not scope['can_see_all'] and scope['student_ids']:
-                student_users = User.query.filter(User.id.in_(scope['student_ids'])).all()
-                student_emails = [u.email for u in student_users if u.email]
-                if student_emails:
-                    accessible_students = Student.query.filter(Student.email.in_(student_emails)).all()
-                    if accessible_students:
-                        accessible_student_ids = [s.student_id for s in accessible_students]
-                        category_stats_query = category_stats_query.filter(Student.student_id.in_(accessible_student_ids))
-                    else:
-                        category_stats_query = category_stats_query.filter(False)
-                else:
-                    category_stats_query = category_stats_query.filter(False)
+                category_stats_query = category_stats_query.filter(Student.user_id.in_(scope['student_ids']))
             elif not scope['can_see_all']:
                 category_stats_query = category_stats_query.filter(False)
             
@@ -405,16 +369,10 @@ def dashboard():
             func.count(Lesson.lesson_id).label('count')
         )
         
-        # Фильтруем уроки по доступным ученикам
         if not scope['can_see_all'] and scope['student_ids']:
-            student_users = User.query.filter(User.id.in_(scope['student_ids'])).all()
-            student_emails = [u.email for u in student_users if u.email]
-            if student_emails:
-                accessible_students = Student.query.filter(Student.email.in_(student_emails)).all()
-                accessible_student_ids = [s.student_id for s in accessible_students]
-                lesson_query = lesson_query.filter(Lesson.student_id.in_(accessible_student_ids))
-            else:
-                accessible_student_ids = []
+            accessible_students = Student.query.filter(Student.user_id.in_(scope['student_ids'])).all()
+            accessible_student_ids = [s.student_id for s in accessible_students]
+            lesson_query = lesson_query.filter(Lesson.student_id.in_(accessible_student_ids))
         elif not scope['can_see_all']:
             accessible_student_ids = []
         else:
@@ -522,11 +480,8 @@ def dashboard():
             try:
                 user_ids = scope.get('student_ids') or []
                 if user_ids:
-                    student_users = User.query.filter(User.id.in_(user_ids)).all()
-                    emails = [u.email for u in student_users if u and u.email]
-                    if emails:
-                        st = Student.query.filter(Student.email.in_(emails)).all()
-                        accessible_ids = [s.student_id for s in st if s]
+                    st = Student.query.filter(Student.user_id.in_(user_ids)).all()
+                    accessible_ids = [s.student_id for s in st if s]
             except Exception:
                 accessible_ids = []
 
@@ -601,21 +556,11 @@ def student_dashboard():
     if not current_user.is_student():
         return redirect(url_for('main.dashboard'))
 
-    # Пытаемся найти связанного Student: user_id (Create Pack), затем email, затем legacy student_id==user.id
-    student = None
-    try:
-        student = Student.query.filter_by(user_id=current_user.id).first()
-        if not student and current_user.email:
-            student = Student.query.filter_by(email=current_user.email).first()
-        if not student:
-            candidate = Student.query.get(current_user.id)
-            if candidate:
-                c_email = (candidate.email or '').strip().lower() if candidate.email else ''
-                u_email = (current_user.email or '').strip().lower()
-                if (not c_email) and (not u_email or u_email == c_email):
-                    student = candidate
-    except Exception:
-        student = None
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        candidate = Student.query.get(current_user.id)
+        if candidate and candidate.user_id is None and candidate.student_id == current_user.id:
+            student = candidate
 
     if not student:
         flash('Профиль ученика не найден.', 'warning')

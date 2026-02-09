@@ -40,7 +40,7 @@
                 <form method="POST" action="{{ url_for('remote_admin.bot_admins_add') }}" class="filters-grid" style="align-items: end;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="neo-field">
-                    <label class="neo-label" for="admin-identifier">User ID / email / @tg / chat_id</label>
+                    <label class="neo-label" for="admin-identifier">User ID / логин / @tg / chat_id</label>
                     <input id="admin-identifier" name="identifier" class="neo-input" placeholder="например: @ivanov или 123456789">
                     </div>
                     <div class="filters-actions">
@@ -136,7 +136,7 @@
                 <form method="POST" action="{{ url_for('remote_admin.bot_unlink') }}" class="filters-grid" style="align-items: end;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="neo-field">
-                        <label class="neo-label" for="unlink-identifier">User ID / email / @tg / chat_id</label>
+                        <label class="neo-label" for="unlink-identifier">User ID / логин / @tg / chat_id</label>
                         <input id="unlink-identifier" name="identifier" class="neo-input" placeholder="например: @ivanov или 123456789">
                     </div>
                     <div class="filters-actions">

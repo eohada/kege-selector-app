@@ -19,7 +19,7 @@
     <section class="glass-panel" style="margin-bottom: 1.25rem;">
       <p class="hero-eyebrow">онбординг</p>
       <h1 class="hero-title" style="margin-bottom:.25rem;">Приглашения</h1>
-      <div style="color: var(--text-muted);">Создай ссылку-приглашение и передай пользователю. Без email/Telegram — просто копипаст ссылки.</div>
+      <div style="color: var(--text-muted);">Создай ссылку-приглашение и передай пользователю. Укажи логин для входа после регистрации.</div>
     </section>
 
     {% if has_permission and has_permission(current_user, 'onboarding.invite') %}
@@ -34,8 +34,8 @@
         {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
         <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap: 1rem;" class="profile-grid-responsive">
           <div class="neo-field">
-            <label class="neo-label">Email *</label>
-            <input class="neo-input" name="email" placeholder="user@example.com" required>
+            <label class="neo-label">Логин (для входа после регистрации) *</label>
+            <input class="neo-input" name="email" placeholder="логин пользователя" required>
           </div>
           <div class="neo-field">
             <label class="neo-label">Роль</label>
@@ -75,7 +75,7 @@
             <div style="border:1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1rem; background: rgba(255,255,255,0.02);">
               <div style="display:flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
                 <div>
-                  <div style="font-weight: 900;">{{ i.email }} · <span style="color: var(--accent-1);">{{ i.role }}</span></div>
+                  <div style="font-weight: 900;">Логин: {{ i.email }} · <span style="color: var(--accent-1);">{{ i.role }}</span></div>
                   <div style="color: var(--text-muted); font-size: .9rem; margin-top: .25rem;">
                     Создано: {{ i.created_at.strftime('%d.%m.%Y %H:%M') if i.created_at else '—' }}
                     {% if i.expires_at %} · истекает: {{ i.expires_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}

@@ -134,7 +134,6 @@ def users_list():
             def _hay(u):
                 return ' '.join([
                     str(u.get('username') or ''),
-                    str(u.get('email') or ''),
                     str(u.get('role') or ''),
                 ]).lower()
             users = [u for u in users if q in _hay(u)]
@@ -205,7 +204,6 @@ def user_new():
                 roles_list = [request.form.get('role', 'student').strip() or 'student']
             data = {
                 'username': request.form.get('username', '').strip(),
-                'email': request.form.get('email', '').strip() or None,
                 'telegram_link': request.form.get('telegram_link', '').strip() or None,
                 'password': request.form.get('password', '').strip(),
                 'roles': roles_list,
@@ -284,7 +282,6 @@ def user_edit(user_id):
                 roles_list = [request.form.get('role', 'student').strip() or 'student']
             data = {
                 'username': request.form.get('username', '').strip(),
-                'email': request.form.get('email', '').strip() or None,
                 'telegram_link': request.form.get('telegram_link', '').strip() or None,
                 'roles': roles_list,
                 'role': roles_list[0] if roles_list else 'student',
@@ -510,7 +507,7 @@ def bot_admins_add():
 
     identifier = (request.form.get('identifier') or '').strip()
     if not identifier:
-        flash('Укажи user_id, username или email.', 'warning')
+        flash('Укажи user_id или username.', 'warning')
         return redirect(url_for('remote_admin.bot_panel'))
 
     resp = make_remote_request('POST', '/internal/remote-admin/api/bot/admins/add', payload={'identifier': identifier})
@@ -663,7 +660,7 @@ def bot_unlink():
 
     identifier = (request.form.get('identifier') or '').strip()
     if not identifier:
-        flash('Укажи user_id / email / @tg / chat_id.', 'warning')
+        flash('Укажи user_id / @tg / chat_id.', 'warning')
         return redirect(url_for('remote_admin.bot_panel'))
 
     resp = make_remote_request('POST', '/internal/remote-admin/api/bot/unlink', payload={'identifier': identifier})

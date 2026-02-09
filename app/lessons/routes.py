@@ -94,8 +94,7 @@ def _upsert_gradebook_from_lesson_review(lesson: Lesson, assignment_type: str, p
 def _resolve_accessible_student_ids(scope: dict) -> list[int]:
     """
     Приводим data-scope к Student.student_id (потому что Lesson.student_id указывает на Students.student_id).
-    В Enrollment/FamilyTie у нас хранятся User.id ученика, поэтому маппим через email,
-    а также держим fallback для окружений, где Student.student_id совпадает с User.id.
+    В Enrollment/FamilyTie хранятся User.id ученика; маппим по user_id и fallback student_id==user.id.
     """
     if not scope or scope.get('can_see_all'):
         return []
@@ -107,15 +106,10 @@ def _resolve_accessible_student_ids(scope: dict) -> list[int]:
     student_ids: list[int] = []
 
     try:
-        student_users = User.query.filter(User.id.in_(user_ids)).all()
-        emails = [u.email for u in student_users if u and u.email]
-        if emails:
-            students_by_email = Student.query.filter(Student.email.in_(emails)).all()
-            student_ids.extend([s.student_id for s in students_by_email if s])
+        by_user_id = Student.query.filter(Student.user_id.in_(user_ids)).all()
+        student_ids.extend([s.student_id for s in by_user_id if s])
     except Exception as e:
-        logger.warning(f"Failed to map scope user_ids->student_ids via email: {e}")
-
-    # Fallback: если в окружении Student.student_id == User.id
+        logger.warning(f"Failed to map scope user_ids->student_ids via user_id: {e}")
     try:
         students_by_id = Student.query.filter(Student.student_id.in_(user_ids)).all()
         student_ids.extend([s.student_id for s in students_by_id if s])
@@ -1243,17 +1237,10 @@ def _get_current_lesson_student(lesson):  # comment
     """Проверяем, что текущий пользователь - ученик этого урока"""  # comment
     if not current_user.is_student():  # comment
         return None  # comment
-    # 1) Новый способ: прямая связь по user_id
     student = Student.query.filter_by(user_id=current_user.id).first()
-    # 2) Fallback: по email (старые данные)
-    if not student:
-        ident = (current_user.email or '').strip()
-        if ident:
-            student = Student.query.filter(db.func.lower(Student.email) == ident.lower()).first()
-    # 3) Fallback: Student.student_id == User.id, если email отсутствует
     if not student:
         try:
-            student = Student.query.filter(Student.student_id == int(current_user.id), Student.email.is_(None)).first()
+            student = Student.query.filter(Student.student_id == int(current_user.id)).first()
         except Exception:
             student = None
     if not student:
@@ -2749,7 +2736,7 @@ def lesson_whiteboard_delete(lesson_id):
 @lessons_bp.route('/lesson/<int:lesson_id>/whiteboard/invite', methods=['POST'])
 @login_required
 def lesson_whiteboard_invite(lesson_id):
-    """Пригласить ученика на доску по email."""
+    """Пригласить ученика на доску (identifier для Miro)."""
     if current_user.is_student() or current_user.is_parent():
         return jsonify({'success': False, 'error': 'Доступ запрещён'}), 403
     
@@ -2762,16 +2749,12 @@ def lesson_whiteboard_invite(lesson_id):
         return jsonify({'success': False, 'error': 'Доска не найдена'}), 404
     
     data = request.get_json() or {}
-    email = data.get('email')
-    
+    email = data.get('email') or data.get('identifier')
+    if not email and lesson.student and getattr(lesson.student, 'user', None) and lesson.student.user:
+        email = (lesson.student.user.username or '') + '@platform'
     if not email:
-        # Попробуем взять email ученика
-        student = lesson.student
-        if student and student.user and student.user.email:
-            email = student.user.email
-        else:
-            return jsonify({'success': False, 'error': 'Email не указан'}), 400
-    
+        return jsonify({'success': False, 'error': 'Укажите идентификатор для приглашения (identifier)'}), 400
+
     # Для приглашения нужен OAuth-токен пользователя
     from datetime import datetime, timedelta
     miro_token = MiroUserToken.query.filter_by(user_id=current_user.id).first()
@@ -2807,7 +2790,7 @@ def lesson_whiteboard_invite(lesson_id):
         
         return jsonify({
             'success': True,
-            'message': f'Приглашение отправлено на {email}',
+            'message': f'Приглашение отправлено',
             'role': role
         })
         

@@ -48,13 +48,15 @@ def invites_create():
     if not has_permission(current_user, 'onboarding.invite'):
         abort(403)
 
-    email = (request.form.get('email') or '').strip().lower()
+    login_identifier = (request.form.get('email') or request.form.get('login') or '').strip()
+    if not login_identifier:
+        login_identifier = (request.form.get('username') or '').strip()
     role = (request.form.get('role') or 'student').strip().lower()
     note = (request.form.get('note') or '').strip() or None
     student_id = request.form.get('student_id', type=int)
 
-    if not email or '@' not in email:
-        flash('Укажите корректный email.', 'danger')
+    if not login_identifier:
+        flash('Укажите логин (имя для входа после регистрации).', 'danger')
         return redirect(url_for('onboarding.invites_list'))
 
     valid_roles = {'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer', 'creator'}
@@ -66,7 +68,7 @@ def invites_create():
 
     invite = InviteLink(
         token_hash=token_hash,
-        email=email,
+        email=login_identifier,
         role=role,
         note=note,
         student_id=student_id or None,
@@ -90,7 +92,7 @@ def invites_create():
             entity_id=invite.invite_id,
             status='success',
             metadata={
-                'email': invite.email,
+                'login': invite.email,
                 'role': invite.role,
                 'student_id': invite.student_id,
                 'expires_at': invite.expires_at.isoformat() if invite.expires_at else None,
@@ -137,16 +139,14 @@ def invite_accept(token: str):
         flash('Пароли не совпадают.', 'danger')
         return render_template('invite_accept.html', invite=invite, token=token), 400
 
-    # Username по умолчанию
     if not username:
-        username = invite.email.split('@')[0][:40]
+        username = (invite.email or '')[:80].strip()
     username = username.strip()
     if not username:
         username = f"user{secrets.randbelow(100000)}"
 
-    # Уникальность username/email
-    if User.query.filter_by(email=invite.email).first():
-        flash('Пользователь с этим email уже существует. Войдите.', 'warning')
+    if User.query.filter_by(username=invite.email).first():
+        flash('Пользователь с этим логином уже существует. Войдите.', 'warning')
         return redirect(url_for('auth.login'))
 
     base = username
@@ -159,7 +159,7 @@ def invite_accept(token: str):
 
     user = User(
         username=username,
-        email=invite.email,
+        email=None,
         password_hash=generate_password_hash(password),
         role=invite.role,
         is_active=True,
@@ -175,12 +175,11 @@ def invite_accept(token: str):
     except Exception:
         pass
 
-    # Если приглашение связано со Student — проставим email, если пусто
     try:
         if invite.student_id and invite.role == 'student':
             st = Student.query.get(invite.student_id)
-            if st and not (st.email or '').strip():
-                st.email = invite.email
+            if st:
+                st.user_id = user.id
     except Exception as e:
         logger.warning(f"Failed to link invite to Student: {e}")
 

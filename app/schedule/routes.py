@@ -19,7 +19,7 @@ def _resolve_accessible_student_ids_for_current_user() -> list[int] | None:
     """
     Lessons.student_id хранит Student.student_id.
     get_user_scope() возвращает список User.id учеников.
-    Здесь маппим User.id -> Student.student_id через email (и fallback student_id==user.id).
+    Маппим User.id -> Student.student_id по user_id и fallback student_id==user.id.
     """
     if not current_user.is_authenticated:
         return []
@@ -39,42 +39,15 @@ def _resolve_accessible_student_ids_for_current_user() -> list[int] | None:
 
     student_ids: list[int] = []
     try:
-        student_users = User.query.filter(User.id.in_(user_ids)).all()
-
-        # 1) email -> Student.email (case-insensitive)
-        emails = []
-        for u in student_users:
-            em = (u.email or '').strip().lower()
-            if em:
-                emails.append(em)
-
-        # 2) username -> Student.platform_id (частый кейс: логин ученика = platform_id)
-        usernames = []
-        for u in student_users:
-            un = (u.username or '').strip()
-            if un:
-                usernames.append(un)
-
-        emails = list(dict.fromkeys(emails))
-        usernames = list(dict.fromkeys(usernames))
-
-        q = Student.query
-        conds = []
-        if emails:
-            from sqlalchemy import func as _func
-            conds.append(_func.lower(Student.email).in_(emails))
+        by_user_id = Student.query.filter(Student.user_id.in_(user_ids)).all()
+        student_ids.extend([s.student_id for s in by_user_id if s])
+        usernames = list(dict.fromkeys([(u.username or '').strip() for u in User.query.filter(User.id.in_(user_ids)).all() if (u.username or '').strip()]))
         if usernames:
-            conds.append(Student.platform_id.in_(usernames))
-
-        # 3) fallback: Student.student_id in user_ids — но только если у Student нет email
-        # (иначе возможны коллизии Users.id vs Students.student_id)
+            by_platform = Student.query.filter(Student.platform_id.in_(usernames)).all()
+            student_ids.extend([s.student_id for s in by_platform if s])
         if user_ids:
-            conds.append((Student.student_id.in_(user_ids)) & ((Student.email.is_(None)) | (Student.email == '')))
-
-        if conds:
-            from sqlalchemy import or_ as _or
-            mapped = q.filter(_or(*conds)).all()
-            student_ids.extend([s.student_id for s in mapped if s])
+            by_legacy = Student.query.filter(Student.student_id.in_(user_ids)).all()
+            student_ids.extend([s.student_id for s in by_legacy if s])
     except Exception as e:
         logger.warning(f"Schedule: failed map scope user_ids->student_ids: {e}")
 
@@ -106,11 +79,8 @@ def _resolve_accessible_student_ids_for_user(user: User) -> list[int] | None:
 
     student_ids: list[int] = []
     try:
-        student_users = User.query.filter(User.id.in_(user_ids)).all()
-        emails = [u.email for u in student_users if u and u.email]
-        if emails:
-            students_by_email = Student.query.filter(Student.email.in_(emails)).all()
-            student_ids.extend([s.student_id for s in students_by_email if s])
+        by_user_id = Student.query.filter(Student.user_id.in_(user_ids)).all()
+        student_ids.extend([s.student_id for s in by_user_id if s])
     except Exception:
         pass
     try:

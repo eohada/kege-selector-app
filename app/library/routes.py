@@ -36,14 +36,10 @@ def _resolve_accessible_student_ids(scope: dict) -> list[int]:
 
     student_ids: list[int] = []
     try:
-        student_users = User.query.filter(User.id.in_(user_ids)).all()
-        emails = [u.email for u in student_users if u and u.email]
-        if emails:
-            students_by_email = Student.query.filter(Student.email.in_(emails)).all()
-            student_ids.extend([s.student_id for s in students_by_email if s])
+        by_user_id = Student.query.filter(Student.user_id.in_(user_ids)).all()
+        student_ids.extend([s.student_id for s in by_user_id if s])
     except Exception as e:
-        logger.warning(f"Failed to map scope user_ids->student_ids via email: {e}")
-
+        logger.warning(f"Failed to map scope user_ids->student_ids: {e}")
     try:
         students_by_id = Student.query.filter(Student.student_id.in_(user_ids)).all()
         student_ids.extend([s.student_id for s in students_by_id if s])

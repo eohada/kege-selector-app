@@ -2065,7 +2065,6 @@ def admin_users_graph_data():
             nodes.append({
                 'id': u.id,
                 'username': u.username,
-                'email': u.email,
                 'role': u.role,
                 'is_active': bool(u.is_active),
                 'display_name': display_name or None,
@@ -2586,7 +2585,6 @@ def admin_user_edit(user_id):
         try:
             # Обновляем основные поля
             username = request.form.get('username', '').strip()
-            email = request.form.get('email', '').strip() or None
             role = request.form.get('role', '').strip()
             is_active = request.form.get('is_active') == 'on'
             
@@ -2652,46 +2650,12 @@ def admin_user_edit(user_id):
                                      all_students=all_students,
                                      all_tutors=all_tutors)
             
-            # Проверка уникальности email
-            if email:
-                existing_email = User.query.filter_by(email=email).first()
-                if existing_email and existing_email.id != user.id:
-                    flash('Пользователь с таким email уже существует.', 'error')
-                    # Перезагружаем данные для отображения формы
-                    family_ties = []
-                    enrollments = []
-                    if user.is_student():
-                        family_ties = FamilyTie.query.filter_by(student_id=user.id).all()
-                        enrollments = Enrollment.query.filter_by(student_id=user.id).all()
-                    elif user.is_parent():
-                        family_ties = FamilyTie.query.filter_by(parent_id=user.id).all()
-                    elif user.is_tutor():
-                        enrollments = Enrollment.query.filter_by(tutor_id=user.id).all()
-                    all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all() if user.is_student() else []
-                    all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
-                    # Всегда формируем список tutor'ов (включая creator), так как он может понадобиться для разных ролей
-                    all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
-                    # Определяем, находимся ли мы в песочнице
-                    environment = os.environ.get('ENVIRONMENT', 'local')
-                    railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-                    is_sandbox = _is_sandbox(environment, railway_environment)
-                    
-                    return render_template('admin_user_edit.html',
-                                         user=user,
-                                         family_ties=family_ties,
-                                         enrollments=enrollments,
-                                         all_parents=all_parents,
-                                         all_students=all_students,
-                                         all_tutors=all_tutors,
-                                         is_sandbox=is_sandbox)
-            
             # Обновляем пароль, если указан
             new_password = request.form.get('password', '').strip()
             if new_password:
                 user.password_hash = generate_password_hash(new_password)
             
             user.username = username
-            user.email = email
             user.role = role
             UserRole.query.filter_by(user_id=user.id).delete()
             db.session.add(UserRole(user_id=user.id, role=role))
@@ -2754,33 +2718,23 @@ def admin_user_edit(user_id):
             
             # Если роль - ученик, обеспечиваем наличие записи в таблице Student
             if role == 'student':
-                # Ищем по email, если он есть
-                student_record = None
-                if email:
-                    student_record = Student.query.filter_by(email=email).first()
-                
-                # Если не найден по email, пробуем найти по имени (как фолбэк, но осторожно)
-                # Лучше создать нового, если нет email
-                
+                student_record = Student.query.filter_by(user_id=user.id).first()
                 profile_name = f"{profile_data.get('first_name', '')} {profile_data.get('last_name', '')}".strip()
                 if not profile_name:
                     profile_name = username
-                
                 if not student_record:
-                    # Создаем новую запись Student
                     student_record = Student(
                         name=profile_name,
-                        email=email,
+                        email=None,
                         phone=profile_data.get('phone'),
                         telegram=profile_data.get('telegram_id'),
-                        is_active=is_active
+                        is_active=is_active,
+                        user_id=user.id
                     )
                     db.session.add(student_record)
                     logger.info(f"Created new Student record for user {user.id}")
                 else:
-                    # Обновляем существующую
                     student_record.name = profile_name
-                    student_record.email = email
                     student_record.phone = profile_data.get('phone')
                     student_record.telegram = profile_data.get('telegram_id')
                     student_record.is_active = is_active
@@ -2974,7 +2928,6 @@ def admin_user_new():
     if request.method == 'POST':
         try:
             username = request.form.get('username', '').strip()
-            email = request.form.get('email', '').strip() or None
             password = request.form.get('password', '').strip()
             role = request.form.get('role', 'student').strip()
             is_active = request.form.get('is_active') == 'on'
@@ -3018,21 +2971,10 @@ def admin_user_new():
                                      all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
                                      family_ties=[], enrollments=[])
             
-            if email and User.query.filter_by(email=email).first():
-                flash('Пользователь с таким email уже существует.', 'error')
-                # Определяем, находимся ли мы в песочнице
-                environment = os.environ.get('ENVIRONMENT', 'local')
-                railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-                is_sandbox = _is_sandbox(environment, railway_environment)
-                
-                return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
-                                     all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
-                                     family_ties=[], enrollments=[])
-            
             # Создаем пользователя
             user = User(
                 username=username,
-                email=email,
+                email=None,
                 password_hash=generate_password_hash(password),
                 role=role,
                 is_active=is_active
@@ -3056,33 +2998,19 @@ def admin_user_new():
             
             # Если роль - ученик, создаем запись в таблице Student
             if role == 'student':
-                # Проверяем, нет ли уже такого студента (по email)
-                student_record = None
-                if email:
-                    student_record = Student.query.filter_by(email=email).first()
-                
                 profile_name = f"{profile_data.get('first_name', '')} {profile_data.get('last_name', '')}".strip()
                 if not profile_name:
                     profile_name = username
-                
-                if not student_record:
-                    student_record = Student(
-                        name=profile_name,
-                        email=email,
-                        phone=profile_data.get('phone'),
-                        telegram=profile_data.get('telegram_id'),
-                        is_active=is_active
-                    )
-                    db.session.add(student_record)
-                    logger.info(f"Created new Student record for new user {user.id}")
-                else:
-                    # Если студент уже был (например, пересоздаем пользователя), обновляем связь
-                    student_record.name = profile_name
-                    # email уже совпадает
-                    student_record.phone = profile_data.get('phone')
-                    student_record.telegram = profile_data.get('telegram_id')
-                    student_record.is_active = is_active
-                    logger.info(f"Linked existing Student record {student_record.student_id} to new user {user.id}")
+                student_record = Student(
+                    name=profile_name,
+                    email=None,
+                    phone=profile_data.get('phone'),
+                    telegram=profile_data.get('telegram_id'),
+                    is_active=is_active,
+                    user_id=user.id
+                )
+                db.session.add(student_record)
+                logger.info(f"Created new Student record for new user {user.id}")
             
             # Создаем связи, если они указаны в форме
             if role == 'student':

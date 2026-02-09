@@ -286,7 +286,6 @@
                     <tr>
                         <th>Пользователь</th>
                         <th>Роль</th>
-                        <th>Email</th>
                         <th>Статус</th>
                         <th>Создан</th>
                         <th>Действия</th>
@@ -307,9 +306,6 @@
                             <span class="role-badge role-{{ user.role }}">
                                 {{ user.get_role_display() }}
                             </span>
-                        </td>
-                        <td>
-                            <div class="user-email">{{ user.email or '—' }}</div>
                         </td>
                         <td>
                             {% if user.is_active %}

@@ -300,10 +300,7 @@ def create_app(config_name=None):
         student_data = None
         if current_user.is_authenticated and current_user.is_student():
             try:
-                # Сначала по user_id (Create Pack и новая схема), затем по email
                 student = Student.query.filter_by(user_id=current_user.id).first()
-                if not student and current_user.email:
-                    student = Student.query.filter_by(email=current_user.email).first()
                 if student:
                     student_data = {'student_id': student.student_id}
             except Exception:

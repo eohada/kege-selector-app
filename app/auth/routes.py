@@ -111,10 +111,7 @@ def login():
                             next_page = url_for('auth.user_profile')
                         else:
                             # По умолчанию: ученик идёт в свою комнату/профиль (по Student)
-                            # Сначала по user_id (новый способ), затем по email (старый)
                             student = Student.query.filter_by(user_id=user.id).first()
-                            if not student and user.email:
-                                student = Student.query.filter_by(email=user.email).first()
                             if student:
                                 next_page = url_for('students.student_profile', student_id=student.student_id)
                             else:
@@ -184,14 +181,7 @@ def user_profile():
     try:
         # Привязка аккаунта ученика к сущности Student
         if current_user.is_student():
-            # Сначала по user_id (новый способ)
             linked_student = Student.query.filter_by(user_id=current_user.id).first()
-            # Fallback на email (старый способ)
-            if not linked_student:
-                email = (current_user.email or '').strip()
-                if email:
-                    linked_student = Student.query.filter_by(email=email).first()
-            
             if linked_student:
                 recent_lessons = Lesson.query.filter_by(student_id=linked_student.student_id).order_by(
                     Lesson.lesson_date.desc()
@@ -218,7 +208,7 @@ def user_profile():
 def user_public_profile(user_id: int):
     """
     Публичный (read-only) профиль пользователя для просмотра “как в соцсетях”.
-    Не показывает приватные данные (email/телефон), только имя/роль/описание/аватар.
+    Не показывает приватные данные (телефон), только имя/роль/описание/аватар/ID/Telegram.
     """
     if user_id == current_user.id:
         return redirect(url_for('auth.user_profile'))
@@ -240,11 +230,21 @@ def user_public_profile(user_id: int):
     creator_cover_url = None
     if getattr(u, 'role', None) == 'creator' and getattr(u, 'profile', None):
         creator_cover_url = getattr(u.profile, 'cover_url', None)
+    # Числовой ID: у ученика — Student.platform_id, у остальных — User.numeric_id
+    public_numeric_id = None
+    if getattr(u, 'is_student', lambda: False)():
+        from app.models import Student
+        st = Student.query.filter_by(user_id=u.id).first()
+        if st:
+            public_numeric_id = st.platform_id
+    if public_numeric_id is None:
+        public_numeric_id = getattr(u, 'numeric_id', None)
     return render_template(
         'user_public_profile.html',
         public_user=u,
         public_display_name=display_name or u.username,
         creator_cover_url=creator_cover_url,
+        public_numeric_id=public_numeric_id,
     )
 
 @auth_bp.route('/user/profile/update', methods=['POST'])

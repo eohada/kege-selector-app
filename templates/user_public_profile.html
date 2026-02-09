@@ -57,6 +57,8 @@
                             <h1>{{ public_display_name }}</h1>
                             <div class="public-sub" style="margin-top: 0.35rem;">
                                 <span class="status-badge status-info" style="opacity:.75;">{{ public_user.username }}</span>
+                                {% if public_numeric_id %}<span class="status-badge status-info" style="opacity:.75;">#{{ public_numeric_id }}</span>{% endif %}
+                                {% if public_user.telegram_link %}<span class="status-badge" style="opacity:.8;">{{ public_user.telegram_link }}</span>{% endif %}
                                 {% if public_user.custom_status %}
                                 <span class="status-badge" style="opacity:.9;">{{ public_user.custom_status }}</span>
                                 {% endif %}
@@ -87,6 +89,18 @@
                                 <span class="data-label">Логин</span>
                                 <span class="data-value">{{ public_user.username }}</span>
                             </div>
+                            {% if public_numeric_id %}
+                            <div class="data-row">
+                                <span class="data-label">ID</span>
+                                <span class="data-value">#{{ public_numeric_id }}</span>
+                            </div>
+                            {% endif %}
+                            {% if public_user.telegram_link %}
+                            <div class="data-row">
+                                <span class="data-label">Telegram</span>
+                                <span class="data-value">{{ public_user.telegram_link }}</span>
+                            </div>
+                            {% endif %}
                             {% if public_user.custom_status %}
                             <div class="data-row">
                                 <span class="data-label">Статус</span>
@@ -121,6 +135,8 @@
                             <div class="public-sub">
                                 <span class="status-badge status-info" style="opacity:.9;">{{ public_user.get_role_display() }}</span>
                                 <span class="status-badge status-info" style="opacity:.75;">{{ public_user.username }}</span>
+                                {% if public_numeric_id %}<span class="status-badge status-info" style="opacity:.75;">#{{ public_numeric_id }}</span>{% endif %}
+                                {% if public_user.telegram_link %}<span class="status-badge" style="opacity:.8;">{{ public_user.telegram_link }}</span>{% endif %}
                                 {% if public_user.custom_status %}
                                 <span class="status-badge" style="opacity:.9;">{{ public_user.custom_status }}</span>
                                 {% endif %}
@@ -152,6 +168,18 @@
                         <span class="data-label">Логин</span>
                         <span class="data-value">{{ public_user.username }}</span>
                     </div>
+                    {% if public_numeric_id %}
+                    <div class="data-row">
+                        <span class="data-label">ID</span>
+                        <span class="data-value">#{{ public_numeric_id }}</span>
+                    </div>
+                    {% endif %}
+                    {% if public_user.telegram_link %}
+                    <div class="data-row">
+                        <span class="data-label">Telegram</span>
+                        <span class="data-value">{{ public_user.telegram_link }}</span>
+                    </div>
+                    {% endif %}
                     {% if public_user.custom_status %}
                     <div class="data-row">
                         <span class="data-label">Статус</span>

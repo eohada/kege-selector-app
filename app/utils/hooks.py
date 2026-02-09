@@ -431,11 +431,7 @@ def register_hooks(app):
         """Добавляет current_student и moscow_now в контекст шаблонов"""
         current_student = None
         if current_user.is_authenticated and current_user.is_student():
-            # Сначала ищем по user_id (новый способ)
             current_student = Student.query.filter_by(user_id=current_user.id).first()
-            # Fallback на email (старый способ)
-            if not current_student and current_user.email:
-                current_student = Student.query.filter_by(email=current_user.email).first()
         return dict(current_student=current_student, moscow_now=moscow_now)
 
     @app.context_processor

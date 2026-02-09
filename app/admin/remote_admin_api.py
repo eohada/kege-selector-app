@@ -221,9 +221,14 @@ def _manage_family_ties(target_user_id, target_role, related_ids, replace=False)
 
 
 def _remote_admin_guard() -> bool:
-    """Проверка токена для удаленной админки"""
+    """Проверка доступа: сессия создателя (вызовы из браузера с той же админки) или токен."""
+    try:
+        from flask_login import current_user
+        if current_user.is_authenticated and getattr(current_user, 'is_creator', lambda: False)():
+            return True
+    except Exception:
+        pass
     provided = request.headers.get('X-Admin-Token', '')
-    
     if not provided:
         logger.warning(f"Remote admin API request without X-Admin-Token header: {request.path}")
         return False
@@ -389,7 +394,6 @@ def remote_admin_api_users():
             data = request.get_json() or {}
             logger.info(f"Creating user via remote admin API: {data}")
             username = data.get('username', '').strip()
-            email = data.get('email', '').strip() or None
             telegram_link = data.get('telegram_link', '').strip() or None
             password = data.get('password', '').strip()
             roles_raw = data.get('roles')
@@ -418,9 +422,6 @@ def remote_admin_api_users():
             if User.query.filter_by(username=username).first():
                 return jsonify({'error': 'username already exists'}), 409
             
-            if email and User.query.filter_by(email=email).first():
-                return jsonify({'error': 'email already exists'}), 409
-            
             # Если роль - студент, проверяем уникальность platform_id
             if role == 'student' and platform_id:
                 from app.models import Student
@@ -448,7 +449,7 @@ def remote_admin_api_users():
             # Создаем пользователя
             user = User(
                 username=username,
-                email=email,
+                email=None,
                 telegram_link=telegram_link,
                 password_hash=generate_password_hash(password),
                 role=role,
@@ -478,39 +479,28 @@ def remote_admin_api_users():
             if role == 'student':
                 from app.models import Student
                 from app.utils.student_id_manager import assign_platform_id_if_needed
-                
-                # Проверяем, нет ли уже студента с таким email
-                student_record = None
-                if email:
-                    student_record = Student.query.filter_by(email=email).first()
-                
+                student_record = Student.query.filter_by(user_id=user.id).first()
                 if not student_record:
-                    # Создаем новую запись Student
                     student_record = Student(
-                        name=username,  # Используем username как имя по умолчанию
-                        email=email,
+                        name=username,
+                        email=None,
                         platform_id=platform_id,
-                        is_active=is_active
+                        is_active=is_active,
+                        user_id=user.id
                     )
                     db.session.add(student_record)
                     db.session.flush()
-                    
-                    # Автоматически присваиваем идентификатор, если не указан
                     if not platform_id:
                         assign_platform_id_if_needed(student_record)
                         db.session.flush()
                 else:
-                    # Обновляем существующую запись
                     student_record.name = username
-                    student_record.email = email
                     student_record.is_active = is_active
                     if platform_id:
                         student_record.platform_id = platform_id
                     elif not student_record.platform_id:
-                        # Присваиваем идентификатор, если его нет
                         assign_platform_id_if_needed(student_record)
                         db.session.flush()
-                
                 # Привязка тьютора
                 if tutor_id:
                     _manage_student_tutor(user.id, tutor_id)
@@ -542,7 +532,6 @@ def remote_admin_api_users():
                 'user': {
                     'id': user.id,
                     'username': user.username,
-                    'email': user.email,
                     'role': user.role,
                     'is_active': user.is_active
                 }
@@ -568,7 +557,6 @@ def remote_admin_api_users():
                 'users': [{
                     'id': u.id,
                     'username': u.username,
-                    'email': u.email,
                     'role': u.role,
                     'is_active': u.is_active,
                     'created_at': u.created_at.isoformat() if u.created_at else None,
@@ -622,7 +610,6 @@ def remote_admin_api_users_graph():
             nodes.append({
                 'id': u.id,
                 'username': u.username,
-                'email': u.email,
                 'role': u.role,
                 'is_active': bool(u.is_active),
                 'display_name': display_name or None,
@@ -1137,20 +1124,11 @@ def remote_admin_api_user(user_id):
             student = None
             if user.role == 'student':
                 from app.models import Student
-                if user.email:
-                    student = Student.query.filter_by(email=user.email).first()
-                # Если не найден по email, ищем по связи через User.id (если есть такая связь)
-                if not student:
-                    # Пробуем найти по user_id, если есть поле user_id в Student
-                    try:
-                        student = Student.query.filter_by(user_id=user_id).first()
-                    except:
-                        pass
+                student = Student.query.filter_by(user_id=user_id).first()
             
             user_data = {
                 'id': user.id,
                 'username': user.username,
-                'email': user.email,
                 'telegram_link': user.telegram_link,
                 'role': user.role,
                 'roles': user.roles(),
@@ -1216,8 +1194,6 @@ def remote_admin_api_user(user_id):
                 if other:
                     return jsonify({'error': f'Логин «{new_username}» уже занят'}), 409
                 user.username = new_username
-            if 'email' in data:
-                user.email = data['email'] or None
             if 'telegram_link' in data:
                 user.telegram_link = data['telegram_link'] or None
             effective_roles = None
@@ -1270,37 +1246,22 @@ def remote_admin_api_user(user_id):
                 if platform_id and not is_valid_three_digit_id(platform_id):
                     return jsonify({'error': 'platform_id must be a three-digit number between 100 and 999'}), 400
                 
-                # Ищем существующую запись Student
-                student_record = None
-                if user.email:
-                    student_record = Student.query.filter_by(email=user.email).first()
-                
-                # Если не найден по email, пробуем найти по user_id (если есть такая связь)
+                student_record = Student.query.filter_by(user_id=user_id).first()
                 if not student_record:
-                    try:
-                        student_record = Student.query.filter_by(user_id=user_id).first()
-                    except:
-                        pass
-                
-                if not student_record:
-                    # Создаем новую запись Student
                     student_record = Student(
-                        name=user.username,  # Используем username как имя по умолчанию
-                        email=user.email,
+                        name=user.username,
+                        email=None,
                         platform_id=platform_id,
-                        is_active=user.is_active
+                        is_active=user.is_active,
+                        user_id=user_id
                     )
                     db.session.add(student_record)
                     db.session.flush()
-                    
-                    # Автоматически присваиваем идентификатор, если не указан
                     if not platform_id:
                         assign_platform_id_if_needed(student_record)
                         db.session.flush()
                 else:
-                    # Обновляем существующую запись
                     student_record.name = user.username
-                    student_record.email = user.email
                     student_record.is_active = user.is_active
                     
                     # Обновляем platform_id, если указан
@@ -1971,7 +1932,6 @@ def remote_admin_api_bot_admin_add():
                 .outerjoin(UserProfile, UserProfile.user_id == User.id)
                 .filter(
                     (func.lower(User.username) == lowered) |
-                    (func.lower(User.email) == lowered) |
                     (func.lower(User.telegram_link) == lowered) |
                     (User.telegram_link.ilike(f"%{normalized}%")) |
                     (func.lower(UserProfile.telegram_id) == lowered) |
@@ -2189,7 +2149,6 @@ def remote_admin_api_bot_unlink():
                 .outerjoin(UserProfile, UserProfile.user_id == User.id)
                 .filter(
                     (func.lower(User.username) == lowered) |
-                    (func.lower(User.email) == lowered) |
                     (func.lower(User.telegram_link) == lowered) |
                     (User.telegram_link.ilike(f"%{normalized}%")) |
                     (func.lower(UserProfile.telegram_id) == lowered) |

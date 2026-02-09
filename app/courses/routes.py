@@ -12,11 +12,10 @@ from app.auth.rbac_utils import get_user_scope
 def _get_student_user(student: Student) -> User | None:
     if not student:
         return None
-    if getattr(student, 'email', None):
-        u = User.query.filter_by(email=student.email).first()
+    if getattr(student, 'user_id', None):
+        u = User.query.get(student.user_id)
         if u:
             return u
-    # В некоторых окружениях email может быть пустым. Часто student_id совпадает с User.id студента.
     try:
         u = User.query.get(student.student_id)
         if u and u.role == 'student':
@@ -36,15 +35,9 @@ def _can_access_student(student: Student) -> bool:
         return True
 
     if getattr(current_user, 'is_student', None) and current_user.is_student():
-        # Студент видит свои курсы.
-        # Основной способ — по email, но в sandbox окружениях email может быть пустым,
-        # при этом часто Student.student_id совпадает с User.id.
-        me_email = (current_user.email or '').strip().lower()
-        st_email = (student.email or '').strip().lower() if student.email else ''
-        if me_email and st_email and st_email == me_email:
+        if getattr(student, 'user_id', None) == current_user.id:
             return True
-        # Fallback допустим только если у Student нет email (иначе возможны коллизии User.id vs Student.student_id)
-        if (not st_email) and student.student_id == current_user.id:
+        if student.student_id == current_user.id:
             return True
         if getattr(student, 'platform_id', None) and current_user.username and str(student.platform_id).strip() == str(current_user.username).strip():
             return True
@@ -58,8 +51,6 @@ def _can_access_student(student: Student) -> bool:
     if st_user and st_user.id in scope.get('student_ids', []):
         return True
 
-    # Если Student не удалось сопоставить по email, пробуем безопасный fallback:
-    # если student.student_id совпадает с User.id ученика в Enrollment/FamilyTie.
     try:
         return student.student_id in scope.get('student_ids', [])
     except Exception:

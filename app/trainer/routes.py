@@ -76,16 +76,15 @@ def _task_to_payload(task: Tasks) -> dict[str, Any] | None:
 
 
 def _map_user_to_student(user: User) -> Student | None:
-    """
-    Привязываем Users (auth) -> Students (lesson system).
-    В большинстве окружений делаем по email, fallback: Student.student_id == User.id.
-    """
+    """Привязка User -> Student по user_id, platform_id или legacy student_id."""
     if not user:
         return None
-    ident = (getattr(user, 'email', None) or getattr(user, 'username', None) or '').strip()
-    if ident:
+    st = Student.query.filter_by(user_id=user.id).first()
+    if st:
+        return st
+    if (user.username or '').strip():
         try:
-            st = Student.query.filter(db.func.lower(Student.email) == ident.lower()).first()
+            st = Student.query.filter(Student.platform_id == (user.username or '').strip()).first()
             if st:
                 return st
         except Exception:

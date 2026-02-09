@@ -41,7 +41,6 @@ def api_users_list():
             user_data = {
                 'id': user.id,
                 'username': user.username,
-                'email': user.email,
                 'role': user.role,
                 'role_display': user.get_role_display(),
                 'is_active': user.is_active,
@@ -83,7 +82,6 @@ def api_users_create():
         username = data.get('username', '').strip()
         password = data.get('password', '')
         role = data.get('role', 'student').strip()
-        email = data.get('email', '').strip() or None
         
         if not username:
             return jsonify({'success': False, 'error': 'Username is required'}), 400
@@ -100,14 +98,10 @@ def api_users_create():
         if User.query.filter_by(username=username).first():
             return jsonify({'success': False, 'error': 'Username already exists'}), 409
         
-        # Проверка уникальности email (если указан)
-        if email and User.query.filter_by(email=email).first():
-            return jsonify({'success': False, 'error': 'Email already exists'}), 409
-        
         # Создаем пользователя
         user = User(
             username=username,
-            email=email,
+            email=None,
             password_hash=generate_password_hash(password),
             role=role,
             is_active=data.get('is_active', True)
@@ -167,7 +161,6 @@ def api_users_get(user_id):
         user_data = {
             'id': user.id,
             'username': user.username,
-            'email': user.email,
             'role': user.role,
             'role_display': user.get_role_display(),
             'is_active': user.is_active,
@@ -266,14 +259,6 @@ def api_users_update(user_id):
                 if User.query.filter_by(username=new_username).first():
                     return jsonify({'success': False, 'error': 'Username already exists'}), 409
                 user.username = new_username
-        
-        if 'email' in data:
-            new_email = data['email'].strip() or None
-            if new_email != user.email:
-                # Проверяем уникальность
-                if new_email and User.query.filter_by(email=new_email).first():
-                    return jsonify({'success': False, 'error': 'Email already exists'}), 409
-                user.email = new_email
         
         if 'role' in data:
             role = data['role'].strip()

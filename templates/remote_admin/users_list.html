@@ -221,8 +221,8 @@
             <div id="tab-list" role="tabpanel">
                 <form method="GET" class="filters-row" style="margin-top: 1rem;">
                     <div class="neo-field">
-                        <label class="neo-label" for="q">Поиск (логин/email/роль)</label>
-                        <input id="q" name="q" class="neo-input" value="{{ q or '' }}" placeholder="например: student_1 или parent@example.com">
+                        <label class="neo-label" for="q">Поиск (логин/роль)</label>
+                        <input id="q" name="q" class="neo-input" value="{{ q or '' }}" placeholder="логин или роль">
                     </div>
                     <div class="neo-field">
                         <label class="neo-label" for="is_active">Статус</label>
@@ -266,7 +266,6 @@
                     <tr>
                         <th>Пользователь</th>
                         <th>Роль</th>
-                        <th>Email</th>
                         <th>Статус</th>
                         <th>Создан</th>
                         <th>Последний вход</th>
@@ -291,9 +290,6 @@
                                 {% elif user.role == 'designer' %}Графический дизайнер
                                 {% else %}{{ user.role }}{% endif %}
                             </span>
-                        </td>
-                        <td>
-                            <div style="font-size: 0.9rem; color: var(--text-muted);">{{ user.email or '—' }}</div>
                         </td>
                         <td>
                             {% if user.is_active %}

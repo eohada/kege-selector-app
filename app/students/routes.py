@@ -46,11 +46,11 @@ from app.utils.subscription_access import get_effective_access_for_user
 logger = logging.getLogger(__name__)
 
 def _get_student_user_for_scope(student: Student) -> User | None:
-    """Пытаемся сопоставить Student с User (для data-scope)."""
+    """Сопоставляет Student с User по user_id или legacy student_id."""
     if not student:
         return None
-    if getattr(student, 'email', None):
-        u = User.query.filter_by(email=student.email).first()
+    if getattr(student, 'user_id', None):
+        u = User.query.get(student.user_id)
         if u:
             return u
     try:
@@ -66,7 +66,7 @@ def _can_access_student(student: Student) -> bool:
     """
     Унифицированная проверка доступа к ученику:
     - admin/creator: всё
-    - student: только себя (email или fallback student_id==User.id)
+    - student: только себя (user_id или legacy student_id==User.id)
     - tutor/parent: через data scope (Enrollment/FamilyTie)
     """
     if not current_user.is_authenticated:
@@ -76,12 +76,9 @@ def _can_access_student(student: Student) -> bool:
         return True
 
     if current_user.is_student():
-        me_email = (current_user.email or '').strip().lower()
-        st_email = (student.email or '').strip().lower() if student.email else ''
-        if me_email and st_email and st_email == me_email:
+        if getattr(student, 'user_id', None) == current_user.id:
             return True
-        # Fallback допустим только если у Student нет email (иначе возможны коллизии User.id vs Student.student_id)
-        if (not st_email) and student.student_id == current_user.id:
+        if student.student_id == current_user.id:
             return True
         return False
 
@@ -135,29 +132,12 @@ def students_list():
             archived_students = []
         else:
             # FamilyTie/Enrollment оперируют Users.id, а Student — отдельная таблица.
-            # Маппим доступных student-user → (id/email) и подтягиваем Student по student_id и/или email.
-            student_users = (
-                User.query
-                .filter(User.id.in_(allowed_user_ids), User.role == 'student')
-                .all()
-            )
-            allowed_emails = []
-            for u in student_users:
-                em = (u.email or '').strip().lower()
-                if em:
-                    allowed_emails.append(em)
-
-            allowed_emails = list(dict.fromkeys(allowed_emails))
-
-            if allowed_emails:
-                scoped_q = base_q.filter(
-                    or_(
-                        Student.student_id.in_(allowed_user_ids),
-                        func.lower(Student.email).in_(allowed_emails)
-                    )
-                )
+            scoped_students = Student.query.filter(Student.user_id.in_(allowed_user_ids)).all()
+            allowed_student_ids = [s.student_id for s in scoped_students]
+            if allowed_student_ids:
+                scoped_q = base_q.filter(Student.student_id.in_(allowed_student_ids))
             else:
-                scoped_q = base_q.filter(Student.student_id.in_(allowed_user_ids))
+                scoped_q = base_q.filter(False)
 
             active_students = scoped_q.options(db.joinedload(Student.user)).filter(Student.is_active.is_(True)).order_by(Student.name).all()
             archived_students = scoped_q.options(db.joinedload(Student.user)).filter(Student.is_active.is_(False)).order_by(Student.name).all()
@@ -277,8 +257,10 @@ def student_profile(student_id):
         if current_user.is_student():
             try:
                 me_student = Student.query.filter_by(user_id=current_user.id).first()
-                if not me_student and (current_user.email or '').strip():
-                    me_student = Student.query.filter(func.lower(Student.email) == (current_user.email or '').strip().lower()).first()
+                if not me_student:
+                    cand = Student.query.get(current_user.id)
+                    if cand and getattr(cand, 'user_id', None) is None:
+                        me_student = cand
                 if me_student and me_student.student_id != student_id:
                     return redirect(url_for('students.student_profile', student_id=me_student.student_id))
             except Exception:
@@ -286,29 +268,15 @@ def student_profile(student_id):
 
         # Проверка доступа через data scoping
         try:
-            # Ученику разрешаем смотреть только СВОЙ профиль (user_id или email)
             if current_user.is_student():
                 if getattr(student, 'user_id', None) == current_user.id:
                     scope = {'can_see_all': False, 'student_ids': [current_user.id]}
                 else:
-                    me_email = (current_user.email or '').strip().lower()
-                    st_email = (student.email or '').strip().lower() if student.email else ''
-                    if me_email and st_email and me_email == st_email:
-                        scope = {'can_see_all': False, 'student_ids': [current_user.id]}
-                    else:
-                        scope = get_user_scope(current_user)
+                    scope = get_user_scope(current_user)
             else:
                 scope = get_user_scope(current_user)
             if not scope['can_see_all']:
-                # Проверяем, есть ли доступ к этому ученику
-                student_user = None
-                if getattr(student, 'user_id', None):
-                    student_user_id = student.user_id
-                elif student.email:
-                    u = User.query.filter_by(email=student.email, role='student').first()
-                    student_user_id = u.id if u else None
-                else:
-                    student_user_id = None
+                student_user_id = getattr(student, 'user_id', None)
                 if student_user_id is not None:
                     if student_user_id not in scope['student_ids']:
                         flash('У вас нет доступа к этому ученику.', 'danger')
@@ -390,12 +358,7 @@ def student_profile(student_id):
             upcoming_lessons = []
             other_lessons = all_lessons
         
-        # Находим User ученика (для аватарки и связей): сначала по user_id, затем по email
-        student_user_obj = None
-        if getattr(student, 'user_id', None):
-            student_user_obj = User.query.get(student.user_id)
-        if not student_user_obj and student.email:
-            student_user_obj = User.query.filter_by(email=student.email, role='student').first()
+        student_user_obj = User.query.get(student.user_id) if getattr(student, 'user_id', None) else None
         student_subscription = None
         try:
             if student_user_obj:
@@ -493,17 +456,13 @@ def student_info(student_id: int):
     # Редирект ученика в свой профиль при обращении к чужому
     if current_user.is_student():
         me_student = Student.query.filter_by(user_id=current_user.id).first()
-        if not me_student and (current_user.email or '').strip():
-            me_student = Student.query.filter(
-                func.lower(Student.email) == (current_user.email or '').strip().lower()
-            ).first()
+        if not me_student:
+            cand = Student.query.get(current_user.id)
+            if cand and getattr(cand, 'user_id', None) is None:
+                me_student = cand
         if me_student and me_student.student_id != student_id:
             return redirect(url_for('students.student_info', student_id=me_student.student_id))
-    student_user_obj = None
-    if getattr(student, 'user_id', None):
-        student_user_obj = User.query.get(student.user_id)
-    if not student_user_obj and student.email:
-        student_user_obj = User.query.filter_by(email=student.email, role='student').first()
+    student_user_obj = User.query.get(student.user_id) if getattr(student, 'user_id', None) else None
     student_subscription = None
     try:
         if student_user_obj:
@@ -1556,17 +1515,14 @@ def student_analytics(student_id):
     try:
         scope = get_user_scope(current_user)
         if not scope['can_see_all']:
-            # Проверяем, есть ли доступ к этому ученику
-            if student.email:
-                student_user = User.query.filter_by(email=student.email, role='student').first()
-                if student_user:
-                    if student_user.id not in scope['student_ids']:
-                        flash('У вас нет доступа к статистике этого ученика.', 'danger')
-                        return redirect(url_for('main.dashboard'))
-            else:
-                if not scope['student_ids']:
+            student_user_id = getattr(student, 'user_id', None)
+            if student_user_id is not None:
+                if student_user_id not in scope['student_ids']:
                     flash('У вас нет доступа к статистике этого ученика.', 'danger')
                     return redirect(url_for('main.dashboard'))
+            elif not scope['student_ids']:
+                flash('У вас нет доступа к статистике этого ученика.', 'danger')
+                return redirect(url_for('main.dashboard'))
     except Exception as e:
         logger.error(f"Error checking access for student {student_id}: {e}", exc_info=True)
         flash('Ошибка при проверке доступа', 'danger')

@@ -39,12 +39,6 @@
                     </div>
 
                     <div class="neo-field">
-                        <label class="neo-label" for="email">Email</label>
-                        <input type="email" id="email" name="email" class="neo-input" 
-                               value="{{ user.email if user else '' }}">
-                    </div>
-
-                    <div class="neo-field">
                         <label class="neo-label" for="role">Роль *</label>
                         <select id="role" name="role" class="neo-input" required>
                             <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>Администратор</option>
