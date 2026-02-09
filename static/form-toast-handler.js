@@ -64,7 +64,10 @@
         
         forms.forEach(form => {
 
-            if (form.id === 'admin-user-edit-form' || form.action && (form.action.includes('/admin/users/') || form.action.includes('/admin/user'))) {
+            if (form.id === 'admin-user-edit-form' || form.id === 'remote-admin-user-edit-form') {
+                return;
+            }
+            if (form.action && (form.action.includes('/admin/users/') || form.action.includes('/admin/user') || form.action.includes('/remote-admin/'))) {
                 return;
             }
             if (form.id === 'create-student-form' || 

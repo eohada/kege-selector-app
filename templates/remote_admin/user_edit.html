@@ -24,7 +24,7 @@
                 </p>
             </div>
 
-            <form method="POST" action="{% if user %}{{ url_for('remote_admin.user_edit', user_id=user.id) }}{% else %}{{ url_for('remote_admin.user_new') }}{% endif %}" class="neo-form" data-no-ajax>
+            <form id="remote-admin-user-edit-form" method="POST" action="{% if user %}{{ url_for('remote_admin.user_edit', user_id=user.id) }}{% else %}{{ url_for('remote_admin.user_new') }}{% endif %}" class="neo-form" data-no-ajax>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">

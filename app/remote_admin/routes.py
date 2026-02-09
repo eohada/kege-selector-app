@@ -2,7 +2,7 @@
 Основные маршруты удаленной админки
 """
 import logging
-from flask import render_template, request, redirect, url_for, flash, session, jsonify
+from flask import render_template, request, redirect, url_for, flash, session, jsonify, make_response
 from flask_login import login_required, current_user
 
 from app.remote_admin import remote_admin_bp
@@ -268,6 +268,7 @@ def user_edit(user_id):
         return redirect(url_for('remote_admin.dashboard'))
     
     if request.method == 'POST':
+        logger.info("remote_admin user_edit POST user_id=%s form_keys=%s", user_id, list(request.form.keys()))
         try:
             roles_list = request.form.getlist('roles')
             if not roles_list:
@@ -290,7 +291,7 @@ def user_edit(user_id):
                 data['password'] = password
             
             resp = make_remote_request('POST', f'/internal/remote-admin/api/users/{user_id}', payload=data)
-            
+            logger.info("remote_admin user_edit API response user_id=%s status=%s body=%s", user_id, resp.status_code, (resp.text or "")[:400])
             if resp.status_code == 200:
                 flash('Пользователь обновлен успешно', 'success')
                 return redirect(url_for('remote_admin.users_list'))
@@ -318,10 +319,12 @@ def user_edit(user_id):
     parents = _get_users_by_role('parent')
     students = _get_users_by_role('student')
     
-    return render_template('remote_admin/user_edit.html', user=user_data,
+    r = make_response(render_template('remote_admin/user_edit.html', user=user_data,
                          current_environment=current_env,
                          environment_name=environments.get(current_env, {}).get('name', current_env),
-                         tutors=tutors, parents=parents, students=students)
+                         tutors=tutors, parents=parents, students=students))
+    r.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return r
 
 
 @remote_admin_bp.route('/testers', methods=['GET', 'POST'])

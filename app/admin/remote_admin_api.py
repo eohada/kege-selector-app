@@ -1132,6 +1132,7 @@ def remote_admin_api_user(user_id):
         
         elif request.method == 'POST':
             data = request.get_json() or {}
+            logger.info("remote_admin_api_user POST user_id=%s data_keys=%s", user_id, list(data.keys()))
             user = User.query.get(user_id)
             if not user:
                 return jsonify({'error': 'user not found'}), 404
@@ -1237,7 +1238,7 @@ def remote_admin_api_user(user_id):
                 _manage_family_ties(user.id, 'parent', data['child_ids'], replace=True)
             
             db.session.commit()
-            
+            logger.info("remote_admin_api_user POST user_id=%s committed successfully", user_id)
             return jsonify({'success': True, 'user_id': user_id})
         
         elif request.method == 'DELETE':
