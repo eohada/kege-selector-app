@@ -2597,7 +2597,7 @@ def lesson_whiteboard_create(lesson_id):
         }), 400
     
     # Для создания доски нужен OAuth-токен пользователя (кнопка «Подключить Miro»)
-    from datetime import datetime
+    from datetime import datetime, timedelta
     miro_token = MiroUserToken.query.filter_by(user_id=current_user.id).first()
     if not miro_token or not miro_token.access_token:
         auth_url = url_for('miro_oauth_authorize', lesson_id=lesson_id, _external=True)
@@ -2607,7 +2607,9 @@ def lesson_whiteboard_create(lesson_id):
             'auth_required': True,
             'auth_url': auth_url
         }), 400
-    if miro_token.expires_at and miro_token.expires_at <= datetime.utcnow():
+    # Истёк только если явно задан срок и он уже прошёл (запас 60 сек на рассинхрон времени)
+    now = datetime.utcnow()
+    if miro_token.expires_at is not None and miro_token.expires_at <= (now - timedelta(seconds=60)):
         return jsonify({
             'success': False,
             'error': 'Сессия Miro истекла. Подключите Miro заново.',
@@ -2771,7 +2773,7 @@ def lesson_whiteboard_invite(lesson_id):
             return jsonify({'success': False, 'error': 'Email не указан'}), 400
     
     # Для приглашения нужен OAuth-токен пользователя
-    from datetime import datetime
+    from datetime import datetime, timedelta
     miro_token = MiroUserToken.query.filter_by(user_id=current_user.id).first()
     if not miro_token or not miro_token.access_token:
         return jsonify({
@@ -2780,7 +2782,8 @@ def lesson_whiteboard_invite(lesson_id):
             'auth_required': True,
             'auth_url': url_for('miro_oauth_authorize', lesson_id=lesson_id, _external=True)
         }), 400
-    if miro_token.expires_at and miro_token.expires_at <= datetime.utcnow():
+    now = datetime.utcnow()
+    if miro_token.expires_at is not None and miro_token.expires_at <= (now - timedelta(seconds=60)):
         return jsonify({
             'success': False,
             'error': 'Сессия Miro истекла. Подключите Miro заново.',

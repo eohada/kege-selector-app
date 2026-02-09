@@ -580,7 +580,14 @@ def create_app(config_name=None):
             token_data = token_response.json()
             access_token = token_data.get('access_token')
             refresh_token = token_data.get('refresh_token')
-            expires_in = token_data.get('expires_in', 3600)
+            # Miro может не присылать expires_in (токен без срока) или присылать 0 — тогда не помечаем срок
+            raw_expires = token_data.get('expires_in')
+            try:
+                expires_in = int(raw_expires) if raw_expires is not None else None
+            except (TypeError, ValueError):
+                expires_in = None
+            if expires_in is not None and expires_in <= 0:
+                expires_in = None
             
             # Сохраняем токен в БД
             from app.models import MiroUserToken
@@ -592,7 +599,10 @@ def create_app(config_name=None):
             
             miro_token.access_token = access_token
             miro_token.refresh_token = refresh_token
-            miro_token.expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+            if expires_in is not None:
+                miro_token.expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+            else:
+                miro_token.expires_at = None  # токен без срока — не требуем повторную авторизацию
             miro_token.miro_user_id = token_data.get('user_id')
             miro_token.miro_team_id = token_data.get('team_id')
             
