@@ -1135,17 +1135,21 @@ def remote_admin_api_user(user_id):
             logger.info("remote_admin_api_user POST user_id=%s data_keys=%s", user_id, list(data.keys()))
             user = User.query.get(user_id)
             if not user:
+                logger.warning("remote_admin_api_user POST user_id=%s early return: user not found", user_id)
                 return jsonify({'error': 'user not found'}), 404
             
             if user.is_creator():
+                logger.warning("remote_admin_api_user POST user_id=%s early return: cannot modify creator", user_id)
                 return jsonify({'error': 'cannot modify creator'}), 403
             
             if 'username' in data:
                 new_username = (data['username'] or '').strip()
                 if not new_username:
+                    logger.warning("remote_admin_api_user POST user_id=%s early return: username empty", user_id)
                     return jsonify({'error': 'username не может быть пустым'}), 400
                 other = User.query.filter(func.lower(User.username) == new_username.lower()).filter(User.id != user_id).first()
                 if other:
+                    logger.warning("remote_admin_api_user POST user_id=%s early return: username taken by id=%s", user_id, other.id)
                     return jsonify({'error': f'Логин «{new_username}» уже занят'}), 409
                 user.username = new_username
             if 'telegram_link' in data:
@@ -1173,9 +1177,11 @@ def remote_admin_api_user(user_id):
                 raw = (data.get('numeric_id') or '').strip() or None
                 if raw:
                     if not is_valid_numeric_id_manual(raw):
+                        logger.warning("remote_admin_api_user POST user_id=%s early return: numeric_id invalid", user_id)
                         return jsonify({'error': 'numeric_id должен быть положительным числом'}), 400
                     other = User.query.filter(User.numeric_id == raw, User.id != user_id).first()
                     if other:
+                        logger.warning("remote_admin_api_user POST user_id=%s early return: numeric_id taken by id=%s", user_id, other.id)
                         return jsonify({'error': f'Идентификатор «{raw}» уже занят'}), 409
                     user.numeric_id = raw
                 else:
@@ -1195,6 +1201,7 @@ def remote_admin_api_user(user_id):
                 platform_id = (data.get('platform_id') or '').strip() or None  # comment
                 
                 if platform_id and not is_valid_three_digit_id(platform_id):
+                    logger.warning("remote_admin_api_user POST user_id=%s early return: platform_id invalid", user_id)
                     return jsonify({'error': 'platform_id must be a three-digit number between 100 and 999'}), 400
                 
                 student_record = Student.query.filter_by(user_id=user_id).first()
@@ -1221,6 +1228,7 @@ def remote_admin_api_user(user_id):
                             Student.student_id != student_record.student_id
                         ).first()
                         if existing:
+                            logger.warning("remote_admin_api_user POST user_id=%s early return: platform_id exists", user_id)
                             return jsonify({'error': f'platform_id "{platform_id}" already exists'}), 409
                         student_record.platform_id = platform_id
                     elif not student_record.platform_id:

@@ -16,6 +16,15 @@
         {% include 'remote_admin/_sidebar.html' %}
 
         <main style="margin-left: 250px; margin-top: 70px; padding: 2rem;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages" style="max-width: 900px; margin-bottom: 1rem;">
+            {% for category, msg in messages %}
+            <div class="flash flash-{{ category }}" role="alert" style="padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.5rem; {% if category == 'error' or category == 'danger' %}background: rgba(220,53,69,0.15); color: var(--danger, #dc3545);{% else %}background: rgba(40,167,69,0.15); color: var(--success, #28a745);{% endif %}">{{ msg }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
         <section class="glass-panel" style="max-width: 900px; padding: 2rem;">
             <div style="margin-bottom: 1.5rem;">
                 <h1 style="margin: 0;">{% if user %}Редактирование пользователя{% else %}Создание пользователя{% endif %}</h1>
