@@ -263,7 +263,13 @@
                    class="student-card {% if active_student and student.student_id == active_student.student_id %}active-student{% endif %} {% if show_archive %}student-card--archived{% endif %}"
                    data-student-id="{{ student.student_id }}">
                     <div class="student-card__head">
-                        <div class="student-avatar {% if show_archive %}student-avatar--archived{% endif %}">{{ student.name[0].upper() }}</div>
+                        <div class="student-avatar {% if show_archive %}student-avatar--archived{% endif %}">
+                            {% if student.user and student.user.avatar_url %}
+                                <img src="{{ student.user.avatar_url }}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
+                            {% else %}
+                                {{ student.name[0].upper() }}
+                            {% endif %}
+                        </div>
                         <div>
                             <p class="student-name">{{ student.name }}{% if show_archive %} <span style="opacity: 0.6; font-size: 0.85em;">(архив)</span>{% endif %}</p>
                             {% if student.platform_id %}

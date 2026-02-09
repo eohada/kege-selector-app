@@ -15,7 +15,7 @@ from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
 
 from app.auth import auth_bp
-from app.models import db, User, moscow_now, Student
+from app.models import db, User, UserProfile, moscow_now, Student
 from app.utils.subscription_access import get_effective_access_for_user
 from core.audit_logger import audit_logger
 
@@ -282,35 +282,33 @@ def profile_update():
                 if file_size > 5 * 1024 * 1024:
                     return jsonify({'success': False, 'error': 'Файл слишком большой. Максимум 5MB'}), 400
                 
-                # Генерируем уникальное имя: avatar_USERID.ext
                 unique_filename = f"avatar_{current_user.id}{ext}"
+                avatar_upload_root = current_app.config.get('AVATAR_UPLOAD_ROOT')
+                if avatar_upload_root:
+                    # Persistent storage (переживает деплой): сохраняем в AVATAR_UPLOAD_ROOT, URL — /avatars/...
+                    upload_folder = os.path.abspath(avatar_upload_root)
+                    avatar_url = f"/avatars/{unique_filename}"
+                else:
+                    # Локальная разработка: static/uploads/avatars
+                    app_root = os.path.dirname(current_app.root_path)
+                    upload_folder = os.path.join(app_root, 'static', 'uploads', 'avatars')
+                    upload_folder = os.path.abspath(upload_folder)
+                    avatar_url = f"/static/uploads/avatars/{unique_filename}"
                 
-                # Путь: static/uploads/avatars (на уровне app/)
-                # current_app.root_path указывает на папку app/
-                # static находится на том же уровне, что и app
-                app_root = os.path.dirname(current_app.root_path)
-                upload_folder = os.path.join(app_root, 'static', 'uploads', 'avatars')
-                upload_folder = os.path.abspath(upload_folder)
-                
-                logger.info(f"Upload folder path: {upload_folder}")
                 os.makedirs(upload_folder, exist_ok=True)
-                
-                if not os.path.exists(upload_folder):
+                if not os.path.isdir(upload_folder):
                     logger.error(f"Failed to create upload folder: {upload_folder}")
                     return jsonify({'success': False, 'error': 'Не удалось создать папку для загрузки'}), 500
-                
                 file_path = os.path.join(upload_folder, unique_filename)
-                logger.info(f"Saving file to: {file_path}")
+                if not os.path.abspath(file_path).startswith(os.path.abspath(upload_folder)):
+                    return jsonify({'success': False, 'error': 'Недопустимый путь'}), 400
                 file.save(file_path)
-                
-                if not os.path.exists(file_path):
+                if not os.path.isfile(file_path):
                     logger.error(f"File was not saved: {file_path}")
                     return jsonify({'success': False, 'error': 'Не удалось сохранить файл'}), 500
-                
-                # Сохраняем URL (важно использовать прямые слеши для URL)
-                avatar_url = f"/static/uploads/avatars/{unique_filename}"
                 current_user.avatar_url = avatar_url
-                
+                if getattr(current_user, 'profile', None):
+                    current_user.profile.avatar_url = avatar_url
                 logger.info(f"Avatar uploaded for user {current_user.id}: {avatar_url}")
 
         # Обновляем текстовые поля

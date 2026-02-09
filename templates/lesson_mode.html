@@ -59,6 +59,7 @@
             color: #001b18;
             flex-shrink: 0;
             box-shadow: var(--shadow-accent);
+            overflow: hidden;
         }
         
         .student-info-large {
@@ -200,7 +201,13 @@
     <div class="app-shell">
         <section class="glass-panel lesson-mode-header">
             <div class="student-focus">
-                <div class="student-avatar-large">{{ student.name[0].upper() }}</div>
+                <div class="student-avatar-large">
+                    {% if student.user and student.user.avatar_url %}
+                        <img src="{{ student.user.avatar_url }}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
+                    {% else %}
+                        {{ student.name[0].upper() }}
+                    {% endif %}
+                </div>
                 <div class="student-info-large">
                     <div class="student-name-large">{{ student.name }}</div>
                     {% if student.platform_id %}

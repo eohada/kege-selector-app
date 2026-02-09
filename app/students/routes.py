@@ -126,8 +126,8 @@ def students_list():
 
     base_q = Student.query
     if scope.get('can_see_all'):
-        active_students = base_q.filter_by(is_active=True).order_by(Student.name).all()
-        archived_students = base_q.filter_by(is_active=False).order_by(Student.name).all()
+        active_students = base_q.options(db.joinedload(Student.user)).filter_by(is_active=True).order_by(Student.name).all()
+        archived_students = base_q.options(db.joinedload(Student.user)).filter_by(is_active=False).order_by(Student.name).all()
     else:
         allowed_user_ids = list(dict.fromkeys(scope.get('student_ids') or []))
         if not allowed_user_ids:
@@ -159,8 +159,8 @@ def students_list():
             else:
                 scoped_q = base_q.filter(Student.student_id.in_(allowed_user_ids))
 
-            active_students = scoped_q.filter(Student.is_active.is_(True)).order_by(Student.name).all()
-            archived_students = scoped_q.filter(Student.is_active.is_(False)).order_by(Student.name).all()
+            active_students = scoped_q.options(db.joinedload(Student.user)).filter(Student.is_active.is_(True)).order_by(Student.name).all()
+            archived_students = scoped_q.options(db.joinedload(Student.user)).filter(Student.is_active.is_(False)).order_by(Student.name).all()
 
     return render_template('students_list.html',
                          active_students=active_students,
@@ -390,9 +390,11 @@ def student_profile(student_id):
             upcoming_lessons = []
             other_lessons = all_lessons
         
-        # Находим User ученика (для аватарки и связей)
+        # Находим User ученика (для аватарки и связей): сначала по user_id, затем по email
         student_user_obj = None
-        if student.email:
+        if getattr(student, 'user_id', None):
+            student_user_obj = User.query.get(student.user_id)
+        if not student_user_obj and student.email:
             student_user_obj = User.query.filter_by(email=student.email, role='student').first()
         student_subscription = None
         try:
@@ -1974,7 +1976,7 @@ def lesson_new(student_id):
 @login_required
 def lesson_mode(student_id):
     """Режим урока для студента"""
-    student = Student.query.get_or_404(student_id)
+    student = Student.query.options(db.joinedload(Student.user)).get_or_404(student_id)
     now = moscow_now()
     
     # Загружаем все уроки одним запросом

@@ -74,6 +74,10 @@ def create_app(config_name=None):
     app.config['DAILY_API_KEY'] = (os.environ.get('DAILY_API_KEY') or '').strip() or None
     app.config['DAILY_DOMAIN'] = 'urep'  # urep.daily.co
     
+    # Аватарки: при деплое файловая система эфемерная — задайте AVATAR_UPLOAD_ROOT (путь к persistent volume).
+    # Если задан — файлы сохраняются туда и раздаются по /avatars/...; иначе — в static/uploads/avatars (как раньше).
+    app.config['AVATAR_UPLOAD_ROOT'] = (os.environ.get('AVATAR_UPLOAD_ROOT') or '').strip() or None
+    
     # Определение окружения (production, sandbox, local)
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
     

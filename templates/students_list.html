@@ -58,6 +58,7 @@
             background: linear-gradient(135deg, rgba(120,210,255,0.25), rgba(180,120,255,0.18));
             border: 1px solid var(--stroke-1);
             flex: 0 0 auto;
+            overflow: hidden;
         }
         .student-name {
             margin: 0;
@@ -150,7 +151,13 @@
                             {% for student in active_students %}
                             <a class="student-card-compact" href="{{ url_for('students.student_profile', student_id=student.student_id) }}">
                                 <div class="student-head">
-                                    <div class="student-avatar">{{ student.name[0].upper() }}</div>
+                                    <div class="student-avatar">
+                                        {% if student.user and student.user.avatar_url %}
+                                            <img src="{{ student.user.avatar_url }}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
+                                        {% else %}
+                                            {{ student.name[0].upper() }}
+                                        {% endif %}
+                                    </div>
                                     <div style="min-width: 0;">
                                         <p class="student-name">{{ student.name }}</p>
                                         <div class="student-meta">
@@ -193,7 +200,13 @@
                             {% for student in archived_students %}
                             <a class="student-card-compact" href="{{ url_for('students.student_profile', student_id=student.student_id) }}">
                                 <div class="student-head">
-                                    <div class="student-avatar">{{ student.name[0].upper() }}</div>
+                                    <div class="student-avatar">
+                                        {% if student.user and student.user.avatar_url %}
+                                            <img src="{{ student.user.avatar_url }}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">
+                                        {% else %}
+                                            {{ student.name[0].upper() }}
+                                        {% endif %}
+                                    </div>
                                     <div style="min-width: 0;">
                                         <p class="student-name">{{ student.name }}</p>
                                         <div class="student-meta">

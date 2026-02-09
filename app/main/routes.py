@@ -258,9 +258,9 @@ def dashboard():
 
     # Выбираем активных или архивных учеников в зависимости от параметра
     if show_archive:
-        query = Student.query.filter_by(is_active=False)
+        query = Student.query.options(db.joinedload(Student.user)).filter_by(is_active=False)
     else:
-        query = Student.query.filter_by(is_active=True)
+        query = Student.query.options(db.joinedload(Student.user)).filter_by(is_active=True)
     
     # Применяем data scoping (фильтрация по ролям)
     # Для админа и старых ролей - видит всех

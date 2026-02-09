@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import logging
 
 from flask import send_file, abort, current_app
@@ -11,6 +12,9 @@ from app.models import MaterialAsset, Lesson, Student, User
 from app.auth.rbac_utils import check_access, get_user_scope
 
 logger = logging.getLogger(__name__)
+
+# Допустимые имена файлов аватарок: avatar_<user_id>.<ext> (без path traversal)
+AVATAR_FILENAME_RE = re.compile(r'^avatar_\d+\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
 
 def _resolve_accessible_student_ids(scope: dict) -> list[int]:
     if not scope or scope.get('can_see_all'):
@@ -119,4 +123,27 @@ def lesson_file(lesson_id: int, stored_name: str):
         abort(404)
 
     return send_file(abs_path, as_attachment=True, download_name=stored_name)
+
+
+@uploads_bp.route('/avatars/<path:filename>')
+def avatar_file(filename: str):
+    """
+    Раздача аватарок. Без авторизации (аватарки публичны).
+    Если задан AVATAR_UPLOAD_ROOT — файлы берутся оттуда (persistent volume при деплое).
+    Иначе — из static/uploads/avatars (legacy).
+    """
+    base_name = os.path.basename(filename)
+    if not base_name or not AVATAR_FILENAME_RE.match(base_name):
+        abort(404)
+    root = current_app.config.get('AVATAR_UPLOAD_ROOT')
+    if root:
+        abs_path = os.path.join(root, base_name)
+        if not os.path.abspath(abs_path).startswith(os.path.abspath(root)):
+            abort(404)
+    else:
+        app_root = os.path.dirname(current_app.root_path)
+        abs_path = os.path.join(app_root, 'static', 'uploads', 'avatars', base_name)
+    if not os.path.isfile(abs_path):
+        abort(404)
+    return send_file(abs_path, mimetype=None, as_attachment=False, download_name=base_name)
 
