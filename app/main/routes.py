@@ -555,12 +555,23 @@ def dashboard():
     except Exception as e:
         logger.warning(f"Failed to build teacher overview counters: {e}")
 
+    my_tutors = []
+    if getattr(current_user, 'is_student', None) and current_user.is_student():
+        try:
+            enrollments = Enrollment.query.filter_by(student_id=current_user.id).options(
+                db.joinedload(Enrollment.tutor)
+            ).all()
+            my_tutors = [e.tutor for e in enrollments if getattr(e, 'tutor', None)]
+        except Exception:
+            pass
+
     return render_template('dashboard.html',
                          students=students,
                          pagination=pagination,
                          search_query=search_query,
                          category_filter=category_filter,
                          show_archive=show_archive,
+                         my_tutors=my_tutors,
                          total_students=total_students,
                          total_lessons=total_lessons,
                          completed_lessons=completed_lessons,

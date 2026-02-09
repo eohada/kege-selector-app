@@ -323,16 +323,16 @@
                 {% if submission.comments %}
                     {% for comment in submission.comments %}
                     <div class="comment-item" style="display: flex; gap: 1rem;">
-                        <div class="comment-avatar" style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: var(--bg-secondary); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--text-primary);">
+                        <a href="{{ url_for('auth.user_public_profile', user_id=comment.author.id) }}" class="comment-avatar" style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: var(--bg-secondary); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--text-primary); text-decoration: none;">
                             {% if comment.author.avatar_url %}
                                 <img src="{{ comment.author.avatar_url }}" style="width: 100%; height: 100%; object-fit: cover;">
                             {% else %}
                                 {{ comment.author.username[0].upper() }}
                             {% endif %}
-                        </div>
+                        </a>
                         <div class="comment-content" style="background: var(--surface-2); padding: 0.8rem 1rem; border-radius: 12px; max-width: 80%;">
                             <div class="comment-header" style="display: flex; justify-content: space-between; margin-bottom: 0.4rem; font-size: 0.85em;">
-                                <span style="font-weight: 600; margin-right: 1rem; color: var(--text-primary);">{{ comment.author.username }}</span>
+                                <a href="{{ url_for('auth.user_public_profile', user_id=comment.author.id) }}" style="font-weight: 600; margin-right: 1rem; color: var(--accent-1); text-decoration: none;">{{ comment.author.username }}</a>
                                 <span style="color: var(--text-muted);">{{ comment.created_at.strftime('%d.%m %H:%M') }}</span>
                             </div>
                             <div class="comment-text" style="line-height: 1.5; color: var(--text-primary);">{{ comment.text }}</div>

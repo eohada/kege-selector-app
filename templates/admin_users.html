@@ -325,6 +325,9 @@
                         </td>
                         <td>
                             <div class="action-buttons" style="display: flex; gap: 0.5rem;">
+                                <a href="{{ url_for('auth.user_public_profile', user_id=user.id) }}" class="neo-button ghost" style="padding:0.5rem 0.75rem;" title="Профиль">
+                                    <img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Профиль" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';"><span style="display:none;">👤</span>
+                                </a>
                                 <a href="{{ url_for('admin.admin_user_edit', user_id=user.id) }}" class="neo-button ghost" style="padding:0.5rem 0.75rem;" title="Редактировать">
                                     <img src="{{ url_for('static', filename='icons/icons8-редактировать-100.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm">
                                 </a>

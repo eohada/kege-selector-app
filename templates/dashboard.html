@@ -96,6 +96,32 @@
             </div>
         </section>
 
+        {% if my_tutors %}
+        <section class="glass-panel" style="margin-top: 1rem;">
+            <div class="panel-head">
+                <div>
+                    <p class="eyebrow">мой преподаватель{% if my_tutors|length > 1 %}и{% endif %}</p>
+                    <h2 style="margin: 0;">Профиль преподавателя</h2>
+                </div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">
+                {% for tutor in my_tutors %}
+                <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; background: rgba(255,255,255,0.04); border-radius: var(--radius-lg); border: 1px solid var(--stroke-1); text-decoration: none; color: inherit; transition: border-color .2s, background .2s;">
+                    <div style="width: 56px; height: 56px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.4rem;">
+                        {% if tutor.avatar_url %}<img src="{{ tutor.avatar_url }}" alt="" style="width:100%; height:100%; object-fit:cover;">{% else %}{{ tutor.username[0]|upper }}{% endif %}
+                    </div>
+                    <div style="min-width: 0;">
+                        <div style="font-weight: 700; font-size: 1.1rem;">
+                            {% if tutor.profile and (tutor.profile.first_name or tutor.profile.last_name) %}{{ tutor.profile.first_name or '' }} {{ tutor.profile.last_name or '' }}{% else %}{{ tutor.username }}{% endif %}
+                        </div>
+                        <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.2rem;">{{ tutor.get_role_display() }} · Открыть профиль →</div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
         <section class="glass-panel" style="margin-top: 1rem;">
             <div class="panel-head">
                 <div>

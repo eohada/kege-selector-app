@@ -35,7 +35,7 @@ from app.models import (
     Submission,
     Assignment,
 )
-from app.models import User, FamilyTie
+from app.models import User, FamilyTie, Enrollment
 from app.utils.student_id_manager import assign_platform_id_if_needed
 from core.audit_logger import audit_logger
 from flask_login import current_user
@@ -452,11 +452,23 @@ def student_profile(student_id):
         except Exception as e:
             logger.error(f"Ошибка при проверке доступа к информации о родителях: {e}", exc_info=True)
             # Продолжаем без информации о родителях
+
+        # Привязанные преподаватели (Enrollment: student_id = User.id ученика)
+        tutors_list = []
+        if student_user_obj:
+            try:
+                enrollments = Enrollment.query.filter_by(student_id=student_user_obj.id).options(
+                    db.joinedload(Enrollment.tutor)
+                ).all()
+                tutors_list = [e.tutor for e in enrollments if getattr(e, 'tutor', None)]
+            except Exception as e:
+                logger.warning(f"Ошибка загрузки преподавателей для ученика: {e}")
         
         return render_template('student_profile.html', 
                                student=student, 
                                student_user=student_user_obj,
                                student_subscription=student_subscription,
+                               tutors_list=tutors_list,
                                active_submissions=active_submissions,
                                lessons=all_lessons,
                                last_completed=last_completed,
@@ -532,11 +544,21 @@ def student_info(student_id: int):
                     continue
     except Exception:
         pass
+    tutors_list = []
+    if student_user_obj:
+        try:
+            enrollments = Enrollment.query.filter_by(student_id=student_user_obj.id).options(
+                db.joinedload(Enrollment.tutor)
+            ).all()
+            tutors_list = [e.tutor for e in enrollments if getattr(e, 'tutor', None)]
+        except Exception:
+            pass
     return render_template(
         'student_info.html',
         student=student,
         student_user=student_user_obj,
         student_subscription=student_subscription,
+        tutors_list=tutors_list,
         parents_info=parents_info,
     )
 
