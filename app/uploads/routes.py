@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 # Допустимые имена файлов аватарок: avatar_<user_id>.<ext> (без path traversal)
 AVATAR_FILENAME_RE = re.compile(r'^avatar_\d+\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
+# Баннеры профиля (креатор): cover_<user_id>.<ext>
+COVER_FILENAME_RE = re.compile(r'^cover_\d+\.(jpg|jpeg|png|gif|webp)$', re.IGNORECASE)
 
 def _resolve_accessible_student_ids(scope: dict) -> list[int]:
     if not scope or scope.get('can_see_all'):
@@ -143,6 +145,28 @@ def avatar_file(filename: str):
     else:
         app_root = os.path.dirname(current_app.root_path)
         abs_path = os.path.join(app_root, 'static', 'uploads', 'avatars', base_name)
+    if not os.path.isfile(abs_path):
+        abort(404)
+    return send_file(abs_path, mimetype=None, as_attachment=False, download_name=base_name)
+
+
+@uploads_bp.route('/covers/<path:filename>')
+def cover_file(filename: str):
+    """
+    Раздача баннеров/обложек профиля (креатор). Публично.
+    Если задан COVER_UPLOAD_ROOT — файлы оттуда, иначе static/uploads/covers.
+    """
+    base_name = os.path.basename(filename)
+    if not base_name or not COVER_FILENAME_RE.match(base_name):
+        abort(404)
+    root = current_app.config.get('COVER_UPLOAD_ROOT')
+    if root:
+        abs_path = os.path.join(root, base_name)
+        if not os.path.abspath(abs_path).startswith(os.path.abspath(root)):
+            abort(404)
+    else:
+        app_root = os.path.dirname(current_app.root_path)
+        abs_path = os.path.join(app_root, 'static', 'uploads', 'covers', base_name)
     if not os.path.isfile(abs_path):
         abort(404)
     return send_file(abs_path, mimetype=None, as_attachment=False, download_name=base_name)

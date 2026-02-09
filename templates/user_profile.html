@@ -58,8 +58,15 @@
         ">
             {% if current_user %}
                 <div class="profile-card">
-                    <!-- Обложка -->
-                    <div class="profile-cover"></div>
+                    <!-- Обложка: для креатора — баннер (GIF) и снежинки -->
+                    {% set cover_url = current_user.profile.cover_url if (current_user.profile and current_user.profile.cover_url) else none %}
+                    <div class="profile-cover {% if current_user.is_creator() and cover_url %}has-cover{% endif %}" {% if current_user.is_creator() and cover_url %}style="background-image: url('{{ cover_url }}');"{% endif %}>
+                        {% if current_user.is_creator() %}
+                        <div class="snowflakes" aria-hidden="true">
+                            <span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span>
+                        </div>
+                        {% endif %}
+                    </div>
 
                     <!-- Шапка с аватаром -->
                     <div class="profile-header">
@@ -557,6 +564,24 @@
                             <small style="color: var(--text-muted); font-size: 0.8rem;">Загрузите изображение (JPG, PNG, GIF, WEBP, макс. 5MB)</small>
                         </div>
 
+                        {% if current_user.is_creator() %}
+                        <div class="neo-field" id="cover_field">
+                            <label class="neo-label" for="cover_file">Баннер профиля (GIF или изображение)</label>
+                            {% set creator_cover = current_user.profile.cover_url if (current_user.profile and current_user.profile.cover_url) else none %}
+                            {% if creator_cover %}
+                            <div style="margin-bottom: 1rem; text-align: center;">
+                                <img id="cover_preview" src="{{ creator_cover }}" alt="Текущий баннер" style="max-width: 100%; max-height: 120px; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1);">
+                            </div>
+                            {% else %}
+                            <div style="margin-bottom: 1rem; text-align: center;">
+                                <img id="cover_preview" src="" alt="Превью" style="max-width: 100%; max-height: 120px; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); display: none;">
+                            </div>
+                            {% endif %}
+                            <input type="file" id="cover_file" name="cover_file" class="neo-input" accept="image/*">
+                            <small style="color: var(--text-muted); font-size: 0.8rem;">GIF, JPG, PNG или WEBP, макс. 8MB. Отображается в шапке профиля.</small>
+                        </div>
+                        {% endif %}
+
                     <div class="neo-field">
                         <label class="neo-label" for="custom_status">Статус</label>
                         <input type="text" id="custom_status" name="custom_status" class="neo-input" 
@@ -618,7 +643,7 @@
             document.body.style.overflow = '';
         }
 
-        // Превью аватарки при выборе файла
+        // Превью аватарки и баннера при выборе файла
         document.addEventListener('DOMContentLoaded', () => {
             const avatarInput = document.getElementById('avatar_file');
             if (avatarInput) {
@@ -626,13 +651,23 @@
                     const file = e.target.files[0];
                     if (file) {
                         const reader = new FileReader();
-                        reader.onload = function(e) {
-                            // Обновляем превью в модальном окне
+                        reader.onload = function(ev) {
                             const preview = document.getElementById('avatar_preview');
-                            if (preview) {
-                                preview.src = e.target.result;
-                                preview.style.display = 'block';
-                            }
+                            if (preview) { preview.src = ev.target.result; preview.style.display = 'block'; }
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+            const coverInput = document.getElementById('cover_file');
+            if (coverInput) {
+                coverInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(ev) {
+                            const preview = document.getElementById('cover_preview');
+                            if (preview) { preview.src = ev.target.result; preview.style.display = 'block'; }
                         };
                         reader.readAsDataURL(file);
                     }
@@ -673,20 +708,27 @@
                 console.log('Server response:', result);
 
                 if (result.success) {
-                    // Обновляем аватарку сразу, без перезагрузки
                     if (result.avatar_url) {
                         const avatarImg = document.querySelector('.profile-avatar-big img');
                         if (avatarImg) {
                             avatarImg.src = result.avatar_url + '?t=' + Date.now();
                         } else {
-                            // Если аватарки не было, создаем img
                             const avatarDiv = document.querySelector('.profile-avatar-big');
-                            if (avatarDiv) {
-                                avatarDiv.innerHTML = `<img src="${result.avatar_url}?t=${Date.now()}" alt="Avatar">`;
-                            }
+                            if (avatarDiv) avatarDiv.innerHTML = `<img src="${result.avatar_url}?t=${Date.now()}" alt="Avatar">`;
                         }
                     }
-                    
+                    if (result.cover_url) {
+                        const coverEl = document.querySelector('.profile-cover');
+                        if (coverEl) {
+                            coverEl.classList.add('has-cover');
+                            coverEl.style.backgroundImage = "url('" + result.cover_url + "?t=" + Date.now() + "')";
+                        }
+                        const coverPreview = document.getElementById('cover_preview');
+                        if (coverPreview) {
+                            coverPreview.src = result.cover_url + '?t=' + Date.now();
+                            coverPreview.style.display = 'block';
+                        }
+                    }
                     if (window.toast) window.toast.success('Профиль обновлен');
                     setTimeout(() => window.location.reload(), 1000);
                 } else {
@@ -704,7 +746,7 @@
     <script>
         // Конвертация времени
         document.addEventListener('DOMContentLoaded', () => {
-            // Активируем красную тему только на странице профиля Creator
+            // Активируем снежную тему только на странице профиля Creator
             const profileContainer = document.querySelector('.profile-container.theme-creator');
             if (profileContainer) {
                 document.body.classList.add('creator-theme-active');

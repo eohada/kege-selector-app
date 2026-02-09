@@ -237,10 +237,14 @@ def user_public_profile(user_id: int):
     except Exception:
         display_name = None
 
+    creator_cover_url = None
+    if getattr(u, 'role', None) == 'creator' and getattr(u, 'profile', None):
+        creator_cover_url = getattr(u.profile, 'cover_url', None)
     return render_template(
         'user_public_profile.html',
         public_user=u,
         public_display_name=display_name or u.username,
+        creator_cover_url=creator_cover_url,
     )
 
 @auth_bp.route('/user/profile/update', methods=['POST'])
@@ -311,6 +315,41 @@ def profile_update():
                     current_user.profile.avatar_url = avatar_url
                 logger.info(f"Avatar uploaded for user {current_user.id}: {avatar_url}")
 
+        # Баннер профиля (только для креатора): GIF или изображение
+        if getattr(current_user, 'is_creator', lambda: False)() and 'cover_file' in request.files:
+            file = request.files['cover_file']
+            if file and file.filename:
+                allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+                filename = secure_filename(file.filename)
+                ext = os.path.splitext(filename)[1].lower()
+                if ext not in allowed_extensions:
+                    return jsonify({'success': False, 'error': 'Недопустимый формат. Используйте JPG, PNG, GIF или WEBP'}), 400
+                file.seek(0, os.SEEK_END)
+                file_size = file.tell()
+                file.seek(0)
+                if file_size > 8 * 1024 * 1024:
+                    return jsonify({'success': False, 'error': 'Файл слишком большой. Максимум 8MB'}), 400
+                unique_filename = f"cover_{current_user.id}{ext}"
+                cover_root = current_app.config.get('COVER_UPLOAD_ROOT')
+                if cover_root:
+                    upload_folder = os.path.abspath(cover_root)
+                    cover_url = f"/covers/{unique_filename}"
+                else:
+                    app_root = os.path.dirname(current_app.root_path)
+                    upload_folder = os.path.join(app_root, 'static', 'uploads', 'covers')
+                    upload_folder = os.path.abspath(upload_folder)
+                    cover_url = f"/static/uploads/covers/{unique_filename}"
+                os.makedirs(upload_folder, exist_ok=True)
+                if not os.path.isdir(upload_folder):
+                    return jsonify({'success': False, 'error': 'Не удалось создать папку для загрузки'}), 500
+                file_path = os.path.join(upload_folder, unique_filename)
+                if not os.path.abspath(file_path).startswith(os.path.abspath(upload_folder)):
+                    return jsonify({'success': False, 'error': 'Недопустимый путь'}), 400
+                file.save(file_path)
+                if getattr(current_user, 'profile', None):
+                    current_user.profile.cover_url = cover_url
+                logger.info(f"Cover uploaded for user {current_user.id}: {cover_url}")
+
         # Обновляем текстовые поля
         if 'custom_status' in data:
             current_user.custom_status = data['custom_status'].strip()[:100]
@@ -331,7 +370,10 @@ def profile_update():
             metadata={'updated_fields': list(data.keys())}
         )
         
-        return jsonify({'success': True, 'avatar_url': current_user.avatar_url})
+        cover_url = None
+        if getattr(current_user, 'profile', None):
+            cover_url = getattr(current_user.profile, 'cover_url', None)
+        return jsonify({'success': True, 'avatar_url': current_user.avatar_url, 'cover_url': cover_url})
         
     except Exception as e:
         db.session.rollback()

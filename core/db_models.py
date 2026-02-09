@@ -933,7 +933,8 @@ class UserProfile(db.Model):
     telegram_id = db.Column(db.String(100), nullable=True)  # Legacy: username/ссылка
     timezone = db.Column(db.String(50), default='Europe/Moscow', nullable=False)
     avatar_url = db.Column(db.String(500), nullable=True)
-    
+    cover_url = db.Column(db.String(500), nullable=True)  # Баннер/обложка профиля (GIF или изображение), для креатора
+
     # Telegram Bot интеграция
     telegram_chat_id = db.Column(db.BigInteger, nullable=True, unique=True, index=True)  # Chat ID для отправки уведомлений
     telegram_link_code = db.Column(db.String(32), nullable=True)  # Одноразовый код привязки

@@ -2589,9 +2589,9 @@ body.creator-theme-active .students-grid {
 
 /* Цветовые темы ролей */
 .theme-creator {
-    --accent-color: #ff2e2e;
-    --accent-glow: rgba(255, 46, 46, 0.5);
-    --accent-bg: rgba(255, 46, 46, 0.1);
+    --accent-color: #e8f4fc;
+    --accent-glow: rgba(255, 255, 255, 0.4);
+    --accent-bg: rgba(255, 255, 255, 0.08);
 }
 
 .theme-student {
@@ -2700,21 +2700,30 @@ body.creator-theme-active .students-grid {
     z-index: 1;
 }
 
-/* Специфика для Creator */
+/* Специфика для Creator (снежная тема): градиент по умолчанию; баннер перекрывает через .profile-cover.has-cover */
 .theme-creator .profile-cover {
-    background: linear-gradient(135deg, #2c0707, #1a0505);
+    background: linear-gradient(180deg, rgba(220, 235, 255, 0.25) 0%, rgba(180, 210, 255, 0.15) 40%, rgba(140, 180, 220, 0.12) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.theme-creator .profile-cover.has-cover {
+    background-color: rgba(10, 15, 25, 0.3);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+.theme-creator .profile-cover.has-cover::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, transparent 50%, rgba(0,0,0,0.15) 100%);
+    pointer-events: none;
 }
 .theme-creator .profile-cover::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: repeating-linear-gradient(
-        45deg,
-        rgba(255, 46, 46, 0.03),
-        rgba(255, 46, 46, 0.03) 10px,
-        transparent 10px,
-        transparent 20px
-    );
+    background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(255, 255, 255, 0.12), transparent 60%);
+    pointer-events: none;
 }
 
 /* Блок с аватаром и инфо */
@@ -2768,11 +2777,11 @@ body.creator-theme-active .students-grid {
     object-position: center 22%;
 }
 
-/* Подсветка аватара для Creator */
+/* Подсветка аватара для Creator (снежная тема) */
 .theme-creator .profile-avatar-big {
-    border-color: #ff2e2e;
-    color: #ff2e2e;
-    box-shadow: 0 0 30px rgba(255, 46, 46, 0.15);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #e8f4fc;
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.12);
 }
 
 .profile-info h1 {
@@ -2798,10 +2807,10 @@ body.creator-theme-active .students-grid {
 }
 
 .theme-creator .profile-role-badge {
-    background: rgba(255, 46, 46, 0.1);
-    color: #ff2e2e;
-    border-color: rgba(255, 46, 46, 0.3);
-    box-shadow: 0 0 15px rgba(255, 46, 46, 0.1);
+    background: rgba(255, 255, 255, 0.12);
+    color: #e8f4fc;
+    border-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.08);
 }
 
 /* Секции профиля */
@@ -3796,13 +3805,13 @@ body.creator-theme-active .students-grid {
     fill: white;
 }
 
-/* Усиление темы Creator (Red Aggression) */
-.theme-creator .profile-card { border: 1px solid rgba(255, 46, 46, 0.5); box-shadow: 0 0 60px rgba(255, 46, 46, 0.15); }
-.theme-creator .profile-section { border-color: rgba(255, 46, 46, 0.3); background: linear-gradient(145deg, rgba(44, 7, 7, 0.6), rgba(26, 5, 5, 0.4)); }
-.theme-creator .profile-section h3 { color: #ff4d4d; text-shadow: 0 0 15px rgba(255, 77, 77, 0.4); }
-.theme-creator .profile-avatar-big { box-shadow: 0 0 50px rgba(255, 46, 46, 0.4); border-color: #ff2e2e; }
-.theme-creator .neo-button.outline { border-color: rgba(255, 46, 46, 0.5); color: #ff2e2e; }
-.theme-creator .neo-button.outline:hover { background: rgba(255, 46, 46, 0.1); box-shadow: 0 0 20px rgba(255, 46, 46, 0.2); }
+/* Усиление темы Creator (снежная) */
+.theme-creator .profile-card { border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 0 60px rgba(255, 255, 255, 0.06); }
+.theme-creator .profile-section { border-color: rgba(255, 255, 255, 0.12); background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)); }
+.theme-creator .profile-section h3 { color: #e8f4fc; text-shadow: 0 0 20px rgba(255, 255, 255, 0.15); }
+.theme-creator .profile-avatar-big { box-shadow: 0 0 50px rgba(255, 255, 255, 0.15); border-color: rgba(255, 255, 255, 0.5); }
+.theme-creator .neo-button.outline { border-color: rgba(255, 255, 255, 0.35); color: #e8f4fc; }
+.theme-creator .neo-button.outline:hover { background: rgba(255, 255, 255, 0.08); box-shadow: 0 0 20px rgba(255, 255, 255, 0.12); }
 
 /* Global Modal Styles */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 10000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(8px); opacity: 0; transition: opacity 0.3s ease; }
@@ -3826,20 +3835,19 @@ body.creator-theme-active .students-grid {
 .public-avatar.avatar-clickable { cursor: pointer; }
 .public-avatar.avatar-clickable:hover { opacity: 0.92; }
 
-/* GLOBAL CREATOR THEME OVERRIDE - применяется через JS на странице профиля */
-/* Используем класс на body, который добавляется через JS, чтобы не влиять на другие страницы */
+/* GLOBAL CREATOR THEME OVERRIDE — снежная тема (применяется через JS на странице профиля) */
 body.creator-theme-active {
-    --page-bg: #0a0000;
-    --surface-1: rgba(20, 0, 0, 0.95);
-    --surface-2: rgba(30, 0, 0, 0.9);
-    --surface-3: rgba(40, 0, 0, 0.8);
-    --stroke-1: rgba(255, 0, 0, 0.2);
-    --stroke-2: rgba(255, 0, 0, 0.3);
-    --text-primary: #ffdddd;
-    --text-muted: rgba(255, 200, 200, 0.6);
-    --accent-1: #ff0000;
-    --accent-1-strong: #cc0000;
-    --page-gradient: radial-gradient(circle at 50% 0%, rgba(255, 0, 0, 0.2), transparent 70%);
+    --page-bg: #0c1218;
+    --surface-1: rgba(18, 28, 42, 0.95);
+    --surface-2: rgba(28, 40, 58, 0.9);
+    --surface-3: rgba(38, 52, 72, 0.85);
+    --stroke-1: rgba(255, 255, 255, 0.12);
+    --stroke-2: rgba(255, 255, 255, 0.2);
+    --text-primary: #f0f6fc;
+    --text-muted: rgba(230, 240, 255, 0.65);
+    --accent-1: #e8f4fc;
+    --accent-1-strong: #c8e0f8;
+    --page-gradient: radial-gradient(ellipse 120% 80% at 50% -20%, rgba(200, 230, 255, 0.15), transparent 55%);
 }
 
 body.creator-theme-active .nav-primary {
@@ -3848,20 +3856,49 @@ body.creator-theme-active .nav-primary {
     box-shadow: var(--shadow-soft);
 }
 
-/* Updated Profile Cover */
+/* Обложка профиля креатора: высота, снежинки поверх */
 .theme-creator .profile-cover {
-    background: 
-        radial-gradient(circle at 50% 120%, rgba(255, 0, 0, 0.4), transparent 70%),
-        linear-gradient(0deg, #0a0000 0%, transparent 100%),
-        repeating-radial-gradient(circle at 50% 50%, rgba(255, 0, 0, 0.05) 0, rgba(255, 0, 0, 0.05) 1px, transparent 2px, transparent 40px);
-    border-bottom: 1px solid rgba(255, 0, 0, 0.3);
     height: 250px;
+    position: relative;
 }
 .theme-creator .profile-cover::after {
     content: '';
     position: absolute;
     inset: 0;
-    opacity: 0.1;
-    background-image: repeating-linear-gradient(45deg, #ff0000 0, #ff0000 1px, transparent 0, transparent 50%);
-    background-size: 30px 30px;
+    pointer-events: none;
+    background: transparent;
+}
+
+/* Снежинки: контейнер и анимация */
+.snowflakes {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 2;
+}
+.snowflake {
+    position: absolute;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 1rem;
+    text-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+    animation: snowfall linear infinite;
+    will-change: transform;
+}
+.snowflake:nth-child(1) { left: 5%; animation-duration: 12s; animation-delay: 0s; font-size: 0.7rem; opacity: 0.8; }
+.snowflake:nth-child(2) { left: 15%; animation-duration: 14s; animation-delay: -2s; font-size: 1rem; opacity: 0.6; }
+.snowflake:nth-child(3) { left: 25%; animation-duration: 10s; animation-delay: -4s; font-size: 0.6rem; opacity: 0.9; }
+.snowflake:nth-child(4) { left: 35%; animation-duration: 16s; animation-delay: -1s; font-size: 1.1rem; opacity: 0.5; }
+.snowflake:nth-child(5) { left: 45%; animation-duration: 11s; animation-delay: -3s; font-size: 0.8rem; opacity: 0.7; }
+.snowflake:nth-child(6) { left: 55%; animation-duration: 13s; animation-delay: -5s; font-size: 0.65rem; opacity: 0.85; }
+.snowflake:nth-child(7) { left: 65%; animation-duration: 15s; animation-delay: -2s; font-size: 0.9rem; opacity: 0.6; }
+.snowflake:nth-child(8) { left: 75%; animation-duration: 9s; animation-delay: -6s; font-size: 0.7rem; opacity: 0.8; }
+.snowflake:nth-child(9) { left: 85%; animation-duration: 17s; animation-delay: 0s; font-size: 1rem; opacity: 0.55; }
+.snowflake:nth-child(10) { left: 95%; animation-duration: 12s; animation-delay: -4s; font-size: 0.75rem; opacity: 0.7; }
+@keyframes snowfall {
+    0% { transform: translateY(-10%) translateX(0) rotate(0deg); }
+    25% { transform: translateY(25vh) translateX(8px) rotate(90deg); }
+    50% { transform: translateY(50vh) translateX(-5px) rotate(180deg); }
+    75% { transform: translateY(75vh) translateX(6px) rotate(270deg); }
+    100% { transform: translateY(110%) translateX(0) rotate(360deg); }
 }
