@@ -508,7 +508,8 @@ def remote_admin_api_users():
             query = User.query
             
             if role_filter:
-                query = query.join(UserRole, User.id == UserRole.user_id).filter(UserRole.role == role_filter).distinct()
+                ids_subq = db.session.query(User.id).join(UserRole, User.id == UserRole.user_id).filter(UserRole.role == role_filter).distinct()
+                query = query.filter(User.id.in_(ids_subq))
             if is_active_filter is not None:
                 is_active = is_active_filter.lower() == 'true'
                 query = query.filter(User.is_active == is_active)
