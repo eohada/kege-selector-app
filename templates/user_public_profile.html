@@ -26,6 +26,11 @@
     </style>
 </head>
 <body class="{% if public_user.role == 'creator' %}creator-theme-active{% endif %}">
+    {% if public_user.role == 'creator' %}
+    <div class="creator-snowflakes" aria-hidden="true">
+        {% for i in range(28) %}<span class="snowflake">❄</span>{% endfor %}
+    </div>
+    {% endif %}
     <div class="app-shell">
         {% set active_page = None %}
         {% include '_primary_nav.html' %}
@@ -35,11 +40,7 @@
         <main class="profile-container theme-creator">
             <div class="profile-card">
                 {% set creator_cover = creator_cover_url|default(none) %}
-                <div class="profile-cover {% if creator_cover %}has-cover{% endif %}" {% if creator_cover %}style="background-image: url('{{ creator_cover }}');"{% endif %}>
-                    <div class="snowflakes" aria-hidden="true">
-                        <span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span>
-                    </div>
-                </div>
+                <div class="profile-cover {% if creator_cover %}has-cover{% endif %}" {% if creator_cover %}style="background-image: url('{{ creator_cover }}');"{% endif %}></div>
                 <div class="profile-header">
                     <div class="profile-identity">
                         <div class="profile-avatar-wrapper {% if public_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if public_user.avatar_url %}data-avatar-url="{{ public_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>

@@ -43,6 +43,11 @@
     </style>
 </head>
 <body>
+    {% if current_user and current_user.is_creator() %}
+    <div class="creator-snowflakes" aria-hidden="true">
+        {% for i in range(28) %}<span class="snowflake">❄</span>{% endfor %}
+    </div>
+    {% endif %}
     <div class="app-shell">
         {% set active_page = None %}
         {% include '_primary_nav.html' %}
@@ -60,13 +65,7 @@
                 <div class="profile-card">
                     <!-- Обложка: для креатора — баннер (GIF) и снежинки -->
                     {% set cover_url = current_user.profile.cover_url if (current_user.profile and current_user.profile.cover_url) else none %}
-                    <div class="profile-cover {% if current_user.is_creator() and cover_url %}has-cover{% endif %}" {% if current_user.is_creator() and cover_url %}style="background-image: url('{{ cover_url }}');"{% endif %}>
-                        {% if current_user.is_creator() %}
-                        <div class="snowflakes" aria-hidden="true">
-                            <span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span><span class="snowflake">❄</span>
-                        </div>
-                        {% endif %}
-                    </div>
+                    <div class="profile-cover {% if current_user.is_creator() and cover_url %}has-cover{% endif %}" {% if current_user.is_creator() and cover_url %}style="background-image: url('{{ cover_url }}');"{% endif %}></div>
 
                     <!-- Шапка с аватаром -->
                     <div class="profile-header">
