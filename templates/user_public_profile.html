@@ -12,18 +12,9 @@
     {% endif %}
     <style>
         .public-profile-wrap { max-width: 1060px; margin: 1.25rem auto 3rem; padding: 0 1rem; }
-        .public-hero {
-            display:flex; gap: 1.25rem; align-items: center; justify-content: space-between;
-            flex-wrap: wrap;
-        }
+        .public-hero { display:flex; gap: 1.25rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
         .public-identity { display:flex; gap: 1.1rem; align-items:center; min-width: 0; }
-        .public-avatar {
-            width: 84px; height: 84px; border-radius: 999px;
-            background: rgba(255,255,255,0.04); border: 1px solid var(--stroke-1);
-            display:flex; align-items:center; justify-content:center;
-            font-weight: 900; font-size: 1.9rem; color: var(--text-muted);
-            overflow:hidden;
-        }
+        .public-avatar { width: 84px; height: 84px; border-radius: 999px; background: rgba(255,255,255,0.04); border: 1px solid var(--stroke-1); display:flex; align-items:center; justify-content:center; font-weight: 900; font-size: 1.9rem; color: var(--text-muted); overflow:hidden; }
         .public-avatar img { width:100%; height:100%; object-fit: cover; }
         .public-title { min-width:0; }
         .public-title h1 { margin: 0; font-size: 2rem; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -34,11 +25,71 @@
         .public-actions { display:flex; gap: .6rem; flex-wrap: wrap; justify-content: flex-end; }
     </style>
 </head>
-<body>
+<body class="{% if public_user.role == 'creator' %}creator-theme-active{% endif %}">
     <div class="app-shell">
         {% set active_page = None %}
         {% include '_primary_nav.html' %}
-        <main class="public-profile-wrap {% if public_user.role == 'creator' %}theme-creator{% elif public_user.role == 'admin' %}theme-admin{% elif public_user.role == 'tutor' %}theme-tutor{% elif public_user.role == 'parent' %}theme-parent{% elif public_user.role == 'student' %}theme-student{% endif %}">
+
+        {% if public_user.role == 'creator' %}
+        {# Полноценный «красивый» профиль создателя — та же структура, что и в личном кабинете #}
+        <main class="profile-container theme-creator">
+            <div class="profile-card">
+                <div class="profile-cover"></div>
+                <div class="profile-header">
+                    <div class="profile-identity">
+                        <div class="profile-avatar-wrapper">
+                            <div class="profile-avatar-big">
+                                {% if public_user.avatar_url %}
+                                    <img src="{{ public_user.avatar_url }}" alt="Avatar">
+                                {% else %}
+                                    {{ public_display_name[0]|upper }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="profile-info">
+                            <div class="profile-role-badge">{{ public_user.get_role_display() }}</div>
+                            <h1>{{ public_display_name }}</h1>
+                            <div class="public-sub" style="margin-top: 0.35rem;">
+                                <span class="status-badge status-info" style="opacity:.75;">@{{ public_user.username }}</span>
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <a class="neo-button outline" href="{{ request.referrer or url_for('main.dashboard') }}" style="text-decoration:none;">Назад</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div style="padding: 0 2.5rem 2.5rem;">
+                    <div class="profile-content-grid">
+                        <section class="profile-section">
+                            <h3>О пользователе</h3>
+                            {% if public_user.about_me %}
+                                <div class="public-bio">{{ public_user.about_me }}</div>
+                            {% else %}
+                                <div style="color: var(--text-muted);">Пока нет описания.</div>
+                            {% endif %}
+                        </section>
+                        <aside class="profile-section">
+                            <h3>Сводка</h3>
+                            <div class="data-row">
+                                <span class="data-label">Роль</span>
+                                <span class="data-value">{{ public_user.get_role_display() }}</span>
+                            </div>
+                            <div class="data-row">
+                                <span class="data-label">Ник</span>
+                                <span class="data-value">@{{ public_user.username }}</span>
+                            </div>
+                            <div class="data-row">
+                                <span class="data-label">В системе с</span>
+                                <span class="data-value">{{ public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—' }}</span>
+                            </div>
+                        </aside>
+                    </div>
+                </div>
+            </div>
+        </main>
+        {% else %}
+        {# Обычный публичный профиль для остальных ролей #}
+        <main class="public-profile-wrap {% if public_user.role == 'admin' %}theme-admin{% elif public_user.role == 'tutor' %}theme-tutor{% elif public_user.role == 'parent' %}theme-parent{% elif public_user.role == 'student' %}theme-student{% endif %}">
             <section class="glass-panel">
                 <div class="public-hero">
                     <div class="public-identity">
@@ -46,7 +97,7 @@
                             {% if public_user.avatar_url %}
                                 <img src="{{ public_user.avatar_url }}" alt="Avatar">
                             {% else %}
-                                {{ public_display_name[0].upper() }}
+                                {{ public_display_name[0]|upper }}
                             {% endif %}
                         </div>
                         <div class="public-title">
@@ -64,7 +115,6 @@
                     </div>
                 </div>
             </section>
-
             <div class="public-grid">
                 <section class="profile-section">
                     <h3>О пользователе</h3>
@@ -74,7 +124,6 @@
                         <div style="color: var(--text-muted);">Пока нет описания.</div>
                     {% endif %}
                 </section>
-
                 <aside class="profile-section">
                     <h3>Сводка</h3>
                     <div class="data-row">
@@ -92,8 +141,8 @@
                 </aside>
             </div>
         </main>
+        {% endif %}
     </div>
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
 </body>
 </html>
-
