@@ -264,6 +264,9 @@ def create_app(config_name=None):
     from app.admin.routes import maintenance_status_api
     csrf.exempt(maintenance_status_api)
 
+    from app.api.routes import api_telegram_link_bot
+    csrf.exempt(api_telegram_link_bot)
+
     @app.context_processor
     def inject_csrf_token():
         from flask_wtf.csrf import generate_csrf
