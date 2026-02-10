@@ -1236,10 +1236,42 @@ def ensure_schema_columns(app):
                         if 'knowledge_node_id' not in cols:
                             db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN knowledge_node_id INTEGER'))
                             logger.info("Added knowledge_node_id to Tasks (analytics)")
+                        # --- Фаза 0: difficulty_level & hints ---
+                        if 'difficulty_level' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN difficulty_level INTEGER'))
+                            logger.info("Added difficulty_level to Tasks")
+                        if 'hints' not in cols:
+                            col_type = 'JSONB' if is_postgres else 'JSON'
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN hints {col_type}'))
+                            logger.info("Added hints (JSON) to Tasks")
+                        # Индекс для difficulty_level
+                        try:
+                            db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_tasks_difficulty_level ON "{tasks_table_resolved}"(difficulty_level)'))
+                        except Exception:
+                            pass
                 except Exception as e:
-                    logger.warning(f"Could not add knowledge_node_id to Tasks: {e}")
+                    logger.warning(f"Could not add knowledge_node_id/difficulty/hints to Tasks: {e}")
                     db.session.rollback()
-            
+
+            # --- Фаза 0: новые поля в analytics_events ---
+            analytics_events_table = _resolve_table_name(table_names_after if 'table_names_after' in dir() else table_names, 'analytics_events')
+            if analytics_events_table:
+                try:
+                    ae_cols = {c['name'] for c in inspector.get_columns(analytics_events_table)}
+                    if 'task_id' not in ae_cols:
+                        db.session.execute(text(f'ALTER TABLE "{analytics_events_table}" ADD COLUMN task_id INTEGER'))
+                        logger.info("Added task_id to analytics_events")
+                    if 'time_spent_sec' not in ae_cols:
+                        db.session.execute(text(f'ALTER TABLE "{analytics_events_table}" ADD COLUMN time_spent_sec INTEGER'))
+                        logger.info("Added time_spent_sec to analytics_events")
+                    if 'behavior_flags' not in ae_cols:
+                        col_type = 'JSONB' if is_postgres else 'JSON'
+                        db.session.execute(text(f'ALTER TABLE "{analytics_events_table}" ADD COLUMN behavior_flags {col_type}'))
+                        logger.info("Added behavior_flags (JSON) to analytics_events")
+                except Exception as e:
+                    logger.warning(f"Could not add new columns to analytics_events: {e}")
+                    db.session.rollback()
+
             try:
                 db.session.commit()
                 logger.info("RBAC and Assignments migrations committed successfully")

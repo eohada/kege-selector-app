@@ -1,6 +1,12 @@
 """
 Движок аналитики: обновление рейтинга по узлам знаний и прогноз балла ЕГЭ.
 Основан на модифицированной системе Elo/Glicko.
+
+Фаза 0: используем per-task difficulty_level (1–10) для расчёта Elo-рейтинга задачи:
+  - Easy (1–3)   → base_rating − 100
+  - Medium (4–7)  → base_rating
+  - Hard (8–10)   → base_rating + 150
+  Если difficulty_level = NULL → считаем Medium (без смещения).
 """
 import math
 import logging
@@ -27,6 +33,10 @@ class AnalyticsEngine:
     MIN_VOLATILITY = 50.0
     BASE_K_FACTOR = 30.0
 
+    # --- Пороги детектора поведения ---
+    FAST_FAIL_SEC = 5          # «быстрый фейл» — ответ за < 5 сек и неверно
+    FAST_SUCCESS_HARD_SEC = 10 # «быстрый успех на сложном» — ответ за < 10 сек, верно, Hard
+
     @staticmethod
     def calculate_probability(user_rating: float, task_rating: float) -> float:
         """Вероятность правильного решения: P = 1 / (1 + 10^((Rb - Ra) / 400))."""
@@ -36,6 +46,32 @@ class AnalyticsEngine:
     def _get_node_for_task(cls, task: Tasks):
         """Возвращает KnowledgeNode для задания (после сида у Tasks заполнен knowledge_node_id)."""
         return getattr(task, 'knowledge_node', None) if getattr(task, 'knowledge_node_id', None) else None
+
+    @classmethod
+    def _detect_behavior(cls, is_correct: bool, time_spent_sec: int | None, task: Tasks) -> dict:
+        """
+        Детектор поведенческих аномалий.
+        Возвращает dict с флагами (может быть пустым).
+
+        Детектируемые паттерны:
+          - fast_fail: ответ за < FAST_FAIL_SEC и неверно → вероятная невнимательность
+          - fast_success_hard: ответ за < FAST_SUCCESS_HARD_SEC, верно, задача Hard → подозрение на списывание/заучивание
+        """
+        flags = {}
+        if time_spent_sec is None:
+            return flags
+
+        # Fast Fail — молниеносный неверный ответ
+        if not is_correct and time_spent_sec < cls.FAST_FAIL_SEC:
+            flags['fast_fail'] = True
+
+        # Fast Success на Hard — слишком быстро решил сложную задачу
+        if is_correct and time_spent_sec < cls.FAST_SUCCESS_HARD_SEC:
+            label = getattr(task, 'difficulty_label', 'medium')
+            if label == 'hard':
+                flags['fast_success_hard'] = True
+
+        return flags
 
     @classmethod
     def process_submission(
@@ -50,6 +86,8 @@ class AnalyticsEngine:
         """
         Вызывается после проверки ответа. Обновляет рейтинг пользователя по узлу знаний.
         Возвращает новый рейтинг или None, если узел не определён.
+
+        Использует task.get_elo_rating() для расчёта, учитывающего difficulty_level.
         """
         task = Tasks.query.get(task_id)
         if not task:
@@ -69,6 +107,7 @@ class AnalyticsEngine:
             )
             db.session.add(mastery)
 
+        # Рост волатильности за дни простоя
         if mastery.last_practiced_at:
             last_at = mastery.last_practiced_at
             if last_at.tzinfo is None:
@@ -80,13 +119,26 @@ class AnalyticsEngine:
                     mastery.volatility + delta * cls.VOLATILITY_GROWTH_PER_DAY,
                 )
 
-        task_rating = float(getattr(node, 'base_rating', 1000))
+        # --- Per-task difficulty Elo rating ---
+        task_rating = task.get_elo_rating()
         expected_score = cls.calculate_probability(mastery.rating, task_rating)
         actual_score = 1.0 if is_correct else 0.0
 
         k_factor = cls.BASE_K_FACTOR * (mastery.volatility / 100.0)
-        if is_correct and time_spent_sec is not None and time_spent_sec < 10:
-            k_factor *= 0.1
+
+        # --- Детектор поведения ---
+        behavior = cls._detect_behavior(is_correct, time_spent_sec, task)
+
+        # Подавление K при подозрительных паттернах
+        if behavior.get('fast_success_hard'):
+            k_factor *= 0.1   # Почти не даём рейтинг за «быстрый успех на Hard»
+            logger.info("Behavior: fast_success_hard for user=%s task=%s (%.1fs)", user_id, task_id, time_spent_sec or 0)
+        elif is_correct and time_spent_sec is not None and time_spent_sec < 10:
+            k_factor *= 0.1   # Общая защита от быстрых верных ответов
+
+        if behavior.get('fast_fail'):
+            k_factor *= 0.5   # Смягчаем потерю рейтинга за невнимательный клик
+            logger.info("Behavior: fast_fail for user=%s task=%s (%.1fs)", user_id, task_id, time_spent_sec or 0)
 
         old_rating = mastery.rating
         new_rating = old_rating + k_factor * (actual_score - expected_score)
@@ -101,12 +153,15 @@ class AnalyticsEngine:
         event = AnalyticsEvent(
             user_id=user_id,
             node_id=node.id,
+            task_id=task_id,
             submission_id=submission_id,
             answer_id=answer_id,
             is_correct=is_correct,
-            task_difficulty=int(task_rating),
+            task_difficulty=task.difficulty_level,
             old_rating=old_rating,
             new_rating=new_rating,
+            time_spent_sec=time_spent_sec,
+            behavior_flags=behavior if behavior else None,
         )
         db.session.add(event)
         return new_rating

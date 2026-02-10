@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReferencePrototype",
+  "description": "Эталонный прототип задания ЕГЭ по информатике — формат для обучения LLM и наполнения базы.",
+  "type": "object",
+  "required": [
+    "task_number",
+    "topic_code",
+    "topic_name",
+    "difficulty_level",
+    "difficulty_label",
+    "prototype",
+    "solution",
+    "answer"
+  ],
+  "properties": {
+    "task_number": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 27,
+      "description": "Номер задания ЕГЭ (1–27)."
+    },
+    "topic_code": {
+      "type": "string",
+      "description": "Код узла знаний (knowledge_node.code), напр. 'NUMERAL-SYSTEMS-1'."
+    },
+    "topic_name": {
+      "type": "string",
+      "description": "Человекочитаемое название темы, напр. 'Системы счисления'."
+    },
+    "difficulty_level": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10,
+      "description": "Уровень сложности: 1–3 Easy, 4–7 Medium, 8–10 Hard."
+    },
+    "difficulty_label": {
+      "type": "string",
+      "enum": ["easy", "medium", "hard"],
+      "description": "Метка сложности, производная от difficulty_level."
+    },
+    "prototype": {
+      "type": "object",
+      "required": ["text", "input_format", "answer_format"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Полный текст задания (может содержать HTML/Markdown)."
+        },
+        "input_format": {
+          "type": "string",
+          "description": "Описание формата входных данных (таблица, файл, изображение и т.д.)."
+        },
+        "answer_format": {
+          "type": "string",
+          "description": "Описание формата ожидаемого ответа (число, строка, множественный выбор и т.д.)."
+        },
+        "attached_files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Пути к прикреплённым файлам (если есть)."
+        },
+        "images": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "URL/пути к изображениям в задании."
+        }
+      }
+    },
+    "solution": {
+      "type": "object",
+      "required": ["steps"],
+      "properties": {
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["step", "explanation"],
+            "properties": {
+              "step": {
+                "type": "integer",
+                "description": "Номер шага решения."
+              },
+              "explanation": {
+                "type": "string",
+                "description": "Подробное объяснение шага."
+              },
+              "code": {
+                "type": "string",
+                "description": "Код (Python/другой), если шаг требует программирования."
+              },
+              "formula": {
+                "type": "string",
+                "description": "Математическая формула (LaTeX), если применимо."
+              }
+            }
+          },
+          "description": "Пошаговое эталонное решение."
+        },
+        "alternative_methods": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Описания альтернативных способов решения."
+        },
+        "common_mistakes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Типичные ошибки учеников на этом типе задания."
+        },
+        "time_estimate_sec": {
+          "type": "integer",
+          "description": "Оценочное время на решение в секундах."
+        }
+      }
+    },
+    "answer": {
+      "type": "string",
+      "description": "Эталонный правильный ответ."
+    },
+    "hint_ladder": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["level", "text"],
+        "properties": {
+          "level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5,
+            "description": "Уровень подсказки (1 — мягкая, 5 — почти решение)."
+          },
+          "text": {
+            "type": "string",
+            "description": "Текст подсказки."
+          }
+        }
+      },
+      "description": "Лестница подсказок для тренажёра (5 уровней)."
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Дополнительные теги: 'fipi', 'kege-2025', 'programming', 'math' и т.д."
+    },
+    "source": {
+      "type": "string",
+      "description": "Источник задания: 'fipi', 'kege.ru', 'manual', 'llm-generated' и т.д."
+    },
+    "meta": {
+      "type": "object",
+      "description": "Произвольные метаданные (автор, дата, версия и т.д.)."
+    }
+  }
+}

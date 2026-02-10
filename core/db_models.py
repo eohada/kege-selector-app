@@ -33,6 +33,40 @@ class Tasks(db.Model):
     last_scraped = db.Column(db.DateTime, default=moscow_now)
     knowledge_node_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id', ondelete='SET NULL'), nullable=True, index=True)
 
+    # --- Фаза 0: сложность задачи и подсказки ---
+    # difficulty_level: 1–3 = Easy, 4–7 = Medium, 8–10 = Hard; NULL = не размечено (считать Medium)
+    difficulty_level = db.Column(db.Integer, nullable=True, index=True)
+    # hints: лестница подсказок JSON [{"level": 1, "text": "…"}, …]
+    hints = db.Column(JSON, nullable=True)
+
+    # --- Константы маппинга сложности ---
+    DIFFICULTY_EASY_MAX = 3      # 1–3 = Easy
+    DIFFICULTY_MEDIUM_MAX = 7    # 4–7 = Medium
+    DIFFICULTY_HARD_MIN = 8      # 8–10 = Hard
+
+    @property
+    def difficulty_label(self) -> str:
+        """Человекочитаемая метка сложности: Easy / Medium / Hard."""
+        v = self.difficulty_level
+        if v is None or 4 <= v <= 7:
+            return 'medium'
+        if 1 <= v <= 3:
+            return 'easy'
+        if v >= 8:
+            return 'hard'
+        return 'medium'
+
+    def get_elo_rating(self) -> float:
+        """Рейтинг задачи для формул Elo с учётом difficulty_level и base_rating узла."""
+        node = self.knowledge_node
+        base = float(getattr(node, 'base_rating', 1000)) if node else 1000.0
+        label = self.difficulty_label
+        if label == 'easy':
+            return base - 100.0
+        if label == 'hard':
+            return base + 150.0
+        return base  # medium или не размечено
+
     usage_history = db.relationship('UsageHistory', back_populates='task', lazy=True)
     skipped_tasks = db.relationship('SkippedTasks', back_populates='task', lazy=True)
     blacklist_tasks = db.relationship('BlacklistTasks', back_populates='task', lazy=True)
@@ -1536,13 +1570,16 @@ class AnalyticsEvent(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
     node_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id', ondelete='CASCADE'), nullable=False, index=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id', ondelete='SET NULL'), nullable=True, index=True)
     submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id', ondelete='SET NULL'), nullable=True, index=True)
     answer_id = db.Column(db.Integer, db.ForeignKey('Answers.answer_id', ondelete='SET NULL'), nullable=True, index=True)
 
     is_correct = db.Column(db.Boolean, nullable=False)
-    task_difficulty = db.Column(db.Integer, nullable=True)
+    task_difficulty = db.Column(db.Integer, nullable=True)   # difficulty_level задачи
     old_rating = db.Column(db.Float, nullable=True)
     new_rating = db.Column(db.Float, nullable=True)
+    time_spent_sec = db.Column(db.Integer, nullable=True)    # сколько секунд потратил ученик
+    behavior_flags = db.Column(JSON, nullable=True)           # {"fast_fail": true, "fast_success_hard": true, ...}
     timestamp = db.Column(db.DateTime, default=moscow_now, nullable=False)
 
     __table_args__ = (
