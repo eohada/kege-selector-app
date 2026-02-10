@@ -210,7 +210,8 @@ def user_public_profile(user_id: int):
 
     creator_cover_url = None
     custom_theme_user_id = int(current_app.config.get('CUSTOM_THEME_USER_ID', 999))
-    if (getattr(u, 'is_creator', lambda: False)() or u.id == custom_theme_user_id) and getattr(u, 'profile', None):
+    is_custom_theme_user = u.id == custom_theme_user_id or (getattr(u, 'numeric_id', None) is not None and str(u.numeric_id) == str(custom_theme_user_id))
+    if (getattr(u, 'is_creator', lambda: False)() or is_custom_theme_user) and getattr(u, 'profile', None):
         creator_cover_url = getattr(u.profile, 'cover_url', None)
     public_numeric_id = None
     if getattr(u, 'is_student', lambda: False)():

@@ -43,12 +43,13 @@
         .lessons-remaining--accent { color: var(--accent-1); }
     </style>
 </head>
-<body class="{% if current_user and current_user.id == custom_theme_user_id %}custom-theme-active{% endif %}">
+{% set use_custom_theme = current_user and (current_user.id == custom_theme_user_id or (current_user.numeric_id and str(current_user.numeric_id) == str(custom_theme_user_id))) %}
+<body class="{% if use_custom_theme %}custom-theme-active{% endif %}">
     {% if current_user and current_user.is_creator() %}
     <div class="creator-snowflakes" aria-hidden="true">
         {% for i in range(28) %}<span class="snowflake">❄</span>{% endfor %}
     </div>
-    {% elif current_user and current_user.id == custom_theme_user_id %}
+    {% elif use_custom_theme %}
     <div class="custom-theme-stars" aria-hidden="true">
         {% for i in range(36) %}<span class="star">★</span>{% endfor %}
     </div>
@@ -57,7 +58,6 @@
         {% set active_page = None %}
         {% include '_primary_nav.html' %}
         {% include '_ux_enhancements.html' %}
-        {% set use_custom_theme = (current_user and current_user.id == custom_theme_user_id) %}
         <main class="profile-container
             {% if current_user and current_user.is_creator() %}theme-creator
             {% elif use_custom_theme %}theme-custom-999
