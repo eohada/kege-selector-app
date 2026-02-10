@@ -2,7 +2,7 @@
 Основной файл бота - обработчики команд и callback-запросов.
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import html
 import json
@@ -671,6 +671,9 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
+        if status and status >= 500:
+            logger.warning(f"Link API returned {status} for chat_id={chat_id}, trying DB fallback")
+
     session = get_session()
     try:
         existing = session.execute(text(
@@ -703,13 +706,16 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         profile_id, user_id, expires_at, username = row
         
-        if expires_at and expires_at < datetime.utcnow():
-            await update.message.reply_text(
-                "⏰ Код истёк (действует 15 минут). Получи новый код в профиле на сайте.",
-                parse_mode="HTML",
-                reply_markup=get_main_keyboard()
-            )
-            return
+        now_utc = datetime.now(timezone.utc)
+        if expires_at is not None:
+            exp = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=timezone.utc)
+            if exp < now_utc:
+                await update.message.reply_text(
+                    "⏰ Код истёк (действует 15 минут). Получи новый код в профиле на сайте.",
+                    parse_mode="HTML",
+                    reply_markup=get_main_keyboard()
+                )
+                return
         
         session.execute(text("""
             UPDATE "UserProfiles"
@@ -728,9 +734,16 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info(f"User {username} linked Telegram chat_id={chat_id}")
         
     except Exception as e:
-        session.rollback()
-        logger.error(f"Error in link_command: {e}", exc_info=True)
-        await update.message.reply_text(ERROR_MESSAGE, parse_mode="HTML", reply_markup=get_main_keyboard())
+        try:
+            session.rollback()
+        except Exception:
+            pass
+        logger.error(f"Error in link_command chat_id={chat_id} code={code!r}: {e}", exc_info=True)
+        await update.message.reply_text(
+            "❌ Не удалось привязать (временная ошибка). Запроси новый код в профиле на сайте и попробуй снова через минуту.",
+            parse_mode="HTML",
+            reply_markup=get_main_keyboard()
+        )
     finally:
         close_session(session)
 
