@@ -834,7 +834,7 @@
                     </div>
                     
                     <div class="task-content">
-                        {{ hw_task.task.content_html|safe }}
+                        {{ hw_task.task.content_html|deduplicate_formulas|safe }}
                         {% if hw_task.task.attached_files %}
                         {% set files = hw_task.task.attached_files | from_json %}
                         {% if files %}

@@ -224,7 +224,7 @@
                 </div>
                 {% else %}
                 <div class="task-content">
-                    {{ task_item.task.content_html|safe }}
+                    {{ task_item.task.content_html|deduplicate_formulas|safe }}
                 </div>
                 {% endif %}
                 
@@ -246,7 +246,7 @@
             
             {% if submission.status == 'ASSIGNED' %}
             <div style="text-align: center; margin: 2.5rem 0;">
-                <button type="button" id="start-btn" class="neo-button accent" style="padding: 1.2rem 2.5rem; font-size: 1.05em; font-weight: 700; letter-spacing: 0.5px;">
+                <button type="button" id="start-btn" class="neo-button accent" data-prevent-double-submit="true" style="padding: 1.2rem 2.5rem; font-size: 1.05em; font-weight: 700; letter-spacing: 0.5px;">
                     ▶ Начать выполнение
                 </button>
             </div>
@@ -273,7 +273,7 @@
                     </button>
                     <span id="last-save" class="autosave-indicator" style="font-size: 0.85em; color: var(--text-muted); font-weight: 500;"></span>
                 </div>
-                <button type="button" id="submit-btn" class="neo-button accent" style="padding: 1rem 2.2rem; font-weight: 700; letter-spacing: 0.5px;">
+                <button type="button" id="submit-btn" class="neo-button accent" data-prevent-double-submit="true" style="padding: 1rem 2.2rem; font-weight: 700; letter-spacing: 0.5px;">
                     ✓ Сдать работу
                 </button>
             </div>
@@ -290,10 +290,10 @@
                 </div>
             </div>
             
-            <div class="task-content">
-                {{ task_item.task.content_html|safe }}
+<div class="task-content">
+                {{ task_item.task.content_html|deduplicate_formulas|safe }}
             </div>
-            
+
             <div style="margin-top: 1.5rem; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
                 <div style="font-weight: 600; margin-bottom: 0.5rem;">Ваш ответ:</div>
                 <div style="white-space: pre-wrap;">{{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}</div>
@@ -431,7 +431,8 @@
                         {left: '$', right: '$', display: false},
                         {left: '\\[', right: '\\]', display: true},
                         {left: '\\(', right: '\\)', display: false}
-                    ]
+                    ],
+                    ignoreClass: 'katex'
                 });
             }
         });

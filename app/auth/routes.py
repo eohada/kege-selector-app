@@ -15,6 +15,7 @@ from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
 
 from app.auth import auth_bp
+from app.limiter import limiter
 from app.models import db, User, UserProfile, moscow_now, Student
 from app.utils.subscription_access import get_effective_access_for_user
 from core.audit_logger import audit_logger
@@ -26,6 +27,7 @@ class LoginForm(FlaskForm):
     submit = SubmitField('Войти')
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit("15 per minute")
 def login():
     """Страница входа"""
     try:

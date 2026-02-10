@@ -86,7 +86,7 @@
                 </div>
 
                 <div class="task-content" style="margin-bottom: 1rem;">
-                    {{ task.content_html|safe }}
+                    {{ task.content_html|deduplicate_formulas|safe }}
                 </div>
 
                 {% if task.answer %}
@@ -122,7 +122,8 @@
                         {left: "$", right: "$", display: false},
                         {left: "\\[", right: "\\]", display: true},
                         {left: "\\(", right: "\\)", display: false}
-                    ]
+                    ],
+                    ignoreClass: "katex"
                 });
             }
         });

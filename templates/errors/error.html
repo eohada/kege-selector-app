@@ -104,6 +104,8 @@
 </head>
 <body>
     <div class="app-shell">
+        {% set active_page = none %}
+        {% include '_primary_nav.html' %}
         <div class="error-wrap">
             <section class="glass-panel error-card">
                 <div class="error-kicker">
@@ -135,6 +137,11 @@
                     <button type="button" class="neo-button ghost" onclick="history.back()">
                         ⟵ Назад
                     </button>
+                    {% if code in [429, 500] %}
+                    <button type="button" class="neo-button outline" onclick="location.reload()" aria-label="Обновить страницу">
+                        Обновить страницу
+                    </button>
+                    {% endif %}
                 </div>
 
                 <div class="error-soft">

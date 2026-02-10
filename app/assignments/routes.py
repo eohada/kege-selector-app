@@ -9,6 +9,7 @@ from sqlalchemy import and_, or_, func, case
 from sqlalchemy.orm import joinedload
 
 from app.assignments import assignments_bp
+from app.limiter import limiter
 from app.models import (
     db, Assignment, AssignmentTask, Submission, Answer,
     Student, User, Tasks, Lesson, LessonTask, Enrollment, GradebookEntry, SubmissionAttempt, RubricTemplate,
@@ -1516,6 +1517,7 @@ def submission_view(submission_id):
 
 @assignments_bp.route('/submissions/<int:submission_id>/start', methods=['POST'])
 @login_required
+@limiter.limit("10 per minute")
 def submission_start(submission_id):
     """Старт выполнения работы"""
     try:
@@ -1666,6 +1668,7 @@ def submission_autosave(submission_id):
 
 @assignments_bp.route('/submissions/<int:submission_id>/submit', methods=['POST'])
 @login_required
+@limiter.limit("10 per minute")
 def submission_submit(submission_id):
     """Финальная сдача работы"""
     try:

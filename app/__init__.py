@@ -82,6 +82,11 @@ def create_app(config_name=None):
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Для доступа к системе необходимо войти.'
     login_manager.login_message_category = 'warning'
+
+    ratelimit_enabled = os.environ.get('RATELIMIT_ENABLED', 'true').strip().lower() == 'true'
+    app.config['RATELIMIT_ENABLED'] = ratelimit_enabled
+    from app.limiter import limiter
+    limiter.init_app(app)
     
     @login_manager.user_loader
     def load_user(user_id):
