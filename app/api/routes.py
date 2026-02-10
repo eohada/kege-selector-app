@@ -585,8 +585,12 @@ def api_analytics_summary():
         student_id = request.args.get('student_id', type=int)
         if student_id:
             scope = get_user_scope(current_user)
-            if not (scope['can_see_all'] or scope['student_ids'] is None or student_id in scope['student_ids']):
-                return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+            if not scope['can_see_all']:
+                # scope['student_ids'] — это User.id учеников; нужны Student.student_id
+                allowed_user_ids = scope.get('student_ids') or []
+                allowed_student_ids = [s.student_id for s in Student.query.filter(Student.user_id.in_(allowed_user_ids)).all()]
+                if student_id not in allowed_student_ids:
+                    return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
             student = Student.query.get(student_id)
             if not student or not student.user_id:
                 return jsonify({'success': False, 'error': 'Ученик не найден или не привязан к пользователю'}), 404
