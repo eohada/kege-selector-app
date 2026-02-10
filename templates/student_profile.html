@@ -408,36 +408,24 @@
                 </section>
                 {% endif %}
 
-                {% if active_submissions %}
                 <section class="glass-panel">
-                    <h3 class="form-section-title" style="border-bottom: none; margin-bottom: 1rem;"><i class="fas fa-tasks ui-icon"></i> Активные задания</h3>
-                    <div style="display: grid; gap: 1rem;">
-                        {% for submission in active_submissions %}
-                        <div style="background: var(--surface-2); padding: 1.2rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-                            <div>
-                                <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.3rem;">{{ submission.assignment.title }}</div>
-                                <div style="display:flex; gap:.8rem; flex-wrap: wrap; align-items: center; font-size: 0.85rem; color: var(--text-muted);">
-                                    <span style="color: var(--warning);"><i class="fas fa-exclamation-circle"></i> Дедлайн: {{ submission.assignment.deadline.strftime('%d.%m') if submission.assignment.deadline else 'Нет' }}</span>
-                                    {% if submission.assignment and submission.assignment.created_by %}
-                                        <span style="opacity:.7;">·</span>
-                                        <span>
-                                            Выдал:
-                                            <a href="{{ url_for('auth.user_public_profile', user_id=submission.assignment.created_by.id) }}"
-                                               style="color: var(--text-primary); text-decoration:none; font-weight: 800;">
-                                                {{ submission.assignment.created_by.username }}
-                                            </a>
-                                        </span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}" class="neo-button outline" style="font-size: 0.9rem;">
-                                Открыть
-                            </a>
+                    <h3 class="form-section-title" style="border-bottom: none; margin-bottom: 1rem;"><i class="fas fa-tasks ui-icon"></i> Задания</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 0 1rem 0;">Работы с дедлайном и задания по занятиям (ДЗ, классная, проверочная) — в одном месте.</p>
+                    <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button accent" style="text-decoration: none;">
+                        Открыть все задания
+                    </a>
+                    {% if active_submissions and active_submissions|length > 0 %}
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Срочно (с дедлайном):</div>
+                        {% for submission in active_submissions[:3] %}
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.5rem 0;">
+                            <span style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ submission.assignment.title }}</span>
+                            <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}" class="neo-button ghost" style="font-size: 0.85rem; padding: 0.35rem 0.75rem; white-space: nowrap;">Открыть</a>
                         </div>
                         {% endfor %}
                     </div>
+                    {% endif %}
                 </section>
-                {% endif %}
 
                 <section class="glass-panel">
                     <details class="profile-details">
@@ -446,6 +434,7 @@
                             <span class="status-badge status-info" style="opacity:.75;">{{ lessons|length }}</span>
                         </summary>
                         <div class="profile-details-body">
+                            <p style="color: var(--text-muted); font-size: 0.88rem; margin: 0 0 1rem 0;">По клику — страница занятия с вкладками ДЗ, классная работа и проверочная.</p>
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; gap: 1rem; flex-wrap: wrap;">
                                 <div style="color: var(--text-muted); font-size: .92rem;">Фильтр</div>
                                 <select id="lessonFilter" class="neo-select" style="width: auto; padding: 0.5rem 2rem 0.5rem 1rem; font-size: 0.9rem;">

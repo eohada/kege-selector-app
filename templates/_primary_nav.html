@@ -84,6 +84,12 @@
                 <span class="nav-link-label">Комната ученика</span>
             </span>
         </a>
+        <a href="{{ url_for('assignments.submissions_list') }}" class="nav-link {% if active_page == 'assignments' %}active{% endif %}">
+            <span class="nav-link-content">
+                <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Задания" class="nav-link-icon">
+                <span class="nav-link-label">Задания</span>
+            </span>
+        </a>
         {% endif %}
         <a href="{{ url_for('students.student_analytics', student_id=current_student.student_id) if current_student else '#' }}" class="nav-link {% if active_page == 'student_analytics' %}active{% endif %}">
             <span class="nav-link-content">

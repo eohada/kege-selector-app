@@ -158,6 +158,7 @@
         {% include '_primary_nav.html' %}
 
         <main style="margin-top: 1.25rem;">
+        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.95rem;"><i class="fas fa-arrow-left" style="margin-right: 0.35rem;"></i>К заданиям</a></p>
         <div class="submission-header">
             <h1>{{ assignment.title }}</h1>
             {% if assignment.description %}

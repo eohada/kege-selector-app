@@ -335,7 +335,7 @@
                         <div style="display: flex; gap: 0.5em; flex-wrap: wrap;">
                             <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.9em; padding: 0.5em 1em;"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm">Редактировать</a>
                             {% if lesson.homework_tasks %}
-                            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline" style="font-size: 0.9em; padding: 0.5em 1em;"><img src="{{ url_for('static', filename='icons/dz.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm">ДЗ</a>
+                            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline" style="font-size: 0.9em; padding: 0.5em 1em;" title="ДЗ, классная и проверочная по этому уроку"><img src="{{ url_for('static', filename='icons/dz.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm">Задания урока</a>
                             {% endif %}
                         </div>
                     </div>

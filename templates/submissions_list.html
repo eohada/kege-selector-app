@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мои работы - Назначенные задания</title>
+    <title>Задания — BooStudy</title>
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
@@ -18,10 +18,13 @@
 
         <main style="margin-top: 1.25rem;">
         <div class="page-header" style="margin-bottom: 2rem;">
-            <h1 style="font-size: 2.5em; font-weight: 800; margin-bottom: 0.5rem;">Мои работы</h1>
-            <p style="color: var(--text-muted); font-size: 1.1em;">Назначенные домашние задания, контрольные и проверочные работы</p>
+            <h1 style="font-size: 2.5em; font-weight: 800; margin-bottom: 0.5rem;">Задания</h1>
+            <p style="color: var(--text-muted); font-size: 1.1em;">Здесь всё, что нужно сделать: работы с дедлайном и задания по занятиям (ДЗ, классная, проверочная).</p>
         </div>
-        
+
+        <section class="glass-panel" style="margin-bottom: 2rem;">
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0 0 0.5rem 0;">Работы с дедлайном</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 0 1rem 0;">Назначенные преподавателем работы с датой сдачи. Открывайте, выполняйте и сдавайте до дедлайна.</p>
         {% if submissions %}
         <div class="submissions-list" style="display: flex; flex-direction: column; gap: 1rem;">
             {% for submission in submissions %}
@@ -79,15 +82,16 @@
             {% endfor %}
         </div>
         {% else %}
-        <div style="text-align: center; padding: 4rem 2rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg);">
-            <div style="font-size: 4em; margin-bottom: 1rem;">📚</div>
-            <h2 style="font-size: 1.5em; margin-bottom: 0.5rem;">Нет назначенных работ</h2>
-            <p style="color: var(--text-muted);">Вам пока не назначено никаких работ</p>
+        <div style="text-align: center; padding: 2.5rem 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+            <p style="color: var(--text-muted); margin: 0;">Нет работ с дедлайном. Задания по занятиям — ниже.</p>
         </div>
+        {% endif %}
+        </section>
 
+        <section class="glass-panel">
+            <h2 style="font-size: 1.25rem; font-weight: 700; margin: 0 0 0.5rem 0;">Задания по занятиям</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 0 1rem 0;">ДЗ, классная работа и проверочная по каждому уроку. Откройте занятие и перейдите на нужную вкладку.</p>
         {% if lesson_workspaces and lesson_workspaces|length > 0 %}
-        <div style="margin-top: 2rem;">
-            <h2 style="font-size: 1.4em; margin: 0 0 1rem 0;">Мои уроки (классная комната)</h2>
             <div style="display:flex; flex-direction: column; gap: 1rem;">
                 {% for item in lesson_workspaces %}
                 <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=item.lesson.lesson_id) }}" class="glass-panel" style="text-decoration:none; padding: 1.25rem; display:flex; justify-content: space-between; gap: 1rem; align-items: center;">
@@ -108,9 +112,12 @@
                 </a>
                 {% endfor %}
             </div>
+        {% else %}
+        <div style="text-align: center; padding: 2.5rem 1.5rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+            <p style="color: var(--text-muted); margin: 0;">Нет занятий с заданиями. Они появятся после уроков.</p>
         </div>
         {% endif %}
-        {% endif %}
+        </section>
         </main>
     </div>
     

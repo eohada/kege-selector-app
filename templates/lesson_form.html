@@ -308,15 +308,16 @@
         </form>
         
         {% if not is_new %}
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">Задачи к уроку ученик выполняет на странице занятия (вкладки ДЗ / Классная работа / Проверочная). Либо выдайте тот же набор как <strong>работу с дедлайном</strong> — тогда она появится у ученика в разделе «Задания».</p>
         <section class="tasks-preview">
             <div class="tasks-preview-header">
-                <div class="tasks-preview-title"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm"> Домашние задания</div>
+                <div class="tasks-preview-title"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm"> Домашние задания к уроку</div>
                 <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items:center;">
-                    <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="neo-button accent" style="text-decoration:none;">
-                        📝 Создать работу
+                    <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="neo-button accent" style="text-decoration:none;" title="Создаст отдельную работу с дедлайном; ученик увидит её в разделе «Задания»">
+                        📝 Выдать с дедлайном
                     </a>
                     <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline">
-                        Открыть полностью →
+                        Открыть страницу занятия →
                     </a>
                 </div>
             </div>
@@ -357,13 +358,13 @@
         
         <section class="tasks-preview">
             <div class="tasks-preview-header">
-                <div class="tasks-preview-title"><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Классная работа" class="ui-icon ui-icon--sm"> Классные работы</div>
+                <div class="tasks-preview-title"><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Классная работа" class="ui-icon ui-icon--sm"> Классные работы к уроку</div>
                 <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items:center;">
-                    <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='classwork') }}" class="neo-button accent" style="text-decoration:none;">
-                        📝 Создать работу
+                    <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='classwork') }}" class="neo-button accent" style="text-decoration:none;" title="Создаст отдельную работу с дедлайном">
+                        📝 Выдать с дедлайном
                     </a>
                     <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline">
-                        Открыть полностью →
+                        Открыть страницу занятия →
                     </a>
                 </div>
             </div>

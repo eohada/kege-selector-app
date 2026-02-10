@@ -468,6 +468,11 @@
                         <i class="fas fa-trash"></i> Удалить урок
                     </button>
                     {% endif %}
+                    {% if is_student_view %}
+                    <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost sm">
+                        <i class="fas fa-tasks"></i> К заданиям
+                    </a>
+                    {% endif %}
                     <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button outline sm">
                         <i class="fas fa-arrow-left"></i> Назад в профиль
                     </a>
