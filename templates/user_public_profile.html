@@ -25,7 +25,7 @@
         .public-actions { display:flex; gap: .6rem; flex-wrap: wrap; justify-content: flex-end; }
     </style>
 </head>
-{% set use_custom_theme = (public_user.id == custom_theme_user_id or (public_user.numeric_id and str(public_user.numeric_id) == str(custom_theme_user_id))) %}
+{% set use_custom_theme = (public_user.id == custom_theme_user_id or (public_user.numeric_id is not none and (public_user.numeric_id|string) == (custom_theme_user_id|string))) %}
 <body class="{% if public_user.is_creator() %}creator-theme-active{% elif use_custom_theme %}custom-theme-active{% endif %}">
     {% if public_user.is_creator() %}
     <div class="creator-snowflakes" aria-hidden="true">

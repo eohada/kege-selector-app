@@ -43,7 +43,7 @@
         .lessons-remaining--accent { color: var(--accent-1); }
     </style>
 </head>
-{% set use_custom_theme = current_user and (current_user.id == custom_theme_user_id or (current_user.numeric_id and str(current_user.numeric_id) == str(custom_theme_user_id))) %}
+{% set use_custom_theme = current_user and (current_user.id == custom_theme_user_id or (current_user.numeric_id is not none and (current_user.numeric_id|string) == (custom_theme_user_id|string))) %}
 <body class="{% if use_custom_theme %}custom-theme-active{% endif %}">
     {% if current_user and current_user.is_creator() %}
     <div class="creator-snowflakes" aria-hidden="true">
