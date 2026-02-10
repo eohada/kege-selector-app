@@ -189,6 +189,81 @@ def get_bot_admin_chat_ids(session) -> list[int]:
         return []
 
 
+NOTIFY_LABELS = {
+    "tg_notify_lesson_reminder": "напоминания об уроках",
+    "tg_notify_lesson_scheduled": "новый урок",
+    "tg_notify_homework_checked": "ДЗ проверено",
+    "tg_notify_homework_returned": "ДЗ на доработку",
+    "tg_notify_new_message": "сообщения преподавателя",
+    "tg_notify_low_lessons": "уроки заканчиваются",
+    "tg_notify_news": "новости платформы",
+}
+
+
+def get_bot_connected_users(session) -> list[dict]:
+    """Список пользователей, подключённых к боту: логин, numeric_id, включённые уведомления."""
+    try:
+        result = session.execute(text("""
+            SELECT u.username, u.numeric_id,
+                   COALESCE(up.telegram_notifications_enabled, TRUE),
+                   COALESCE(up.tg_notify_lesson_reminder, TRUE),
+                   COALESCE(up.tg_notify_lesson_scheduled, TRUE),
+                   COALESCE(up.tg_notify_homework_checked, TRUE),
+                   COALESCE(up.tg_notify_homework_returned, TRUE),
+                   COALESCE(up.tg_notify_new_message, TRUE),
+                   COALESCE(up.tg_notify_low_lessons, TRUE),
+                   COALESCE(up.tg_notify_news, TRUE)
+            FROM "Users" u
+            JOIN "UserProfiles" up ON up.user_id = u.id
+            WHERE up.telegram_chat_id IS NOT NULL
+            ORDER BY u.username ASC
+        """))
+        rows = result.fetchall()
+    except Exception as e:
+        logger.warning(f"get_bot_connected_users: {e}", exc_info=True)
+        return []
+
+    keys = [
+        "tg_notify_lesson_reminder", "tg_notify_lesson_scheduled", "tg_notify_homework_checked",
+        "tg_notify_homework_returned", "tg_notify_new_message", "tg_notify_low_lessons", "tg_notify_news",
+    ]
+    out = []
+    for row in rows:
+        username = (row[0] or "").strip() or "—"
+        numeric_id = row[1] if row[1] is not None else "—"
+        notifications_enabled = row[2]
+        enabled_list = []
+        if notifications_enabled:
+            for i, key in enumerate(keys):
+                if row[3 + i]:
+                    enabled_list.append(NOTIFY_LABELS.get(key, key))
+        out.append({
+            "username": username,
+            "numeric_id": numeric_id,
+            "notifications_enabled": notifications_enabled,
+            "enabled_list": enabled_list,
+        })
+    return out
+
+
+def format_connected_users_message(users: list[dict]) -> str:
+    """Форматирует список подключённых пользователей в сообщение (логин — #ID — уведомления)."""
+    if not users:
+        return "👥 <b>Пользователи, подключённые к боту</b>\n\nНет подключённых пользователей."
+    lines = ["👥 <b>Пользователи, подключённые к боту</b>\n"]
+    for u in users:
+        login = esc(u["username"])
+        num_id = u["numeric_id"] if u["numeric_id"] == "—" else f"#{u['numeric_id']}"
+        if u["notifications_enabled"] and u["enabled_list"]:
+            notif = ", ".join(u["enabled_list"])
+        elif u["notifications_enabled"]:
+            notif = "все по умолчанию"
+        else:
+            notif = "выкл"
+        lines.append(f"• <b>{login}</b> — {num_id} — {esc(notif)}")
+    return "\n".join(lines)
+
+
 async def start_error_report_flow(update: Update, context: ContextTypes.DEFAULT_TYPE, *, from_callback: bool = False):
     """Запускает сценарий отправки ошибки."""
     context.user_data["awaiting_error_report"] = True
@@ -807,6 +882,34 @@ async def error_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await start_error_report_flow(update, context, from_callback=False)
 
 
+async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /users — список пользователей, подключённых к боту (только для админов бота)."""
+    chat_id = update.effective_chat.id
+    session = get_session()
+    try:
+        admin_chat_ids = get_bot_admin_chat_ids(session)
+        if chat_id not in admin_chat_ids:
+            await update.message.reply_text(
+                "⛔ Доступ запрещён. Команда только для администраторов бота.",
+                parse_mode="HTML",
+            )
+            return
+        users = get_bot_connected_users(session)
+        msg = format_connected_users_message(users)
+        max_len = 4000
+        if len(msg) <= max_len:
+            await update.message.reply_text(msg, parse_mode="HTML")
+        else:
+            parts = [msg[i : i + max_len] for i in range(0, len(msg), max_len)]
+            for part in parts:
+                await update.message.reply_text(part, parse_mode="HTML")
+    except Exception as e:
+        logger.error(f"Error in users_command: {e}", exc_info=True)
+        await update.message.reply_text(ERROR_MESSAGE, parse_mode="HTML")
+    finally:
+        close_session(session)
+
+
 async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработка текста из лички для сценария ошибки."""
     if not update.message or update.message.chat.type != "private":
@@ -1212,6 +1315,7 @@ def create_bot_application() -> Application:
     application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CommandHandler("settings", settings_command))
     application.add_handler(CommandHandler("error", error_command))
+    application.add_handler(CommandHandler("users", users_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND, handle_private_text))
     application.add_handler(CallbackQueryHandler(callback_handler))
     
