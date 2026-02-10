@@ -25,18 +25,22 @@
         .public-actions { display:flex; gap: .6rem; flex-wrap: wrap; justify-content: flex-end; }
     </style>
 </head>
-<body class="{% if public_user.effective_profile_theme() == 'creator' %}creator-theme-active{% endif %}">
-    {% set effective_theme = public_user.effective_profile_theme() %}
-    {% if effective_theme == 'creator' %}
+<body class="{% if public_user.is_creator() %}creator-theme-active{% elif public_user.id == custom_theme_user_id %}custom-theme-active{% endif %}">
+    {% set use_custom_theme = (public_user.id == custom_theme_user_id) %}
+    {% if public_user.is_creator() %}
     <div class="creator-snowflakes" aria-hidden="true">
         {% for i in range(28) %}<span class="snowflake">❄</span>{% endfor %}
+    </div>
+    {% elif use_custom_theme %}
+    <div class="custom-theme-stars" aria-hidden="true">
+        {% for i in range(36) %}<span class="star">★</span>{% endfor %}
     </div>
     {% endif %}
     <div class="app-shell">
         {% set active_page = None %}
         {% include '_primary_nav.html' %}
 
-        {% if effective_theme == 'creator' %}
+        {% if public_user.is_creator() %}
         
         <main class="profile-container theme-creator">
             <div class="profile-card">
@@ -117,9 +121,89 @@
                 </div>
             </div>
         </main>
+        {% elif use_custom_theme %}
+        <main class="profile-container theme-custom-999">
+            <div class="profile-card">
+                {% set creator_cover = creator_cover_url|default(none) %}
+                <div class="profile-cover {% if creator_cover %}has-cover{% endif %}" {% if creator_cover %}style="background-image: url('{{ creator_cover }}');"{% endif %}></div>
+                <div class="profile-header">
+                    <div class="profile-identity">
+                        <div class="profile-avatar-wrapper {% if public_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if public_user.avatar_url %}data-avatar-url="{{ public_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
+                            <div class="profile-avatar-big">
+                                {% if public_user.avatar_url %}
+                                    <img src="{{ public_user.avatar_url }}" alt="Avatar">
+                                {% else %}
+                                    {{ public_display_name[0]|upper }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="profile-info">
+                            <div class="profile-role-badge">{{ public_user.get_primary_role_display() }}</div>
+                            <h1>{{ public_display_name }}</h1>
+                            <div class="public-sub" style="margin-top: 0.35rem;">
+                                <span class="status-badge status-info" style="opacity:.75;">{{ public_user.username }}</span>
+                                {% if public_numeric_id %}<span class="status-badge status-info" style="opacity:.75;">#{{ public_numeric_id }}</span>{% endif %}
+                                {% if public_user.telegram_link %}<span class="status-badge" style="opacity:.8;">{{ public_user.telegram_link }}</span>{% endif %}
+                                {% if public_user.custom_status %}
+                                <span class="status-badge" style="opacity:.9;">{{ public_user.custom_status }}</span>
+                                {% endif %}
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <a class="neo-button outline" href="{{ request.referrer or url_for('main.dashboard') }}" style="text-decoration:none;">Назад</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div style="padding: 0 2.5rem 2.5rem;">
+                    <div class="profile-content-grid">
+                        <section class="profile-section">
+                            <h3>О пользователе</h3>
+                            {% if public_user.about_me %}
+                                <div class="public-bio">{{ public_user.about_me }}</div>
+                            {% else %}
+                                <div style="color: var(--text-muted);">Пока нет описания.</div>
+                            {% endif %}
+                        </section>
+                        <aside class="profile-section">
+                            <h3>Сводка</h3>
+                            <div class="data-row">
+                                <span class="data-label">Роль</span>
+                                <span class="data-value">{{ public_user.get_roles_display() | join(', ') }}</span>
+                            </div>
+                            <div class="data-row">
+                                <span class="data-label">Логин</span>
+                                <span class="data-value">{{ public_user.username }}</span>
+                            </div>
+                            {% if public_numeric_id %}
+                            <div class="data-row">
+                                <span class="data-label">ID</span>
+                                <span class="data-value">#{{ public_numeric_id }}</span>
+                            </div>
+                            {% endif %}
+                            {% if public_user.telegram_link %}
+                            <div class="data-row">
+                                <span class="data-label">Telegram</span>
+                                <span class="data-value">{{ public_user.telegram_link }}</span>
+                            </div>
+                            {% endif %}
+                            {% if public_user.custom_status %}
+                            <div class="data-row">
+                                <span class="data-label">Статус</span>
+                                <span class="data-value">{{ public_user.custom_status }}</span>
+                            </div>
+                            {% endif %}
+                            <div class="data-row">
+                                <span class="data-label">В системе с</span>
+                                <span class="data-value">{{ public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—' }}</span>
+                            </div>
+                        </aside>
+                    </div>
+                </div>
+            </div>
+        </main>
         {% else %}
         
-        <main class="public-profile-wrap{% if effective_theme %} theme-{{ effective_theme }}{% endif %}">
+        <main class="public-profile-wrap {% if public_user.is_admin() %}theme-admin{% elif public_user.is_tutor() %}theme-tutor{% elif public_user.is_content_maker() %}theme-tutor{% elif public_user.is_parent() %}theme-parent{% elif public_user.is_student() %}theme-student{% endif %}">
             <section class="glass-panel">
                 <div class="public-hero">
                     <div class="public-identity">

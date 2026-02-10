@@ -209,8 +209,8 @@ def user_public_profile(user_id: int):
         display_name = None
 
     creator_cover_url = None
-    effective_theme = getattr(u, 'effective_profile_theme', lambda: None)()
-    if effective_theme == 'creator' and getattr(u, 'profile', None):
+    custom_theme_user_id = int(current_app.config.get('CUSTOM_THEME_USER_ID', 999))
+    if (getattr(u, 'is_creator', lambda: False)() or u.id == custom_theme_user_id) and getattr(u, 'profile', None):
         creator_cover_url = getattr(u.profile, 'cover_url', None)
     public_numeric_id = None
     if getattr(u, 'is_student', lambda: False)():
