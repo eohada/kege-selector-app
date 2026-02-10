@@ -75,8 +75,13 @@ async def send_telegram_notification(bot: Bot, chat_id: int, text: str) -> bool:
         )
         return True
     except TelegramError as e:
+        err_str = str(e).lower()
         logger.warning(f"Failed to send notification to {chat_id}: {e}")
-        if "blocked" in str(e).lower() or "deactivated" in str(e).lower():
+        should_unlink = (
+            "blocked by the user" in err_str
+            or "user is deactivated" in err_str
+        )
+        if should_unlink:
             session = get_session()
             try:
                 session.execute(text("""
@@ -85,7 +90,7 @@ async def send_telegram_notification(bot: Bot, chat_id: int, text: str) -> bool:
                     WHERE telegram_chat_id = :chat_id
                 """), {"chat_id": chat_id})
                 session.commit()
-                logger.info(f"Unlinked blocked user chat_id={chat_id}")
+                logger.info(f"Unlinked chat_id={chat_id}: Telegram reported blocked/deactivated")
             except Exception:
                 session.rollback()
             finally:

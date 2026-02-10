@@ -419,16 +419,16 @@ def api_telegram_link_code():
             profile = UserProfile(user_id=current_user.id)
             db.session.add(profile)
         
-        code = secrets.token_hex(3).upper()  # Например: "A1B2C3"
+        code = secrets.token_hex(3).upper()  # 6 символов, например A1B2C3
         profile.telegram_link_code = code
-        profile.telegram_link_code_expires = datetime.utcnow() + timedelta(minutes=10)
+        profile.telegram_link_code_expires = datetime.utcnow() + timedelta(minutes=15)
         
         db.session.commit()
         
         return jsonify({
             'success': True,
             'code': code,
-            'expires_in': 600  # секунд
+            'expires_in': 900  # 15 минут в секундах
         })
     except Exception as e:
         db.session.rollback()

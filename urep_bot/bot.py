@@ -649,7 +649,7 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if error == "expired_code":
             await update.message.reply_text(
-                "⏰ Код истёк. Получи новый код в личном кабинете.",
+                "⏰ Код истёк (действует 15 минут). Получи новый код в личном кабинете на сайте.",
                 parse_mode="HTML",
                 reply_markup=get_main_keyboard()
             )
@@ -657,13 +657,13 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if error == "invalid_code":
             await update.message.reply_text(
-                "❌ Неверный код. Проверь правильность или получи новый в личном кабинете.",
+                "❌ Код не найден или уже использован. Запроси новый код в профиле на сайте и отправь его сразу после получения.",
                 parse_mode="HTML",
                 reply_markup=get_main_keyboard()
             )
             return
 
-        if status not in (401, 403, 500):
+        if status and 400 <= status < 500:
             await update.message.reply_text(
                 ERROR_MESSAGE,
                 parse_mode="HTML",
@@ -705,7 +705,7 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if expires_at and expires_at < datetime.utcnow():
             await update.message.reply_text(
-                "⏰ Код истёк. Получи новый код в личном кабинете.",
+                "⏰ Код истёк (действует 15 минут). Получи новый код в профиле на сайте.",
                 parse_mode="HTML",
                 reply_markup=get_main_keyboard()
             )
