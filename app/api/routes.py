@@ -1,6 +1,7 @@
 """
 API маршруты
 """
+import json
 import logging
 import os
 import secrets
@@ -611,14 +612,24 @@ def api_analytics_summary():
         for t in Tasks.query.filter(Tasks.knowledge_node_id.in_(node_ids)).all():
             if t.knowledge_node_id and t.knowledge_node_id not in task_numbers_by_node:
                 task_numbers_by_node[t.knowledge_node_id] = t.task_number
+        code_to_task = {}
+        try:
+            data_path = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'analytics_kege_difficulty.json')
+            if os.path.isfile(data_path):
+                with open(data_path, 'r', encoding='utf-8') as f:
+                    for row in json.load(f):
+                        code_to_task[row.get('node_code')] = row.get('task_number')
+        except Exception:
+            pass
         masteries = {m.node_id: m for m in UserMastery.query.filter_by(user_id=user_id).all()}
         by_node = []
         for n in all_nodes:
             m = masteries.get(n.id)
+            task_num = task_numbers_by_node.get(n.id) or code_to_task.get(n.code)
             by_node.append({
                 'node_code': n.code,
                 'node_name': n.name,
-                'task_number': task_numbers_by_node.get(n.id),
+                'task_number': task_num,
                 'base_rating': n.base_rating,
                 'exam_points': n.exam_points,
                 'rating': round(m.rating, 1) if m else AnalyticsEngine.INITIAL_RATING,
