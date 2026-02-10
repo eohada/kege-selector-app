@@ -579,7 +579,7 @@ def api_analytics_summary():
 
     try:
         from app.analytics import AnalyticsEngine
-        from core.db_models import UserMastery, KnowledgeNode, Subject
+        from core.db_models import UserMastery, KnowledgeNode, Subject, Tasks
 
         user_id = current_user.id
         student_id = request.args.get('student_id', type=int)
@@ -606,6 +606,11 @@ def api_analytics_summary():
             })
 
         all_nodes = KnowledgeNode.query.filter_by(subject_id=subject.id).order_by(KnowledgeNode.id).all()
+        node_ids = [n.id for n in all_nodes]
+        task_numbers_by_node = {}
+        for t in Tasks.query.filter(Tasks.knowledge_node_id.in_(node_ids)).all():
+            if t.knowledge_node_id and t.knowledge_node_id not in task_numbers_by_node:
+                task_numbers_by_node[t.knowledge_node_id] = t.task_number
         masteries = {m.node_id: m for m in UserMastery.query.filter_by(user_id=user_id).all()}
         by_node = []
         for n in all_nodes:
@@ -613,6 +618,7 @@ def api_analytics_summary():
             by_node.append({
                 'node_code': n.code,
                 'node_name': n.name,
+                'task_number': task_numbers_by_node.get(n.id),
                 'base_rating': n.base_rating,
                 'exam_points': n.exam_points,
                 'rating': round(m.rating, 1) if m else AnalyticsEngine.INITIAL_RATING,
@@ -620,6 +626,7 @@ def api_analytics_summary():
                 'streak_days': (m.streak_days or 0) if m else 0,
                 'last_practiced_at': _safe_isoformat(m.last_practiced_at if m else None),
             })
+        by_node.sort(key=lambda x: (x['task_number'] is None, x['task_number'] or 0))
         predicted = AnalyticsEngine.predict_exam_score(user_id, subject.id)
         return jsonify({
             'success': True,

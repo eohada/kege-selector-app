@@ -333,8 +333,28 @@
         .analytics-score-hint {
             font-size: 0.85rem;
             color: var(--text-muted);
-            margin-top: 0.75rem;
+            margin-top: 0.5rem;
         }
+        .analytics-score-secondary {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 0.25rem;
+        }
+        .analytics-table-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem 1.5rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            background: var(--surface-2);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--stroke-1);
+        }
+        .analytics-table-legend span { white-space: nowrap; }
+        .analytics-table-legend strong { color: var(--text-primary); font-weight: 600; }
         .analytics-radar-section { margin-bottom: 2rem; }
         .analytics-radar-desc {
             font-size: 0.9rem;
@@ -342,9 +362,9 @@
             margin-bottom: 1rem;
         }
         .analytics-radar-wrap {
-            max-width: 520px;
+            max-width: 640px;
             margin: 0 auto;
-            height: 420px;
+            height: 520px;
         }
         .analytics-radar-wrap canvas { display: block; }
         .analytics-nodes-section { margin-bottom: 2rem; }
@@ -883,9 +903,10 @@
             </div>
             <div id="analytics-content" class="analytics-content" style="display: none;">
                 <div class="analytics-score-card">
-                    <div class="analytics-score-label">Прогноз первичного балла</div>
+                    <div class="analytics-score-label">Прогноз балла на ЕГЭ</div>
                     <div class="analytics-score-value" id="analyticsPredictedScore">—</div>
-                    <div class="analytics-score-hint">математическое ожидание по текущим рейтингам по темам</div>
+                    <div class="analytics-score-secondary" id="analyticsPredictedSecondary">—</div>
+                    <div class="analytics-score-hint">Считается по твоим рейтингам по темам: для каждой темы оценивается вероятность верного ответа, умножается на балл задания и суммируется. Так получается ожидаемый первичный балл.</div>
                 </div>
                 <section class="glass-panel analytics-radar-section">
                     <div class="panel-head">
@@ -894,7 +915,7 @@
                             <h2>Радар навыков (КЕГЭ)</h2>
                         </div>
                     </div>
-                    <p class="analytics-radar-desc">Чем выше значение по оси, тем выше текущий рейтинг в этой теме. Шкала 800–2500 (старт 1000).</p>
+                    <p class="analytics-radar-desc">По осям — номера заданий ЕГЭ. Чем выше значение, тем выше твой рейтинг в этой теме. Шкала 800–2500 (старт 1000).</p>
                     <div class="analytics-radar-wrap">
                         <canvas id="analyticsRadarChart"></canvas>
                     </div>
@@ -906,11 +927,17 @@
                             <h2>Рейтинги по узлам знаний</h2>
                         </div>
                     </div>
+                    <p class="analytics-table-legend">
+                        <span><strong>Код</strong> — внутренний код темы (например, GRAPH-BASICS).</span>
+                        <span><strong>Рейтинг</strong> — твой текущий рейтинг в теме (800–2500, старт 1000).</span>
+                        <span><strong>Балл</strong> — сколько первичных баллов даёт это задание на ЕГЭ (1 или 2).</span>
+                        <span><strong>Стрик</strong> — сколько дней подряд ты решал задачи по этой теме.</span>
+                    </p>
                     <div class="analytics-nodes-table-wrap">
                         <table class="analytics-nodes-table" id="analyticsNodesTable">
                             <thead>
                                 <tr>
-                                    <th>Тема</th>
+                                    <th>Тема (№ ЕГЭ)</th>
                                     <th>Код</th>
                                     <th>Рейтинг</th>
                                     <th>Балл</th>
@@ -963,8 +990,13 @@
                     }
                     analyticsDataLoaded = true;
                     contentEl.style.display = 'block';
+                    var primary = data.predicted_primary_score != null ? data.predicted_primary_score : 0;
                     var scoreEl = document.getElementById('analyticsPredictedScore');
-                    if (scoreEl) scoreEl.textContent = (data.predicted_primary_score != null ? data.predicted_primary_score : 0) + ' из 29';
+                    if (scoreEl) scoreEl.textContent = primary + ' из 29 (первичный)';
+                    var primaryToTest = [0,7,14,21,27,34,39,43,46,50,53,56,59,62,65,68,71,73,76,77,78,80,82,84,86,88,91,93,96,100];
+                    var testScore = primary >= 0 && primary <= 29 ? primaryToTest[Math.round(primary)] : null;
+                    var secondaryEl = document.getElementById('analyticsPredictedSecondary');
+                    if (secondaryEl) secondaryEl.textContent = testScore != null ? '≈ ' + testScore + ' тестовых баллов (по шкале ФИПИ)' : '';
                     var nodes = data.nodes || [];
                     var accent1 = getComputedStyle(document.documentElement).getPropertyValue('--accent-1').trim();
                     var textMuted = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
@@ -975,7 +1007,7 @@
                     }
                     var accentRgb = hexToRgb(accent1);
                     var fillRgba = accentRgb ? 'rgba(' + accentRgb.r + ',' + accentRgb.g + ',' + accentRgb.b + ',0.2)' : 'rgba(0,255,213,0.2)';
-                    var labels = nodes.map(function(n) { return (n.node_name && n.node_name.length > 16) ? n.node_name.substring(0, 14) + '…' : (n.node_name || n.node_code || ''); });
+                    var labels = nodes.map(function(n) { return (n.task_number != null ? String(n.task_number) : (n.node_code || '?')); });
                     var minR = 800, maxR = 2500;
                     var values = nodes.map(function(n) {
                         var r = n.rating != null ? n.rating : 1000;
@@ -1008,7 +1040,7 @@
                                         beginAtZero: true,
                                         max: 100,
                                         ticks: { color: textMuted, backdropColor: 'transparent' },
-                                        pointLabels: { color: textMuted, font: { size: 10 } }
+                                        pointLabels: { color: textMuted, font: { size: 14 } }
                                     }
                                 },
                                 plugins: {
@@ -1021,11 +1053,12 @@
                     if (tbody) {
                         tbody.innerHTML = nodes.map(function(n) {
                             var name = (n.node_name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            var num = n.task_number != null ? ' (№ ' + n.task_number + ')' : '';
                             var code = (n.node_code || '').replace(/</g, '&lt;');
                             var rating = n.rating != null ? Math.round(n.rating) : '—';
                             var pts = n.exam_points != null ? n.exam_points : 1;
                             var streak = n.streak_days != null ? n.streak_days : 0;
-                            return '<tr><td>' + name + '</td><td class="code-cell">' + code + '</td><td class="rating-cell">' + rating + '</td><td>' + pts + '</td><td>' + streak + '</td></tr>';
+                            return '<tr><td>' + name + num + '</td><td class="code-cell">' + code + '</td><td class="rating-cell">' + rating + '</td><td>' + pts + '</td><td>' + streak + '</td></tr>';
                         }).join('');
                     }
                 })
