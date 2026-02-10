@@ -288,6 +288,90 @@
             color: var(--text-muted);
             margin-top: 0.25rem;
         }
+
+        .analytics-header { margin-bottom: 1.5rem; }
+        .analytics-title { font-size: 1.5rem; margin: 0; color: var(--text-primary); }
+        .analytics-loading, .analytics-error {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--text-muted);
+        }
+        .analytics-spinner {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 1rem;
+            border: 3px solid var(--stroke-1);
+            border-top-color: var(--accent-1);
+            border-radius: 50%;
+            animation: analytics-spin 0.8s linear infinite;
+        }
+        @keyframes analytics-spin { to { transform: rotate(360deg); } }
+        .analytics-error p { margin: 0; max-width: 400px; margin-left: auto; margin-right: auto; }
+        .analytics-content { animation: analytics-fade 0.3s ease; }
+        @keyframes analytics-fade { from { opacity: 0; } to { opacity: 1; } }
+        .analytics-score-card {
+            background: linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .analytics-score-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+        .analytics-score-value {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--accent-1);
+            line-height: 1.2;
+        }
+        .analytics-score-hint {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.75rem;
+        }
+        .analytics-radar-section { margin-bottom: 2rem; }
+        .analytics-radar-desc {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+        .analytics-radar-wrap {
+            max-width: 520px;
+            margin: 0 auto;
+            height: 420px;
+        }
+        .analytics-radar-wrap canvas { display: block; }
+        .analytics-nodes-section { margin-bottom: 2rem; }
+        .analytics-nodes-table-wrap { overflow-x: auto; }
+        .analytics-nodes-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        .analytics-nodes-table th,
+        .analytics-nodes-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--stroke-1);
+        }
+        .analytics-nodes-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.04em;
+        }
+        .analytics-nodes-table tbody tr:hover {
+            background: var(--surface-2);
+        }
+        .analytics-nodes-table .rating-cell { font-weight: 600; color: var(--accent-1); }
+        .analytics-nodes-table .code-cell { font-family: monospace; font-size: 0.85em; color: var(--text-muted); }
     </style>
 </head>
 <body class="{% if active_lesson %}lesson-active{% endif %}">
@@ -333,8 +417,9 @@
         </section>
 
         <div class="stats-tabs">
-            <button class="stats-tab active" onclick="switchTab('skills')">Навыки</button>
-            <button class="stats-tab" onclick="switchTab('discipline')">Дисциплина</button>
+            <button class="stats-tab active" data-tab="skills" onclick="switchTab('skills', this)">Навыки</button>
+            <button class="stats-tab" data-tab="discipline" onclick="switchTab('discipline', this)">Дисциплина</button>
+            <button class="stats-tab" data-tab="analytics" onclick="switchTab('analytics', this)">Аналитика ЕГЭ</button>
         </div>
 
         <div id="tab-skills" class="stats-tab-content active">
@@ -783,26 +868,171 @@
                 </div>
             </section>
         </div>
+
+        <div id="tab-analytics" class="stats-tab-content">
+            <div class="analytics-header">
+                <p class="eyebrow">граф знаний · рейтинги по темам</p>
+                <h2 class="analytics-title">Прогноз и навыки по КЕГЭ</h2>
+            </div>
+            <div id="analytics-loading" class="analytics-loading">
+                <div class="analytics-spinner"></div>
+                <p>Загрузка аналитики…</p>
+            </div>
+            <div id="analytics-error" class="analytics-error" style="display: none;">
+                <p>Не удалось загрузить данные. Убедитесь, что ученик привязан к пользователю и есть проверенные работы.</p>
+            </div>
+            <div id="analytics-content" class="analytics-content" style="display: none;">
+                <div class="analytics-score-card">
+                    <div class="analytics-score-label">Прогноз первичного балла</div>
+                    <div class="analytics-score-value" id="analyticsPredictedScore">—</div>
+                    <div class="analytics-score-hint">математическое ожидание по текущим рейтингам по темам</div>
+                </div>
+                <section class="glass-panel analytics-radar-section">
+                    <div class="panel-head">
+                        <div>
+                            <p class="eyebrow">рейтинги по темам</p>
+                            <h2>Радар навыков (КЕГЭ)</h2>
+                        </div>
+                    </div>
+                    <p class="analytics-radar-desc">Чем выше значение по оси, тем выше текущий рейтинг в этой теме. Шкала 800–2500 (старт 1000).</p>
+                    <div class="analytics-radar-wrap">
+                        <canvas id="analyticsRadarChart"></canvas>
+                    </div>
+                </section>
+                <section class="glass-panel analytics-nodes-section">
+                    <div class="panel-head">
+                        <div>
+                            <p class="eyebrow">все темы</p>
+                            <h2>Рейтинги по узлам знаний</h2>
+                        </div>
+                    </div>
+                    <div class="analytics-nodes-table-wrap">
+                        <table class="analytics-nodes-table" id="analyticsNodesTable">
+                            <thead>
+                                <tr>
+                                    <th>Тема</th>
+                                    <th>Код</th>
+                                    <th>Рейтинг</th>
+                                    <th>Балл</th>
+                                    <th>Стрик</th>
+                                </tr>
+                            </thead>
+                            <tbody id="analyticsNodesBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </div>
     </div>
     
     <script>
-        // Переключение табов
-        function switchTab(tabName) {
-            // Скрываем все вкладки
+        const STUDENT_ID_FOR_ANALYTICS = {{ student.student_id }};
+        let analyticsRadarChartInstance = null;
+        let analyticsDataLoaded = false;
+
+        function switchTab(tabName, btn) {
             document.querySelectorAll('.stats-tab-content').forEach(content => {
                 content.classList.remove('active');
             });
-            
-            // Убираем активный класс у всех табов
             document.querySelectorAll('.stats-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            
-            // Показываем выбранную вкладку
-            document.getElementById('tab-' + tabName).classList.add('active');
-            
-            // Активируем соответствующий таб
-            event.target.classList.add('active');
+            const content = document.getElementById('tab-' + tabName);
+            if (content) content.classList.add('active');
+            if (btn) btn.classList.add('active');
+            else document.querySelector('.stats-tab[data-tab="' + tabName + '"]')?.classList.add('active');
+            if (tabName === 'analytics' && !analyticsDataLoaded) loadAnalyticsTab();
+        }
+
+        function loadAnalyticsTab() {
+            var loadingEl = document.getElementById('analytics-loading');
+            var errorEl = document.getElementById('analytics-error');
+            var contentEl = document.getElementById('analytics-content');
+            if (!loadingEl || !errorEl || !contentEl) return;
+            loadingEl.style.display = 'block';
+            errorEl.style.display = 'none';
+            contentEl.style.display = 'none';
+            var url = '/api/analytics/summary?student_id=' + encodeURIComponent(STUDENT_ID_FOR_ANALYTICS);
+            fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    loadingEl.style.display = 'none';
+                    if (!data.success || !data.nodes) {
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                    analyticsDataLoaded = true;
+                    contentEl.style.display = 'block';
+                    var scoreEl = document.getElementById('analyticsPredictedScore');
+                    if (scoreEl) scoreEl.textContent = (data.predicted_primary_score != null ? data.predicted_primary_score : 0) + ' из 29';
+                    var nodes = data.nodes || [];
+                    var accent1 = getComputedStyle(document.documentElement).getPropertyValue('--accent-1').trim();
+                    var textMuted = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
+                    var stroke1 = getComputedStyle(document.documentElement).getPropertyValue('--stroke-1').trim();
+                    function hexToRgb(hex) {
+                        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                        return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
+                    }
+                    var accentRgb = hexToRgb(accent1);
+                    var fillRgba = accentRgb ? 'rgba(' + accentRgb.r + ',' + accentRgb.g + ',' + accentRgb.b + ',0.2)' : 'rgba(0,255,213,0.2)';
+                    var labels = nodes.map(function(n) { return (n.node_name && n.node_name.length > 16) ? n.node_name.substring(0, 14) + '…' : (n.node_name || n.node_code || ''); });
+                    var minR = 800, maxR = 2500;
+                    var values = nodes.map(function(n) {
+                        var r = n.rating != null ? n.rating : 1000;
+                        return Math.max(0, Math.min(100, ((r - minR) / (maxR - minR)) * 100));
+                    });
+                    var canvas = document.getElementById('analyticsRadarChart');
+                    if (canvas && typeof Chart !== 'undefined') {
+                        if (analyticsRadarChartInstance) analyticsRadarChartInstance.destroy();
+                        analyticsRadarChartInstance = new Chart(canvas.getContext('2d'), {
+                            type: 'radar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Рейтинг по теме',
+                                    data: values,
+                                    borderColor: accent1,
+                                    backgroundColor: fillRgba,
+                                    borderWidth: 2,
+                                    pointBackgroundColor: accent1,
+                                    pointBorderColor: '#fff',
+                                    pointHoverBackgroundColor: '#fff',
+                                    pointHoverBorderColor: accent1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    r: {
+                                        beginAtZero: true,
+                                        max: 100,
+                                        ticks: { color: textMuted, backdropColor: 'transparent' },
+                                        pointLabels: { color: textMuted, font: { size: 10 } }
+                                    }
+                                },
+                                plugins: {
+                                    legend: { display: false }
+                                }
+                            }
+                        });
+                    }
+                    var tbody = document.getElementById('analyticsNodesBody');
+                    if (tbody) {
+                        tbody.innerHTML = nodes.map(function(n) {
+                            var name = (n.node_name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            var code = (n.node_code || '').replace(/</g, '&lt;');
+                            var rating = n.rating != null ? Math.round(n.rating) : '—';
+                            var pts = n.exam_points != null ? n.exam_points : 1;
+                            var streak = n.streak_days != null ? n.streak_days : 0;
+                            return '<tr><td>' + name + '</td><td class="code-cell">' + code + '</td><td class="rating-cell">' + rating + '</td><td>' + pts + '</td><td>' + streak + '</td></tr>';
+                        }).join('');
+                    }
+                })
+                .catch(function() {
+                    loadingEl.style.display = 'none';
+                    errorEl.style.display = 'block';
+                });
         }
         
         // Инициализация графиков
