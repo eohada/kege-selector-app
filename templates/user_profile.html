@@ -526,7 +526,7 @@
                             <small style="color: var(--text-muted); font-size: 0.8rem;">Загрузите изображение (JPG, PNG, GIF, WEBP, макс. 5MB)</small>
                         </div>
 
-                        {% if current_user.is_creator() %}
+                        {% if current_user.is_creator() or use_custom_theme %}
                         <div class="neo-field" id="cover_field">
                             <label class="neo-label" for="cover_file">Баннер профиля (GIF или изображение)</label>
                             {% set creator_cover = current_user.profile.cover_url if (current_user.profile and current_user.profile.cover_url) else none %}

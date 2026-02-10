@@ -532,8 +532,7 @@ class User(db.Model):
     custom_status = db.Column(db.String(100), nullable=True)
     telegram_link = db.Column(db.String(200), nullable=True)
     github_link = db.Column(db.String(200), nullable=True)
-    profile_theme = db.Column(db.String(50), nullable=True)
-
+    
     def get_id(self):
         return str(self.id)
     
@@ -579,24 +578,6 @@ class User(db.Model):
 
     def is_content_maker(self):
         return 'content_maker' in self.roles()
-
-    def effective_profile_theme(self):
-        """Тема профиля: если задана profile_theme — она, иначе по роли (creator > admin > tutor > parent > student)."""
-        if getattr(self, 'profile_theme', None) and str(self.profile_theme).strip():
-            return str(self.profile_theme).strip().lower()
-        if self.is_creator():
-            return 'creator'
-        if self.is_admin():
-            return 'admin'
-        if self.is_tutor():
-            return 'tutor'
-        if self.is_content_maker():
-            return 'tutor'
-        if self.is_parent():
-            return 'parent'
-        if self.is_student():
-            return 'student'
-        return None
 
     def is_tester(self):
         """Проверка, является ли пользователь тестировщиком (обычным)"""

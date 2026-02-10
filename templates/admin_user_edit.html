@@ -66,19 +66,6 @@
                             <span style="color: var(--text-muted);">Активен</span>
                         </label>
                     </div>
-
-                    <div class="neo-field">
-                        <label class="neo-label" for="profile_theme">Тема профиля</label>
-                        <select id="profile_theme" name="profile_theme" class="neo-input">
-                            <option value="">По роли (авто)</option>
-                            <option value="creator" {% if user and user.profile_theme == 'creator' %}selected{% endif %}>Создатель (всевластие)</option>
-                            <option value="admin" {% if user and user.profile_theme == 'admin' %}selected{% endif %}>Администратор</option>
-                            <option value="tutor" {% if user and user.profile_theme == 'tutor' %}selected{% endif %}>Преподаватель</option>
-                            <option value="parent" {% if user and user.profile_theme == 'parent' %}selected{% endif %}>Родитель</option>
-                            <option value="student" {% if user and user.profile_theme == 'student' %}selected{% endif %}>Ученик</option>
-                        </select>
-                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Внешний вид страницы профиля этого пользователя. Пусто — тема по роли.</small>
-                    </div>
                 </div>
 
                 <div class="glass-panel" style="margin-bottom: 2rem; padding: 1.5rem;">
