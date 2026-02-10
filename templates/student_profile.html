@@ -101,6 +101,10 @@
         .status-dot.planned { background-color: var(--text-muted); box-shadow: 0 0 5px rgba(255, 255, 255, 0.2); }
         .status-dot.in_progress { background-color: var(--accent-1); box-shadow: 0 0 8px var(--accent-1); }
         .status-dot.completed { background-color: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
+        .status-badge--late { font-size: 0.75em; padding: 0.15rem 0.45rem; border-radius: 999px; background: rgba(255, 180, 0, 0.15); color: var(--accent-warning, #e6a700); border: 1px solid rgba(255, 180, 0, 0.35); margin-left: 0.35rem; }
+        .lessons-remaining--danger { color: var(--danger); }
+        .lessons-remaining--warning { color: var(--warning); }
+        .lessons-remaining--ok { color: var(--accent-1); }
         
         .active-lesson-card {
             background: linear-gradient(135deg, rgba(0, 255, 213, 0.05), rgba(31, 123, 255, 0.05));
@@ -298,9 +302,12 @@
                     </div>
                     
                     {% if student_subscription.lessons_remaining is not none %}
+                        {% if student_subscription.lessons_remaining <= 2 %}{% set lessons_remaining_class = 'lessons-remaining--danger' %}
+                        {% elif student_subscription.lessons_remaining <= 5 %}{% set lessons_remaining_class = 'lessons-remaining--warning' %}
+                        {% else %}{% set lessons_remaining_class = 'lessons-remaining--ok' %}{% endif %}
                         <div style="margin-top: .6rem; display: flex; align-items: center; gap: .5rem;">
                             <span style="color: var(--text-muted);">Осталось уроков:</span>
-                            <span style="font-size: 1.5rem; font-weight: 900; color: {% if student_subscription.lessons_remaining <= 2 %}var(--danger){% elif student_subscription.lessons_remaining <= 5 %}var(--warning){% else %}var(--accent-1){% endif %};">
+                            <span class="{{ lessons_remaining_class }}" style="font-size: 1.5rem; font-weight: 900;">
                                 {{ student_subscription.lessons_remaining }}
                             </span>
                         </div>
@@ -462,6 +469,7 @@
                                     <span>
                                         <span class="status-dot {{ lesson.status }}"></span>
                                         {% if lesson.status == 'completed' %}Проведён{% elif lesson.status == 'in_progress' %}Идёт{% else %}Запланирован{% endif %}
+                                        {% if lesson.student_late %}<span class="status-badge status-badge--late" title="Ученик опоздал">Опоздание</span>{% endif %}
                                     </span>
                                     <span><i class="far fa-clock"></i> {{ lesson_local.strftime('%H:%M') if lesson_local else '—' }}</span>
                                     {% if lesson.content %}<span><i class="fas fa-book"></i> Конспект</span>{% endif %}

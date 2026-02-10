@@ -144,9 +144,7 @@ def register_hooks(app):
             return None
         
         environment = os.environ.get('ENVIRONMENT', 'local')
-        railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-        
-        is_sandbox = environment == 'sandbox' or 'sandbox' in railway_environment.lower()
+        is_sandbox = environment == 'sandbox'
         
         if request.endpoint == 'static' or request.path.startswith('/static/'):
             return None

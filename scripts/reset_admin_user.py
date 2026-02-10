@@ -4,8 +4,6 @@
 
 Использование:
     python scripts/reset_admin_user.py admin newpassword123 creator
-    
-    railway run python scripts/reset_admin_user.py admin newpassword123 creator
 """
 import os
 import sys
@@ -96,8 +94,7 @@ if __name__ == '__main__':
         print("  python scripts/reset_admin_user.py admin mypassword123 creator")
         print("  python scripts/reset_admin_user.py admin newpass456")
         print()
-        print("Для запуска через Railway:")
-        print("  railway run python scripts/reset_admin_user.py admin mypassword123 creator")
+        print("На сервере: python scripts/reset_admin_user.py admin mypassword123 creator")
         print()
         sys.exit(1)
     

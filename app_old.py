@@ -1,4 +1,4 @@
-﻿import os
+import os
 import json
 import ast
 import logging
@@ -322,7 +322,7 @@ def log_page_view(response):
         bot_patterns = [
             'bot', 'crawler', 'spider', 'scraper', 'monitor', 'health',
             'uptime', 'pingdom', 'newrelic', 'datadog', 'statuscake',
-            'railway', 'render', 'vercel', 'netlify', 'uptimerobot'
+            'render', 'vercel', 'netlify', 'uptimerobot'
         ]
         if any(pattern in user_agent for pattern in bot_patterns):
             return response

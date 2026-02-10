@@ -123,6 +123,8 @@
             color: var(--text-muted);
         }
         
+        .status-badge--late { font-size: 0.75em; padding: 0.15rem 0.45rem; border-radius: 999px; background: rgba(255, 180, 0, 0.15); color: #e6a700; border: 1px solid rgba(255, 180, 0, 0.35); margin-left: 0.35rem; }
+        
         .upcoming-lesson-banner {
             background: var(--surface-1);
             border: 1px solid var(--stroke-1);
@@ -277,6 +279,9 @@
             <div style="margin-top: 0.5em; color: var(--text-primary);"><strong>Домашнее задание:</strong> {{ upcoming_lesson.homework }}</div>
             {% endif %}
             <form method="POST" action="{{ url_for('lessons.lesson_start', lesson_id=upcoming_lesson.lesson_id) }}" style="margin-top: 1rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; color: var(--text-muted); font-size: 0.95em;">
+                    <input type="checkbox" name="student_late" value="1"> Ученик опоздал
+                </label>
                 <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Начать" class="ui-icon ui-icon--sm">Начать урок</button>
             </form>
         </section>
@@ -321,10 +326,10 @@
                             </div>
                             <div style="color: var(--text-muted); font-size: 0.9em;">
                                 <img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Время" class="ui-icon ui-icon--sm"> {{ lesson.duration }} минут | 
-                                {% if lesson.status == 'completed' %}<img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проведен" class="ui-icon ui-icon--sm">Проведен
+                                {% if lesson.status == 'completed' %}<img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проведен" class="ui-icon ui-icon--sm">Проведен{% if lesson.student_late %} <span class="status-badge status-badge--late" title="Ученик опоздал">Опоздание</span>{% endif %}
                                 {% elif lesson.status == 'planned' %}<img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="План" class="ui-icon ui-icon--sm">Запланирован
                                 {% elif lesson.status == 'cancelled' %}<img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Отменен" class="ui-icon ui-icon--sm">Отменен
-                                {% else %}<img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" alt="Статус" class="ui-icon ui-icon--sm"> {{ lesson.status }}{% endif %}
+                                {% else %}<img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" alt="Статус" class="ui-icon ui-icon--sm"> {{ lesson.status }}{% if lesson.student_late %} <span class="status-badge status-badge--late" title="Ученик опоздал">Опоздание</span>{% endif %}{% endif %}
                             </div>
                         </div>
                         <div style="display: flex; gap: 0.5em; flex-wrap: wrap;">

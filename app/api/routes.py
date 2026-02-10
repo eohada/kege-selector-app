@@ -565,3 +565,61 @@ def api_telegram_status():
     except Exception as e:
         logger.error(f'Ошибка при получении статуса Telegram: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/api/analytics/summary')
+@login_required
+def api_analytics_summary():
+    """
+    Рейтинги по узлам знаний и прогноз первичного балла ЕГЭ для текущего пользователя
+    (или для ученика, если передан student_id и есть доступ).
+    """
+    try:
+        from app.analytics import AnalyticsEngine
+        from core.db_models import UserMastery, KnowledgeNode, Subject
+
+        user_id = current_user.id
+        student_id = request.args.get('student_id', type=int)
+        if student_id:
+            scope = get_user_scope(current_user)
+            if not (scope['can_see_all'] or scope['student_ids'] is None or student_id in scope['student_ids']):
+                return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+            student = Student.query.get(student_id)
+            if not student or not student.user_id:
+                return jsonify({'success': False, 'error': 'Ученик не найден или не привязан к пользователю'}), 404
+            user_id = student.user_id
+
+        subject = Subject.query.filter_by(slug='kege').first()
+        if not subject:
+            return jsonify({
+                'success': True,
+                'nodes': [],
+                'predicted_primary_score': 0,
+                'subject': None,
+            })
+
+        all_nodes = KnowledgeNode.query.filter_by(subject_id=subject.id).order_by(KnowledgeNode.id).all()
+        masteries = {m.node_id: m for m in UserMastery.query.filter_by(user_id=user_id).all()}
+        by_node = []
+        for n in all_nodes:
+            m = masteries.get(n.id)
+            by_node.append({
+                'node_code': n.code,
+                'node_name': n.name,
+                'base_rating': n.base_rating,
+                'exam_points': n.exam_points,
+                'rating': round(m.rating, 1) if m else AnalyticsEngine.INITIAL_RATING,
+                'volatility': round(m.volatility, 1) if m else 350.0,
+                'streak_days': (m.streak_days or 0) if m else 0,
+                'last_practiced_at': (m.last_practiced_at.isoformat() if m.last_practiced_at else None) if m else None,
+            })
+        predicted = AnalyticsEngine.predict_exam_score(user_id, subject.id)
+        return jsonify({
+            'success': True,
+            'subject': {'id': subject.id, 'slug': subject.slug, 'name': subject.name},
+            'nodes': by_node,
+            'predicted_primary_score': predicted,
+        })
+    except Exception as e:
+        logger.error(f'Ошибка api/analytics/summary: {e}', exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500

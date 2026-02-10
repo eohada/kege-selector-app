@@ -117,10 +117,7 @@ def sync_databases(prod_url=None, sandbox_url=None, include_users=False):
         print("❌ Необходимо установить переменные окружения:")
         print("   PRODUCTION_DATABASE_URL - URL production базы")
         print("   SANDBOX_DATABASE_URL - URL sandbox базы")
-        print("\n💡 Как получить URL:")
-        print("   1. Railway → Ваш проект → PostgreSQL")
-        print("   2. Вкладка 'Connect'")
-        print("   3. Скопируйте 'Public Network' URL")
+        print("\n💡 Как получить URL: панель хостинга → PostgreSQL → строка подключения (public URL)")
         return False
 
     if prod_url_norm == sandbox_url_norm:

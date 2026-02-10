@@ -390,6 +390,11 @@ class StatsService:
             'late': late_count,
             'total': total_count
         }
+
+    def get_lessons_late_count(self):
+        """Количество проведённых уроков, на которые ученик опоздал."""
+        lessons = self._get_lessons()
+        return sum(1 for les in lessons if getattr(les, 'student_late', False) and (les.status or '').lower() == 'completed')
     
     def get_summary_metrics(self):
         """

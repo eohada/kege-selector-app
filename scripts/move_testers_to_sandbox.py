@@ -51,10 +51,7 @@ def move_testers():
         print("❌ Необходимо установить переменные окружения:")
         print("   PRODUCTION_DATABASE_URL - URL production базы")
         print("   SANDBOX_DATABASE_URL - URL sandbox базы")
-        print("\n💡 Как получить URL:")
-        print("   1. Railway → Ваш проект → PostgreSQL")
-        print("   2. Вкладка 'Connect'")
-        print("   3. Скопируйте 'Public Network' URL")
+        print("\n💡 Как получить URL: панель хостинга → PostgreSQL → строка подключения (public URL)")
         return False
     
     prod_conn = get_connection(prod_url, "Production")
@@ -216,10 +213,7 @@ def move_testers():
         print("❌ Необходимо установить переменные окружения:")
         print("   PRODUCTION_DATABASE_URL - URL production базы")
         print("   SANDBOX_DATABASE_URL - URL sandbox базы")
-        print("\n💡 Как получить URL:")
-        print("   1. Railway → Ваш проект → PostgreSQL")
-        print("   2. Вкладка 'Connect'")
-        print("   3. Скопируйте 'Public Network' URL")
+        print("\n💡 Как получить URL: панель хостинга → PostgreSQL → строка подключения (public URL)")
         return False
     
     prod_conn = get_connection(prod_url, "Production")

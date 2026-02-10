@@ -282,6 +282,15 @@
                         {{ form.homework_status(class='neo-select') }}
                         <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Статус выполнения домашнего задания</small>
                     </div>
+                    {% if lesson and lesson.status in ('in_progress', 'completed') %}
+                    <div class="neo-field">
+                        <label class="neo-label" style="display: flex; align-items: center; gap: 0.5rem;">
+                            {{ form.student_late(class='neo-input') }}
+                            {{ form.student_late.label.text }}
+                        </label>
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Отметьте, если ученик пришёл с опозданием</small>
+                    </div>
+                    {% endif %}
                 </div>
             </section>
             

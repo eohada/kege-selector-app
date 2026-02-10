@@ -1673,7 +1673,7 @@ def submission_submit(submission_id):
     """Финальная сдача работы"""
     try:
         submission = Submission.query.options(
-            joinedload(Submission.assignment).joinedload(Assignment.tasks),
+            joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
             joinedload(Submission.answers)
         ).get_or_404(submission_id)
         
@@ -1726,6 +1726,18 @@ def submission_submit(submission_id):
                     answer.is_correct = is_correct
                     answer.score = score
                     total_score += score
+                    try:
+                        from app.analytics import AnalyticsEngine
+                        AnalyticsEngine.process_submission(
+                            user_id=current_user.id,
+                            task_id=assignment_task.task.task_id,
+                            is_correct=is_correct,
+                            time_spent_sec=None,
+                            submission_id=submission_id,
+                            answer_id=answer.answer_id,
+                        )
+                    except Exception as anal_err:
+                        logger.warning("Analytics process_submission failed: %s", anal_err)
                 else:
                     all_auto_graded = False
             else:
@@ -1850,8 +1862,9 @@ def submission_grade_save(submission_id):
     if current_user.is_student() or current_user.is_parent():  # comment
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403  # comment
     submission = Submission.query.options(
-        joinedload(Submission.assignment).joinedload(Assignment.tasks),
-        joinedload(Submission.answers)
+        joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
+        joinedload(Submission.answers),
+        joinedload(Submission.student),
     ).get_or_404(submission_id)
     
     assignment = submission.assignment
@@ -2001,6 +2014,27 @@ def submission_grade_save(submission_id):
                     )
         except Exception as e:
             logger.warning(f"Failed to notify student about submission grade: {e}")
+
+        user_id = submission.student.user_id if submission.student else None
+        if user_id:
+            task_by_at_id = {at.assignment_task_id: at for at in assignment.tasks}
+            for answer in submission.answers:
+                at = task_by_at_id.get(answer.assignment_task_id)
+                if not at or not at.task:
+                    continue
+                is_correct = (answer.score or 0) >= (at.max_score or 1)
+                try:
+                    from app.analytics import AnalyticsEngine
+                    AnalyticsEngine.process_submission(
+                        user_id=user_id,
+                        task_id=at.task.task_id,
+                        is_correct=is_correct,
+                        time_spent_sec=None,
+                        submission_id=submission_id,
+                        answer_id=answer.answer_id,
+                    )
+                except Exception as anal_err:
+                    logger.warning("Analytics process_submission (grade_save) failed: %s", anal_err)
         
         db.session.commit()
         

@@ -1,5 +1,5 @@
 """
-Скрипт для переноса данных из старых баз в новые централизованные базы Railway
+Скрипт для переноса данных из старых баз в новые централизованные базы PostgreSQL.
 Использование:
     export OLD_PRODUCTION_DATABASE_URL="postgresql://..."  # Старая база
     export NEW_PRODUCTION_DATABASE_URL="postgresql://..."  # Новая централизованная база

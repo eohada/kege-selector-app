@@ -9,7 +9,7 @@ import contextlib
 import threading
 import time
 from datetime import datetime, timedelta
-import os  # Окружение (ENVIRONMENT/RAILWAY_ENVIRONMENT) для безопасных ограничений. # comment
+import os  # Окружение (ENVIRONMENT) для безопасных ограничений.
 import hmac
 import requests
 from flask import render_template, request, redirect, url_for, flash, make_response, jsonify, current_app
@@ -40,17 +40,15 @@ _DB_SYNC_STATE = {
 
 
 def _get_environment():
-    environment = os.environ.get('ENVIRONMENT', 'local')
-    railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-    return environment, railway_environment
+    return os.environ.get('ENVIRONMENT', 'local')
 
 
-def _is_production(environment: str, railway_environment: str) -> bool:
-    return environment == 'production' or ('production' in railway_environment.lower() and 'sandbox' not in railway_environment.lower())
+def _is_production(environment: str) -> bool:
+    return environment == 'production'
 
 
-def _is_sandbox(environment: str, railway_environment: str) -> bool:
-    return environment == 'sandbox' or 'sandbox' in railway_environment.lower()
+def _is_sandbox(environment: str) -> bool:
+    return environment == 'sandbox'
 
 
 def _sandbox_remote_config():
@@ -75,8 +73,8 @@ def _sandbox_remote_request(method: str, path: str, payload=None):
 
 
 def _sandbox_internal_guard():
-    environment, railway_environment = _get_environment()
-    if not _is_sandbox(environment, railway_environment):
+    environment = _get_environment()
+    if not _is_sandbox(environment):
         return False
 
     expected = (os.environ.get('SANDBOX_ADMIN_TOKEN') or '').strip()
@@ -95,9 +93,9 @@ def admin_panel():
         return redirect(url_for('main.dashboard'))
     
     try:
-        environment, railway_environment = _get_environment()
-        is_production = _is_production(environment, railway_environment)
-        is_sandbox = _is_sandbox(environment, railway_environment)
+        environment = _get_environment()
+        is_production = _is_production(environment)
+        is_sandbox = _is_sandbox(environment)
 
         total_users = User.query.count()
         active_users = User.query.filter_by(is_active=True).count()
@@ -169,9 +167,9 @@ def admin_panel():
         logger.error(f"Error in admin_panel route: {e}", exc_info=True)
         flash(f'Ошибка при загрузке статистики: {str(e)}', 'error')
         try:
-            environment, railway_environment = _get_environment()
-            is_production = _is_production(environment, railway_environment)
-            is_sandbox = _is_sandbox(environment, railway_environment)
+            environment = _get_environment()
+            is_production = _is_production(environment)
+            is_sandbox = _is_sandbox(environment)
 
             total_users = User.query.count()
             active_users = User.query.filter_by(is_active=True).count()
@@ -255,8 +253,8 @@ def admin_sandbox_db_sync_run():
         flash('Доступ запрещен. Требуется роль "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
 
-    environment, railway_environment = _get_environment()
-    if not _is_production(environment, railway_environment):
+    environment = _get_environment()
+    if not _is_production(environment):
         flash('Синхронизация доступна только из production.', 'warning')
         return redirect(url_for('admin.admin_panel'))
 
@@ -326,9 +324,8 @@ def admin_testers_create():
         return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
 
     environment = os.environ.get('ENVIRONMENT', 'local')  # Текущее окружение приложения. # comment
-    railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')  # Окружение Railway (если есть). # comment
-    is_production = environment == 'production' or ('production' in railway_environment.lower() and 'sandbox' not in railway_environment.lower())  # Признак production. # comment
-    is_sandbox = environment == 'sandbox' or 'sandbox' in railway_environment.lower()  # Признак sandbox. # comment
+    is_production = _is_production(environment)
+    is_sandbox = _is_sandbox(environment)
 
     if is_production and not is_sandbox and not force_production:  # В production блокируем без явного подтверждения. # comment
         flash('Тестировщиков нельзя создавать в production без подтверждения. Включите чекбокс "force production".', 'danger')  # Предупреждаем. # comment
@@ -1499,8 +1496,7 @@ def toggle_maintenance():
     
     import os
     environment = os.environ.get('ENVIRONMENT', 'local')
-    railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-    is_production = environment == 'production' or ('production' in railway_environment.lower() and 'sandbox' not in railway_environment.lower())
+    is_production = _is_production(environment)
     
     try:
         status = MaintenanceMode.get_status()
@@ -1639,9 +1635,9 @@ def admin_tester_entities():
         return redirect(url_for('main.dashboard'))
     
     try:
-        environment, railway_environment = _get_environment()
-        is_production = _is_production(environment, railway_environment)
-        is_sandbox = _is_sandbox(environment, railway_environment)
+        environment = _get_environment()
+        is_production = _is_production(environment)
+        is_sandbox = _is_sandbox(environment)
         sandbox_base_url, _ = _sandbox_remote_config()
 
         query = db.session.query(
@@ -1962,8 +1958,7 @@ def admin_users():
             role_stats[role] = User.query.filter_by(role=role).count()
         
         environment = os.environ.get('ENVIRONMENT', 'local')
-        railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-        is_sandbox = _is_sandbox(environment, railway_environment)
+        is_sandbox = _is_sandbox(environment)
         
         return render_template('admin_users.html',
                              users=users,
@@ -2547,8 +2542,7 @@ def admin_user_edit(user_id):
                 all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
                 all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
                 environment = os.environ.get('ENVIRONMENT', 'local')
-                railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-                is_sandbox = _is_sandbox(environment, railway_environment)
+                is_sandbox = _is_sandbox(environment)
                 
                 return render_template('admin_user_edit.html',
                                      user=user,
@@ -2575,8 +2569,7 @@ def admin_user_edit(user_id):
                 all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
                 all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
                 environment = os.environ.get('ENVIRONMENT', 'local')
-                railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-                is_sandbox = _is_sandbox(environment, railway_environment)
+                is_sandbox = _is_sandbox(environment)
                 
                 return render_template('admin_user_edit.html',
                                      user=user,
@@ -2784,8 +2777,7 @@ def admin_user_edit(user_id):
             all_students = User.query.filter_by(role='student', is_active=True).order_by(User.username).all() if (user.is_parent() or user.is_tutor()) else []
             all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
             environment = os.environ.get('ENVIRONMENT', 'local')
-            railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-            is_sandbox = _is_sandbox(environment, railway_environment)
+            is_sandbox = _is_sandbox(environment)
             
             return render_template('admin_user_edit.html',
                                  user=user,
@@ -2850,8 +2842,7 @@ def admin_user_new():
             if not username:
                 flash('Имя пользователя обязательно.', 'error')
                 environment = os.environ.get('ENVIRONMENT', 'local')
-                railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-                is_sandbox = _is_sandbox(environment, railway_environment)
+                is_sandbox = _is_sandbox(environment)
                 
                 return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
                                      all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
@@ -2860,8 +2851,7 @@ def admin_user_new():
             if not password:
                 flash('Пароль обязателен.', 'error')
                 environment = os.environ.get('ENVIRONMENT', 'local')
-                railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-                is_sandbox = _is_sandbox(environment, railway_environment)
+                is_sandbox = _is_sandbox(environment)
                 
                 return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
                                      all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
@@ -2870,8 +2860,7 @@ def admin_user_new():
             if User.query.filter_by(username=username).first():
                 flash('Пользователь с таким именем уже существует.', 'error')
                 environment = os.environ.get('ENVIRONMENT', 'local')
-                railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-                is_sandbox = _is_sandbox(environment, railway_environment)
+                is_sandbox = _is_sandbox(environment)
                 
                 return render_template('admin_user_edit.html', user=None, is_sandbox=is_sandbox,
                                      all_tutors=all_tutors, all_parents=all_parents, all_students=all_students,
@@ -2993,8 +2982,7 @@ def admin_user_new():
             flash(f'Ошибка при создании пользователя: {str(e)}', 'error')
     
     environment = os.environ.get('ENVIRONMENT', 'local')
-    railway_environment = os.environ.get('RAILWAY_ENVIRONMENT', '')
-    is_sandbox = _is_sandbox(environment, railway_environment)
+    is_sandbox = _is_sandbox(environment)
     
     all_tutors = User.query.filter(User.role.in_(['tutor', 'creator']), User.is_active == True).order_by(User.username).all()
     all_parents = User.query.filter_by(role='parent', is_active=True).order_by(User.username).all()

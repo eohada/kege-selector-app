@@ -1512,6 +1512,11 @@ def student_analytics(student_id):
         except Exception as e:
             logger.error(f"Error getting punctuality: {e}", exc_info=True)
             punctuality = {}
+        try:
+            lessons_late_count = stats.get_lessons_late_count()
+        except Exception as e:
+            logger.error(f"Error getting lessons late count: {e}", exc_info=True)
+            lessons_late_count = 0
     except Exception as e:
         logger.error(f"Error initializing StatsService: {e}", exc_info=True)
         gpa_data = {'dates': [], 'scores': []}
@@ -1522,6 +1527,7 @@ def student_analytics(student_id):
         attendance_data = {'labels': [], 'values': []}
         attendance_heatmap = {'dates': [], 'values': [], 'statuses': []}
         punctuality = {}
+        lessons_late_count = 0
     
     try:
         lessons = Lesson.query.filter_by(student_id=student_id).options(
@@ -1649,6 +1655,7 @@ def student_analytics(student_id):
                              problem_topics=problem_topics,
                              chart_data=chart_data,
                              punctuality=punctuality,
+                             lessons_late_count=lessons_late_count,
                              can_edit=can_edit)
     except Exception as e:
         logger.error(f"Error rendering template for student {student_id}: {e}", exc_info=True)

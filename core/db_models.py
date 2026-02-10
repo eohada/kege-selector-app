@@ -31,11 +31,13 @@ class Tasks(db.Model):
     answer = db.Column(db.Text, nullable=True)
     attached_files = db.Column(db.Text, nullable=True)
     last_scraped = db.Column(db.DateTime, default=moscow_now)
+    knowledge_node_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id', ondelete='SET NULL'), nullable=True, index=True)
 
     usage_history = db.relationship('UsageHistory', back_populates='task', lazy=True)
     skipped_tasks = db.relationship('SkippedTasks', back_populates='task', lazy=True)
     blacklist_tasks = db.relationship('BlacklistTasks', back_populates='task', lazy=True)
     topics = db.relationship('Topic', secondary=task_topics, backref='tasks', lazy=True)
+    knowledge_node = db.relationship('KnowledgeNode', foreign_keys=[knowledge_node_id], backref='tasks')
 
 class TaskReview(db.Model):
     """Результат ручной проверки задания (фундамент для формироватора банка заданий)."""
@@ -411,6 +413,8 @@ class Lesson(db.Model):
     homework_result_notes = db.Column(db.Text, nullable=True)
     review_summaries = db.Column(db.JSON, nullable=True)  # Итоги проверки по типам работ: {"homework": {...}, "classwork": {...}, "exam": {...}}
     published_at = db.Column(db.DateTime, nullable=True) # Дата отправки урока/ДЗ ученику
+    student_late = db.Column(db.Boolean, default=False, nullable=False)  # Ученик опоздал на урок
+    started_at = db.Column(db.DateTime, nullable=True)  # Фактическое время начала (для авто-завершения через 1 ч)
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
 
@@ -1466,3 +1470,83 @@ class GradebookEntry(db.Model):
     __table_args__ = (
         Index('ix_gradebook_student_kind', 'student_id', 'kind'),
     )
+
+
+# --- Модуль аналитики (Knowledge Graph, рейтинги, прогноз балла) ---
+
+class Subject(db.Model):
+    """Предмет (корень графа знаний): Информатика КЕГЭ, Математика и т.д."""
+    __tablename__ = 'subjects'
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(32), unique=True, nullable=False, index=True)
+    name = db.Column(db.String(64), nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    nodes = db.relationship('KnowledgeNode', back_populates='subject', lazy=True)
+
+
+class KnowledgeNode(db.Model):
+    """Узел знаний (тема/навык). Связь с заданием по task_number или через Tasks.knowledge_node_id."""
+    __tablename__ = 'knowledge_nodes'
+    id = db.Column(db.Integer, primary_key=True)
+    subject_id = db.Column(db.Integer, db.ForeignKey('subjects.id'), nullable=False, index=True)
+    parent_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id'), nullable=True, index=True)
+
+    name = db.Column(db.String(128), nullable=False)
+    code = db.Column(db.String(32), nullable=False, index=True)
+
+    base_rating = db.Column(db.Integer, default=1000)
+    exam_points = db.Column(db.Integer, default=1)
+    complexity_tier = db.Column(db.String(32), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    subject = db.relationship('Subject', back_populates='nodes')
+    parent = db.relationship('KnowledgeNode', remote_side=[id])
+
+    __table_args__ = (
+        Index('ix_knowledge_nodes_subject_code', 'subject_id', 'code', unique=True),
+    )
+
+
+class UserMastery(db.Model):
+    """Текущий рейтинг ученика по узлу знаний. Обновляется после каждого решения."""
+    __tablename__ = 'user_mastery'
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), primary_key=True)
+    node_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id', ondelete='CASCADE'), primary_key=True)
+
+    rating = db.Column(db.Float, default=1000.0, nullable=False)
+    volatility = db.Column(db.Float, default=350.0, nullable=False)
+    streak_days = db.Column(db.Integer, default=0, nullable=False)
+    last_practiced_at = db.Column(db.DateTime, default=moscow_now, nullable=True)
+
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    node = db.relationship('KnowledgeNode', foreign_keys=[node_id])
+
+    __table_args__ = (
+        Index('ix_user_mastery_user_id', 'user_id'),
+    )
+
+
+class AnalyticsEvent(db.Model):
+    """Журнал событий аналитики для аудита и пересчёта при смене алгоритма."""
+    __tablename__ = 'analytics_events'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id', ondelete='CASCADE'), nullable=False, index=True)
+    node_id = db.Column(db.Integer, db.ForeignKey('knowledge_nodes.id', ondelete='CASCADE'), nullable=False, index=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('Submissions.submission_id', ondelete='SET NULL'), nullable=True, index=True)
+    answer_id = db.Column(db.Integer, db.ForeignKey('Answers.answer_id', ondelete='SET NULL'), nullable=True, index=True)
+
+    is_correct = db.Column(db.Boolean, nullable=False)
+    task_difficulty = db.Column(db.Integer, nullable=True)
+    old_rating = db.Column(db.Float, nullable=True)
+    new_rating = db.Column(db.Float, nullable=True)
+    timestamp = db.Column(db.DateTime, default=moscow_now, nullable=False)
+
+    __table_args__ = (
+        Index('ix_analytics_events_user_timestamp', 'user_id', 'timestamp'),
+        Index('ix_analytics_events_node_timestamp', 'node_id', 'timestamp'),
+    )
+

@@ -14,8 +14,7 @@ Passwords for all created users are set to: 123
 
 Run:
   python scripts/seed_demo_data.py --sqlite
-
-  railway run python scripts/seed_demo_data.py
+  # или на сервере: python scripts/seed_demo_data.py
 """
 
 import os
@@ -223,8 +222,7 @@ def main():
             except Exception:
                 raise RuntimeError(
                     "Database is not reachable. "
-                    "If you are on Windows/local and DATABASE_URL points to Railway internal host, run with --sqlite "
-                    "or seed via Railway: `railway run python scripts/seed_demo_data.py`."
+                    "From local machine use --sqlite or run this script on the server where DATABASE_URL is reachable."
                 )
 
             db.create_all()

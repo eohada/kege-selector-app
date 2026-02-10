@@ -4,6 +4,10 @@
 """
 from core.db_models import (
     db,
+    Subject,
+    KnowledgeNode,
+    UserMastery,
+    AnalyticsEvent,
     Tasks,
     TaskReview,
     UsageHistory,
@@ -69,6 +73,10 @@ from core.db_models import (
 
 __all__ = [
     'db',
+    'Subject',
+    'KnowledgeNode',
+    'UserMastery',
+    'AnalyticsEvent',
     'Tasks',
     'TaskReview',
     'UsageHistory',

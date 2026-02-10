@@ -56,7 +56,6 @@ def diagnostics_simple():
             'status': 'OK',
             'message': 'Application is running',
             'environment': os.environ.get('ENVIRONMENT', 'unknown'),
-            'railway_environment': os.environ.get('RAILWAY_ENVIRONMENT', 'not set'),
             'database_url_set': 'YES' if os.environ.get('DATABASE_URL') else 'NO',
             'database_url_preview': _mask_url(os.environ.get('DATABASE_URL', 'NOT SET')),
             'timestamp': datetime.now().isoformat()
@@ -72,7 +71,7 @@ def diagnostics_simple():
 def diagnostics_db_check():
     """
     Простая проверка подключения к БД (без авторизации для удобства)
-    Можно использовать для проверки БД в Railway
+    Можно использовать для проверки подключения к БД
     """
     result = {
         'status': 'checking',
@@ -182,8 +181,6 @@ def get_diagnostics_data():
     
     diagnostics['environment'] = {
         'ENVIRONMENT': os.environ.get('ENVIRONMENT', 'NOT SET'),
-        'RAILWAY_ENVIRONMENT': os.environ.get('RAILWAY_ENVIRONMENT', 'NOT SET'),
-        'RAILWAY_SERVICE_NAME': os.environ.get('RAILWAY_SERVICE_NAME', 'NOT SET'),
         'PORT': os.environ.get('PORT', 'NOT SET'),
         'PYTHON_VERSION': os.environ.get('PYTHON_VERSION', 'NOT SET'),
     }
@@ -260,9 +257,6 @@ def get_diagnostics_data():
     except Exception as e:
         diagnostics['application']['flask_config_error'] = str(e)
         diagnostics['errors'].append(f"Flask config error: {str(e)}")
-    
-    railway_vars = {k: v for k, v in os.environ.items() if 'RAILWAY' in k}
-    diagnostics['environment']['railway_variables'] = railway_vars
     
     return diagnostics
 

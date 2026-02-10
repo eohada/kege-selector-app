@@ -2,7 +2,7 @@
 Формы для управления уроками
 """
 from flask_wtf import FlaskForm
-from wtforms import SelectField, IntegerField, TextAreaField, StringField, SubmitField, DateTimeLocalField
+from wtforms import SelectField, IntegerField, TextAreaField, StringField, SubmitField, DateTimeLocalField, BooleanField
 from wtforms.validators import DataRequired, Optional, NumberRange
 
 def ensure_introductory_without_homework(lesson_form):
@@ -38,5 +38,6 @@ class LessonForm(FlaskForm):
         ('assigned_not_done', 'Задано, не выполнено'),
         ('not_assigned', 'Не задано')
     ], default='assigned_not_done', validators=[DataRequired()])
+    student_late = BooleanField('Ученик опоздал на урок', default=False, validators=[Optional()])
     submit = SubmitField('Сохранить')
 

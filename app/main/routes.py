@@ -111,7 +111,7 @@ def setup_first_user():
             return jsonify({
                 'success': False,
                 'error': f'Database connection failed: {str(db_error)}',
-                'hint': 'Check DATABASE_URL configuration in Railway Variables'
+                'hint': 'Check DATABASE_URL configuration in environment variables'
             }), 500
         
         if user_count > 0:
@@ -581,10 +581,10 @@ def update_plans():
         possible_paths = [
             os.path.join(project_root, 'UPDATE_PLANS.md'),
             os.path.join(cwd, 'UPDATE_PLANS.md'),
-            '/app/UPDATE_PLANS.md',  # Railway стандартный путь
+            '/app/UPDATE_PLANS.md',
             os.path.join(project_root, 'docs', 'UPDATE_PLANS.md'),
             os.path.join(cwd, 'docs', 'UPDATE_PLANS.md'),
-            '/app/docs/UPDATE_PLANS.md',  # Railway стандартный путь
+            '/app/docs/UPDATE_PLANS.md',
             os.path.join(base_dir, 'UPDATE_PLANS.md'),
             os.path.join(base_dir, 'docs', 'UPDATE_PLANS.md'),
         ]
@@ -836,7 +836,7 @@ def backup_db():
         
         db_url = os.environ.get('DATABASE_URL', '')
         if 'postgresql' in db_url or 'postgres' in db_url:
-            flash('Для PostgreSQL резервное копирование должно выполняться через pg_dump или интерфейс Railway. Используйте экспорт данных для создания резервной копии.', 'info')
+            flash('Для PostgreSQL резервное копирование должно выполняться через pg_dump или панель хостинга. Используйте экспорт данных для создания резервной копии.', 'info')
             return redirect(url_for('main.export_data'))
         
         backup_dir = os.path.join(base_dir, 'backups')

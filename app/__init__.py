@@ -39,15 +39,11 @@ def create_app(config_name=None):
     if database_url:
         if database_url.startswith('postgres://'):
             database_url = database_url.replace('postgres://', 'postgresql://', 1)
-        
-        is_railway = os.environ.get('RAILWAY_ENVIRONMENT') is not None
-        if not is_railway:
-            external_db_url = os.environ.get('DATABASE_EXTERNAL_URL') or os.environ.get('POSTGRES_URL')
-            if external_db_url:
-                if external_db_url.startswith('postgres://'):
-                    external_db_url = external_db_url.replace('postgres://', 'postgresql://', 1)
-                database_url = external_db_url
-        
+        external_db_url = os.environ.get('DATABASE_EXTERNAL_URL') or os.environ.get('POSTGRES_URL')
+        if external_db_url:
+            if external_db_url.startswith('postgres://'):
+                external_db_url = external_db_url.replace('postgres://', 'postgresql://', 1)
+            database_url = external_db_url
         app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     else:
         app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
@@ -149,22 +145,21 @@ def create_app(config_name=None):
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
     logger.info(f"=== Application Initialization ===")
     logger.info(f"Environment: {ENVIRONMENT}")
-    logger.info(f"RAILWAY_ENVIRONMENT: {os.environ.get('RAILWAY_ENVIRONMENT', 'NOT SET')}")
-    
     if database_url:
         external_db_url = os.environ.get('DATABASE_EXTERNAL_URL') or os.environ.get('POSTGRES_URL')
         if external_db_url:
             logger.info("Using external database URL (DATABASE_EXTERNAL_URL or POSTGRES_URL)")
-            logger.info(f"Database type: PostgreSQL (external)")
+            logger.info("Database type: PostgreSQL (external)")
         else:
-            logger.info(f"Using DATABASE_URL (internal Railway connection)")
-            logger.info(f"Database type: PostgreSQL (internal)")
+            logger.info("Using DATABASE_URL")
+            logger.info("Database type: PostgreSQL")
         
         try:
             with app.app_context():
                 from app.models import Reminder  # Явный импорт для создания таблицы
                 from app.models import Assignment, AssignmentTask, Submission, Answer  # Импортируем новые модели
                 from app.models import LessonWhiteboard  # Интерактивная доска Miro
+                from app.models import Subject, KnowledgeNode, UserMastery, AnalyticsEvent  # Аналитика (граф знаний)
                 db.create_all()
                 db.session.execute(text("SELECT 1"))
                 logger.info("✓ Database connection: OK")
@@ -257,7 +252,33 @@ def create_app(config_name=None):
         app.config['_ASSIGNMENT_NOTIFY_WORKER_STARTED'] = True
 
     _start_assignment_notification_worker()
-    
+
+    def _start_lesson_auto_complete_worker() -> None:
+        if app.config.get('_LESSON_AUTO_COMPLETE_WORKER_STARTED'):
+            return
+        poll_seconds = int(os.environ.get('LESSON_AUTO_COMPLETE_POLL_SECONDS', '300'))
+
+        def worker():
+            while True:
+                try:
+                    with app.app_context():
+                        from app.lessons.routes import auto_complete_overdue_lessons
+                        n = auto_complete_overdue_lessons()
+                        if n:
+                            app.logger.info(f"Auto-completed {n} overdue lesson(s)")
+                except Exception as e:
+                    try:
+                        app.logger.warning(f"Lesson auto-complete worker error: {e}")
+                    except Exception:
+                        pass
+                time.sleep(poll_seconds)
+
+        t = threading.Thread(target=worker, daemon=True)
+        t.start()
+        app.config['_LESSON_AUTO_COMPLETE_WORKER_STARTED'] = True
+
+    _start_lesson_auto_complete_worker()
+
     from app.auth.routes import logout
     csrf.exempt(logout)
     

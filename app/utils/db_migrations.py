@@ -23,7 +23,8 @@ from core.db_models import (
     SubmissionAttempt,
     MaterialAsset, LessonMaterialLink, LessonRoomTemplate, RubricTemplate,
     RecurringLessonSlot,
-    TariffPlan, TariffGroup, UserSubscription, TrainerSession, TrainerLlmLog, UserConsent
+    TariffPlan, TariffGroup, UserSubscription, TrainerSession, TrainerLlmLog, UserConsent,
+    Subject, KnowledgeNode, UserMastery, AnalyticsEvent,
 )
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
 
@@ -616,6 +617,8 @@ def ensure_schema_columns(app):
             safe_add_column('materials', 'JSON')
             safe_add_column('course_module_id', 'INTEGER')
             safe_add_column('published_at', 'TIMESTAMP' if is_postgres else 'DATETIME')
+            safe_add_column('student_late', 'BOOLEAN DEFAULT FALSE')
+            safe_add_column('started_at', 'TIMESTAMP' if is_postgres else 'DATETIME')
 
             _backfill_lesson_materials_to_protected_urls(app, inspector, table_names, limit=2000)
 
@@ -1188,6 +1191,54 @@ def ensure_schema_columns(app):
                     logger.info("Created SubmissionComments table")
                 except Exception as e:
                     logger.warning(f"Could not create SubmissionComments table: {e}")
+
+            subjects_table = _resolve_table_name(table_names, 'subjects')
+            if not subjects_table:
+                try:
+                    Subject.__table__.create(db.engine)
+                    logger.info("Created subjects table (analytics)")
+                except Exception as e:
+                    logger.warning(f"Could not create subjects table: {e}")
+                    db.session.rollback()
+            knowledge_nodes_table = _resolve_table_name(table_names, 'knowledge_nodes')
+            if not knowledge_nodes_table:
+                try:
+                    KnowledgeNode.__table__.create(db.engine)
+                    logger.info("Created knowledge_nodes table (analytics)")
+                except Exception as e:
+                    logger.warning(f"Could not create knowledge_nodes table: {e}")
+                    db.session.rollback()
+            user_mastery_table = _resolve_table_name(table_names, 'user_mastery')
+            if not user_mastery_table:
+                try:
+                    UserMastery.__table__.create(db.engine)
+                    logger.info("Created user_mastery table (analytics)")
+                except Exception as e:
+                    logger.warning(f"Could not create user_mastery table: {e}")
+                    db.session.rollback()
+            analytics_events_table = _resolve_table_name(table_names, 'analytics_events')
+            if not analytics_events_table:
+                try:
+                    AnalyticsEvent.__table__.create(db.engine)
+                    logger.info("Created analytics_events table (analytics)")
+                except Exception as e:
+                    logger.warning(f"Could not create analytics_events table: {e}")
+                    db.session.rollback()
+
+            tasks_table = _resolve_table_name(table_names, 'Tasks')
+            if tasks_table:
+                try:
+                    inspector = inspect(db.engine)
+                    table_names_after = inspector.get_table_names()
+                    tasks_table_resolved = _resolve_table_name(table_names_after, 'Tasks')
+                    if tasks_table_resolved:
+                        cols = {c['name'] for c in inspector.get_columns(tasks_table_resolved)}
+                        if 'knowledge_node_id' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN knowledge_node_id INTEGER'))
+                            logger.info("Added knowledge_node_id to Tasks (analytics)")
+                except Exception as e:
+                    logger.warning(f"Could not add knowledge_node_id to Tasks: {e}")
+                    db.session.rollback()
             
             try:
                 db.session.commit()

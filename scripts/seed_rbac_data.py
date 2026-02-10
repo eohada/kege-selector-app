@@ -455,8 +455,8 @@ def seed_database(reset=False, force_production=False, target_environment=None, 
         if not sandbox_url:
             print("❌ ОШИБКА: SANDBOX_DATABASE_URL не установлен!")
             print("\n💡 Как получить URL sandbox базы:")
-            print("   1. Railway → Ваш проект → Переключитесь на окружение 'sandbox'")
-            print("   2. PostgreSQL → Connect → Public Network URL")
+            print("   1. Переключитесь на окружение sandbox в панели хостинга")
+            print("   2. PostgreSQL → строка подключения (public URL)")
             print("   3. Скопируйте URL и установите:")
             print("      $env:SANDBOX_DATABASE_URL='postgresql://...'")
             return False
@@ -520,7 +520,7 @@ if __name__ == '__main__':
             print("   Скрипт попытается использовать DATABASE_URL, но это может быть production!")
             print("\n💡 Для работы с sandbox установите:")
             print("   $env:SANDBOX_DATABASE_URL='postgresql://user:pass@host:port/db'")
-            print("   (Получите URL из Railway → Sandbox → PostgreSQL → Connect → Public Network URL)")
+            print("   (Получите URL из панели хостинга: Sandbox → PostgreSQL → Connection URL)")
             response = input("\nПродолжить без SANDBOX_DATABASE_URL? (yes/no): ")
             if response.lower() != 'yes':
                 print("❌ Отменено")

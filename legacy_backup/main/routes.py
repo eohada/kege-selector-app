@@ -66,7 +66,7 @@ def setup_first_user():
             return jsonify({
                 'success': False,
                 'error': f'Database connection failed: {str(db_error)}',
-                'hint': 'Check DATABASE_URL configuration in Railway Variables'
+                'hint': 'Check DATABASE_URL configuration in environment variables'
             }), 500
         
         if user_count > 0:
@@ -493,14 +493,13 @@ def update_plans():
         
         # Список возможных путей (от наиболее вероятных к менее вероятным)
         possible_paths = [
-            # В корне проекта (локально и на Railway)
+            # В корне проекта
             os.path.join(project_root, 'UPDATE_PLANS.md'),
             os.path.join(cwd, 'UPDATE_PLANS.md'),
-            '/app/UPDATE_PLANS.md',  # Railway стандартный путь
-            # В docs/ (локально и на Railway)
+            '/app/UPDATE_PLANS.md',
             os.path.join(project_root, 'docs', 'UPDATE_PLANS.md'),
             os.path.join(cwd, 'docs', 'UPDATE_PLANS.md'),
-            '/app/docs/UPDATE_PLANS.md',  # Railway стандартный путь
+            '/app/docs/UPDATE_PLANS.md',
             # Через base_dir (старый способ)
             os.path.join(base_dir, 'UPDATE_PLANS.md'),
             os.path.join(base_dir, 'docs', 'UPDATE_PLANS.md'),
@@ -743,14 +742,13 @@ def import_data():
 def backup_db():
     """Создание резервной копии базы данных"""
     try:
-        # Для PostgreSQL на Railway резервное копирование должно выполняться через pg_dump
-        # или через интерфейс Railway. Здесь просто логируем попытку.
+        # Для PostgreSQL резервное копирование через pg_dump или панель хостинга.
         logger.info('Попытка создания резервной копии базы данных')
         
         # Проверяем тип базы данных
         db_url = os.environ.get('DATABASE_URL', '')
         if 'postgresql' in db_url or 'postgres' in db_url:
-            flash('Для PostgreSQL резервное копирование должно выполняться через pg_dump или интерфейс Railway. Используйте экспорт данных для создания резервной копии.', 'info')
+            flash('Для PostgreSQL резервное копирование должно выполняться через pg_dump или панель хостинга. Используйте экспорт данных для создания резервной копии.', 'info')
             return redirect(url_for('main.export_data'))
         
         # Для SQLite (если используется локально)

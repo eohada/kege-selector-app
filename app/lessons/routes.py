@@ -179,6 +179,7 @@ def lesson_edit(lesson_id):
         lesson.notes = form.notes.data
         lesson.homework = form.homework.data
         lesson.homework_status = form.homework_status.data
+        lesson.student_late = bool(getattr(form, 'student_late', None) and form.student_late.data)
         try:
             db.session.commit()
         except Exception as e:
@@ -269,9 +270,27 @@ def lesson_delete(lesson_id):
 @lessons_bp.route('/lesson/<int:lesson_id>/start', methods=['POST'])
 @login_required
 def lesson_start(lesson_id):
-    """Начало урока"""
+    """Начало урока: фиксируем started_at, опционально отмечаем опоздание."""
+    from core.db_models import moscow_now
     lesson = Lesson.query.get_or_404(lesson_id)
     lesson.status = 'in_progress'
+    now = moscow_now()
+    lesson.started_at = now
+    mark_late = request.form.get('student_late') in ('1', 'true', 'on', 'yes')
+    if mark_late:
+        lesson.student_late = True
+    elif lesson.lesson_date:
+        try:
+            from datetime import timedelta
+            lesson_dt = lesson.lesson_date if getattr(lesson.lesson_date, 'tzinfo', None) else lesson.lesson_date
+            now_naive = now.replace(tzinfo=None) if getattr(now, 'tzinfo', None) else now
+            ld = lesson_dt.replace(tzinfo=None) if getattr(lesson_dt, 'tzinfo', None) else lesson_dt
+            if now_naive > ld + timedelta(minutes=15):
+                lesson.student_late = True
+            else:
+                lesson.student_late = False
+        except Exception:
+            pass
     try:
         db.session.commit()
     except Exception as e:
@@ -291,6 +310,8 @@ def lesson_complete(lesson_id):
     lesson.topic = request.form.get('topic', lesson.topic)
     lesson.notes = request.form.get('notes', lesson.notes)
     lesson.homework = request.form.get('homework', lesson.homework)
+    if 'student_late' in request.form:
+        lesson.student_late = request.form.get('student_late') in ('1', 'true', 'on', 'yes')
     
     lesson_date_str = request.form.get('lesson_date', '').strip()
     lesson_time_str = request.form.get('lesson_time', '').strip()
@@ -328,6 +349,42 @@ def lesson_complete(lesson_id):
         raise
     flash(f'Урок завершен и данные сохранены!', 'success')
     return redirect(url_for('students.student_profile', student_id=lesson.student_id))
+
+def auto_complete_overdue_lessons():
+    """Завершает уроки со статусом in_progress, у которых прошёл 1 час с started_at."""
+    from core.db_models import moscow_now
+    from datetime import timedelta
+    now = moscow_now()
+    now_naive = now.replace(tzinfo=None) if getattr(now, 'tzinfo', None) else now
+    threshold = now_naive - timedelta(hours=1)
+    q = Lesson.query.filter(
+        Lesson.status == 'in_progress',
+        Lesson.started_at.isnot(None)
+    )
+    count = 0
+    for lesson in q.all():
+        try:
+            st = lesson.started_at
+            st_naive = st.replace(tzinfo=None) if getattr(st, 'tzinfo', None) else st
+            if st_naive is None or st_naive > threshold:
+                continue
+            lesson.status = 'completed'
+            if lesson.student and lesson.student.user_id:
+                from app.models import UserSubscription
+                active_sub = UserSubscription.query.filter_by(
+                    user_id=lesson.student.user_id,
+                    status='active'
+                ).order_by(UserSubscription.ends_at.desc().nullslast()).first()
+                if active_sub and active_sub.lessons_remaining is not None and active_sub.lessons_remaining > 0:
+                    active_sub.lessons_remaining -= 1
+                    logger.info(f"Auto-completed lesson {lesson.lesson_id}, decreased lessons_remaining for user {lesson.student.user_id}")
+            db.session.commit()
+            count += 1
+        except Exception as e:
+            db.session.rollback()
+            logger.warning(f"Auto-complete lesson {lesson.lesson_id} failed: {e}")
+    return count
+
 
 @lessons_bp.route('/lesson/<int:lesson_id>/homework-tasks')
 @login_required
