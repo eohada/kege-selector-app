@@ -574,6 +574,9 @@ def api_analytics_summary():
     Рейтинги по узлам знаний и прогноз первичного балла ЕГЭ для текущего пользователя
     (или для ученика, если передан student_id и есть доступ).
     """
+    def _safe_isoformat(dt):
+        return dt.isoformat() if (dt and hasattr(dt, 'isoformat')) else None
+
     try:
         from app.analytics import AnalyticsEngine
         from core.db_models import UserMastery, KnowledgeNode, Subject
@@ -611,7 +614,7 @@ def api_analytics_summary():
                 'rating': round(m.rating, 1) if m else AnalyticsEngine.INITIAL_RATING,
                 'volatility': round(m.volatility, 1) if m else 350.0,
                 'streak_days': (m.streak_days or 0) if m else 0,
-                'last_practiced_at': (m.last_practiced_at.isoformat() if m.last_practiced_at else None) if m else None,
+                'last_practiced_at': _safe_isoformat(m.last_practiced_at if m else None),
             })
         predicted = AnalyticsEngine.predict_exam_score(user_id, subject.id)
         return jsonify({

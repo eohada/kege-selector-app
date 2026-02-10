@@ -14,6 +14,7 @@ from core.db_models import (
     AnalyticsEvent,
     Subject,
     moscow_now,
+    MOSCOW_TZ,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,10 @@ class AnalyticsEngine:
             db.session.add(mastery)
 
         if mastery.last_practiced_at:
-            delta = (moscow_now() - mastery.last_practiced_at).days
+            last_at = mastery.last_practiced_at
+            if last_at.tzinfo is None:
+                last_at = last_at.replace(tzinfo=MOSCOW_TZ)
+            delta = (moscow_now() - last_at).days
             if delta > 0:
                 mastery.volatility = min(
                     cls.MAX_VOLATILITY,
