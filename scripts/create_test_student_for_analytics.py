@@ -24,8 +24,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from app import create_app
 from app.models import db
-from core.db_models import User, Student, Enrollment, Tasks
+from core.db_models import User, Student, Enrollment, Tasks, UserRole
 from werkzeug.security import generate_password_hash
+from sqlalchemy import or_
 
 
 def main():
@@ -40,7 +41,9 @@ def main():
     with app.app_context():
         creator = User.query.filter(User.role == 'creator').first()
         if not creator:
-            print('Ошибка: в БД нет пользователя с ролью creator.')
+            creator = User.query.join(UserRole).filter(UserRole.role == 'creator').first()
+        if not creator:
+            print('Ошибка: в БД нет пользователя с ролью creator (ни в User.role, ни в UserRoles).')
             return 1
 
         tasks_with_node = Tasks.query.filter(Tasks.knowledge_node_id.isnot(None)).all()
