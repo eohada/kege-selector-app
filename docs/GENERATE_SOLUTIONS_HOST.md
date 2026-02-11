@@ -30,6 +30,12 @@ export GIGACHAT_CREDENTIALS="ваш_authorization_key"
 
 Опционально: `GIGACHAT_MODEL`, `GIGACHAT_SCOPE`, `GIGACHAT_VERIFY_SSL_CERTS`, `GIGACHAT_CA_BUNDLE_FILE`.
 
+**Сертификат SSL (Timeweb/Docker):** если появляется `CERTIFICATE_VERIFY_FAILED`, отключите проверку сертификата:
+
+```bash
+export GIGACHAT_VERIFY_SSL_CERTS=false
+```
+
 **Vision (картинки в заданиях):** для заданий с графами/таблицами на изображениях скрипт автоматически извлекает URL картинок из `content_html`, скачивает их и передаёт в GigaChat. Рекомендуется модель с поддержкой vision:
 
 ```bash

@@ -241,7 +241,11 @@ def _build_solution_prompt(
         "Если есть вложения (Excel, текст) — опирайся на их содержимое."
     )
     if has_images:
-        system += "\n\n[!] К заданию приложены изображения (граф, таблица и т.п.). Проанализируй их визуально и используй точные данные."
+        system += (
+            "\n\n[!] К заданию ПРИЛОЖЕНЫ изображения (граф, таблица и т.п.). "
+            "Ты ОБЯЗАН проанализировать их визуально и решить задачу по реальным данным с картинок. "
+            "ЗАПРЕЩЕНО писать «откройте источник» или «нужен визуальный просмотр» — у тебя ЕСТЬ эти данные."
+        )
     ctx = []
     if knowledge and knowledge.get('reference_solution'):
         ref = (knowledge.get('reference_solution') or '')[:1200]
@@ -255,9 +259,12 @@ def _build_solution_prompt(
     user_parts.append(task_text[:4000])
     has_img_ref = 'рисунк' in task_text.lower() or 'таблиц' in task_text.lower()
     has_table_data = '[ТАБЛИЦА]' in task_text or ('|' in task_text and any(c.isdigit() for c in task_text))
-    if has_img_ref and not has_table_data:
+    if has_img_ref and not has_table_data and not has_images:
         user_parts.append('')
-        user_parts.append("[!] В условии упомянут рисунок/таблица, но конкретные числа не приведены в тексте. НЕ выдумывай данные. Напиши, что нужен визуальный просмотр источника.")
+        user_parts.append("[!] В условии упомянут рисунок/таблица, но конкретные числа не приведены. Изображений нет. Не выдумывай данные — напиши: «Откройте источник по ссылке.»")
+    elif has_images:
+        user_parts.append('')
+        user_parts.append("[!] Ниже приложены изображения задания. Реши задачу, используя данные с картинок.")
     if prototype_data:
         user_parts.append('')
         user_parts.append("--- Точные данные графа/таблицы из эталона (используй их): ---")
@@ -334,6 +341,8 @@ def main():
             knowledge = load_task_knowledge(task.task_id, task_number=task.task_number)
             prototype_data = _load_prototype_data(task)
             image_urls = _extract_image_urls_from_html(task.content_html or '')
+            if image_urls:
+                print(f'  task_id={task.task_id}: {len(image_urls)} image(s) for vision')
             messages = _build_solution_prompt(
                 task_text, task.task_number, source_url, attachments_content, knowledge, prototype_data,
                 has_images=bool(image_urls),

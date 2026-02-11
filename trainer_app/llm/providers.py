@@ -140,7 +140,8 @@ class GigaChatClient(LlmClient):
                             ext = os.path.splitext(url.split('?')[0])[1].lower()
                             if ext not in _VISION_EXTENSIONS:
                                 continue
-                            resp = requests.get(url, timeout=15)
+                            verify = self.verify_ssl_certs
+                            resp = requests.get(url, timeout=15, verify=verify)
                             resp.raise_for_status()
                             # GigaChat upload_file принимает bytes или file-like
                             data = resp.content
