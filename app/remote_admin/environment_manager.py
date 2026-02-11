@@ -105,9 +105,10 @@ def is_environment_configured(env: Optional[str] = None) -> bool:
     return bool(config.get('url') and config.get('token'))
 
 
-def make_remote_request(method: str, path: str, payload: Optional[Dict] = None, env: Optional[str] = None) -> requests.Response:
+def make_remote_request(method: str, path: str, payload: Optional[Dict] = None, env: Optional[str] = None, timeout: Optional[int] = None) -> requests.Response:
     """
-    Выполнить запрос к удаленному API окружения
+    Выполнить запрос к удаленному API окружения.
+    timeout: в секундах; по умолчанию 5. Для долгих операций (например, синхронизация эталонов) передайте 30 и больше.
     """
     if env is None:
         env = get_current_environment()
@@ -130,7 +131,8 @@ def make_remote_request(method: str, path: str, payload: Optional[Dict] = None, 
         'Content-Type': 'application/json',
         'Accept': 'application/json'  # Явно указываем, что ожидаем JSON
     }
-    timeout = 5 # Уменьшаем таймаут до 5 секунд
+    if timeout is None:
+        timeout = 5
     
     logger.debug(f"Making {method} request to {url} with token: {token[:10]}...")
     

@@ -947,7 +947,7 @@ def sync_reference_prototypes():
 
     if request.method == 'POST':
         try:
-            resp = make_remote_request('POST', '/internal/remote-admin/api/sync-reference-prototypes', payload={})
+            resp = make_remote_request('POST', '/internal/remote-admin/api/sync-reference-prototypes', payload={}, timeout=30)
             if resp.status_code == 200:
                 data = resp.json()
                 if data.get('success'):

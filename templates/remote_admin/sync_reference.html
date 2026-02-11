@@ -14,6 +14,15 @@
 
         <main style="margin-left: 250px; margin-top: 70px; padding: 2rem;">
         <section class="glass-panel" style="max-width: 600px; padding: 2rem;">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-messages" style="margin-bottom: 1.5rem;">
+                {% for category, msg in messages %}
+                <div class="flash flash-{{ category }}" role="alert" style="padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.5rem; {% if category == 'error' or category == 'danger' %}background: rgba(220,53,69,0.15); color: var(--danger, #dc3545); border: 1px solid rgba(220,53,69,0.3);{% else %}background: rgba(40,167,69,0.15); color: var(--success, #28a745); border: 1px solid rgba(40,167,69,0.3);{% endif %}">{{ msg }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
             <div style="margin-bottom: 2rem;">
                 <h1 style="margin: 0;">Эталоны 19–21</h1>
                 <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
@@ -31,8 +40,13 @@
                     Синхронизировать эталоны 19–21 в банк заданий
                 </button>
             </form>
+
+            <p style="margin-top: 2rem; font-size: 0.9rem; color: var(--text-muted);">
+                Как проверить: после нажатия страница перезагрузится — сверху появится сообщение об успехе или ошибке. В банке заданий (Формироватор) появятся или обновятся задания с номерами 19, 20, 21. На production убедитесь, что на сервере есть папка <code>data/reference_prototypes</code> с JSON для task_19, task_20, task_21.
+            </p>
         </section>
         </main>
     </div>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
 </body>
 </html>
