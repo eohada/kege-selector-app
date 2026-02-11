@@ -1,0 +1,21 @@
+{
+  "task_id": 0,
+  "task_number": 12,
+  "language": "python",
+  "title": "Задание 12: Машина Тьюринга",
+  "common_mistakes": [
+    "Ошибка при переводе в двоичную систему."
+  ],
+  "hint_ladder": [
+    {
+      "level": 1,
+      "hint": "Переведи 10 -> 1010. Используй класс TuringMachine."
+    },
+    {
+      "level": 2,
+      "hint": "Запиши правила в словарь `rules` и запусти метод `run()`."
+    }
+  ],
+  "reference_solution": "",
+  "tests": []
+}

@@ -1,0 +1,26 @@
+{
+  "task_id": 0,
+  "task_number": 23,
+  "language": "python",
+  "title": "Задание 23: Динамическое программирование (кол-во путей)",
+  "common_mistakes": [
+    "Забыли условие `x > y` return 0 (бесконечная рекурсия или ошибка).",
+    "Ошиблись в арифметике при ручном счете."
+  ],
+  "hint_ladder": [
+    {
+      "level": 1,
+      "hint": "Напиши рекурсивную функцию `f(start, end)`."
+    },
+    {
+      "level": 2,
+      "hint": "Если `start > end`, путей нет (return 0). Если `start == end`, путь найден (return 1)."
+    },
+    {
+      "level": 3,
+      "hint": "Иначе сумма путей для всех команд: `f(start+1, end) + f(start*2, end)`."
+    }
+  ],
+  "reference_solution": "",
+  "tests": []
+}

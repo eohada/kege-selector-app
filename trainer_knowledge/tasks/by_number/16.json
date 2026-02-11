@@ -1,0 +1,26 @@
+{
+  "task_id": 0,
+  "task_number": 16,
+  "language": "python",
+  "title": "Задание 16: Рекурсивные алгоритмы",
+  "common_mistakes": [
+    "Забыли `sys.setrecursionlimit` (получили RecursionError).",
+    "Пытались вывести само число F(2024) (оно слишком огромное для консоли, хотя Python его посчитает)."
+  ],
+  "hint_ladder": [
+    {
+      "level": 1,
+      "hint": "Функция F(n) вычисляет факториал числа n."
+    },
+    {
+      "level": 2,
+      "hint": "Для вычисления F(2024) в Python нужно увеличить лимит рекурсии: `sys.setrecursionlimit(3000)`."
+    },
+    {
+      "level": 3,
+      "hint": "Математически: 2024! - 2023! можно упростить, вынеся 2023! за скобки."
+    }
+  ],
+  "reference_solution": "",
+  "tests": []
+}

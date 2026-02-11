@@ -1,0 +1,26 @@
+{
+  "task_id": 0,
+  "task_number": 17,
+  "language": "python",
+  "title": "Задание 17: Обработка последовательностей",
+  "common_mistakes": [
+    "Забыли `range(len(nums) - 1)` и получили IndexError.",
+    "Неправильная инициализация `max_sum` (0 вместо отрицательного числа, если в файле есть отрицательные числа)."
+  ],
+  "hint_ladder": [
+    {
+      "level": 1,
+      "hint": "Считай все числа из файла в список: `data = [int(x) for x in open('file.txt')]`."
+    },
+    {
+      "level": 2,
+      "hint": "Используй цикл `for i in range(len(data) - 1)` для доступа к парам `data[i]` и `data[i+1]`."
+    },
+    {
+      "level": 3,
+      "hint": "Проверь условие `x % 3 == 0` с помощью `or`."
+    }
+  ],
+  "reference_solution": "",
+  "tests": []
+}

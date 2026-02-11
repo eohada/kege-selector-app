@@ -1,0 +1,26 @@
+{
+  "task_id": 0,
+  "task_number": 13,
+  "language": "python",
+  "title": "Задание 13: Адресация в Интернете",
+  "common_mistakes": [
+    "Забыли `strict=False` в Python (получили ошибку ValueError).",
+    "Ошиблись в переводе 199 в двоичную."
+  ],
+  "hint_ladder": [
+    {
+      "level": 1,
+      "hint": "Маска 255 оставляет число без изменений, маска 0 превращает число в 0."
+    },
+    {
+      "level": 2,
+      "hint": "Для третьего байта (199 и 224) выполни поразрядную конъюнкцию (AND). 224 — это 11100000."
+    },
+    {
+      "level": 3,
+      "hint": "В Python используй `ipaddress.ip_network('IP/MASK', strict=False)`."
+    }
+  ],
+  "reference_solution": "",
+  "tests": []
+}
