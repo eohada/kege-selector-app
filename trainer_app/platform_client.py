@@ -57,6 +57,18 @@ class PlatformClient:
         r.raise_for_status()
         return r.json()
 
+    def llm_diagnose(self, *, test: bool = False) -> dict[str, Any]:
+        """Диагностика LLM: ключи, провайдер, тестовый запрос к Groq. test=1 — выполнить тест."""
+        params = {'test': '1'} if test else {}
+        r = requests.get(
+            f'{self.base_url}/internal/trainer/llm/diagnose',
+            params=params,
+            headers=self._headers(),
+            timeout=20,
+        )
+        r.raise_for_status()
+        return r.json()
+
     def llm_ping(self) -> dict[str, Any]:
         r = requests.post(f'{self.base_url}/internal/trainer/llm/ping', json={}, headers=self._headers(), timeout=self.timeout_seconds)
         r.raise_for_status()

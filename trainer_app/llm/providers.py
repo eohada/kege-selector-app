@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 from typing import Any, Literal
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 ProviderName = Literal['groq', 'gemini']
@@ -111,6 +114,15 @@ class GroqClient(LlmClient):
                 msg = (data.get('error') or {}).get('message') or data.get('message') or r.text
             except Exception:
                 msg = r.text
+            # Диагностика: полный ответ и заголовки в лог
+            logger.warning(
+                "Groq API error: status=%s, url=%s, model=%s, body=%s, headers_x=%s",
+                r.status_code,
+                f'{self.base_url}/chat/completions',
+                self.model,
+                (r.text or '')[:800],
+                {k: v for k, v in (r.headers or {}).items() if k.lower().startswith('x-')},
+            )
             raise RuntimeError(f'groq_error {r.status_code}: {str(msg)[:500]}')
         data = r.json()
         try:

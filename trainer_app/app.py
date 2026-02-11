@@ -327,6 +327,18 @@ def main():
     user = (st.session_state['me'] or {}).get('user', {})
     username = user.get('username', 'пользователь')
 
+    with st.sidebar:
+        with st.expander("🔧 Диагностика LLM (403)"):
+            if st.button("Проверить ключи и тест Groq", key="diag_btn"):
+                try:
+                    dr = client.llm_diagnose(test=True)
+                    d = (dr.get('diagnose') or {}) if isinstance(dr, dict) else {}
+                    st.json(d)
+                    if d.get('groq_key_set') and d.get('test_status') == 403:
+                        st.warning("403 от Groq. Смотри test_body выше — там причина. Ключ задан на платформе?")
+                except Exception as ex:
+                    st.error(str(ex))
+
     counts = {}
     try:
         stats = client.get_task_stats()

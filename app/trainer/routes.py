@@ -218,6 +218,57 @@ def trainer_llm_info():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@trainer_bp.route('/internal/trainer/llm/diagnose', methods=['GET'])
+@csrf.exempt
+def trainer_llm_diagnose():
+    """
+    Диагностика LLM: проверка ключей (без вывода самих ключей) и тестовый запрос к Groq.
+    Требует токен тренажёра. GET ?test=1 — выполнить тестовый запрос к API.
+    """
+    _ = _get_trainer_user_from_token(require_permission='trainer.use')
+    groq_key = (os.environ.get('GROQ_API_KEY') or '').strip()
+    gemini_key = (os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_AI_STUDIO_API_KEY') or '').strip()
+    provider_env = (os.environ.get('TRAINER_LLM_PROVIDER') or '').strip().lower()
+    groq_model = (os.environ.get('GROQ_MODEL') or 'llama-3.3-70b-versatile').strip()
+
+    diag = {
+        'groq_key_set': bool(groq_key),
+        'groq_key_len': len(groq_key),
+        'gemini_key_set': bool(gemini_key),
+        'provider_env': provider_env or '(default: groq if groq_key)',
+        'groq_model': groq_model,
+    }
+
+    test = request.args.get('test', '').strip().lower() in ('1', 'true', 'yes')
+    if test and groq_key:
+        try:
+            import requests
+            url = 'https://api.groq.com/openai/v1/chat/completions'
+            payload = {
+                'model': groq_model,
+                'messages': [{'role': 'user', 'content': 'Say OK'}],
+                'max_tokens': 5,
+            }
+            r = requests.post(
+                url,
+                json=payload,
+                headers={
+                    'Authorization': f'Bearer {groq_key}',
+                    'Content-Type': 'application/json',
+                },
+                timeout=15,
+            )
+            diag['test_status'] = r.status_code
+            diag['test_body'] = (r.text or '')[:500]
+            diag['test_headers_x'] = {k: v for k, v in (r.headers or {}).items() if k.lower().startswith('x-')}
+        except Exception as ex:
+            diag['test_error'] = str(ex)[:300]
+    elif test and not groq_key:
+        diag['test_error'] = 'GROQ_API_KEY не задан, тест пропущен'
+
+    return jsonify({'success': True, 'diagnose': diag})
+
+
 @trainer_bp.route('/internal/trainer/llm/ping', methods=['POST'])
 @csrf.exempt
 def trainer_llm_ping():
@@ -405,6 +456,19 @@ def trainer_llm_chat():
             _audit_log_token_user(user, action='trainer_llm_chat', status='error', metadata={'error': str(e)[:500]})
         except Exception:
             pass
+        # Диагностика 403: ключи и провайдер в логе (без самого ключа)
+        ex_str = str(e)
+        if '403' in ex_str or 'groq_error' in ex_str.lower():
+            groq_key = (os.environ.get('GROQ_API_KEY') or '').strip()
+            gemini_key = (os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_AI_STUDIO_API_KEY') or '').strip()
+            logger.warning(
+                "LLM 403 diagnostic: groq_key_set=%s groq_key_len=%s gemini_key_set=%s provider=%s model=%s",
+                bool(groq_key),
+                len(groq_key),
+                bool(gemini_key),
+                os.environ.get('TRAINER_LLM_PROVIDER', '(default)'),
+                os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile'),
+            )
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
