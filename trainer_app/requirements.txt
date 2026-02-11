@@ -3,4 +3,5 @@ requests>=2.31.0
 python-dotenv>=1.0.1
 streamlit-ace>=0.1.1
 gigachat>=0.1.38
+chromadb>=0.4.0
 

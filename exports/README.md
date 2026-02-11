@@ -43,5 +43,5 @@ python scripts/export_training_data.py --output-dir exports
 Для дообучения модели подсказок используйте **только** `train_hints.jsonl` и `val_hints.jsonl`.
 
 - **OpenAI:** загрузить через [Fine-tuning API](https://platform.openai.com/docs/guides/fine-tuning)
-- **GigaChat:** публичного fine-tuning API нет. Варианты: RAG с Embeddings или open-source GigaChat на HuggingFace. Подробнее: `docs/GIGACHAT_FINETUNING_PLAN.md`
+- **GigaChat:** RAG реализован — `python scripts/build_hints_rag_index.py` строит индекс в `data/rag_hints/`. Подробнее: `docs/GIGACHAT_FINETUNING_PLAN.md`
 - **Другие:** формат messages совместим с OpenAI Chat Completions

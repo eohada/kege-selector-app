@@ -349,6 +349,7 @@ def get_llm_info() -> dict[str, Any]:
 
 
 def build_messages_for_help(*, task: dict[str, Any], code: str, analysis: dict[str, Any] | None, history: list[dict[str, str]], knowledge: dict[str, Any] | None = None) -> list[dict[str, str]]:
+    from trainer_app.llm.rag import get_rag_examples_prompt
     sys_prompt = (os.environ.get('TRAINER_SYSTEM_PROMPT') or '').strip()
     if not sys_prompt:
         sys_prompt = (
@@ -378,6 +379,10 @@ def build_messages_for_help(*, task: dict[str, Any], code: str, analysis: dict[s
         {'role': 'system', 'content': f'Условие: {task_text}'},
         {'role': 'system', 'content': f'Код ученика:\n```python\n{code_txt}\n```'},
     ]
+    # RAG: примеры похожих подсказок из эталонов
+    rag_examples = get_rag_examples_prompt(task_text, k=3)
+    if rag_examples:
+        ctx.append({'role': 'system', 'content': rag_examples})
     if analysis:
         ctx.append({'role': 'system', 'content': f'Статический анализ: {analysis}'})
     if knowledge:

@@ -92,15 +92,22 @@ Sber выложил **GigaChat-20B** на HuggingFace — можно дообу�
 
 ---
 
-## Краткий чек-лист по RAG (Вариант 1)
+## Краткий чек-лист по RAG (Вариант 1) ✅ Реализовано
 
-| # | Действие |
-|---|----------|
-| 1 | Добавить GigaChat Embeddings в `trainer_app` (или в платформу) |
-| 2 | Скрипт: загрузить `train_hints.jsonl` → эмбеддинги → сохранить в SQLite/ChromaDB |
-| 3 | Функция `retrieve_similar_hints(task_text, level, k=3)` |
-| 4 | В `build_messages_for_help` или в роуте chat: вызвать retrieve → добавить примеры в system |
-| 5 | Протестировать: запрос подсказки → проверка, что примеры релевантны |
+| # | Действие | Статус |
+|---|----------|--------|
+| 1 | GigaChat Embeddings в `trainer_app/llm/embeddings_client.py` | ✅ |
+| 2 | Скрипт `scripts/build_hints_rag_index.py`: train_hints.jsonl → ChromaDB | ✅ |
+| 3 | Функция `retrieve_similar_hints()` в `trainer_app/llm/rag.py` | ✅ |
+| 4 | Интеграция в `build_messages_for_help` — примеры в system prompt | ✅ |
+| 5 | Протестировать с реальным индексом | ⬜ |
+
+**Запуск:**
+1. `python scripts/export_training_data.py --output-dir exports`
+2. `python scripts/build_hints_rag_index.py` (нужен GIGACHAT_CREDENTIALS)
+3. Индекс сохраняется в `data/rag_hints/`
+
+**Зависимости:** `trainer_app/requirements.txt` — chromadb, gigachat.
 
 ---
 
