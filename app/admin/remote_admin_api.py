@@ -2180,13 +2180,31 @@ def _html_to_plain_text(html: str, max_len: int = 200) -> str:
     return text[:max_len] if text else ''
 
 
+def _strip_solution_prefix(text: str) -> str:
+    """Убрать блоки Источник и Условие из solution_text — они показываются отдельно из API."""
+    if not text:
+        return ''
+    t = text.strip()
+    # Скрипт добавляет префикс и разделитель ---, берём часть после него
+    if '\n\n---\n\n' in t:
+        return t.split('\n\n---\n\n', 1)[-1].strip()
+    # Fallback: отрезать до первого **Шаг N.**
+    m = re.search(r'\*\*Шаг\s+\d+\.\*\*', t, re.IGNORECASE)
+    if m:
+        return t[m.start():]
+    return t
+
+
 def _markdown_to_html(text: str) -> str:
     """Рендер Markdown в HTML для отображения решений."""
     if not text:
         return ''
+    text = _strip_solution_prefix(text)
+    # Исправить частые ошибки Markdown: [url] (url) -> [url](url)
+    text = re.sub(r'\]\s+\(', '](', text)
     try:
         import markdown
-        md = markdown.Markdown(extensions=['extra', 'nl2br'])
+        md = markdown.Markdown(extensions=['extra', 'nl2br', 'fenced_code'])
         return md.convert(text)
     except Exception:
         import html
@@ -2228,7 +2246,7 @@ def remote_admin_api_task_solution_get(task_id: int):
             'content_html': content_html,
             'answer': task.answer,
             'solution': solution_data,
-            '_api_version': '2025-02-rev2',  # для проверки деплоя: в DevTools ответ должен содержать это поле
+            '_api_version': '2025-02-rev3',
         }), 200
     except Exception as e:
         logger.exception('task-solution get failed')
@@ -2273,7 +2291,7 @@ def remote_admin_api_task_solutions_list():
             'total': total,
             'page': page,
             'per_page': per_page,
-            '_api_version': '2025-02-rev2',
+            '_api_version': '2025-02-rev3',
         }), 200
     except Exception as e:
         logger.exception('task-solutions list failed')
