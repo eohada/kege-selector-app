@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Решения заданий · Remote Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <style>
+        .ts-grid{display:grid;grid-template-columns:380px 1fr;gap:1.5rem;align-items:start}
+        @media (max-width: 1000px){.ts-grid{grid-template-columns:1fr}}
+        .ts-list{display:flex;flex-direction:column;gap:.5rem}
+        .ts-item{display:flex;gap:.75rem;align-items:center;padding:.75rem 1rem;border-radius:var(--radius-md);border:1px solid var(--stroke-2);background:var(--surface-1);cursor:pointer;text-align:left;width:100%;transition:all .15s}
+        .ts-item:hover{border-color:rgba(0,255,213,.35);background:var(--surface-2)}
+        .ts-item.active{border-color:rgba(31,123,255,.55);box-shadow:0 0 0 1px rgba(31,123,255,.25) inset}
+        .ts-item.has-sol{border-left:3px solid rgba(0,254,202,.6)}
+        .ts-item.no-sol{border-left:3px solid rgba(255,108,145,.4)}
+        .ts-num{font-weight:800;color:var(--text-primary);min-width:2.5rem}
+        .ts-preview{flex:1;min-width:0;color:var(--text-muted);font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .ts-sol {background:var(--surface-2);border:1px solid var(--stroke-2);border-radius:var(--radius-md);padding:1.25rem;overflow:auto;max-height:70vh;white-space:pre-wrap}
+        .ts-sol.empty{color:var(--text-muted);font-style:italic}
+        .ts-stats{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+        .ts-stat{padding:.5rem 1rem;border-radius:var(--radius-md);background:var(--surface-2);border:1px solid var(--stroke-2)}
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        {% include 'remote_admin/_header.html' %}
+        {% include 'remote_admin/_sidebar.html' %}
+
+        <main style="margin-left: 250px; margin-top: 70px; padding: 2rem;">
+            <section class="glass-panel" style="max-width: 1400px; padding: 2rem;">
+                <div style="margin-bottom: 1.5rem;">
+                    <div style="color: var(--text-muted); font-size: 0.95rem;">Окружение: <strong style="color:var(--text-primary)">{{ environment_name }}</strong></div>
+                    <h1 style="margin: 0.5rem 0 0 0;">Решения заданий</h1>
+                    <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
+                        Просмотр сгенерированных LLM решений. Запуск: <code>python scripts/generate_solutions_for_all_tasks.py</code>
+                    </p>
+                </div>
+
+                <div class="ts-stats">
+                    <span class="ts-stat">Всего заданий: <strong>{{ stats.total_tasks }}</strong></span>
+                    <span class="ts-stat" style="border-left:3px solid rgba(0,254,202,.6);">С решением: <strong>{{ stats.with_solution }}</strong></span>
+                    <span class="ts-stat" style="border-left:3px solid rgba(255,108,145,.4);">Без решения: <strong>{{ stats.without_solution }}</strong></span>
+                </div>
+
+                <form method="GET" action="{{ url_for('remote_admin.task_solutions') }}" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:end;margin-bottom:1rem;">
+                    <div>
+                        <label style="display:block;color:var(--text-muted);font-size:.85rem;margin-bottom:.25rem">Номер задания</label>
+                        <select class="neo-select" name="task_number">
+                            <option value="">Все</option>
+                            {% for n in task_numbers %}
+                            <option value="{{ n }}" {% if task_number == n %}selected{% endif %}>{{ n }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block;color:var(--text-muted);font-size:.85rem;margin-bottom:.25rem">Решение</label>
+                        <select class="neo-select" name="has_solution">
+                            <option value="" {% if not has_solution %}selected{% endif %}>Все</option>
+                            <option value="1" {% if has_solution == '1' %}selected{% endif %}>Только с решением</option>
+                            <option value="0" {% if has_solution == '0' %}selected{% endif %}>Только без</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="neo-button accent">Применить</button>
+                </form>
+
+                <div class="ts-grid">
+                    <div>
+                        <div style="color:var(--text-muted);margin-bottom:.5rem">Найдено: <strong style="color:var(--text-primary)">{{ total }}</strong> · стр. {{ page }}</div>
+                        <div class="ts-list" id="tsList">
+                            {% for it in items %}
+                            <button type="button" class="ts-item {% if it.has_solution %}has-sol{% else %}no-sol{% endif %} {% if loop.first %}active{% endif %}"
+                                    data-task-id="{{ it.task_id }}" onclick="selectTask(this)">
+                                <span class="ts-num">#{{ it.task_number }}</span>
+                                <span class="ts-preview" title="{{ it.content_preview }}">{{ it.content_preview or '—' }}</span>
+                            </button>
+                            {% endfor %}
+                        </div>
+                        {% if total > 30 %}
+                        <div style="margin-top:1rem;display:flex;gap:.5rem;">
+                            {% if page > 1 %}
+                            <a href="{{ url_for('remote_admin.task_solutions', task_number=task_number or '', has_solution=has_solution or '', page=page-1) }}" class="neo-button">← Назад</a>
+                            {% endif %}
+                            {% if page * 30 < total %}
+                            <a href="{{ url_for('remote_admin.task_solutions', task_number=task_number or '', has_solution=has_solution or '', page=page+1) }}" class="neo-button">Далее →</a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <div style="font-weight:700;margin-bottom:.75rem" id="tsDetailTitle">Выберите задание</div>
+                        <div class="ts-sol empty" id="tsDetail">Нажмите на задание в списке</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script>
+        function selectTask(btn) {
+            document.querySelectorAll('.ts-item').forEach(el => el.classList.remove('active'));
+            btn.classList.add('active');
+            const taskId = btn.dataset.taskId;
+            document.getElementById('tsDetailTitle').textContent = 'Загрузка...';
+            document.getElementById('tsDetail').textContent = '';
+            document.getElementById('tsDetail').className = 'ts-sol empty';
+
+            fetch('/remote-admin/api/task-solutions/' + taskId)
+                .then(r => {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(data => {
+                    document.getElementById('tsDetailTitle').textContent = 'Задание #' + (data.task_number || '?') + ' · ID ' + taskId;
+                    if (data.solution && data.solution.solution_text) {
+                        document.getElementById('tsDetail').textContent = data.solution.solution_text;
+                        document.getElementById('tsDetail').className = 'ts-sol';
+                    } else {
+                        document.getElementById('tsDetail').textContent = 'Решение ещё не сгенерировано. Запустите: python scripts/generate_solutions_for_all_tasks.py';
+                        document.getElementById('tsDetail').className = 'ts-sol empty';
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('tsDetailTitle').textContent = 'Ошибка';
+                    document.getElementById('tsDetail').textContent = 'Ошибка загрузки: ' + err.message;
+                    document.getElementById('tsDetail').className = 'ts-sol empty';
+                });
+        }
+
+        const first = document.querySelector('.ts-item.active');
+        if (first) selectTask(first);
+    </script>
+</body>
+</html>

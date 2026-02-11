@@ -13,7 +13,7 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from app.admin import admin_bp
 import re
 
-from app.models import User, AuditLog, MaintenanceMode, db, UserProfile, Tasks, TaskReview
+from app.models import User, AuditLog, MaintenanceMode, db, UserProfile, Tasks, TaskReview, TaskSolution
 from app.models import FamilyTie, Enrollment, Student, Lesson, RolePermission, UserRole
 from app.models import BotAdmin, BotErrorReport, UserNotification
 from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES, DEFAULT_ROLE_PERMISSIONS
@@ -2122,6 +2122,95 @@ def remote_admin_api_tariffs():
         })
     except Exception as e:
         logger.error(f"Error in remote_admin_api_tariffs: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/task-solutions/stats', methods=['GET'])
+def remote_admin_api_task_solutions_stats():
+    """API: Статистика решений (сколько заданий с/без решения)."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    try:
+        total = Tasks.query.count()
+        with_sol = db.session.query(TaskSolution).count()
+        return jsonify({
+            'success': True,
+            'total_tasks': total,
+            'with_solution': with_sol,
+            'without_solution': total - with_sol,
+        }), 200
+    except Exception as e:
+        logger.exception('task-solutions stats failed')
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/task-solutions/<int:task_id>', methods=['GET'])
+def remote_admin_api_task_solution_get(task_id: int):
+    """API: Получить решение задания по task_id."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    try:
+        task = Tasks.query.get(task_id)
+        if not task:
+            return jsonify({'error': 'task_not_found'}), 404
+        sol = TaskSolution.query.filter_by(task_id=task_id).first()
+        return jsonify({
+            'success': True,
+            'task_id': task_id,
+            'task_number': task.task_number,
+            'content_html': task.content_html,
+            'answer': task.answer,
+            'solution': {
+                'solution_text': sol.solution_text,
+                'source': sol.source,
+                'created_at': sol.created_at.isoformat() if sol and sol.created_at else None,
+            } if sol else None,
+        }), 200
+    except Exception as e:
+        logger.exception('task-solution get failed')
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/internal/remote-admin/api/task-solutions', methods=['GET'])
+def remote_admin_api_task_solutions_list():
+    """API: Список заданий с фильтром (task_number, has_solution)."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    try:
+        task_number = request.args.get('task_number', type=int)
+        has_solution = request.args.get('has_solution')
+        page = max(1, request.args.get('page', 1, type=int))
+        per_page = min(100, max(1, request.args.get('per_page', 30, type=int)))
+
+        q = Tasks.query
+        if task_number:
+            q = q.filter(Tasks.task_number == task_number)
+        if has_solution == '1' or has_solution == 'true':
+            q = q.join(TaskSolution, Tasks.task_id == TaskSolution.task_id)
+        elif has_solution == '0' or has_solution == 'false':
+            q = q.outerjoin(TaskSolution, Tasks.task_id == TaskSolution.task_id).filter(TaskSolution.solution_id.is_(None))
+
+        total = q.count()
+        tasks = q.order_by(Tasks.task_id.asc()).offset((page - 1) * per_page).limit(per_page).all()
+
+        items = []
+        for t in tasks:
+            sol = TaskSolution.query.filter_by(task_id=t.task_id).first()
+            items.append({
+                'task_id': t.task_id,
+                'task_number': t.task_number,
+                'has_solution': sol is not None,
+                'content_preview': (t.content_html or '')[:200].replace('<', ' '),
+            })
+        return jsonify({
+            'success': True,
+            'items': items,
+            'total': total,
+            'page': page,
+            'per_page': per_page,
+        }), 200
+    except Exception as e:
+        logger.exception('task-solutions list failed')
         return jsonify({'error': str(e)}), 500
 
 

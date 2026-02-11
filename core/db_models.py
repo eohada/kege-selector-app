@@ -105,6 +105,20 @@ class TaskReview(db.Model):
     task = db.relationship('Tasks', foreign_keys=[task_id])
     reviewer = db.relationship('User', foreign_keys=[reviewer_user_id])
 
+
+class TaskSolution(db.Model):
+    """Сгенерированное LLM или ручное решение задания (для просмотра создателем)."""
+    __tablename__ = 'TaskSolutions'
+    solution_id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, unique=True, index=True)
+    solution_text = db.Column(db.Text, nullable=False)
+    source = db.Column(db.String(20), default='llm', nullable=False, index=True)  # llm | manual
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    task = db.relationship('Tasks', foreign_keys=[task_id], backref=db.backref('task_solution', uselist=False))
+
+
 class Topic(db.Model):
     """Модель тем (навыков) для тегирования заданий"""
     __tablename__ = 'Topics'

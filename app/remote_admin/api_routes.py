@@ -304,7 +304,27 @@ def api_task_formator_save(task_id: int):
         return jsonify({'error': str(e)}), 500
 
 
+@remote_admin_bp.route('/api/task-solutions/<int:task_id>')
+@login_required
+def api_task_solution_get(task_id: int):
+    """Proxy: получить решение задания."""
+    if not current_user.is_creator():
+        return jsonify({'error': 'Access denied'}), 403
+
+    try:
+        env = get_current_environment()
+        if not is_environment_configured(env):
+            return jsonify({'error': f'Environment {env} is not configured'}), 400
+
+        resp = make_remote_request('GET', f'/internal/remote-admin/api/task-solutions/{task_id}')
+        return jsonify(resp.json() if resp.headers.get('content-type', '').startswith('application/json') else {'error': 'Invalid response'}), resp.status_code
+    except Exception as e:
+        logger.error(f"Error proxying task solution: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
 if csrf:
     csrf.exempt(api_task_formator_list)
     csrf.exempt(api_task_formator_task)
     csrf.exempt(api_task_formator_save)
+    csrf.exempt(api_task_solution_get)

@@ -12,7 +12,7 @@ from core.db_models import (
     LessonMessage,
     LessonWhiteboard,
     InviteLink,
-    LessonTaskTeacherComment, TaskReview,
+    LessonTaskTeacherComment, TaskReview, TaskSolution,
     Course, CourseModule,
     StudentLearningPlanItem,
     StudentDiagnosticCheckpoint,
@@ -314,6 +314,14 @@ def ensure_schema_columns(app):
                     logger.info("TaskReviews table created")
                 except Exception as e:
                     logger.warning(f"Could not create TaskReviews table: {e}")
+                    db.session.rollback()
+
+            if 'TaskSolutions' not in table_names and 'tasksolutions' not in table_names:
+                try:
+                    TaskSolution.__table__.create(db.engine)
+                    logger.info("TaskSolutions table created")
+                except Exception as e:
+                    logger.warning(f"Could not create TaskSolutions table: {e}")
                     db.session.rollback()
 
             if 'Courses' not in table_names and 'courses' not in table_names:

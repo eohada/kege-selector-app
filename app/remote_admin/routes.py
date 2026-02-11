@@ -1030,6 +1030,60 @@ def task_formator():
     )
 
 
+@remote_admin_bp.route('/task-solutions')
+@login_required
+def task_solutions():
+    """Просмотр решений заданий (для создателя)."""
+    if not current_user.is_creator():
+        flash('Доступ только для Создателя', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    current_env = get_current_environment()
+    environments = get_environments()
+
+    if not is_environment_configured(current_env):
+        flash(f'Окружение {environments.get(current_env, {}).get("name", current_env)} не настроено', 'error')
+        return redirect(url_for('remote_admin.dashboard'))
+
+    task_number = request.args.get('task_number', type=int)
+    has_solution = request.args.get('has_solution', '')
+    page = max(1, request.args.get('page', 1, type=int))
+
+    stats = {'total_tasks': 0, 'with_solution': 0, 'without_solution': 0}
+    items = []
+    total = 0
+    try:
+        qs = f'page={page}&per_page=30'
+        if task_number:
+            qs += f'&task_number={task_number}'
+        if has_solution:
+            qs += f'&has_solution={has_solution}'
+        resp = make_remote_request('GET', f'/internal/remote-admin/api/task-solutions?{qs}')
+        if resp.status_code == 200:
+            data = resp.json()
+            items = data.get('items', [])
+            total = data.get('total', 0)
+        resp_stats = make_remote_request('GET', '/internal/remote-admin/api/task-solutions/stats')
+        if resp_stats.status_code == 200:
+            stats = resp_stats.json()
+    except Exception as e:
+        logger.warning(f"Error loading task solutions: {e}")
+        flash(f'Ошибка загрузки: {str(e)}', 'error')
+
+    return render_template(
+        'remote_admin/task_solutions.html',
+        current_environment=current_env,
+        environment_name=environments.get(current_env, {}).get('name', current_env),
+        task_number=task_number,
+        has_solution=has_solution,
+        page=page,
+        items=items,
+        total=total,
+        stats=stats,
+        task_numbers=list(range(1, 28)),
+    )
+
+
 @remote_admin_bp.route('/create-pack', methods=['GET', 'POST'])
 @login_required
 def create_pack():
