@@ -101,6 +101,7 @@ Sber выложил **GigaChat-20B** на HuggingFace — можно дообу�
 | 3 | Функция `retrieve_similar_hints()` в `trainer_app/llm/rag.py` | ✅ |
 | 4 | Интеграция в `build_messages_for_help` — примеры в system prompt | ✅ |
 | 5 | Протестировать с реальным индексом | ⬜ |
+| 6 | LLM как фоллбэк при отсутствии подсказок в БД | ✅ |
 
 **Запуск:**
 1. `python scripts/export_training_data.py --output-dir exports`

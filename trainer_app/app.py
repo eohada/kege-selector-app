@@ -626,7 +626,49 @@ def main():
                 st.session_state['hint_level_by_task'][tid] = lvl
                 st.session_state['messages'].append({'role': 'assistant', 'content': f"Подсказка номер {lvl}: {hint}"})
             elif platform_404:
-                st.session_state['messages'].append({'role': 'assistant', 'content': 'Для этого задания готовых подсказок пока нет. Попробуй сам сформулировать вопрос — и я дам более точную подсказку.'})
+                # Фоллбэк: LLM придумывает подсказку, опираясь ТОЛЬКО на наш контекст (knowledge, RAG)
+                has_context = bool(
+                    (isinstance(ladder, list) and ladder)
+                    or (isinstance(knowledge, dict) and (knowledge.get('common_mistakes') or knowledge.get('reference_solution')))
+                )
+                from trainer_app.llm.rag import get_rag_examples_prompt
+                if not has_context:
+                    has_context = bool(get_rag_examples_prompt(task.get('content_html') or '', k=1))
+                if has_context:
+                    try:
+                        msgs = build_messages_for_help(
+                            task=task,
+                            code=code,
+                            analysis=st.session_state.get('analysis'),
+                            history=st.session_state.get('messages', []) + [{'role': 'user', 'content': f'Дай подсказку уровня {next_level}.'}],
+                            knowledge=knowledge,
+                            fallback_mode=True,
+                        )
+                        answer = None
+                        try:
+                            pr = client.llm_chat(messages=msgs, temperature=0.2, max_tokens=500, task_id=tid, task_type=int(task.get('task_number', 0)))
+                            answer = pr.get('answer') if isinstance(pr, dict) else None
+                        except Exception:
+                            llm = get_llm_client()
+                            if llm:
+                                answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=500)
+                        err_msg = (answer or '').strip()
+                        if err_msg:
+                            st.session_state['hint_level_by_task'][tid] = next_level
+                            st.session_state['messages'].append({'role': 'assistant', 'content': f"Подсказка номер {next_level}: {err_msg}"})
+                        else:
+                            st.session_state['messages'].append({'role': 'assistant', 'content': 'Для этого задания готовых подсказок нет. Попробуй сформулировать вопрос в чате ниже.'})
+                    except Exception as e:
+                        ex_str = str(e)
+                        if '403' in ex_str or 'groq_error' in ex_str.lower() or 'forbidden' in ex_str.lower():
+                            msg = 'Подсказка от ИИ недоступна (ошибка API 403). Настройте GIGACHAT_CREDENTIALS. Для этого задания подсказок в базе нет.'
+                        elif '401' in ex_str or 'unauthorized' in ex_str.lower():
+                            msg = 'ИИ не настроен: неверный API‑ключ.'
+                        else:
+                            msg = f'Ошибка: {e}'
+                        st.session_state['messages'].append({'role': 'assistant', 'content': msg})
+                else:
+                    st.session_state['messages'].append({'role': 'assistant', 'content': 'Для этого задания готовых подсказок нет. Добавьте эталон в trainer_knowledge или синхронизируйте эталоны в админке. Либо сформулируйте свой вопрос в чате — попробую подсказать по аналогии.'})
             else:
                 try:
                     msgs = build_messages_for_help(task=task, code=code, analysis=st.session_state.get('analysis'), history=st.session_state.get('messages', []) + [{'role': 'user', 'content': 'Дай подсказку.'}], knowledge=knowledge)
