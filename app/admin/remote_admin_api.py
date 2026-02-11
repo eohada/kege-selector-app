@@ -2127,17 +2127,21 @@ def remote_admin_api_tariffs():
 
 @admin_bp.route('/internal/remote-admin/api/task-solutions/stats', methods=['GET'])
 def remote_admin_api_task_solutions_stats():
-    """API: Статистика решений (сколько заданий с/без решения)."""
+    """API: Статистика решений (сколько заданий с/без решения, совпадений)."""
     if not _remote_admin_guard():
         return jsonify({'error': 'unauthorized'}), 401
     try:
         total = Tasks.query.count()
         with_sol = db.session.query(TaskSolution).count()
+        matches = db.session.query(TaskSolution).filter(
+            TaskSolution.needs_manual_review == False
+        ).count() if hasattr(TaskSolution, 'needs_manual_review') else 0
         return jsonify({
             'success': True,
             'total_tasks': total,
             'with_solution': with_sol,
             'without_solution': total - with_sol,
+            'matches': matches,
         }), 200
     except Exception as e:
         logger.exception('task-solutions stats failed')

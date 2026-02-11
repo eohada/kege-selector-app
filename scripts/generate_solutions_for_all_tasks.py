@@ -147,12 +147,70 @@ def _get_source_url(task) -> str | None:
     return None
 
 
+def _load_prototype_data(task) -> str:
+    """Загрузить данные графа/таблицы из reference_prototype, если есть."""
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    prototypes_dir = os.path.join(repo_root, 'data', 'reference_prototypes')
+    def _load(path: str) -> str:
+        if not os.path.isfile(path):
+            return ''
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            proto = data.get('prototype') or {}
+            text = (proto.get('text') or '').strip()
+            if text and len(text) > 50:
+                return _strip_html_preserve_tables(text)
+        except Exception:
+            pass
+        return ''
+
+    if getattr(task, 'source_prototype', None):
+        result = _load(os.path.join(prototypes_dir, task.source_prototype))
+        if result:
+            return result
+    tn = getattr(task, 'task_number', None)
+    if not tn:
+        return ''
+    diff = getattr(task, 'difficulty_level', None)
+    label = 'easy' if diff and diff <= 3 else ('hard' if diff and diff >= 8 else 'medium')
+    for try_label in (label, 'medium', 'easy', 'hard'):
+        result = _load(os.path.join(prototypes_dir, f'task_{tn:02d}', try_label, f'task_{tn:02d}_{try_label}.json'))
+        if result:
+            return result
+    return ''
+
+
+def _strip_html_preserve_tables(html: str) -> str:
+    """Извлечение текста с сохранением структуры таблиц."""
+    if not html:
+        return ''
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html[:8000], 'html.parser')
+        tables = soup.find_all('table')
+        for t in tables:
+            rows = []
+            for tr in t.find_all('tr'):
+                cells = [td.get_text(separator=' ', strip=True) for td in tr.find_all(['th', 'td'])]
+                if cells:
+                    rows.append(' | '.join(cells))
+            if rows:
+                t.replace_with(f'\n[ТАБЛИЦА]\n' + '\n'.join(rows) + '\n[/ТАБЛИЦА]\n')
+        text = soup.get_text(separator='\n', strip=True)
+        return re.sub(r'\n{3,}', '\n\n', text).strip()
+    except Exception:
+        pass
+    return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', html)).strip()
+
+
 def _build_solution_prompt(
     task_text: str,
     task_number: int,
     source_url: str | None,
     attachments_content: str,
     knowledge: dict | None,
+    prototype_data: str,
 ) -> list[dict]:
     """Промпт для генерации полного решения."""
     system = (
@@ -163,20 +221,26 @@ def _build_solution_prompt(
         "3. **Шаг 1.** Объяснение. При необходимости код в ```python.\n"
         "4. **Шаг 2.** ... и т.д.\n"
         "5. **Ответ:** точное значение (число, строка и т.д.).\n\n"
-        "Используй **жирный** для заголовков шагов. Пиши чётко, структурированно. "
+        "Используй **жирный** для заголовков шагов. Пиши чётко, структурированно.\n\n"
+        "КРИТИЧНО: используй ТОЛЬКО данные из условия. Если условие содержит граф, таблицу, числа — "
+        "используй ТОЧНО эти данные. НЕ выдумывай и не подставляй примеры из других заданий. "
         "Если в задании есть вложения (Excel, текст) — опирайся на их содержимое при решении."
     )
     ctx = []
     if knowledge and knowledge.get('reference_solution'):
         ref = (knowledge.get('reference_solution') or '')[:1500]
         if ref:
-            ctx.append(f"Пример эталонного решения для заданий этого типа (ориентируйся по стилю):\n{ref}")
+            ctx.append(f"Пример эталонного решения для заданий этого типа (ориентируйся по стилю, НЕ копируй числа — используй только данные из условия):\n{ref}")
     user_parts = []
     if source_url:
         user_parts.append(f"Источник: {source_url}")
     user_parts.append(f"Задание №{task_number}:")
     user_parts.append('')
     user_parts.append(task_text[:4000])
+    if prototype_data:
+        user_parts.append('')
+        user_parts.append("--- Точные данные графа/таблицы из эталона (используй их): ---")
+        user_parts.append(prototype_data[:3500])
     if attachments_content:
         user_parts.append('')
         user_parts.append(attachments_content)
@@ -238,7 +302,7 @@ def main():
                     print(f'  [{i+1}/{total}] skipped (already have), done={done}, errors={errors}')
                 continue
 
-            task_text = _strip_html(task.content_html or '')
+            task_text = _strip_html_preserve_tables(task.content_html or '')
             if len(task_text) < 30:
                 skipped += 1
                 continue
@@ -247,7 +311,10 @@ def main():
             app_root = app.root_path or os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
             attachments_content = _extract_attachments_content(task, app_root)
             knowledge = load_task_knowledge(task.task_id, task_number=task.task_number)
-            messages = _build_solution_prompt(task_text, task.task_number, source_url, attachments_content, knowledge)
+            prototype_data = _load_prototype_data(task)
+            messages = _build_solution_prompt(
+                task_text, task.task_number, source_url, attachments_content, knowledge, prototype_data
+            )
 
             try:
                 solution_text = llm.chat(messages=messages, temperature=0.2, max_tokens=1500)
