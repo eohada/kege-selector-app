@@ -4,7 +4,8 @@
 
 Приоритет определения сложности:
   1. Статистика решений (correct_rate) — главный сигнал
-  2. Если статистики нет — используем base_rating узла + эвристику
+  2. Если статистики нет — base_rating узла или base_elo из data/difficulty_rules.json (по task_number)
+  3. По умолчанию — medium (5)
 
 Источники статистики:
   - LessonTask.submission_correct  (задачи из уроков)
@@ -26,6 +27,7 @@
 """
 import sys
 import os
+import json
 import argparse
 import logging
 
@@ -33,8 +35,31 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from collections import defaultdict
 
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+DIFFICULTY_RULES_PATH = os.path.join(REPO_ROOT, 'data', 'difficulty_rules.json')
+
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
+
+
+def load_rules_base_elo():
+    """Загружает base_elo по номеру задания из data/difficulty_rules.json. Возвращает dict: task_number -> base_elo."""
+    result = {}
+    if not os.path.isfile(DIFFICULTY_RULES_PATH):
+        return result
+    try:
+        with open(DIFFICULTY_RULES_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        tasks = data.get('tasks') or {}
+        for k, v in tasks.items():
+            if isinstance(v, dict) and 'base_elo' in v:
+                try:
+                    result[int(k)] = int(v['base_elo'])
+                except (ValueError, TypeError):
+                    pass
+    except Exception as e:
+        logger.warning(f"Не удалось загрузить difficulty_rules.json: {e}")
+    return result
 
 
 def create_app_context():
@@ -154,6 +179,11 @@ def main():
         stats = gather_statistics(db.session)
         logger.info(f"Статистика собрана для {len(stats)} задач")
 
+        # --- Правила сложности (фоллбэк по task_number) ---
+        rules_base_elo = load_rules_base_elo()
+        if rules_base_elo:
+            logger.info(f"Загружены base_elo из difficulty_rules.json для типов: {len(rules_base_elo)}")
+
         # --- Загружаем все задачи ---
         query = Tasks.query
         if not args.force:
@@ -179,11 +209,17 @@ def main():
                 method = f"stats (rate={rate:.2f}, n={task_stat['total']})"
                 labeled_by_stats += 1
             else:
-                # Фоллбэк на base_rating узла
+                # Фоллбэк: base_rating узла → base_elo из difficulty_rules по task_number → default medium
                 node = task.knowledge_node
-                if node and node.base_rating:
-                    new_difficulty = base_rating_to_difficulty(float(node.base_rating))
+                base_rating_val = None
+                if node and getattr(node, 'base_rating', None) is not None:
+                    base_rating_val = float(node.base_rating)
                     method = f"heuristic (base_rating={node.base_rating})"
+                elif task.task_number and task.task_number in rules_base_elo:
+                    base_rating_val = float(rules_base_elo[task.task_number])
+                    method = f"rules (base_elo={rules_base_elo[task.task_number]}, task_number={task.task_number})"
+                if base_rating_val is not None:
+                    new_difficulty = base_rating_to_difficulty(base_rating_val)
                     labeled_by_heuristic += 1
                 else:
                     new_difficulty = 5  # Medium по умолчанию
