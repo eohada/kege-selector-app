@@ -40,6 +40,7 @@ export GIGACHAT_VERIFY_SSL_CERTS=false
 
 ```bash
 export GIGACHAT_MODEL="GigaChat-Pro"
+# или GigaChat-2-Pro / GigaChat-2-Max (2-е поколение с поддержкой vision)
 ```
 
 ## 3. Запуск на хосте

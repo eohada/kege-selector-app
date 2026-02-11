@@ -155,18 +155,14 @@ class GigaChatClient(LlmClient):
                         except Exception as e:
                             logger.warning("Failed to upload image %s: %s", url[:80], e)
 
-                # Прикрепляем картинки к последнему user-сообщению
+                if image_urls and not image_file_ids:
+                    logger.warning("Vision: 0 images uploaded (download or upload failed for %d URLs)", len(image_urls))
+
+                # GigaChat: "одно сообщение поддерживает только одно изображение" — отдельное сообщение на каждую картинку
                 if image_file_ids:
-                    last_user_idx = None
-                    for i in range(len(gigachat_messages) - 1, -1, -1):
-                        if getattr(gigachat_messages[i].role, 'value', '') == 'user':
-                            last_user_idx = i
-                            break
-                    if last_user_idx is not None:
-                        gigachat_messages[last_user_idx] = Messages(
-                            role=MessagesRole.USER,
-                            content=gigachat_messages[last_user_idx].content,
-                            attachments=image_file_ids,
+                    for fid in image_file_ids:
+                        gigachat_messages.append(
+                            Messages(role=MessagesRole.USER, content='Изображение к заданию.', attachments=[fid])
                         )
 
                 chat_obj = Chat(
