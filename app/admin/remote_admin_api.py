@@ -2128,7 +2128,7 @@ def remote_admin_api_tariffs():
 @admin_bp.route('/internal/remote-admin/api/sync-reference-prototypes', methods=['POST'])
 @csrf.exempt
 def remote_admin_api_sync_reference_prototypes():
-    """API: Синхронизация эталонных прототипов 19–21 в банк заданий (для удалённой админки)."""
+    """API: Синхронизация всех эталонов (1–27) в банк заданий (для удалённой админки)."""
     if not _remote_admin_guard():
         return jsonify({'error': 'unauthorized'}), 401
     try:

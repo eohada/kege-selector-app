@@ -214,7 +214,7 @@ def admin_sandbox_db_sync_status():
 @admin_bp.route('/admin/sync-reference-prototypes', methods=['POST'])
 @login_required
 def admin_sync_reference_prototypes():
-    """Синхронизация эталонных прототипов 19–21 в банк заданий (один файл → три задания в БД)."""
+    """Синхронизация всех эталонов (1–27) в банк заданий."""
     if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещён.', 'danger')
         return _remote_admin_redirect()
@@ -227,7 +227,7 @@ def admin_sync_reference_prototypes():
         if results:
             flash(f'Эталоны синхронизированы: обработано файлов {len(results)}, создано заданий {total_c}, обновлено {total_u}.', 'success')
         else:
-            flash('Нет файлов с series_task_numbers (19–21) в data/reference_prototypes.', 'info')
+            flash('Нет файлов эталонов в data/reference_prototypes.', 'info')
     except Exception as e:
         logger.exception('sync-reference-prototypes failed')
         db.session.rollback()

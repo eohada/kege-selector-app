@@ -933,7 +933,7 @@ def permissions():
 @remote_admin_bp.route('/sync-reference-prototypes', methods=['GET', 'POST'])
 @login_required
 def sync_reference_prototypes():
-    """Синхронизация эталонных прототипов 19–21 в банк заданий (на выбранном окружении)."""
+    """Синхронизация всех эталонов (1–27) в банк заданий (на выбранном окружении)."""
     if not current_user.is_creator():
         flash('Доступ только для Создателя', 'danger')
         return redirect(url_for('main.dashboard'))
@@ -947,7 +947,7 @@ def sync_reference_prototypes():
 
     if request.method == 'POST':
         try:
-            resp = make_remote_request('POST', '/internal/remote-admin/api/sync-reference-prototypes', payload={}, timeout=30)
+            resp = make_remote_request('POST', '/internal/remote-admin/api/sync-reference-prototypes', payload={}, timeout=90)
             if resp.status_code == 200:
                 data = resp.json()
                 if data.get('success'):

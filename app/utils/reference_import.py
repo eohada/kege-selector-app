@@ -121,6 +121,20 @@ def run_import(data: dict, source_prototype_key: str, dry_run: bool = False, db=
         node = KnowledgeNode.query.filter_by(subject_id=subject.id, code=node_code).first()
         if node:
             knowledge_node_id = node.id
+    existing = None
+    if has_source_prototype and source_prototype_key:
+        existing = Tasks.query.filter_by(task_number=tn, source_prototype=source_prototype_key).first()
+    elif hasattr(Tasks, 'difficulty_level') and difficulty_level is not None:
+        existing = Tasks.query.filter_by(task_number=tn, difficulty_level=difficulty_level).first()
+    if existing and not dry_run:
+        existing.content_html = content_html
+        existing.answer = (data.get('answer') or '').strip() or None
+        existing.difficulty_level = difficulty_level
+        existing.hints = hints
+        existing.knowledge_node_id = knowledge_node_id
+        if has_source_prototype:
+            existing.source_prototype = source_prototype_key
+        return 0, 1
     if not dry_run:
         kw = dict(
             task_number=tn,
@@ -141,8 +155,10 @@ def run_import(data: dict, source_prototype_key: str, dry_run: bool = False, db=
 
 def sync_all_series_prototypes(dry_run: bool = False):
     """
-    Сканирует data/reference_prototypes, находит все JSON с series_task_numbers,
-    для каждого выполняет run_import. Возвращает список {path, created, updated}.
+    Сканирует data/reference_prototypes, импортирует все эталоны в Tasks.
+    - Файлы с series_task_numbers (19–21): один JSON → несколько заданий в БД.
+    - Файлы с task_number (1–18, 22–27): один JSON → одно задание.
+    Возвращает список {path, created, updated}.
     """
     import glob
     from app.models import db
@@ -163,7 +179,10 @@ def sync_all_series_prototypes(dry_run: bool = False):
                 data = json.load(f)
         except Exception:
             continue
-        if not isinstance(data.get('series_task_numbers'), list) or len(data.get('series_task_numbers', [])) < 2:
+        # series_task_numbers (19–21) ИЛИ task_number (1–18, 22–27)
+        has_series = isinstance(data.get('series_task_numbers'), list) and len(data.get('series_task_numbers', [])) >= 2
+        has_single = isinstance(data.get('task_number'), int) and 1 <= data.get('task_number', 0) <= 27
+        if not has_series and not has_single:
             continue
         try:
             rel = os.path.relpath(path, PROTOTYPES_DIR).replace('\\', '/')
