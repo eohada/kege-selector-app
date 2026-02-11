@@ -46,11 +46,13 @@ def run_import(data: dict, source_prototype_key: str, dry_run: bool = False, db=
     """
     Создаёт или обновляет задания в БД по данным эталонного JSON.
     Возвращает (created_count, updated_count).
+    Устойчив к отсутствию колонки source_prototype (старые деплои).
     """
     from core.db_models import Tasks, KnowledgeNode
 
     if not subject or not db:
         return 0, 0
+    has_source_prototype = hasattr(Tasks, 'source_prototype')
     prototype = data.get('prototype') or {}
     content_html = (prototype.get('text') or '').strip() or '(нет текста)'
     difficulty_level = data.get('difficulty_level')
@@ -65,12 +67,13 @@ def run_import(data: dict, source_prototype_key: str, dry_run: bool = False, db=
     if task_numbers:
         answers = parse_combined_answer(data.get('answer') or '', task_numbers)
         existing = {}
-        if source_prototype_key:
-            for t in Tasks.query.filter(
-                Tasks.source_prototype == source_prototype_key,
-                Tasks.task_number.in_(task_numbers),
-            ).all():
-                existing[t.task_number] = t
+        q = Tasks.query.filter(Tasks.task_number.in_(task_numbers))
+        if has_source_prototype and source_prototype_key:
+            q = q.filter(Tasks.source_prototype == source_prototype_key)
+        elif hasattr(Tasks, 'difficulty_level') and difficulty_level is not None:
+            q = q.filter(Tasks.difficulty_level == difficulty_level)
+        for t in q.all():
+            existing[t.task_number] = t
         created_count = 0
         updated_count = 0
         for tn in task_numbers:
@@ -92,17 +95,19 @@ def run_import(data: dict, source_prototype_key: str, dry_run: bool = False, db=
                 updated_count += 1
             else:
                 if not dry_run:
-                    task = Tasks(
+                    kw = dict(
                         task_number=tn,
                         content_html=content_html,
                         answer=ans,
                         knowledge_node_id=knowledge_node_id,
                         difficulty_level=difficulty_level,
                         hints=hints,
-                        source_prototype=source_prototype_key,
                         site_task_id=None,
                         source_url=None,
                     )
+                    if has_source_prototype:
+                        kw['source_prototype'] = source_prototype_key
+                    task = Tasks(**kw)
                     db.session.add(task)
                 created_count += 1
         return created_count, updated_count
@@ -117,17 +122,19 @@ def run_import(data: dict, source_prototype_key: str, dry_run: bool = False, db=
         if node:
             knowledge_node_id = node.id
     if not dry_run:
-        task = Tasks(
+        kw = dict(
             task_number=tn,
             content_html=content_html,
             answer=(data.get('answer') or '').strip() or None,
             knowledge_node_id=knowledge_node_id,
             difficulty_level=difficulty_level,
             hints=hints,
-            source_prototype=source_prototype_key or None,
             site_task_id=None,
             source_url=None,
         )
+        if has_source_prototype:
+            kw['source_prototype'] = source_prototype_key or None
+        task = Tasks(**kw)
         db.session.add(task)
     return 1, 0
 
