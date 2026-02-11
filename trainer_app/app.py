@@ -463,8 +463,16 @@ def main():
             st.markdown(f"[Открыть источник ↗]({task.get('source_url')})")
 
     with tab2:
-        code = st.text_area("Код:", value=st.session_state.get('code', ''), height=300, key="code_area")
-        st.session_state['code'] = code
+        _code_val = st.session_state.get('code', '')
+        try:
+            from streamlit_ace import st_ace
+            code = st_ace(value=_code_val, language="python", theme="monokai", key="code_ace")
+        except Exception:
+            code = st.text_area("Код:", value=_code_val, height=300, key="code_area")
+        if code is not None:
+            st.session_state['code'] = code
+        else:
+            code = _code_val
 
         c1, c2 = st.columns(2)
         with c1:
@@ -511,7 +519,13 @@ def main():
                         st.success("Выполнено")
                     else:
                         st.error(f"Ошибка: {res.get('error')}")
-                    st.code(res.get('stdout', '')[:5000])
+                        details = res.get('details') or ''
+                        if details:
+                            with st.expander("Подробности (traceback)"):
+                                st.code(details[:8000], language=None)
+                    stdout = (res.get('stdout') or '').strip()
+                    if stdout:
+                        st.code(stdout[:5000])
 
             with test_tab:
                 if not tests:
@@ -578,9 +592,19 @@ def main():
                         llm = get_llm_client()
                         if llm:
                             answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=500)
-                    st.session_state['messages'].append({'role': 'assistant', 'content': (answer or '').strip() or 'Расскажи, что уже сделал.'})
+                    err_msg = (answer or '').strip()
+                    if not err_msg:
+                        err_msg = 'Расскажи, что уже сделал — тогда смогу подсказать точнее.'
+                    st.session_state['messages'].append({'role': 'assistant', 'content': err_msg})
                 except Exception as e:
-                    st.session_state['messages'].append({'role': 'assistant', 'content': f'Ошибка: {e}'})
+                    ex_str = str(e)
+                    if '403' in ex_str or 'groq_error' in ex_str.lower() or 'forbidden' in ex_str.lower():
+                        msg = 'Подсказка от ИИ недоступна (ошибка API 403). Проверьте GROQ_API_KEY или используйте GEMINI_API_KEY. Для этого задания подсказки в базе пока нет — синхронизируйте эталоны в удалённой админке.'
+                    elif '401' in ex_str or 'unauthorized' in ex_str.lower():
+                        msg = 'ИИ не настроен: неверный API‑ключ. Проверьте GROQ_API_KEY или GEMINI_API_KEY.'
+                    else:
+                        msg = f'Ошибка: {e}'
+                    st.session_state['messages'].append({'role': 'assistant', 'content': msg})
             st.rerun()
 
         for m in st.session_state.get('messages', []):
@@ -600,9 +624,19 @@ def main():
                     llm = get_llm_client()
                     if llm:
                         answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=700)
-                st.session_state['messages'].append({'role': 'assistant', 'content': (answer or '').strip() or 'LLM не настроен.'})
+                txt = (answer or '').strip()
+                if not txt:
+                    txt = 'LLM не настроен. Задайте GROQ_API_KEY или GEMINI_API_KEY в окружении тренажёра.'
+                st.session_state['messages'].append({'role': 'assistant', 'content': txt})
             except Exception as e:
-                st.session_state['messages'].append({'role': 'assistant', 'content': f'Ошибка: {e}'})
+                ex_str = str(e)
+                if '403' in ex_str or 'forbidden' in ex_str.lower():
+                    msg = 'ИИ недоступен (403). Проверьте API‑ключ и лимиты.'
+                elif '401' in ex_str or 'unauthorized' in ex_str.lower():
+                    msg = 'ИИ не настроен: неверный API‑ключ.'
+                else:
+                    msg = f'Ошибка: {e}'
+                st.session_state['messages'].append({'role': 'assistant', 'content': msg})
             st.rerun()
 
     with tab4:
