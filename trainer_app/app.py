@@ -626,7 +626,7 @@ def main():
                 st.session_state['hint_level_by_task'][tid] = lvl
                 st.session_state['messages'].append({'role': 'assistant', 'content': f"Подсказка номер {lvl}: {hint}"})
             elif platform_404:
-                st.session_state['messages'].append({'role': 'assistant', 'content': 'Подсказки для этого задания нет. Синхронизируйте эталоны в удалённой админке или добавьте знания в trainer_knowledge.'})
+                st.session_state['messages'].append({'role': 'assistant', 'content': 'Для этого задания подсказок пока нет. Попробуй разобраться сам или спроси учителя.'})
             else:
                 try:
                     msgs = build_messages_for_help(task=task, code=code, analysis=st.session_state.get('analysis'), history=st.session_state.get('messages', []) + [{'role': 'user', 'content': 'Дай подсказку.'}], knowledge=knowledge)
