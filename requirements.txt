@@ -17,3 +17,5 @@ python-dotenv>=1.0.1
 openpyxl>=3.1.0
 python-docx>=1.0.0
 gigachat>=0.1.38
+streamlit>=1.41.0
+streamlit-ace>=0.1.1
