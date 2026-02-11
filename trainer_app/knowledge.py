@@ -91,27 +91,55 @@ def _validate_task_knowledge(data: dict[str, Any]) -> tuple[bool, list[str]]:
     return (len(errs) == 0), errs
 
 
-def load_task_knowledge(task_id: int) -> dict[str, Any] | None:
+def load_task_knowledge(task_id: int, task_number: int | None = None) -> dict[str, Any] | None:
+    """
+    Загружает знания по задаче. Сначала ищет tasks/{task_id}.json,
+    при отсутствии — tasks/by_number/{task_number}.json (фоллбэк по номеру задания).
+    """
+    base = os.path.join(_repo_root(), 'trainer_knowledge', 'tasks')
+
+    def _load(p: str) -> dict[str, Any] | None:
+        if not os.path.exists(p):
+            return None
+        try:
+            with open(p, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                return None
+            ok, errs = _validate_task_knowledge(data)
+            if not ok:
+                logger.warning(f'Invalid trainer knowledge file {p}: {errs}')
+                strict = (os.environ.get('TRAINER_STRICT_KNOWLEDGE') or '').strip().lower() in ('1', 'true', 'yes', 'on')
+                if strict:
+                    return None
+            return data
+        except Exception:
+            return None
+
     try:
         task_id_int = int(task_id)
     except Exception:
-        return None
+        task_id_int = 0
 
-    path = os.path.join(_repo_root(), 'trainer_knowledge', 'tasks', f'{task_id_int}.json')
-    if not os.path.exists(path):
-        return None
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        if not isinstance(data, dict):
+    path = os.path.join(base, f'{task_id_int}.json')
+    result = _load(path)
+    if result is not None:
+        return result
+
+    if task_number is not None:
+        try:
+            tn = int(task_number)
+        except Exception:
             return None
-        ok, errs = _validate_task_knowledge(data)
-        if not ok:
-            logger.warning(f'Invalid trainer knowledge file {path}: {errs}')
-            strict = (os.environ.get('TRAINER_STRICT_KNOWLEDGE') or '').strip().lower() in ('1', 'true', 'yes', 'on')
-            if strict:
-                return None
-        return data
-    except Exception:
-        return None
+        by_num = os.path.join(base, 'by_number', f'{tn}.json')
+        result = _load(by_num)
+        if result is not None:
+            return result
+        if tn in (20, 21):
+            by_num = os.path.join(base, 'by_number', '19.json')
+            result = _load(by_num)
+            if result is not None:
+                return result
+
+    return None
 

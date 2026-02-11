@@ -5,6 +5,7 @@ import os
 import re
 import sys
 from typing import Any
+from urllib.parse import quote
 
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if _REPO_ROOT not in sys.path:
@@ -447,7 +448,8 @@ def main():
         return
 
     tid = int(task.get('task_id', 0))
-    knowledge = load_task_knowledge(tid) if tid else None
+    task_num = task.get('task_number')
+    knowledge = load_task_knowledge(tid, task_number=task_num) if (tid or task_num) else None
     tests = (knowledge or {}).get('tests') if isinstance(knowledge, dict) else None
 
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -477,6 +479,27 @@ def main():
         """, unsafe_allow_html=True)
         if task.get('source_url'):
             st.markdown(f"[Открыть источник ↗]({task.get('source_url')})")
+        # Вложения
+        af_raw = task.get('attached_files')
+        if af_raw:
+            try:
+                files = json.loads(af_raw) if isinstance(af_raw, str) else (af_raw if isinstance(af_raw, list) else [])
+            except Exception:
+                files = []
+            if files:
+                st.markdown("**📎 Вложения:**")
+                for f in files:
+                    if isinstance(f, dict):
+                        path = f.get('path') or f.get('url') or ''
+                        name = f.get('name') or f.get('filename') or (path.split('/')[-1] if path else 'файл')
+                    else:
+                        path = str(f).strip()
+                        name = path.split('/')[-1] if path else 'файл'
+                    if path and not path.startswith('http'):
+                        attach_url = f"{get_platform_base_url()}/internal/trainer/task/{tid}/attachment?path={quote(path)}&token={client.token}"
+                        st.markdown(f"- [{name}]({attach_url})")
+                    elif path:
+                        st.markdown(f"- [{name}]({path})")
 
     with tab2:
         _code_val = st.session_state.get('code', '')
@@ -570,19 +593,24 @@ def main():
 
     with tab3:
         ladder = (knowledge or {}).get('hint_ladder') if isinstance(knowledge, dict) else None
+        cur = st.session_state.get('hint_level_by_task', {}).get(tid, 0) or 0
+        btn_label = "💡 Следующая подсказка" if cur > 0 else "💡 Получить подсказку"
 
-        if st.button("💡 Получить подсказку", use_container_width=True):
-            cur = st.session_state.get('hint_level_by_task', {}).get(tid, 0) or 0
+        if st.button(btn_label, use_container_width=True):
             next_level = min(3, cur + 1)
             hint = None
             lvl = next_level
+            platform_404 = False
 
             # 1) Сначала подсказка с платформы (эталоны из БД)
             try:
                 hr = client.get_hint(tid, level=next_level)
-                if isinstance(hr, dict) and hr.get('success') and hr.get('hint'):
-                    hint = (hr.get('hint') or '').strip()
-                    lvl = int(hr.get('level', next_level))
+                if isinstance(hr, dict):
+                    if hr.get('success') and hr.get('hint'):
+                        hint = (hr.get('hint') or '').strip()
+                        lvl = int(hr.get('level', next_level))
+                    elif hr.get('error') == 'no_hint':
+                        platform_404 = True
             except Exception:
                 pass
 
@@ -596,7 +624,9 @@ def main():
 
             if hint:
                 st.session_state['hint_level_by_task'][tid] = lvl
-                st.session_state['messages'].append({'role': 'assistant', 'content': f"Подсказка ({lvl}): {hint}"})
+                st.session_state['messages'].append({'role': 'assistant', 'content': f"Подсказка номер {lvl}: {hint}"})
+            elif platform_404:
+                st.session_state['messages'].append({'role': 'assistant', 'content': 'Подсказки для этого задания нет. Синхронизируйте эталоны в удалённой админке или добавьте знания в trainer_knowledge.'})
             else:
                 try:
                     msgs = build_messages_for_help(task=task, code=code, analysis=st.session_state.get('analysis'), history=st.session_state.get('messages', []) + [{'role': 'user', 'content': 'Дай подсказку.'}], knowledge=knowledge)

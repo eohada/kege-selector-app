@@ -5,7 +5,7 @@ import os
 from urllib.parse import urlencode
 from typing import Any
 
-from flask import render_template, request, abort, jsonify
+from flask import render_template, request, abort, jsonify, send_file
 from flask_login import login_required, current_user
 
 from app.trainer import trainer_bp
@@ -536,6 +536,35 @@ def trainer_task_get(task_id: int):
     if not task:
         return jsonify({'success': False, 'error': 'task_not_found'}), 404
     return jsonify({'success': True, 'task': _task_to_payload(task)})
+
+
+@trainer_bp.route('/internal/trainer/task/<int:task_id>/attachment', methods=['GET'])
+def trainer_task_attachment(task_id: int):
+    """Скачивание вложения задания. Требует: ?path=attachments/filename.xlsx"""
+    _ = _get_trainer_user_from_token(require_permission='trainer.use')
+    path = (request.args.get('path') or '').strip()
+    if not path or '..' in path or path.startswith('/'):
+        abort(400)
+    task = Tasks.query.filter_by(task_id=task_id).first()
+    if not task:
+        abort(404)
+    source = (getattr(task, 'source_prototype', None) or '').strip()
+    if not source:
+        abort(404)
+    proto_dir = os.path.dirname(source)
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    prototypes_dir = os.path.join(repo_root, 'data', 'reference_prototypes')
+    full_dir = os.path.normpath(os.path.join(prototypes_dir, proto_dir))
+    full_path = os.path.normpath(os.path.join(full_dir, path))
+    if not full_path.startswith(full_dir):
+        abort(400)
+    if not os.path.isfile(full_path):
+        abort(404)
+    try:
+        return send_file(full_path, as_attachment=True, download_name=os.path.basename(path))
+    except Exception as e:
+        logger.warning("trainer attachment send_file error: %s", e)
+        abort(500)
 
 
 @trainer_bp.route('/internal/trainer/task/stats', methods=['GET'])

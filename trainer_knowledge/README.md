@@ -33,6 +33,7 @@
 
 ### Структура
 - `trainer_knowledge/tasks/<task_id>.json` — знание по конкретной задаче из банка (`Tasks.task_id`).
+- `trainer_knowledge/tasks/by_number/<task_number>.json` — фоллбэк по номеру задания (19, 20, 21). Загружается, если файл по task_id не найден.
 
 ### Формат `tasks/<task_id>.json`
 - **task_id**: int
