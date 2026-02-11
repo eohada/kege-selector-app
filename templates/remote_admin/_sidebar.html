@@ -63,6 +63,13 @@
             <span style="font-size: 1.2rem;">🧱</span>
             <span style="font-weight: 500;">Формироватор</span>
         </a>
+
+        <a href="{{ url_for('remote_admin.sync_reference_prototypes') }}" 
+           class="sidebar-link {% if request.endpoint == 'remote_admin.sync_reference_prototypes' %}active{% endif %}"
+           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
+            <span style="font-size: 1.2rem;">📥</span>
+            <span style="font-weight: 500;">Эталоны 19–21</span>
+        </a>
     </nav>
 </aside>
 

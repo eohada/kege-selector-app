@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Эталоны 19–21 · Удаленная админка</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+</head>
+<body>
+    <div class="app-shell">
+        {% include 'remote_admin/_header.html' %}
+        {% include 'remote_admin/_sidebar.html' %}
+
+        <main style="margin-left: 250px; margin-top: 70px; padding: 2rem;">
+        <section class="glass-panel" style="max-width: 600px; padding: 2rem;">
+            <div style="margin-bottom: 2rem;">
+                <h1 style="margin: 0;">Эталоны 19–21</h1>
+                <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
+                    Окружение: <strong>{{ environment_name }}</strong>
+                </p>
+            </div>
+
+            <p style="color: var(--text-primary); margin-bottom: 1.5rem;">
+                Синхронизация подтягивает эталонные прототипы заданий 19, 20, 21 из папки <code>data/reference_prototypes</code> в банк заданий на выбранном окружении. Один JSON-файл с полем <code>series_task_numbers: [19, 20, 21]</code> создаёт или обновляет три задания в БД.
+            </p>
+
+            <form method="POST" action="{{ url_for('remote_admin.sync_reference_prototypes') }}" style="margin: 0;" onsubmit="return confirm('Синхронизировать эталоны 19–21 из data/reference_prototypes в банк заданий на этом окружении?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="neo-button accent">
+                    Синхронизировать эталоны 19–21 в банк заданий
+                </button>
+            </form>
+        </section>
+        </main>
+    </div>
+</body>
+</html>

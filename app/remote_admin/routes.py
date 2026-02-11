@@ -930,6 +930,52 @@ def permissions():
         return redirect(url_for('remote_admin.dashboard'))
 
 
+@remote_admin_bp.route('/sync-reference-prototypes', methods=['GET', 'POST'])
+@login_required
+def sync_reference_prototypes():
+    """Синхронизация эталонных прототипов 19–21 в банк заданий (на выбранном окружении)."""
+    if not current_user.is_creator():
+        flash('Доступ только для Создателя', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    current_env = get_current_environment()
+    environments = get_environments()
+
+    if not is_environment_configured(current_env):
+        flash(f'Окружение {environments.get(current_env, {}).get("name", current_env)} не настроено', 'error')
+        return redirect(url_for('remote_admin.dashboard'))
+
+    if request.method == 'POST':
+        try:
+            resp = make_remote_request('POST', '/internal/remote-admin/api/sync-reference-prototypes', payload={})
+            if resp.status_code == 200:
+                data = resp.json()
+                if data.get('success'):
+                    flash(
+                        f"Эталоны синхронизированы: обработано файлов {data.get('files_processed', 0)}, "
+                        f"создано заданий {data.get('created', 0)}, обновлено {data.get('updated', 0)}.",
+                        'success'
+                    )
+                else:
+                    flash(data.get('error', 'Неизвестная ошибка'), 'error')
+            else:
+                try:
+                    err = resp.json().get('error', resp.text[:200])
+                except Exception:
+                    err = resp.text[:200] or f'HTTP {resp.status_code}'
+                flash(f'Ошибка синхронизации: {err}', 'error')
+        except Exception as e:
+            logger.exception('sync-reference-prototypes from remote admin failed')
+            flash(f'Ошибка: {str(e)}', 'error')
+        return redirect(url_for('remote_admin.sync_reference_prototypes'))
+
+    return render_template(
+        'remote_admin/sync_reference.html',
+        current_environment=current_env,
+        environment_name=environments.get(current_env, {}).get('name', current_env),
+    )
+
+
 @remote_admin_bp.route('/task-formator')
 @login_required
 def task_formator():
