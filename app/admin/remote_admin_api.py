@@ -2144,6 +2144,32 @@ def remote_admin_api_task_solutions_stats():
         return jsonify({'error': str(e)}), 500
 
 
+def _html_to_plain_text(html: str, max_len: int = 200) -> str:
+    """Извлечение читаемого текста из HTML для превью (без мусора вроде p>!>!>)."""
+    if not html:
+        return ''
+    try:
+        from bs4 import BeautifulSoup
+        # Убираем HTML-комментарии — они могут давать мусор при парсинге
+        html_clean = re.sub(r'<!\[CDATA\[.*?\]\]>', '', html, flags=re.DOTALL)
+        html_clean = re.sub(r'<!--.*?-->', ' ', html_clean, flags=re.DOTALL)
+        soup = BeautifulSoup(html_clean[:4000], 'html.parser')
+        # Приоритет: div.task-text — основное содержимое условия
+        task_div = soup.find('div', class_=re.compile(r'task-text', re.I))
+        if task_div:
+            text = task_div.get_text(separator=' ', strip=True)
+        else:
+            text = soup.get_text(separator=' ', strip=True)
+        text = re.sub(r'\s+', ' ', text).strip()
+        # Убираем мусор от парсинга HTML-комментариев: p>!>!>!--->, >!>!> и т.п.
+        text = re.sub(r'[a-z]+>!>!>!-*>\s*', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'>!>!?>!*-*>\s*', '', text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text[:max_len] if text else ''
+    except Exception:
+        return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', (html or '')[:500])).strip()[:max_len]
+
+
 def _markdown_to_html(text: str) -> str:
     """Рендер Markdown в HTML для отображения решений."""
     if not text:
@@ -2179,12 +2205,17 @@ def remote_admin_api_task_solution_get(task_id: int):
         source_url = (task.source_url or '').strip()
         if not source_url and (task.site_task_id or '').strip():
             source_url = f"https://kompege.ru/task?id={task.site_task_id}"
+        # Приводим относительные URL картинок к абсолютным (kompege.ru)
+        content_html = task.content_html or ''
+        if content_html and ('src="/' in content_html or "src='/" in content_html):
+            content_html = re.sub(r'src="/(?!\/)', 'src="https://kompege.ru/', content_html)
+            content_html = re.sub(r"src='/(?!\/)", "src='https://kompege.ru/", content_html)
         return jsonify({
             'success': True,
             'task_id': task_id,
             'task_number': task.task_number,
             'source_url': source_url or None,
-            'content_html': task.content_html,
+            'content_html': content_html,
             'answer': task.answer,
             'solution': solution_data,
         }), 200
@@ -2223,7 +2254,7 @@ def remote_admin_api_task_solutions_list():
                 'task_number': t.task_number,
                 'has_solution': sol is not None,
                 'needs_manual_review': getattr(sol, 'needs_manual_review', False) if sol else False,
-                'content_preview': re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', (t.content_html or '')[:500])).strip()[:200],
+                'content_preview': _html_to_plain_text(t.content_html or '', 200),
             })
         return jsonify({
             'success': True,

@@ -49,7 +49,7 @@
                     <span class="ts-stat" style="border-left:3px solid rgba(0,254,202,.6);">С решением: <strong>{{ stats.with_solution }}</strong></span>
                     <span class="ts-stat" style="border-left:3px solid rgba(255,108,145,.4);">Без решения: <strong>{{ stats.without_solution }}</strong></span>
                 </div>
-                <div style="color:var(--text-muted);font-size:.9rem;margin-top:.5rem;">Решение содержит: источник, условие задачи, пошаговое решение. Ответ сверяется с источником — при расхождении помечается «Ручная проверка».</div>
+                <div style="color:var(--text-muted);font-size:.9rem;margin-top:.5rem;">Решение содержит: источник, условие задачи (с картинками), пошаговое решение. Ответ сверяется с источником — при расхождении помечается «Ручная проверка». <span style="color:var(--text-muted);opacity:.7">(обновлено)</span></div>
 
                 <form method="GET" action="{{ url_for('remote_admin.task_solutions') }}" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:end;margin-bottom:1rem;">
                     <div>
@@ -105,6 +105,10 @@
         </main>
     </div>
     <script>
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        }
         function selectTask(btn) {
             document.querySelectorAll('.ts-item').forEach(el => el.classList.remove('active'));
             btn.classList.add('active');
@@ -113,7 +117,7 @@
             document.getElementById('tsDetail').textContent = '';
             document.getElementById('tsDetail').className = 'ts-sol empty';
 
-            fetch('/remote-admin/api/task-solutions/' + taskId)
+            fetch('/remote-admin/api/task-solutions/' + taskId + '?v=' + Date.now())
                 .then(r => {
                     if (!r.ok) throw new Error('HTTP ' + r.status);
                     return r.json();
@@ -123,22 +127,28 @@
                     if (data.solution && data.solution.needs_manual_review) {
                         title += ' <span class="ts-review-badge">Ручная проверка</span>';
                     }
-                    if (data.source_url) {
-                        title += ' <a href="' + data.source_url.replace(/"/g, '&quot;') + '" target="_blank" rel="noopener" class="ts-source-link" style="margin-left:.5rem;font-size:.85rem">Источник ↗</a>';
-                    }
                     document.getElementById('tsDetailTitle').innerHTML = title;
+                    let html = '';
+                    if (data.source_url) {
+                        html += '<div style="margin-bottom:1rem;padding:.75rem;background:rgba(31,123,255,.15);border-radius:var(--radius-sm);border:1px solid rgba(31,123,255,.4)">';
+                        html += '<strong style="color:var(--accent-1)">Источник:</strong> <a href="' + escapeHtml(data.source_url) + '" target="_blank" rel="noopener" style="color:var(--accent-1);font-weight:600">' + escapeHtml(data.source_url) + ' ↗</a>';
+                        html += '</div>';
+                    }
+                    if (data.content_html && data.content_html.trim()) {
+                        let condHtml = (data.content_html || '').replace(/src="\/(?!\/)/g, 'src="https://kompege.ru/').replace(/src="\/\//g, 'src="https://');
+                        html += '<div style="margin-bottom:1rem;"><div style="font-weight:700;color:var(--accent-1);margin-bottom:.5rem">Условие задачи (оригинал, с картинками)</div>';
+                        html += '<div class="ts-condition-original" style="padding:1rem;background:rgba(0,0,0,.2);border-radius:var(--radius-sm);overflow:auto;max-height:450px;line-height:1.6">' + condHtml + '</div></div>';
+                    } else {
+                        html += '<div style="margin-bottom:1rem;color:var(--text-muted);font-size:.9rem">Условие в БД отсутствует или пустое.</div>';
+                    }
                     if (data.solution && data.solution.solution_text) {
-                        let html = '';
-                        if (data.content_html) {
-                            let condHtml = (data.content_html || '').replace(/src="\/(?!\/)/g, 'src="https://kompege.ru/');
-                            html += '<details style="margin-bottom:1rem"><summary style="cursor:pointer;font-weight:600;color:var(--accent-1)">Условие задачи (оригинал, с картинками)</summary>';
-                            html += '<div class="ts-condition-original" style="margin-top:.5rem;padding:.75rem;background:rgba(0,0,0,.2);border-radius:var(--radius-sm);overflow:auto;max-height:200px">' + condHtml + '</div></details>';
-                        }
-                        html += data.solution.solution_html || '<pre style="white-space:pre-wrap;margin:0">' + (data.solution.solution_text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') + '</pre>';
+                        html += '<div style="font-weight:700;color:var(--text-primary);margin-bottom:.5rem">Решение</div>';
+                        html += data.solution.solution_html || '<pre style="white-space:pre-wrap;margin:0">' + escapeHtml(data.solution.solution_text || '') + '</pre>';
                         document.getElementById('tsDetail').innerHTML = html;
                         document.getElementById('tsDetail').className = 'ts-sol markdown-content';
                     } else {
-                        document.getElementById('tsDetail').textContent = 'Решение ещё не сгенерировано. Запустите: python scripts/generate_solutions_for_all_tasks.py';
+                        html += '<div style="color:var(--text-muted);font-style:italic">Решение ещё не сгенерировано. Запустите: python scripts/generate_solutions_for_all_tasks.py</div>';
+                        document.getElementById('tsDetail').innerHTML = html;
                         document.getElementById('tsDetail').className = 'ts-sol empty';
                     }
                 })

@@ -1070,7 +1070,7 @@ def task_solutions():
         logger.warning(f"Error loading task solutions: {e}")
         flash(f'Ошибка загрузки: {str(e)}', 'error')
 
-    return render_template(
+    resp = make_response(render_template(
         'remote_admin/task_solutions.html',
         current_environment=current_env,
         environment_name=environments.get(current_env, {}).get('name', current_env),
@@ -1081,7 +1081,9 @@ def task_solutions():
         total=total,
         stats=stats,
         task_numbers=list(range(1, 28)),
-    )
+    ))
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    return resp
 
 
 @remote_admin_bp.route('/create-pack', methods=['GET', 'POST'])
