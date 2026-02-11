@@ -68,7 +68,7 @@ def main():
 
         llm = get_llm_client()
         if not llm:
-            print('LLM не настроен. Задайте GIGACHAT_CREDENTIALS или GROQ_API_KEY.', file=sys.stderr)
+            print('LLM не настроен. Задайте GIGACHAT_CREDENTIALS в окружении.', file=sys.stderr)
             return 1
 
         q = Tasks.query.order_by(Tasks.task_id.asc())

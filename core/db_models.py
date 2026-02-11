@@ -1267,7 +1267,7 @@ class TrainerLlmLog(db.Model):
     task_type = db.Column(db.Integer, nullable=True, index=True)
 
     request_kind = db.Column(db.String(30), default='chat', nullable=False, index=True)  # chat|ping
-    provider = db.Column(db.String(30), nullable=True, index=True)  # groq|gemini
+    provider = db.Column(db.String(30), nullable=True, index=True)  # gigachat
     model = db.Column(db.String(120), nullable=True)
 
     messages = db.Column(db.JSON, nullable=True)

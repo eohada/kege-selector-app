@@ -342,7 +342,7 @@ def main():
                     if not d.get('test_success') and d.get('test_error'):
                         err = (d.get('test_error') or '')
                         if '403' in err or 'forbidden' in err.lower():
-                            st.warning("403 / Forbidden. Попробуйте GigaChat: GIGACHAT_CREDENTIALS + TRAINER_LLM_PROVIDER=gigachat")
+                            st.warning("403 / Forbidden. Настройте GIGACHAT_CREDENTIALS в окружении.")
                         elif 'gigachat' in err.lower() and 'ssl' in err.lower():
                             st.info("GigaChat SSL: установите GIGACHAT_CA_BUNDLE_FILE или GIGACHAT_VERIFY_SSL_CERTS=false для разработки")
                 except Exception as ex:
@@ -735,7 +735,7 @@ def main():
                             st.session_state['messages'].append({'role': 'assistant', 'content': 'Для этого задания готовых подсказок нет. Попробуй сформулировать вопрос в чате ниже.'})
                     except Exception as e:
                         ex_str = str(e)
-                        if '403' in ex_str or 'groq_error' in ex_str.lower() or 'forbidden' in ex_str.lower():
+                        if '403' in ex_str or 'gigachat_error' in ex_str.lower() or 'forbidden' in ex_str.lower():
                             msg = 'Подсказка от ИИ недоступна (ошибка API 403). Настройте GIGACHAT_CREDENTIALS. Для этого задания подсказок в базе нет.'
                         elif '401' in ex_str or 'unauthorized' in ex_str.lower():
                             msg = 'ИИ не настроен: неверный API‑ключ.'
@@ -761,10 +761,10 @@ def main():
                     st.session_state['messages'].append({'role': 'assistant', 'content': err_msg})
                 except Exception as e:
                     ex_str = str(e)
-                    if '403' in ex_str or 'groq_error' in ex_str.lower() or 'forbidden' in ex_str.lower():
-                        msg = 'Подсказка от ИИ недоступна (ошибка API 403). Используйте GIGACHAT_CREDENTIALS или GEMINI_API_KEY. Для этого задания подсказки в базе пока нет — синхронизируйте эталоны в удалённой админке.'
+                    if '403' in ex_str or 'gigachat_error' in ex_str.lower() or 'forbidden' in ex_str.lower():
+                        msg = 'Подсказка от ИИ недоступна (ошибка API 403). Настройте GIGACHAT_CREDENTIALS. Для этого задания подсказки в базе пока нет — синхронизируйте эталоны в удалённой админке.'
                     elif '401' in ex_str or 'unauthorized' in ex_str.lower():
-                        msg = 'ИИ не настроен: неверный API‑ключ. Проверьте GIGACHAT_CREDENTIALS, GEMINI_API_KEY или GROQ_API_KEY.'
+                        msg = 'ИИ не настроен: неверный API‑ключ. Проверьте GIGACHAT_CREDENTIALS.'
                     else:
                         msg = f'Ошибка: {e}'
                     st.session_state['messages'].append({'role': 'assistant', 'content': msg})
@@ -789,12 +789,12 @@ def main():
                         answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=700)
                 txt = (answer or '').strip()
                 if not txt:
-                    txt = 'LLM не настроен. Задайте GIGACHAT_CREDENTIALS, GEMINI_API_KEY или GROQ_API_KEY в окружении тренажёра.'
+                    txt = 'LLM не настроен. Задайте GIGACHAT_CREDENTIALS в окружении тренажёра.'
                 st.session_state['messages'].append({'role': 'assistant', 'content': txt})
             except Exception as e:
                 ex_str = str(e)
                 if '403' in ex_str or 'forbidden' in ex_str.lower():
-                    msg = 'ИИ недоступен (403). Попробуйте GIGACHAT_CREDENTIALS или проверьте API‑ключ и лимиты.'
+                    msg = 'ИИ недоступен (403). Настройте GIGACHAT_CREDENTIALS или проверьте API‑ключ и лимиты.'
                 elif '401' in ex_str or 'unauthorized' in ex_str.lower():
                     msg = 'ИИ не настроен: неверный API‑ключ.'
                 else:

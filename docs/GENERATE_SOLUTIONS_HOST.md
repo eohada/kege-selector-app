@@ -1,14 +1,12 @@
 # Генерация решений на хосте (Timeweb)
 
-Скрипт `scripts/generate_solutions_for_all_tasks.py` проходится по всем заданиям в БД и генерирует решения через LLM.
+Скрипт `scripts/generate_solutions_for_all_tasks.py` проходится по всем заданиям в БД и генерирует решения через LLM (GigaChat).
 
 ## 1. Зависимости
 
 Все нужные пакеты в `requirements.txt`:
 
-- **Groq** — только `requests` (уже есть)
-- **GigaChat** — `gigachat>=0.1.38` (добавлен в requirements)
-- **Gemini** — только `requests`
+- **GigaChat** — `gigachat>=0.1.38`
 
 После деплоя на хост выполните:
 
@@ -18,19 +16,13 @@ pip install -r requirements.txt
 
 ## 2. Переменные окружения
 
-Выберите один провайдер и задайте ключи:
-
-| Провайдер | Переменные | Приоритет |
-|-----------|------------|-----------|
-| Groq | `GROQ_API_KEY` | 1 (по умолчанию) |
-| Gemini | `GEMINI_API_KEY` | 2 |
-| GigaChat | `GIGACHAT_CREDENTIALS` | 3 |
-
-Чтобы явно выбрать провайдер:
+Задайте credentials GigaChat:
 
 ```bash
-export TRAINER_LLM_PROVIDER=groq   # или gemini, gigachat
+export GIGACHAT_CREDENTIALS="ваш_authorization_key"
 ```
+
+Опционально: `GIGACHAT_MODEL`, `GIGACHAT_SCOPE`, `GIGACHAT_VERIFY_SSL_CERTS`, `GIGACHAT_CA_BUNDLE_FILE`.
 
 ## 3. Запуск на хосте
 
