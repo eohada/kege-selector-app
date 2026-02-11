@@ -543,10 +543,21 @@ def main():
 
         if st.button("💡 Получить подсказку", use_container_width=True):
             cur = st.session_state.get('hint_level_by_task', {}).get(tid, 0) or 0
+            next_level = min(3, cur + 1)
             hint = None
-            lvl = cur
+            lvl = next_level
 
-            if isinstance(ladder, list):
+            # 1) Сначала подсказка с платформы (эталоны из БД)
+            try:
+                hr = client.get_hint(tid, level=next_level)
+                if isinstance(hr, dict) and hr.get('success') and hr.get('hint'):
+                    hint = (hr.get('hint') or '').strip()
+                    lvl = int(hr.get('level', next_level))
+            except Exception:
+                pass
+
+            # 2) Фоллбэк: локальная база знаний (hint_ladder с ключом hint)
+            if not hint and isinstance(ladder, list):
                 sorted_l = sorted([(int(x.get('level', 0)), x.get('hint')) for x in ladder if isinstance(x, dict) and x.get('hint')], key=lambda x: x[0] or 999)
                 for l, h in sorted_l:
                     if l > cur:

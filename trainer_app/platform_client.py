@@ -29,6 +29,24 @@ class PlatformClient:
         r.raise_for_status()
         return r.json()
 
+    def get_hint(self, task_id: int, level: int = 1) -> dict[str, Any]:
+        """
+        Подсказка по заданию и уровню (1, 2 или 3). Источник — эталоны в БД (Tasks.hints).
+        При успехе: {'success': True, 'level': N, 'hint': '...'}.
+        При отсутствии подсказки: 404, {'success': False, 'error': 'no_hint'}.
+        """
+        level = max(1, min(5, int(level)))
+        r = requests.get(
+            f'{self.base_url}/internal/trainer/task/{int(task_id)}/hint',
+            params={'level': level},
+            headers=self._headers(),
+            timeout=self.timeout_seconds,
+        )
+        if r.status_code == 404:
+            return r.json() if r.text else {'success': False, 'error': 'no_hint'}
+        r.raise_for_status()
+        return r.json()
+
     def get_task_stats(self) -> dict[str, Any]:
         r = requests.get(f'{self.base_url}/internal/trainer/task/stats', headers=self._headers(), timeout=self.timeout_seconds)
         r.raise_for_status()
