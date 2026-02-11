@@ -261,11 +261,13 @@ def _build_solution_prompt(
     if has_images:
         system += (
             "\n\n[!] К заданию ПРИЛОЖЕНЫ изображения (граф, таблица и т.п.). "
-            "Ты ОБЯЗАН проанализировать их визуально и решить задачу по реальным данным с картинок. "
-            "ЗАПРЕЩЕНО писать «откройте источник» или «нужен визуальный просмотр» — у тебя ЕСТЬ эти данные."
+            "Ты ОБЯЗАН проанализировать их визуально и решить задачу по ТОЛЬКО данным с картинок. "
+            "ИГНОРИРУЙ любые примеры, эталоны, reference_solution — в них ДРУГИЕ числа и буквы. "
+            "ЗАПРЕЩЕНО писать «откройте источник» — у тебя ЕСТЬ изображение."
         )
     ctx = []
-    if knowledge and knowledge.get('reference_solution'):
+    # При has_images не даём reference_solution — модель может взять оттуда числа вместо данных с картинки
+    if knowledge and knowledge.get('reference_solution') and not has_images:
         ref = (knowledge.get('reference_solution') or '')[:1200]
         if ref:
             ctx.append(f"Пример СТИЛЯ решения (структура шагов). НЕ копируй буквы, числа, таблицу — в твоём задании они ДРУГИЕ:\n{ref}")
@@ -283,7 +285,8 @@ def _build_solution_prompt(
     elif has_images:
         user_parts.append('')
         user_parts.append("[!] К сообщению приложено изображение (граф и таблица). Проанализируй его и дай точный ответ в формате **Ответ:** (число, строка или буквы — как требуется в задании).")
-    if prototype_data:
+    # prototype_data — НЕ добавлять при has_images! Эталон содержит ДРУГИЕ числа/буквы — модель начинает путаться.
+    if prototype_data and not has_images:
         user_parts.append('')
         user_parts.append("--- Точные данные графа/таблицы из эталона (используй их): ---")
         user_parts.append(prototype_data[:3500])
