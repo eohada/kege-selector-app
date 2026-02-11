@@ -21,6 +21,6 @@
       "hint": "Перебирай `A` от большого к малому (range(1000, 0, -1)), чтобы сразу найти наибольшее."
     }
   ],
-  "reference_solution": "",
+  "reference_solution": "**Шаг 1.** Запишем логическое выражение на Python. Импликация `a -> b` это `a <= b`.\n\n```python\ndef D(n, m): return n % m == 0\n\nfor A in range(1000, 0, -1):\n    flag = True\n    for x in range(1, 1000):\n        if not ((not D(x, A)) <= (D(x, 6) <= (not D(x, 9)))):\n            flag = False\n            break\n    if flag:\n        print(A)\n        break\n```\n\n---\n\n**Альтернативные решения:**\n\n*Решение программой (Python)*:\n- Полный код решения.\n\n\n\n**Ответ:** 18",
   "tests": []
 }

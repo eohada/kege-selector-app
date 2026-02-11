@@ -346,6 +346,8 @@ def main():
 
     # --- Генерация обучающих примеров ---
     solution_samples = []
+    solution_samples_train = []
+    solution_samples_val = []
     hint_samples_train = []
     hint_samples_val = []
     difficulty_samples = []
@@ -355,8 +357,10 @@ def main():
         difficulty_samples.append(prototype_to_difficulty_sample(proto))
 
     for proto in train_protos:
+        solution_samples_train.append(prototype_to_training_sample(proto))
         hint_samples_train.extend(prototype_to_hint_samples(proto, augment=augment))
     for proto in val_protos:
+        solution_samples_val.append(prototype_to_training_sample(proto))
         hint_samples_val.extend(prototype_to_hint_samples(proto, augment=augment))
 
     hint_samples_all = hint_samples_train + hint_samples_val
@@ -367,6 +371,17 @@ def main():
         for name, samples in [
             ('train_hints.jsonl', hint_samples_train),
             ('val_hints.jsonl', hint_samples_val),
+        ]:
+            path = os.path.join(output_dir, name)
+            with open(path, 'w', encoding='utf-8') as f:
+                for sample in samples:
+                    f.write(json.dumps(sample, ensure_ascii=False) + '\n')
+            logger.info(f"  {name}: {len(samples)} примеров")
+
+        # Решения: train/val для обучения модели писать решения (создание заданий)
+        for name, samples in [
+            ('train_solutions.jsonl', solution_samples_train),
+            ('val_solutions.jsonl', solution_samples_val),
         ]:
             path = os.path.join(output_dir, name)
             with open(path, 'w', encoding='utf-8') as f:

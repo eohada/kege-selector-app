@@ -33,8 +33,11 @@
 - [ ] **LLM для тренажёра**  
   Если нужен фоллбэк на подсказки от модели: настроить провайдер в `trainer_app/llm/providers.py` и при необходимости ключи в окружении.
 - [ ] **Локальная база знаний**  
-  При необходимости добавить/обновить файлы в `trainer_knowledge/` (формат с `hint_ladder`, ключ `hint`).  
-  Скрипт: `python scripts/generate_trainer_knowledge_from_prototypes.py` — генерирует `by_number/*.json` из эталонов. `--force` перезаписывает, `--dry-run` только показывает. Файлы 19, 20, 21 не генерируются (ручные).
+  При необходимости добавить/обновить файлы в `trainer_knowledge/` (формат с `hint_ladder`, `reference_solution`).  
+  Скрипты:
+  - `python scripts/generate_trainer_knowledge_from_prototypes.py --force` — генерирует `by_number/*.json` из эталонов (включая полноценные решения).
+  - `python scripts/export_solutions_catalog.py` — каталог `data/reference_solutions/` (Markdown для просмотра).
+  - `python scripts/export_training_data.py` — экспорт `train_solutions.jsonl` для обучения модели писать решения.
 
 ### 2.3. Опционально
 
@@ -173,5 +176,7 @@
 | 3 | Дообучение LLM на датасете (подсказки, без выдачи решения) | ⬜ |
 | 4 | LLM как фоллбэк при отсутствии подсказок в БД | ✅ |
 | 5 | RAG: индекс подсказок (Embeddings + ChromaDB) | ✅ |
-| 6 | Скрипт: модель прорешает задачи без эталона → черновики решений | ⬜ |
-| 7 | Создатель заданий: модель генерирует вариации по эталонам | ⬜ |
+| 6 | Полноценные решения для каждого задания (trainer_knowledge, каталог MD) | ✅ |
+| 7 | Экспорт train_solutions.jsonl для обучения модели писать решения | ✅ |
+| 8 | Каталог решений data/reference_solutions/ для просмотра | ✅ |
+| 9 | Создатель заданий: модель генерирует вариации по эталонам | ⬜ |

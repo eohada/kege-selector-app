@@ -90,6 +90,49 @@ def _convert_hint_ladder(proto: dict) -> list[dict]:
     return out
 
 
+def _solution_to_markdown(proto: dict) -> str:
+    """Конвертирует solution из эталона в читаемый Markdown."""
+    solution = proto.get('solution')
+    if not isinstance(solution, dict):
+        return ''
+    steps = solution.get('steps') or []
+    if not steps:
+        return ''
+    parts = []
+    for s in steps:
+        step_num = s.get('step', '?')
+        explanation = (s.get('explanation') or '').strip()
+        if not explanation:
+            continue
+        part = f"**Шаг {step_num}.** {explanation}"
+        if s.get('code'):
+            part += f"\n\n```python\n{s['code'].strip()}\n```"
+        if s.get('formula'):
+            part += f"\n\nФормула: {s['formula']}"
+        parts.append(part)
+    if not parts:
+        return ''
+    main = '\n\n'.join(parts)
+    variants = solution.get('variants') or []
+    if variants:
+        main += '\n\n---\n\n**Альтернативные решения:**\n\n'
+        for v in variants:
+            if not isinstance(v, dict):
+                continue
+            name = (v.get('name') or 'Вариант').strip()
+            v_steps = v.get('steps') or []
+            v_lines = [f"*{name}*:"]
+            for vs in v_steps:
+                ex = (vs.get('explanation') or '').strip()
+                if ex:
+                    v_lines.append(f"- {ex}")
+            main += '\n'.join(v_lines) + '\n\n'
+    answer = proto.get('answer', '')
+    if answer:
+        main += f"\n\n**Ответ:** {answer}"
+    return main.strip()
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description='Генерация trainer_knowledge из эталонов')
@@ -132,6 +175,8 @@ def main():
         topic = (best.get('topic_name') or best.get('topic_code') or '').strip()
         title = f'Задание {task_num}' + (f': {topic}' if topic else '')
 
+        reference_solution = _solution_to_markdown(best)
+
         out = {
             'task_id': 0,
             'task_number': task_num,
@@ -139,7 +184,7 @@ def main():
             'title': title,
             'common_mistakes': common_mistakes,
             'hint_ladder': ladder,
-            'reference_solution': '',
+            'reference_solution': reference_solution,
             'tests': [],
         }
 

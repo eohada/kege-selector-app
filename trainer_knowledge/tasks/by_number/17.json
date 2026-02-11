@@ -21,6 +21,6 @@
       "hint": "Проверь условие `x % 3 == 0` с помощью `or`."
     }
   ],
-  "reference_solution": "",
+  "reference_solution": "**Шаг 1.** Считываем данные из файла в список. Используем генератор списков или map.\n\n```python\nwith open('17_easy.txt') as f:\n    nums = [int(x) for x in f]\n```\n\n**Шаг 2.** Проходим по списку, рассматривая пары `(nums[i], nums[i+1])`. Диапазон цикла: `range(len(nums) - 1)`.\n\n```python\nans = []\nfor i in range(len(nums) - 1):\n    a, b = nums[i], nums[i+1]\n    # Условие: хотя бы одно делится на 3 (a%3==0 or b%3==0)\n    if (a % 3 == 0) or (b % 3 == 0):\n        ans.append(a + b)\n```\n\n**Шаг 3.** Выводим количество найденных пар (`len(ans)`) и максимальную сумму (`max(ans)`).\n\n```python\nprint(len(ans), max(ans))\n```\n\n---\n\n**Альтернативные решения:**\n\n*Решение программой (Python)*:\n- Полный код.\n\n\n\n**Ответ:** 3291 19156",
   "tests": []
 }
