@@ -194,10 +194,10 @@ tests = json.loads(sys.stdin.read() or '[]')
 ns = {}
 try:
     safe_builtins = {
-        "abs": abs, "all": all, "any": any, "bool": bool, "chr": chr, "divmod": divmod,
-        "enumerate": enumerate, "float": float, "int": int, "len": len, "list": list, "map": map,
-        "max": max, "min": min, "pow": pow, "range": range, "str": str, "sum": sum, "zip": zip,
-        "sorted": sorted, "reversed": reversed,
+        "abs": abs, "all": all, "any": any, "bin": bin, "bool": bool, "chr": chr, "divmod": divmod,
+        "enumerate": enumerate, "float": float, "hex": hex, "int": int, "len": len, "list": list,
+        "map": map, "max": max, "min": min, "oct": oct, "ord": ord, "pow": pow, "range": range,
+        "round": round, "str": str, "sum": sum, "zip": zip, "sorted": sorted, "reversed": reversed,
         "Exception": Exception, "ValueError": ValueError, "TypeError": TypeError, "RuntimeError": RuntimeError,
         "IndexError": IndexError, "KeyError": KeyError, "ZeroDivisionError": ZeroDivisionError,
         "__import__": _safe_import,
@@ -335,11 +335,11 @@ sys.stdout = out
 sys.stderr = err
 try:
     safe_builtins = {
-        "abs": abs, "all": all, "any": any, "bool": bool, "chr": chr, "divmod": divmod,
-        "enumerate": enumerate, "float": float, "int": int, "len": len, "list": list, "map": map,
-        "max": max, "min": min, "pow": pow, "range": range, "str": str, "sum": sum, "zip": zip,
+        "abs": abs, "all": all, "any": any, "bin": bin, "bool": bool, "chr": chr, "divmod": divmod,
+        "enumerate": enumerate, "float": float, "hex": hex, "int": int, "len": len, "list": list,
+        "map": map, "max": max, "min": min, "oct": oct, "ord": ord, "pow": pow, "print": print,
+        "input": input, "range": range, "round": round, "str": str, "sum": sum, "zip": zip,
         "sorted": sorted, "reversed": reversed,
-        "print": print, "input": input,
         "Exception": Exception, "ValueError": ValueError, "TypeError": TypeError, "RuntimeError": RuntimeError,
         "IndexError": IndexError, "KeyError": KeyError, "ZeroDivisionError": ZeroDivisionError,
         "__import__": _safe_import,

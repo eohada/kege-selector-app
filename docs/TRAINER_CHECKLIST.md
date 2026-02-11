@@ -103,7 +103,7 @@
 
 | Проблема | Причина | Решение |
 |----------|---------|---------|
-| **exec_error** при запуске кода | Исключение при выполнении (синтаксис, runtime). Детали теперь в expander «Подробности». | Смотри traceback в expander. Включить runner: `TRAINER_ENABLE_RUNNER=1`. |
-| **403 groq_error** при подсказке | Groq API отклоняет запрос (ключ, лимит, регион). | Проверить `GROQ_API_KEY`. Или использовать `GEMINI_API_KEY` и `TRAINER_LLM_PROVIDER=gemini`. Синхронизировать эталоны — тогда подсказки берутся из БД и LLM не вызывается. |
+| **exec_error** при запуске кода | Исключение при выполнении или отсутствие builtin (`bin`, `hex` и т.д.). | Смотри traceback в expander. Включить runner: `TRAINER_ENABLE_RUNNER=1`. Добавлены `bin`, `hex`, `oct`, `ord`, `round` в разрешённые builtins раннера. |
+| **403 groq_error** при подсказке | Groq API отклоняет запрос (ключ, лимит, регион, модель). | **Важно:** `GROQ_API_KEY` задаётся в окружении **платформы** (Flask), где обрабатывается `/internal/trainer/llm/chat`, а не в .env тренажёра (Streamlit). Попробуйте `GROQ_MODEL=llama-3.1-8b-instant` — у другой модели могут быть другие лимиты. Или `GEMINI_API_KEY` + `TRAINER_LLM_PROVIDER=gemini`. Синхронизировать эталоны — подсказки из БД не вызывают LLM. |
 | Поле кода без табов, подсветки | Используется `text_area` вместо редактора. | Установить `streamlit-ace`; при ошибке загрузки — fallback на text_area. |
 | Запуск кода выключен | Runner отключён по умолчанию. | Задать `TRAINER_ENABLE_RUNNER=1` в окружении тренажёра. |
