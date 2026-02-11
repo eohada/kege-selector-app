@@ -2176,11 +2176,14 @@ def remote_admin_api_task_solution_get(task_id: int):
                 'needs_manual_review': getattr(sol, 'needs_manual_review', False),
                 'created_at': sol.created_at.isoformat() if sol.created_at else None,
             }
+        source_url = (task.source_url or '').strip()
+        if not source_url and (task.site_task_id or '').strip():
+            source_url = f"https://kompege.ru/task?id={task.site_task_id}"
         return jsonify({
             'success': True,
             'task_id': task_id,
             'task_number': task.task_number,
-            'source_url': task.source_url,
+            'source_url': source_url or None,
             'content_html': task.content_html,
             'answer': task.answer,
             'solution': solution_data,
@@ -2220,7 +2223,7 @@ def remote_admin_api_task_solutions_list():
                 'task_number': t.task_number,
                 'has_solution': sol is not None,
                 'needs_manual_review': getattr(sol, 'needs_manual_review', False) if sol else False,
-                'content_preview': (t.content_html or '')[:200].replace('<', ' '),
+                'content_preview': re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', (t.content_html or '')[:500])).strip()[:200],
             })
         return jsonify({
             'success': True,

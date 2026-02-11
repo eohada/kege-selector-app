@@ -10,11 +10,15 @@
 """
 from __future__ import annotations
 
+import json
+import os
 import re
 import sys
-import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+SITE_BASE = 'https://kompege.ru'
+MAX_ATTACHMENT_TEXT = 8000
 
 
 def _strip_html(s: str) -> str:
@@ -56,10 +60,98 @@ def _answers_match(expected: str | None, actual: str | None) -> bool:
     return e == a or a.endswith(e) or e.endswith(a)
 
 
+def _read_excel_as_text(path: str) -> str:
+    """Читает Excel в текстовую таблицу (листы, строки)."""
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+        out = []
+        for sh in wb.worksheets:
+            out.append(f"Лист: {sh.title}")
+            rows = list(sh.iter_rows(values_only=True))
+            for row in rows[:100]:  # лимит строк
+                vals = [str(v) if v is not None else '' for v in (row or [])]
+                out.append(' | '.join(vals))
+            if len(rows) > 100:
+                out.append(f"... (ещё {len(rows) - 100} строк)")
+            out.append('')
+        wb.close()
+        return '\n'.join(out)[:MAX_ATTACHMENT_TEXT]
+    except Exception as e:
+        return f"[Ошибка чтения Excel: {e}]"
+
+
+def _read_text_file(path: str) -> str:
+    """Читает текстовый файл."""
+    try:
+        with open(path, 'r', encoding='utf-8', errors='replace') as f:
+            return f.read(MAX_ATTACHMENT_TEXT)
+    except Exception:
+        try:
+            with open(path, 'r', encoding='cp1251', errors='replace') as f:
+                return f.read(MAX_ATTACHMENT_TEXT)
+        except Exception as e:
+            return f"[Ошибка чтения: {e}]"
+
+
+def _extract_attachments_content(task, app_root: str) -> str:
+    """Извлекает содержимое вложений для промпта."""
+    raw = task.attached_files
+    if not raw:
+        return ''
+    try:
+        files = json.loads(raw)
+    except Exception:
+        return ''
+    if not isinstance(files, list):
+        return ''
+    parts = []
+    for f in files:
+        if not isinstance(f, dict):
+            continue
+        path = (f.get('path') or '').strip()
+        url = (f.get('url') or '').strip()
+        name = (f.get('name') or f.get('text') or 'file').strip()
+        local_path = None
+        if path and path.startswith('/attachments/task/'):
+            # /attachments/task/123/file.xlsx -> uploads/task_attachments/123/file.xlsx
+            parts_path = [p for p in path.split('/') if p]
+            if len(parts_path) >= 3:  # attachments, task, 123, file.xlsx
+                task_id = parts_path[2]
+                fname = '/'.join(parts_path[3:]) if len(parts_path) > 3 else ''
+                if fname:
+                    local_path = os.path.join(app_root, 'uploads', 'task_attachments', task_id, fname)
+        if not local_path or not os.path.isfile(local_path):
+            continue
+        ext = os.path.splitext(name)[1].lower()
+        if ext in ('.xlsx', '.xls'):
+            text = _read_excel_as_text(local_path)
+        elif ext in ('.txt', '.csv', '.dat'):
+            text = _read_text_file(local_path)
+        else:
+            continue
+        parts.append(f"[Вложение: {name}]\n{text}\n")
+    if not parts:
+        return ''
+    return '--- Вложения ---\n' + '\n'.join(parts) + '\n---'
+
+
+def _get_source_url(task) -> str | None:
+    """Источник: source_url или из site_task_id."""
+    url = (task.source_url or '').strip()
+    if url:
+        return url
+    sid = (task.site_task_id or '').strip()
+    if sid:
+        return f"{SITE_BASE}/task?id={sid}"
+    return None
+
+
 def _build_solution_prompt(
     task_text: str,
     task_number: int,
     source_url: str | None,
+    attachments_content: str,
     knowledge: dict | None,
 ) -> list[dict]:
     """Промпт для генерации полного решения."""
@@ -71,17 +163,24 @@ def _build_solution_prompt(
         "3. **Шаг 1.** Объяснение. При необходимости код в ```python.\n"
         "4. **Шаг 2.** ... и т.д.\n"
         "5. **Ответ:** точное значение (число, строка и т.д.).\n\n"
-        "Используй **жирный** для заголовков шагов. Пиши чётко, структурированно."
+        "Используй **жирный** для заголовков шагов. Пиши чётко, структурированно. "
+        "Если в задании есть вложения (Excel, текст) — опирайся на их содержимое при решении."
     )
     ctx = []
     if knowledge and knowledge.get('reference_solution'):
         ref = (knowledge.get('reference_solution') or '')[:1500]
         if ref:
             ctx.append(f"Пример эталонного решения для заданий этого типа (ориентируйся по стилю):\n{ref}")
-    source_line = f"Источник: {source_url}" if source_url else ""
-    user = f"Задание №{task_number}:\n\n{task_text[:4000]}"
-    if source_line:
-        user = source_line + "\n\n" + user
+    user_parts = []
+    if source_url:
+        user_parts.append(f"Источник: {source_url}")
+    user_parts.append(f"Задание №{task_number}:")
+    user_parts.append('')
+    user_parts.append(task_text[:4000])
+    if attachments_content:
+        user_parts.append('')
+        user_parts.append(attachments_content)
+    user = '\n'.join(user_parts)
     if ctx:
         user = '\n\n'.join(ctx) + '\n\n---\n\n' + user
     return [
@@ -144,9 +243,11 @@ def main():
                 skipped += 1
                 continue
 
-            source_url = (task.source_url or '').strip() or None
+            source_url = _get_source_url(task)
+            app_root = app.root_path or os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+            attachments_content = _extract_attachments_content(task, app_root)
             knowledge = load_task_knowledge(task.task_id, task_number=task.task_number)
-            messages = _build_solution_prompt(task_text, task.task_number, source_url, knowledge)
+            messages = _build_solution_prompt(task_text, task.task_number, source_url, attachments_content, knowledge)
 
             try:
                 solution_text = llm.chat(messages=messages, temperature=0.2, max_tokens=1500)
@@ -156,11 +257,16 @@ def main():
                     continue
 
                 sol_text = solution_text.strip()
-                if source_url and '**Источник:**' not in sol_text and 'Источник:' not in sol_text:
-                    sol_text = f"**Источник:** [{source_url}]({source_url})\n\n" + sol_text
-                if '**Условие задачи:**' not in sol_text and 'Условие задачи:' not in sol_text and task_text:
-                    cond_short = (task_text[:500] + '...') if len(task_text) > 500 else task_text
-                    sol_text = f"**Условие задачи:** {cond_short}\n\n" + sol_text
+                # Всегда добавляем префикс: источник и условие (гарантированно в выводе)
+                prefix_parts = []
+                if source_url:
+                    prefix_parts.append(f"**Источник:** [{source_url}]({source_url})")
+                if task_text:
+                    cond_short = (task_text[:600] + '...') if len(task_text) > 600 else task_text
+                    prefix_parts.append(f"**Условие задачи:** {cond_short}")
+                if prefix_parts:
+                    prefix = '\n\n'.join(prefix_parts) + '\n\n---\n\n'
+                    sol_text = prefix + sol_text
 
                 extracted = _extract_answer_from_solution(sol_text)
                 needs_review = not _answers_match(task.answer, extracted)

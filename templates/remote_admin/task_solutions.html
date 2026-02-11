@@ -128,7 +128,13 @@
                     }
                     document.getElementById('tsDetailTitle').innerHTML = title;
                     if (data.solution && data.solution.solution_text) {
-                        const html = data.solution.solution_html || '<pre style="white-space:pre-wrap;margin:0">' + (data.solution.solution_text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') + '</pre>';
+                        let html = '';
+                        if (data.content_html) {
+                            let condHtml = (data.content_html || '').replace(/src="\/(?!\/)/g, 'src="https://kompege.ru/');
+                            html += '<details style="margin-bottom:1rem"><summary style="cursor:pointer;font-weight:600;color:var(--accent-1)">Условие задачи (оригинал, с картинками)</summary>';
+                            html += '<div class="ts-condition-original" style="margin-top:.5rem;padding:.75rem;background:rgba(0,0,0,.2);border-radius:var(--radius-sm);overflow:auto;max-height:200px">' + condHtml + '</div></details>';
+                        }
+                        html += data.solution.solution_html || '<pre style="white-space:pre-wrap;margin:0">' + (data.solution.solution_text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') + '</pre>';
                         document.getElementById('tsDetail').innerHTML = html;
                         document.getElementById('tsDetail').className = 'ts-sol markdown-content';
                     } else {
