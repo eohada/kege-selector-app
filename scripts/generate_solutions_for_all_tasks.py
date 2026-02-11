@@ -169,6 +169,28 @@ def _load_prototype_data(task) -> str:
     return ''
 
 
+def _extract_image_urls_from_html(content_html: str, site_base: str = SITE_BASE) -> list[str]:
+    """Извлекает URL картинок из content_html (img src). Для Vision-модели."""
+    if not content_html:
+        return []
+    urls = re.findall(r'src=["\']([^"\']+)["\']', content_html, re.IGNORECASE)
+    result = []
+    seen = set()
+    for u in urls:
+        u = (u or '').strip()
+        if not u or u in seen:
+            continue
+        if u.startswith('//'):
+            u = 'https:' + u
+        elif u.startswith('/') and not u.startswith('//'):
+            u = site_base.rstrip('/') + u
+        ext = os.path.splitext(u.split('?')[0])[1].lower()
+        if ext in ('.jpg', '.jpeg', '.png', '.tiff', '.tif', '.bmp'):
+            result.append(u)
+            seen.add(u)
+    return result
+
+
 def _strip_html_preserve_tables(html: str) -> str:
     """Извлечение текста с сохранением структуры таблиц."""
     if not html:
@@ -199,6 +221,7 @@ def _build_solution_prompt(
     attachments_content: str,
     knowledge: dict | None,
     prototype_data: str,
+    has_images: bool = False,
 ) -> list[dict]:
     """Промпт для генерации полного решения."""
     system = (
@@ -212,10 +235,13 @@ def _build_solution_prompt(
         "Используй **жирный** для заголовков шагов. Пиши чётко, структурированно.\n\n"
         "КРИТИЧНО: используй ТОЛЬКО данные из условия. Буквы и числа в графе/таблице — ТОЛЬКО из условия. "
         "Если в условии граф с буквами A,B,C — не используй А,Б,В. Если таблица даёт числа 18,22,17 — не выдумывай 10,8,7. "
-        "НЕ подставляй данные из примеров или эталонов. Если конкретные числа/буквы не даны в тексте (есть только «на рисунке») — "
-        "НЕ решай «из головы». Напиши: «Для решения необходимо визуально изучить изображение. Откройте источник по ссылке.» "
+        "НЕ подставляй данные из примеров или эталонов. "
+        "Если условие ссылается на рисунок/граф/таблицу на картинке — при наличии приложенных изображений используй их для анализа. "
+        "Если изображений нет и конкретные числа/буквы не даны в тексте — не решай «из головы», напиши: «Откройте источник по ссылке.» "
         "Если есть вложения (Excel, текст) — опирайся на их содержимое."
     )
+    if has_images:
+        system += "\n\n[!] К заданию приложены изображения (граф, таблица и т.п.). Проанализируй их визуально и используй точные данные."
     ctx = []
     if knowledge and knowledge.get('reference_solution'):
         ref = (knowledge.get('reference_solution') or '')[:1200]
@@ -307,12 +333,16 @@ def main():
             attachments_content = _extract_attachments_content(task, app_root)
             knowledge = load_task_knowledge(task.task_id, task_number=task.task_number)
             prototype_data = _load_prototype_data(task)
+            image_urls = _extract_image_urls_from_html(task.content_html or '')
             messages = _build_solution_prompt(
-                task_text, task.task_number, source_url, attachments_content, knowledge, prototype_data
+                task_text, task.task_number, source_url, attachments_content, knowledge, prototype_data,
+                has_images=bool(image_urls),
             )
 
             try:
-                solution_text = llm.chat(messages=messages, temperature=0.2, max_tokens=1500)
+                solution_text = llm.chat(
+                    messages=messages, temperature=0.2, max_tokens=1500, image_urls=image_urls or None
+                )
                 if not solution_text or len(solution_text.strip()) < 20:
                     print(f'  task_id={task.task_id}: пустой ответ LLM')
                     errors += 1

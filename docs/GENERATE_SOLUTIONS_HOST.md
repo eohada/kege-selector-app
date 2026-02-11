@@ -30,6 +30,12 @@ export GIGACHAT_CREDENTIALS="ваш_authorization_key"
 
 Опционально: `GIGACHAT_MODEL`, `GIGACHAT_SCOPE`, `GIGACHAT_VERIFY_SSL_CERTS`, `GIGACHAT_CA_BUNDLE_FILE`.
 
+**Vision (картинки в заданиях):** для заданий с графами/таблицами на изображениях скрипт автоматически извлекает URL картинок из `content_html`, скачивает их и передаёт в GigaChat. Рекомендуется модель с поддержкой vision:
+
+```bash
+export GIGACHAT_MODEL="GigaChat-Pro"
+```
+
 ## 3. Запуск на хосте
 
 ```bash

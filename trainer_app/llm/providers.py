@@ -5,7 +5,15 @@ import os
 import re
 from typing import Any, Literal
 
+try:
+    import requests
+except ImportError:
+    requests = None  # type: ignore
+
 logger = logging.getLogger(__name__)
+
+# GigaChat принимает: jpeg, png, tiff, bmp
+_VISION_EXTENSIONS = frozenset({'.jpg', '.jpeg', '.png', '.tiff', '.tif', '.bmp'})
 
 
 ProviderName = Literal['gigachat']
@@ -25,7 +33,14 @@ def _strip_html(s: str) -> str:
 class LlmClient:
     provider: ProviderName
 
-    def chat(self, *, messages: list[dict[str, str]], temperature: float = 0.2, max_tokens: int = 800) -> str:
+    def chat(
+        self,
+        *,
+        messages: list[dict[str, str]],
+        temperature: float = 0.2,
+        max_tokens: int = 800,
+        image_urls: list[str] | None = None,
+    ) -> str:
         raise NotImplementedError
 
 
@@ -57,7 +72,14 @@ class GigaChatClient(LlmClient):
         self.verify_ssl_certs = verify_ssl_certs
         self.ca_bundle_file = ca_bundle_file
 
-    def chat(self, *, messages: list[dict[str, str]], temperature: float = 0.2, max_tokens: int = 800) -> str:
+    def chat(
+        self,
+        *,
+        messages: list[dict[str, str]],
+        temperature: float = 0.2,
+        max_tokens: int = 800,
+        image_urls: list[str] | None = None,
+    ) -> str:
         try:
             from gigachat import GigaChat
             from gigachat.models import Chat, Messages, MessagesRole
@@ -86,6 +108,7 @@ class GigaChatClient(LlmClient):
 
         if system_parts:
             gigachat_messages.append(Messages(role=MessagesRole.SYSTEM, content='\n\n'.join(system_parts)))
+        image_file_ids: list[str] = []
         for m in messages[rest_start:]:
             role = (m.get('role') or 'user').strip().lower()
             txt = (m.get('content') or '').strip()
@@ -96,12 +119,6 @@ class GigaChatClient(LlmClient):
         if not gigachat_messages:
             return ''
 
-        chat_obj = Chat(
-            messages=gigachat_messages,
-            model=self.model,
-            temperature=float(temperature),
-            max_tokens=int(max_tokens),
-        )
         timeout = _env_float('TRAINER_LLM_TIMEOUT_SECONDS', 30.0)
         kwargs: dict[str, object] = {
             'credentials': self.credentials,
@@ -115,6 +132,48 @@ class GigaChatClient(LlmClient):
 
         try:
             with GigaChat(**kwargs) as client:
+                # Vision: загружаем изображения в GigaChat (до 10 разрешено)
+                if image_urls and requests:
+                    urls = image_urls[:10]
+                    for url in urls:
+                        try:
+                            ext = os.path.splitext(url.split('?')[0])[1].lower()
+                            if ext not in _VISION_EXTENSIONS:
+                                continue
+                            resp = requests.get(url, timeout=15)
+                            resp.raise_for_status()
+                            # GigaChat upload_file принимает bytes или file-like
+                            data = resp.content
+                            if len(data) > 15 * 1024 * 1024:
+                                logger.warning("Image too large (max 15MB): %s", url[:80])
+                                continue
+                            uploaded = client.upload_file(data, purpose='general')
+                            fid = getattr(uploaded, 'id_', None) or getattr(uploaded, 'id', None)
+                            if fid:
+                                image_file_ids.append(fid)
+                        except Exception as e:
+                            logger.warning("Failed to upload image %s: %s", url[:80], e)
+
+                # Прикрепляем картинки к последнему user-сообщению
+                if image_file_ids:
+                    last_user_idx = None
+                    for i in range(len(gigachat_messages) - 1, -1, -1):
+                        if getattr(gigachat_messages[i].role, 'value', '') == 'user':
+                            last_user_idx = i
+                            break
+                    if last_user_idx is not None:
+                        gigachat_messages[last_user_idx] = Messages(
+                            role=MessagesRole.USER,
+                            content=gigachat_messages[last_user_idx].content,
+                            attachments=image_file_ids,
+                        )
+
+                chat_obj = Chat(
+                    messages=gigachat_messages,
+                    model=self.model,
+                    temperature=float(temperature),
+                    max_tokens=int(max_tokens),
+                )
                 response = client.chat(chat_obj)
         except Exception as e:
             err_str = str(e)
