@@ -99,26 +99,43 @@
 
 ---
 
-## 5. Диагностика 403 (Groq)
+## 5. Настройка GigaChat (альтернатива Groq при 403)
+
+Если Groq возвращает 403 (блокировка по региону), используйте GigaChat:
+
+1. Получите authorization key на [developers.sber.ru](https://developers.sber.ru/docs/ru/gigachat/quickstart/main).
+2. **Переменные окружения** (платформа / тренажёр):
+   - `GIGACHAT_CREDENTIALS` — ключ авторизации
+   - `TRAINER_LLM_PROVIDER=gigachat` — явно выбрать GigaChat (без этого приоритет: groq > gemini > gigachat)
+   - `GIGACHAT_MODEL=GigaChat` — (опционально) модель по умолчанию
+3. **SSL:** GigaChat использует российский корневой сертификат. На Windows/Linux:
+   - Скачайте «Russian Trusted Root CA» с [gosuslugi.ru/crt](https://www.gosuslugi.ru/crt)
+   - `GIGACHAT_CA_BUNDLE_FILE` — путь к файлу сертификата
+   - Для разработки: `GIGACHAT_VERIFY_SSL_CERTS=false` (не рекомендуется в проде)
+4. Установите пакет: `pip install gigachat`
+
+---
+
+## 6. Диагностика 403 (Groq / GigaChat / LLM)
 
 Реализованы средства диагностики:
 
-1. **В тренажёре (сайдбар):** «🔧 Диагностика LLM (403)» → «Проверить ключи и тест Groq» — покажет `groq_key_set`, `groq_key_len`, результат тестового запроса к API (`test_status`, `test_body`).
+1. **В тренажёре (сайдбар):** «🔧 Диагностика LLM (403)» → «Проверить ключи и тест LLM» — покажет `groq_key_set`, `gemini_key_set`, `gigachat_key_set`, результат тестового запроса к выбранному провайдеру (`test_success`, `test_response` или `test_error`).
 2. **Эндпоинт:** `GET /internal/trainer/llm/diagnose?test=1` с заголовком `X-Trainer-Token: <токен>`. Токен берётся из URL тренажёра (параметр `token`).
-3. **Логи платформы:** при 403 в лог пишутся `groq_key_set`, `groq_key_len`, полный `test_body` от Groq.
+3. **Логи платформы:** при 403 в лог пишутся `groq_key_set`, `gemini_key_set`, `gigachat_key_set`, провайдер.
 
 **Что проверить на хостинге:**
 
 | # | Проверка | Как |
 |---|----------|-----|
-| 1 | Ключ задан в окружении **платформы** (Flask/wsgi), а не только в .env тренажёра | Панель Timeweb → переменные окружения проекта платформы. Или в `Procfile` / скрипте запуска: `export GROQ_API_KEY=...` |
+| 1 | Ключ задан в окружении **платформы** (Flask/wsgi), а не только в .env тренажёра | Панель Timeweb → переменные окружения: `GROQ_API_KEY`, `GIGACHAT_CREDENTIALS` или `GEMINI_API_KEY`. |
 | 2 | Процесс подхватил переменные | Перезапустить приложение после добавления ключа. Если используется gunicorn/uwsgi — перезапустить воркеры. |
 | 3 | Тело ответа 403 от Groq | Вызвать diagnose?test=1 или посмотреть логи. В `test_body` будет JSON с `error.message` — причина (invalid key, model not available, region blocked и т.д.) |
 | 4 | Модель доступна | `GROQ_MODEL=llama-3.1-8b-instant` — часто доступна. `llama-3.3-70b-versatile` может требовать другой тариф. |
 | 5 | Блокировка по IP/региону | Запустить `curl` к `https://api.groq.com/openai/v1/chat/completions` с сервера хостинга (не с локальной машины). |
 | 6 | Лимиты в Groq Console | [console.groq.com](https://console.groq.com) → Usage — не исчерпан ли дневной лимит. |
-| 7 | Альтернатива | `GEMINI_API_KEY` + `TRAINER_LLM_PROVIDER=gemini` в окружении платформы. |
-| 8 | Без LLM | Синхронизировать эталоны в удалённой админке — подсказки из БД, Groq не нужен. |
+| 7 | Альтернатива Groq | `GEMINI_API_KEY` + `TRAINER_LLM_PROVIDER=gemini` или `GIGACHAT_CREDENTIALS` + `TRAINER_LLM_PROVIDER=gigachat`. |
+| 8 | Без LLM | Синхронизировать эталоны в удалённой админке — подсказки из БД, Groq/GigaChat не нужен. |
 
 ---
 
@@ -127,6 +144,6 @@
 | Проблема | Причина | Решение |
 |----------|---------|---------|
 | **exec_error** при запуске кода | Исключение при выполнении или отсутствие builtin (`bin`, `hex` и т.д.). | Смотри traceback в expander. Включить runner: `TRAINER_ENABLE_RUNNER=1`. Добавлены `bin`, `hex`, `oct`, `ord`, `round` в разрешённые builtins раннера. |
-| **403 groq_error** при подсказке | Groq API отклоняет запрос (ключ, лимит, регион, модель). | См. раздел 5 «Диагностика 403». |
+| **403 groq_error / gigachat_error** при подсказке | API отклоняет запрос (ключ, лимит, регион, модель). | См. раздел 5–6 (GigaChat, Диагностика 403). |
 | Поле кода без табов, подсветки | Используется `text_area` вместо редактора. | Установить `streamlit-ace`; при ошибке загрузки — fallback на text_area. |
 | Запуск кода выключен | Runner отключён по умолчанию. | Задать `TRAINER_ENABLE_RUNNER=1` в окружении тренажёра. |

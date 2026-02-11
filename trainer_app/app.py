@@ -329,13 +329,17 @@ def main():
 
     with st.sidebar:
         with st.expander("🔧 Диагностика LLM (403)"):
-            if st.button("Проверить ключи и тест Groq", key="diag_btn"):
+            if st.button("Проверить ключи и тест LLM", key="diag_btn"):
                 try:
                     dr = client.llm_diagnose(test=True)
                     d = (dr.get('diagnose') or {}) if isinstance(dr, dict) else {}
                     st.json(d)
-                    if d.get('groq_key_set') and d.get('test_status') == 403:
-                        st.warning("403 от Groq. Смотри test_body выше — там причина. Ключ задан на платформе?")
+                    if not d.get('test_success') and d.get('test_error'):
+                        err = (d.get('test_error') or '')
+                        if '403' in err or 'forbidden' in err.lower():
+                            st.warning("403 / Forbidden. Попробуйте GigaChat: GIGACHAT_CREDENTIALS + TRAINER_LLM_PROVIDER=gigachat")
+                        elif 'gigachat' in err.lower() and 'ssl' in err.lower():
+                            st.info("GigaChat SSL: установите GIGACHAT_CA_BUNDLE_FILE или GIGACHAT_VERIFY_SSL_CERTS=false для разработки")
                 except Exception as ex:
                     st.error(str(ex))
 
@@ -611,9 +615,9 @@ def main():
                 except Exception as e:
                     ex_str = str(e)
                     if '403' in ex_str or 'groq_error' in ex_str.lower() or 'forbidden' in ex_str.lower():
-                        msg = 'Подсказка от ИИ недоступна (ошибка API 403). Проверьте GROQ_API_KEY или используйте GEMINI_API_KEY. Для этого задания подсказки в базе пока нет — синхронизируйте эталоны в удалённой админке.'
+                        msg = 'Подсказка от ИИ недоступна (ошибка API 403). Используйте GIGACHAT_CREDENTIALS или GEMINI_API_KEY. Для этого задания подсказки в базе пока нет — синхронизируйте эталоны в удалённой админке.'
                     elif '401' in ex_str or 'unauthorized' in ex_str.lower():
-                        msg = 'ИИ не настроен: неверный API‑ключ. Проверьте GROQ_API_KEY или GEMINI_API_KEY.'
+                        msg = 'ИИ не настроен: неверный API‑ключ. Проверьте GIGACHAT_CREDENTIALS, GEMINI_API_KEY или GROQ_API_KEY.'
                     else:
                         msg = f'Ошибка: {e}'
                     st.session_state['messages'].append({'role': 'assistant', 'content': msg})
@@ -638,12 +642,12 @@ def main():
                         answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=700)
                 txt = (answer or '').strip()
                 if not txt:
-                    txt = 'LLM не настроен. Задайте GROQ_API_KEY или GEMINI_API_KEY в окружении тренажёра.'
+                    txt = 'LLM не настроен. Задайте GIGACHAT_CREDENTIALS, GEMINI_API_KEY или GROQ_API_KEY в окружении тренажёра.'
                 st.session_state['messages'].append({'role': 'assistant', 'content': txt})
             except Exception as e:
                 ex_str = str(e)
                 if '403' in ex_str or 'forbidden' in ex_str.lower():
-                    msg = 'ИИ недоступен (403). Проверьте API‑ключ и лимиты.'
+                    msg = 'ИИ недоступен (403). Попробуйте GIGACHAT_CREDENTIALS или проверьте API‑ключ и лимиты.'
                 elif '401' in ex_str or 'unauthorized' in ex_str.lower():
                     msg = 'ИИ не настроен: неверный API‑ключ.'
                 else:

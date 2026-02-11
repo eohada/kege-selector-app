@@ -10,7 +10,7 @@ import requests
 logger = logging.getLogger(__name__)
 
 
-ProviderName = Literal['groq', 'gemini']
+ProviderName = Literal['groq', 'gemini', 'gigachat']
 
 
 def _strip_html(s: str) -> str:
@@ -182,11 +182,102 @@ class GeminiClient(LlmClient):
             return ''
 
 
+class GigaChatClient(LlmClient):
+    """Провайдер GigaChat (developers.sber.ru). Использует credentials (authorization key)."""
+    provider: ProviderName = 'gigachat'
+
+    def __init__(
+        self,
+        credentials: str,
+        model: str = 'GigaChat',
+        scope: str = 'GIGACHAT_API_PERS',
+        verify_ssl_certs: bool = True,
+        ca_bundle_file: str | None = None,
+    ):
+        self.credentials = credentials
+        self.model = model
+        self.scope = scope
+        self.verify_ssl_certs = verify_ssl_certs
+        self.ca_bundle_file = ca_bundle_file
+
+    def chat(self, *, messages: list[dict[str, str]], temperature: float = 0.2, max_tokens: int = 800) -> str:
+        try:
+            from gigachat import GigaChat
+            from gigachat.models import Chat, Messages, MessagesRole
+        except ImportError as e:
+            raise RuntimeError(f'gigachat_error: Установите пакет gigachat: pip install gigachat. {e}') from e
+
+        role_map = {
+            'system': MessagesRole.SYSTEM,
+            'user': MessagesRole.USER,
+            'assistant': MessagesRole.ASSISTANT,
+        }
+        gigachat_messages = []
+        for m in messages:
+            role = (m.get('role') or 'user').strip().lower()
+            txt = m.get('content') or ''
+            if not txt:
+                continue
+            gigachat_messages.append(Messages(role=role_map.get(role, MessagesRole.USER), content=txt))
+
+        if not gigachat_messages:
+            return ''
+
+        chat_obj = Chat(
+            messages=gigachat_messages,
+            model=self.model,
+            temperature=float(temperature),
+            max_tokens=int(max_tokens),
+        )
+        timeout = _env_float('TRAINER_LLM_TIMEOUT_SECONDS', 30.0)
+        kwargs: dict[str, object] = {
+            'credentials': self.credentials,
+            'model': self.model,
+            'scope': self.scope,
+            'verify_ssl_certs': self.verify_ssl_certs,
+            'timeout': timeout,
+        }
+        if self.ca_bundle_file:
+            kwargs['ca_bundle_file'] = self.ca_bundle_file
+
+        try:
+            with GigaChat(**kwargs) as client:
+                response = client.chat(chat_obj)
+        except Exception as e:
+            err_str = str(e)
+            logger.warning("GigaChat API error: %s", err_str[:500])
+            raise RuntimeError(f'gigachat_error {err_str[:500]}') from e
+
+        try:
+            return (response.choices or [])[0].message.content or ''
+        except Exception:
+            return ''
+
+
+def _gigachat_client() -> GigaChatClient | None:
+    creds = (os.environ.get('GIGACHAT_CREDENTIALS') or '').strip()
+    if not creds:
+        return None
+    model = (os.environ.get('GIGACHAT_MODEL') or 'GigaChat').strip()
+    scope = (os.environ.get('GIGACHAT_SCOPE') or 'GIGACHAT_API_PERS').strip()
+    verify_env = (os.environ.get('GIGACHAT_VERIFY_SSL_CERTS') or 'true').strip().lower()
+    verify_ssl = verify_env not in ('0', 'false', 'no')
+    ca_bundle = (os.environ.get('GIGACHAT_CA_BUNDLE_FILE') or '').strip() or None
+    return GigaChatClient(
+        credentials=creds,
+        model=model,
+        scope=scope,
+        verify_ssl_certs=verify_ssl,
+        ca_bundle_file=ca_bundle,
+    )
+
+
 def get_llm_client() -> LlmClient | None:
     provider = (os.environ.get('TRAINER_LLM_PROVIDER') or '').strip().lower()
 
     groq_key = (os.environ.get('GROQ_API_KEY') or '').strip()
     gemini_key = (os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_AI_STUDIO_API_KEY') or '').strip()
+    gigachat_creds = (os.environ.get('GIGACHAT_CREDENTIALS') or '').strip()
 
     if provider == 'gemini' and gemini_key:
         model = (os.environ.get('GEMINI_MODEL') or 'gemini-1.5-flash').strip()
@@ -194,6 +285,8 @@ def get_llm_client() -> LlmClient | None:
     if provider == 'groq' and groq_key:
         model = (os.environ.get('GROQ_MODEL') or 'llama-3.3-70b-versatile').strip()
         return GroqClient(api_key=groq_key, model=model)
+    if provider == 'gigachat' and gigachat_creds:
+        return _gigachat_client()
 
     if groq_key:
         model = (os.environ.get('GROQ_MODEL') or 'llama-3.3-70b-versatile').strip()
@@ -201,6 +294,8 @@ def get_llm_client() -> LlmClient | None:
     if gemini_key:
         model = (os.environ.get('GEMINI_MODEL') or 'gemini-1.5-flash').strip()
         return GeminiClient(api_key=gemini_key, model=model)
+    if gigachat_creds:
+        return _gigachat_client()
 
     return None
 
@@ -212,17 +307,22 @@ def get_llm_info() -> dict[str, Any]:
     provider = (os.environ.get('TRAINER_LLM_PROVIDER') or '').strip().lower()
     groq_key = (os.environ.get('GROQ_API_KEY') or '').strip()
     gemini_key = (os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_AI_STUDIO_API_KEY') or '').strip()
+    gigachat_creds = (os.environ.get('GIGACHAT_CREDENTIALS') or '').strip()
 
     picked = None
     if provider == 'groq' and groq_key:
         picked = {'provider': 'groq', 'model': (os.environ.get('GROQ_MODEL') or 'llama-3.3-70b-versatile').strip()}
     elif provider == 'gemini' and gemini_key:
         picked = {'provider': 'gemini', 'model': (os.environ.get('GEMINI_MODEL') or 'gemini-1.5-flash').strip()}
+    elif provider == 'gigachat' and gigachat_creds:
+        picked = {'provider': 'gigachat', 'model': (os.environ.get('GIGACHAT_MODEL') or 'GigaChat').strip()}
     else:
         if groq_key:
             picked = {'provider': 'groq', 'model': (os.environ.get('GROQ_MODEL') or 'llama-3.3-70b-versatile').strip()}
         elif gemini_key:
             picked = {'provider': 'gemini', 'model': (os.environ.get('GEMINI_MODEL') or 'gemini-1.5-flash').strip()}
+        elif gigachat_creds:
+            picked = {'provider': 'gigachat', 'model': (os.environ.get('GIGACHAT_MODEL') or 'GigaChat').strip()}
 
     return {
         'configured': bool(picked),

@@ -222,49 +222,48 @@ def trainer_llm_info():
 @csrf.exempt
 def trainer_llm_diagnose():
     """
-    Диагностика LLM: проверка ключей (без вывода самих ключей) и тестовый запрос к Groq.
-    Требует токен тренажёра. GET ?test=1 — выполнить тестовый запрос к API.
+    Диагностика LLM: проверка ключей (без вывода самих ключей) и тестовый запрос.
+    Поддерживает Groq, Gemini, GigaChat. GET ?test=1 — выполнить тестовый запрос к выбранному провайдеру.
     """
     _ = _get_trainer_user_from_token(require_permission='trainer.use')
     groq_key = (os.environ.get('GROQ_API_KEY') or '').strip()
     gemini_key = (os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_AI_STUDIO_API_KEY') or '').strip()
+    gigachat_creds = (os.environ.get('GIGACHAT_CREDENTIALS') or '').strip()
     provider_env = (os.environ.get('TRAINER_LLM_PROVIDER') or '').strip().lower()
     groq_model = (os.environ.get('GROQ_MODEL') or 'llama-3.3-70b-versatile').strip()
+    gigachat_model = (os.environ.get('GIGACHAT_MODEL') or 'GigaChat').strip()
 
     diag = {
         'groq_key_set': bool(groq_key),
         'groq_key_len': len(groq_key),
         'gemini_key_set': bool(gemini_key),
-        'provider_env': provider_env or '(default: groq if groq_key)',
+        'gigachat_key_set': bool(gigachat_creds),
+        'gigachat_key_len': len(gigachat_creds),
+        'provider_env': provider_env or '(default: groq > gemini > gigachat)',
         'groq_model': groq_model,
+        'gigachat_model': gigachat_model,
     }
 
     test = request.args.get('test', '').strip().lower() in ('1', 'true', 'yes')
-    if test and groq_key:
+    if test:
         try:
-            import requests
-            url = 'https://api.groq.com/openai/v1/chat/completions'
-            payload = {
-                'model': groq_model,
-                'messages': [{'role': 'user', 'content': 'Say OK'}],
-                'max_tokens': 5,
-            }
-            r = requests.post(
-                url,
-                json=payload,
-                headers={
-                    'Authorization': f'Bearer {groq_key}',
-                    'Content-Type': 'application/json',
-                },
-                timeout=15,
-            )
-            diag['test_status'] = r.status_code
-            diag['test_body'] = (r.text or '')[:500]
-            diag['test_headers_x'] = {k: v for k, v in (r.headers or {}).items() if k.lower().startswith('x-')}
+            from trainer_app.llm.providers import get_llm_client, get_llm_info
+            info = get_llm_info()
+            llm = get_llm_client()
+            if not llm:
+                diag['test_error'] = 'LLM не настроен: нет ключей (GROQ_API_KEY, GEMINI_API_KEY или GIGACHAT_CREDENTIALS)'
+            else:
+                resp = llm.chat(
+                    messages=[{'role': 'user', 'content': 'Ответь одним словом: OK'}],
+                    temperature=0,
+                    max_tokens=5,
+                )
+                diag['test_success'] = True
+                diag['test_response'] = (resp or '')[:200]
+                diag['test_provider'] = info.get('picked', {}).get('provider', 'unknown')
         except Exception as ex:
-            diag['test_error'] = str(ex)[:300]
-    elif test and not groq_key:
-        diag['test_error'] = 'GROQ_API_KEY не задан, тест пропущен'
+            diag['test_success'] = False
+            diag['test_error'] = str(ex)[:500]
 
     return jsonify({'success': True, 'diagnose': diag})
 
@@ -458,16 +457,16 @@ def trainer_llm_chat():
             pass
         # Диагностика 403: ключи и провайдер в логе (без самого ключа)
         ex_str = str(e)
-        if '403' in ex_str or 'groq_error' in ex_str.lower():
+        if '403' in ex_str or 'groq_error' in ex_str.lower() or 'gigachat_error' in ex_str.lower():
             groq_key = (os.environ.get('GROQ_API_KEY') or '').strip()
             gemini_key = (os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_AI_STUDIO_API_KEY') or '').strip()
+            gigachat_creds = (os.environ.get('GIGACHAT_CREDENTIALS') or '').strip()
             logger.warning(
-                "LLM 403 diagnostic: groq_key_set=%s groq_key_len=%s gemini_key_set=%s provider=%s model=%s",
+                "LLM 403 diagnostic: groq_key_set=%s gemini_key_set=%s gigachat_key_set=%s provider=%s",
                 bool(groq_key),
-                len(groq_key),
                 bool(gemini_key),
+                bool(gigachat_creds),
                 os.environ.get('TRAINER_LLM_PROVIDER', '(default)'),
-                os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile'),
             )
         return jsonify({'success': False, 'error': str(e)}), 500
 
