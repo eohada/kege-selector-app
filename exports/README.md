@@ -38,10 +38,10 @@ python scripts/export_training_data.py --output-dir exports
 - `--val-ratio 0.15` — доля validation (по умолчанию 15%)
 - `--no-augment` — отключить аугментацию формулировок
 
-## Fine-tuning
+## Использование
 
 Для дообучения модели подсказок используйте **только** `train_hints.jsonl` и `val_hints.jsonl`.
 
-- **OpenAI:** загрузить через Fine-tuning API
-- **GigaChat:** проверить документацию на fine-tuning
+- **OpenAI:** загрузить через [Fine-tuning API](https://platform.openai.com/docs/guides/fine-tuning)
+- **GigaChat:** публичного fine-tuning API нет. Варианты: RAG с Embeddings или open-source GigaChat на HuggingFace. Подробнее: `docs/GIGACHAT_FINETUNING_PLAN.md`
 - **Другие:** формат messages совместим с OpenAI Chat Completions

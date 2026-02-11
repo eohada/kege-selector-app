@@ -162,7 +162,7 @@
 
 ## 7. Дорожная карта: разметка, дообучение, создатель заданий
 
-Полный план: `docs/TASK_BASE_AND_LLM_PLAN.md` (раздел 9).
+Полный план: `docs/TASK_BASE_AND_LLM_PLAN.md` (раздел 9). GigaChat: `docs/GIGACHAT_FINETUNING_PLAN.md`.
 
 **Кратко:**
 

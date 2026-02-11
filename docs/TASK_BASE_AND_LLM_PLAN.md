@@ -499,7 +499,7 @@
 | Разделить на train/val (`train_hints.jsonl`, `val_hints.jsonl`) | ✅ |
 | Аугментации (5 вариантов формулировок запроса) | ✅ |
 | Инструкция «не выдавать полное решение» в system prompt | ✅ |
-| Выбор платформы обучения (OpenAI Fine-tuning, GigaChat, и т.п.) | ⬜ |
+| Выбор платформы: GigaChat API fine-tuning не существует. Варианты: RAG (Embeddings) или open-source GigaChat на HF. См. `docs/GIGACHAT_FINETUNING_PLAN.md` | ⬜ |
 | Обучить модель | ⬜ |
 | Оценить качество | ⬜ |
 | LLM как фоллбэк при отсутствии подсказок в БД | ⬜ |
