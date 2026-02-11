@@ -212,11 +212,27 @@ class GigaChatClient(LlmClient):
             'user': MessagesRole.USER,
             'assistant': MessagesRole.ASSISTANT,
         }
-        gigachat_messages = []
-        for m in messages:
+        # GigaChat: "system message must be the first message" — один system в начале, остальное user/assistant.
+        gigachat_messages: list = []
+        system_parts: list[str] = []
+        rest_start = len(messages)
+        for i, m in enumerate(messages):
             role = (m.get('role') or 'user').strip().lower()
-            txt = m.get('content') or ''
+            txt = (m.get('content') or '').strip()
             if not txt:
+                continue
+            if role == 'system':
+                system_parts.append(txt)
+            else:
+                rest_start = i
+                break
+
+        if system_parts:
+            gigachat_messages.append(Messages(role=MessagesRole.SYSTEM, content='\n\n'.join(system_parts)))
+        for m in messages[rest_start:]:
+            role = (m.get('role') or 'user').strip().lower()
+            txt = (m.get('content') or '').strip()
+            if not txt or role == 'system':
                 continue
             gigachat_messages.append(Messages(role=role_map.get(role, MessagesRole.USER), content=txt))
 
