@@ -2148,26 +2148,36 @@ def _html_to_plain_text(html: str, max_len: int = 200) -> str:
     """Извлечение читаемого текста из HTML для превью (без мусора вроде p>!>!>)."""
     if not html:
         return ''
+    # 1. Regex: прямое извлечение из div.task-text (надёжнее, чем парсинг с <!---->)
+    m = re.search(
+        r'<div[^>]*class=["\'][^"\']*task-text[^"\']*["\'][^>]*>(.*?)</div>',
+        html[:6000], re.DOTALL | re.IGNORECASE
+    )
+    if m:
+        inner = m.group(1)
+        text = re.sub(r'<[^>]+>', ' ', inner)
+        text = re.sub(r'\s+', ' ', text).strip()
+        if len(text) > 20 and not re.search(r'^[p>/!>\s\-]+$', text):
+            return text[:max_len]
+    # 2. Fallback: BeautifulSoup
     try:
         from bs4 import BeautifulSoup
-        # Убираем HTML-комментарии — они могут давать мусор при парсинге
-        html_clean = re.sub(r'<!\[CDATA\[.*?\]\]>', '', html, flags=re.DOTALL)
-        html_clean = re.sub(r'<!--.*?-->', ' ', html_clean, flags=re.DOTALL)
-        soup = BeautifulSoup(html_clean[:4000], 'html.parser')
-        # Приоритет: div.task-text — основное содержимое условия
+        html_clean = re.sub(r'<!--.*?-->', ' ', html[:4000], flags=re.DOTALL)
+        soup = BeautifulSoup(html_clean, 'html.parser')
         task_div = soup.find('div', class_=re.compile(r'task-text', re.I))
-        if task_div:
-            text = task_div.get_text(separator=' ', strip=True)
-        else:
-            text = soup.get_text(separator=' ', strip=True)
+        block = task_div if task_div else soup
+        text = block.get_text(separator=' ', strip=True)
         text = re.sub(r'\s+', ' ', text).strip()
-        # Убираем мусор от парсинга HTML-комментариев: p>!>!>!--->, >!>!> и т.п.
         text = re.sub(r'[a-z]+>!>!>!-*>\s*', '', text, flags=re.IGNORECASE)
         text = re.sub(r'>!>!?>!*-*>\s*', '', text)
         text = re.sub(r'\s+', ' ', text).strip()
         return text[:max_len] if text else ''
     except Exception:
-        return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', (html or '')[:500])).strip()[:max_len]
+        pass
+    # 3. Последний fallback: снять теги и взять начало
+    text = re.sub(r'<[^>]+>', ' ', (html or '')[:1000])
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text[:max_len] if text else ''
 
 
 def _markdown_to_html(text: str) -> str:
@@ -2218,6 +2228,7 @@ def remote_admin_api_task_solution_get(task_id: int):
             'content_html': content_html,
             'answer': task.answer,
             'solution': solution_data,
+            '_api_version': '2025-02-rev2',  # для проверки деплоя: в DevTools ответ должен содержать это поле
         }), 200
     except Exception as e:
         logger.exception('task-solution get failed')
@@ -2262,6 +2273,7 @@ def remote_admin_api_task_solutions_list():
             'total': total,
             'page': page,
             'per_page': per_page,
+            '_api_version': '2025-02-rev2',
         }), 200
     except Exception as e:
         logger.exception('task-solutions list failed')

@@ -123,6 +123,7 @@
                     return r.json();
                 })
                 .then(data => {
+                    if (data._api_version) console.log('API version:', data._api_version);
                     let title = 'Задание #' + (data.task_number || '?') + ' · ID ' + taskId;
                     if (data.solution && data.solution.needs_manual_review) {
                         title += ' <span class="ts-review-badge">Ручная проверка</span>';
