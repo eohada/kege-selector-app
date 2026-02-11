@@ -408,6 +408,64 @@ def trainer_llm_chat():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+def _get_hint_for_level(hints: list | None, level: int) -> str | None:
+    """Из лестницы подсказок (список {level, text}) возвращает текст подсказки для уровня level или None."""
+    if not hints or not isinstance(hints, list):
+        return None
+    for h in hints:
+        if not isinstance(h, dict):
+            continue
+        try:
+            if int(h.get('level', 0)) == level:
+                return (h.get('text') or '').strip() or None
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+@trainer_bp.route('/internal/trainer/task/<int:task_id>/hint', methods=['GET'])
+def trainer_task_hint(task_id: int):
+    """
+    Возвращает подсказку для задания по уровню (1, 2 или 3).
+    Источник: поле Tasks.hints (лестница из эталонных прототипов). Ответ и решение не отдаём.
+    """
+    user = _get_trainer_user_from_token(require_permission='trainer.use')
+    level_raw = request.args.get('level', '1').strip()
+    try:
+        level = int(level_raw)
+    except ValueError:
+        level = 1
+    if level < 1:
+        level = 1
+    if level > 5:
+        level = 5
+
+    task = Tasks.query.filter_by(task_id=task_id).first()
+    if not task:
+        return jsonify({'success': False, 'error': 'task_not_found'}), 404
+
+    hints = getattr(task, 'hints', None)
+    text = _get_hint_for_level(hints, level)
+    if not text:
+        return jsonify({
+            'success': False,
+            'error': 'no_hint',
+            'message': 'Для этого задания нет подсказки на выбранном уровне.',
+        }), 404
+
+    try:
+        audit_logger.log(
+            action='trainer_hint',
+            entity='Trainer',
+            entity_id=user.id,
+            status='success',
+            metadata={'task_id': task_id, 'level': level},
+        )
+    except Exception:
+        pass
+    return jsonify({'success': True, 'level': level, 'hint': text})
+
+
 @trainer_bp.route('/internal/trainer/task/<int:task_id>', methods=['GET'])
 def trainer_task_get(task_id: int):
     _ = _get_trainer_user_from_token(require_permission='trainer.use')
