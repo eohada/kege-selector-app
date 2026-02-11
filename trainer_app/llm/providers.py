@@ -39,7 +39,7 @@ class LlmClient:
         messages: list[dict[str, str]],
         temperature: float = 0.2,
         max_tokens: int = 800,
-        image_urls: list[str] | None = None,
+        image_sources: list[str | bytes] | None = None,
     ) -> str:
         raise NotImplementedError
 
@@ -78,7 +78,7 @@ class GigaChatClient(LlmClient):
         messages: list[dict[str, str]],
         temperature: float = 0.2,
         max_tokens: int = 800,
-        image_urls: list[str] | None = None,
+        image_sources: list[str | bytes] | None = None,
     ) -> str:
         try:
             from gigachat import GigaChat
@@ -134,33 +134,42 @@ class GigaChatClient(LlmClient):
 
         try:
             with GigaChat(**kwargs) as client:
-                # Vision: загружаем изображения в GigaChat (до 10 разрешено)
-                if image_urls and requests:
-                    urls = image_urls[:10]
-                    for url in urls:
+                # Vision: загружаем изображения в GigaChat (до 10 разрешено). Источники: URL (str) или bytes (data URI).
+                if image_sources:
+                    for src in image_sources[:10]:
                         try:
-                            ext = os.path.splitext(url.split('?')[0])[1].lower()
-                            if ext not in _VISION_EXTENSIONS:
-                                continue
-                            verify = self.verify_ssl_certs
-                            resp = requests.get(url, timeout=15, verify=verify)
-                            resp.raise_for_status()
-                            data = resp.content
-                            if len(data) > 15 * 1024 * 1024:
-                                logger.warning("Image too large (max 15MB): %s", url[:80])
-                                continue
-                            fname = url.split('/')[-1].split('?')[0] or 'image.png'
-                            if not fname.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp')):
+                            if isinstance(src, bytes):
+                                data = src
                                 fname = 'image.png'
+                            else:
+                                url = src
+                                if not isinstance(url, str) or not url.startswith(('http://', 'https://')):
+                                    continue
+                                ext = os.path.splitext(url.split('?')[0])[1].lower()
+                                if ext not in _VISION_EXTENSIONS:
+                                    continue
+                                verify = self.verify_ssl_certs
+                                if requests:
+                                    resp = requests.get(url, timeout=15, verify=verify)
+                                    resp.raise_for_status()
+                                    data = resp.content
+                                else:
+                                    continue
+                                fname = url.split('/')[-1].split('?')[0] or 'image.png'
+                                if not fname.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp')):
+                                    fname = 'image.png'
+                            if len(data) > 15 * 1024 * 1024:
+                                logger.warning("Image too large (max 15MB)")
+                                continue
                             uploaded = client.upload_file((fname, data), purpose='general')
                             fid = getattr(uploaded, 'id_', None) or getattr(uploaded, 'id', None)
                             if fid:
                                 image_file_ids.append(fid)
                         except Exception as e:
-                            logger.warning("Failed to upload image %s: %s", url[:80], e)
+                            logger.warning("Failed to upload image: %s", e)
 
-                if image_urls and not image_file_ids:
-                    logger.warning("Vision: 0 images uploaded (download or upload failed for %d URLs)", len(image_urls))
+                if image_sources and not image_file_ids:
+                    logger.warning("Vision: 0 images uploaded (download or upload failed for %d sources)", len(image_sources))
 
                 # GigaChat: "одно сообщение — одно изображение". Первую картинку — в основное сообщение с текстом (как в доках).
                 if image_file_ids:

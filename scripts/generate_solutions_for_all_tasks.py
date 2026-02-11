@@ -169,25 +169,43 @@ def _load_prototype_data(task) -> str:
     return ''
 
 
-def _extract_image_urls_from_html(content_html: str, site_base: str = SITE_BASE) -> list[str]:
-    """Извлекает URL картинок из content_html (img src). Для Vision-модели."""
+def _extract_images_from_html(content_html: str, site_base: str = SITE_BASE) -> list[str | bytes]:
+    """Извлекает картинки из content_html (img src): URL или data URI (base64). Возвращает list[str | bytes]."""
     if not content_html:
         return []
-    urls = re.findall(r'src=["\']([^"\']+)["\']', content_html, re.IGNORECASE)
-    result = []
-    seen = set()
-    for u in urls:
-        u = (u or '').strip()
-        if not u or u in seen:
+    srcs = re.findall(r'src=["\']([^"\']+)["\']', content_html, re.IGNORECASE)
+    result: list[str | bytes] = []
+    seen: set[str] = set()
+    for s in srcs:
+        s = (s or '').strip()
+        if not s:
             continue
-        if u.startswith('//'):
-            u = 'https:' + u
-        elif u.startswith('/') and not u.startswith('//'):
-            u = site_base.rstrip('/') + u
-        ext = os.path.splitext(u.split('?')[0])[1].lower()
+        # data:image/png;base64,iVBORw0KGgo...
+        if s.lower().startswith('data:image/'):
+            try:
+                import base64
+                parts = s.split(',', 1)
+                if len(parts) == 2:
+                    header = parts[0].lower()
+                    if 'base64' in header:
+                        fmt = header.split('/')[-1].split(';')[0]
+                        if fmt in ('png', 'jpeg', 'jpg', 'tiff', 'bmp'):
+                            data = base64.b64decode(parts[1].strip())
+                            if data and len(data) <= 15 * 1024 * 1024:
+                                result.append(data)
+            except Exception:
+                pass
+            continue
+        if s in seen:
+            continue
+        if s.startswith('//'):
+            s = 'https:' + s
+        elif s.startswith('/') and not s.startswith('//'):
+            s = site_base.rstrip('/') + s
+        ext = os.path.splitext(s.split('?')[0])[1].lower()
         if ext in ('.jpg', '.jpeg', '.png', '.tiff', '.tif', '.bmp'):
-            result.append(u)
-            seen.add(u)
+            result.append(s)
+            seen.add(s)
     return result
 
 
@@ -340,25 +358,25 @@ def main():
             attachments_content = _extract_attachments_content(task, app_root)
             knowledge = load_task_knowledge(task.task_id, task_number=task.task_number)
             prototype_data = _load_prototype_data(task)
-            image_urls = _extract_image_urls_from_html(task.content_html or '')
+            image_sources = _extract_images_from_html(task.content_html or '')
             # Fallback: если в content_html нет img — kompege хранит картинки как /images/{id}.png (id = site_task_id или id из source_url)
-            if not image_urls:
+            if not image_sources:
                 sid = (task.site_task_id or '').strip()
                 if not sid and source_url:
                     m = re.search(r'[?&]id=(\d+)', source_url)
                     if m:
                         sid = m.group(1)
                 if sid and sid.isdigit():
-                    image_urls = [f"{SITE_BASE}/images/{sid}.png"]
-            print(f'  task_id={task.task_id}: {"%d image(s) for vision" % len(image_urls) if image_urls else "no images"}')
+                    image_sources = [f"{SITE_BASE}/images/{sid}.png"]
+            print(f'  task_id={task.task_id}: {"%d image(s) for vision" % len(image_sources) if image_sources else "no images"}')
             messages = _build_solution_prompt(
                 task_text, task.task_number, source_url, attachments_content, knowledge, prototype_data,
-                has_images=bool(image_urls),
+                has_images=bool(image_sources),
             )
 
             try:
                 solution_text = llm.chat(
-                    messages=messages, temperature=0.2, max_tokens=1500, image_urls=image_urls or None
+                    messages=messages, temperature=0.2, max_tokens=1500, image_sources=image_sources or None
                 )
                 if not solution_text or len(solution_text.strip()) < 20:
                     print(f'  task_id={task.task_id}: пустой ответ LLM')
