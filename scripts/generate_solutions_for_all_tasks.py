@@ -148,36 +148,24 @@ def _get_source_url(task) -> str | None:
 
 
 def _load_prototype_data(task) -> str:
-    """Загрузить данные графа/таблицы из reference_prototype, если есть."""
+    """Загрузить данные ТОЛЬКО если задание явно привязано к эталону (source_prototype).
+    НЕ подставляем эталон по task_number — задания с kompege имеют свои графы/таблицы
+    (другие буквы, другие числа). Подстановка чужого эталона даёт бред."""
+    if not getattr(task, 'source_prototype', None):
+        return ''
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    prototypes_dir = os.path.join(repo_root, 'data', 'reference_prototypes')
-    def _load(path: str) -> str:
-        if not os.path.isfile(path):
-            return ''
-        try:
-            with open(path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            proto = data.get('prototype') or {}
-            text = (proto.get('text') or '').strip()
-            if text and len(text) > 50:
-                return _strip_html_preserve_tables(text)
-        except Exception:
-            pass
+    path = os.path.join(repo_root, 'data', 'reference_prototypes', task.source_prototype)
+    if not os.path.isfile(path):
         return ''
-
-    if getattr(task, 'source_prototype', None):
-        result = _load(os.path.join(prototypes_dir, task.source_prototype))
-        if result:
-            return result
-    tn = getattr(task, 'task_number', None)
-    if not tn:
-        return ''
-    diff = getattr(task, 'difficulty_level', None)
-    label = 'easy' if diff and diff <= 3 else ('hard' if diff and diff >= 8 else 'medium')
-    for try_label in (label, 'medium', 'easy', 'hard'):
-        result = _load(os.path.join(prototypes_dir, f'task_{tn:02d}', try_label, f'task_{tn:02d}_{try_label}.json'))
-        if result:
-            return result
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        proto = data.get('prototype') or {}
+        text = (proto.get('text') or '').strip()
+        if text and len(text) > 50:
+            return _strip_html_preserve_tables(text)
+    except Exception:
+        pass
     return ''
 
 
@@ -222,21 +210,28 @@ def _build_solution_prompt(
         "4. **Шаг 2.** ... и т.д.\n"
         "5. **Ответ:** точное значение (число, строка и т.д.).\n\n"
         "Используй **жирный** для заголовков шагов. Пиши чётко, структурированно.\n\n"
-        "КРИТИЧНО: используй ТОЛЬКО данные из условия. Если условие содержит граф, таблицу, числа — "
-        "используй ТОЧНО эти данные. НЕ выдумывай и не подставляй примеры из других заданий. "
-        "Если в задании есть вложения (Excel, текст) — опирайся на их содержимое при решении."
+        "КРИТИЧНО: используй ТОЛЬКО данные из условия. Буквы и числа в графе/таблице — ТОЛЬКО из условия. "
+        "Если в условии граф с буквами A,B,C — не используй А,Б,В. Если таблица даёт числа 18,22,17 — не выдумывай 10,8,7. "
+        "НЕ подставляй данные из примеров или эталонов. Если конкретные числа/буквы не даны в тексте (есть только «на рисунке») — "
+        "НЕ решай «из головы». Напиши: «Для решения необходимо визуально изучить изображение. Откройте источник по ссылке.» "
+        "Если есть вложения (Excel, текст) — опирайся на их содержимое."
     )
     ctx = []
     if knowledge and knowledge.get('reference_solution'):
-        ref = (knowledge.get('reference_solution') or '')[:1500]
+        ref = (knowledge.get('reference_solution') or '')[:1200]
         if ref:
-            ctx.append(f"Пример эталонного решения для заданий этого типа (ориентируйся по стилю, НЕ копируй числа — используй только данные из условия):\n{ref}")
+            ctx.append(f"Пример СТИЛЯ решения (структура шагов). НЕ копируй буквы, числа, таблицу — в твоём задании они ДРУГИЕ:\n{ref}")
     user_parts = []
     if source_url:
         user_parts.append(f"Источник: {source_url}")
     user_parts.append(f"Задание №{task_number}:")
     user_parts.append('')
     user_parts.append(task_text[:4000])
+    has_img_ref = 'рисунк' in task_text.lower() or 'таблиц' in task_text.lower()
+    has_table_data = '[ТАБЛИЦА]' in task_text or ('|' in task_text and any(c.isdigit() for c in task_text))
+    if has_img_ref and not has_table_data:
+        user_parts.append('')
+        user_parts.append("[!] В условии упомянут рисунок/таблица, но конкретные числа не приведены в тексте. НЕ выдумывай данные. Напиши, что нужен визуальный просмотр источника.")
     if prototype_data:
         user_parts.append('')
         user_parts.append("--- Точные данные графа/таблицы из эталона (используй их): ---")
