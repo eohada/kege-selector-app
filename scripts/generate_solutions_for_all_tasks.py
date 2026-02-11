@@ -341,6 +341,15 @@ def main():
             knowledge = load_task_knowledge(task.task_id, task_number=task.task_number)
             prototype_data = _load_prototype_data(task)
             image_urls = _extract_image_urls_from_html(task.content_html or '')
+            # Fallback: если в content_html нет img — kompege хранит картинки как /images/{id}.png (id = site_task_id или id из source_url)
+            if not image_urls:
+                sid = (task.site_task_id or '').strip()
+                if not sid and source_url:
+                    m = re.search(r'[?&]id=(\d+)', source_url)
+                    if m:
+                        sid = m.group(1)
+                if sid and sid.isdigit():
+                    image_urls = [f"{SITE_BASE}/images/{sid}.png"]
             print(f'  task_id={task.task_id}: {"%d image(s) for vision" % len(image_urls) if image_urls else "no images"}')
             messages = _build_solution_prompt(
                 task_text, task.task_number, source_url, attachments_content, knowledge, prototype_data,
