@@ -2125,6 +2125,31 @@ def remote_admin_api_tariffs():
         return jsonify({'error': str(e)}), 500
 
 
+@admin_bp.route('/internal/remote-admin/api/sync-reference-prototypes', methods=['POST'])
+@csrf.exempt
+def remote_admin_api_sync_reference_prototypes():
+    """API: Синхронизация эталонных прототипов 19–21 в банк заданий (для удалённой админки)."""
+    if not _remote_admin_guard():
+        return jsonify({'error': 'unauthorized'}), 401
+    try:
+        from app.utils.reference_import import sync_all_series_prototypes
+        results = sync_all_series_prototypes(dry_run=False)
+        db.session.commit()
+        total_created = sum(r['created'] for r in results)
+        total_updated = sum(r['updated'] for r in results)
+        return jsonify({
+            'success': True,
+            'files_processed': len(results),
+            'created': total_created,
+            'updated': total_updated,
+            'results': results,
+        }), 200
+    except Exception as e:
+        logger.exception('sync-reference-prototypes failed')
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @admin_bp.route('/internal/remote-admin/api/create-pack', methods=['POST'])
 @csrf.exempt
 def remote_admin_api_create_pack():

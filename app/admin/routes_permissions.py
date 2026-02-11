@@ -4,6 +4,7 @@ from sqlalchemy.exc import ProgrammingError, OperationalError
 from app import db
 from app.models import RolePermission
 from app.admin import admin_bp
+from app.admin.routes import _remote_admin_redirect
 from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES, DEFAULT_ROLE_PERMISSIONS
 from app.utils.db_migrations import check_and_fix_rbac_schema
 import logging
@@ -16,7 +17,7 @@ def admin_permissions():
     """Управление правами ролей (Рубильники)"""
     if not current_user.is_creator():
         flash('Доступ только для Создателя', 'danger')
-        return redirect(url_for('admin.admin_panel'))
+        return _remote_admin_redirect()
         
     roles = ['creator', 'chief_admin', 'admin', 'chief_tester', 'content_maker', 'tutor', 'designer', 'tester', 'student', 'parent']
     

@@ -75,12 +75,12 @@
         <section class="glass-panel" style="margin: 2rem auto; max-width: 1400px;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
                 <div>
-                    <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">
+                    <a href="{{ config.ADMIN_URL or url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
                         ← К админ панели
                     </a>
                 </div>
                 {% if is_production and sandbox_base_url %}
-                <a href="{{ url_for('admin.admin_panel') }}#sandbox" class="neo-button accent" style="text-decoration: none;">
+                <a href="{{ config.ADMIN_URL or url_for('main.dashboard') }}#sandbox" class="neo-button accent" style="text-decoration: none;">
                     <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Создать" class="ui-icon ui-icon--sm">Создать в sandbox
                 </a>
                 {% else %}

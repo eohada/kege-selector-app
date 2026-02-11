@@ -19,7 +19,7 @@
 
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">
+                <a href="{{ config.ADMIN_URL or url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">
                     ← К админ-панели
                 </a>
             </div>
@@ -203,7 +203,7 @@
         </section>
 
         <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-            <a href="{{ url_for('admin.admin_panel') }}" class="neo-button ghost" style="text-decoration: none;">← Назад к админ-панели</a>
+            <a href="{{ config.ADMIN_URL or url_for('main.dashboard') }}" class="neo-button ghost" style="text-decoration: none;">← Назад к админ-панели</a>
             <button onclick="location.reload()" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-обновить-100.png') }}" alt="Обновить" class="ui-icon ui-icon--sm"> Обновить</button>
             <a href="{{ url_for('admin.diagnostics_api') }}" class="neo-button outline" target="_blank" style="text-decoration: none;">📄 JSON API</a>
         </div>

@@ -67,6 +67,8 @@ def create_app(config_name=None):
     app.config['COVER_UPLOAD_ROOT'] = (os.environ.get('COVER_UPLOAD_ROOT') or '').strip() or None
 
     app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB
+
+    app.config['ADMIN_URL'] = (os.environ.get('ADMIN_URL') or '').strip().rstrip('/') or None
     
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
     

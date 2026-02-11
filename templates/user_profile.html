@@ -425,8 +425,8 @@
                                             Подписки
                                         </a>
                                         {% endif %}
-                                        {% if current_user.is_admin() or current_user.is_creator() %}
-                                        <a href="{{ url_for('admin.admin_panel') }}" class="neo-button danger" style="text-decoration:none;">
+                                        {% if (current_user.is_admin() or current_user.is_creator()) and config.ADMIN_URL %}
+                                        <a href="{{ config.ADMIN_URL }}" class="neo-button danger" style="text-decoration:none;" target="_blank" rel="noopener">
                                             <img src="{{ url_for('static', filename='icons/icons8-настройки-100.png') }}" class="ui-icon ui-icon--sm">
                                             Админка
                                         </a>
@@ -456,7 +456,7 @@
                                 {% endif %}
                                 {% endif %}
 
-                                {% if current_user.is_creator() %}
+                                {% if current_user.is_creator() and config.ADMIN_URL %}
                                 <div class="profile-section" style="background: rgba(255, 46, 46, 0.05); border-color: rgba(255, 46, 46, 0.3);">
                                     <h3>
                                         <img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" style="width: 20px; opacity: 0.8; filter: drop-shadow(0 0 5px red);">
@@ -465,7 +465,7 @@
                                     <p style="font-size: 0.9rem; margin-bottom: 1.5rem; opacity: 0.8;">
                                         Вам доступны расширенные права управления платформой.
                                     </p>
-                                    <a href="{{ url_for('admin.admin_panel') }}" class="neo-button danger" style="width: 100%; justify-content: center; background: rgba(255, 46, 46, 0.15); border-color: #ff2e2e; color: #ff2e2e;">
+                                    <a href="{{ config.ADMIN_URL }}" class="neo-button danger" style="width: 100%; justify-content: center; background: rgba(255, 46, 46, 0.15); border-color: #ff2e2e; color: #ff2e2e;" target="_blank" rel="noopener">
                                         Перейти в админку
                                     </a>
                                 </div>

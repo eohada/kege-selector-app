@@ -20,8 +20,8 @@
                         <span>Уведомления</span>
                     </a>
 
-                    {% if current_user.is_admin() or current_user.is_creator() %}
-                    <a href="{{ url_for('admin.admin_panel') }}" class="profile-item">
+                    {% if (current_user.is_admin() or current_user.is_creator()) and config.ADMIN_URL %}
+                    <a href="{{ config.ADMIN_URL }}" class="profile-item" target="_blank" rel="noopener">
                         <img src="{{ url_for('static', filename='icons/icons8-редактировать-100.png') }}" alt="Admin">
                         <span>Админ панель</span>
                     </a>

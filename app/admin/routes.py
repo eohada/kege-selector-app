@@ -84,134 +84,43 @@ def _sandbox_internal_guard():
     provided = (request.headers.get('X-Admin-Token') or '').strip()
     return hmac.compare_digest(provided, expected)
 
+
+def _remote_admin_redirect():
+    """Редирект на удалённую админку (основная админка с платформы отключена)."""
+    url = (os.environ.get('ADMIN_URL') or '').strip().rstrip('/')
+    return redirect(url) if url else redirect(url_for('main.dashboard'))
+
+
+_ADMIN_UI_GET_ENDPOINTS = {
+    'admin.admin_panel', 'admin.admin_users', 'admin.admin_user_edit', 'admin.admin_users_new',
+    'admin.admin_audit', 'admin.admin_testers', 'admin.admin_testers_edit',
+    'admin.admin_tester_entities', 'admin.admin_tester_entities_create', 'admin.admin_tester_entities_edit',
+    'admin.admin_topics', 'admin.admin_topics_create', 'admin.admin_debug_export',
+    'admin.admin_task_formator', 'admin.admin_permissions', 'admin.diagnostics',
+}
+
+
+@admin_bp.before_request
+def _redirect_admin_ui_to_remote():
+    if os.environ.get('ENVIRONMENT') == 'admin':
+        return None
+    if request.method != 'GET':
+        return None
+    if request.endpoint and request.endpoint in _ADMIN_UI_GET_ENDPOINTS:
+        url = (os.environ.get('ADMIN_URL') or '').strip().rstrip('/')
+        if url:
+            return redirect(url)
+    return None
+
+
 @admin_bp.route('/admin')
 @login_required
 def admin_panel():
-    """Админ панель (для администратора и создателя)"""
+    """Редирект на удалённую админку (основная админка с платформы отключена)."""
     if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Администратор" или "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
-    
-    try:
-        environment = _get_environment()
-        is_production = _is_production(environment)
-        is_sandbox = _is_sandbox(environment)
-
-        total_users = User.query.count()
-        active_users = User.query.filter_by(is_active=True).count()
-        creators_count = User.query.filter_by(role='creator').count()
-        testers_count = User.query.filter_by(role='tester').count()
-        
-        try:
-            db.session.query(AuditLog).limit(1).all()
-            audit_log_exists = True
-        except (OperationalError, ProgrammingError) as e:
-            logger.warning(f"AuditLog table not found or not accessible: {e}")
-            db.session.rollback()
-            audit_log_exists = False
-        
-        if audit_log_exists:
-            try:
-                total_logs = AuditLog.query.count()
-                today_logs = AuditLog.query.filter(
-                    func.date(AuditLog.timestamp) == func.current_date()
-                ).count()
-            except Exception as e:
-                logger.error(f"Error querying AuditLog statistics: {e}", exc_info=True)
-                db.session.rollback()
-                total_logs = 0
-                today_logs = 0
-        else:
-            total_logs = 0
-            today_logs = 0
-        
-        maintenance_status = MaintenanceMode.get_status()
-
-        sandbox_summary = None
-        sandbox_error = None
-        sandbox_base_url, _ = _sandbox_remote_config()
-        if is_production and sandbox_base_url:
-            try:
-                resp = _sandbox_remote_request('GET', '/internal/sandbox-admin/summary')
-                content_type = (resp.headers.get('Content-Type') or '').lower()
-                if resp.status_code == 200 and 'application/json' in content_type:
-                    sandbox_summary = resp.json()
-                else:
-                    preview = (resp.text or '')[:200]
-                    sandbox_error = f"Sandbox API error: {resp.status_code} {content_type} {preview}"
-            except Exception as e:
-                sandbox_error = str(e)
-        
-        with _DB_SYNC_LOCK:
-            db_sync_state = dict(_DB_SYNC_STATE)
-
-        return render_template('admin_panel.html',
-                             total_users=total_users,
-                             active_users=active_users,
-                             creators_count=creators_count,
-                             testers_count=testers_count,
-                             total_logs=total_logs,
-                             today_logs=today_logs,
-                             maintenance_enabled=maintenance_status.is_enabled,
-                             maintenance_message=maintenance_status.message,
-                             environment=environment,
-                             is_production=is_production,
-                             is_sandbox=is_sandbox,
-                             sandbox_base_url=sandbox_base_url,
-                             sandbox_summary=sandbox_summary,
-                             sandbox_error=sandbox_error,
-                             db_sync_state=db_sync_state)
-
-
-    except Exception as e:
-        logger.error(f"Error in admin_panel route: {e}", exc_info=True)
-        flash(f'Ошибка при загрузке статистики: {str(e)}', 'error')
-        try:
-            environment = _get_environment()
-            is_production = _is_production(environment)
-            is_sandbox = _is_sandbox(environment)
-
-            total_users = User.query.count()
-            active_users = User.query.filter_by(is_active=True).count()
-            creators_count = User.query.filter_by(role='creator').count()
-            testers_count = User.query.filter_by(role='tester').count()
-
-            sandbox_summary = None
-            sandbox_error = None
-            sandbox_base_url, _ = _sandbox_remote_config()
-            if is_production and sandbox_base_url:
-                try:
-                    resp = _sandbox_remote_request('GET', '/internal/sandbox-admin/summary')
-                    content_type = (resp.headers.get('Content-Type') or '').lower()
-                    if resp.status_code == 200 and 'application/json' in content_type:
-                        sandbox_summary = resp.json()
-                    else:
-                        preview = (resp.text or '')[:200]
-                        sandbox_error = f"Sandbox API error: {resp.status_code} {content_type} {preview}"
-                except Exception as e:
-                    sandbox_error = str(e)
-
-            with _DB_SYNC_LOCK:
-                db_sync_state = dict(_DB_SYNC_STATE)
-
-            return render_template('admin_panel.html',
-                                 total_users=total_users,
-                                 active_users=active_users,
-                                 creators_count=creators_count,
-                                 testers_count=testers_count,
-                                 total_logs=0,
-                                 today_logs=0,
-                                 environment=environment,
-                                 is_production=is_production,
-                                 is_sandbox=is_sandbox,
-                                 sandbox_base_url=sandbox_base_url,
-                                 sandbox_summary=sandbox_summary,
-                                 sandbox_error=sandbox_error,
-                                 db_sync_state=db_sync_state)
-        except Exception as e2:
-            logger.error(f"Error in fallback: {e2}", exc_info=True)
-            flash('Критическая ошибка при загрузке данных', 'error')
-            return redirect(url_for('main.dashboard'))
+    return _remote_admin_redirect()
 
 
 def _start_db_sync_job(prod_db_url: str, sandbox_db_url: str):
@@ -256,21 +165,21 @@ def admin_sandbox_db_sync_run():
     environment = _get_environment()
     if not _is_production(environment):
         flash('Синхронизация доступна только из production.', 'warning')
-        return redirect(url_for('admin.admin_panel'))
+        return _remote_admin_redirect()
 
     sandbox_db_url = (os.environ.get('SANDBOX_DATABASE_URL') or '').strip()
     if not sandbox_db_url:
         flash('Не задан SANDBOX_DATABASE_URL в production.', 'error')
-        return redirect(url_for('admin.admin_panel'))
+        return _remote_admin_redirect()
 
     prod_db_url = (current_app.config.get('SQLALCHEMY_DATABASE_URI') or '').strip()
     if not prod_db_url or 'postgres' not in prod_db_url:
         flash('Production DB не PostgreSQL или URL не определён.', 'error')
-        return redirect(url_for('admin.admin_panel'))
+        return _remote_admin_redirect()
 
     if prod_db_url.replace('postgres://', 'postgresql://', 1).strip() == sandbox_db_url.replace('postgres://', 'postgresql://', 1).strip():
         flash('PROD и SANDBOX DB URL совпадают. Остановлено для безопасности.', 'danger')
-        return redirect(url_for('admin.admin_panel'))
+        return _remote_admin_redirect()
 
     include_users = request.form.get('include_users') == 'on'
     current_app.config['DB_SYNC_INCLUDE_USERS'] = include_users
@@ -278,7 +187,7 @@ def admin_sandbox_db_sync_run():
     with _DB_SYNC_LOCK:
         if _DB_SYNC_STATE['running']:
             flash('Синхронизация уже выполняется.', 'info')
-            return redirect(url_for('admin.admin_panel'))
+            return _remote_admin_redirect()
         _DB_SYNC_STATE['running'] = True
         _DB_SYNC_STATE['started_at'] = time.time()
         _DB_SYNC_STATE['finished_at'] = None
@@ -287,7 +196,7 @@ def admin_sandbox_db_sync_run():
 
     _start_db_sync_job(prod_db_url, sandbox_db_url)
     flash('Запущена синхронизация Production → Sandbox (в фоне).', 'success')
-    return redirect(url_for('admin.admin_panel', _anchor='db-sync'))
+    return _remote_admin_redirect()
 
 
 @admin_bp.route('/admin/sandbox/db-sync/status', methods=['GET'])
@@ -308,7 +217,7 @@ def admin_sync_reference_prototypes():
     """Синхронизация эталонных прототипов 19–21 в банк заданий (один файл → три задания в БД)."""
     if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещён.', 'danger')
-        return redirect(url_for('admin.admin_panel'))
+        return _remote_admin_redirect()
     try:
         from app.utils.reference_import import sync_all_series_prototypes
         results = sync_all_series_prototypes(dry_run=False)
@@ -323,7 +232,7 @@ def admin_sync_reference_prototypes():
         logger.exception('sync-reference-prototypes failed')
         db.session.rollback()
         flash(f'Ошибка синхронизации: {e}', 'danger')
-    return redirect(url_for('admin.admin_panel'))
+    return _remote_admin_redirect()
 
 
 @admin_bp.route('/admin-testers/create', methods=['POST'])
@@ -341,11 +250,11 @@ def admin_testers_create():
 
     if not username:  # Валидация имени. # comment
         flash('Имя пользователя обязательно.', 'error')  # Показываем ошибку. # comment
-        return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
+        return _remote_admin_redirect()  # Возвращаем на админ-панель. # comment
 
     if not password:  # Валидация пароля. # comment
         flash('Пароль обязателен.', 'error')  # Показываем ошибку. # comment
-        return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
+        return _remote_admin_redirect()  # Возвращаем на админ-панель. # comment
 
     environment = os.environ.get('ENVIRONMENT', 'local')  # Текущее окружение приложения. # comment
     is_production = _is_production(environment)
@@ -353,14 +262,14 @@ def admin_testers_create():
 
     if is_production and not is_sandbox and not force_production:  # В production блокируем без явного подтверждения. # comment
         flash('Тестировщиков нельзя создавать в production без подтверждения. Включите чекбокс "force production".', 'danger')  # Предупреждаем. # comment
-        return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
+        return _remote_admin_redirect()  # Возвращаем на админ-панель. # comment
 
     try:  # Основной блок создания/обновления. # comment
         user = User.query.filter_by(username=username).first()  # Ищем пользователя по имени. # comment
 
         if user and not allow_update:  # Если пользователь уже есть, но апдейт запрещён. # comment
             flash('Пользователь с таким именем уже существует. Включите "обновить существующего", если хотите перезаписать пароль.', 'warning')  # Подсказка. # comment
-            return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
+            return _remote_admin_redirect()  # Возвращаем на админ-панель. # comment
 
         if user:  # Ветка обновления существующего пользователя. # comment
             old_role = user.role  # Запоминаем старую роль для аудита. # comment
@@ -380,7 +289,7 @@ def admin_testers_create():
             )  # Конец audit_logger.log. # comment
 
             flash(f'Тестировщик "{username}" обновлён (пароль перезаписан).', 'success')  # Уведомляем об успехе. # comment
-            return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
+            return _remote_admin_redirect()  # Возвращаем на админ-панель. # comment
 
         user = User(  # Создаём нового пользователя. # comment
             username=username,  # Имя пользователя. # comment
@@ -408,12 +317,12 @@ def admin_testers_create():
         )  # Конец audit_logger.log. # comment
 
         flash(f'Тестировщик "{username}" создан.', 'success')  # Уведомляем об успехе. # comment
-        return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
+        return _remote_admin_redirect()  # Возвращаем на админ-панель. # comment
     except Exception as e:  # Обрабатываем любые ошибки. # comment
         db.session.rollback()  # Откатываем транзакцию. # comment
         logger.error(f"Error creating tester user: {e}", exc_info=True)  # Логируем ошибку. # comment
         flash(f'Ошибка при создании тестировщика: {str(e)}', 'error')  # Показываем ошибку. # comment
-        return redirect(url_for('admin.admin_panel'))  # Возвращаем на админ-панель. # comment
+        return _remote_admin_redirect()  # Возвращаем на админ-панель. # comment
 
 
 @admin_bp.route('/admin/sandbox/user-tester/create', methods=['POST'])
@@ -429,7 +338,7 @@ def admin_sandbox_user_tester_create():
 
     if not username or not password:
         flash('Логин и пароль обязательны.', 'error')
-        return redirect(url_for('admin.admin_panel'))
+        return _remote_admin_redirect()
 
     try:
         resp = _sandbox_remote_request('POST', '/internal/sandbox-admin/user-tester', {
@@ -445,7 +354,7 @@ def admin_sandbox_user_tester_create():
     except Exception as e:
         flash(f'Sandbox: ошибка запроса: {str(e)}', 'error')
 
-    return redirect(url_for('admin.admin_panel'))
+    return _remote_admin_redirect()
 
 
 @admin_bp.route('/admin/sandbox/user/<int:user_id>/set-password', methods=['POST'])
@@ -458,7 +367,7 @@ def admin_sandbox_user_set_password(user_id):
     password = request.form.get('password') or ''
     if not password:
         flash('Пароль обязателен.', 'error')
-        return redirect(url_for('admin.admin_panel'))
+        return _remote_admin_redirect()
 
     try:
         resp = _sandbox_remote_request('POST', f'/internal/sandbox-admin/user/{user_id}/set-password', {'password': password})
@@ -470,7 +379,7 @@ def admin_sandbox_user_set_password(user_id):
     except Exception as e:
         flash(f'Sandbox: ошибка запроса: {str(e)}', 'error')
 
-    return redirect(url_for('admin.admin_panel'))
+    return _remote_admin_redirect()
 
 
 @admin_bp.route('/admin/sandbox/user/<int:user_id>/toggle-active', methods=['POST'])
@@ -490,7 +399,7 @@ def admin_sandbox_user_toggle_active(user_id):
     except Exception as e:
         flash(f'Sandbox: ошибка запроса: {str(e)}', 'error')
 
-    return redirect(url_for('admin.admin_panel'))
+    return _remote_admin_redirect()
 
 
 @admin_bp.route('/admin/sandbox/user/<int:user_id>/delete', methods=['POST'])
@@ -576,7 +485,7 @@ def admin_sandbox_tester_entity_create():
     is_active = request.form.get('is_active') == 'on'
     if not name:
         flash('Имя обязательно.', 'error')
-        return redirect(url_for('admin.admin_panel'))
+        return _remote_admin_redirect()
 
     try:
         resp = _sandbox_remote_request('POST', '/internal/sandbox-admin/tester-entity', {'name': name, 'is_active': is_active})
@@ -588,7 +497,7 @@ def admin_sandbox_tester_entity_create():
     except Exception as e:
         flash(f'Sandbox: ошибка запроса: {str(e)}', 'error')
 
-    return redirect(url_for('admin.admin_panel'))
+    return _remote_admin_redirect()
 
 
 @admin_bp.route('/admin/sandbox/tester-entity/<tester_id>/toggle-active', methods=['POST'])
@@ -608,7 +517,7 @@ def admin_sandbox_tester_entity_toggle_active(tester_id):
     except Exception as e:
         flash(f'Sandbox: ошибка запроса: {str(e)}', 'error')
 
-    return redirect(url_for('admin.admin_panel'))
+    return _remote_admin_redirect()
 
 
 @admin_bp.route('/admin/sandbox/tester-entity/<tester_id>/delete', methods=['POST'])
@@ -628,7 +537,7 @@ def admin_sandbox_tester_entity_delete(tester_id):
     except Exception as e:
         flash(f'Sandbox: ошибка запроса: {str(e)}', 'error')
 
-    return redirect(url_for('admin.admin_panel'))
+    return _remote_admin_redirect()
 
 
 @admin_bp.route('/internal/sandbox-admin/summary', methods=['GET'])
@@ -1126,7 +1035,7 @@ def admin_audit():
             logger.error(f"Error in fallback: {e2}", exc_info=True)
             db.session.rollback()
             flash('Критическая ошибка при загрузке данных', 'error')
-            return redirect(url_for('admin.admin_panel'))
+            return _remote_admin_redirect()
 
 @admin_bp.route('/admin-testers')
 @login_required
@@ -1185,7 +1094,7 @@ def admin_testers():
             db.session.rollback()
             logger.error(f"Error in fallback: {e2}", exc_info=True)
             flash('Критическая ошибка при загрузке данных', 'error')
-            return redirect(url_for('admin.admin_panel'))
+            return _remote_admin_redirect()
 
 @admin_bp.route('/admin-testers/<int:user_id>/edit', methods=['GET', 'POST'])
 @login_required
@@ -1553,7 +1462,7 @@ def toggle_maintenance():
         logger.error(f'Ошибка при переключении режима тех работ: {e}')
         flash(f'Ошибка при переключении: {str(e)}', 'error')
     
-    return redirect(url_for('admin.admin_panel'))
+    return _remote_admin_redirect()
 
 @admin_bp.route('/admin/maintenance/update-message', methods=['POST'])
 @login_required
@@ -1587,7 +1496,7 @@ def update_maintenance_message():
         logger.error(f'Ошибка при обновлении сообщения: {e}')
         flash(f'Ошибка при обновлении: {str(e)}', 'error')
     
-    return redirect(url_for('admin.admin_panel'))
+    return _remote_admin_redirect()
 
 
 @admin_bp.route('/admin/debug-export')
@@ -1691,7 +1600,7 @@ def admin_tester_entities():
         logger.error(f"Error in admin_tester_entities: {e}", exc_info=True)
         db.session.rollback()
         flash('Ошибка при загрузке списка тестировщиков.', 'error')
-        return redirect(url_for('admin.admin_panel'))
+        return _remote_admin_redirect()
 
 
 @admin_bp.route('/admin/tester-entities/create', methods=['GET', 'POST'])
@@ -1993,7 +1902,7 @@ def admin_users():
     except Exception as e:
         logger.error(f"Error in admin_users: {e}", exc_info=True)
         flash(f'Ошибка при загрузке пользователей: {str(e)}', 'error')
-        return redirect(url_for('admin.admin_panel'))
+        return _remote_admin_redirect()
 
 
 @admin_bp.route('/admin/users/graph-data')
