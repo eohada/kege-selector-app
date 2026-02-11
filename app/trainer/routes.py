@@ -61,6 +61,8 @@ def _get_trainer_user_from_token(require_permission: str | None = 'trainer.use')
 def _task_to_payload(task: Tasks) -> dict[str, Any] | None:
     if not task:
         return None
+    hints_raw = getattr(task, 'hints', None)
+    has_hints = bool(hints_raw) and (isinstance(hints_raw, list) and len(hints_raw) > 0 or isinstance(hints_raw, dict))
     return {
         'task_id': task.task_id,
         'task_number': task.task_number,
@@ -69,6 +71,7 @@ def _task_to_payload(task: Tasks) -> dict[str, Any] | None:
         'content_html': task.content_html,
         'answer': task.answer,
         'attached_files': task.attached_files,
+        'has_hints_in_db': has_hints,
     }
 
 
@@ -578,6 +581,47 @@ def trainer_task_stats():
     )
     counts = {int(n): int(c) for (n, c) in rows if n is not None}
     return jsonify({'success': True, 'counts_by_task_number': counts})
+
+
+@trainer_bp.route('/internal/trainer/task/fallback-candidates', methods=['GET'])
+def trainer_fallback_candidates():
+    """
+    Задания без hints в БД — для проверки LLM-фоллбэка.
+    Доступно только создателям (trainer.manage_knowledge).
+    """
+    user = _get_trainer_user_from_token(require_permission='trainer.use')
+    if not has_permission(user, 'trainer.manage_knowledge'):
+        return jsonify({'success': False, 'error': 'forbidden'}), 403
+
+    task_type_arg = request.args.get('task_type', '').strip()
+    task_type_filter = None
+    if task_type_arg:
+        try:
+            task_type_filter = int(task_type_arg)
+        except ValueError:
+            task_type_filter = None
+
+    q = db.session.query(Tasks.task_number, Tasks.task_id, Tasks.hints)
+    if task_type_filter is not None:
+        q = q.filter(Tasks.task_number == task_type_filter)
+    rows = q.all()
+
+    by_number: dict[int, list[int]] = {}
+    for n, tid, h in rows:
+        if n is None or tid is None:
+            continue
+        has_hints = bool(h) and (
+            (isinstance(h, list) and len(h) > 0) or (isinstance(h, dict) and bool(h))
+        )
+        if not has_hints:
+            by_number.setdefault(int(n), []).append(int(tid))
+
+    counts = {n: len(ids) for n, ids in sorted(by_number.items())}
+    return jsonify({
+        'success': True,
+        'counts_by_task_number': counts,
+        'task_ids_by_number': {str(k): v for k, v in by_number.items()},
+    })
 
 
 @trainer_bp.route('/internal/trainer/task/stream/start', methods=['POST'])

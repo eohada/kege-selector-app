@@ -328,6 +328,10 @@ def main():
     user = (st.session_state['me'] or {}).get('user', {})
     username = user.get('username', 'пользователь')
 
+    # Отладочный режим для создателя (trainer.manage_knowledge)
+    permissions = (st.session_state.get('me') or {}).get('permissions') or []
+    is_creator = 'trainer.manage_knowledge' in permissions
+
     with st.sidebar:
         with st.expander("🔧 Диагностика LLM (403)"):
             if st.button("Проверить ключи и тест LLM", key="diag_btn"):
@@ -343,6 +347,73 @@ def main():
                             st.info("GigaChat SSL: установите GIGACHAT_CA_BUNDLE_FILE или GIGACHAT_VERIFY_SSL_CERTS=false для разработки")
                 except Exception as ex:
                     st.error(str(ex))
+
+        if is_creator:
+            with st.expander("📋 Задания для проверки фоллбэка"):
+                st.caption("Задания без hints в БД — подходят для теста LLM-фоллбэка.")
+                if st.button("Загрузить список", key="fallback_load_btn"):
+                    try:
+                        fc = client.get_fallback_candidates()
+                        cts = (fc.get('counts_by_task_number') or {})
+                        st.session_state['fallback_candidates'] = {int(k): int(v) for k, v in cts.items() if v}
+                    except Exception as e:
+                        st.error(f"Ошибка: {str(e)[:150]}")
+                fc_cached = st.session_state.get('fallback_candidates') or {}
+                if fc_cached:
+                    st.markdown("**Без hints в БД:**")
+                    for n in sorted(fc_cached.keys()):
+                        cnt = fc_cached[n]
+                        if st.button(f"№{n} ({cnt} шт)", key=f"fc_btn_{n}"):
+                            st.session_state['task_type'] = n
+                            st.session_state['task'] = None
+                            st.session_state['current_card'] = None
+                            st.rerun()
+                else:
+                    st.info("Нажмите «Загрузить список», чтобы увидеть задания без hints.")
+
+        if is_creator and st.session_state.get('task'):
+            task = st.session_state['task']
+            tid = int(task.get('task_id', 0))
+            task_num = task.get('task_number')
+            knowledge = load_task_knowledge(tid, task_number=task_num) if (tid or task_num) else None
+            has_hints = task.get('has_hints_in_db', False)
+            has_knowledge = bool(knowledge) and (knowledge.get('hint_ladder') or knowledge.get('common_mistakes') or knowledge.get('reference_solution'))
+            rag_index_exists = False
+            try:
+                from trainer_app.llm.rag import _get_index_path
+                import os
+                rag_index_exists = os.path.exists(_get_index_path())
+            except Exception:
+                pass
+            with st.expander("🐛 Отладка задания (создатель)"):
+                st.caption("Для теста LLM-фоллбэка: выбирай задания без hints в БД, но с knowledge или RAG.")
+                st.markdown(f"- **hints в БД:** {'да' if has_hints else 'нет'}")
+                st.markdown(f"- **trainer_knowledge:** {'да' if has_knowledge else 'нет'}")
+                st.markdown(f"- **RAG индекс:** {'есть' if rag_index_exists else 'нет'}")
+                rag_cache_key = f'rag_has_examples_{tid}'
+                rag_has_examples = st.session_state.get(rag_cache_key)
+                if st.button("Проверить RAG для задания", key="rag_check_btn"):
+                    rag_has_examples = False
+                    if rag_index_exists and (task.get('content_html') or '').strip():
+                        try:
+                            from trainer_app.llm.rag import retrieve_similar_hints
+                            examples = retrieve_similar_hints(task.get('content_html') or '', k=1)
+                            rag_has_examples = bool(examples)
+                            st.session_state[rag_cache_key] = rag_has_examples
+                            st.markdown(f"- **RAG примеры для задания:** {'да' if rag_has_examples else 'нет'}")
+                        except Exception as e:
+                            st.warning(f"RAG: {str(e)[:100]}")
+                    else:
+                        st.info("RAG индекс не найден или задание без текста.")
+                elif rag_has_examples is not None:
+                    st.markdown(f"- **RAG примеры для задания:** {'да' if rag_has_examples else 'нет'}")
+                if not has_hints:
+                    if has_knowledge or rag_has_examples:
+                        st.success("→ Подходит для проверки LLM-фоллбэка")
+                    elif not has_knowledge and not rag_index_exists:
+                        st.warning("→ Нет контекста: LLM не вызовется")
+                    elif not has_knowledge and rag_index_exists and rag_has_examples is None:
+                        st.info("→ Нажмите «Проверить RAG», чтобы узнать, есть ли примеры")
 
     counts = {}
     try:

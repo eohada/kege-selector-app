@@ -52,6 +52,23 @@ class PlatformClient:
         r.raise_for_status()
         return r.json()
 
+    def get_fallback_candidates(self, task_type: int | None = None) -> dict[str, Any]:
+        """
+        Задания без hints в БД — для проверки LLM-фоллбэка.
+        Требует право trainer.manage_knowledge.
+        """
+        params = {}
+        if task_type is not None:
+            params['task_type'] = int(task_type)
+        r = requests.get(
+            f'{self.base_url}/internal/trainer/task/fallback-candidates',
+            params=params if params else None,
+            headers=self._headers(),
+            timeout=self.timeout_seconds,
+        )
+        r.raise_for_status()
+        return r.json()
+
     def llm_info(self) -> dict[str, Any]:
         r = requests.get(f'{self.base_url}/internal/trainer/llm/info', headers=self._headers(), timeout=self.timeout_seconds)
         r.raise_for_status()
