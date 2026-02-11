@@ -1,0 +1,59 @@
+{
+  "task_number": 12,
+  "topic_code": "ALG-TURING",
+  "topic_name": "Машина Тьюринга",
+  "difficulty_level": 6,
+  "difficulty_label": "medium",
+  "prototype": {
+    "text": "<p>На вход МТ подается двоичное число. Головка находится над <strong>младшим</strong> (самым правым) разрядом числа. Состояние <strong>q1</strong>. Алфавит: {0, 1, λ}.</p><p>Программа:</p><pre>q1, 0 -> 1, N, q0\nq1, 1 -> 0, L, q1\nq1, λ -> 1, N, q0</pre><p>Конечное состояние <strong>q0</strong>. Определите, какое число окажется на ленте, если исходное число было <strong>11</strong> (десятичное).</p>",
+    "input_format": "Целое число",
+    "answer_format": "int",
+    "attached_files": [],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "11 -> 1011. Головка в конце (индекс 3, если считать 0,1,2,3). Настраиваем эмулятор.",
+        "code": "# Вставляем класс TuringMachine (см. Easy)\n# ... (код класса) ...\n\nrules = {\n    ('q1', '0'): ('1', 'N', 'q0'),\n    ('q1', '1'): ('0', 'L', 'q1'),\n    ('q1', 'λ'): ('1', 'N', 'q0')\n}\n\n# Лента 1011. Головка на последнем символе.\ntm = TuringMachine(rules, \"1011\", blank='λ', start_state='q1', accept_states=('q0',))\ntm.head = 3 # Указываем на последнюю цифру (len - 1)\ntm.run()\nprint(int(tm.get_tape_str(), 2))"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Ручная трассировка",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "1011 (q1 на посл. 1) -> 1010 (q1 на пред. 1, сдвиг L)."
+          },
+          {
+            "step": 2,
+            "explanation": "1010 (q1 на 1) -> 1000 (q1 на 0, сдвиг L)."
+          },
+          {
+            "step": 3,
+            "explanation": "1000 (q1 на 0). Правило: q1,0 -> 1, N, q0. Пишем 1, стоп. Результат: 1100."
+          },
+          {
+            "step": 4,
+            "explanation": "1100 в двоичной = 12 в десятичной. (11 + 1 = 12)."
+          }
+        ]
+      }
+    ],
+    "alternative_methods": ["Эмулятор"],
+    "common_mistakes": ["Неверное начальное положение головки."],
+    "time_estimate_sec": 240
+  },
+  "answer": "12",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Это алгоритм прибавления единицы. Используй эмулятор, не забудь `tm.head = len(str) - 1`."
+    }
+  ],
+  "tags": ["машина тьюринга", "инкремент"],
+  "source": "FIPI New Model",
+  "meta": {}
+}

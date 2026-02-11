@@ -1,0 +1,66 @@
+{
+  "task_number": 9,
+  "topic_code": "EXCEL-COND",
+  "topic_name": "Электронные таблицы",
+  "difficulty_level": 6,
+  "difficulty_label": "medium",
+  "prototype": {
+    "text": "<p>В файле электронной таблицы в каждой строке содержатся 4 натуральных числа. Определите количество строк, для которых выполнены оба условия:</p><ol><li>Наибольшее из четырёх чисел <strong>меньше</strong> суммы трёх остальных.</li><li>Четыре числа можно разбить на две пары так, чтобы <strong>суммы чисел в этих парах были равны</strong>.</li></ol>",
+    "input_format": "Файл .txt / .xlsx",
+    "answer_format": "int",
+    "attached_files": ["attachments/9.txt"],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Решаем на Python. Считываем файл, сортируем числа в каждой строке.",
+        "code": "count = 0\nwith open('9.txt') as f:\n    for line in f:\n        nums = sorted(map(int, line.split()))\n        # Теперь nums[0] - мин, nums[3] - макс\n        \n        # Условие 1: Макс < Сумма остальных\n        if nums[3] < sum(nums[:3]):\n            # Условие 2: Равные суммы пар\n            # Единственный вариант для отсортированного списка: (мин + макс) == (сред1 + сред2)\n            if nums[0] + nums[3] == nums[1] + nums[2]:\n                count += 1\nprint(count)"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение в Excel",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "E1 (Условие 1): `=МАКС(A1:D1) < (СУММ(A1:D1) - МАКС(A1:D1))`."
+          },
+          {
+            "step": 2,
+            "explanation": "F1 (Условие 2): Нужно проверить все комбинации пар. Их три: (A+B и C+D), (A+C и B+D), (A+D и B+C).\nФормула: `=ИЛИ(A1+B1=C1+D1; A1+C1=B1+D1; A1+D1=B1+C1)`."
+          },
+          {
+            "step": 3,
+            "explanation": "G1 (Итог): `=И(E1; F1)`. Если ИСТИНА, ставим 1, иначе 0 (или просто считаем количество ИСТИНА через СЧЁТЕСЛИ)."
+          }
+        ]
+      }
+    ],
+    "alternative_methods": ["Excel"],
+    "common_mistakes": [
+      "В Python проверяют только одну пару (0+3 == 1+2), что верно математически для различных чисел, но для надежности лучше знать, почему так.",
+      "В Excel забывают одну из комбинаций в функции ИЛИ."
+    ],
+    "time_estimate_sec": 300
+  },
+  "answer": "451",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "В Python удобно сразу отсортировать список: `nums.sort()`."
+    },
+    {
+      "level": 2,
+      "text": "Первое условие: `nums[3] < nums[0] + nums[1] + nums[2]`."
+    },
+    {
+      "level": 3,
+      "text": "Второе условие: суммы пар равны. Для отсортированных чисел это `nums[0] + nums[3] == nums[1] + nums[2]`."
+    }
+  ],
+  "tags": ["python", "excel", "пары чисел"],
+  "source": "EGE PDF Task",
+  "meta": {}
+}

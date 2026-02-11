@@ -1,0 +1,64 @@
+{
+  "task_number": 24,
+  "topic_code": "STRINGS-HARD",
+  "topic_name": "Обработка символьных строк",
+  "difficulty_level": 6,
+  "difficulty_label": "medium",
+  "prototype": {
+    "text": "<p>Текстовый файл содержит строку из символов A, B, C, D, E. Определите максимальную длину подстроки, в которой <strong>никакие два соседних символа не равны</strong> (то есть нет пар AA, BB и т.д.).</p>",
+    "input_format": "Файл .txt",
+    "answer_format": "int",
+    "attached_files": ["attachments/24_medium.txt"],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Нужно найти самую длинную цепочку, где `s[i] != s[i+1]`.",
+        "code": "with open('24_medium.txt') as f:\n    s = f.readline().strip()"
+      },
+      {
+        "step": 2,
+        "explanation": "Используем линейный проход. Начинаем с 1 символа (k=1). Сравниваем текущий с предыдущим.",
+        "code": "mx = 1\nk = 1\nfor i in range(1, len(s)):\n    if s[i] != s[i-1]:\n        k += 1\n        mx = max(mx, k)\n    else:\n        k = 1 # Сброс в 1, так как текущий символ начинает новую цепочку\nprint(mx)"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Код решения.",
+            "code": "with open('24.txt') as f:\n    s = f.readline()\n\nmx = 1\nk = 1\nfor i in range(1, len(s)):\n    if s[i] != s[i-1]:\n        k += 1\n        mx = max(mx, k)\n    else:\n        k = 1\nprint(mx)"
+          }
+        ]
+      }
+    ],
+    "alternative_methods": [],
+    "common_mistakes": [
+      "Сброс `k = 0` вместо `k = 1` (текущий символ сам по себе является началом новой валидной подстроки).",
+      "Начало цикла с 0 (ошибка индекса i-1)."
+    ],
+    "time_estimate_sec": 240
+  },
+  "answer": "380",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Сравнивай текущий символ `s[i]` с предыдущим `s[i-1]`."
+    },
+    {
+      "level": 2,
+      "text": "Если они НЕ равны, увеличивай счетчик длины."
+    },
+    {
+      "level": 3,
+      "text": "Если равны, сбрасывай счетчик. Важно: сбрасывай в 1, а не в 0, так как текущий символ уже идет в зачет новой цепочки."
+    }
+  ],
+  "tags": ["строки", "чередование", "python"],
+  "source": "FIPI Standard",
+  "meta": {}
+}

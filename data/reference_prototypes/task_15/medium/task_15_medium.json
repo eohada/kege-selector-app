@@ -1,0 +1,56 @@
+{
+  "task_number": 15,
+  "topic_code": "LOGIC-ADV",
+  "topic_name": "Истинность логического выражения",
+  "difficulty_level": 6,
+  "difficulty_label": "medium",
+  "prototype": {
+    "text": "<p>На числовой прямой даны два отрезка: $P = [10, 29]$ и $Q = [13, 18]$.</p><p>Какова <strong>наибольшая</strong> возможная длина отрезка $A$, при котором формула</p><p>$$((x \\in A) \\to (x \\in P)) \\lor (x \\in Q)$$</p><p>тождественно истинна?</p>",
+    "input_format": "Целое число",
+    "answer_format": "int",
+    "attached_files": [],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Используем множества точек (с шагом 0.5 или 1, если границы целые и нет строгих неравенств, но надежнее аналитика или мелкий шаг). В данном случае для ЕГЭ достаточно перебора целых чисел, но нужно помнить про длину.",
+        "code": "P = {x for x in range(10, 30)} # [10, 29]\nQ = {x for x in range(13, 19)} # [13, 18]\nA = set()\n\nfor x in range(0, 100):\n    # ((x in A) <= (x in P)) or (x in Q)\n    # Преобразуем: A -> (P + Q)\n    if (x in P) or (x in Q):\n        A.add(x)\n\nprint(len(A)) # Нет, длина отрезка это max - min. Для [10, 29] это 29-10=19. Кол-во точек 20.\nif A:\n    print(max(A) - min(A))"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Код с множествами.",
+            "code": "P = {x/2 for x in range(20, 60)}\nQ = {x/2 for x in range(26, 38)}\nA = set()\nfor x in [i/2 for i in range(0, 200)]:\n    if (x in P) or (x in Q):\n        A.add(x)\nif A:\n    print(max(A) - min(A))"
+          }
+        ]
+      }
+    ],
+    "alternative_methods": ["Логическое упрощение"],
+    "common_mistakes": ["Считают количество точек вместо длины."],
+    "time_estimate_sec": 240
+  },
+  "answer": "19",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Упрости выражение: `A -> (P + Q)`."
+    },
+    {
+      "level": 2,
+      "text": "A должно быть вложено в объединение P и Q."
+    },
+    {
+      "level": 3,
+      "text": "Длина объединения P[10, 29] и Q[13, 18] равна 19."
+    }
+  ],
+  "tags": ["отрезки", "python"],
+  "source": "FIPI Base",
+  "meta": {}
+}

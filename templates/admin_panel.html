@@ -81,6 +81,12 @@
                                     <img src="{{ url_for('static', filename='icons/icons8-лупа-100-2.png') }}" alt="Диагностика" class="ui-icon ui-icon--sm">
                                     Диагностика
                                 </a>
+                                <form action="{{ url_for('admin.admin_sync_reference_prototypes') }}" method="post" style="margin:0;" onsubmit="return confirm('Синхронизировать эталоны 19–21 из data/reference_prototypes в банк заданий?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="neo-button outline" style="width:100%; justify-content: flex-start;">
+                                        Синхронизировать эталоны 19–21 в банк заданий
+                                    </button>
+                                </form>
                             </div>
                         </details>
 

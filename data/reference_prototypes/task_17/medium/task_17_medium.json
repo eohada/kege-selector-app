@@ -1,0 +1,64 @@
+{
+  "task_number": 17,
+  "topic_code": "ALG-SEQ",
+  "topic_name": "Обработка последовательностей",
+  "difficulty_level": 6,
+  "difficulty_label": "medium",
+  "prototype": {
+    "text": "<p>В файле содержится последовательность целых чисел. Элементы последовательности могут принимать целые значения от -10 000 до 10 000 включительно.</p><p>Определите количество пар, в которых сумма элементов пары делится на минимальный элемент последовательности, кратный 19. Затем запишите максимальную из сумм элементов таких пар.</p>",
+    "input_format": "Файл .txt",
+    "answer_format": "Два числа",
+    "attached_files": ["attachments/17_medium.txt"],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Сначала найдем 'глобальное' число — минимальный элемент, кратный 19.",
+        "code": "with open('17_medium.txt') as f:\n    nums = [int(x) for x in f]\n\n# Фильтруем и находим минимум\nmin_19 = min([x for x in nums if x % 19 == 0])"
+      },
+      {
+        "step": 2,
+        "explanation": "Теперь проходим по парам и проверяем условие: сумма пары делится на `min_19`.",
+        "code": "ans = []\nfor i in range(len(nums) - 1):\n    pair_sum = nums[i] + nums[i+1]\n    if pair_sum % min_19 == 0:\n        ans.append(pair_sum)\n\nprint(len(ans), max(ans))"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Код решения.",
+            "code": "with open('17.txt') as f:\n    a = [int(x) for x in f]\n\nmn = min(x for x in a if x % 19 == 0)\nres = []\nfor i in range(len(a) - 1):\n    if (a[i] + a[i+1]) % mn == 0:\n        res.append(a[i] + a[i+1])\n\nprint(len(res), max(res))"
+          }
+        ]
+      }
+    ],
+    "alternative_methods": [],
+    "common_mistakes": [
+      "Пытаются найти минимум и проверять пары в одном цикле (нельзя, так как минимум нужно знать заранее).",
+      "Забывают, что `min` от пустого списка вызовет ошибку (но в задачах ЕГЭ такие числа всегда есть)."
+    ],
+    "time_estimate_sec": 240
+  },
+  "answer": "4382 19416",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Сначала найди специальное число `min_19`: выбери все числа, кратные 19, и найди среди них минимальное."
+    },
+    {
+      "level": 2,
+      "text": "Затем запусти второй цикл для проверки пар."
+    },
+    {
+      "level": 3,
+      "text": "Условие: `(nums[i] + nums[i+1]) % min_19 == 0`."
+    }
+  ],
+  "tags": ["последовательности", "глобальный поиск", "python"],
+  "source": "FIPI Bank",
+  "meta": {}
+}

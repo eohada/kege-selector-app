@@ -1,0 +1,33 @@
+{
+  "task_number": 20,
+  "topic_code": "",
+  "topic_name": "",
+  "difficulty_level": 2,
+  "difficulty_label": "easy",
+  "prototype": {
+    "text": "(заполните текст задания)",
+    "input_format": "",
+    "answer_format": "",
+    "attached_files": [],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": ""
+      }
+    ],
+    "alternative_methods": [],
+    "common_mistakes": [],
+    "time_estimate_sec": null
+  },
+  "answer": "",
+  "hint_ladder": [],
+  "tags": [],
+  "source": "",
+  "meta": {},
+  "series_id": "game-theory",
+  "series_part": 2,
+  "series_task_numbers": [19, 20, 21]
+}

@@ -1,0 +1,59 @@
+{
+  "task_number": 25,
+  "topic_code": "NUM-THEORY",
+  "topic_name": "Обработка целых чисел",
+  "difficulty_level": 8,
+  "difficulty_label": "hard",
+  "prototype": {
+    "text": "<p>Найдите все числа из диапазона [210 000; 285 000], у которых количество <strong>чётных</strong> делителей не меньше 120.</p><p>В ответе для каждого найденного числа запишите количество его чётных делителей и наибольший из них.</p>",
+    "input_format": "Таблица",
+    "answer_format": "string",
+    "attached_files": [],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Перебор диапазона. Для каждого числа ищем все делители, фильтруем четные.",
+        "code": "for i in range(210000, 285001):\n    even_divs = []\n    for d in range(1, int(i**0.5) + 1):\n        if i % d == 0:\n            # d - первый делитель\n            if d % 2 == 0: even_divs.append(d)\n            # i//d - второй делитель\n            d2 = i // d\n            if d2 != d and d2 % 2 == 0:\n                even_divs.append(d2)\n    \n    if len(even_divs) >= 120:\n        print(len(even_divs), max(even_divs))"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Код выше. Оптимизация: `set` для уникальности не обязателен, если аккуратно обрабатывать `d*d == i`, но с `set` надежнее.",
+            "code": "for x in range(210000, 285001):\n    divs = set()\n    for d in range(1, int(x**0.5) + 1):\n        if x % d == 0:\n            if d % 2 == 0: divs.add(d)\n            if (x // d) % 2 == 0: divs.add(x // d)\n    if len(divs) >= 120:\n        print(len(divs), max(divs))"
+          }
+        ]
+      }
+    ],
+    "alternative_methods": [],
+    "common_mistakes": [
+      "Забыли добавить парный делитель `x // d`.",
+      "Не проверили условие `d != x // d` (для полных квадратов), что привело к дублированию."
+    ],
+    "time_estimate_sec": 420
+  },
+  "answer": "120 211680\n120 218400\n144 221760\n120 226800\n120 231840\n120 237600\n128 240240\n128 241920\n120 249480\n120 252000\n128 257040\n120 258720\n144 262080\n120 269280\n120 272160\n144 277200\n120 280800\n126 282240",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Перебирай числа из диапазона. Для каждого ищи делители до корня."
+    },
+    {
+      "level": 2,
+      "text": "Проверяй на четность каждый найденный делитель (`d % 2 == 0`)."
+    },
+    {
+      "level": 3,
+      "text": "Используй `set`, чтобы избежать дублей (особенно для квадратных корней)."
+    }
+  ],
+  "tags": ["делители", "четность", "python"],
+  "source": "EGE PDF Task",
+  "meta": {}
+}

@@ -302,6 +302,30 @@ def admin_sandbox_db_sync_status():
     return jsonify({'success': True, 'state': state}), 200
 
 
+@admin_bp.route('/admin/sync-reference-prototypes', methods=['POST'])
+@login_required
+def admin_sync_reference_prototypes():
+    """Синхронизация эталонных прототипов 19–21 в банк заданий (один файл → три задания в БД)."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещён.', 'danger')
+        return redirect(url_for('admin.admin_panel'))
+    try:
+        from app.utils.reference_import import sync_all_series_prototypes
+        results = sync_all_series_prototypes(dry_run=False)
+        db.session.commit()
+        total_c = sum(r['created'] for r in results)
+        total_u = sum(r['updated'] for r in results)
+        if results:
+            flash(f'Эталоны синхронизированы: обработано файлов {len(results)}, создано заданий {total_c}, обновлено {total_u}.', 'success')
+        else:
+            flash('Нет файлов с series_task_numbers (19–21) в data/reference_prototypes.', 'info')
+    except Exception as e:
+        logger.exception('sync-reference-prototypes failed')
+        db.session.rollback()
+        flash(f'Ошибка синхронизации: {e}', 'danger')
+    return redirect(url_for('admin.admin_panel'))
+
+
 @admin_bp.route('/admin-testers/create', methods=['POST'])
 @login_required
 def admin_testers_create():

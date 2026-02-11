@@ -1,0 +1,61 @@
+{
+  "task_number": 15,
+  "topic_code": "LOGIC-ADV",
+  "topic_name": "Истинность логического выражения",
+  "difficulty_level": 9,
+  "difficulty_label": "hard",
+  "prototype": {
+    "text": "<p>Обозначим через $m \\& n$ поразрядную конъюнкцию неотрицательных целых чисел $m$ и $n$.</p><p>Для какого <strong>наименьшего</strong> неотрицательного целого числа $A$ формула</p><p>$$(x \\& 29 \\neq 0) \\to ((x \\& 17 = 0) \\to (x \\& A \\neq 0))$$</p><p>тождественно истинна?</p>",
+    "input_format": "Целое число",
+    "answer_format": "int",
+    "attached_files": [],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Запишем выражение на Python. Операция `&` — это `&`.",
+        "code": "def f(x, A):\n    return (x & 29 != 0) <= ((x & 17 == 0) <= (x & A != 0))"
+      },
+      {
+        "step": 2,
+        "explanation": "Перебираем A. Так как ищем наименьшее, идем от 0 вверх.",
+        "code": "for A in range(0, 1000):\n    if all(f(x, A) for x in range(0, 1000)):\n        print(A)\n        break"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Полный код.",
+            "code": "for A in range(0, 128):\n    ok = True\n    for x in range(0, 1000):\n        if not ((x & 29 != 0) <= ((x & 17 == 0) <= (x & A != 0))):\n            ok = False\n            break\n    if ok:\n        print(A)\n        break"
+          }
+        ]
+      }
+    ],
+    "alternative_methods": ["Битовый анализ"],
+    "common_mistakes": ["Неверно раскрыли импликацию."],
+    "time_estimate_sec": 300
+  },
+  "answer": "12",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Преобразуй выражение к виду `(Условие1 И Условие2) -> (x & A != 0)`."
+    },
+    {
+      "level": 2,
+      "text": "Найди, какие биты могут быть в `x`, чтобы `Условие1` и `Условие2` выполнялись."
+    },
+    {
+      "level": 3,
+      "text": "A должно перекрывать все эти биты."
+    }
+  ],
+  "tags": ["битовые операции", "python"],
+  "source": "FIPI Hard",
+  "meta": {}
+}

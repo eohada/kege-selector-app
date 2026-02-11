@@ -1,0 +1,56 @@
+{
+  "task_number": 19,
+  "topic_code": "GAME-THEORY-2",
+  "topic_name": "Теория игр (2 кучи)",
+  "difficulty_level": 6,
+  "difficulty_label": "medium",
+  "series_id": "game_two_heaps_std",
+  "series_task_numbers": [19, 20, 21],
+  "prototype": {
+    "text": "<p>Два игрока, Петя и Ваня, играют в игру с двумя кучами камней. Ходы: +1 в любую кучу или *2 любую кучу. Победа: сумма $\\ge 77$. Начало: (7, S), $1 \\le S \\le 69$.</p><p><strong>19:</strong> Ваня выигрывает первым ходом при любой игре Пети.</p><p><strong>20:</strong> Петя выигрывает вторым ходом.</p><p><strong>21:</strong> Ваня выигрывает первым или вторым ходом.</p>",
+    "input_format": "Три ответа",
+    "answer_format": "string",
+    "attached_files": [],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Код для двух куч. Функция принимает `(a, b)`.",
+        "code": "from functools import lru_cache\n\n@lru_cache(None)\ndef g(a, b):\n    if a + b >= 77: return 0\n    moves = [g(a+1, b), g(a*2, b), g(a, b+1), g(a, b*2)]\n    \n    evens = [x for x in moves if x % 2 == 0]\n    if evens: return min(evens) + 1\n    return max(moves) + 1\n\nfor s in range(1, 70):\n    res = g(7, s)\n    if res == 2: print(f\"19: {s}\")\n    if res == 3: print(f\"20: {s}\")\n    if res == 4: print(f\"21: {s}\")"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Код выше.",
+            "code": "# См. Solution"
+          }
+        ]
+      }
+    ],
+    "alternative_methods": ["Excel (сложно для 2 куч)"],
+    "common_mistakes": [
+      "Забывают рассмотреть ходы для первой кучи (даже если она маленькая)."
+    ],
+    "time_estimate_sec": 300
+  },
+  "answer": "19: 35; 20: 31, 34; 21: 30",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Напиши функцию `g(a, b)`, которая возвращает 0 (победа сейчас), 1 (W1), 2 (L1), 3 (W2)."
+    },
+    {
+      "level": 2,
+      "text": "Перебирай `s` от 1 до 69, вызывая `g(7, s)`."
+    }
+  ],
+  "tags": ["теория игр", "две кучи", "python"],
+  "source": "FIPI Base",
+  "meta": {}
+}

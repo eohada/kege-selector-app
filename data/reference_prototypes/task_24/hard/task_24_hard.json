@@ -1,0 +1,74 @@
+{
+  "task_number": 24,
+  "topic_code": "STRINGS-HARD",
+  "topic_name": "Обработка символьных строк",
+  "difficulty_level": 8,
+  "difficulty_label": "hard",
+  "prototype": {
+    "text": "<p>Текстовый файл содержит строку из букв Q, R, W и цифр 1, 2, 4. Определите максимальную длину подстроки, которая состоит из чередующихся групп: <strong>буква + цифра</strong> (например, Q1R2W4...).</p><p>Подстрока может начинаться как с буквы, так и с цифры, и заканчиваться чем угодно, главное соблюдать чередование видов символов.</p>",
+    "input_format": "Файл .txt",
+    "answer_format": "int",
+    "attached_files": ["attachments/24_hard.txt"],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Заменим все буквы на 'L' (Letter), а все цифры на 'D' (Digit). Это упростит задачу до поиска чередования L и D.",
+        "code": "with open('24_hard.txt') as f:\n    s = f.readline().strip()\n\n# Нормализация\nfor c in 'QRW': s = s.replace(c, 'L')\nfor c in '124': s = s.replace(c, 'D')\n\n# Теперь ищем макс цепочку типа LDLDLD... или DLDLDL...\nmx = 1\nk = 1\nfor i in range(1, len(s)):\n    if s[i] != s[i-1]: # L!=D или D!=L\n        k += 1\n        mx = max(mx, k)\n    else:\n        k = 1\nprint(mx)"
+      },
+      {
+        "step": 2,
+        "explanation": "Вариант через Regex (как в PDF). Это мощнее, если условия сложнее (например, пары буква+цифра строго).",
+        "code": "import re\n# Ищем пары (БукваЦифра) или (ЦифраБуква). \n# Но задача просит просто чередование. Regex: (?:[QRW][124])+\n# В PDF решение: re.findall(r'(?:[QRW][124])+', s)\n# Это найдет цепочки четной длины (пары). А если цепочка нечетная? \n# Универсальнее метод замены (Шаг 1)."
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Replace)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Заменяем все допустимые буквы на один символ (например, '*') и цифры на другой ('#').",
+            "code": "s = open('24.txt').readline()\ns = s.replace('Q','*').replace('R','*').replace('W','*')\ns = s.replace('1','#').replace('2','#').replace('4','#')\n\nmx = 0\nk = 1\nfor i in range(1, len(s)):\n    if s[i] != s[i-1]: # Чередование * и #\n        k += 1\n        mx = max(mx, k)\n    else:\n        k = 1\nprint(mx)"
+          }
+        ]
+      },
+      {
+        "name": "Решение через Regex (из PDF)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Используем `re.findall`. Паттерн ищет повторы групп.",
+            "code": "import re\nf = open('24.txt').readline()\n# Ищем цепочки БукваЦифра\na = re.findall(r'(?:[QRW][124])+', f)\n# Ищем цепочки ЦифраБуква\nb = re.findall(r'(?:[124][QRW])+', f)\n\n# Это найдет только полные пары. Максимум нужно скорректировать, если цепочка может быть нечетной.\n# Но в рамках ЕГЭ часто достаточно найти макс четную длину или метод replace.\nprint(max(len(x) for x in a + b))"
+          }
+        ]
+      }
+    ],
+    "alternative_methods": ["Regex", "Конечный автомат"],
+    "common_mistakes": [
+      "Regex находит только непересекающиеся вхождения.",
+      "Не учитывают, что цепочка может начинаться с цифры, а не с буквы."
+    ],
+    "time_estimate_sec": 360
+  },
+  "answer": "761",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Упрости строку: замени все буквы (Q, R, W) на один символ 'L', а цифры на 'D'."
+    },
+    {
+      "level": 2,
+      "text": "Теперь задача сводится к поиску самой длинной подстроки с разными соседями (LDLD...)."
+    },
+    {
+      "level": 3,
+      "text": "Используй обычный цикл `for`: если `s[i] != s[i-1]`, увеличивай счетчик."
+    }
+  ],
+  "tags": ["строки", "regex", "python"],
+  "source": "EGE PDF Task",
+  "meta": {}
+}

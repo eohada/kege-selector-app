@@ -1,0 +1,57 @@
+{
+  "task_number": 19,
+  "topic_code": "GAME-THEORY-3",
+  "topic_name": "Теория игр (Ограничения)",
+  "difficulty_level": 8,
+  "difficulty_label": "hard",
+  "series_id": "game_one_heap_restricted",
+  "series_task_numbers": [19, 20, 21],
+  "prototype": {
+    "text": "<p>Одна куча. Ходы: <strong>+1, +4, *2</strong>. Победа: $S \\ge 60$.</p><p><strong>Ограничение:</strong> Запрещено делать ход, который повторяет ход, сделанный предыдущим игроком (например, если Петя сделал +1, Ваня не может сделать +1).</p><p>Найти S для заданий 19, 20, 21.</p>",
+    "input_format": "Три ответа",
+    "answer_format": "string",
+    "attached_files": [],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Добавляем аргумент `prev` в функцию. Кодируем ходы: 0 (+1), 1 (+4), 2 (*2).",
+        "code": "from functools import lru_cache\n\n@lru_cache(None)\ndef g(s, prev):\n    if s >= 60: return 0\n    \n    moves = []\n    if prev != 0: moves.append(g(s+1, 0))\n    if prev != 1: moves.append(g(s+4, 1))\n    if prev != 2: moves.append(g(s*2, 2))\n    \n    evens = [x for x in moves if x % 2 == 0]\n    if evens: return min(evens) + 1\n    if not moves: return 0 # Тупик (редко, но бывает)\n    return max(moves) + 1\n\n# Для старта prev = -1 (никакой ход не запрещен)\nfor s in range(1, 60):\n    if g(s, -1) == 2: print(f\"19: {s}\")\n    # и т.д."
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Код с учетом `prev`.",
+            "code": "# См. Solution"
+          }
+        ]
+      }
+    ],
+    "alternative_methods": [],
+    "common_mistakes": [
+      "Не добавили `prev` в `lru_cache` (кэширование без контекста хода дает ошибки).",
+      "Забыли про начальный вызов с `prev=-1`."
+    ],
+    "time_estimate_sec": 400
+  },
+  "answer": "19: ...; 20: ...; 21: ...",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "В функцию нужно передавать тип последнего хода, чтобы исключить его из списка доступных."
+    },
+    {
+      "level": 2,
+      "text": "Обязательно включи аргумент `prev` в параметры кэширования."
+    }
+  ],
+  "tags": ["теория игр", "ограничения", "python"],
+  "source": "Statgrad Hard",
+  "meta": {}
+}

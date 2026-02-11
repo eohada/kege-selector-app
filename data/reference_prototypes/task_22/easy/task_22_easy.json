@@ -1,0 +1,82 @@
+{
+  "task_number": 22,
+  "topic_code": "PARALLEL-PROC",
+  "topic_name": "Параллельные вычисления",
+  "difficulty_level": 3,
+  "difficulty_label": "easy",
+  "series_id": "proc_simple_chain",
+  "prototype": {
+    "text": "<p>В файле содержится информация о совокупности вычислительных процессов, которые могут выполняться параллельно или последовательно. Формат файла: ID процесса, Время выполнения (мс), ID процессов-предков (разделитель — точка с запятой). Если процесс независимый, указан 0.</p><p>Определите минимальное время (в мс), через которое завершатся <strong>все</strong> процессы.</p>",
+    "input_format": "Файл .xlsx / .csv",
+    "answer_format": "int",
+    "attached_files": ["attachments/22_easy.csv"],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Считаем данные. Структура файла: `ID; Time; Deps`. Разделитель в Deps — точка с запятой.",
+        "code": "data = {}\nwith open('22_easy.csv') as f:\n    for line in f:\n        # Удаляем лишние пробелы и разбиваем\n        parts = line.strip().split(';')\n        pid = int(parts[0])\n        time = int(parts[1])\n        # Предки могут быть '0' или '1;2'\n        if parts[2] == '0':\n            deps = []\n        else:\n            # Обработка '1; 2' -> [1, 2]\n            deps = [int(x) for x in parts[2].split(';') if x.strip().isdigit()]\n        \n        data[pid] = {'time': time, 'deps': deps, 'end': 0}"
+      },
+      {
+        "step": 2,
+        "explanation": "Для вычисления времени завершения процесса нужно знать время завершения всех его предков. \n$End(P) = Time(P) + \\max(End(Dep_1), End(Dep_2), \\dots)$. \nИспользуем рекурсию с мемоизацией (или просто словарь, так как ID идут обычно по порядку, но рекурсия надежнее).",
+        "code": "def get_end_time(pid):\n    if data[pid]['end'] > 0:\n        return data[pid]['end']\n    \n    # Время старта = макс время завершения предков\n    start_time = 0\n    if data[pid]['deps']:\n        start_time = max(get_end_time(dep) for dep in data[pid]['deps'])\n    \n    data[pid]['end'] = start_time + data[pid]['time']\n    return data[pid]['end']\n\n# Вычисляем для всех процессов\nmax_total = 0\nfor pid in data:\n    max_total = max(max_total, get_end_time(pid))\n\nprint(max_total)"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Полный код решения.",
+            "code": "data = {}\nfor s in open('22.csv'):\n    s = s.replace(';', ' ').split()\n    # s[0]=ID, s[1]=Time, s[2:]=Deps (но в CSV разделитель ';' может быть и внутри поля)\n    # Надежнее парсить через split(';') если формат CSV строгий\n    pass # (см. код выше в Solution)"
+          }
+        ]
+      },
+      {
+        "name": "Решение в Excel",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Открываем файл. Столбцы: A (ID), B (Время), C (Предки)."
+          },
+          {
+            "step": 2,
+            "explanation": "Если предков несколько (через точку с запятой), Excel не поймет это как числа. В Easy задачах обычно 1 предок или 0. \nПусть в столбце D будет время окончания. \nD2: `=B2 + ВПР(C2; A:D; 4; 0)`. \nЕсли C2=0, то просто `=B2` (используйте ЕСЛИ)."
+          },
+          {
+            "step": 3,
+            "explanation": "Ответ = МАКС(столбец D)."
+          }
+        ]
+      }
+    ],
+    "alternative_methods": ["Excel (ВПР)"],
+    "common_mistakes": [
+      "Забыли, что время завершения всей партии — это максимум из времен завершения всех процессов (не сумма!).",
+      "В Excel некорректно обработали список предков '3;4' (ВПР не сработает)."
+    ],
+    "time_estimate_sec": 180
+  },
+  "answer": "805",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Время завершения процесса = Его длительность + Время завершения самого медленного предка."
+    },
+    {
+      "level": 2,
+      "text": "В Python используй словарь для хранения данных и рекурсивную функцию для расчета времени."
+    },
+    {
+      "level": 3,
+      "text": "Ответ задачи — это максимальное время завершения среди всех процессов."
+    }
+  ],
+  "tags": ["процессы", "python", "excel"],
+  "source": "FIPI Base",
+  "meta": {}
+}

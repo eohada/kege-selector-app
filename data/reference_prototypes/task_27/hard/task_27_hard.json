@@ -1,0 +1,59 @@
+{
+  "task_number": 27,
+  "topic_code": "ALG-OPTIMIZATION",
+  "topic_name": "Эффективные алгоритмы",
+  "difficulty_level": 9,
+  "difficulty_label": "hard",
+  "prototype": {
+    "text": "<p>Дана последовательность точек на прямой (координаты). Нужно выбрать <strong>три точки</strong> так, чтобы расстояние между любыми двумя было не менее K, а сумма их координат была максимальной.</p><p>(Или вариация: выбрать Центр так, чтобы сумма расстояний до него была минимальной - 'Пункт сбора').</p>",
+    "input_format": "Файл .txt",
+    "answer_format": "int",
+    "attached_files": ["attachments/27_hard.txt"],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Задача на выбор 3 точек с условием расстояния. Это динамика. \nПусть `dp[i][cnt]` — макс сумма `cnt` точек, выбранных из первых `i`, где последняя точка — это `nums[i]`. \nЭто сложно. Проще так: \nИдем по массиву `x`. \nПоддерживаем `max_1` — макс точка левее `i-K`. \nПоддерживаем `max_2` — макс пара (точка + точка левее неё на К), левее `i-K`. \nТогда для текущей `x`: ответ обновляется как `x + max_2`. \n`max_1` обновляется значением `nums[i-K]`. \n`max_2` обновляется значением `nums[i-K] + max_1 (старое)`.",
+        "code": "with open('27_hard.txt') as f:\n    K = int(f.readline()) # Расстояние\n    N = int(f.readline())\n    nums = [int(line) for line in f]\n\n# Максимумы на расстоянии\nmax_1 = -float('inf')\nmax_2 = -float('inf')\nans = -float('inf')\n\n# Индекс j отстает от i на K (или на 2K для тройки? Нет, просто поток)\n# Нам нужны точки i, j, m: m > j+K, j > i+K.\n# Когда мы стоим на m (текущий элемент), нам нужна лучшая пара (i, j) где j <= m-K.\n# Для элемента nums[idx] лучшая пара готова из элементов до idx-K.\n\nfor i in range(2 * K, N):\n    # Кандидат на первую точку (самая левая): nums[i - 2*K]\n    # Мы можем обновить max_1, используя nums[i - 2*K]\n    x_prev = nums[i - 2 * K]\n    if x_prev > max_1: max_1 = x_prev\n    \n    # Кандидат на вторую точку: nums[i - K]. \n    # Мы можем составить пару из (лучшего max_1) + nums[i - K]\n    pair = max_1 + nums[i - K]\n    if pair > max_2: max_2 = pair\n    \n    # Текущая точка (третья): nums[i]\n    # Тройка = max_2 + nums[i]\n    current_triple = max_2 + nums[i]\n    if current_triple > ans: ans = current_triple\n\nprint(ans)"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Код выше. Однопроходный алгоритм O(N).",
+            "code": "# См. Solution"
+          }
+        ]
+      }
+    ],
+    "alternative_methods": [],
+    "common_mistakes": [
+      "Неправильно рассчитали индексы (смещения на K и 2K).",
+      "Инициализировали максимумы нулем (а числа могут быть отрицательными)."
+    ],
+    "time_estimate_sec": 600
+  },
+  "answer": "3000",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Используй три переменные для хранения максимумов: `max_1` (одна точка), `max_2` (пара точек), `ans` (тройка)."
+    },
+    {
+      "level": 2,
+      "text": "В цикле на шаге `i` доступна для `max_1` точка `nums[i - 2*K]`."
+    },
+    {
+      "level": 3,
+      "text": "Пара формируется из `max_1` и точки `nums[i - K]`. Тройка — из `max_2` и `nums[i]`."
+    }
+  ],
+  "tags": ["27", "динамика", "поток", "python"],
+  "source": "Statgrad Hard",
+  "meta": {}
+}

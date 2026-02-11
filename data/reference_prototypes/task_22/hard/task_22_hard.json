@@ -1,0 +1,78 @@
+{
+  "task_number": 22,
+  "topic_code": "PARALLEL-PROC",
+  "topic_name": "Параллельные вычисления",
+  "difficulty_level": 8,
+  "difficulty_label": "hard",
+  "series_id": "proc_timeline",
+  "prototype": {
+    "text": "<p>Дана таблица процессов. Определите <strong>максимальное количество процессов</strong>, которые могут выполняться <strong>параллельно</strong> (одновременно) при условии, что каждый процесс начинается <strong>как можно раньше</strong> (сразу после завершения всех его предков).</p>",
+    "input_format": "Файл .csv",
+    "answer_format": "int",
+    "attached_files": ["attachments/22_hard.csv"],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Сначала вычислим время начала и окончания для каждого процесса (как в Easy/Medium).",
+        "code": "# ... (чтение и расчет data[pid]['start'] и data[pid]['end']) ...\n# Допустим, мы вычислили start и end для каждого pid.\n# data[pid] = {'start': 10, 'end': 15, ...}"
+      },
+      {
+        "step": 2,
+        "explanation": "Теперь нужно пройти по временной шкале и посчитать пересечения. Создадим массив (таймлайн) или словарь событий.",
+        "code": "events = []\nfor pid in data:\n    # Процесс начинается в start (включая эту мс) и заканчивается в end (включая или нет?)\n    # Обычно процесс длится [start, end). То есть в момент end он уже не активен.\n    # Добавим +1 к счетчику в start, -1 в end.\n    events.append((data[pid]['start'], 1))\n    events.append((data[pid]['end'], -1))\n\nevents.sort() # Сортируем по времени\n\nmax_parallel = 0\ncurrent_parallel = 0\n\nfor time, change in events:\n    current_parallel += change\n    max_parallel = max(max_parallel, current_parallel)\n\nprint(max_parallel)"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Код с событиями (scanline).",
+            "code": "# См. Solution"
+          }
+        ]
+      },
+      {
+        "name": "Решение в Excel",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Рассчитайте Start и End для каждого процесса (два столбца)."
+          },
+          {
+            "step": 2,
+            "explanation": "Сложный способ: создать диаграмму Ганта (условное форматирование). По горизонтали время (1, 2, 3...), по вертикали процессы. Закрасить ячейки, где процесс идет. \nВнизу просуммировать столбцы. Найти макс сумму."
+          }
+        ]
+      }
+    ],
+    "alternative_methods": ["Диаграмма Ганта (Excel)"],
+    "common_mistakes": [
+      "Неверно определили границы интервалов (включая/не включая конец). Обычно [start, end).",
+      "Забыли отсортировать события."
+    ],
+    "time_estimate_sec": 420
+  },
+  "answer": "1953",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Для каждого процесса найди время его начала и окончания."
+    },
+    {
+      "level": 2,
+      "text": "Представь выполнение процесса как отрезок [start, end)."
+    },
+    {
+      "level": 3,
+      "text": "Используй метод сканирующей прямой (события +1 и -1) или построй график в Excel, чтобы найти точку максимального перекрытия."
+    }
+  ],
+  "tags": ["процессы", "timeline", "python"],
+  "source": "Statgrad Hard",
+  "meta": {}
+}

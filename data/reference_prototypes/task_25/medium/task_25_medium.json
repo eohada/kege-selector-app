@@ -1,0 +1,59 @@
+{
+  "task_number": 25,
+  "topic_code": "NUM-THEORY",
+  "topic_name": "Обработка целых чисел",
+  "difficulty_level": 6,
+  "difficulty_label": "medium",
+  "prototype": {
+    "text": "<p>Найдите 5 чисел, больших 500 000, таких, что сумма их <strong>наибольшего</strong> и <strong>наименьшего</strong> нетривиальных делителей (не считая 1 и самого числа) кратна 17.</p><p>Если у числа нет нетривиальных делителей, оно не учитывается.</p><p>В ответе запишите найденные числа и соответствующие суммы делителей.</p>",
+    "input_format": "Таблица",
+    "answer_format": "string",
+    "attached_files": [],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Напишем функцию поиска нетривиальных делителей. Перебор до квадратного корня.",
+        "code": "def get_divs(n):\n    divs = set()\n    for i in range(2, int(n**0.5) + 1):\n        if n % i == 0:\n            divs.add(i)\n            divs.add(n // i)\n    return sorted(divs)\n\ncount = 0\nn = 500001\nwhile count < 5:\n    d = get_divs(n)\n    if d:\n        min_d = d[0]\n        max_d = d[-1]\n        s = min_d + max_d\n        if s % 17 == 0:\n            print(n, s)\n            count += 1\n    n += 1"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Код выше.",
+            "code": "# См. Solution"
+          }
+        ]
+      }
+    ],
+    "alternative_methods": [],
+    "common_mistakes": [
+      "Забыли, что `range` в `get_divs` должен идти до `int(n**0.5) + 1`.",
+      "Не отсортировали список делителей перед взятием мин/макс."
+    ],
+    "time_estimate_sec": 300
+  },
+  "answer": "500034 250019\n500047 17272\n500068 250036\n500097 166702\n500102 250053",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Напиши функцию, которая ищет делители числа `n`. Достаточно перебирать до корня из `n`."
+    },
+    {
+      "level": 2,
+      "text": "Если `i` — делитель, то `n // i` — тоже делитель. Добавляй оба в множество."
+    },
+    {
+      "level": 3,
+      "text": "Отсортируй список делителей. Мин = `d[0]`, Макс = `d[-1]` (это будет наибольший *нетривиальный*, если ты не добавлял само `n`)."
+    }
+  ],
+  "tags": ["делители", "перебор", "python"],
+  "source": "FIPI Standard",
+  "meta": {}
+}

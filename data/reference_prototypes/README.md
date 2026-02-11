@@ -8,15 +8,17 @@ reference_prototypes/
 ├── _template_example.json     # Шаблон-пример (задание №1, системы счисления)
 ├── README.md                  # Этот файл
 └── task_XX/                   # Каталоги по номерам заданий (01–27)
-    ├── easy/                  # Эталоны для лёгких задач (difficulty 1–3)
-    │   ├── proto_001.json
-    │   └── ...
-    ├── medium/                # Эталоны для средних задач (difficulty 4–7)
-    │   ├── proto_001.json
-    │   └── ...
-    └── hard/                  # Эталоны для сложных задач (difficulty 8–10)
-        ├── proto_001.json
-        └── ...
+    ├── easy/
+    │   ├── task_XX_easy.json
+    │   ├── attachments/       # опционально: Excel, PDF, картинки к заданию
+    │   │   └── *.xlsx, *.png …
+    │   └── proto_002.json …
+    ├── medium/
+    │   ├── task_XX_medium.json
+    │   └── attachments/
+    └── hard/
+        ├── task_XX_hard.json
+        └── attachments/
 ```
 
 ## Формат файлов
@@ -34,7 +36,7 @@ reference_prototypes/
 | difficulty_level  | int      | 1–10 (1–3=Easy, 4–7=Medium, 8–10=Hard)        |
 | difficulty_label  | string   | "easy" / "medium" / "hard"                     |
 | prototype         | object   | Текст задания, формат ввода/вывода             |
-| solution          | object   | Пошаговое решение, альт. методы, ошибки        |
+| solution          | object   | Пошаговое решение (steps), альт. методы, ошибки; опционально **variants** — несколько вариантов (ручной, программой) |
 | answer            | string   | Правильный ответ                               |
 
 ### Рекомендуемые поля
@@ -46,12 +48,100 @@ reference_prototypes/
 | source            | string   | Источник: fipi, kege.ru, manual, llm-generated |
 | meta              | object   | Метаданные: автор, версия, дата                |
 
+### Несколько вариантов решения (ручной и кодом)
+
+Внутри `solution` можно добавить массив **`variants`** — отдельные варианты с названием и своими шагами (и при необходимости кодом в шагах):
+
+```json
+"solution": {
+  "steps": [ ... ],
+  "variants": [
+    {
+      "name": "Ручной способ",
+      "steps": [
+        { "step": 1, "explanation": "..." },
+        { "step": 2, "explanation": "..." }
+      ]
+    },
+    {
+      "name": "Решение программой",
+      "steps": [
+        { "step": 1, "explanation": "...", "code": "with open(...) as f: ..." }
+      ]
+    }
+  ]
+}
+```
+
+Основной вариант — в **`steps`**; дополнительные (ручной, кодом, альтернативный алгоритм) — в **`variants`**.
+
+### Файлы и таблицы (задание 3, Excel и т.д.)
+
+Для заданий с приложенными файлами (таблица Excel, CSV, PDF, картинки):
+
+1. **Где хранить**  
+   Рядом с JSON создай подпапку **`attachments`** и клади туда файлы, например:
+   ```
+   task_03/medium/
+   ├── task_03_medium.json
+   └── attachments/
+       ├── table.xlsx      # таблица к заданию
+       └── condition.png   # при необходимости картинка
+   ```
+
+2. **Что писать в JSON**  
+   В `prototype` укажи пути **относительно папки, где лежит этот JSON**:
+   - **`attached_files`** — таблицы, PDF, любые файлы к условию:  
+     `["attachments/table.xlsx"]`
+   - **`images`** — изображения из условия или скрины:  
+     `["attachments/condition.png"]` или URL, если картинка снаружи.
+
+3. **Как это работает**  
+   - Код/тренажёр, который читает прототип, знает путь к JSON (например `task_03/medium/task_03_medium.json`).  
+   - Файл из `attachments/table.xlsx` раскрывается как `task_03/medium/attachments/table.xlsx`.  
+   - В `prototype.text` или `input_format` опиши, что в таблице и как ею пользоваться (столбцы, что считать, откуда брать данные), чтобы и человек, и LLM понимали контекст.
+
+**Пример для задания 3 (Excel):**  
+Файл `task_03/medium/attachments/table.xlsx` кладёшь в папку; в JSON — `"attached_files": ["attachments/table.xlsx"]`, в `input_format` — например: «Таблица в приложении table.xlsx: столбцы A–D, строки 2–100, нужно отфильтровать по условию и посчитать сумму».
+
+### Задания 19–21 (одна задача в трёх частях — теория игр)
+
+19, 20 и 21 по сути одно задание, разбитое на три подпункта. Чтобы это отразить, в прототипах **только для 19–21** добавлены опциональные поля:
+
+- **`series_id`** — общий идентификатор серии, напр. `"game-theory"`.
+- **`series_part`** — номер части: 1 (задание 19), 2 (20), 3 (21).
+- **`series_task_numbers`** — список номеров в серии: `[19, 20, 21]`.
+
+Покрытие и валидация по-прежнему считают 19, 20, 21 тремя отдельными заданиями (три ячейки). Связка через `series_*` нужна, чтобы тренажёр/LLM могли показывать контекст «часть 1 из 3» и при желании объединять подсказки по одной сюжетной задаче.
+
+**Импорт в банк заданий (платформа):** один файл 19–21 должен создавать в БД **три отдельных задания** (19, 20, 21), чтобы ученик сдавал три ответа и статистика считалась по каждому отдельно. Для этого после заполнения эталона запусти:
+
+```bash
+python scripts/import_prototype_to_tasks.py data/reference_prototypes/task_19/medium/task_19_medium.json
+```
+
+Скрипт создаёт в таблице `Tasks` три строки (task_number 19, 20, 21) с общим текстом и разобранными ответами. Эти три задания добавляешь в работу — на платформе они идут как отдельные поля и отдельные события аналитики.
+
 ## Как добавлять новые прототипы
 
-1. Скопируйте `_template_example.json` в `task_XX/<difficulty>/proto_NNN.json`
-2. Заполните все обязательные поля
-3. Валидируйте JSON против `prototype_schema.json`
-4. Коммитьте
+Каталоги `task_01` … `task_27` с подкаталогами `easy/`, `medium/`, `hard/` уже созданы.
+
+**Основной файл на ячейку** — с уникальным именем: `task_01_easy.json`, `task_01_medium.json`, `task_01_hard.json`, … `task_27_hard.json` (заполняешь именно их).
+
+**Добавить ещё один прототип в ту же ячейку** (например, второй вариант задания №5 medium):
+```bash
+python scripts/new_prototype.py --task 5 --difficulty medium
+# Создаст task_05/medium/proto_002.json из шаблона
+```
+
+**Вручную:** скопируйте `_template_example.json` в `task_XX/<difficulty>/task_XX_<difficulty>.json` или `proto_NNN.json`.
+
+После заполнения данных:
+```bash
+python scripts/validate_prototypes.py          # проверить все JSON на соответствие схеме
+python scripts/check_prototype_coverage.py     # таблица покрытия по заданиям 1–27
+python scripts/check_prototype_coverage.py --fail-on-gap   # выход 1 при пробелах (CI)
+```
 
 ## Использование для обучения LLM
 

@@ -1,0 +1,64 @@
+{
+  "task_number": 17,
+  "topic_code": "ALG-SEQ",
+  "topic_name": "Обработка последовательностей",
+  "difficulty_level": 8,
+  "difficulty_label": "hard",
+  "prototype": {
+    "text": "<p>В файле содержится последовательность целых чисел. Определите количество <strong>четвёрок</strong> элементов последовательности, в которых:</p><ul><li>Ровно три числа больше 500;</li><li>Сумма всех четырёх чисел не превышает максимальное число в последовательности, оканчивающееся на <strong>29</strong>.</li></ul><p>В ответе запишите количество таких четвёрок и максимальную из их сумм.</p>",
+    "input_format": "Файл .txt",
+    "answer_format": "Два числа",
+    "attached_files": ["attachments/17_hard.txt"],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Находим контрольное число: макс элемент, оканчивающийся на 29. Используем `str(x)` или `abs(x) % 100`.",
+        "code": "with open('17_hard.txt') as f:\n    nums = [int(x) for x in f]\n\nmax_29 = max(x for x in nums if str(x).endswith('29'))\n# Или математически для отрицательных: abs(x) % 100 == 29 (осторожно с отриц)"
+      },
+      {
+        "step": 2,
+        "explanation": "Перебираем четверки. Индекс до `len(nums) - 3`.",
+        "code": "ans = []\nfor i in range(len(nums) - 3):\n    # Срез четверки\n    quad = nums[i:i+4]\n    \n    # Условие 1: Ровно три > 500\n    cnt_500 = 0\n    for x in quad:\n        if x > 500: cnt_500 += 1\n    \n    # Условие 2: Сумма <= max_29\n    if cnt_500 == 3 and sum(quad) <= max_29:\n        ans.append(sum(quad))\n\nprint(len(ans), max(ans))"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Компактный код с генераторами.",
+            "code": "with open('17_hard.txt') as f:\n    a = [int(x) for x in f]\n\nmx = max(x for x in a if str(x).endswith('29'))\nres = []\n\nfor i in range(len(a) - 3):\n    q = a[i:i+4]\n    if len([x for x in q if x > 500]) == 3 and sum(q) <= mx:\n        res.append(sum(q))\n        \nprint(len(res), max(res))"
+          }
+        ]
+      }
+    ],
+    "alternative_methods": [],
+    "common_mistakes": [
+      "Использование `x % 100 == 29` для отрицательных чисел (в Python -129 % 100 == 71, а не 29). Нужно `abs(x) % 100`.",
+      "Ошибка в диапазоне цикла (выход за границы массива)."
+    ],
+    "time_estimate_sec": 300
+  },
+  "answer": "5526 19416",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Для проверки окончания числа на 29 используй `str(x).endswith('29')` или `abs(x) % 100 == 29`."
+    },
+    {
+      "level": 2,
+      "text": "Чтобы проверить \"ровно три числа > 500\", можно создать список `[x for x in quad if x > 500]` и проверить его длину."
+    },
+    {
+      "level": 3,
+      "text": "Не забудь, что четверка — это `nums[i], nums[i+1], nums[i+2], nums[i+3]`."
+    }
+  ],
+  "tags": ["четверки", "строковые методы", "python"],
+  "source": "EGE PDF Task",
+  "meta": {}
+}

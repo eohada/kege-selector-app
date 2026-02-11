@@ -1,0 +1,78 @@
+{
+  "task_number": 22,
+  "topic_code": "PARALLEL-PROC",
+  "topic_name": "Параллельные вычисления",
+  "difficulty_level": 5,
+  "difficulty_label": "medium",
+  "series_id": "proc_multi_deps",
+  "prototype": {
+    "text": "<p>Файл содержит информацию о процессах. В столбце 'Предки' могут быть перечислены несколько ID через точку с запятой. Пример: <code>3;4</code>.</p><p>Определите минимальное время завершения всех процессов.</p>",
+    "input_format": "Файл .csv",
+    "answer_format": "int",
+    "attached_files": ["attachments/22_medium.csv"],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Парсинг файла усложняется наличием `;` в поле зависимостей.",
+        "code": "data = {}\nwith open('22_medium.csv') as f:\n    for line in f:\n        parts = line.strip().split(';')\n        pid = int(parts[0])\n        time = int(parts[1])\n        # Все оставшиеся части строки — это предки (если формат ID;Time;Dep1;Dep2...)\n        # Или если формат ID;Time;\"Dep1;Dep2\"\n        # Предположим формат CSV, где предки в одной ячейке или в нескольких.\n        # Обычно в ЕГЭ: ID <tab> Time <tab> Dep1;Dep2\n        # Реализуем универсально:\n        deps_str = parts[2] if len(parts) > 2 else \"0\"\n        deps = [int(x) for x in deps_str.replace('\"','').split(';') if x.isdigit()] if deps_str != \"0\" else []\n        data[pid] = {'t': time, 'd': deps, 'end': None}"
+      },
+      {
+        "step": 2,
+        "explanation": "Рекурсивная функция.",
+        "code": "def solve(pid):\n    if data[pid]['end'] is not None: return data[pid]['end']\n    \n    start = 0\n    if data[pid]['d']:\n        start = max(solve(dep) for dep in data[pid]['d'])\n    \n    data[pid]['end'] = start + data[pid]['t']\n    return data[pid]['end']\n\nprint(max(solve(pid) for pid in data))"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Код выше.",
+            "code": "# См. Solution"
+          }
+        ]
+      },
+      {
+        "name": "Решение в Excel",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Если предки в одной ячейке ('3;4'), Excel не сможет их сразу обработать. Нужно использовать 'Данные -> Текст по столбцам', чтобы разбить предков на отдельные колонки (C, D, E...)."
+          },
+          {
+            "step": 2,
+            "explanation": "Формула времени завершения (в столбце Z, например): `=B2 + МАКС(ВПР(C2...); ВПР(D2...); ВПР(E2...))`.\nЧтобы ВПР не ломался на пустых ячейках, используйте `ЕСЛИОШИБКА(ВПР(...); 0)`."
+          }
+        ]
+      }
+    ],
+    "alternative_methods": ["Excel (Текст по столбцам)"],
+    "common_mistakes": [
+      "Не учли, что предков может быть много (до 3-4).",
+      "В Excel забыли `ЕСЛИОШИБКА`, и формула вернула #Н/Д."
+    ],
+    "time_estimate_sec": 300
+  },
+  "answer": "1254",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "В Python используй `split(';')` для разделения списка предков."
+    },
+    {
+      "level": 2,
+      "text": "В Excel разбей столбец предков на несколько столбцов через 'Текст по столбцам'."
+    },
+    {
+      "level": 3,
+      "text": "Время начала процесса = МАКС(Время окончания всех его предков)."
+    }
+  ],
+  "tags": ["процессы", "python", "excel"],
+  "source": "FIPI Standard",
+  "meta": {}
+}

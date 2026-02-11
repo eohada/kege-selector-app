@@ -1,0 +1,77 @@
+{
+  "task_number": 16,
+  "topic_code": "ALG-RECURSION",
+  "topic_name": "Рекурсивные алгоритмы",
+  "difficulty_level": 5,
+  "difficulty_label": "medium",
+  "prototype": {
+    "text": "<p>Алгоритм вычисления функции $F(n)$ задан соотношениями:</p><p>$F(n) = n + 3$, если $n < 3$;</p><p>$F(n) = F(n-2) + n$, если $n \\ge 3$ и чётно;</p><p>$F(n) = F(n-2) + 2 \\cdot n$, если $n \\ge 3$ и нечётно.</p><p>Чему равно значение функции $F(40)$? В ответе запишите только целое число.</p>",
+    "input_format": "Целое число",
+    "answer_format": "int",
+    "attached_files": [],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Напишем функцию на Python. Для ускорения используем декоратор `@lru_cache` (хотя для n=40 это не критично, но полезная привычка для ЕГЭ).",
+        "code": "from functools import lru_cache\n\n@lru_cache(None)\ndef F(n):\n    if n < 3:\n        return n + 3\n    if n % 2 == 0:\n        return F(n - 2) + n\n    else:\n        return F(n - 2) + 2 * n"
+      },
+      {
+        "step": 2,
+        "explanation": "Вызовем F(40).",
+        "code": "print(F(40))"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Код решения.",
+            "code": "def F(n):\n    if n < 3: return n + 3\n    if n % 2 == 0:\n        return F(n - 2) + n\n    return F(n - 2) + 2 * n\n\nprint(F(40))"
+          }
+        ]
+      },
+      {
+        "name": "Ручной способ",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Развернем рекурсию для четных чисел. $F(40) = F(38) + 40$. $F(38) = F(36) + 38$. \nЭто арифметическая прогрессия."
+          },
+          {
+            "step": 2,
+            "explanation": "$F(n) = F(n-2) + n$. \n$F(40) = 40 + 38 + 36 + \\dots + 4 + F(2)$.\n$F(2) = 2 + 3 = 5$ (т.к. $2 < 3$).\nСумма четных от 4 до 40: $\\frac{4+40}{2} \\cdot 19 = 22 \\cdot 19 = 418$.\nОтвет: $418 + 5 = 423$."
+          }
+        ]
+      }
+    ],
+    "alternative_methods": ["Разворачивание цикла"],
+    "common_mistakes": [
+      "Ошиблись в базе рекурсии (посчитали F(2) по формуле для n>=3).",
+      "Ошиблись в сумме арифметической прогрессии."
+    ],
+    "time_estimate_sec": 180
+  },
+  "answer": "423",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Перепиши условия в виде функции `def F(n):`."
+    },
+    {
+      "level": 2,
+      "text": "В условии сказано: если `n < 3`, то `n + 3`. Это твой `if` для выхода из рекурсии."
+    },
+    {
+      "level": 3,
+      "text": "Вручную: заметь, что для четного `n` функция просто суммирует четные числа."
+    }
+  ],
+  "tags": ["рекурсия", "lru_cache", "python"],
+  "source": "FIPI Base",
+  "meta": {}
+}

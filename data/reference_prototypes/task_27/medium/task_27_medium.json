@@ -1,0 +1,59 @@
+{
+  "task_number": 27,
+  "topic_code": "ALG-OPTIMIZATION",
+  "topic_name": "Эффективные алгоритмы",
+  "difficulty_level": 7,
+  "difficulty_label": "medium",
+  "prototype": {
+    "text": "<p>Дана последовательность. Найдите непрерывную подпоследовательность с максимальной суммой, кратной <strong>89</strong>.</p>",
+    "input_format": "Файл .txt",
+    "answer_format": "int",
+    "attached_files": ["attachments/27_pref.txt"],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Используем префиксные суммы. `S[i]` — сумма первых `i` элементов. \nСумма подстроки `[j..i]` равна `S[i] - S[j-1]`. \nЧтобы разность делилась на 89, `S[i]` и `S[j-1]` должны иметь **одинаковый остаток** от деления на 89.",
+        "code": "with open('27_pref.txt') as f:\n    n = int(f.readline())\n    nums = [int(line) for line in f]\n\n# min_prefix[rem] хранит МИНИМАЛЬНУЮ префиксную сумму с остатком rem.\n# Инициализируем бесконечностью, кроме остатка 0.\nmin_prefix = {r: float('inf') for r in range(89)}\nmin_prefix[0] = 0 # Сумма пустого префикса = 0, остаток 0\n\nmax_sum = 0\ncurrent_sum = 0\n\nfor x in nums:\n    current_sum += x\n    rem = current_sum % 89\n    \n    # Если такой остаток уже встречался, значит разность (current_sum - min_prefix[rem]) кратна 89.\n    # И так как мы вычитаем МИНИМАЛЬНУЮ сумму, результат будет МАКСИМАЛЬНЫМ.\n    if min_prefix[rem] != float('inf'):\n        max_sum = max(max_sum, current_sum - min_prefix[rem])\n    \n    # Обновляем минимум для этого остатка\n    min_prefix[rem] = min(min_prefix[rem], current_sum)\n\nprint(max_sum)"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Код выше. Работает за O(N).",
+            "code": "# См. Solution"
+          }
+        ]
+      }
+    ],
+    "alternative_methods": ["Полный перебор O(N^2) (только для А)"],
+    "common_mistakes": [
+      "Не инициализировали `min_prefix[0] = 0` (потеряли случаи, когда сама префиксная сумма кратна 89).",
+      "Забыли, что числа могут быть отрицательными (в ЕГЭ обычно натуральные, но если целые — остаток в Python может быть другим, нужно `rem % K`)."
+    ],
+    "time_estimate_sec": 360
+  },
+  "answer": "1685215",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Сумма подстроки равна разности двух префиксных сумм: `P[i] - P[j]`."
+    },
+    {
+      "level": 2,
+      "text": "Разность делится на K, если уменьшаемое и вычитаемое имеют одинаковый остаток от деления на K."
+    },
+    {
+      "level": 3,
+      "text": "Для каждого остатка храни *минимальную* встреченную ранее префиксную сумму. Вычитая её из текущей, получишь максимум."
+    }
+  ],
+  "tags": ["префиксные суммы", "остатки", "python"],
+  "source": "Statgrad Medium",
+  "meta": {}
+}

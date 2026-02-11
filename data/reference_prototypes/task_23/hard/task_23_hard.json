@@ -1,0 +1,64 @@
+{
+  "task_number": 23,
+  "topic_code": "DP-COUNT",
+  "topic_name": "Динамическое программирование (кол-во путей)",
+  "difficulty_level": 8,
+  "difficulty_label": "hard",
+  "prototype": {
+    "text": "<p>Исполнитель преобразует число: <strong>+1</strong>, <strong>+2</strong>, <strong>*2</strong>. \nСколько существует программ, преобразующих число <strong>3</strong> в число <strong>18</strong>, при этом траектория вычислений <strong>содержит</strong> число <strong>9</strong> и <strong>не содержит</strong> числа <strong>13</strong>?</p>",
+    "input_format": "Целое число",
+    "answer_format": "int",
+    "attached_files": [],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Модифицируем функцию `f`. Добавим проверку на запрещенное число (13). Если `x == 13`, возвращаем 0.",
+        "code": "def f(x, y):\n    if x > y or x == 13:\n        return 0\n    if x == y:\n        return 1\n    return f(x + 1, y) + f(x + 2, y) + f(x * 2, y)"
+      },
+      {
+        "step": 2,
+        "explanation": "Разбиваем маршрут по обязательной вершине (9): 3 -> 9 и 9 -> 18.",
+        "code": "print(f(3, 9) * f(9, 18))"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Код с учетом обоих условий.",
+            "code": "def f(x, y):\n    if x > y or x == 13: return 0\n    if x == y: return 1\n    return f(x + 1, y) + f(x + 2, y) + f(x * 2, y)\n\n# Путь 3 -> 9 -> 18, избегая 13\nprint(f(3, 9) * f(9, 18))"
+          }
+        ]
+      }
+    ],
+    "alternative_methods": [],
+    "common_mistakes": [
+      "Забыли условие про запрещенное число 13 (оно может встретиться и на этапе 3->9, и на этапе 9->18).",
+      "Неверно указали набор команд (+2 вместо *2)."
+    ],
+    "time_estimate_sec": 240
+  },
+  "answer": "24",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Добавь в функцию проверку: `if x == 13: return 0`."
+    },
+    {
+      "level": 2,
+      "text": "Разбей путь на два этапа: до обязательного числа 9 и после него."
+    },
+    {
+      "level": 3,
+      "text": "Посчитай `f(3, 9)` и `f(9, 18)`, затем перемножь."
+    }
+  ],
+  "tags": ["dp", "сложные условия", "python"],
+  "source": "EGE PDF Task",
+  "meta": {}
+}

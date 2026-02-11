@@ -58,12 +58,12 @@
         "attached_files": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "Пути к прикреплённым файлам (если есть)."
+          "description": "Пути к файлам задания (Excel, CSV, PDF и т.д.). Относительно папки с этим JSON или подпапки attachments/. Пример: [\"attachments/table.xlsx\"]."
         },
         "images": {
           "type": "array",
           "items": { "type": "string" },
-          "description": "URL/пути к изображениям в задании."
+          "description": "Пути к изображениям в задании (относительно папки с JSON или attachments/). Либо URL."
         }
       }
     },
@@ -110,6 +110,33 @@
         "time_estimate_sec": {
           "type": "integer",
           "description": "Оценочное время на решение в секундах."
+        },
+        "variants": {
+          "type": "array",
+          "description": "Дополнительные варианты решения: ручной, программой и т.д.",
+          "items": {
+            "type": "object",
+            "required": ["name", "steps"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Название варианта: 'Ручной способ', 'Решение программой' и т.п."
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["step", "explanation"],
+                  "properties": {
+                    "step": { "type": "integer" },
+                    "explanation": { "type": "string" },
+                    "code": { "type": "string" },
+                    "formula": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -149,6 +176,20 @@
     "meta": {
       "type": "object",
       "description": "Произвольные метаданные (автор, дата, версия и т.д.)."
+    },
+    "series_id": {
+      "type": "string",
+      "description": "Опционально. Идентификатор серии заданий (напр. 19–21 — одна задача в трёх частях). Одинаковый у всех частей."
+    },
+    "series_part": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Опционально. Номер части в серии (1, 2, 3…). Используется вместе с series_id."
+    },
+    "series_task_numbers": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "description": "Опционально. Номера заданий ЕГЭ в этой серии, напр. [19, 20, 21]."
     }
   }
 }

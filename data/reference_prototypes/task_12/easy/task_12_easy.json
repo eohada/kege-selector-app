@@ -1,0 +1,80 @@
+{
+  "task_number": 12,
+  "topic_code": "ALG-TURING",
+  "topic_name": "Машина Тьюринга",
+  "difficulty_level": 3,
+  "difficulty_label": "easy",
+  "prototype": {
+    "text": "<p>Исполнитель Машина Тьюринга (МТ) работает с лентой, на которой записано двоичное число. Остальные ячейки заполнены символом <strong>λ</strong> (пусто). Головка находится над первой цифрой числа (самой левой). Алфавит: {0, 1, λ}.</p><p>Программа МТ задана таблицей переходов:</p><table border='1'><tr><th></th><th>0</th><th>1</th><th>λ</th></tr><tr><td>q0</td><td>1, R, q0</td><td>0, R, q0</td><td>λ, N, q1</td></tr></table><p>Начальное состояние <strong>q0</strong>. Конечное состояние <strong>q1</strong> (стоп).</p><p>Какое число (в десятичной системе) окажется на ленте после остановки машины, если исходно было записано число <strong>10</strong> (десятичное)?</p>",
+    "input_format": "Целое число",
+    "answer_format": "int",
+    "attached_files": [],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Переведем число 10 в двоичную систему: $10_{10} = 1010_2$. Лента: `... λ 1 0 1 0 λ ...`.",
+        "code": "n = 10\ntape_str = bin(n)[2:] # '1010'\nprint(f\"Исходная лента: {tape_str}\")"
+      },
+      {
+        "step": 2,
+        "explanation": "Используем универсальный класс TuringMachine для эмуляции.",
+        "code": "from collections import defaultdict\n\nclass TuringMachine:\n    def __init__(self, rules, tape_str=\"\", blank='λ', start_state='q0', accept_states=('q1',)):\n        self.rules = rules\n        self.blank = blank\n        self.state = start_state\n        self.accept = set(accept_states)\n        self.tape = defaultdict(lambda: blank)\n        for i, ch in enumerate(tape_str):\n            self.tape[i] = ch\n        self.head = 0\n\n    def step(self):\n        sym = self.tape[self.head]\n        key = (self.state, sym)\n        if key not in self.rules:\n            return False\n        write, move, next_state = self.rules[key]\n        self.tape[self.head] = write\n        if move == 'L': self.head -= 1\n        elif move == 'R': self.head += 1\n        self.state = next_state\n        return self.state not in self.accept\n\n    def run(self, max_steps=1000):\n        steps = 0\n        while steps < max_steps and self.state not in self.accept:\n            if not self.step(): break\n            steps += 1\n    \n    def get_tape_str(self):\n        indexes = [i for i, sym in self.tape.items() if sym != self.blank]\n        if not indexes: return \"\"\n        return \"\".join(self.tape[i] for i in range(min(indexes), max(indexes)+1))\n\n# Правила: q0,0->1,R,q0 | q0,1->0,R,q0 | q0,λ->λ,N,q1\nrules = {\n    ('q0', '0'): ('1', 'R', 'q0'),\n    ('q0', '1'): ('0', 'R', 'q0'),\n    ('q0', 'λ'): ('λ', 'N', 'q1')\n}\n\ntm = TuringMachine(rules, tape_str)\ntm.run()\nres_bin = tm.get_tape_str()\nprint(f\"Результат (bin): {res_bin}\")\nprint(f\"Результат (dec): {int(res_bin, 2)}\")"
+      },
+      {
+        "step": 3,
+        "explanation": "Анализ: q0 идет вправо, инвертируя биты (0->1, 1->0). 1010 -> 0101. 0101 в десятичной это 5."
+      }
+    ],
+    "variants": [
+      {
+        "name": "Ручная трассировка",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Лента: 1 0 1 0. Головка на 1-м символе (1). Состояние q0."
+          },
+          {
+            "step": 2,
+            "explanation": "q0, 1 -> пишем 0, сдвиг R, сост q0. Лента: 0 0 1 0. Головка на 2-м (0)."
+          },
+          {
+            "step": 3,
+            "explanation": "q0, 0 -> пишем 1, сдвиг R, сост q0. Лента: 0 1 1 0. Головка на 3-м (1)."
+          },
+          {
+            "step": 4,
+            "explanation": "q0, 1 -> пишем 0, сдвиг R, сост q0. Лента: 0 1 0 0. Головка на 4-м (0)."
+          },
+          {
+            "step": 5,
+            "explanation": "q0, 0 -> пишем 1, сдвиг R, сост q0. Лента: 0 1 0 1. Головка на λ."
+          },
+          {
+            "step": 6,
+            "explanation": "q0, λ -> стоп (q1). Результат 0101 -> 5."
+          }
+        ]
+      }
+    ],
+    "alternative_methods": ["Эмулятор"],
+    "common_mistakes": ["Ошибка при переводе в двоичную систему."],
+    "time_estimate_sec": 180
+  },
+  "answer": "5",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Переведи 10 -> 1010. Используй класс TuringMachine."
+    },
+    {
+      "level": 2,
+      "text": "Запиши правила в словарь `rules` и запусти метод `run()`."
+    }
+  ],
+  "tags": ["машина тьюринга", "python", "эмулятор"],
+  "source": "Demo 2026",
+  "meta": {}
+}

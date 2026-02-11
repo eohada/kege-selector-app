@@ -1,0 +1,64 @@
+{
+  "task_number": 26,
+  "topic_code": "ALG-GREEDY",
+  "topic_name": "Обработка данных (сортировка)",
+  "difficulty_level": 8,
+  "difficulty_label": "hard",
+  "prototype": {
+    "text": "<p>В камере хранения $K$ ячеек. Приходят пассажиры сдавать багаж на определенное время (start, end). Багаж кладется в ячейку с <strong>минимальным номером</strong>, которая свободна в момент `start`.</p><p>Определите, сколько багажа будет принято и номер ячейки, в которую положат последний принятый багаж.</p>",
+    "input_format": "Файл .txt (K, N, далее строки start end)",
+    "answer_format": "Два числа",
+    "attached_files": ["attachments/26_hard.txt"],
+    "images": []
+  },
+  "solution": {
+    "steps": [
+      {
+        "step": 1,
+        "explanation": "Здесь нам выгодно брать пассажиров, которые приходят РАНЬШЕ (сортировка по Start). \nСоздадим список ячеек: `cells = [0] * K`. В `cells[i]` будем хранить время, когда ячейка освободится.",
+        "code": "with open('26_hard.txt') as f:\n    params = f.readline().split()\n    K = int(params[0])\n    N = int(params[1])\n    luggage = []\n    for line in f:\n        luggage.append(list(map(int, line.split())))\n\n# Сортируем по времени прихода (start)\nluggage.sort(key=lambda x: x[0])"
+      },
+      {
+        "step": 2,
+        "explanation": "Проходим по пассажирам. Для каждого ищем первую ячейку (с мин индексом), которая свободна (`cells[j] < start`). Если нашли — обновляем время освобождения (`cells[j] = end + 1`? Нет, обычно `end` — время, когда забирают, значит свободна она с `end + 1` или `end`). Уточните условие (в данную минуту еще занято или уже свободно). Допустим, `end` — минута, когда багаж ЕЩЕ там. Свободна с `end + 1`.",
+        "code": "cells = [0] * K\ncount = 0\nlast_cell_idx = 0\n\nfor start, end in luggage:\n    for j in range(K):\n        if cells[j] < start: # Ячейка освободилась ДО прихода пассажира\n            cells[j] = end # Теперь она занята до end\n            count += 1\n            last_cell_idx = j + 1 # Номер ячейки (1..K)\n            break\n\nprint(count, last_cell_idx)"
+      }
+    ],
+    "variants": [
+      {
+        "name": "Решение программой (Python)",
+        "steps": [
+          {
+            "step": 1,
+            "explanation": "Код выше. Можно оптимизировать, если K большое, но обычно K до 1000, вложенный цикл `N*K` проходит за секунду.",
+            "code": "# См. Solution"
+          }
+        ]
+      }
+    ],
+    "alternative_methods": [],
+    "common_mistakes": [
+      "Сортировка по времени окончания (здесь не работает, так как мы не выбираем 'лучших', а обслуживаем очередь).",
+      "Неправильное условие занятости (строго меньше или меньше либо равно)."
+    ],
+    "time_estimate_sec": 420
+  },
+  "answer": "30 1",
+  "hint_ladder": [
+    {
+      "level": 1,
+      "text": "Создай массив `cells` размером K, заполненный нулями. Это время, когда каждая ячейка освободится."
+    },
+    {
+      "level": 2,
+      "text": "Сортируй пассажиров по времени ПРИХОДА (start)."
+    },
+    {
+      "level": 3,
+      "text": "Для каждого пассажира пробегай по массиву `cells` и ищи первую ячейку, где `free_time < start`. Обновляй её значением `end`."
+    }
+  ],
+  "tags": ["ячейки", "моделирование", "python"],
+  "source": "Statgrad Hard",
+  "meta": {}
+}
