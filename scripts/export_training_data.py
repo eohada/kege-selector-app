@@ -32,6 +32,15 @@ logger = logging.getLogger(__name__)
 PROTOTYPES_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'reference_prototypes')
 SCHEMA_PATH = os.path.join(PROTOTYPES_DIR, 'prototype_schema.json')
 
+# Варианты формулировок запроса подсказки (для аугментации)
+HINT_REQUEST_VARIANTS = [
+    "Дай мне подсказку уровня {}.",
+    "Подскажи, что делать (уровень {}).",
+    "Мне нужна подсказка уровня {}.",
+    "Можешь дать подсказку {} уровня?",
+    "Помоги, подсказка уровня {}.",
+]
+
 
 def load_prototypes():
     """Загружает все .json прототипы из каталога (исключая schema и template)."""
@@ -109,10 +118,22 @@ def prototype_to_training_sample(proto: dict) -> dict:
     }
 
 
-def prototype_to_hint_samples(proto: dict) -> list:
+def _hint_system_prompt(proto: dict, level: int) -> str:
+    """Системный промпт для подсказок с жёстким запретом на решение."""
+    return (
+        "Ты — репетитор ЕГЭ по информатике. Ученик попросил подсказку. "
+        f"Дай подсказку уровня {level} (1 — идея, 2 — структура, 3 — наводка). "
+        f"Задание #{proto.get('task_number', '?')}, тема: {proto.get('topic_name', '?')}. "
+        "ЖЁСТКОЕ ПРАВИЛО: НЕЛЬЗЯ выдавать полное решение, итоговый код или ответ. "
+        "Только подсказки: вопросы, аналогии, наводки — без готового кода."
+    )
+
+
+def prototype_to_hint_samples(proto: dict, augment: bool = True) -> list:
     """
     Генерирует обучающие примеры для модели подсказок.
     По одному примеру на каждый уровень hint_ladder.
+    При augment=True — добавляет вариации формулировок запроса (аугментация).
     """
     hints = proto.get('hint_ladder', [])
     if not hints:
@@ -123,19 +144,28 @@ def prototype_to_hint_samples(proto: dict) -> list:
 
     for hint in hints:
         level = hint.get('level', 1)
-        system_prompt = (
-            "Ты — репетитор ЕГЭ по информатике. Ученик попросил подсказку. "
-            f"Дай подсказку уровня {level}/5 (1 — мягкая, 5 — почти ответ). "
-            f"Задание #{proto.get('task_number', '?')}, тема: {proto.get('topic_name', '?')}."
-        )
-        user_msg = f"Задание: {task_text}\n\nДай мне подсказку уровня {level}."
-        samples.append({
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_msg},
-                {"role": "assistant", "content": hint.get('text', '')},
-            ]
-        })
+        hint_text = hint.get('text', '')
+        if not hint_text:
+            continue
+
+        system_prompt = _hint_system_prompt(proto, level)
+
+        # Базовый вариант
+        user_variants = [f"Задание: {task_text}\n\nДай мне подсказку уровня {level}."]
+
+        # Аугментация: другие формулировки запроса
+        if augment:
+            for tpl in HINT_REQUEST_VARIANTS[1:]:  # первый уже есть в базовом
+                user_variants.append(f"Задание: {task_text}\n\n{tpl.format(level)}")
+
+        for user_msg in user_variants:
+            samples.append({
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_msg},
+                    {"role": "assistant", "content": hint_text},
+                ]
+            })
     return samples
 
 
@@ -208,16 +238,46 @@ def export_db_tasks(output_dir: str, fmt: str):
         logger.warning(f"Не удалось экспортировать из БД: {e}")
 
 
+def _proto_split_key(proto: dict) -> tuple:
+    """Ключ для разбиения по прототипу (train/val)."""
+    return (
+        proto.get('task_number', 0),
+        proto.get('difficulty_label', ''),
+        proto.get('_source_file', ''),
+    )
+
+
+def split_prototypes_train_val(prototypes: list, val_ratio: float = 0.15) -> tuple[list, list]:
+    """
+    Разбивает прототипы на train и val.
+    Детерминированно: одни и те же прототипы всегда попадают в один и тот же набор.
+    """
+    keys = [_proto_split_key(p) for p in prototypes]
+    unique_keys = sorted(set(keys))
+    n_val = max(1, int(len(unique_keys) * val_ratio))
+    val_keys = set(unique_keys[-n_val:])  # последние N ключей — val (стабильный порядок)
+
+    train_protos = [p for p in prototypes if _proto_split_key(p) not in val_keys]
+    val_protos = [p for p in prototypes if _proto_split_key(p) in val_keys]
+    return train_protos, val_protos
+
+
 def generate_coverage_report(prototypes: list, output_dir: str):
-    """Отчёт о покрытии: какие задания/сложности представлены."""
+    """Отчёт о покрытии: какие задания/сложности представлены. Серия 19–21: один прототип учитывается для всех номеров из series_task_numbers."""
     coverage = {}
     for p in prototypes:
-        tn = p.get('task_number', 0)
         dl = p.get('difficulty_label', 'unknown')
-        if tn not in coverage:
-            coverage[tn] = {'easy': 0, 'medium': 0, 'hard': 0}
-        if dl in coverage[tn]:
-            coverage[tn][dl] += 1
+        task_numbers = p.get('series_task_numbers')
+        if isinstance(task_numbers, list) and len(task_numbers) > 0:
+            task_numbers = [t for t in task_numbers if isinstance(t, int) and 1 <= t <= 27]
+        else:
+            tn = p.get('task_number', 0)
+            task_numbers = [tn] if isinstance(tn, int) and 1 <= tn <= 27 else []
+        for tn in task_numbers:
+            if tn not in coverage:
+                coverage[tn] = {'easy': 0, 'medium': 0, 'hard': 0}
+            if dl in coverage[tn]:
+                coverage[tn][dl] += 1
 
     report_path = os.path.join(output_dir, 'coverage_report.txt')
     with open(report_path, 'w', encoding='utf-8') as f:
@@ -252,6 +312,8 @@ def main():
     parser.add_argument('--output-dir', default='exports', help="Каталог для экспорта (default: exports)")
     parser.add_argument('--format', choices=['jsonl', 'csv', 'both'], default='both', help="Формат экспорта")
     parser.add_argument('--include-db', action='store_true', help="Включить экспорт задач из БД")
+    parser.add_argument('--val-ratio', type=float, default=0.15, help="Доля validation (0.15 = 15%%, default: 0.15)")
+    parser.add_argument('--no-augment', action='store_true', help="Отключить аугментацию формулировок подсказок")
     args = parser.parse_args()
 
     output_dir = os.path.abspath(args.output_dir)
@@ -276,21 +338,52 @@ def main():
 
     logger.info(f"Валидных прототипов: {len(valid_protos)}")
 
+    # --- Train/Val split ---
+    train_protos, val_protos = split_prototypes_train_val(valid_protos, val_ratio=args.val_ratio)
+    logger.info(f"Split: train={len(train_protos)} прототипов, val={len(val_protos)} прототипов")
+
+    augment = not args.no_augment
+
     # --- Генерация обучающих примеров ---
     solution_samples = []
-    hint_samples = []
+    hint_samples_train = []
+    hint_samples_val = []
     difficulty_samples = []
 
     for proto in valid_protos:
         solution_samples.append(prototype_to_training_sample(proto))
-        hint_samples.extend(prototype_to_hint_samples(proto))
         difficulty_samples.append(prototype_to_difficulty_sample(proto))
+
+    for proto in train_protos:
+        hint_samples_train.extend(prototype_to_hint_samples(proto, augment=augment))
+    for proto in val_protos:
+        hint_samples_val.extend(prototype_to_hint_samples(proto, augment=augment))
+
+    hint_samples_all = hint_samples_train + hint_samples_val
 
     # --- Экспорт JSONL ---
     if args.format in ('jsonl', 'both'):
+        # Файлы для fine-tuning подсказок (главный датасет)
+        for name, samples in [
+            ('train_hints.jsonl', hint_samples_train),
+            ('val_hints.jsonl', hint_samples_val),
+        ]:
+            path = os.path.join(output_dir, name)
+            with open(path, 'w', encoding='utf-8') as f:
+                for sample in samples:
+                    f.write(json.dumps(sample, ensure_ascii=False) + '\n')
+            logger.info(f"  {name}: {len(samples)} примеров")
+
+        # Обратная совместимость: полный набор
+        path = os.path.join(output_dir, 'training_hints.jsonl')
+        with open(path, 'w', encoding='utf-8') as f:
+            for sample in hint_samples_all:
+                f.write(json.dumps(sample, ensure_ascii=False) + '\n')
+        logger.info(f"  training_hints.jsonl: {len(hint_samples_all)} примеров (train+val)")
+
+        # Остальные сэмплы (решения, классификация) — без split, для справки
         for name, samples in [
             ('training_solutions.jsonl', solution_samples),
-            ('training_hints.jsonl', hint_samples),
             ('training_difficulty.jsonl', difficulty_samples),
         ]:
             path = os.path.join(output_dir, name)
@@ -326,10 +419,11 @@ def main():
     if args.include_db:
         export_db_tasks(output_dir, args.format)
 
-    print(f"\n✅ Экспорт завершён в: {output_dir}")
-    print(f"   Решения:    {len(solution_samples)} примеров")
-    print(f"   Подсказки:  {len(hint_samples)} примеров")
-    print(f"   Сложность:  {len(difficulty_samples)} примеров")
+    print(f"\n[OK] Экспорт завершён в: {output_dir}")
+    print(f"   Подсказки (train): {len(hint_samples_train)} примеров")
+    print(f"   Подсказки (val):   {len(hint_samples_val)} примеров")
+    print(f"   Решения:          {len(solution_samples)} примеров")
+    print(f"   Сложность:       {len(difficulty_samples)} примеров")
 
 
 if __name__ == '__main__':

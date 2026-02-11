@@ -113,3 +113,8 @@ telegram-task-tracker-bot/
 
 # Visual audit (локальные учётные данные для скрипта)
 visual_audit_ids.json
+
+# Экспорт для fine-tuning (генерируется скриптом)
+exports/*.jsonl
+exports/*.csv
+exports/coverage_report.txt
