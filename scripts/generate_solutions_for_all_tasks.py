@@ -24,20 +24,64 @@ def _strip_html(s: str) -> str:
     return re.sub(r'\s+', ' ', s).strip()
 
 
-def _build_solution_prompt(task_text: str, task_number: int, knowledge: dict | None) -> list[dict]:
+def _extract_answer_from_solution(text: str) -> str | None:
+    """Извлекает ответ из текста решения (после **Ответ:**)."""
+    if not text:
+        return None
+    m = re.search(r'\*\*Ответ:\*\*\s*(.+?)(?:\n|$)', text, re.IGNORECASE | re.DOTALL)
+    if m:
+        return (m.group(1) or '').strip()
+    m = re.search(r'Ответ:\s*(.+?)(?:\n|$)', text, re.IGNORECASE | re.DOTALL)
+    if m:
+        return (m.group(1) or '').strip()
+    return None
+
+
+def _normalize_answer(a: str | None) -> str:
+    """Нормализация ответа для сравнения."""
+    if not a:
+        return ''
+    s = str(a).strip().lower()
+    s = re.sub(r'\s+', ' ', s)
+    s = re.sub(r'[^\w\s.,\-]', '', s)  # убрать лишние символы
+    return s
+
+
+def _answers_match(expected: str | None, actual: str | None) -> bool:
+    """Сравнение ответов (ожидаемый из источника и полученный LLM)."""
+    e = _normalize_answer(expected)
+    a = _normalize_answer(actual)
+    if not e:
+        return True  # нет эталона — не помечаем на ручную проверку
+    return e == a or a.endswith(e) or e.endswith(a)
+
+
+def _build_solution_prompt(
+    task_text: str,
+    task_number: int,
+    source_url: str | None,
+    knowledge: dict | None,
+) -> list[dict]:
     """Промпт для генерации полного решения."""
     system = (
-        "Ты — опытный репетитор по информатике ЕГЭ. Напиши полное пошаговое решение задания. "
-        "Формат: **Шаг 1.** Объяснение. При необходимости код в ```python. "
-        "**Шаг 2.** ... В конце **Ответ:** значение. "
-        "Пиши чётко, структурированно, без лишних слов."
+        "Ты — опытный репетитор по информатике ЕГЭ. Напиши полное пошаговое решение задания в Markdown.\n\n"
+        "ОБЯЗАТЕЛЬНЫЙ формат вывода:\n"
+        "1. **Источник:** [ссылка на задание](URL) — если URL известен.\n"
+        "2. **Условие задачи:** кратко перескажи или выдели ключевые данные из условия.\n"
+        "3. **Шаг 1.** Объяснение. При необходимости код в ```python.\n"
+        "4. **Шаг 2.** ... и т.д.\n"
+        "5. **Ответ:** точное значение (число, строка и т.д.).\n\n"
+        "Используй **жирный** для заголовков шагов. Пиши чётко, структурированно."
     )
     ctx = []
     if knowledge and knowledge.get('reference_solution'):
         ref = (knowledge.get('reference_solution') or '')[:1500]
         if ref:
             ctx.append(f"Пример эталонного решения для заданий этого типа (ориентируйся по стилю):\n{ref}")
+    source_line = f"Источник: {source_url}" if source_url else ""
     user = f"Задание №{task_number}:\n\n{task_text[:4000]}"
+    if source_line:
+        user = source_line + "\n\n" + user
     if ctx:
         user = '\n\n'.join(ctx) + '\n\n---\n\n' + user
     return [
@@ -100,32 +144,46 @@ def main():
                 skipped += 1
                 continue
 
+            source_url = (task.source_url or '').strip() or None
             knowledge = load_task_knowledge(task.task_id, task_number=task.task_number)
-            messages = _build_solution_prompt(task_text, task.task_number, knowledge)
+            messages = _build_solution_prompt(task_text, task.task_number, source_url, knowledge)
 
             try:
-                solution_text = llm.chat(messages=messages, temperature=0.2, max_tokens=1200)
+                solution_text = llm.chat(messages=messages, temperature=0.2, max_tokens=1500)
                 if not solution_text or len(solution_text.strip()) < 20:
                     print(f'  task_id={task.task_id}: пустой ответ LLM')
                     errors += 1
                     continue
 
+                sol_text = solution_text.strip()
+                if source_url and '**Источник:**' not in sol_text and 'Источник:' not in sol_text:
+                    sol_text = f"**Источник:** [{source_url}]({source_url})\n\n" + sol_text
+                if '**Условие задачи:**' not in sol_text and 'Условие задачи:' not in sol_text and task_text:
+                    cond_short = (task_text[:500] + '...') if len(task_text) > 500 else task_text
+                    sol_text = f"**Условие задачи:** {cond_short}\n\n" + sol_text
+
+                extracted = _extract_answer_from_solution(sol_text)
+                needs_review = not _answers_match(task.answer, extracted)
+
                 if not args.dry_run:
                     if existing:
-                        existing.solution_text = solution_text.strip()
+                        existing.solution_text = sol_text
                         existing.source = 'llm'
+                        existing.needs_manual_review = needs_review
                     else:
                         db.session.add(TaskSolution(
                             task_id=task.task_id,
-                            solution_text=solution_text.strip(),
+                            solution_text=sol_text,
                             source='llm',
+                            needs_manual_review=needs_review,
                         ))
                     done += 1
                     if done % args.batch_size == 0:
                         db.session.commit()
                 else:
                     done += 1
-                    print(f'  [dry-run] task_id={task.task_id} -> {len(solution_text)} chars')
+                    rev = ' [РУЧНАЯ ПРОВЕРКА]' if needs_review else ''
+                    print(f'  [dry-run] task_id={task.task_id} -> {len(sol_text)} chars{rev}')
 
             except Exception as e:
                 print(f'  task_id={task.task_id}: {e}', file=sys.stderr)

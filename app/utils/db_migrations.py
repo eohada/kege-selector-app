@@ -323,6 +323,20 @@ def ensure_schema_columns(app):
                 except Exception as e:
                     logger.warning(f"Could not create TaskSolutions table: {e}")
                     db.session.rollback()
+            else:
+                ts_table = _resolve_table_name(table_names, 'TaskSolutions')
+                if ts_table:
+                    ts_cols = {c['name'] for c in inspector.get_columns(ts_table)}
+                    if 'needs_manual_review' not in ts_cols:
+                        try:
+                            is_pg = _is_postgres(app)
+                            add_sql = 'ALTER TABLE "TaskSolutions" ADD COLUMN needs_manual_review BOOLEAN DEFAULT FALSE NOT NULL' if is_pg else 'ALTER TABLE TaskSolutions ADD COLUMN needs_manual_review INTEGER DEFAULT 0 NOT NULL'
+                            db.session.execute(text(add_sql))
+                            db.session.commit()
+                            logger.info("TaskSolutions.needs_manual_review column added")
+                        except Exception as e:
+                            logger.warning(f"Could not add needs_manual_review to TaskSolutions: {e}")
+                            db.session.rollback()
 
             if 'Courses' not in table_names and 'courses' not in table_names:
                 try:

@@ -1,6 +1,12 @@
 # Генерация решений на хосте (Timeweb)
 
-Скрипт `scripts/generate_solutions_for_all_tasks.py` проходится по всем заданиям в БД и генерирует решения через LLM (GigaChat).
+## Порядок действий
+
+1. **Скачать вложения** — `python scripts/download_all_task_attachments.py`
+2. **Настроить GIGACHAT_CREDENTIALS**
+3. **Запустить генерацию** — `python scripts/generate_solutions_for_all_tasks.py`
+
+Скрипт `scripts/generate_solutions_for_all_tasks.py` проходится по всем заданиям в БД и генерирует решения через LLM (GigaChat). Решения включают: источник, условие задачи, пошаговое решение. Ответ сверяется с источником — при расхождении помечается «Ручная проверка».
 
 ## 1. Зависимости
 
@@ -75,3 +81,11 @@ python scripts/generate_solutions_for_all_tasks.py
 ## 5. Результат
 
 Решения сохраняются в таблицу `TaskSolutions`. Просмотр: **Remote Admin → Решения заданий**.
+
+---
+
+## 6. Вложения (файлы)
+
+**Скрипт `scripts/download_all_task_attachments.py`** — скачивает все вложения с kompege.ru в `uploads/task_attachments/<task_id>/<filename>` и обновляет `attached_files` в БД: добавляет локальный путь `path`. Просмотр: используются локальные файлы вместо прокси.
+
+**Следующий шаг (TODO):** научить решальщика открывать Excel, текстовые файлы — чтобы решения опирались на реальные входные данные.

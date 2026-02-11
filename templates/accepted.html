@@ -83,9 +83,12 @@
                         {% set files = task.attached_files | from_json %}
                         {% for file in files %}
                         {% if file %}
+                        {% set file_path = file.path if file.path is defined else None %}
                         {% set file_url = file.url if file.url is defined else (file if file is string else None) %}
-                        {% set file_name = file.name if file.name is defined else (file.filename if file.filename is defined else (file_url.split('/')[-1] if file_url else 'file')) %}
-                        {% if file_url %}
+                        {% set file_name = file.name if file.name is defined else (file.filename if file.filename is defined else ((file_path or file_url or '').split('/')[-1].split('?')[0] if (file_path or file_url) else 'file')) %}
+                        {% if file_path and file_path.startswith('/attachments/task/') %}
+                            {% set download_url = file_path %}
+                        {% elif file_url %}
                             {% if file_url.startswith('//') %}
                                 {% set file_url = 'https:' ~ file_url %}
                             {% elif file_url.startswith('/') %}
@@ -96,6 +99,8 @@
                             {% else %}
                                 {% set download_url = file_url %}
                             {% endif %}
+                        {% endif %}
+                        {% if download_url is defined %}
                         <li>
                             <a href="{{ download_url }}" target="_blank" class="neo-button outline" style="font-size: 0.9rem; padding: 0.65rem 1.2rem; text-decoration: none;" download>
                                 {{ file_name }}

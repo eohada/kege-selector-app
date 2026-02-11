@@ -113,6 +113,7 @@ class TaskSolution(db.Model):
     task_id = db.Column(db.Integer, db.ForeignKey('Tasks.task_id'), nullable=False, unique=True, index=True)
     solution_text = db.Column(db.Text, nullable=False)
     source = db.Column(db.String(20), default='llm', nullable=False, index=True)  # llm | manual
+    needs_manual_review = db.Column(db.Boolean, default=False, nullable=False, index=True)  # ответ не совпал с источником
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
 

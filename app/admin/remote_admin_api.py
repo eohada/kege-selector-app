@@ -2144,6 +2144,19 @@ def remote_admin_api_task_solutions_stats():
         return jsonify({'error': str(e)}), 500
 
 
+def _markdown_to_html(text: str) -> str:
+    """Рендер Markdown в HTML для отображения решений."""
+    if not text:
+        return ''
+    try:
+        import markdown
+        md = markdown.Markdown(extensions=['extra', 'nl2br'])
+        return md.convert(text)
+    except Exception:
+        import html
+        return f'<pre style="white-space:pre-wrap">{html.escape(text)}</pre>'
+
+
 @admin_bp.route('/internal/remote-admin/api/task-solutions/<int:task_id>', methods=['GET'])
 def remote_admin_api_task_solution_get(task_id: int):
     """API: Получить решение задания по task_id."""
@@ -2154,17 +2167,23 @@ def remote_admin_api_task_solution_get(task_id: int):
         if not task:
             return jsonify({'error': 'task_not_found'}), 404
         sol = TaskSolution.query.filter_by(task_id=task_id).first()
+        solution_data = None
+        if sol:
+            solution_data = {
+                'solution_text': sol.solution_text,
+                'solution_html': _markdown_to_html(sol.solution_text),
+                'source': sol.source,
+                'needs_manual_review': getattr(sol, 'needs_manual_review', False),
+                'created_at': sol.created_at.isoformat() if sol.created_at else None,
+            }
         return jsonify({
             'success': True,
             'task_id': task_id,
             'task_number': task.task_number,
+            'source_url': task.source_url,
             'content_html': task.content_html,
             'answer': task.answer,
-            'solution': {
-                'solution_text': sol.solution_text,
-                'source': sol.source,
-                'created_at': sol.created_at.isoformat() if sol and sol.created_at else None,
-            } if sol else None,
+            'solution': solution_data,
         }), 200
     except Exception as e:
         logger.exception('task-solution get failed')
@@ -2200,6 +2219,7 @@ def remote_admin_api_task_solutions_list():
                 'task_id': t.task_id,
                 'task_number': t.task_number,
                 'has_solution': sol is not None,
+                'needs_manual_review': getattr(sol, 'needs_manual_review', False) if sol else False,
                 'content_preview': (t.content_html or '')[:200].replace('<', ' '),
             })
         return jsonify({

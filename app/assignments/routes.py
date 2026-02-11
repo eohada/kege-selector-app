@@ -3,7 +3,7 @@
 """
 import logging
 from datetime import datetime, timedelta
-from flask import render_template, request, jsonify, flash, redirect, url_for
+from flask import render_template, request, jsonify, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import and_, or_, func, case
 from sqlalchemy.orm import joinedload
@@ -1557,6 +1557,22 @@ def submission_start(submission_id):
         logger.error(f"Error in submission_start for submission {submission_id}: {e}", exc_info=True)
         db.session.rollback()
         return jsonify({'success': False, 'error': f'Ошибка сервера: {str(e)}'}), 500
+
+
+@assignments_bp.route('/attachments/task/<int:task_id>/<path:filename>')
+@login_required
+def attached_task_local(task_id: int, filename: str):
+    """Раздача локально скачанных вложений заданий (uploads/task_attachments/)."""
+    import os
+    from flask import send_from_directory
+    root = os.path.join(current_app.root_path, 'uploads', 'task_attachments')
+    task_dir = os.path.join(root, str(task_id))
+    if not os.path.isdir(task_dir):
+        abort(404)
+    safe_name = os.path.basename(filename)
+    if not safe_name or '..' in filename:
+        abort(404)
+    return send_from_directory(task_dir, safe_name, as_attachment=True, download_name=safe_name)
 
 
 @assignments_bp.route('/attachments/proxy')

@@ -17,8 +17,14 @@
         .ts-item.no-sol{border-left:3px solid rgba(255,108,145,.4)}
         .ts-num{font-weight:800;color:var(--text-primary);min-width:2.5rem}
         .ts-preview{flex:1;min-width:0;color:var(--text-muted);font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .ts-sol {background:var(--surface-2);border:1px solid var(--stroke-2);border-radius:var(--radius-md);padding:1.25rem;overflow:auto;max-height:70vh;white-space:pre-wrap}
+        .ts-sol {background:var(--surface-2);border:1px solid var(--stroke-2);border-radius:var(--radius-md);padding:1.25rem;overflow:auto;max-height:70vh;line-height:1.6}
         .ts-sol.empty{color:var(--text-muted);font-style:italic}
+        .ts-sol.markdown-content strong{color:var(--text-primary)}
+        .ts-sol.markdown-content pre{background:rgba(0,0,0,.2);padding:.75rem;border-radius:var(--radius-sm);overflow-x:auto}
+        .ts-sol.markdown-content code{background:rgba(0,0,0,.2);padding:.15em .4em;border-radius:4px;font-size:.9em}
+        .ts-source-link{margin-bottom:.75rem;font-size:.9rem}
+        .ts-source-link a{color:var(--accent-1)}
+        .ts-review-badge{display:inline-block;padding:.25rem .6rem;border-radius:999px;font-size:.8rem;font-weight:600;margin-left:.5rem;background:rgba(255,165,0,.3);color:#ffa500;border:1px solid rgba(255,165,0,.5)}
         .ts-stats{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
         .ts-stat{padding:.5rem 1rem;border-radius:var(--radius-md);background:var(--surface-2);border:1px solid var(--stroke-2)}
     </style>
@@ -43,6 +49,7 @@
                     <span class="ts-stat" style="border-left:3px solid rgba(0,254,202,.6);">С решением: <strong>{{ stats.with_solution }}</strong></span>
                     <span class="ts-stat" style="border-left:3px solid rgba(255,108,145,.4);">Без решения: <strong>{{ stats.without_solution }}</strong></span>
                 </div>
+                <div style="color:var(--text-muted);font-size:.9rem;margin-top:.5rem;">Решение содержит: источник, условие задачи, пошаговое решение. Ответ сверяется с источником — при расхождении помечается «Ручная проверка».</div>
 
                 <form method="GET" action="{{ url_for('remote_admin.task_solutions') }}" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:end;margin-bottom:1rem;">
                     <div>
@@ -71,9 +78,10 @@
                         <div class="ts-list" id="tsList">
                             {% for it in items %}
                             <button type="button" class="ts-item {% if it.has_solution %}has-sol{% else %}no-sol{% endif %} {% if loop.first %}active{% endif %}"
-                                    data-task-id="{{ it.task_id }}" onclick="selectTask(this)">
+                                    data-task-id="{{ it.task_id }}" data-needs-review="{{ '1' if it.needs_manual_review else '0' }}" onclick="selectTask(this)">
                                 <span class="ts-num">#{{ it.task_number }}</span>
                                 <span class="ts-preview" title="{{ it.content_preview }}">{{ it.content_preview or '—' }}</span>
+                                {% if it.needs_manual_review %}<span class="ts-review-badge" style="flex-shrink:0">Ручная проверка</span>{% endif %}
                             </button>
                             {% endfor %}
                         </div>
@@ -111,10 +119,18 @@
                     return r.json();
                 })
                 .then(data => {
-                    document.getElementById('tsDetailTitle').textContent = 'Задание #' + (data.task_number || '?') + ' · ID ' + taskId;
+                    let title = 'Задание #' + (data.task_number || '?') + ' · ID ' + taskId;
+                    if (data.solution && data.solution.needs_manual_review) {
+                        title += ' <span class="ts-review-badge">Ручная проверка</span>';
+                    }
+                    if (data.source_url) {
+                        title += ' <a href="' + data.source_url.replace(/"/g, '&quot;') + '" target="_blank" rel="noopener" class="ts-source-link" style="margin-left:.5rem;font-size:.85rem">Источник ↗</a>';
+                    }
+                    document.getElementById('tsDetailTitle').innerHTML = title;
                     if (data.solution && data.solution.solution_text) {
-                        document.getElementById('tsDetail').textContent = data.solution.solution_text;
-                        document.getElementById('tsDetail').className = 'ts-sol';
+                        const html = data.solution.solution_html || '<pre style="white-space:pre-wrap;margin:0">' + (data.solution.solution_text || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') + '</pre>';
+                        document.getElementById('tsDetail').innerHTML = html;
+                        document.getElementById('tsDetail').className = 'ts-sol markdown-content';
                     } else {
                         document.getElementById('tsDetail').textContent = 'Решение ещё не сгенерировано. Запустите: python scripts/generate_solutions_for_all_tasks.py';
                         document.getElementById('tsDetail').className = 'ts-sol empty';
