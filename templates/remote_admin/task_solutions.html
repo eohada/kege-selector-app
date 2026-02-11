@@ -37,7 +37,13 @@
         <main style="margin-left: 250px; margin-top: 70px; padding: 2rem;">
             <section class="glass-panel" style="max-width: 1400px; padding: 2rem;">
                 <div style="margin-bottom: 1.5rem;">
-                    <div style="color: var(--text-muted); font-size: 0.95rem;">Окружение: <strong style="color:var(--text-primary)">{{ environment_name }}</strong></div>
+                    <div style="color: var(--text-muted); font-size: 0.95rem;">Окружение: <strong style="color:var(--text-primary)">{{ environment_name }}</strong>
+                        {% if api_version %}
+                        <span style="margin-left:.75rem;padding:.2rem .5rem;background:rgba(0,200,100,.2);border-radius:4px;font-size:.8rem;color:#0a0">API {{ api_version }}</span>
+                        {% else %}
+                        <span style="margin-left:.75rem;padding:.2rem .5rem;background:rgba(255,100,0,.2);border-radius:4px;font-size:.8rem;color:#c60">API: старая версия — обновите сервер с данными</span>
+                        {% endif %}
+                    </div>
                     <h1 style="margin: 0.5rem 0 0 0;">Решения заданий</h1>
                     <p style="color: var(--text-muted); margin: 0.5rem 0 0 0;">
                         Просмотр сгенерированных LLM решений. Запуск: <code>python scripts/generate_solutions_for_all_tasks.py</code>
@@ -49,7 +55,11 @@
                     <span class="ts-stat" style="border-left:3px solid rgba(0,254,202,.6);">С решением: <strong>{{ stats.with_solution }}</strong></span>
                     <span class="ts-stat" style="border-left:3px solid rgba(255,108,145,.4);">Без решения: <strong>{{ stats.without_solution }}</strong></span>
                 </div>
-                <div style="color:var(--text-muted);font-size:.9rem;margin-top:.5rem;">Решение содержит: источник, условие задачи (с картинками), пошаговое решение. Ответ сверяется с источником — при расхождении помечается «Ручная проверка». <span style="color:var(--text-muted);opacity:.7">(обновлено)</span></div>
+                <div style="color:var(--text-muted);font-size:.9rem;margin-top:.5rem;">Решение содержит: источник, условие задачи (с картинками), пошаговое решение. Ответ сверяется с источником — при расхождении помечается «Ручная проверка».
+                    {% if not api_version %}
+                    <br><strong style="color:#c60">Важно:</strong> обновите и перезапустите сервер, на который указывает окружение «{{ environment_name }}» (PRODUCTION_URL) — там должен быть новый код.
+                    {% endif %}
+                </div>
 
                 <form method="GET" action="{{ url_for('remote_admin.task_solutions') }}" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:end;margin-bottom:1rem;">
                     <div>

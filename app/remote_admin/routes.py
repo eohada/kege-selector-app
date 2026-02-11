@@ -1052,6 +1052,7 @@ def task_solutions():
     stats = {'total_tasks': 0, 'with_solution': 0, 'without_solution': 0}
     items = []
     total = 0
+    api_version = None
     try:
         qs = f'page={page}&per_page=30'
         if task_number:
@@ -1063,6 +1064,7 @@ def task_solutions():
             data = resp.json()
             items = data.get('items', [])
             total = data.get('total', 0)
+            api_version = data.get('_api_version')
         resp_stats = make_remote_request('GET', '/internal/remote-admin/api/task-solutions/stats')
         if resp_stats.status_code == 200:
             stats = resp_stats.json()
@@ -1081,6 +1083,7 @@ def task_solutions():
         total=total,
         stats=stats,
         task_numbers=list(range(1, 28)),
+        api_version=api_version,
     ))
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
     return resp
