@@ -2180,16 +2180,32 @@ def _html_to_plain_text(html: str, max_len: int = 200) -> str:
     return text[:max_len] if text else ''
 
 
+def _extract_answer_from_solution(text: str) -> str | None:
+    """Извлекает ответ из текста решения (после **Ответ:**)."""
+    if not text:
+        return None
+    m = re.search(r'\*\*Ответ:\*\*\s*(.+?)(?:\n|$)', text, re.IGNORECASE | re.DOTALL)
+    if m:
+        return (m.group(1) or '').strip()
+    m = re.search(r'Ответ:\s*(.+?)(?:\n|$)', text, re.IGNORECASE | re.DOTALL)
+    if m:
+        return (m.group(1) or '').strip()
+    return None
+
+
 def _strip_solution_prefix(text: str) -> str:
-    """Убрать блоки Источник и Условие из solution_text — они показываются отдельно из API."""
+    """Убрать ВСЕ блоки Источник и Условие из solution_text — показываются только из API."""
     if not text:
         return ''
     t = text.strip()
-    # Скрипт добавляет префикс и разделитель ---, берём часть после него
     if '\n\n---\n\n' in t:
-        return t.split('\n\n---\n\n', 1)[-1].strip()
-    # Fallback: отрезать до первого **Шаг N.**
+        t = t.split('\n\n---\n\n', 1)[-1].strip()
+    # Удалить любой мусор LLM до первого **Шаг N.** (в т.ч. "Источник: [не указан]", "Условие задачи:")
     m = re.search(r'\*\*Шаг\s+\d+\.\*\*', t, re.IGNORECASE)
+    if m:
+        return t[m.start():]
+    # Или до **Ответ:**
+    m = re.search(r'\*\*Ответ:\*\*', t, re.IGNORECASE)
     if m:
         return t[m.start():]
     return t
@@ -2223,11 +2239,13 @@ def remote_admin_api_task_solution_get(task_id: int):
         sol = TaskSolution.query.filter_by(task_id=task_id).first()
         solution_data = None
         if sol:
+            answer_llm = _extract_answer_from_solution(sol.solution_text)
             solution_data = {
                 'solution_text': sol.solution_text,
                 'solution_html': _markdown_to_html(sol.solution_text),
                 'source': sol.source,
                 'needs_manual_review': getattr(sol, 'needs_manual_review', False),
+                'answer_llm': answer_llm,
                 'created_at': sol.created_at.isoformat() if sol.created_at else None,
             }
         source_url = (task.source_url or '').strip()

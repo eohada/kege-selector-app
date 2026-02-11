@@ -143,6 +143,20 @@
                     }
                     document.getElementById('tsDetailTitle').innerHTML = title;
                     let html = '';
+                    if (data.solution && data.task_id) {
+                        let ok = !data.solution.needs_manual_review;
+                        let exp = (data.answer || '').toString().trim();
+                        let llm = (data.solution.answer_llm || '').toString().trim();
+                        html += '<div style="margin-bottom:1rem;padding:.75rem;border-radius:var(--radius-sm);border:1px solid ' + (ok ? 'rgba(0,200,100,.5)' : 'rgba(255,100,0,.5)') + ';background:' + (ok ? 'rgba(0,200,100,.15)' : 'rgba(255,100,0,.15)') + '">';
+                        if (ok) {
+                            html += '<strong style="color:#0a0">✓ Автопроверка:</strong> ответ LLM совпадает с источником';
+                            if (exp) html += ' <span style="color:var(--text-muted)">(ожидалось: ' + escapeHtml(exp) + ')</span>';
+                        } else {
+                            html += '<strong style="color:#c60">✗ Автопроверка:</strong> ответ не совпадает — требуется ручная проверка';
+                            if (exp || llm) html += ' <span style="color:var(--text-muted)">(источник: ' + escapeHtml(exp || '—') + ', LLM: ' + escapeHtml(llm || '—') + ')</span>';
+                        }
+                        html += '</div>';
+                    }
                     if (data.source_url) {
                         html += '<div style="margin-bottom:1rem;padding:.75rem;background:rgba(31,123,255,.15);border-radius:var(--radius-sm);border:1px solid rgba(31,123,255,.4)">';
                         html += '<strong style="color:var(--accent-1)">Источник:</strong> <a href="' + escapeHtml(data.source_url) + '" target="_blank" rel="noopener" style="color:var(--accent-1);font-weight:600">' + escapeHtml(data.source_url) + ' ↗</a>';
@@ -160,6 +174,9 @@
                         let solHtml = data.solution.solution_html || '';
                         let solText = data.solution.solution_text || '';
                         if (solText.indexOf('\n\n---\n\n') >= 0) solText = solText.split('\n\n---\n\n').pop().trim();
+                        let mStep = solText.match(/\*\*Шаг\s+\d+\.\*\*/i);
+                        if (mStep) solText = solText.substring(solText.indexOf(mStep[0]));
+                        else { let mAns = solText.match(/\*\*Ответ:\*\*/i); if (mAns) solText = solText.substring(solText.indexOf(mAns[0])); }
                         if (!solHtml || (solHtml.indexOf('**') >= 0 && solHtml.indexOf('<strong>') < 0)) {
                             solHtml = (typeof marked !== 'undefined' ? marked.parse(solText) : escapeHtml(solText));
                         }
