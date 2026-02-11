@@ -264,7 +264,7 @@ def _build_solution_prompt(
         user_parts.append("[!] В условии упомянут рисунок/таблица, но конкретные числа не приведены. Изображений нет. Не выдумывай данные — напиши: «Откройте источник по ссылке.»")
     elif has_images:
         user_parts.append('')
-        user_parts.append("[!] Ниже приложены изображения задания. Реши задачу, используя данные с картинок.")
+        user_parts.append("[!] К сообщению приложено изображение (граф и таблица). Проанализируй его и дай точный ответ в формате **Ответ:** (число, строка или буквы — как требуется в задании).")
     if prototype_data:
         user_parts.append('')
         user_parts.append("--- Точные данные графа/таблицы из эталона (используй их): ---")
@@ -341,8 +341,7 @@ def main():
             knowledge = load_task_knowledge(task.task_id, task_number=task.task_number)
             prototype_data = _load_prototype_data(task)
             image_urls = _extract_image_urls_from_html(task.content_html or '')
-            if image_urls:
-                print(f'  task_id={task.task_id}: {len(image_urls)} image(s) for vision')
+            print(f'  task_id={task.task_id}: {"%d image(s) for vision" % len(image_urls) if image_urls else "no images"}')
             messages = _build_solution_prompt(
                 task_text, task.task_number, source_url, attachments_content, knowledge, prototype_data,
                 has_images=bool(image_urls),

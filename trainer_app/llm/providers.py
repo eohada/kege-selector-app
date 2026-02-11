@@ -109,11 +109,13 @@ class GigaChatClient(LlmClient):
         if system_parts:
             gigachat_messages.append(Messages(role=MessagesRole.SYSTEM, content='\n\n'.join(system_parts)))
         image_file_ids: list[str] = []
+        last_user_content: str = ''
         for m in messages[rest_start:]:
             role = (m.get('role') or 'user').strip().lower()
             txt = (m.get('content') or '').strip()
             if not txt or role == 'system':
                 continue
+            last_user_content = txt
             gigachat_messages.append(Messages(role=role_map.get(role, MessagesRole.USER), content=txt))
 
         if not gigachat_messages:
@@ -143,12 +145,14 @@ class GigaChatClient(LlmClient):
                             verify = self.verify_ssl_certs
                             resp = requests.get(url, timeout=15, verify=verify)
                             resp.raise_for_status()
-                            # GigaChat upload_file принимает bytes или file-like
                             data = resp.content
                             if len(data) > 15 * 1024 * 1024:
                                 logger.warning("Image too large (max 15MB): %s", url[:80])
                                 continue
-                            uploaded = client.upload_file(data, purpose='general')
+                            fname = url.split('/')[-1].split('?')[0] or 'image.png'
+                            if not fname.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp')):
+                                fname = 'image.png'
+                            uploaded = client.upload_file((fname, data), purpose='general')
                             fid = getattr(uploaded, 'id_', None) or getattr(uploaded, 'id', None)
                             if fid:
                                 image_file_ids.append(fid)
@@ -158,11 +162,23 @@ class GigaChatClient(LlmClient):
                 if image_urls and not image_file_ids:
                     logger.warning("Vision: 0 images uploaded (download or upload failed for %d URLs)", len(image_urls))
 
-                # GigaChat: "одно сообщение поддерживает только одно изображение" — отдельное сообщение на каждую картинку
+                # GigaChat: "одно сообщение — одно изображение". Первую картинку — в основное сообщение с текстом (как в доках).
                 if image_file_ids:
-                    for fid in image_file_ids:
+                    first_id, rest_ids = image_file_ids[0], image_file_ids[1:]
+                    last_user_idx = next(
+                        (i for i in range(len(gigachat_messages) - 1, -1, -1)
+                         if getattr(gigachat_messages[i].role, 'value', '') == 'user'),
+                        None
+                    )
+                    if last_user_idx is not None:
+                        gigachat_messages[last_user_idx] = Messages(
+                            role=MessagesRole.USER,
+                            content=last_user_content,
+                            attachments=[first_id],
+                        )
+                    for fid in rest_ids:
                         gigachat_messages.append(
-                            Messages(role=MessagesRole.USER, content='Изображение к заданию.', attachments=[fid])
+                            Messages(role=MessagesRole.USER, content='Второе изображение к заданию.', attachments=[fid])
                         )
 
                 chat_obj = Chat(
