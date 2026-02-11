@@ -583,10 +583,25 @@ def trainer_task_stats():
     return jsonify({'success': True, 'counts_by_task_number': counts})
 
 
+def _task_has_knowledge(task_id: int, task_number: int) -> bool:
+    """Проверяет наличие trainer_knowledge для задания (файл существует)."""
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    base = os.path.join(repo_root, 'trainer_knowledge', 'tasks')
+    if os.path.isfile(os.path.join(base, f'{int(task_id)}.json')):
+        return True
+    tn = int(task_number)
+    if os.path.isfile(os.path.join(base, 'by_number', f'{tn}.json')):
+        return True
+    if tn in (20, 21) and os.path.isfile(os.path.join(base, 'by_number', '19.json')):
+        return True
+    return False
+
+
 @trainer_bp.route('/internal/trainer/task/fallback-candidates', methods=['GET'])
 def trainer_fallback_candidates():
     """
-    Задания без hints в БД — для проверки LLM-фоллбэка.
+    Задания без hints в БД, но с trainer_knowledge — для проверки LLM-фоллбэка.
+    Только те, где фоллбэк реально сработает (есть контекст).
     Доступно только создателям (trainer.manage_knowledge).
     """
     user = _get_trainer_user_from_token(require_permission='trainer.use')
@@ -613,7 +628,7 @@ def trainer_fallback_candidates():
         has_hints = bool(h) and (
             (isinstance(h, list) and len(h) > 0) or (isinstance(h, dict) and bool(h))
         )
-        if not has_hints:
+        if not has_hints and _task_has_knowledge(int(tid), int(n)):
             by_number.setdefault(int(n), []).append(int(tid))
 
     counts = {n: len(ids) for n, ids in sorted(by_number.items())}

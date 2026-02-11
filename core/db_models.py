@@ -1,12 +1,26 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from sqlalchemy import JSON, Index, Table, Column, Integer, ForeignKey, DateTime, String, Boolean, Enum as SQLEnum, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import JSON, Index, Table, Column, Integer, ForeignKey, DateTime, String, Boolean, Enum as SQLEnum, Text, TypeDecorator
+from sqlalchemy.dialects.postgresql import UUID, JSONB as PG_JSONB
 import json
 import uuid
 
 db = SQLAlchemy()
+
+
+class JSONBCompat(TypeDecorator):
+    """
+    JSON-поле: в PostgreSQL — JSONB (индексируемый), в SQLite — JSON (нет нативного JSONB).
+    Использовать для hints, behavior_flags и других JSON-полей, где в проде нужен JSONB.
+    """
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(PG_JSONB())
+        return dialect.type_descriptor(JSON())
 
 MOSCOW_TZ = ZoneInfo("Europe/Moscow")
 TOMSK_TZ = ZoneInfo("Asia/Tomsk")
@@ -36,8 +50,10 @@ class Tasks(db.Model):
     # --- Фаза 0: сложность задачи и подсказки ---
     # difficulty_level: 1–3 = Easy, 4–7 = Medium, 8–10 = Hard; NULL = не размечено (считать Medium)
     difficulty_level = db.Column(db.Integer, nullable=True, index=True)
-    # hints: лестница подсказок JSON [{"level": 1, "text": "…"}, …]
-    hints = db.Column(JSON, nullable=True)
+    # hints: лестница подсказок; в PostgreSQL — JSONB (индексируемый), в SQLite — JSON
+    hints = db.Column(JSONBCompat, nullable=True)
+    # source_prototype: путь к эталонному JSON (напр. task_19/medium/task_19_medium.json) для upsert при синхронизации
+    source_prototype = db.Column(db.String(256), nullable=True, index=True)
 
     # --- Константы маппинга сложности ---
     DIFFICULTY_EASY_MAX = 3      # 1–3 = Easy
@@ -1579,7 +1595,7 @@ class AnalyticsEvent(db.Model):
     old_rating = db.Column(db.Float, nullable=True)
     new_rating = db.Column(db.Float, nullable=True)
     time_spent_sec = db.Column(db.Integer, nullable=True)    # сколько секунд потратил ученик
-    behavior_flags = db.Column(JSON, nullable=True)           # {"fast_fail": true, "fast_success_hard": true, ...}
+    behavior_flags = db.Column(JSONBCompat, nullable=True)   # в PostgreSQL — JSONB; {"fast_fail": true, "fast_success_hard": true, ...}
     timestamp = db.Column(db.DateTime, default=moscow_now, nullable=False)
 
     __table_args__ = (

@@ -350,17 +350,19 @@ def main():
 
         if is_creator:
             with st.expander("📋 Задания для проверки фоллбэка"):
-                st.caption("Задания без hints в БД — подходят для теста LLM-фоллбэка.")
+                st.caption("Без hints в БД, но с trainer_knowledge — фоллбэк сработает.")
                 if st.button("Загрузить список", key="fallback_load_btn"):
                     try:
                         fc = client.get_fallback_candidates()
                         cts = (fc.get('counts_by_task_number') or {})
                         st.session_state['fallback_candidates'] = {int(k): int(v) for k, v in cts.items() if v}
+                        st.session_state['fallback_candidates_loaded'] = True
                     except Exception as e:
                         st.error(f"Ошибка: {str(e)[:150]}")
                 fc_cached = st.session_state.get('fallback_candidates') or {}
+                fc_loaded = st.session_state.get('fallback_candidates_loaded', False)
                 if fc_cached:
-                    st.markdown("**Без hints в БД:**")
+                    st.markdown("**Без hints, с knowledge:**")
                     for n in sorted(fc_cached.keys()):
                         cnt = fc_cached[n]
                         if st.button(f"№{n} ({cnt} шт)", key=f"fc_btn_{n}"):
@@ -368,8 +370,10 @@ def main():
                             st.session_state['task'] = None
                             st.session_state['current_card'] = None
                             st.rerun()
+                elif fc_loaded:
+                    st.warning("Нет заданий без hints с knowledge. Добавьте trainer_knowledge или синхронизируйте эталоны.")
                 else:
-                    st.info("Нажмите «Загрузить список», чтобы увидеть задания без hints.")
+                    st.info("Нажмите «Загрузить список».")
 
         if is_creator and st.session_state.get('task'):
             task = st.session_state['task']

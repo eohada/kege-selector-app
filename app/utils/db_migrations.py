@@ -1244,6 +1244,9 @@ def ensure_schema_columns(app):
                             col_type = 'JSONB' if is_postgres else 'JSON'
                             db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN hints {col_type}'))
                             logger.info("Added hints (JSON) to Tasks")
+                        if 'source_prototype' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN source_prototype VARCHAR(256)'))
+                            logger.info("Added source_prototype to Tasks")
                         # Индекс для difficulty_level
                         try:
                             db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_tasks_difficulty_level ON "{tasks_table_resolved}"(difficulty_level)'))

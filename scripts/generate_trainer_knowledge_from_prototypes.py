@@ -94,7 +94,7 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description='Генерация trainer_knowledge из эталонов')
     parser.add_argument('--dry-run', action='store_true', help='Не записывать файлы')
-    parser.add_argument('--force', action='store_true', help='Перезаписать существующие (в т.ч. 19, 20, 21)')
+    parser.add_argument('--force', action='store_true', help='Перезаписать существующие. По умолчанию 19, 20, 21 не трогаем (ручные).')
     args = parser.parse_args()
 
     if not os.path.isdir(PROTOTYPES_DIR):
@@ -142,6 +142,11 @@ def main():
             'reference_solution': '',
             'tests': [],
         }
+
+        # 19, 20, 21 — ручные файлы (делители/простые/63), не генерируем из эталонов
+        if task_num in (19, 20, 21):
+            skipped_existing += 1
+            continue
 
         out_path = os.path.join(OUTPUT_DIR, f'{task_num}.json')
         if os.path.exists(out_path) and not args.force:
