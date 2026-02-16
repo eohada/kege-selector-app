@@ -51,6 +51,8 @@ class GraphExtractor:
         height, width = img.shape[:2]
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         _, binary = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY_INV)
+        kernel = np.ones((2, 2), np.uint8)
+        binary = cv2.dilate(binary, kernel)
 
         nodes = self._find_nodes(binary)
         debug = {'img_size': [width, height], 'nodes_count': len(nodes), 'nodes': [{'center': n['center'], 'radius': n['radius']} for n in nodes]}
@@ -167,16 +169,19 @@ class GraphExtractor:
         import cv2
         import numpy as np
         p1, p2 = node_a['center'], node_b['center']
+        dist = np.hypot(p2[0] - p1[0], p2[1] - p1[1])
+        if dist < 5:
+            return False
         line_mask = np.zeros_like(binary_img)
-        cv2.line(line_mask, p1, p2, 255, 1)
-        cv2.circle(line_mask, p1, node_a['radius'] + 3, 0, -1)
-        cv2.circle(line_mask, p2, node_b['radius'] + 3, 0, -1)
+        cv2.line(line_mask, p1, p2, 255, 7)
+        cv2.circle(line_mask, p1, max(2, node_a['radius']), 0, -1)
+        cv2.circle(line_mask, p2, max(2, node_b['radius']), 0, -1)
         intersection = cv2.bitwise_and(binary_img, line_mask)
         line_pixels = cv2.countNonZero(line_mask)
         match_pixels = cv2.countNonZero(intersection)
         if line_pixels == 0:
             return False
-        return (match_pixels / line_pixels) > 0.5 if line_pixels > 10 else match_pixels >= 3
+        return (match_pixels / line_pixels) > 0.35
 
 
 def split_table_and_graph(image_input: str | bytes) -> tuple[bytes | None, bytes | None]:

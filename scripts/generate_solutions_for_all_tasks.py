@@ -339,7 +339,7 @@ def _extract_structured_task1(image_bytes: bytes) -> dict | None:
     """Для задания 1: разрезать на таблицу/граф, извлечь структуру. Возвращает {'graph': {...}, 'table': {...}} или None."""
     try:
         from scripts.graph_extractor import GraphExtractor, split_table_and_graph
-        from scripts.table_extractor import TableExtractor
+        from scripts.table_extractor import TableExtractor, table_to_adjacency_dict
     except ImportError:
         return None
     table_bytes, graph_bytes = split_table_and_graph(image_bytes)
@@ -350,6 +350,17 @@ def _extract_structured_task1(image_bytes: bytes) -> dict | None:
     graph = ge.process_image(graph_bytes)
     table_data = te.process_image(table_bytes)
     if graph and table_data:
+        total_edges = sum(len(v) for v in graph.values())
+        if total_edges == 0 and len(graph) == 8:
+            adj_num = table_to_adjacency_dict(table_data)
+            labels = sorted(graph.keys())
+            if len(labels) == 8:
+                num_to_letter = {str(i + 1): labels[i] for i in range(8)}
+                graph = {}
+                for num, neighbors in adj_num.items():
+                    letter = num_to_letter.get(num)
+                    if letter:
+                        graph[letter] = [num_to_letter.get(str(n[0]), str(n[0])) for n in neighbors]
         return {'graph': graph, 'table': table_data}
     return None
 

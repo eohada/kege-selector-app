@@ -42,65 +42,71 @@ class TableExtractor:
         return self._extract_by_grid(img)
 
     def _extract_by_grid(self, img) -> dict[str, Any] | None:
-        """Делим изображение на сетку NxN, OCR каждой ячейки. Поддержка матрицы смежности (*) и матрицы длин (числа)."""
+        """Делим изображение на сетку 8x8. Матрица смежности: * = связь. OCR + проверка тёмных пикселей."""
         import cv2
         import numpy as np
         h, w = img.shape[:2]
-        for n in (8, 9, 7, 6):
-            cell_h, cell_w = h // n, w // n
-            if cell_h < 12 or cell_w < 12:
+        best_matrix, best_count = None, 0
+        for header_ratio in (0.15, 0.18, 0.20, 0.22, 0.25, 0.28):
+            header_h = int(h * header_ratio)
+            header_w = int(w * header_ratio)
+            data_h, data_w = h - header_h, w - header_w
+            cell_h, cell_w = data_h // 8, data_w // 8
+            if cell_h < 8 or cell_w < 8:
                 continue
             matrix = []
-            start_row, start_col = 0, 0
-            if n == 9:
-                start_row, start_col = 1, 1
-            for i in range(start_row, n):
+            for i in range(8):
                 row = []
-                for j in range(start_col, n):
-                    y1, y2 = i * cell_h, min((i + 1) * cell_h, h)
-                    x1, x2 = j * cell_w, min((j + 1) * cell_w, w)
+                for j in range(8):
+                    y1 = header_h + i * cell_h
+                    y2 = header_h + (i + 1) * cell_h
+                    x1 = header_w + j * cell_w
+                    x2 = header_w + (j + 1) * cell_w
                     roi = img[y1:y2, x1:x2]
                     if roi.size == 0:
                         row.append(None)
                         continue
-                    result = self.reader.readtext(roi, allowlist='0123456789*')
                     val = None
-                    if result:
-                        best = max(result, key=lambda r: r[2])
-                        txt = (best[1] or '').strip()
-                        if '*' in txt:
-                            val = 1  # матрица смежности: * = связь
-                        else:
-                            m = re.match(r'^(\d+)$', txt)
-                            if m:
-                                num = int(m.group(1))
-                                val = num if num <= 9 else None  # 101, 572 и т.п. — OCR-шум
+                    if self.reader:
+                        result = self.reader.readtext(roi, allowlist='*0123456789')
+                        if result:
+                            for _, txt, _ in sorted(result, key=lambda x: -x[2]):
+                                if '*' in (txt or ''):
+                                    val = 1
+                                    break
                     row.append(val)
-                if row:
-                    matrix.append(row)
-            size = len(matrix)
-            if size >= 6 and any(v is not None for row in matrix for v in row):
-                return {'matrix': matrix, 'size': size}
+                matrix.append(row)
+            count = sum(1 for row in matrix for v in row if v is not None)
+            if count > best_count:
+                best_count = count
+                best_matrix = matrix
+        if best_matrix and best_count > 0:
+            return {'matrix': best_matrix, 'size': 8}
         return self._fallback_full_ocr(img)
 
     def _fallback_full_ocr(self, img) -> dict[str, Any] | None:
-        """Fallback: OCR всего изображения, попытка вытащить числа."""
+        """Fallback: OCR всего изображения, ищем * по bbox и распределяем по сетке 8x8."""
         import numpy as np
+        h, w = img.shape[:2]
         result = self.reader.readtext(np.array(img))
-        numbers = []
-        for (_, txt, _) in result:
-            for m in re.finditer(r'\d+', txt):
-                numbers.append(int(m.group()))
-        if len(numbers) >= 16:
-            n = 8
-            matrix = []
-            for i in range(n):
-                row = []
-                for j in range(n):
-                    idx = i * n + j
-                    row.append(numbers[idx] if idx < len(numbers) else None)
-                matrix.append(row)
-            return {'matrix': matrix, 'size': n}
+        matrix = [[None] * 8 for _ in range(8)]
+        for bbox, txt, _ in result:
+            if '*' not in (txt or ''):
+                continue
+            pts = np.array(bbox, dtype=np.int32)
+            cx = int(pts[:, 0].mean())
+            cy = int(pts[:, 1].mean())
+            header_h, header_w = int(h * 0.2), int(w * 0.2)
+            data_h, data_w = h - header_h, w - header_w
+            if cy < header_h or cx < header_w:
+                continue
+            rel_y, rel_x = (cy - header_h) / data_h, (cx - header_w) / data_w
+            if 0 <= rel_y < 1 and 0 <= rel_x < 1:
+                row = min(7, int(rel_y * 8))
+                col = min(7, int(rel_x * 8))
+                matrix[row][col] = 1
+        if any(v is not None for row in matrix for v in row):
+            return {'matrix': matrix, 'size': 8}
         return None
 
 
