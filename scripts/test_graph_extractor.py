@@ -28,12 +28,42 @@ def _get_image_bytes(url: str) -> bytes | None:
         return None
 
 
+def _preprocess_image_bytes(data: bytes) -> bytes | None:
+    """Предобработка как в generate_solutions."""
+    if not data or len(data) > 10 * 1024 * 1024:
+        return None
+    try:
+        import io
+        import numpy as np
+        from PIL import Image, ImageEnhance
+        img = Image.open(io.BytesIO(data)).convert('RGB')
+        w, h = img.size
+        if w < 800 or h < 500:
+            scale = max(800 / w, 500 / h, 2.0)
+            new_w = min(int(w * scale), 2800)
+            new_h = min(int(h * scale), 2000)
+            img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        img = img.convert('L')
+        img = ImageEnhance.Contrast(img).enhance(1.3)
+        img = ImageEnhance.Sharpness(img).enhance(1.2)
+        arr = np.array(img)
+        pil = Image.fromarray(arr)
+        buf = io.BytesIO()
+        pil.save(buf, format='PNG')
+        return buf.getvalue()
+    except Exception:
+        return None
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--url', type=str, help='URL картинки')
     parser.add_argument('--file', type=str, help='Путь к файлу')
     parser.add_argument('--task-number', type=int, default=1)
     parser.add_argument('--limit', type=int, default=1)
+    parser.add_argument('--save', type=str, metavar='DIR', help='Сохранить table_part.png, graph_part.png в каталог')
+    parser.add_argument('--preprocess', action='store_true', help='Применить предобработку перед split')
+    parser.add_argument('--debug', action='store_true', help='Вывести отладочную информацию')
     args = parser.parse_args()
 
     data = None
@@ -71,6 +101,10 @@ def main():
         print("Нет изображения. Укажите --url, --file или используйте БД (--task-number 1).", file=sys.stderr)
         return 1
 
+    if args.preprocess:
+        print("Применяем предобработку...")
+        data = _preprocess_image_bytes(data) or data
+
     from scripts.graph_extractor import GraphExtractor, split_table_and_graph
     from scripts.table_extractor import TableExtractor, table_to_adjacency_dict
 
@@ -80,9 +114,22 @@ def main():
         print("Не удалось разрезать.")
         return 1
 
+    if args.save:
+        os.makedirs(args.save, exist_ok=True)
+        with open(os.path.join(args.save, 'table_part.png'), 'wb') as f:
+            f.write(table_bytes)
+        with open(os.path.join(args.save, 'graph_part.png'), 'wb') as f:
+            f.write(graph_bytes)
+        print(f"Сохранено: {args.save}/table_part.png, {args.save}/graph_part.png")
+
     print("\n--- Граф (правая часть) ---")
     ge = GraphExtractor()
-    graph = ge.process_image(graph_bytes)
+    if args.debug:
+        graph, debug_info = ge.process_image_with_debug(graph_bytes)
+        if debug_info:
+            print("Debug:", json.dumps(debug_info, ensure_ascii=False, indent=2))
+    else:
+        graph = ge.process_image(graph_bytes)
     if graph:
         print(json.dumps(graph, ensure_ascii=False, indent=2))
     else:
@@ -92,7 +139,7 @@ def main():
     te = TableExtractor()
     table_data = te.process_image(table_bytes)
     if table_data:
-        print(f"Размер: {table_data['size']}x{table_data['size']}")
+        print(f"Размер: {table_data['size']}x{len(table_data['matrix'][0]) if table_data['matrix'] else 0}")
         for i, row in enumerate(table_data['matrix']):
             print(f"  {i+1}: {row}")
     else:

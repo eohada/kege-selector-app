@@ -42,18 +42,21 @@ class TableExtractor:
         return self._extract_by_grid(img)
 
     def _extract_by_grid(self, img) -> dict[str, Any] | None:
-        """Делим изображение на сетку NxN, OCR каждой ячейки."""
+        """Делим изображение на сетку NxN, OCR каждой ячейки. Поддержка матрицы смежности (*) и матрицы длин (числа)."""
         import cv2
         import numpy as np
         h, w = img.shape[:2]
-        for n in (8, 7, 6):
+        for n in (8, 9, 7, 6):
             cell_h, cell_w = h // n, w // n
-            if cell_h < 15 or cell_w < 15:
+            if cell_h < 12 or cell_w < 12:
                 continue
             matrix = []
-            for i in range(n):
+            start_row, start_col = 0, 0
+            if n == 9:
+                start_row, start_col = 1, 1
+            for i in range(start_row, n):
                 row = []
-                for j in range(n):
+                for j in range(start_col, n):
                     y1, y2 = i * cell_h, min((i + 1) * cell_h, h)
                     x1, x2 = j * cell_w, min((j + 1) * cell_w, w)
                     roi = img[y1:y2, x1:x2]
@@ -65,13 +68,19 @@ class TableExtractor:
                     if result:
                         best = max(result, key=lambda r: r[2])
                         txt = (best[1] or '').strip()
-                        m = re.match(r'(\d+)', txt)
-                        if m:
-                            val = int(m.group(1))
+                        if '*' in txt:
+                            val = 1  # матрица смежности: * = связь
+                        else:
+                            m = re.match(r'^(\d+)$', txt)
+                            if m:
+                                num = int(m.group(1))
+                                val = num if num <= 9 else None  # 101, 572 и т.п. — OCR-шум
                     row.append(val)
-                matrix.append(row)
-            if any(v is not None for row in matrix for v in row):
-                return {'matrix': matrix, 'size': n}
+                if row:
+                    matrix.append(row)
+            size = len(matrix)
+            if size >= 6 and any(v is not None for row in matrix for v in row):
+                return {'matrix': matrix, 'size': size}
         return self._fallback_full_ocr(img)
 
     def _fallback_full_ocr(self, img) -> dict[str, Any] | None:

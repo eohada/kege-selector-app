@@ -263,6 +263,24 @@ def _ocr_preprocess_image(img) -> 'np.ndarray':
     return np.stack([arr, arr, arr], axis=-1)
 
 
+def _preprocess_image_bytes(data: bytes) -> bytes | None:
+    """Предобработка изображения (масштаб, контраст) для GraphExtractor/TableExtractor. Возвращает bytes PNG."""
+    if not data or len(data) > 10 * 1024 * 1024:
+        return None
+    try:
+        import io
+        import numpy as np
+        from PIL import Image, ImageEnhance
+        img = Image.open(io.BytesIO(data)).convert('RGB')
+        arr = _ocr_preprocess_image(img)
+        pil = Image.fromarray(arr[:, :, 0])
+        buf = io.BytesIO()
+        pil.save(buf, format='PNG')
+        return buf.getvalue()
+    except Exception:
+        return None
+
+
 def _ocr_extract_from_images(image_sources: list[str | bytes]) -> str:
     """Извлечь текст с изображений через OCR (easyocr). Возвращает объединённый текст или пустую строку."""
     if not image_sources:
@@ -534,7 +552,8 @@ def main():
             if image_sources and task.task_number == 1:
                 img_bytes = _get_image_bytes(image_sources[0])
                 if img_bytes:
-                    structured_data = _extract_structured_task1(img_bytes)
+                    preprocessed = _preprocess_image_bytes(img_bytes)
+                    structured_data = _extract_structured_task1(preprocessed or img_bytes)
                     if structured_data:
                         print(f'  task_id={task.task_id}: structured (graph+table) ok')
             if not structured_data and image_sources and not args.no_ocr:

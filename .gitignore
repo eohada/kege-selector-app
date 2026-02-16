@@ -121,3 +121,6 @@ exports/coverage_report.txt
 
 # RAG-индекс подсказок (генерируется скриптом build_hints_rag_index.py)
 data/rag_hints/
+
+# Отладка GraphExtractor/TableExtractor
+debug_out/
