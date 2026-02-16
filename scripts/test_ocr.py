@@ -34,7 +34,24 @@ def _get_image_bytes_from_url(url: str) -> bytes | None:
         return None
 
 
-def _ocr_extract(data: bytes) -> str:
+def _ocr_preprocess(img):
+    """Предобработка: масштабирование, контраст, резкость. Возвращает RGB-массив для easyocr."""
+    from PIL import Image, ImageEnhance
+    import numpy as np
+    w, h = img.size
+    if w < 800 or h < 500:
+        scale = max(800 / w, 500 / h, 2.0)
+        new_w = min(int(w * scale), 2800)
+        new_h = min(int(h * scale), 2000)
+        img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+    img = img.convert('L')
+    img = ImageEnhance.Contrast(img).enhance(1.3)
+    img = ImageEnhance.Sharpness(img).enhance(1.2)
+    arr = np.array(img)
+    return np.stack([arr, arr, arr], axis=-1)
+
+
+def _ocr_extract(data: bytes, preprocess: bool = True, save_path: str | None = None) -> str:
     """OCR через easyocr. Возвращает текст или сообщение об ошибке."""
     try:
         import numpy as np
@@ -50,7 +67,14 @@ def _ocr_extract(data: bytes) -> str:
         return f"[Ошибка инициализации OCR: {e}]"
     try:
         img = Image.open(io.BytesIO(data)).convert('RGB')
-        arr = np.array(img)
+        if preprocess:
+            arr = _ocr_preprocess(img)
+            if save_path:
+                from PIL import Image as PILImage
+                PILImage.fromarray(arr).save(save_path)
+                print(f"  (сохранено: {save_path})")
+        else:
+            arr = np.array(img)
         result = reader.readtext(arr)
         if result:
             return ' '.join(r[1] for r in result if r[1])
@@ -66,6 +90,8 @@ def main():
     parser.add_argument('--task-number', type=int, help='Номер задания (1-27)')
     parser.add_argument('--limit', type=int, default=3, help='Сколько заданий (для --task-number)')
     parser.add_argument('--minimal', action='store_true', help='Минимальный тест: 1x1 PNG без OCR')
+    parser.add_argument('--no-preprocess', action='store_true', help='Без предобработки (масштаб, контраст)')
+    parser.add_argument('--save', type=str, metavar='FILE', help='Сохранить предобработанное изображение для проверки')
     args = parser.parse_args()
 
     if args.minimal:
@@ -164,7 +190,8 @@ def main():
     print(f"\nТестируем OCR на {len(images_to_test)} изображении(ях)...\n")
     for i, (label, data) in enumerate(images_to_test, 1):
         print(f"--- [{i}] {label} ({len(data)} bytes) ---")
-        text = _ocr_extract(data)
+        save = args.save if i == 1 else None
+        text = _ocr_extract(data, preprocess=not args.no_preprocess, save_path=save)
         print(text)
         print()
     return 0

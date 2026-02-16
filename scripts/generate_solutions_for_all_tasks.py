@@ -246,6 +246,23 @@ def _get_ocr_reader():
     return _ocr_reader
 
 
+def _ocr_preprocess_image(img) -> 'np.ndarray':
+    """Предобработка для улучшения OCR: масштабирование, контраст, резкость."""
+    import numpy as np
+    from PIL import Image, ImageEnhance
+    w, h = img.size
+    if w < 800 or h < 500:
+        scale = max(800 / w, 500 / h, 2.0)
+        new_w = min(int(w * scale), 2800)
+        new_h = min(int(h * scale), 2000)
+        img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+    img = img.convert('L')
+    img = ImageEnhance.Contrast(img).enhance(1.3)
+    img = ImageEnhance.Sharpness(img).enhance(1.2)
+    arr = np.array(img)
+    return np.stack([arr, arr, arr], axis=-1)
+
+
 def _ocr_extract_from_images(image_sources: list[str | bytes]) -> str:
     """Извлечь текст с изображений через OCR (easyocr). Возвращает объединённый текст или пустую строку."""
     if not image_sources:
@@ -266,7 +283,7 @@ def _ocr_extract_from_images(image_sources: list[str | bytes]) -> str:
             continue
         try:
             img = Image.open(io.BytesIO(data)).convert('RGB')
-            arr = np.array(img)
+            arr = _ocr_preprocess_image(img)
             result = reader.readtext(arr)
             if result:
                 text = ' '.join(r[1] for r in result if r[1])
