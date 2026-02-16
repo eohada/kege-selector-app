@@ -50,7 +50,11 @@ class GraphExtractor:
 
         height, width = img.shape[:2]
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        _, binary = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY_INV)
+        mean_val = np.mean(gray)
+        if mean_val < 128:
+            _, binary = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY)
+        else:
+            _, binary = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY_INV)
         kernel = np.ones((2, 2), np.uint8)
         binary = cv2.dilate(binary, kernel)
 
@@ -119,31 +123,38 @@ class GraphExtractor:
 
     def _label_nodes(self, original_img, nodes: list) -> list[dict[str, Any]]:
         import cv2
-        fallback_labels = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩ'
+        latin_labels = 'ABCDEFGH'
+        cyrillic_labels = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩ'
         labeled = []
         h, w = original_img.shape[:2]
         for node in nodes:
             x, y = node['center']
             r = node['radius']
-            offset = 60
+            offset = 55
             y1, y2 = max(0, y - offset), min(h, y + offset)
             x1, x2 = max(0, x - offset), min(w, x + offset)
             roi = original_img[y1:y2, x1:x2]
             label = "?"
             if roi.size > 0:
-                result = self.reader.readtext(roi, allowlist='АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯA-Z')
-                if result:
-                    best = max(result, key=lambda x: x[2])
-                    raw = (best[1] or '?').strip().upper()
-                    if len(raw) > 1:
-                        raw = raw[0]
-                    if raw and raw in fallback_labels + 'AO':
-                        label = 'А' if raw == 'A' else ('О' if raw == 'O' else raw)
+                for allowlist in ('ABCDEFGH', 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯA-Z'):
+                    result = self.reader.readtext(roi, allowlist=allowlist)
+                    if result:
+                        best = max(result, key=lambda x: x[2])
+                        raw = (best[1] or '?').strip().upper()
+                        if len(raw) > 1:
+                            raw = raw[0]
+                        if raw and raw in latin_labels:
+                            label = raw
+                            break
+                        if raw and raw in cyrillic_labels + 'AO':
+                            label = 'А' if raw == 'A' else ('О' if raw == 'O' else raw)
+                            break
             labeled.append({'label': label, 'center': (x, y), 'radius': r})
         used = {n['label'] for n in labeled if n['label'] != '?'}
-        for i, n in enumerate(labeled):
+        fallback = latin_labels if any(n['label'] in latin_labels for n in labeled) else cyrillic_labels
+        for n in labeled:
             if n['label'] == '?':
-                for c in fallback_labels:
+                for c in fallback:
                     if c not in used:
                         n['label'] = c
                         used.add(c)
@@ -173,15 +184,15 @@ class GraphExtractor:
         if dist < 5:
             return False
         line_mask = np.zeros_like(binary_img)
-        cv2.line(line_mask, p1, p2, 255, 7)
-        cv2.circle(line_mask, p1, max(2, node_a['radius']), 0, -1)
-        cv2.circle(line_mask, p2, max(2, node_b['radius']), 0, -1)
+        cv2.line(line_mask, p1, p2, 255, 3)
+        cv2.circle(line_mask, p1, max(3, node_a['radius'] + 1), 0, -1)
+        cv2.circle(line_mask, p2, max(3, node_b['radius'] + 1), 0, -1)
         intersection = cv2.bitwise_and(binary_img, line_mask)
         line_pixels = cv2.countNonZero(line_mask)
         match_pixels = cv2.countNonZero(intersection)
         if line_pixels == 0:
             return False
-        return (match_pixels / line_pixels) > 0.35
+        return (match_pixels / line_pixels) > 0.4
 
 
 def split_table_and_graph(image_input: str | bytes) -> tuple[bytes | None, bytes | None]:
