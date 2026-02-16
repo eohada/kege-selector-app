@@ -71,8 +71,15 @@ class TableExtractor:
                         result = self.reader.readtext(roi, allowlist='*0123456789')
                         if result:
                             for _, txt, _ in sorted(result, key=lambda x: -x[2]):
-                                if '*' in (txt or ''):
+                                s = (txt or '').strip()
+                                if '*' in s:
                                     val = 1
+                                    break
+                                m = re.match(r'^(\d+)$', s)
+                                if m:
+                                    num = int(m.group(1))
+                                    if 1 <= num <= 999:
+                                        val = num
                                     break
                     row.append(val)
                 matrix.append(row)
@@ -85,27 +92,48 @@ class TableExtractor:
         return self._fallback_full_ocr(img)
 
     def _fallback_full_ocr(self, img) -> dict[str, Any] | None:
-        """Fallback: OCR всего изображения, ищем * по bbox и распределяем по сетке 8x8."""
+        """Fallback: OCR всего изображения. * по bbox или числа по порядку."""
         import numpy as np
+        import re
         h, w = img.shape[:2]
-        result = self.reader.readtext(np.array(img))
+        result = self.reader.readtext(np.array(img), allowlist='*0123456789 ')
         matrix = [[None] * 8 for _ in range(8)]
+        header_h, header_w = int(h * 0.2), int(w * 0.2)
+        data_h, data_w = h - header_h, w - header_w
         for bbox, txt, _ in result:
-            if '*' not in (txt or ''):
-                continue
+            s = (txt or '').strip()
             pts = np.array(bbox, dtype=np.int32)
             cx = int(pts[:, 0].mean())
             cy = int(pts[:, 1].mean())
-            header_h, header_w = int(h * 0.2), int(w * 0.2)
-            data_h, data_w = h - header_h, w - header_w
             if cy < header_h or cx < header_w:
                 continue
             rel_y, rel_x = (cy - header_h) / data_h, (cx - header_w) / data_w
-            if 0 <= rel_y < 1 and 0 <= rel_x < 1:
-                row = min(7, int(rel_y * 8))
-                col = min(7, int(rel_x * 8))
-                matrix[row][col] = 1
+            if not (0 <= rel_y < 1 and 0 <= rel_x < 1):
+                continue
+            row_idx, col_idx = min(7, int(rel_y * 8)), min(7, int(rel_x * 8))
+            if '*' in s:
+                matrix[row_idx][col_idx] = 1
+            else:
+                m = re.match(r'(\d+)', s)
+                if m:
+                    num = int(m.group(1))
+                    if 1 <= num <= 999:
+                        matrix[row_idx][col_idx] = num
         if any(v is not None for row in matrix for v in row):
+            return {'matrix': matrix, 'size': 8}
+        numbers = []
+        for _, txt, _ in self.reader.readtext(np.array(img)):
+            for m in re.finditer(r'\d+', txt or ''):
+                numbers.append(int(m.group()))
+        if len(numbers) >= 16:
+            matrix = [[None] * 8 for _ in range(8)]
+            for i in range(8):
+                for j in range(8):
+                    idx = i * 8 + j
+                    if idx < len(numbers):
+                        v = numbers[idx]
+                        if 1 <= v <= 999:
+                            matrix[i][j] = v
             return {'matrix': matrix, 'size': 8}
         return None
 
