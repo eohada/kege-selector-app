@@ -51,7 +51,8 @@ class GraphExtractor:
         height, width = img.shape[:2]
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         mean_val = np.mean(gray)
-        if mean_val < 128:
+        self._dark_bg = mean_val < 128
+        if self._dark_bg:
             _, binary = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY)
         else:
             _, binary = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY_INV)
@@ -192,7 +193,8 @@ class GraphExtractor:
         match_pixels = cv2.countNonZero(intersection)
         if line_pixels == 0:
             return False
-        return (match_pixels / line_pixels) > 0.4
+        thresh = 0.25 if getattr(self, '_dark_bg', False) else 0.4
+        return (match_pixels / line_pixels) > thresh
 
 
 def split_table_and_graph(image_input: str | bytes) -> tuple[bytes | None, bytes | None]:

@@ -101,6 +101,16 @@ class TableExtractor:
                 best_count = count
                 best_matrix = matrix
         if best_matrix and best_count > 0:
+            for i in range(8):
+                for j in range(i + 1, 8):
+                    if best_matrix[i][j] is None and best_matrix[j][i] is not None:
+                        best_matrix[i][j] = best_matrix[j][i]
+                    elif best_matrix[i][j] is not None and best_matrix[j][i] is None:
+                        best_matrix[j][i] = best_matrix[i][j]
+            for i in range(8):
+                for j in range(8):
+                    if i != j and best_matrix[i][j] == 1:
+                        best_matrix[i][j] = 11
             return {'matrix': best_matrix, 'size': 8}
         return self._fallback_full_ocr(img)
 
