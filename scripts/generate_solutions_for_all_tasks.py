@@ -317,6 +317,25 @@ def _strip_html_preserve_tables(html: str) -> str:
     return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', html)).strip()
 
 
+def _extract_structured_task1(image_bytes: bytes) -> dict | None:
+    """Для задания 1: разрезать на таблицу/граф, извлечь структуру. Возвращает {'graph': {...}, 'table': {...}} или None."""
+    try:
+        from scripts.graph_extractor import GraphExtractor, split_table_and_graph
+        from scripts.table_extractor import TableExtractor
+    except ImportError:
+        return None
+    table_bytes, graph_bytes = split_table_and_graph(image_bytes)
+    if not table_bytes or not graph_bytes:
+        return None
+    ge = GraphExtractor()
+    te = TableExtractor()
+    graph = ge.process_image(graph_bytes)
+    table_data = te.process_image(table_bytes)
+    if graph and table_data:
+        return {'graph': graph, 'table': table_data}
+    return None
+
+
 def _build_solution_prompt(
     task_text: str,
     task_number: int,
@@ -326,6 +345,7 @@ def _build_solution_prompt(
     prototype_data: str,
     has_images: bool = False,
     ocr_extracted_data: str = '',
+    structured_data: dict | None = None,
 ) -> list[dict]:
     """Промпт для генерации полного решения."""
     system = (
@@ -345,7 +365,8 @@ def _build_solution_prompt(
         "Если есть вложения (Excel, текст) — опирайся на их содержимое."
     )
     use_ocr = bool(ocr_extracted_data and len(ocr_extracted_data.strip()) > 20)
-    if has_images or use_ocr:
+    use_structured = bool(structured_data)
+    if has_images or use_ocr or use_structured:
         system += (
             "\n\n[!] Используй ТОЛЬКО данные из условия и приложенных материалов. "
             "ИГНОРИРУЙ примеры и эталоны — в них ДРУГИЕ числа и буквы.\n\n"
@@ -353,7 +374,13 @@ def _build_solution_prompt(
             "НЕЛЬЗЯ писать только ответ. Алгоритм для графов: сопоставь степени вершин (граф ↔ таблица), "
             "сопоставь буквы с номерами, затем возьми значения из таблицы. Ответ — последним."
         )
-    if use_ocr:
+    if use_structured:
+        system += (
+            "\n\n[!] Тебе переданы СТРУКТУРИРОВАННЫЕ данные: граф (словарь смежности) и таблица (матрица длин). "
+            "Используй ТОЛЬКО эти данные. В решении описывай всё так, будто анализируешь изображение: "
+            "«На рисунке видно...», «по таблице находим...»."
+        )
+    elif use_ocr:
         system += (
             "\n\n[!] Тебе переданы данные, извлечённые с изображения (OCR). "
             "В решении ОПИСЫВАЙ всё так, будто анализируешь изображение: «На рисунке видно...», "
@@ -365,8 +392,8 @@ def _build_solution_prompt(
             "ЗАПРЕЩЕНО писать «откройте источник» — у тебя ЕСТЬ изображение."
         )
     ctx = []
-    # При has_images/use_ocr не даём reference_solution
-    if knowledge and knowledge.get('reference_solution') and not (has_images or use_ocr):
+    # При has_images/use_ocr/use_structured не даём reference_solution
+    if knowledge and knowledge.get('reference_solution') and not (has_images or use_ocr or use_structured):
         ref = (knowledge.get('reference_solution') or '')[:1200]
         if ref:
             ctx.append(f"Пример СТИЛЯ решения (структура шагов). НЕ копируй буквы, числа, таблицу — в твоём задании они ДРУГИЕ:\n{ref}")
@@ -378,9 +405,26 @@ def _build_solution_prompt(
     user_parts.append(task_text[:4000])
     has_img_ref = 'рисунк' in task_text.lower() or 'таблиц' in task_text.lower()
     has_table_data = '[ТАБЛИЦА]' in task_text or ('|' in task_text and any(c.isdigit() for c in task_text))
-    if has_img_ref and not has_table_data and not has_images and not use_ocr:
+    if has_img_ref and not has_table_data and not has_images and not use_ocr and not use_structured:
         user_parts.append('')
         user_parts.append("[!] В условии упомянут рисунок/таблица, но конкретные числа не приведены. Изображений нет. Не выдумывай данные — напиши: «Откройте источник по ссылке.»")
+    elif use_structured:
+        import json
+        g = structured_data.get('graph') or {}
+        t = structured_data.get('table') or {}
+        user_parts.append('')
+        user_parts.append("--- Граф (словарь смежности, буквы): ---")
+        user_parts.append(json.dumps(g, ensure_ascii=False))
+        user_parts.append('')
+        user_parts.append("--- Таблица (матрица, пункты 1..N, ячейка [i][j] = длина дороги или пусто): ---")
+        matrix = t.get('matrix') or []
+        for i, row in enumerate(matrix):
+            user_parts.append(f"  П{i+1}: {row}")
+        user_parts.append('')
+        user_parts.append(
+            "[!] Сопоставь степени вершин графа и таблицы, сопоставь буквы с номерами, "
+            "найди нужные значения в таблице. Решай пошагово. Ответ — в конце: **Ответ:** число."
+        )
     elif use_ocr:
         user_parts.append('')
         user_parts.append("--- Данные с изображения (OCR): ---")
@@ -398,8 +442,8 @@ def _build_solution_prompt(
             "Проанализируй его: 1) сопоставь степени вершин графа и таблицы; 2) сопоставь буквы (A–H) с номерами (1–8); "
             "3) найди нужные значения в таблице. Напиши решение пошагово, ответ — в конце в формате **Ответ:** число."
         )
-    # prototype_data — НЕ добавлять при has_images/use_ocr!
-    if prototype_data and not has_images and not use_ocr:
+    # prototype_data — НЕ добавлять при has_images/use_ocr/use_structured!
+    if prototype_data and not has_images and not use_ocr and not use_structured:
         user_parts.append('')
         user_parts.append("--- Точные данные графа/таблицы из эталона (используй их): ---")
         user_parts.append(prototype_data[:3500])
@@ -486,27 +530,36 @@ def main():
                 if sid and sid.isdigit():
                     image_sources = [f"{SITE_BASE}/images/{sid}.png"]
             ocr_data = ''
-            if image_sources and not args.no_ocr:
+            structured_data = None
+            if image_sources and task.task_number == 1:
+                img_bytes = _get_image_bytes(image_sources[0])
+                if img_bytes:
+                    structured_data = _extract_structured_task1(img_bytes)
+                    if structured_data:
+                        print(f'  task_id={task.task_id}: structured (graph+table) ok')
+            if not structured_data and image_sources and not args.no_ocr:
                 ocr_data = _ocr_extract_from_images(image_sources)
                 if ocr_data:
                     print(f'  task_id={task.task_id}: OCR ok, %d chars' % len(ocr_data))
                 else:
                     print(f'  task_id={task.task_id}: %d image(s) for vision (OCR empty)' % len(image_sources))
-            elif image_sources:
-                print(f'  task_id={task.task_id}: %d image(s) for vision (--no-ocr)' % len(image_sources))
-            else:
+            elif not structured_data and image_sources:
+                print(f'  task_id={task.task_id}: %d image(s) for vision' % len(image_sources))
+            elif not structured_data:
                 print(f'  task_id={task.task_id}: no images')
 
             use_ocr_data = bool(ocr_data and len(ocr_data.strip()) > 20) and not args.no_ocr
+            use_structured_data = bool(structured_data)
             messages = _build_solution_prompt(
                 task_text, task.task_number, source_url, attachments_content, knowledge, prototype_data,
                 has_images=bool(image_sources),
                 ocr_extracted_data=ocr_data,
+                structured_data=structured_data,
             )
 
             try:
-                max_tok = 2000 if (image_sources or use_ocr_data) else 1500
-                image_for_llm = None if use_ocr_data else (image_sources or None)
+                max_tok = 2000 if (image_sources or use_ocr_data or use_structured_data) else 1500
+                image_for_llm = None if (use_ocr_data or use_structured_data) else (image_sources or None)
                 solution_text = llm.chat(
                     messages=messages, temperature=0.2, max_tokens=max_tok, image_sources=image_for_llm
                 )
