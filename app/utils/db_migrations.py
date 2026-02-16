@@ -641,6 +641,12 @@ def ensure_schema_columns(app):
             safe_add_column('published_at', 'TIMESTAMP' if is_postgres else 'DATETIME')
             safe_add_column('student_late', 'BOOLEAN DEFAULT FALSE')
             safe_add_column('started_at', 'TIMESTAMP' if is_postgres else 'DATETIME')
+            safe_add_column('homework_max_attempts_default', 'INTEGER')
+            safe_add_column('classwork_max_attempts_default', 'INTEGER')
+            safe_add_column('exam_max_attempts_default', 'INTEGER')
+            safe_add_column('allow_task_submit_homework', 'BOOLEAN DEFAULT FALSE')
+            safe_add_column('allow_task_submit_classwork', 'BOOLEAN DEFAULT FALSE')
+            safe_add_column('allow_task_submit_exam', 'BOOLEAN DEFAULT FALSE')
 
             _backfill_lesson_materials_to_protected_urls(app, inspector, table_names, limit=2000)
 
@@ -668,6 +674,9 @@ def ensure_schema_columns(app):
                 safe_add_lesson_task_column('status', 'TEXT DEFAULT \'pending\'')  # comment
                 safe_add_lesson_task_column('submission_files', 'JSON')  # comment
                 safe_add_lesson_task_column('teacher_comment', 'TEXT')  # comment
+                safe_add_lesson_task_column('difficulty_level', 'INTEGER')  # рейтинг: 1–3 лёгкий, 4–7 средний, 8–10 сложный
+                safe_add_lesson_task_column('time_spent_sec', 'INTEGER')  # время на задание (сек)
+                safe_add_lesson_task_column('max_attempts', 'INTEGER')  # лимит попыток на задание (override)
                 try:  # comment
                     if is_postgres:  # comment
                         db.session.execute(text(f'UPDATE "{lesson_tasks_table}" SET status = \'pending\' WHERE status = \'in_progress\''))  # comment

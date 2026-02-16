@@ -664,9 +664,47 @@
                             <button type="button" class="neo-button outline sm" onclick="saveLessonReviewSummary()">
                                 <i class="fas fa-save"></i> Сохранить итог
                             </button>
+                            <button type="submit" class="neo-button outline sm" form="homework-form">
+                                <i class="fas fa-layer-group"></i> Сохранить настройки заданий
+                            </button>
                         </div>
                         {% endif %}
                     </div>
+
+                    {% if not is_student_view and not is_parent_view %}
+                    <div style="margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px solid var(--stroke-1); display:grid; grid-template-columns: 220px 220px 1fr 180px; gap: 0.75rem; align-items: end;" class="profile-grid-responsive">
+                        <div>
+                            <label class="neo-label">Попытки по умолчанию</label>
+                            <input class="neo-input" type="number" min="1" max="20" name="max_attempts_default" id="max_attempts_default" value="{{ attempts_default or 1 }}">
+                        </div>
+                        <div>
+                            <label class="neo-label">Сдача по заданиям</label>
+                            <label style="display:flex; align-items:center; gap:0.5rem; min-height:42px; padding:0.4rem 0.6rem; border:1px solid var(--stroke-1); border-radius: var(--radius-sm); background: var(--surface-2);">
+                                <input type="checkbox" name="allow_task_submit" id="allow_task_submit" value="1" {% if allow_task_submit %}checked{% endif %}>
+                                <span>Разрешить отдельную сдачу</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="neo-label">Массово выставить уровень</label>
+                            <div style="display:flex; gap:0.5rem;">
+                                <select class="neo-select" id="bulk_difficulty_level">
+                                    <option value="">— не менять</option>
+                                    <option value="1">Лёгкий</option>
+                                    <option value="5">Средний</option>
+                                    <option value="10">Сложный</option>
+                                </select>
+                                <button type="button" class="neo-button ghost sm" onclick="applyBulkDifficultyLevel()">
+                                    Применить ко всем
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <button type="submit" class="neo-button accent" form="homework-form">
+                                <i class="fas fa-save"></i> Сохранить
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     {% if review_summary and review_summary.get('notes') %}
                     <div style="margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px solid var(--stroke-1); color: var(--text-primary); white-space: pre-wrap; line-height: 1.6;">
@@ -782,6 +820,14 @@
                 {% elif hw_task.submission_correct == false %}
                     {% set status_class = 'status-incorrect' %}
                 {% endif %}
+                {% set task_status = ((hw_task.status or 'pending')|lower) %}
+                {% set attempts_used = (hw_task.attempts|length) %}
+                {% set effective_max_attempts = hw_task.get_effective_max_attempts() %}
+                {% set attempts_left = (effective_max_attempts - attempts_used) %}
+                {% if attempts_left < 0 %}{% set attempts_left = 0 %}{% endif %}
+                {% set task_is_locked_for_student = (task_status == 'graded') or (attempts_used >= effective_max_attempts) %}
+                {% set show_result_for_student = is_student_view and (task_status in ['submitted','graded','returned']) %}
+                {% set can_show_answer_to_student = is_student_view and (attempts_used >= effective_max_attempts) and (task_status in ['submitted','graded','returned']) %}
 
                 <section id="task-{{ hw_task.lesson_task_id }}" class="task-card {{ status_class }}" data-task-id="{{ hw_task.lesson_task_id }}" data-task-status="{{ (hw_task.status or 'pending')|lower }}">
                     <div class="task-header">
@@ -792,13 +838,15 @@
                             {% endif %}
                         </span>
 
-                        {% if hw_task.attempts and hw_task.attempts|length > 0 %}
-                            <span class="status-badge status-info" style="opacity: 0.85;">Попыток: {{ hw_task.attempts|length }}</span>
+                        <span class="status-badge status-info" style="opacity: 0.9;">
+                            Попытки: {{ attempts_used }}/{{ effective_max_attempts }}
+                        </span>
+                        {% if is_student_view %}
+                            <span class="status-badge status-info" style="opacity: 0.8;">
+                                Осталось: {{ attempts_left }}
+                            </span>
                         {% endif %}
-                        
-                        {% set task_status = ((hw_task.status or 'pending')|lower) %}
-                        
-                        {% set show_result_for_student = is_student_view and (task_status in ['submitted','graded','returned']) %}
+
                         {% if (not is_student_view and not is_parent_view) or show_result_for_student %}
                             {% if hw_task.submission_correct == true %}
                                 <span class="status-indicator correct"><i class="fas fa-check-circle"></i> Верно</span>
@@ -876,15 +924,16 @@
                         {% endif %}
                     </div>
 
+                    {% if is_student_view %}
+                    <input type="hidden" name="time_spent_{{ hw_task.lesson_task_id }}" id="time_spent_{{ hw_task.lesson_task_id }}" value="{{ hw_task.time_spent_sec or 0 }}">
+                    {% endif %}
                     <div class="answer-section" style="margin-top: 1.5rem;">
                         <label class="neo-label" for="submission_{{ hw_task.lesson_task_id }}">
                             <i class="fas fa-pen"></i> Ответ ученика:
                         </label>
                         
                         {% if is_student_view %}
-                            {% set tasks = homework_tasks %}
-                            {% set is_task_returned = (task_status == 'returned') %}
-                            {% if not is_read_only or is_task_returned %}
+                            {% if not task_is_locked_for_student %}
                                 <input type="text" class="neo-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_submission or '' }}" placeholder="Введи ответ..." autocomplete="off">
                             {% else %}
                                 <div class="neo-input" style="background: rgba(0,0,0,0.2); border-color: transparent; cursor: not-allowed; opacity: 0.8;">
@@ -898,11 +947,17 @@
                         {% endif %}
                     </div>
 
-                    {% set can_show_answer_to_student = is_student_view and (task_status in ['submitted','graded','returned']) and is_read_only %}
                     {% if can_show_answer_to_student or (not is_student_view and not is_parent_view) %}
                         {% set correct_val = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}
                         {% if correct_val %}
-                        <div class="auto-check-result" style="margin-top: 1rem; padding: 1rem; background: rgba(0, 254, 202, 0.05); border: 1px solid rgba(0, 254, 202, 0.2); border-radius: var(--radius-sm);">
+                        {% if is_student_view %}
+                        <div style="margin-top: 0.75rem;">
+                            <button type="button" class="neo-button ghost sm" onclick="toggleTaskAnswer({{ hw_task.lesson_task_id }})">
+                                <i class="fas fa-eye"></i> Показать ответы
+                            </button>
+                        </div>
+                        {% endif %}
+                        <div id="task-answer-{{ hw_task.lesson_task_id }}" class="auto-check-result" style="margin-top: 1rem; padding: 1rem; background: rgba(0, 254, 202, 0.05); border: 1px solid rgba(0, 254, 202, 0.2); border-radius: var(--radius-sm); {% if is_student_view %}display:none;{% endif %}">
                             <div style="font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 0.5rem;">
                                 <i class="fas fa-check"></i> Правильный ответ: 
                                 <span style="font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.2); padding: 0.2rem 0.5rem; border-radius: 4px;">{{ correct_val }}</span>
@@ -933,6 +988,17 @@
                         {% endif %}
                     {% endif %}
 
+                    {% if is_student_view and allow_task_submit %}
+                    <div style="margin-top: 1rem; display:flex; gap:0.6rem; flex-wrap:wrap;">
+                        <button type="submit"
+                                class="neo-button outline sm"
+                                {% if task_is_locked_for_student %}disabled{% endif %}
+                                formaction="{{ url_for('lessons.lesson_task_student_submit', lesson_id=lesson.lesson_id, lesson_task_id=hw_task.lesson_task_id) }}">
+                            <i class="fas fa-check"></i> Сдать это задание
+                        </button>
+                    </div>
+                    {% endif %}
+
                     {% if not is_student_view and not is_parent_view %}
                     <div style="margin-top: 1.25rem; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); background: var(--surface-2);">
                         <div class="hero-eyebrow" style="margin-bottom: 0.6rem;">проверка преподавателем</div>
@@ -946,6 +1012,21 @@
                             <a class="neo-button accent sm" href="{{ url_for('lessons.review_lesson_task', lesson_task_id=hw_task.lesson_task_id) }}" style="text-decoration:none;">
                                 ✅ Проверить
                             </a>
+                        </div>
+                        <div style="margin-top: 0.85rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <label class="neo-label" for="difficulty_level_{{ hw_task.lesson_task_id }}" style="margin: 0;">Уровень:</label>
+                            <select class="neo-select" id="difficulty_level_{{ hw_task.lesson_task_id }}" name="difficulty_level_{{ hw_task.lesson_task_id }}" style="max-width: 11rem;">
+                                <option value="">— не задан</option>
+                                <option value="1" {% if hw_task.difficulty_level is not none and 1 <= hw_task.difficulty_level <= 3 %}selected{% endif %}>Лёгкий</option>
+                                <option value="5" {% if hw_task.difficulty_level is not none and 4 <= hw_task.difficulty_level <= 7 %}selected{% endif %}>Средний</option>
+                                <option value="10" {% if hw_task.difficulty_level is not none and hw_task.difficulty_level >= 8 %}selected{% endif %}>Сложный</option>
+                            </select>
+                            <span class="muted" style="font-size: 0.85rem;">Влияет на рейтинг (Elo).</span>
+                        </div>
+                        <div style="margin-top: 0.6rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                            <label class="neo-label" for="max_attempts_{{ hw_task.lesson_task_id }}" style="margin: 0;">Попыток:</label>
+                            <input class="neo-input" type="number" min="1" max="20" id="max_attempts_{{ hw_task.lesson_task_id }}" name="max_attempts_{{ hw_task.lesson_task_id }}" value="{{ hw_task.max_attempts if hw_task.max_attempts is not none else '' }}" placeholder="по умолчанию" style="max-width: 11rem;">
+                            <span class="muted" style="font-size: 0.85rem;">Пусто = взять из «Попытки по умолчанию».</span>
                         </div>
                     </div>
                     {% endif %}
@@ -1208,7 +1289,65 @@
         const CSRF_TOKEN = "{{ csrf_token() if csrf_token else '' }}";
         const ASSIGNMENT_TYPE = "{{ assignment_type }}";
         const INITIAL_BLOCKS = {{ (content_blocks or [])|tojson }};
-        
+        const IS_STUDENT_VIEW = {{ 'true' if is_student_view else 'false' }};
+
+        // ----- Учёт времени по заданиям (ученик) -----
+        (function() {
+            if (!IS_STUDENT_VIEW) return;
+            const timeSpentByTask = {};
+            let currentTaskId = null;
+            let intervalId = null;
+            let startedAt = 0;
+
+            function flushCurrent() {
+                if (currentTaskId == null || intervalId == null) return;
+                const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+                if (elapsed > 0) {
+                    timeSpentByTask[currentTaskId] = (timeSpentByTask[currentTaskId] || 0) + elapsed;
+                }
+                clearInterval(intervalId);
+                intervalId = null;
+                currentTaskId = null;
+            }
+
+            function startTask(taskId) {
+                if (taskId === currentTaskId) return;
+                flushCurrent();
+                currentTaskId = taskId;
+                startedAt = Date.now();
+                intervalId = setInterval(function() {
+                    timeSpentByTask[currentTaskId] = (timeSpentByTask[currentTaskId] || 0) + 1;
+                }, 1000);
+            }
+
+            function writeToHiddenInputs() {
+                flushCurrent();
+                document.querySelectorAll('input[id^="time_spent_"]').forEach(function(el) {
+                    const taskId = el.id.replace('time_spent_', '');
+                    let total = timeSpentByTask[taskId] != null ? timeSpentByTask[taskId] : (parseInt(el.value, 10) || 0);
+                    if (total > 86400) total = 86400;
+                    el.value = String(total);
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                document.querySelectorAll('input[id^="time_spent_"]').forEach(function(inp) {
+                    const taskId = inp.id.replace('time_spent_', '');
+                    const v = parseInt(inp.value, 10) || 0;
+                    if (v > 0) timeSpentByTask[taskId] = v;
+                });
+                document.querySelectorAll('input[id^="submission_"]').forEach(function(inp) {
+                    const taskId = inp.id.replace('submission_', '');
+                    inp.addEventListener('focus', function() { startTask(taskId); });
+                    inp.addEventListener('blur', function() { flushCurrent(); });
+                });
+                const form = document.getElementById('homework-form');
+                if (form) {
+                    form.addEventListener('submit', function() { writeToHiddenInputs(); });
+                }
+            });
+        })();
+
         // Tabs Logic (с сохранением выбранной вкладки)
         function switchTab(tabName) {
             document.querySelectorAll('.tab-btn').forEach(b => {
@@ -1562,6 +1701,26 @@
             } catch (e) {
                 toast.error('Ошибка сохранения итога');
             }
+        }
+
+        function applyBulkDifficultyLevel() {
+            const sel = document.getElementById('bulk_difficulty_level');
+            const value = sel ? (sel.value || '') : '';
+            if (!value) {
+                toast.info('Выбери уровень для массового применения');
+                return;
+            }
+            document.querySelectorAll('select[id^="difficulty_level_"]').forEach(function(el) {
+                el.value = value;
+            });
+            toast.success('Уровень применён ко всем заданиям. Нажми «Сохранить».');
+        }
+
+        function toggleTaskAnswer(taskId) {
+            const box = document.getElementById(`task-answer-${taskId}`);
+            if (!box) return;
+            const hidden = box.style.display === 'none' || !box.style.display;
+            box.style.display = hidden ? 'block' : 'none';
         }
 
         function insertRubricTemplate(taskId) {

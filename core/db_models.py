@@ -477,6 +477,16 @@ class Lesson(db.Model):
     homework_result_percent = db.Column(db.Integer, nullable=True)
     homework_result_notes = db.Column(db.Text, nullable=True)
     review_summaries = db.Column(db.JSON, nullable=True)  # Итоги проверки по типам работ: {"homework": {...}, "classwork": {...}, "exam": {...}}
+    # --- Попытки и режим сдачи ---
+    # По умолчанию для каждого типа работы. NULL/пусто = 1 попытка.
+    homework_max_attempts_default = db.Column(db.Integer, nullable=True)
+    classwork_max_attempts_default = db.Column(db.Integer, nullable=True)
+    exam_max_attempts_default = db.Column(db.Integer, nullable=True)
+
+    # Разрешить ученику "сдавать по заданиям" (вместо/в дополнение к сдаче всей работы).
+    allow_task_submit_homework = db.Column(db.Boolean, default=False, nullable=False)
+    allow_task_submit_classwork = db.Column(db.Boolean, default=False, nullable=False)
+    allow_task_submit_exam = db.Column(db.Boolean, default=False, nullable=False)
     published_at = db.Column(db.DateTime, nullable=True) # Дата отправки урока/ДЗ ученику
     student_late = db.Column(db.Boolean, default=False, nullable=False)  # Ученик опоздал на урок
     started_at = db.Column(db.DateTime, nullable=True)  # Фактическое время начала (для авто-завершения через 1 ч)
@@ -514,11 +524,84 @@ class LessonTask(db.Model):
     status = db.Column(db.String(20), default='pending') # pending, submitted, graded, returned
     submission_files = db.Column(db.JSON, nullable=True) # Список путей к файлам
     teacher_comment = db.Column(db.Text, nullable=True) # Комментарий преподавателя к задаче
+    # Рейтинг задания в этой работе: 1–3 = лёгкий, 4–7 = средний, 8–10 = сложный. NULL = брать из Task.difficulty_level
+    difficulty_level = db.Column(db.Integer, nullable=True, index=True)
+    # Время, потраченное учеником на это задание (сек). Передаётся с фронта при сдаче или фиксируется на бэке
+    time_spent_sec = db.Column(db.Integer, nullable=True)
+    # Максимум попыток на это задание (переопределение). NULL = брать из Lesson.<type>_max_attempts_default (или 1)
+    max_attempts = db.Column(db.Integer, nullable=True)
 
     lesson = db.relationship('Lesson', back_populates='homework_tasks')
     task = db.relationship('Tasks')
     teacher_comments = db.relationship('LessonTaskTeacherComment', back_populates='lesson_task', lazy=True, cascade='all, delete-orphan')  # comment
     attempts = db.relationship('LessonTaskAttempt', back_populates='lesson_task', lazy=True, cascade='all, delete-orphan')
+
+    @property
+    def difficulty_label(self) -> str:
+        """Лёгкий / средний / сложный по difficulty_level (для отображения и аналитики)."""
+        v = self.difficulty_level
+        if v is None or 4 <= v <= 7:
+            return 'medium'
+        if 1 <= v <= 3:
+            return 'easy'
+        if v >= 8:
+            return 'hard'
+        return 'medium'
+
+    @property
+    def attempts_used(self) -> int:
+        """Сколько попыток сдачи уже зафиксировано (LessonTaskAttempts)."""
+        try:
+            return len(self.attempts or [])
+        except Exception:
+            return 0
+
+    def get_effective_max_attempts(self) -> int:
+        """
+        Эффективный лимит попыток:
+        - LessonTask.max_attempts (если задано и > 0)
+        - иначе Lesson.<type>_max_attempts_default (если задано и > 0)
+        - иначе 1
+        """
+        try:
+            if self.max_attempts is not None:
+                v = int(self.max_attempts)
+                if v > 0:
+                    return v
+        except Exception:
+            pass
+
+        at = (self.assignment_type or 'homework').strip().lower() or 'homework'
+        lesson = getattr(self, 'lesson', None)
+        lesson_val = None
+        if lesson is not None:
+            key = {
+                'homework': 'homework_max_attempts_default',
+                'classwork': 'classwork_max_attempts_default',
+                'exam': 'exam_max_attempts_default',
+            }.get(at, 'homework_max_attempts_default')
+            lesson_val = getattr(lesson, key, None)
+        try:
+            if lesson_val is not None:
+                v = int(lesson_val)
+                if v > 0:
+                    return v
+        except Exception:
+            pass
+        return 1
+
+    def is_task_submit_allowed(self) -> bool:
+        """Можно ли ученику сдавать именно это задание отдельно (зависит от Lesson и assignment_type)."""
+        at = (self.assignment_type or 'homework').strip().lower() or 'homework'
+        lesson = getattr(self, 'lesson', None)
+        if not lesson:
+            return False
+        flag = {
+            'homework': 'allow_task_submit_homework',
+            'classwork': 'allow_task_submit_classwork',
+            'exam': 'allow_task_submit_exam',
+        }.get(at, 'allow_task_submit_homework')
+        return bool(getattr(lesson, flag, False))
 
 
 class StudentTaskSeen(db.Model):

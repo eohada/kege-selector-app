@@ -74,6 +74,17 @@ class AnalyticsEngine:
         return flags
 
     @classmethod
+    def _task_rating_from_difficulty(cls, base_rating: float, difficulty_level: int | None) -> float:
+        """Рейтинг задачи для Elo по difficulty_level: 1–3 easy, 4–7 medium, 8–10 hard."""
+        if difficulty_level is None or 4 <= difficulty_level <= 7:
+            return base_rating
+        if 1 <= difficulty_level <= 3:
+            return base_rating - 100.0
+        if difficulty_level >= 8:
+            return base_rating + 150.0
+        return base_rating
+
+    @classmethod
     def process_submission(
         cls,
         user_id: int,
@@ -82,12 +93,13 @@ class AnalyticsEngine:
         time_spent_sec: int | None = None,
         submission_id: int | None = None,
         answer_id: int | None = None,
+        difficulty_level_override: int | None = None,
     ) -> float | None:
         """
         Вызывается после проверки ответа. Обновляет рейтинг пользователя по узлу знаний.
         Возвращает новый рейтинг или None, если узел не определён.
 
-        Использует task.get_elo_rating() для расчёта, учитывающего difficulty_level.
+        difficulty_level_override: если задан (например из LessonTask), используется вместо task.difficulty_level для Elo.
         """
         task = Tasks.query.get(task_id)
         if not task:
@@ -119,15 +131,22 @@ class AnalyticsEngine:
                     mastery.volatility + delta * cls.VOLATILITY_GROWTH_PER_DAY,
                 )
 
-        # --- Per-task difficulty Elo rating ---
-        task_rating = task.get_elo_rating()
+        # --- Per-task difficulty Elo rating (с учётом переопределения из ДЗ/КР/проверочной) ---
+        if difficulty_level_override is not None:
+            base = float(getattr(node, 'base_rating', 1000))
+            task_rating = cls._task_rating_from_difficulty(base, difficulty_level_override)
+        else:
+            task_rating = task.get_elo_rating()
         expected_score = cls.calculate_probability(mastery.rating, task_rating)
         actual_score = 1.0 if is_correct else 0.0
 
         k_factor = cls.BASE_K_FACTOR * (mastery.volatility / 100.0)
 
-        # --- Детектор поведения ---
-        behavior = cls._detect_behavior(is_correct, time_spent_sec, task)
+        # --- Детектор поведения (используем override для определения Hard при быстром успехе) ---
+        _effective_difficulty = difficulty_level_override if difficulty_level_override is not None else getattr(task, 'difficulty_level', None)
+        _effective_label = 'hard' if (_effective_difficulty is not None and _effective_difficulty >= 8) else ('easy' if (_effective_difficulty is not None and 1 <= _effective_difficulty <= 3) else 'medium')
+        _task_for_behavior = type('Task', (), {'difficulty_label': _effective_label})()
+        behavior = cls._detect_behavior(is_correct, time_spent_sec, _task_for_behavior)
 
         # Подавление K при подозрительных паттернах
         if behavior.get('fast_success_hard'):
@@ -157,7 +176,7 @@ class AnalyticsEngine:
             submission_id=submission_id,
             answer_id=answer_id,
             is_correct=is_correct,
-            task_difficulty=task.difficulty_level,
+            task_difficulty=difficulty_level_override if difficulty_level_override is not None else task.difficulty_level,
             old_rating=old_rating,
             new_rating=new_rating,
             time_spent_sec=time_spent_sec,
