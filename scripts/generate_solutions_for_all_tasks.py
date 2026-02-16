@@ -5,8 +5,14 @@
 Проходит по таблице Tasks, для каждого задания без решения вызывает LLM
 и сохраняет в TaskSolutions. Создатель может просматривать в админке.
 
+Для заданий с картинками (граф, таблица): по умолчанию OCR (easyocr) извлекает
+текст с изображений, LLM решает по этим данным. В решении модель описывает всё
+так, будто анализирует изображение. При пустом OCR — fallback на Vision (передача
+картинок в GigaChat).
+
 Запуск:
   python scripts/generate_solutions_for_all_tasks.py [--limit N] [--task-number N] [--force] [--dry-run]
+  --no-ocr  — не использовать OCR, передавать картинки в Vision-модель
 """
 from __future__ import annotations
 
@@ -209,6 +215,68 @@ def _extract_images_from_html(content_html: str, site_base: str = SITE_BASE) -> 
     return result
 
 
+def _get_image_bytes(src: str | bytes) -> bytes | None:
+    """Получить байты изображения из URL или bytes."""
+    if isinstance(src, bytes):
+        return src
+    if isinstance(src, str) and src.startswith(('http://', 'https://')):
+        try:
+            import requests
+            verify = os.environ.get('GIGACHAT_VERIFY_SSL_CERTS', 'true').strip().lower() not in ('0', 'false', 'no')
+            resp = requests.get(src, timeout=15, verify=verify)
+            resp.raise_for_status()
+            return resp.content
+        except Exception:
+            return None
+    return None
+
+
+_ocr_reader = None
+
+
+def _get_ocr_reader():
+    """Ленивая инициализация easyocr Reader (тяжёлый при первом вызове)."""
+    global _ocr_reader
+    if _ocr_reader is None:
+        try:
+            import easyocr
+            _ocr_reader = easyocr.Reader(['ru', 'en'], gpu=False, verbose=False)
+        except Exception:
+            pass
+    return _ocr_reader
+
+
+def _ocr_extract_from_images(image_sources: list[str | bytes]) -> str:
+    """Извлечь текст с изображений через OCR (easyocr). Возвращает объединённый текст или пустую строку."""
+    if not image_sources:
+        return ''
+    try:
+        import numpy as np
+        from PIL import Image
+        import io
+    except ImportError:
+        return ''
+    reader = _get_ocr_reader()
+    if reader is None:
+        return ''
+    parts = []
+    for src in image_sources[:5]:
+        data = _get_image_bytes(src) if not isinstance(src, bytes) else src
+        if not data or len(data) > 10 * 1024 * 1024:
+            continue
+        try:
+            img = Image.open(io.BytesIO(data)).convert('RGB')
+            arr = np.array(img)
+            result = reader.readtext(arr)
+            if result:
+                text = ' '.join(r[1] for r in result if r[1])
+                if text.strip():
+                    parts.append(text.strip())
+        except Exception:
+            continue
+    return '\n\n'.join(parts)[:6000] if parts else ''
+
+
 def _strip_html_preserve_tables(html: str) -> str:
     """Извлечение текста с сохранением структуры таблиц."""
     if not html:
@@ -240,6 +308,7 @@ def _build_solution_prompt(
     knowledge: dict | None,
     prototype_data: str,
     has_images: bool = False,
+    ocr_extracted_data: str = '',
 ) -> list[dict]:
     """Промпт для генерации полного решения."""
     system = (
@@ -258,19 +327,29 @@ def _build_solution_prompt(
         "Если изображений нет и конкретные числа/буквы не даны в тексте — не решай «из головы», напиши: «Откройте источник по ссылке.» "
         "Если есть вложения (Excel, текст) — опирайся на их содержимое."
     )
-    if has_images:
+    use_ocr = bool(ocr_extracted_data and len(ocr_extracted_data.strip()) > 20)
+    if has_images or use_ocr:
         system += (
-            "\n\n[!] К заданию ПРИЛОЖЕНЫ изображения (граф, таблица и т.п.). "
-            "Ты ОБЯЗАН проанализировать их визуально и решить задачу по ТОЛЬКО данным с картинок. "
-            "ИГНОРИРУЙ любые примеры, эталоны — в них ДРУГИЕ числа и буквы. "
-            "ЗАПРЕЩЕНО писать «откройте источник» — у тебя ЕСТЬ изображение.\n\n"
+            "\n\n[!] Используй ТОЛЬКО данные из условия и приложенных материалов. "
+            "ИГНОРИРУЙ примеры и эталоны — в них ДРУГИЕ числа и буквы.\n\n"
             "ОБЯЗАТЕЛЬНО: напиши ПОЛНОЕ пошаговое решение (Шаг 1, Шаг 2, ...) с объяснением. "
             "НЕЛЬЗЯ писать только ответ. Алгоритм для графов: сопоставь степени вершин (граф ↔ таблица), "
             "сопоставь буквы с номерами, затем возьми значения из таблицы. Ответ — последним."
         )
+    if use_ocr:
+        system += (
+            "\n\n[!] Тебе переданы данные, извлечённые с изображения (OCR). "
+            "В решении ОПИСЫВАЙ всё так, будто анализируешь изображение: «На рисунке видно...», "
+            "«по таблице находим...», «в графе вершина A соединена с...» — чтобы читатель думал, что ты смотришь на картинку."
+        )
+    elif has_images:
+        system += (
+            "\n\n[!] К заданию ПРИЛОЖЕНЫ изображения. Проанализируй их и решай по ТОЛЬКО данным с картинок. "
+            "ЗАПРЕЩЕНО писать «откройте источник» — у тебя ЕСТЬ изображение."
+        )
     ctx = []
-    # При has_images не даём reference_solution — модель может взять оттуда числа вместо данных с картинки
-    if knowledge and knowledge.get('reference_solution') and not has_images:
+    # При has_images/use_ocr не даём reference_solution
+    if knowledge and knowledge.get('reference_solution') and not (has_images or use_ocr):
         ref = (knowledge.get('reference_solution') or '')[:1200]
         if ref:
             ctx.append(f"Пример СТИЛЯ решения (структура шагов). НЕ копируй буквы, числа, таблицу — в твоём задании они ДРУГИЕ:\n{ref}")
@@ -282,9 +361,19 @@ def _build_solution_prompt(
     user_parts.append(task_text[:4000])
     has_img_ref = 'рисунк' in task_text.lower() or 'таблиц' in task_text.lower()
     has_table_data = '[ТАБЛИЦА]' in task_text or ('|' in task_text and any(c.isdigit() for c in task_text))
-    if has_img_ref and not has_table_data and not has_images:
+    if has_img_ref and not has_table_data and not has_images and not use_ocr:
         user_parts.append('')
         user_parts.append("[!] В условии упомянут рисунок/таблица, но конкретные числа не приведены. Изображений нет. Не выдумывай данные — напиши: «Откройте источник по ссылке.»")
+    elif use_ocr:
+        user_parts.append('')
+        user_parts.append("--- Данные с изображения (OCR): ---")
+        user_parts.append(ocr_extracted_data[:5000])
+        user_parts.append('')
+        user_parts.append(
+            "[!] Используй ТОЛЬКО эти данные. Решай пошагово. "
+            "В решении описывай всё так, будто смотришь на изображение (например: «На рисунке видно...», «по таблице находим...»). "
+            "Ответ — в конце: **Ответ:** число (или строка/буквы)."
+        )
     elif has_images:
         user_parts.append('')
         user_parts.append(
@@ -292,8 +381,8 @@ def _build_solution_prompt(
             "Проанализируй его: 1) сопоставь степени вершин графа и таблицы; 2) сопоставь буквы (A–H) с номерами (1–8); "
             "3) найди нужные значения в таблице. Напиши решение пошагово, ответ — в конце в формате **Ответ:** число."
         )
-    # prototype_data — НЕ добавлять при has_images! Эталон содержит ДРУГИЕ числа/буквы — модель начинает путаться.
-    if prototype_data and not has_images:
+    # prototype_data — НЕ добавлять при has_images/use_ocr!
+    if prototype_data and not has_images and not use_ocr:
         user_parts.append('')
         user_parts.append("--- Точные данные графа/таблицы из эталона (используй их): ---")
         user_parts.append(prototype_data[:3500])
@@ -317,6 +406,7 @@ def main():
     parser.add_argument('--force', action='store_true', help='Перезаписать существующие решения')
     parser.add_argument('--dry-run', action='store_true', help='Не сохранять в БД')
     parser.add_argument('--batch-size', type=int, default=10, help='Коммитить каждые N заданий')
+    parser.add_argument('--no-ocr', action='store_true', help='Не использовать OCR, передавать картинки в Vision-модель')
     args = parser.parse_args()
 
     from app import create_app
@@ -378,16 +468,30 @@ def main():
                         sid = m.group(1)
                 if sid and sid.isdigit():
                     image_sources = [f"{SITE_BASE}/images/{sid}.png"]
-            print(f'  task_id={task.task_id}: {"%d image(s) for vision" % len(image_sources) if image_sources else "no images"}')
+            ocr_data = ''
+            if image_sources and not args.no_ocr:
+                ocr_data = _ocr_extract_from_images(image_sources)
+                if ocr_data:
+                    print(f'  task_id={task.task_id}: OCR ok, %d chars' % len(ocr_data))
+                else:
+                    print(f'  task_id={task.task_id}: %d image(s) for vision (OCR empty)' % len(image_sources))
+            elif image_sources:
+                print(f'  task_id={task.task_id}: %d image(s) for vision (--no-ocr)' % len(image_sources))
+            else:
+                print(f'  task_id={task.task_id}: no images')
+
+            use_ocr_data = bool(ocr_data and len(ocr_data.strip()) > 20) and not args.no_ocr
             messages = _build_solution_prompt(
                 task_text, task.task_number, source_url, attachments_content, knowledge, prototype_data,
                 has_images=bool(image_sources),
+                ocr_extracted_data=ocr_data,
             )
 
             try:
-                max_tok = 2000 if image_sources else 1500
+                max_tok = 2000 if (image_sources or use_ocr_data) else 1500
+                image_for_llm = None if use_ocr_data else (image_sources or None)
                 solution_text = llm.chat(
-                    messages=messages, temperature=0.2, max_tokens=max_tok, image_sources=image_sources or None
+                    messages=messages, temperature=0.2, max_tokens=max_tok, image_sources=image_for_llm
                 )
                 if not solution_text or len(solution_text.strip()) < 20:
                     print(f'  task_id={task.task_id}: пустой ответ LLM')
