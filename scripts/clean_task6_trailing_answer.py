@@ -17,46 +17,36 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 def _strip_trailing_answer_once(content: str, answer: str) -> str:
     """
-    Удаляет одно вхождение ответа в самом конце условия (content_html).
-    Учитывает, что конец может быть « 48</p></div>» — ответ перед закрывающими тегами.
+    Удаляет дублирующееся в конце число-ответ: условие, пустые строки, число без подписи.
+    Число может быть просто в конце текста («...\n\n48») или внутри тега («<p>48</p>»).
     Не отрезает, если ответ — часть числа (например «128» при ответе «8»).
     """
     if not content or not answer:
         return content
-    # Паттерн: пробелы, затем ответ, затем пробелы и закрывающие теги до конца
+    # Перед ответом: либо пробелы/переносы, либо конец открывающего тега «>»
+    # После ответа: пробелы и закрывающие теги до конца строки
     pattern = re.compile(
-        r'(\s*)' + re.escape(answer) + r'\s*(?:</[^>]+>)*\s*$',
+        r'([\s>]*)' + re.escape(answer) + r'\s*(?:</[^>]+>)*\s*$',
         re.DOTALL,
     )
     m = pattern.search(content)
     if not m:
-        # Раньше проверяли только конец без тегов — оставляем как запасной вариант
-        s = content.rstrip()
-        if not s.endswith(answer):
-            return content
-        pos = len(s) - len(answer)
-        if pos > 0 and s[pos - 1].isdigit():
-            return content
-        new_end = s[:pos].rstrip()
-        for _ in range(3):
-            if new_end.endswith(' ') or new_end.endswith('−') or new_end.endswith('-') or new_end.endswith(','):
-                new_end = new_end[:-1].rstrip()
-        for suffix in ('Ответ:', 'Ответ: ', 'ответ:', 'ответ: '):
-            if new_end.endswith(suffix):
-                new_end = new_end[: -len(suffix)].rstrip()
-                break
-        return new_end
-    # Ответ не должен быть частью числа (символ перед ответом — не цифра)
-    answer_start = m.start() + len(m.group(1))
-    if answer_start > 0 and content[answer_start - 1].isdigit():
         return content
+    # Не отрезать, если ответ — часть числа (символ перед ответом — не цифра и не «>» внутри числа)
+    lead = m.group(1)
+    answer_start = m.start() + len(lead)
+    if answer_start > 0:
+        prev = content[answer_start - 1]
+        if prev.isdigit():
+            return content
     new_content = content[: m.start()].rstrip()
-    # Убрать trailing разделители ( − , запятая, пробел)
-    for _ in range(5):
+    # Убрать «висящий» открывающий тег в конце (например «<p» после удаления «>48</p>»)
+    new_content = re.sub(r'<[a-zA-Z][^>]*$', '', new_content).rstrip()
+    # Убрать trailing разделители
+    for _ in range(6):
         if new_content.endswith(' ') or new_content.endswith('−') or new_content.endswith('-') or new_content.endswith(','):
             new_content = new_content[:-1].rstrip()
-    # Убрать оставшееся в конце «Ответ:» / «Ответ: »
-    for suffix in ('Ответ:', 'Ответ: ', 'Ответ :', 'ответ:', 'ответ: '):
+    for suffix in ('Ответ:', 'Ответ: ', 'ответ:', 'ответ: '):
         if new_content.rstrip().endswith(suffix):
             new_content = new_content.rstrip()[: -len(suffix)].rstrip()
             break
@@ -67,6 +57,7 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description='Убрать лишний ответ в конце условия у заданий 6')
     parser.add_argument('--dry-run', action='store_true', help='Не сохранять в БД, только показать изменения')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Показать конец content_html для первых 3 заданий (для отладки)')
     args = parser.parse_args()
 
     from app import create_app
@@ -81,6 +72,12 @@ def main():
 
         with_answer = sum(1 for t in tasks if (t.answer or '').strip())
         print(f'Заданий с task_number=6 (с контентом): {len(tasks)}, из них с непустым ответом: {with_answer}')
+
+        if args.verbose and tasks:
+            for task in tasks[:3]:
+                c = (task.content_html or '')[-200:]
+                a = (task.answer or '').strip()
+                print(f'  task_id={task.task_id} answer={a!r} конец content: ...{repr(c)}')
 
         updated = 0
         for task in tasks:
