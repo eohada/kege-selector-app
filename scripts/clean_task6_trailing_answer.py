@@ -15,16 +15,29 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
+# Блок с дублирующим ответом с компеге: <div class="answerWrap"><p ...>30</p>...</div>
+_ANSWER_WRAP_PATTERN = re.compile(
+    r'<div\s+class=["\']answerWrap["\'][^>]*>.*$',
+    re.DOTALL | re.IGNORECASE,
+)
+
+
 def _strip_trailing_answer_once(content: str, answer: str) -> str:
     """
-    Удаляет дублирующееся в конце число-ответ: условие, пустые строки, число без подписи.
-    Число может быть просто в конце текста («...\n\n48») или внутри тега («<p>48</p>»).
-    Не отрезает, если ответ — часть числа (например «128» при ответе «8»).
+    Удаляет дублирующий ответ в конце условия (task_number=6).
+    Сначала вырезает блок <div class="answerWrap">...</div> до конца (формат с компеге).
+    Иначе удаляет число-ответ в конце: пустые строки и число без подписи.
     """
     if not content or not answer:
         return content
-    # Перед ответом: либо пробелы/переносы, либо конец открывающего тега «>»
-    # После ответа: пробелы и закрывающие теги до конца строки
+    # 1) Удалить весь блок answerWrap до конца (там внутри <p>ответ</p>)
+    m_wrap = _ANSWER_WRAP_PATTERN.search(content)
+    if m_wrap:
+        new_content = content[: m_wrap.start()].rstrip()
+        # Убрать возможный хвост вроде незакрытого тега
+        new_content = re.sub(r'<[a-zA-Z][^>]*$', '', new_content).rstrip()
+        return new_content
+    # 2) Классический вариант: число в конце после пробелов/тегов
     pattern = re.compile(
         r'([\s>]*)' + re.escape(answer) + r'\s*(?:</[^>]+>)*\s*$',
         re.DOTALL,
@@ -32,17 +45,11 @@ def _strip_trailing_answer_once(content: str, answer: str) -> str:
     m = pattern.search(content)
     if not m:
         return content
-    # Не отрезать, если ответ — часть числа (символ перед ответом — не цифра и не «>» внутри числа)
-    lead = m.group(1)
-    answer_start = m.start() + len(lead)
-    if answer_start > 0:
-        prev = content[answer_start - 1]
-        if prev.isdigit():
-            return content
+    answer_start = m.start() + len(m.group(1))
+    if answer_start > 0 and content[answer_start - 1].isdigit():
+        return content
     new_content = content[: m.start()].rstrip()
-    # Убрать «висящий» открывающий тег в конце (например «<p» после удаления «>48</p>»)
     new_content = re.sub(r'<[a-zA-Z][^>]*$', '', new_content).rstrip()
-    # Убрать trailing разделители
     for _ in range(6):
         if new_content.endswith(' ') or new_content.endswith('−') or new_content.endswith('-') or new_content.endswith(','):
             new_content = new_content[:-1].rstrip()
