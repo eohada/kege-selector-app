@@ -17,25 +17,50 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 def _strip_trailing_answer_once(content: str, answer: str) -> str:
     """
-    Удаляет одно вхождение ответа в самом конце текста, если оно идёт отдельно
-    (не часть более длинного числа). Возвращает новый content или тот же.
+    Удаляет одно вхождение ответа в самом конце условия (content_html).
+    Учитывает, что конец может быть « 48</p></div>» — ответ перед закрывающими тегами.
+    Не отрезает, если ответ — часть числа (например «128» при ответе «8»).
     """
     if not content or not answer:
         return content
-    s = content.rstrip()
-    if not s.endswith(answer):
+    # Паттерн: пробелы, затем ответ, затем пробелы и закрывающие теги до конца
+    pattern = re.compile(
+        r'(\s*)' + re.escape(answer) + r'\s*(?:</[^>]+>)*\s*$',
+        re.DOTALL,
+    )
+    m = pattern.search(content)
+    if not m:
+        # Раньше проверяли только конец без тегов — оставляем как запасной вариант
+        s = content.rstrip()
+        if not s.endswith(answer):
+            return content
+        pos = len(s) - len(answer)
+        if pos > 0 and s[pos - 1].isdigit():
+            return content
+        new_end = s[:pos].rstrip()
+        for _ in range(3):
+            if new_end.endswith(' ') or new_end.endswith('−') or new_end.endswith('-') or new_end.endswith(','):
+                new_end = new_end[:-1].rstrip()
+        for suffix in ('Ответ:', 'Ответ: ', 'ответ:', 'ответ: '):
+            if new_end.endswith(suffix):
+                new_end = new_end[: -len(suffix)].rstrip()
+                break
+        return new_end
+    # Ответ не должен быть частью числа (символ перед ответом — не цифра)
+    answer_start = m.start() + len(m.group(1))
+    if answer_start > 0 and content[answer_start - 1].isdigit():
         return content
-    pos = len(s) - len(answer)
-    # Не отрезать, если ответ — часть числа (например, ответ "8", конец "128")
-    if pos > 0 and s[pos - 1].isdigit():
-        return content
-    # Убрать пробелы/знаки между концом условия и ответом (например " − 48")
-    new_end = s[:pos].rstrip()
-    # Убрать один trailing разделитель (пробел, минус, запятая)
-    for _ in range(2):
-        if new_end.endswith(' ') or new_end.endswith('−') or new_end.endswith('-') or new_end.endswith(','):
-            new_end = new_end[:-1].rstrip()
-    return new_end
+    new_content = content[: m.start()].rstrip()
+    # Убрать trailing разделители ( − , запятая, пробел)
+    for _ in range(5):
+        if new_content.endswith(' ') or new_content.endswith('−') or new_content.endswith('-') or new_content.endswith(','):
+            new_content = new_content[:-1].rstrip()
+    # Убрать оставшееся в конце «Ответ:» / «Ответ: »
+    for suffix in ('Ответ:', 'Ответ: ', 'Ответ :', 'ответ:', 'ответ: '):
+        if new_content.rstrip().endswith(suffix):
+            new_content = new_content.rstrip()[: -len(suffix)].rstrip()
+            break
+    return new_content
 
 
 def main():
@@ -53,6 +78,9 @@ def main():
             Tasks.task_number == 6,
             Tasks.content_html.isnot(None),
         ).order_by(Tasks.task_id.asc()).all()
+
+        with_answer = sum(1 for t in tasks if (t.answer or '').strip())
+        print(f'Заданий с task_number=6 (с контентом): {len(tasks)}, из них с непустым ответом: {with_answer}')
 
         updated = 0
         for task in tasks:
