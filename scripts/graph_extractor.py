@@ -66,7 +66,7 @@ class GraphExtractor:
 
         labeled_nodes = self._label_nodes(img, nodes)
         debug['labeled'] = [{'label': n['label'], 'center': n['center']} for n in labeled_nodes]
-        adjacency_list = self._find_edges(binary, labeled_nodes)
+        adjacency_list = self._find_edges(binary, labeled_nodes, gray_img=gray)
         for key in adjacency_list:
             adjacency_list[key].sort()
         debug['adjacency_keys'] = list(adjacency_list.keys())
@@ -125,7 +125,29 @@ class GraphExtractor:
     def _label_nodes(self, original_img, nodes: list) -> list[dict[str, Any]]:
         import cv2
         latin_labels = 'ABCDEFGH'
+        # В заданиях №1 обычно метки из ограниченного набора (кириллица)
+        target_cyr = 'АБВГДЕЖК'
         cyrillic_labels = 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩ'
+
+        def normalize_to_cyr(ch: str) -> str:
+            """Убираем смешение алфавитов: маппим латиницу-двойника в кириллицу, если возможно."""
+            m = {
+                'A': 'А',
+                'B': 'В',
+                'C': 'С',
+                'E': 'Е',
+                'K': 'К',
+                'M': 'М',
+                'H': 'Н',
+                'O': 'О',
+                'P': 'Р',
+                'T': 'Т',
+                'X': 'Х',
+                'Y': 'У',
+                'G': 'Г',
+                'D': 'Д',
+            }
+            return m.get(ch, ch)
         labeled = []
         h, w = original_img.shape[:2]
         for node in nodes:
@@ -137,22 +159,27 @@ class GraphExtractor:
             roi = original_img[y1:y2, x1:x2]
             label = "?"
             if roi.size > 0:
-                for allowlist in ('ABCDEFGH', 'АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЭЮЯA-Z'):
+                # СНАЧАЛА кириллица (иначе EasyOCR часто отдаёт латиницу A/B/E/K)
+                for allowlist in (target_cyr, cyrillic_labels + 'ЭЮЯ', latin_labels):
                     result = self.reader.readtext(roi, allowlist=allowlist)
                     if result:
                         best = max(result, key=lambda x: x[2])
                         raw = (best[1] or '?').strip().upper()
                         if len(raw) > 1:
                             raw = raw[0]
-                        if raw and raw in latin_labels:
+                        if not raw or raw == '?':
+                            continue
+                        raw = normalize_to_cyr(raw)
+                        if raw in target_cyr:
                             label = raw
                             break
-                        if raw and raw in cyrillic_labels + 'AO':
-                            label = 'А' if raw == 'A' else ('О' if raw == 'O' else raw)
+                        if raw in cyrillic_labels:
+                            label = raw
                             break
             labeled.append({'label': label, 'center': (x, y), 'radius': r})
         used = {n['label'] for n in labeled if n['label'] != '?'}
-        fallback = latin_labels if any(n['label'] in latin_labels for n in labeled) else cyrillic_labels
+        # Если нашли хоть одну кириллическую метку — считаем, что весь граф кириллицей
+        fallback = target_cyr if any(n['label'] in cyrillic_labels for n in labeled) else latin_labels
         for n in labeled:
             if n['label'] == '?':
                 for c in fallback:
@@ -163,19 +190,114 @@ class GraphExtractor:
         labeled.sort(key=lambda n: (n['center'][1], n['center'][0]))
         return labeled
 
-    def _find_edges(self, binary_img, labeled_nodes: list) -> dict[str, list[str]]:
+    def _find_edges(self, binary_img, labeled_nodes: list, gray_img=None) -> dict[str, list[str]]:
         import cv2
         import numpy as np
-        adj = {n['label']: [] for n in labeled_nodes if n['label'] != '?' and n['label'] != 'Unknown'}
-        for i in range(len(labeled_nodes)):
-            for j in range(i + 1, len(labeled_nodes)):
-                a, b = labeled_nodes[i], labeled_nodes[j]
-                if a['label'] in ('?', 'Unknown') or b['label'] in ('?', 'Unknown'):
+        adj = {n['label']: [] for n in labeled_nodes if n['label'] not in ('?', 'Unknown')}
+
+        # 1) Строим карту рёбер (лучше работает, чем порог по gray для тонких линий)
+        if gray_img is not None:
+            g = gray_img
+            if getattr(self, '_dark_bg', False):
+                g = cv2.bitwise_not(g)
+            g = cv2.GaussianBlur(g, (3, 3), 0)
+            edges_only = cv2.Canny(g, 40, 120)
+            edges_only = cv2.dilate(edges_only, np.ones((3, 3), np.uint8), iterations=1)
+        else:
+            kernel = np.ones((3, 3), np.uint8)
+            fat = cv2.dilate(binary_img, kernel, iterations=2)
+            edges_only = fat.copy()
+
+        # 2) Удаляем сами вершины (кружки) и небольшую окрестность
+        for node in labeled_nodes:
+            cx, cy = node['center']
+            r = int(node.get('radius', 15))
+            cv2.circle(edges_only, (int(cx), int(cy)), r + 8, 0, -1)
+
+        # 3) Детект сегментов рёбер (HoughLinesP)
+        h, w = edges_only.shape[:2]
+        min_len = max(18, min(h, w) // 16)
+        max_gap = max(12, min(h, w) // 40)
+        lines = cv2.HoughLinesP(
+            edges_only,
+            rho=1,
+            theta=np.pi / 180,
+            threshold=25,
+            minLineLength=min_len,
+            maxLineGap=max_gap,
+        )
+
+        # 4) Маппим концы сегментов к ближайшим вершинам
+        def nearest_node(pt):
+            x, y = int(pt[0]), int(pt[1])
+            best = None
+            best_d2 = None
+            for n in labeled_nodes:
+                cx, cy = n['center']
+                dx, dy = x - int(cx), y - int(cy)
+                d2 = dx * dx + dy * dy
+                r = int(n.get('radius', 15))
+                lim = (r + 28) * (r + 28)
+                if d2 <= lim and (best_d2 is None or d2 < best_d2):
+                    best = n
+                    best_d2 = d2
+            return best
+
+        votes: dict[tuple[str, str], int] = {}
+        if lines is not None:
+            for ln in lines:
+                x1, y1, x2, y2 = ln[0]
+                n1 = nearest_node((x1, y1))
+                n2 = nearest_node((x2, y2))
+                if not n1 or not n2:
                     continue
-                if self._check_connection(binary_img, a, b):
-                    adj.setdefault(a['label'], []).append(b['label'])
-                    adj.setdefault(b['label'], []).append(a['label'])
+                a, b = n1['label'], n2['label']
+                if a in ('?', 'Unknown') or b in ('?', 'Unknown') or a == b:
+                    continue
+                key = tuple(sorted((a, b)))
+                votes[key] = votes.get(key, 0) + 1
+
+        # 5) Если Hough ничего не дал — fallback на попарную «толстую линию»
+        edges = set()
+        # Подтверждаем рёбра: либо есть голосование, либо fallback
+        for (a, b), v in votes.items():
+            if v < 2:
+                continue
+            na = next((n for n in labeled_nodes if n['label'] == a), None)
+            nb = next((n for n in labeled_nodes if n['label'] == b), None)
+            if not na or not nb:
+                continue
+            # Валидируем пересечением с "толстой линией"
+            if self._check_connection_robust(edges_only, na, nb):
+                edges.add((a, b))
+
+        if not edges:
+            for i in range(len(labeled_nodes)):
+                for j in range(i + 1, len(labeled_nodes)):
+                    a, b = labeled_nodes[i], labeled_nodes[j]
+                    if a['label'] in ('?', 'Unknown') or b['label'] in ('?', 'Unknown'):
+                        continue
+                    if self._check_connection_robust(edges_only, a, b):
+                        edges.add(tuple(sorted((a['label'], b['label']))))
+
+        for a, b in edges:
+            adj.setdefault(a, []).append(b)
+            adj.setdefault(b, []).append(a)
         return adj
+
+    def _check_connection_robust(self, edges_img, node_a: dict, node_b: dict) -> bool:
+        import cv2
+        import numpy as np
+        p1 = tuple(int(x) for x in node_a['center'])
+        p2 = tuple(int(x) for x in node_b['center'])
+        line_mask = np.zeros_like(edges_img)
+        cv2.line(line_mask, p1, p2, 255, 3)
+        intersection = cv2.bitwise_and(edges_img, line_mask)
+        line_pixels = cv2.countNonZero(line_mask)
+        match_pixels = cv2.countNonZero(intersection)
+        if line_pixels == 0:
+            return False
+        return (match_pixels / line_pixels) > 0.45
 
     def _check_connection(self, binary_img, node_a: dict, node_b: dict) -> bool:
         import cv2

@@ -93,20 +93,37 @@ def clean_html_content(html: str, task_number: int = None) -> str:
                 text_node.replace_with(cleaned)
     
     if task_number == 6:
-        for elem in soup.find_all(string=re.compile(r'[Оо]твет|[Вв]идео', re.IGNORECASE)):
-            parent = elem.parent
-            if parent:
-                if any(keyword in parent.get_text().lower() for keyword in ['ответ', 'видео']):
-                    parent.decompose()
-        
-        for tag in soup.find_all(['iframe', 'video']):
+        # Сначала убираем все видео и iframe
+        for tag in soup.find_all(['iframe', 'video', 'source']):
             tag.decompose()
-        
+        html_str = str(soup)
+        html_str = re.sub(r'<iframe[^>]*>.*?</iframe>', '', html_str, flags=re.IGNORECASE | re.DOTALL)
+        html_str = re.sub(r'<video[^>]*>.*?</video>', '', html_str, flags=re.IGNORECASE | re.DOTALL)
+        soup = BeautifulSoup(html_str, 'html.parser')
+        # Обрезаем контент с первого вхождения «Ответ»/«Видео» и всё, что после (только у задания 6)
+        all_tags = soup.find_all(True)
+        cut_index = None
+        for i, tag in enumerate(all_tags):
+            text = (tag.get_text() or '').strip()
+            if not text:
+                continue
+            if re.search(r'\b[Оо]твет\b|[Вв]идео\b|[Aa]nswer\b|[Vv]ideo\b', text, re.IGNORECASE):
+                cut_index = i
+                break
+        if cut_index is not None:
+            for j in range(len(all_tags) - 1, cut_index - 1, -1):
+                try:
+                    all_tags[j].decompose()
+                except Exception:
+                    pass
+        # Дополнительно: удалить узлы, в которых только ответ (число/короткий текст после «Ответ»)
+        for elem in soup.find_all(string=re.compile(r'[Оо]твет[а-яё]*\s*[:\s]*\s*[^\n<]{0,80}', re.IGNORECASE)):
+            parent = elem.parent
+            if parent and parent.name not in ('script', 'style'):
+                parent.decompose()
         html_str = str(soup)
         html_str = re.sub(r'<[^>]*>.*?[Оо]твет[а-яё]*[:\s]*[^<]*</[^>]*>', '', html_str, flags=re.IGNORECASE | re.DOTALL)
         html_str = re.sub(r'[Оо]твет[а-яё]*[:\s]*[^\n<]+', '', html_str, flags=re.IGNORECASE)
-        html_str = re.sub(r'<iframe[^>]*>.*?</iframe>', '', html_str, flags=re.IGNORECASE | re.DOTALL)
-        html_str = re.sub(r'<video[^>]*>.*?</video>', '', html_str, flags=re.IGNORECASE | re.DOTALL)
         soup = BeautifulSoup(html_str, 'html.parser')
     
     if task_number == 5:
