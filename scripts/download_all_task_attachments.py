@@ -46,8 +46,12 @@ def main():
 
     app = create_app()
     with app.app_context():
-        root = app.root_path or os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-        base_dir = os.path.join(root, ATTACHMENTS_DIR.replace('/', os.sep))
+        custom_root = (app.config.get('TASK_ATTACHMENTS_ROOT') or '').strip().rstrip(os.sep) or None
+        if custom_root and os.path.isdir(custom_root):
+            base_dir = custom_root
+        else:
+            root = app.root_path or os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+            base_dir = os.path.join(root, ATTACHMENTS_DIR.replace('/', os.sep))
         os.makedirs(base_dir, exist_ok=True)
 
         q = Tasks.query.filter(Tasks.attached_files.isnot(None)).order_by(Tasks.task_id.asc())

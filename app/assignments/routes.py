@@ -1562,17 +1562,25 @@ def submission_start(submission_id):
 @assignments_bp.route('/attachments/task/<int:task_id>/<path:filename>')
 @login_required
 def attached_task_local(task_id: int, filename: str):
-    """Раздача локально скачанных вложений заданий (uploads/task_attachments/)."""
+    """Раздача локально скачанных вложений заданий. Путь: TASK_ATTACHMENTS_ROOT или uploads/task_attachments."""
     import os
     from flask import send_from_directory
-    root = os.path.join(current_app.root_path, 'uploads', 'task_attachments')
+    custom_root = current_app.config.get('TASK_ATTACHMENTS_ROOT')
+    if custom_root and os.path.isdir(custom_root):
+        root = custom_root
+    else:
+        root = os.path.join(current_app.root_path, 'uploads', 'task_attachments')
     task_dir = os.path.join(root, str(task_id))
     if not os.path.isdir(task_dir):
         abort(404)
     safe_name = os.path.basename(filename)
     if not safe_name or '..' in filename:
         abort(404)
-    return send_from_directory(task_dir, safe_name, as_attachment=True, download_name=safe_name)
+    # Имя при сохранении: из query ?download_name= или из URL
+    download_name = request.args.get('download_name', '').strip()
+    if not download_name or '..' in download_name or '/' in download_name:
+        download_name = safe_name
+    return send_from_directory(task_dir, safe_name, as_attachment=True, download_name=download_name)
 
 
 @assignments_bp.route('/attachments/proxy')

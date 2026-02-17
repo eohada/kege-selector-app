@@ -900,7 +900,7 @@
                                         {% set file_url = file.url if file.url is defined else (file if file is string else None) %}
                                         {% set file_name = file.name if file.name is defined else (file.filename if file.filename is defined else ((file_path or file_url or '').split('/')[-1].split('?')[0] if (file_path or file_url) else 'file')) %}
                                         {% if file_path %}
-                                            {% set download_url = file_path %}
+                                            {% set download_url = file_path ~ (('?download_name=' ~ (file_name|urlencode)) if file_name else '') %}
                                         {% elif file_url %}
                                             {% if file_url.startswith('//') %}
                                                 {% set file_url = 'https:' ~ file_url %}
@@ -914,7 +914,7 @@
                                             {% endif %}
                                         {% endif %}
                                         {% if download_url is defined %}
-                                        <a class="neo-link" href="{{ download_url }}" target="_blank" rel="noopener noreferrer" download>{{ file_name }}</a>
+                                        <a class="neo-link" href="{{ download_url }}" target="_blank" rel="noopener noreferrer" download="{{ file_name }}">{{ file_name }}</a>
                                         {% endif %}
                                     {% endif %}
                                 {% endfor %}
