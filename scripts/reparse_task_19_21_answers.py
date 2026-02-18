@@ -85,6 +85,19 @@ def fetch_answer_via_requests(url: str) -> str:
     return answer_text or ''
 
 
+def get_answer_lines_for_task(task, answer_from_page: str) -> list:
+    """
+    Возвращает [answer_19, answer_20, answer_21].
+    Если answer_from_page непустой — парсим его; иначе пробуем разбить существующий task.answer из БД.
+    """
+    if answer_from_page and answer_from_page.strip():
+        return parse_answer_19_21(answer_from_page)
+    existing = (task.answer or '').strip()
+    if existing:
+        return parse_answer_19_21(existing)
+    return ['', '', '']
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description='Ре-парсинг ответов 19–21 с источника')
@@ -132,6 +145,7 @@ def main():
         updated = 0
         created = 0
         errors = 0
+        used_db_fallback = 0
 
         for task in tasks_19:
             source_url = (task.source_url or '').strip()
@@ -180,7 +194,9 @@ def main():
                             raise
                     time.sleep(0.4)
 
-                answer_lines = parse_answer_19_21(answer_text)
+                answer_lines = get_answer_lines_for_task(task, answer_text)
+                if not answer_text and any(answer_lines) and (task.answer or '').strip():
+                    used_db_fallback += 1
 
                 if args.dry_run:
                     print(f'task_id={task.task_id} group_id={group_id} answers: {answer_lines!r}')
@@ -236,6 +252,12 @@ def main():
                 pass
 
         print(f'Обновлено заданий 19: {updated}, создано 20/21: {created}, ошибок: {errors}')
+        if used_db_fallback:
+            print(f'  (из них по ответу из БД, т.к. страница не отдала ответ: {used_db_fallback})')
+        if not use_playwright and updated and used_db_fallback == 0 and not any(
+            (t.answer or '').strip() for t in tasks_19[:10]
+        ):
+            print('  Подсказка: ответ на kompege.ru подгружается по кнопке. Без браузера (Playwright) можно использовать только ответ из БД. Установите в контейнере: playwright install chromium')
         if args.dry_run:
             print('[dry-run] БД не изменялась.')
     return 0
