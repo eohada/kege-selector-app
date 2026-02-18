@@ -19,6 +19,37 @@ def get_sorted_assignments(lesson, assignment_type):
         assignments = lesson.homework_assignments
     return sorted(assignments, key=lambda ht: ht.lesson_task_id)
 
+
+def get_assignment_blocks(lesson, assignment_type):
+    """
+    Возвращает список блоков для отображения: каждая запись — либо одна карточка (один LessonTask),
+    либо тройка 19–20–21 (список из 3 LessonTask с одним task_group_id).
+    Блоки в том же порядке, что и get_sorted_assignments; тройки идут одной карточкой с тремя полями ответа.
+    """
+    tasks = get_sorted_assignments(lesson, assignment_type)
+    blocks = []
+    i = 0
+    while i < len(tasks):
+        lt = tasks[i]
+        task = getattr(lt, 'task', None)
+        group_id = getattr(task, 'task_group_id', None) if task else None
+        num = getattr(task, 'task_number', None) if task else None
+        # Тройка 19–20–21: по подряд идущим номерам (с или без task_group_id)
+        if num == 19 and i + 2 < len(tasks):
+            lt20, lt21 = tasks[i + 1], tasks[i + 2]
+            t20 = getattr(lt20, 'task', None)
+            t21 = getattr(lt21, 'task', None)
+            n20 = getattr(t20, 'task_number', None) if t20 else None
+            n21 = getattr(t21, 'task_number', None) if t21 else None
+            if n20 == 20 and n21 == 21:
+                blocks.append((True, [tasks[i], tasks[i + 1], tasks[i + 2]]))
+                i += 3
+                continue
+        blocks.append((False, [lt]))
+        i += 1
+    return blocks
+
+
 def normalize_answer_value(value):
     """Нормализует значение ответа для сравнения"""
     if value is None:

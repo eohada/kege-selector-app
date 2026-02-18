@@ -794,6 +794,24 @@
                 {% endif %}
 
                 <div class="task-nav-bar">
+                    {% for block in (homework_task_blocks if homework_task_blocks is defined else []) %}
+                    {% set first_lt = block[1][0] %}
+                    {% set nav_class = '' %}
+                    {% if first_lt.submission_correct == true %}
+                        {% set nav_class = 'nav-correct' %}
+                    {% elif first_lt.submission_correct == false %}
+                        {% set nav_class = 'nav-incorrect' %}
+                    {% endif %}
+                    {% if (first_lt.status or '') == 'returned' %}
+                        {% set nav_class = 'nav-returned' %}
+                    {% elif (first_lt.status or '') == 'graded' %}
+                        {% set nav_class = 'nav-graded' %}
+                    {% endif %}
+                    <a id="tasknav-{{ first_lt.lesson_task_id }}" href="#task-{{ first_lt.lesson_task_id }}" class="task-nav-btn {{ nav_class }}" onclick="event.preventDefault(); document.getElementById('task-{{ first_lt.lesson_task_id }}').scrollIntoView({behavior: 'smooth', block: 'center'});">
+                        {{ loop.index }}
+                    </a>
+                    {% endfor %}
+                    {% if not (homework_task_blocks is defined and homework_task_blocks) %}
                     {% for hw_task in homework_tasks %}
                     {% set nav_class = '' %}
                     {% if hw_task.submission_correct == true %}
@@ -810,9 +828,88 @@
                         {{ loop.index }}
                     </a>
                     {% endfor %}
+                    {% endif %}
                 </div>
 
-                {% for hw_task in homework_tasks %}
+                {% for block in (homework_task_blocks if homework_task_blocks is defined else []) %}
+                {% set is_triplet = block[0] %}
+                {% set task_list = block[1] %}
+                {% if is_triplet %}
+                {% set lt19, lt20, lt21 = task_list[0], task_list[1], task_list[2] %}
+                <section id="task-{{ lt19.lesson_task_id }}" class="task-card" data-task-id="{{ lt19.lesson_task_id }}" data-task-status="triplet">
+                    <div class="task-header">
+                        <span class="task-number">№{{ loop.index }} <span style="font-weight: 400; opacity: 0.7; font-size: 0.9em; margin-left: 0.5rem;">(Задания 19–21)</span></span>
+                        <div class="task-meta" style="margin-left: auto;">
+                            {% if (not is_student_view) and (not is_parent_view) and lt19.task and lt19.task.source_url %}
+                            <a class="neo-button ghost sm" href="{{ lt19.task.source_url }}" target="_blank" rel="noopener noreferrer" title="Открыть источник" style="text-decoration:none;"><i class="fas fa-external-link-alt"></i> Источник</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="task-content">
+                        {{ lt19.task.content_html|deduplicate_formulas|safe }}
+                        {% if lt19.task.attached_files %}
+                        {% set files = lt19.task.attached_files | from_json %}
+                        {% if files %}
+                        <div class="task-attachments" style="margin-top: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: var(--radius-sm);">
+                            <strong><i class="fas fa-paperclip"></i> Вложения:</strong>
+                            <div class="attached-links" style="margin-top: .5rem; display: grid; gap: 0.35rem;">
+                                {% for file in files %}
+                                {% if file %}
+                                {% set file_path = file.path if file.path is defined else None %}
+                                {% set file_url = file.url if file.url is defined else (file if file is string else None) %}
+                                {% set file_name = file.name if file.name is defined else (file.filename if file.filename is defined else ((file_path or file_url or '').split('/')[-1].split('?')[0] if (file_path or file_url) else 'file')) %}
+                                {% if file_path %}
+                                {% set download_url = file_path ~ (('?download_name=' ~ (file_name|urlencode)) if file_name else '') %}
+                                {% elif file_url %}
+                                {% if file_url.startswith('//') %}{% set file_url = 'https:' ~ file_url %}
+                                {% elif file_url.startswith('/') %}{% set file_url = 'https://kompege.ru' ~ file_url %}{% endif %}
+                                {% if file_url.startswith('https://kompege.ru/') or file_url.startswith('http://kompege.ru/') %}
+                                {% set download_url = url_for('assignments.attached_proxy') ~ '?url=' ~ (file_url|urlencode) %}
+                                {% else %}{% set download_url = file_url %}{% endif %}
+                                {% endif %}
+                                {% if download_url is defined %}
+                                <a class="neo-link" href="{{ download_url }}" target="_blank" rel="noopener noreferrer" download="{{ file_name }}">{{ file_name }}</a>
+                                {% endif %}
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                    {% for row in ([19, lt19], [20, lt20], [21, lt21]) %}
+                    {% set sub_num = row[0] %}
+                    {% set hw_task = row[1] %}
+                    {% set correct_val = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}
+                    <div class="answer-section" style="margin-top: 1rem;">
+                        <label class="neo-label" for="submission_{{ hw_task.lesson_task_id }}"><i class="fas fa-pen"></i> Ответ {{ sub_num }}:</label>
+                        {% if is_student_view %}
+                            {% set task_status = (hw_task.status or 'pending')|lower %}
+                            {% set attempts_used = (hw_task.attempts|length) %}
+                            {% set effective_max_attempts = hw_task.get_effective_max_attempts() %}
+                            {% set task_is_locked = (task_status == 'graded') or (attempts_used >= effective_max_attempts) %}
+                            {% if not task_is_locked %}
+                            <input type="text" class="neo-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_submission or '' }}" placeholder="Введи ответ..." autocomplete="off">
+                            {% else %}
+                            <div class="neo-input" style="background: rgba(0,0,0,0.2); border-color: transparent; cursor: not-allowed; opacity: 0.8;">{{ hw_task.student_submission or '—' }}</div>
+                            {% endif %}
+                        {% else %}
+                            <div class="neo-input" style="background: rgba(0,0,0,0.2); border-color: transparent; opacity: 0.95;">{{ hw_task.student_submission or '—' }}</div>
+                        {% endif %}
+                        {% if not is_student_view or correct_val %}
+                        <div style="margin-top: 0.5rem; font-size: 0.9rem;">
+                            <span style="color: var(--success);"><i class="fas fa-check"></i> Правильный ответ:</span>
+                            <span style="font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.2); padding: 0.2rem 0.4rem; border-radius: 4px;">{{ correct_val or '—' }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if is_student_view %}
+                    <input type="hidden" name="time_spent_{{ hw_task.lesson_task_id }}" id="time_spent_{{ hw_task.lesson_task_id }}" value="{{ hw_task.time_spent_sec or 0 }}">
+                    {% endif %}
+                    {% endfor %}
+                </section>
+                {% else %}
+                {% set hw_task = task_list[0] %}
                 
                 {% set status_class = 'status-none' %}
                 {% if hw_task.submission_correct == true %}
@@ -1032,6 +1129,7 @@
                     {% endif %}
 
                 </section>
+                {% endif %}
                 {% endfor %}
                 
                 <div class="homework-actions" style="position: sticky; bottom: 2rem; z-index: 100; background: var(--surface-1); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); display: flex; gap: 1rem; box-shadow: var(--shadow-soft);">

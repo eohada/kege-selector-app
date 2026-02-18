@@ -15,7 +15,7 @@ from app.auth.rbac_utils import check_access, get_user_scope
 
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
-from app.lessons.utils import get_sorted_assignments, perform_auto_check, normalize_answer_value  # comment
+from app.lessons.utils import get_sorted_assignments, get_assignment_blocks, perform_auto_check, normalize_answer_value  # comment
 from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, LessonWhiteboard, MiroUserToken, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
@@ -458,10 +458,12 @@ def lesson_homework_view(lesson_id):
             viewer_timezone = current_user.profile.timezone  # comment
     except Exception:  # comment
         viewer_timezone = 'Europe/Moscow'  # comment
+    homework_task_blocks = get_assignment_blocks(lesson, 'homework')
     return render_template('lesson_homework.html',
                            lesson=lesson,
                            student=student,
                            homework_tasks=homework_tasks,
+                           homework_task_blocks=homework_task_blocks,
                            assignment_type='homework',  # comment
                            is_student_view=is_student_view,  # comment
                            is_parent_view=is_parent_view,  # comment
@@ -525,10 +527,12 @@ def lesson_classwork_view(lesson_id):
             viewer_timezone = current_user.profile.timezone  # comment
     except Exception:  # comment
         viewer_timezone = 'Europe/Moscow'  # comment
+    homework_task_blocks = get_assignment_blocks(lesson, 'classwork')
     return render_template('lesson_homework.html',
                            lesson=lesson,
                            student=student,
                            homework_tasks=classwork_tasks,
+                           homework_task_blocks=homework_task_blocks,
                            assignment_type='classwork',  # comment
                            is_student_view=is_student_view,  # comment
                            is_parent_view=is_parent_view,  # comment
@@ -592,10 +596,12 @@ def lesson_exam_view(lesson_id):
             viewer_timezone = current_user.profile.timezone  # comment
     except Exception:  # comment
         viewer_timezone = 'Europe/Moscow'  # comment
+    homework_task_blocks = get_assignment_blocks(lesson, 'exam')
     return render_template('lesson_homework.html',
                            lesson=lesson,
                            student=student,
                            homework_tasks=exam_tasks,
+                           homework_task_blocks=homework_task_blocks,
                            assignment_type='exam',  # comment
                            is_student_view=is_student_view,  # comment
                            is_parent_view=is_parent_view,  # comment
