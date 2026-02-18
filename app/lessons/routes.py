@@ -1380,10 +1380,12 @@ def _submit_student_submissions(lesson, assignment_type):  # comment
         if not expected:  # comment
             task.submission_correct = False  # comment
             task.status = 'submitted'  # comment
+            submitted_count += 1  # comment — считаем как сданное, чтобы не показывать «Нет доступных заданий»
             continue  # comment
         if not value:  # comment
             task.submission_correct = False  # comment
             task.status = 'submitted'  # comment
+            submitted_count += 1  # comment
             continue  # comment
         normalized_value = normalize_answer_value(value)  # comment
         normalized_expected = normalize_answer_value(expected)  # comment
@@ -1399,9 +1401,9 @@ def _submit_student_submissions(lesson, assignment_type):  # comment
                 pass  # comment
         try:
             _record_lesson_task_attempt(task)
-            submitted_count += 1
         except Exception as e:
             logger.warning(f"Could not record LessonTaskAttempt for {task.lesson_task_id}: {e}")
+        submitted_count += 1  # comment
     if assignment_type == 'homework':  # comment
         lesson.homework_status = 'assigned_done'  # comment
     return tasks, submitted_count  # comment

@@ -8,7 +8,7 @@ from flask import request, flash
 from app.models import Lesson, LessonTask
 
 def get_sorted_assignments(lesson, assignment_type):
-    """Получает отсортированные задания по типу"""
+    """Получает задания по типу в порядке добавления в урок (lesson_task_id). Не сортируем по task_number, чтобы тройки 19–20–21 шли подряд."""
     if assignment_type == 'homework':
         assignments = lesson.homework_assignments
     elif assignment_type == 'classwork':
@@ -17,7 +17,7 @@ def get_sorted_assignments(lesson, assignment_type):
         assignments = lesson.exam_assignments
     else:
         assignments = lesson.homework_assignments
-    return sorted(assignments, key=lambda ht: (ht.task.task_number if ht.task and ht.task.task_number is not None else 999, ht.lesson_task_id))
+    return sorted(assignments, key=lambda ht: ht.lesson_task_id)
 
 def normalize_answer_value(value):
     """Нормализует значение ответа для сравнения"""

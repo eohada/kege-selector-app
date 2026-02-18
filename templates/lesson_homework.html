@@ -949,8 +949,8 @@
 
                     {% if can_show_answer_to_student or (not is_student_view and not is_parent_view) %}
                         {% set correct_val = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}
-                        {% if correct_val %}
-                        {% if is_student_view %}
+                        {% if correct_val or (not is_student_view and not is_parent_view) %}
+                        {% if is_student_view and correct_val %}
                         <div style="margin-top: 0.75rem;">
                             <button type="button" class="neo-button ghost sm" onclick="toggleTaskAnswer({{ hw_task.lesson_task_id }})">
                                 <i class="fas fa-eye"></i> Показать ответы
@@ -959,8 +959,8 @@
                         {% endif %}
                         <div id="task-answer-{{ hw_task.lesson_task_id }}" class="auto-check-result" style="margin-top: 1rem; padding: 1rem; background: rgba(0, 254, 202, 0.05); border: 1px solid rgba(0, 254, 202, 0.2); border-radius: var(--radius-sm); {% if is_student_view %}display:none;{% endif %}">
                             <div style="font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 0.5rem;">
-                                <i class="fas fa-check"></i> Правильный ответ: 
-                                <span style="font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.2); padding: 0.2rem 0.5rem; border-radius: 4px;">{{ correct_val }}</span>
+                                <i class="fas fa-check"></i> Правильный ответ:
+                                <span style="font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.2); padding: 0.2rem 0.5rem; border-radius: 4px;">{{ correct_val or '—' }}</span>
                             </div>
                         </div>
                         {% endif %}
