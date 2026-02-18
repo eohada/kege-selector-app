@@ -297,10 +297,26 @@ def _lesson_tag(lesson_id: int, assignment_type: str) -> str:
     return f"lesson:{lesson_id}:{assignment_type}"
 
 
+def _get_triplet_task_ids(task: Tasks):
+    """Для заданий 19–21 с task_group_id возвращает [task_id_19, task_id_20, task_id_21] по порядку."""
+    if not task or not getattr(task, 'task_group_id', None):
+        return None
+    try:
+        trio = Tasks.query.filter(
+            Tasks.task_group_id == task.task_group_id,
+            Tasks.task_number.in_([19, 20, 21])
+        ).order_by(Tasks.task_number).all()
+        if len(trio) != 3:
+            return None
+        return [t.task_id for t in trio]
+    except Exception:
+        return None
+
+
 def _task_to_payload(task: Tasks):
     if not task:
         return None
-    return {
+    payload = {
         'task_id': task.task_id,
         'task_number': task.task_number,
         'site_task_id': task.site_task_id,
@@ -309,6 +325,16 @@ def _task_to_payload(task: Tasks):
         'answer': task.answer,
         'attached_files': task.attached_files,
     }
+    triplet_ids = _get_triplet_task_ids(task)
+    if triplet_ids:
+        payload['is_triplet_19_21'] = True
+        payload['triplet_task_ids'] = triplet_ids
+        try:
+            trio_tasks = Tasks.query.filter(Tasks.task_id.in_(triplet_ids)).order_by(Tasks.task_number).all()
+            payload['triplet_answers'] = [t.answer or '' for t in trio_tasks]
+        except Exception:
+            payload['triplet_answers'] = [task.answer or '', '', '']
+    return payload
 
 
 def _attach_task_to_template(task_id: int, template_id: int | None) -> bool:
@@ -444,6 +470,17 @@ def generator_stream_act():
     except Exception:
         template_id = None
 
+    # Для заданий 19–21 тройкой: при действии используем все три task_id
+    task_ids_for_action = [task_id]
+    try:
+        task_obj = Tasks.query.get(task_id)
+        if task_obj:
+            triplet_ids = _get_triplet_task_ids(task_obj)
+            if triplet_ids:
+                task_ids_for_action = triplet_ids
+    except Exception:
+        pass
+
     message = None
     try:
         if action == 'accept':
@@ -452,33 +489,34 @@ def generator_stream_act():
                 if not template:
                     return jsonify({'success': False, 'error': 'Шаблон не найден'}), 404
                 max_order = db.session.query(db.func.max(TemplateTask.order)).filter_by(template_id=template_id).scalar() or 0
-                existing = TemplateTask.query.filter_by(template_id=template_id, task_id=task_id).first()
-                if not existing:
-                    db.session.add(TemplateTask(template_id=template_id, task_id=task_id, order=max_order + 1))
-                    db.session.commit()
+                for tid in task_ids_for_action:
+                    existing = TemplateTask.query.filter_by(template_id=template_id, task_id=tid).first()
+                    if not existing:
+                        db.session.add(TemplateTask(template_id=template_id, task_id=tid, order=max_order + 1))
+                        max_order += 1
+                db.session.commit()
 
             if lesson_id:
                 lesson = Lesson.query.get(lesson_id)
                 if not lesson:
                     return jsonify({'success': False, 'error': 'Урок не найден'}), 404
-                existing = LessonTask.query.filter_by(lesson_id=lesson_id, task_id=task_id).first()
-                added_count = 0
                 added_task_ids = []
-                if not existing:
-                    db.session.add(LessonTask(lesson_id=lesson_id, task_id=task_id, assignment_type=assignment_type))
-                    try:
-                        if lesson.student_id:
-                            db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=task_id, source=f'lesson:{assignment_type}'))
-                    except Exception:
-                        pass
-                    added_count = 1
-                    added_task_ids = [task_id]
+                for tid in task_ids_for_action:
+                    existing = LessonTask.query.filter_by(lesson_id=lesson_id, task_id=tid).first()
+                    if not existing:
+                        db.session.add(LessonTask(lesson_id=lesson_id, task_id=tid, assignment_type=assignment_type))
+                        try:
+                            if lesson.student_id:
+                                db.session.add(StudentTaskSeen(student_id=lesson.student_id, task_id=tid, source=f'lesson:{assignment_type}'))
+                        except Exception:
+                            pass
+                        added_task_ids.append(tid)
                 if assignment_type == 'homework':
                     lesson.homework_status = 'assigned_not_done' if lesson.lesson_type != 'introductory' else 'not_assigned'
                     lesson.homework_result_percent = None
                     lesson.homework_result_notes = None
 
-                if added_count > 0 and lesson.student:
+                if added_task_ids and lesson.student:
                     atype = (assignment_type or 'homework').strip().lower()
                     link_url = url_for(
                         'lessons.lesson_homework_view' if atype == 'homework' else (
@@ -494,23 +532,23 @@ def generator_stream_act():
                     )
 
                 db.session.commit()
-                message = 'Задание добавлено в урок.'
+                message = f"{'Задание' if len(added_task_ids) == 1 else 'Задания'} добавлено в урок." if added_task_ids else 'Задания уже в уроке.'
             else:
-                record_usage([task_id])
-                message = 'Задание принято.'
+                record_usage(task_ids_for_action)
+                message = 'Задание принято.' if len(task_ids_for_action) == 1 else 'Тройка заданий 19–21 принята.'
 
         elif action == 'skip':
             if lesson_id:
-                record_skipped([task_id], session_tag=_lesson_tag(lesson_id, assignment_type))
-                message = 'Задание пропущено для этого урока.'
+                record_skipped(task_ids_for_action, session_tag=_lesson_tag(lesson_id, assignment_type))
+                message = 'Задание пропущено для этого урока.' if len(task_ids_for_action) == 1 else 'Тройка 19–21 пропущена для этого урока.'
             else:
-                record_skipped([task_id], session_tag=None)
-                message = 'Задание пропущено.'
+                record_skipped(task_ids_for_action, session_tag=None)
+                message = 'Задание пропущено.' if len(task_ids_for_action) == 1 else 'Тройка 19–21 пропущена.'
 
         elif action == 'blacklist':
             reason = (data.get('reason') or 'Добавлено пользователем').strip()[:500]
-            record_blacklist([task_id], reason=reason)
-            message = 'Задание добавлено в чёрный список.'
+            record_blacklist(task_ids_for_action, reason=reason)
+            message = 'Задание добавлено в чёрный список.' if len(task_ids_for_action) == 1 else 'Тройка 19–21 добавлена в чёрный список.'
 
     except Exception as e:
         db.session.rollback()

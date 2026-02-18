@@ -1278,6 +1278,9 @@ def ensure_schema_columns(app):
                         if 'source_prototype' not in cols:
                             db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN source_prototype VARCHAR(256)'))
                             logger.info("Added source_prototype to Tasks")
+                        if 'task_group_id' not in cols:
+                            db.session.execute(text(f'ALTER TABLE "{tasks_table_resolved}" ADD COLUMN task_group_id VARCHAR(64)'))
+                            logger.info("Added task_group_id to Tasks (19-21 triplets)")
                         # Индекс для difficulty_level
                         try:
                             db.session.execute(text(f'CREATE INDEX IF NOT EXISTS ix_tasks_difficulty_level ON "{tasks_table_resolved}"(difficulty_level)'))

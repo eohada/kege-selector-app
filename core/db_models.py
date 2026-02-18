@@ -39,6 +39,8 @@ class Tasks(db.Model):
     __tablename__ = 'Tasks'
     task_id = db.Column(db.Integer, primary_key=True)
     task_number = db.Column(db.Integer, nullable=False, index=True)
+    # Для заданий 19–21: одна задача на источнике = три задания (19, 20, 21). Связка по task_group_id (например site_task_id).
+    task_group_id = db.Column(db.String(64), nullable=True, index=True)
     site_task_id = db.Column(db.Text, nullable=True)
     source_url = db.Column(db.Text, nullable=True)
     content_html = db.Column(db.Text, nullable=False)

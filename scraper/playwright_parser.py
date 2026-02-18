@@ -61,6 +61,44 @@ engine = create_engine(f'sqlite:///{db_path}')
 Session = sessionmaker(bind=engine)
 session = Session()
 
+def _strip_code_from_answer_line(line: str) -> str:
+    """Убирает код из строки ответа: оставляет цифры, пробелы, запятые; вырезает код."""
+    if not line or not isinstance(line, str):
+        return ''
+    line = line.strip()
+    # Удалить блоки кода в обратных кавычках
+    line = re.sub(r'```[\s\S]*?```', '', line, flags=re.DOTALL)
+    line = re.sub(r'`[^`]*`', '', line)
+    # Строка похожа на код?
+    code_indicators = re.compile(
+        r'\b(def|import|from|class|return|print|for\s+\w+\s+in|if\s+.*:|\w+\s*=\s*[\[\{]|\#.*$)',
+        re.IGNORECASE
+    )
+    if code_indicators.search(line) and not re.match(r'^[\d\s\-,\.]+$', line):
+        return ''
+    # Оставить только цифры, пробелы, запятые, точки, минус (для ответов)
+    cleaned = re.sub(r'[^\d\s\-,\.]', ' ', line)
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    return cleaned
+
+
+def _parse_answer_19_21(raw_answer: str) -> list:
+    """
+    Разбивает блок ответа заданий 19–21 на три строки (19, 20, 21).
+    Убирает код, возвращает список из 3 строк (возможно пустых).
+    """
+    if not raw_answer or not isinstance(raw_answer, str):
+        return ['', '', '']
+    text = raw_answer.strip()
+    # Удалить блоки кода целиком
+    text = re.sub(r'```[\s\S]*?```', '', text, flags=re.DOTALL)
+    lines = [s.strip() for s in re.split(r'[\r\n]+', text) if s.strip()]
+    result = ['', '', '']
+    for i, line in enumerate(lines[:3]):
+        result[i] = _strip_code_from_answer_line(line)
+    return result
+
+
 def clean_html_content(html: str, task_number: int = None) -> str:
     """Очистка HTML-контента заданий: удаление фамилий, пустых строк, ответов, видео"""
     if not html:
@@ -415,6 +453,27 @@ def fetch_tasks(page: Page, task_number: int, task_value_url: str):
                     print(f"[ETL] Предупреждение: не удалось выполнить пакетный запрос существующих задач: {e}")
                     existing_by_url = {}
 
+            # Для заданий 19: загрузка троек (19, 20, 21) по task_group_id и старый формат (одно задание 19 по source_url)
+            existing_by_group = {}
+            existing_19_by_source = {}
+            if task_number == 19 and pre_urls:
+                try:
+                    site_ids = [it.get('taskId') for it in items if it.get('taskId')]
+                    if site_ids:
+                        trio_tasks = session.query(Tasks).filter(
+                            Tasks.task_group_id.in_(site_ids),
+                            Tasks.task_number.in_([19, 20, 21])
+                        ).all()
+                        for t in trio_tasks:
+                            gid = t.task_group_id
+                            if gid not in existing_by_group:
+                                existing_by_group[gid] = {}
+                            existing_by_group[gid][t.task_number] = t
+                    old_19 = session.query(Tasks).filter(Tasks.source_url.in_(pre_urls), Tasks.task_number == 19).all()
+                    existing_19_by_source = {t.source_url: t for t in old_19}
+                except Exception as e:
+                    print(f"[ETL] Предупреждение: не удалось загрузить тройки 19-21: {e}")
+
             count_added = 0
             count_skipped = 0
             count_updated = 0
@@ -497,6 +556,71 @@ def fetch_tasks(page: Page, task_number: int, task_value_url: str):
                         page.wait_for_timeout(500)
                     except Exception as e:
                         print(f"[ETL] Предупреждение: не удалось извлечь ответ для задания {it.get('taskId')}: {e}")
+
+                # Задания 19–21: одна задача на источнике = три задания с общим контентом и разными ответами
+                if task_number == 19:
+                    answer_lines = _parse_answer_19_21(answer)
+                    group_id = str(it.get('taskId') or '')
+                    group_tasks = existing_by_group.get(group_id, {})
+                    old_single_19 = existing_19_by_source.get(source_url)
+
+                    if len(group_tasks) >= 3:
+                        any_updated = False
+                        for num in (19, 20, 21):
+                            t = group_tasks.get(num)
+                            if t:
+                                if t.content_html != content_html:
+                                    t.content_html = content_html
+                                    t.last_scraped = moscow_now()
+                                    any_updated = True
+                                if t.attached_files != attached_files_json:
+                                    t.attached_files = attached_files_json
+                                    t.last_scraped = moscow_now()
+                                    any_updated = True
+                                ans = answer_lines[num - 19] if num - 19 < len(answer_lines) else ''
+                                if ans and t.answer != ans:
+                                    t.answer = ans
+                                    t.last_scraped = moscow_now()
+                                    any_updated = True
+                        if any_updated:
+                            count_updated += 1
+                        else:
+                            count_skipped += 1
+                    elif old_single_19:
+                        old_single_19.content_html = content_html
+                        old_single_19.attached_files = attached_files_json
+                        old_single_19.answer = answer_lines[0] if answer_lines else None
+                        old_single_19.task_group_id = group_id
+                        old_single_19.site_task_id = it.get('taskId')
+                        old_single_19.last_scraped = moscow_now()
+                        session.add(old_single_19)
+                        count_updated += 1
+                        for sub_num, ans in [(20, answer_lines[1] if len(answer_lines) > 1 else ''), (21, answer_lines[2] if len(answer_lines) > 2 else '')]:
+                            new_tasks_bulk.append(Tasks(
+                                task_number=sub_num,
+                                task_group_id=group_id,
+                                site_task_id=it.get('taskId'),
+                                source_url=source_url,
+                                content_html=content_html,
+                                answer=ans or None,
+                                attached_files=attached_files_json,
+                                last_scraped=moscow_now()
+                            ))
+                        count_added += 2
+                    else:
+                        for sub_num, ans in [(19, answer_lines[0] if answer_lines else ''), (20, answer_lines[1] if len(answer_lines) > 1 else ''), (21, answer_lines[2] if len(answer_lines) > 2 else '')]:
+                            new_tasks_bulk.append(Tasks(
+                                task_number=sub_num,
+                                task_group_id=group_id,
+                                site_task_id=it.get('taskId'),
+                                source_url=source_url if sub_num == 19 else source_url,
+                                content_html=content_html,
+                                answer=ans or None,
+                                attached_files=attached_files_json,
+                                last_scraped=moscow_now()
+                            ))
+                        count_added += 3
+                    continue
 
                 existing_task = existing_by_url.get(source_url)
 

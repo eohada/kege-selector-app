@@ -107,6 +107,12 @@
         .gen-answer.is-visible {
             display: block;
         }
+        .gen-answer-line {
+            margin-top: 0.4rem;
+        }
+        .gen-answer-line:first-child {
+            margin-top: 0;
+        }
 
         .gen-actions-row {
             margin-top: 1.2rem;
@@ -445,6 +451,12 @@
 
             const blPanel = document.getElementById('genBlacklistPanel');
             const blReason = document.getElementById('genBlacklistReason');
+
+            function escapeHtml(s) {
+                const div = document.createElement('div');
+                div.textContent = s;
+                return div.innerHTML;
+            }
             const blConfirm = document.getElementById('genBlacklistConfirmBtn');
             const blCancel = document.getElementById('genBlacklistCancelBtn');
 
@@ -504,8 +516,12 @@
                 empty.style.display = 'none';
                 card.style.display = 'block';
 
-                title.textContent = `Задание ${task.task_number} · #${task.task_id}`;
-                badge.title = task.site_task_id ? `site_task_id: ${task.site_task_id}` : '';
+                const isTriplet = task.is_triplet_19_21 && Array.isArray(task.triplet_answers);
+                title.textContent = isTriplet
+                    ? `Задания 19–21 (тройка) · #${(task.triplet_task_ids || [task.task_id]).join(', #')}`
+                    : `Задание ${task.task_number} · #${task.task_id}`;
+                badge.textContent = isTriplet ? '19–21' : String(task.task_number);
+                badge.title = task.site_task_id ? `site_task_id: ${task.site_task_id}` : (isTriplet ? 'Три задания с одним условием' : '');
 
                 body.innerHTML = task.content_html || '';
                 renderMath(body);
@@ -518,7 +534,13 @@
                     sourceLink.style.display = 'none';
                 }
 
-                if (task.answer) {
+                if (isTriplet) {
+                    const hasAny = (task.triplet_answers || []).some(a => a && String(a).trim());
+                    toggleAnswerBtn.disabled = !hasAny;
+                    answer.innerHTML = (task.triplet_answers || ['', '', '']).map((a, i) =>
+                        `<div class="gen-answer-line"><strong>Ответ ${19 + i}:</strong> ${escapeHtml(String(a || '').trim() || '—')}</div>`
+                    ).join('');
+                } else if (task.answer) {
                     toggleAnswerBtn.disabled = false;
                     answer.textContent = task.answer;
                 } else {
@@ -623,7 +645,11 @@
             });
 
             toggleAnswerBtn?.addEventListener('click', () => {
-                if (!currentTask || !currentTask.answer) return;
+                if (!currentTask) return;
+                const hasAnswer = currentTask.is_triplet_19_21
+                    ? (currentTask.triplet_answers || []).some(a => a && String(a).trim())
+                    : currentTask.answer;
+                if (!hasAnswer) return;
                 answer.classList.toggle('is-visible');
             });
 
