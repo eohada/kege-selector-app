@@ -69,6 +69,42 @@
         color: var(--accent-1);
         border-bottom-color: var(--accent-1);
     }
+
+    .lesson-presence-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        padding: 0.5rem 0.75rem;
+        margin-bottom: 0.75rem;
+        background: rgba(0, 255, 213, 0.06);
+        border: 1px solid rgba(0, 255, 213, 0.2);
+        border-radius: var(--radius-md);
+        font-size: 0.9rem;
+    }
+    .lesson-presence-bar .presence-label {
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+    .lesson-presence-bar .presence-list {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .lesson-presence-bar .presence-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.25rem 0.6rem;
+        background: var(--surface-2);
+        border-radius: 999px;
+        border: 1px solid var(--stroke-1);
+        color: var(--text-primary);
+        font-size: 0.85rem;
+    }
+    .lesson-presence-bar .presence-item.role-teacher { border-color: rgba(0, 255, 213, 0.4); background: rgba(0, 255, 213, 0.08); }
+    .lesson-presence-bar .presence-item.role-student { border-color: rgba(0, 210, 255, 0.4); background: rgba(0, 210, 255, 0.08); }
     
     .tab-pane {
         display: none;
@@ -521,6 +557,10 @@
             }
         </script>
 
+        <div id="lesson-presence-bar" class="lesson-presence-bar" style="display: none;">
+            <span class="presence-label"><i class="fas fa-eye"></i> Сейчас смотрят:</span>
+            <span id="lesson-presence-list" class="presence-list"></span>
+        </div>
         <div class="lesson-tabs" role="tablist">
             <button type="button" class="tab-btn active" data-tab="theory" role="tab" aria-selected="true"><i class="fas fa-book"></i> Конспект</button>
             <button type="button" class="tab-btn" data-tab="tasks" role="tab" aria-selected="false">
@@ -1382,12 +1422,110 @@
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
 
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
         const LESSON_ID = {{ lesson.lesson_id }};
         const CSRF_TOKEN = "{{ csrf_token() if csrf_token else '' }}";
         const ASSIGNMENT_TYPE = "{{ assignment_type }}";
+        const CURRENT_USER_ID = {{ current_user.id if current_user.is_authenticated else 'null' }};
         const INITIAL_BLOCKS = {{ (content_blocks or [])|tojson }};
         const IS_STUDENT_VIEW = {{ 'true' if is_student_view else 'false' }};
+
+        var TAB_LABELS = { theory: 'Конспект', tasks: 'Задания', materials: 'Материалы', notes: 'Заметки', chat: 'Диалог', whiteboard: 'Доска', videocall: 'Звонок' };
+
+        // ----- Real-time комната урока (обновления без перезагрузки, синхронизация вкладок) -----
+        (function() {
+            if (typeof io === 'undefined') return;
+            var lessonSocket = null;
+            try {
+                lessonSocket = io('/lesson', { path: '/socket.io', transports: ['websocket', 'polling'] });
+                window.lessonSocket = lessonSocket;
+                lessonSocket.on('connect', function() {
+                    lessonSocket.emit('join_lesson', { lesson_id: LESSON_ID });
+                    var h = (location.hash || '').match(/tab=([a-z_]+)/i);
+                    var tab = (h && h[1]) || (typeof localStorage !== 'undefined' && localStorage.getItem('lesson_' + LESSON_ID + '_active_tab')) || 'theory';
+                    lessonSocket.emit('tab_changed', { lesson_id: LESSON_ID, tab: tab });
+                });
+                lessonSocket.on('lesson_tasks_updated', function(data) {
+                    if (!data || data.lesson_id !== LESSON_ID) return;
+                    var at = (data.assignment_type || 'homework').trim();
+                    if (at !== ASSIGNMENT_TYPE) return;
+                    var container = document.querySelector('#tab-tasks .tasks-container');
+                    if (!container) return;
+                    var url = at === 'homework' ? ('/lesson/' + LESSON_ID + '/homework-tasks') : (at === 'classwork' ? ('/lesson/' + LESSON_ID + '/classwork-tasks') : ('/lesson/' + LESSON_ID + '/exam-tasks'));
+                    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+                        .then(function(r) { return r.text(); })
+                        .then(function(html) {
+                            var wrap = document.createElement('div');
+                            wrap.innerHTML = html;
+                            var tasks = wrap.querySelector('#tab-tasks');
+                            if (tasks) {
+                                var inner = tasks.querySelector('.tasks-container');
+                                if (inner) {
+                                    container.innerHTML = inner.innerHTML;
+                                    if (typeof toast !== 'undefined') toast.success('Задания обновлены');
+                                }
+                            }
+                        })
+                        .catch(function() {});
+                });
+                lessonSocket.on('lesson_message_new', function(data) {
+                    if (!data || data.lesson_id !== LESSON_ID || !data.message) return;
+                    var host = document.getElementById('lessonChatList');
+                    if (!host) return;
+                    var m = data.message;
+                    var mine = (m.author_user_id === CURRENT_USER_ID);
+                    var wrap = document.createElement('div');
+                    wrap.style.border = '1px solid var(--stroke-1)';
+                    wrap.style.background = mine ? 'rgba(0,255,213,0.06)' : 'rgba(255,255,255,0.02)';
+                    wrap.style.borderRadius = 'var(--radius-lg)';
+                    wrap.style.padding = '0.85rem 1rem';
+                    wrap.style.alignSelf = mine ? 'flex-end' : 'flex-start';
+                    wrap.style.maxWidth = '820px';
+                    var body = (m.body || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+                    var time = m.created_at || '';
+                    wrap.innerHTML = '<div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.35rem;">' + (mine ? 'Вы' : 'Сообщение') + ' · ' + time + '</div><div style="white-space: pre-wrap; line-height: 1.55;">' + body + '</div>';
+                    host.appendChild(wrap);
+                    host.scrollTop = host.scrollHeight;
+                    var emptyMsg = host.querySelector('.lesson-chat-empty');
+                    if (emptyMsg) emptyMsg.remove();
+                });
+                lessonSocket.on('lesson_presence', function(data) {
+                    if (!data || data.lesson_id !== LESSON_ID) return;
+                    var list = document.getElementById('lesson-presence-list');
+                    var bar = document.getElementById('lesson-presence-bar');
+                    if (!list || !bar) return;
+                    var presence = Array.isArray(data.presence) ? data.presence : [];
+                    var others = presence.filter(function(p) { return p.user_id !== CURRENT_USER_ID; });
+                    if (others.length === 0) {
+                        bar.style.display = 'none';
+                        return;
+                    }
+                    bar.style.display = 'flex';
+                    list.innerHTML = '';
+                    others.forEach(function(p) {
+                        var roleLabel = p.role === 'teacher' ? 'Преподаватель' : (p.role === 'student' ? 'Ученик' : 'Родитель');
+                        var tabLabel = TAB_LABELS[p.tab] || p.tab;
+                        var el = document.createElement('span');
+                        el.className = 'presence-item role-' + (p.role || '');
+                        el.innerHTML = '<span>' + (p.name || roleLabel) + '</span> <span style="opacity:0.85;">→ ' + tabLabel + '</span>';
+                        list.appendChild(el);
+                    });
+                });
+            } catch (e) { console.warn('Lesson socket init:', e); }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                var origSwitchTab = window.switchTab;
+                if (origSwitchTab) {
+                    window.switchTab = function(tabName) {
+                        origSwitchTab(tabName);
+                        if (window.lessonSocket && window.lessonSocket.connected) {
+                            window.lessonSocket.emit('tab_changed', { lesson_id: LESSON_ID, tab: tabName });
+                        }
+                    };
+                }
+            });
+        })();
 
         // ----- Учёт времени по заданиям (ученик) -----
         (function() {
@@ -1880,7 +2018,7 @@
                 }
                 const msgs = Array.isArray(data.messages) ? data.messages : [];
                 if (!msgs.length) {
-                    host.innerHTML = `<div style="color: var(--text-muted);">Сообщений пока нет.</div>`;
+                    host.innerHTML = `<div id="lesson-chat-empty" class="lesson-chat-empty" style="color: var(--text-muted);">Сообщений пока нет.</div>`;
                     return;
                 }
                 host.innerHTML = '';
@@ -1931,7 +2069,7 @@
                 }
                 if (ta) ta.value = '';
                 toast.success('Отправлено');
-                await reloadLessonChat();
+                if (!(window.lessonSocket && window.lessonSocket.connected)) await reloadLessonChat();
             } catch (e) {
                 toast.error('Ошибка сети');
             } finally {

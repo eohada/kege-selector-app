@@ -232,6 +232,23 @@ def create_app(config_name=None):
     app.register_blueprint(trainer_bp)
     app.register_blueprint(uploads_bp)
 
+    # Real-time комната урока (WebSocket)
+    try:
+        from flask_socketio import SocketIO
+        socketio = SocketIO(
+            app,
+            async_mode='eventlet',
+            cors_allowed_origins='*',
+            logger=False,
+            engineio_logger=False,
+        )
+        app.socketio = socketio
+        from app.lessons.lesson_socket import register_lesson_socket
+        register_lesson_socket(socketio)
+    except ImportError as e:
+        app.socketio = None
+        logging.getLogger(__name__).warning("Flask-SocketIO not available (install flask-socketio eventlet): %s", e)
+
     def _start_assignment_notification_worker() -> None:
         if app.config.get('_ASSIGNMENT_NOTIFY_WORKER_STARTED'):
             return

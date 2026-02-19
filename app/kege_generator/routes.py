@@ -532,6 +532,12 @@ def generator_stream_act():
                     )
 
                 db.session.commit()
+                if added_task_ids:
+                    try:
+                        from app.lessons.lesson_socket import emit_lesson_tasks_updated
+                        emit_lesson_tasks_updated(lesson_id, assignment_type or 'homework')
+                    except Exception:
+                        pass
                 message = f"{'Задание' if len(added_task_ids) == 1 else 'Задания'} добавлено в урок." if added_task_ids else 'Задания уже в уроке.'
             else:
                 record_usage(task_ids_for_action)
@@ -744,7 +750,11 @@ def task_action():
 
                 try:
                     db.session.commit()
-                    
+                    try:
+                        from app.lessons.lesson_socket import emit_lesson_tasks_updated
+                        emit_lesson_tasks_updated(lesson_id, assignment_type or 'homework')
+                    except Exception:
+                        pass
                     audit_logger.log(
                         action='accept_tasks',
                         entity='Lesson',

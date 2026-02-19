@@ -1,8 +1,16 @@
 """
-Новый app.py, использующий фабрику приложений из app/__init__.py
+Точка входа: фабрика приложений из app/__init__.py.
+Для real-time (комната урока) нужны flask-socketio и eventlet.
 """
 import os
 import logging
+
+# eventlet monkey_patch до импорта приложения (для Flask-SocketIO)
+try:
+    import eventlet
+    eventlet.monkey_patch()
+except ImportError:
+    pass
 
 try:
     from dotenv import load_dotenv
@@ -21,5 +29,9 @@ app = create_app()
 
 if __name__ == '__main__':
     logger.info('Запуск приложения')
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    socketio = getattr(app, 'socketio', None)
+    if socketio:
+        socketio.run(app, debug=True, host='127.0.0.1', port=5000)
+    else:
+        app.run(debug=True, host='127.0.0.1', port=5000)
 

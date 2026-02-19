@@ -2024,6 +2024,18 @@ def lesson_messages_send(lesson_id: int):
     db.session.commit()
 
     try:
+        from app.lessons.lesson_socket import emit_lesson_message_new
+        created_at = getattr(msg, 'created_at', None)
+        emit_lesson_message_new(lesson.lesson_id, {
+            'id': msg.message_id,
+            'author_user_id': current_user.id,
+            'body': body,
+            'created_at': created_at.isoformat() if created_at else None,
+        })
+    except Exception as e:
+        logger.warning("emit_lesson_message_new: %s", e)
+
+    try:
         audit_logger.log(
             action='lesson_message_send',
             entity='Lesson',
