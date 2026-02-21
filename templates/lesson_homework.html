@@ -920,14 +920,16 @@
                     {% for row in ([19, lt19], [20, lt20], [21, lt21]) %}
                     {% set sub_num = row[0] %}
                     {% set hw_task = row[1] %}
-                    {% set correct_val = hw_task.student_answer if hw_task.student_answer else (hw_task.task.answer if hw_task.task and hw_task.task.answer else '') %}
+                    {% set task_status_sub = (hw_task.status or 'pending')|lower %}
+                    {% set attempts_used_sub = (hw_task.attempts|length) %}
+                    {% set effective_max_attempts_sub = hw_task.get_effective_max_attempts() %}
+                    {% set can_show_answer_sub = is_student_view and (attempts_used_sub >= effective_max_attempts_sub) and (task_status_sub in ['submitted','graded','returned']) %}
+                    {% set show_answer_block_sub = (not is_student_view and not is_parent_view) or can_show_answer_sub %}
+                    {% set correct_val = (hw_task.student_answer or (hw_task.task.answer if hw_task.task and hw_task.task.answer else '')) if show_answer_block_sub else '' %}
                     <div class="answer-section" style="margin-top: 1rem;">
                         <label class="neo-label" for="submission_{{ hw_task.lesson_task_id }}"><i class="fas fa-pen"></i> Ответ {{ sub_num }}:</label>
                         {% if is_student_view %}
-                            {% set task_status = (hw_task.status or 'pending')|lower %}
-                            {% set attempts_used = (hw_task.attempts|length) %}
-                            {% set effective_max_attempts = hw_task.get_effective_max_attempts() %}
-                            {% set task_is_locked = (task_status == 'graded') or (attempts_used >= effective_max_attempts) %}
+                            {% set task_is_locked = (task_status_sub == 'graded') or (attempts_used_sub >= effective_max_attempts_sub) %}
                             {% if not task_is_locked %}
                             <input type="text" class="neo-input" id="submission_{{ hw_task.lesson_task_id }}" name="submission_{{ hw_task.lesson_task_id }}" value="{{ hw_task.student_submission or '' }}" placeholder="Введи ответ..." autocomplete="off">
                             {% else %}
@@ -936,7 +938,7 @@
                         {% else %}
                             <div class="neo-input" style="background: rgba(0,0,0,0.2); border-color: transparent; opacity: 0.95;">{{ hw_task.student_submission or '—' }}</div>
                         {% endif %}
-                        {% if not is_student_view or correct_val %}
+                        {% if show_answer_block_sub %}
                         <div style="margin-top: 0.5rem; font-size: 0.9rem;">
                             <span style="color: var(--success);"><i class="fas fa-check"></i> Правильный ответ:</span>
                             <span style="font-family: 'JetBrains Mono', monospace; background: rgba(0,0,0,0.2); padding: 0.2rem 0.4rem; border-radius: 4px;">{{ correct_val or '—' }}</span>
