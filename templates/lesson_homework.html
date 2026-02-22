@@ -923,7 +923,8 @@
                     {% set task_status_sub = (hw_task.status or 'pending')|lower %}
                     {% set attempts_used_sub = (hw_task.attempts|length) %}
                     {% set effective_max_attempts_sub = hw_task.get_effective_max_attempts() %}
-                    {% set can_show_answer_sub = is_student_view and (task_status_sub in ['submitted','graded','returned']) %}
+                    {% set has_submitted_sub = (hw_task.student_submission or '')|trim != '' or attempts_used_sub > 0 %}
+                    {% set can_show_answer_sub = is_student_view and (task_status_sub in ['submitted','graded','returned']) and has_submitted_sub %}
                     {% set show_answer_block_sub = (not is_student_view and not is_parent_view) or can_show_answer_sub %}
                     {% set correct_val = (hw_task.student_answer or (hw_task.task.answer if hw_task.task and hw_task.task.answer else '')) if show_answer_block_sub else '' %}
                     <div class="answer-section" style="margin-top: 1rem;">
