@@ -237,7 +237,7 @@ def create_app(config_name=None):
         from flask_socketio import SocketIO
         socketio = SocketIO(
             app,
-            async_mode='eventlet',
+            async_mode='threading',
             cors_allowed_origins='*',
             logger=False,
             engineio_logger=False,
@@ -247,7 +247,7 @@ def create_app(config_name=None):
         register_lesson_socket(socketio)
     except ImportError as e:
         app.socketio = None
-        logging.getLogger(__name__).warning("Flask-SocketIO not available (install flask-socketio eventlet): %s", e)
+        logging.getLogger(__name__).warning("Flask-SocketIO not available (install flask-socketio): %s", e)
 
     def _start_assignment_notification_worker() -> None:
         if app.config.get('_ASSIGNMENT_NOTIFY_WORKER_STARTED'):
