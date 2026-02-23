@@ -7,7 +7,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -17,14 +16,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            set -e
             cd /opt/boostudy
-            echo "[$(date -Iseconds)] 1/4 git pull..."
             git pull origin main
-            echo "[$(date -Iseconds)] 2/4 docker compose build (progress=plain, log: deploy.log)..."
-            docker compose build --progress=plain 2>&1 | tee deploy.log
-            echo "[$(date -Iseconds)] 3/4 docker compose up..."
-            docker compose up -d
-            echo "[$(date -Iseconds)] 4/4 prune..."
+            docker compose up -d --build
             docker image prune -f
-            echo "[$(date -Iseconds)] Done."
