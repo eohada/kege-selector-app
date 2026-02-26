@@ -273,13 +273,18 @@ body::after {
 
 /* Desktop: layout with topbar + sidebar */
 .app-shell--main {
-    padding-top: 0;
+    padding-top: 90px;
 }
 
 @media (min-width: 1024px) {
     .app-shell--main {
-        padding-left: 268px;
-        padding-top: 72px;
+        margin-left: calc(268px + max(2rem, calc((100% - 268px - 1480px) / 2))) !important;
+        margin-right: max(2rem, calc((100% - 268px - 1480px) / 2)) !important;
+        width: auto !important;
+        padding-top: calc(72px + 2.5rem) !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        max-width: none !important;
     }
 }
 
@@ -314,20 +319,42 @@ body::after {
 }
 
 @media (min-width: 1024px) {
+    .app-topbar {
+        left: 268px;
+        width: calc(100% - 268px);
+    }
+
+    .app-topbar .nav-brand {
+        justify-content: flex-end; /* user actions on the right */
+    }
+
+    .desktop-hidden-logo {
+        display: none !important;
+    }
+
     .app-sidebar {
         display: flex;
         flex-direction: column;
         position: fixed;
         left: 0;
-        top: 72px;
+        top: 0;
         bottom: 0;
         width: 268px;
-        z-index: 99;
+        z-index: 101;
         background: var(--surface-2);
         border-right: 1px solid var(--stroke-1);
-        padding: 1rem 0.75rem;
+        padding: 0;
         overflow-y: auto;
         box-sizing: border-box;
+    }
+
+    .sidebar-header {
+        height: 72px;
+        display: flex;
+        align-items: center;
+        padding: 0 1.5rem;
+        flex-shrink: 0;
+        border-bottom: 1px solid var(--stroke-1);
     }
 
     .app-sidebar .nav-links {
@@ -335,6 +362,7 @@ body::after {
         align-items: stretch;
         gap: 0.25rem;
         width: 100%;
+        padding: 1rem 0.75rem;
     }
 
     .app-sidebar .nav-link {
@@ -342,6 +370,21 @@ body::after {
         justify-content: flex-start;
         padding: 0.75rem 1rem;
         border-radius: var(--radius-md);
+        border-color: transparent;
+        box-shadow: none !important;
+        background: transparent !important;
+        color: var(--text-muted);
+    }
+
+    .app-sidebar .nav-link:hover {
+        background: var(--overlay-hover) !important;
+        color: var(--text-primary);
+    }
+
+    .app-sidebar .nav-link.active {
+        background: var(--overlay-press) !important;
+        color: var(--accent-1) !important;
+        border-color: var(--accent-1);
     }
 
     .app-sidebar .nav-dropdown {
@@ -354,23 +397,31 @@ body::after {
 
     .app-sidebar .nav-dropdown-content {
         position: static;
-        opacity: 1;
-        visibility: visible;
+        opacity: 0;
+        visibility: hidden;
+        max-height: 0;
         transform: none;
         box-shadow: none;
         border: none;
         background: transparent;
-        padding: 0.35rem 0 0.5rem 0.5rem;
+        padding: 0 0 0 0.5rem;
         margin-left: 0.5rem;
         border-left: 2px solid var(--stroke-1);
         border-radius: 0;
         min-width: auto;
-        display: none;
+        display: block;
+        overflow: hidden;
+        transition: max-height 0.4s ease, opacity 0.3s ease, padding 0.3s ease;
     }
 
     .app-sidebar .nav-dropdown:hover .nav-dropdown-content,
     .app-sidebar .nav-dropdown:focus-within .nav-dropdown-content {
         display: block;
+        opacity: 1;
+        visibility: visible;
+        max-height: 600px;
+        padding-top: 0.35rem;
+        padding-bottom: 0.5rem;
     }
 
     .app-sidebar .nav-dropdown-content::before {
@@ -380,35 +431,6 @@ body::after {
     .app-sidebar .dropdown-item {
         padding: 0.6rem 0.75rem;
         font-size: 0.9rem;
-    }
-
-    .app-sidebar-link {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        border-radius: var(--radius-md);
-        color: var(--text-muted);
-        text-decoration: none;
-        font-weight: 500;
-        transition: background 0.2s, color 0.2s, border-color 0.2s;
-        border: 1px solid transparent;
-    }
-
-    .app-sidebar-link:hover {
-        background: var(--overlay-hover);
-        color: var(--text-primary);
-    }
-
-    .app-sidebar-link:focus-visible {
-        outline: none;
-        box-shadow: var(--focus-ring);
-    }
-
-    .app-sidebar-link.active {
-        background: var(--overlay-press);
-        color: var(--accent-1);
-        border-color: var(--accent-1);
     }
 
     .app-sidebar-group-title {
@@ -681,7 +703,8 @@ header.nav-primary,
 .profile-dropdown-content {
     position: absolute;
     top: calc(100% + 15px);
-    left: 0;
+    right: 0;
+    left: auto;
     min-width: 180px;
     background: var(--surface-2);
     border: 1px solid var(--stroke-1);
@@ -711,7 +734,8 @@ header.nav-primary,
     content: '';
     position: absolute;
     top: -6px;
-    left: 15px;
+    right: 15px;
+    left: auto;
     width: 10px;
     height: 10px;
     background: var(--surface-2);
