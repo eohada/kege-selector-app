@@ -12,8 +12,11 @@
 <nav class="mobile-menu" id="mobileMenu">
     <div class="mobile-menu-header">
         <div class="nav-brand">
-            <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center;">
-                <img src="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}" alt="BooStudy Logo" class="brand-logo-img" style="height: 38px; width: auto; object-fit: contain;">
+            <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 0.75rem; color: inherit;">
+                <div style="width: 32px; height: 32px; overflow: hidden; border-radius: 6px; display: flex; align-items: flex-start; justify-content: center; flex-shrink: 0;">
+                    <img src="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}" alt="Logo" class="brand-logo-img" style="width: 140%; height: auto; transform: translateY(-8%);">
+                </div>
+                <div class="brand-caption" style="font-weight: 800; font-size: 1.15rem;">BooStudy</div>
             </a>
         </div>
         <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Закрыть меню">
