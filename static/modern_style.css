@@ -563,6 +563,14 @@ header.nav-primary,
     position: relative;
 }
 
+.brand-logo-img {
+    transition: filter 0.3s ease;
+}
+
+:root[data-theme="light"] .brand-logo-img {
+    filter: invert(1) hue-rotate(180deg) brightness(0.8);
+}
+
 .user-profile-avatar {
     width: 48px;
     height: 48px;
