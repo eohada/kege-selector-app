@@ -198,6 +198,15 @@
         .dlg-body { padding: 1rem 1.25rem; display: grid; gap: 0.9rem; }
         .dlg-actions { padding: 1rem 1.25rem; border-top: 1px solid var(--stroke-2); display:flex; justify-content:flex-end; gap:0.6rem; }
     </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
 </head>
 <body>
     <div class="app-layout">

@@ -23,6 +23,15 @@
     .summary-btn { display: inline-flex; gap: .5rem; align-items: center; padding: .55rem .8rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.03); color: var(--text-primary); }
     .summary-btn:hover { border-color: rgba(0,255,213,0.35); }
   </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
 </head>
 <body>
   <div class="app-layout">

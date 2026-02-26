@@ -49,6 +49,15 @@
         .actions { display:flex; gap: 0.6rem; flex-wrap: wrap; justify-content:flex-end; margin-top: 0.25rem; }
         .field-label { display:block; color: var(--text-muted); font-weight: 800; font-size: 0.9rem; margin-bottom: 0.35rem; }
     </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
 </head>
 <body>
     <div class="app-layout">

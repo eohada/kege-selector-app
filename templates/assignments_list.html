@@ -289,6 +289,15 @@
         .step-title { font-weight: 900; }
         .step-sub { color: var(--text-muted); margin-top: 0.2rem; line-height: 1.45; }
     </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
 </head>
 <body>
     <div class="app-layout">

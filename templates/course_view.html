@@ -122,6 +122,15 @@
         .assign-actions { display:flex; justify-content: flex-end; margin-top: 0.75rem; }
         .small-muted { color: var(--text-muted); font-size: 0.9rem; line-height: 1.4; margin-top: 0.35rem; }
     </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
 </head>
 <body>
     <div class="app-layout">

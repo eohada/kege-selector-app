@@ -167,6 +167,15 @@
         details.task-details > summary::-webkit-details-marker { display:none; }
         .summary-hint { color: var(--text-muted); font-weight: 800; }
     </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
 </head>
 <body>
     <div class="app-layout">

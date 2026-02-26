@@ -38,6 +38,15 @@
         .tf-content{background:var(--surface-2);border:1px solid var(--stroke-2);border-radius:var(--radius-md);padding:1rem;overflow:auto;max-height:420px}
         .tf-code{font-family:'MonaspaceNeon',monospace;font-size:.95rem;letter-spacing:.02em}
     </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
 </head>
 <body>
     <div class="app-shell">

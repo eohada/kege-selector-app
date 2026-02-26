@@ -31,6 +31,15 @@
         .ts-stats{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
         .ts-stat{padding:.5rem 1rem;border-radius:var(--radius-md);background:var(--surface-2);border:1px solid var(--stroke-2)}
     </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
 </head>
 <body>
     <div class="app-shell">

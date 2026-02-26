@@ -12,6 +12,15 @@
     th { background: #f3f3f3; text-align: left; }
     .muted { color: #666; }
   </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
 </head>
 <body>
   <h1>Журнал оценок · {{ student.name }}</h1>

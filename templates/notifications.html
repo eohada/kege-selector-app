@@ -16,6 +16,15 @@
     .meta { color: var(--text-muted); font-size: .9rem; display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
     .badge { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .55rem; border-radius: 999px; border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.04); font-size: .85rem; }
   </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
 </head>
 <body>
   <div class="app-layout">

@@ -42,6 +42,15 @@
         .lessons-remaining--warning { color: var(--warning); }
         .lessons-remaining--accent { color: var(--accent-1); }
     </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
 </head>
 {% set use_custom_theme = current_user and (current_user.id == custom_theme_user_id or (current_user.numeric_id is not none and (current_user.numeric_id|string) == (custom_theme_user_id|string))) %}
 <body class="{% if use_custom_theme %}custom-theme-active{% endif %}">

@@ -187,6 +187,15 @@
             flex-wrap: wrap;
         }
     </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
 </head>
     <body class="{% if active_lesson %}lesson-active{% endif %}" data-lesson-id="{% if lesson_id %}{{ lesson_id }}{% endif %}" data-assignment-type="{{ assignment_type }}" data-template-id="{% if template_id %}{{ template_id }}{% endif %}">
     {% set is_homework = assignment_type == 'homework' %}

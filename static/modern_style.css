@@ -1456,7 +1456,7 @@ header.nav-primary,
 .stat-card {
     border-radius: var(--radius-md);
     border: 1px solid var(--stroke-1);
-    background: linear-gradient(150deg, rgba(8, 10, 18, 0.96), rgba(19, 22, 36, 0.9));
+    background: var(--surface-card);
     padding: 1.5rem 1.6rem;
     position: relative;
     overflow: hidden;
@@ -1893,7 +1893,7 @@ body.creator-theme-active .students-grid {
 
 .task-card.autocheck-correct {
     border: 2px solid var(--success);
-    background: linear-gradient(160deg, rgba(16, 185, 129, 0.15), rgba(10, 10, 18, 0.95));
+    background: linear-gradient(160deg, rgba(16, 185, 129, 0.15), var(--surface-card));
 }
 
 .task-card.autocheck-correct::after {
@@ -1902,11 +1902,19 @@ body.creator-theme-active .students-grid {
 
 .task-card.autocheck-incorrect {
     border: 2px solid var(--danger);
-    background: linear-gradient(160deg, rgba(239, 68, 68, 0.15), rgba(10, 10, 18, 0.95));
+    background: linear-gradient(160deg, rgba(239, 68, 68, 0.15), var(--surface-card));
 }
 
 .task-card.autocheck-incorrect::after {
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+}
+
+:root[data-theme="light"] .task-card.autocheck-correct {
+    background: linear-gradient(160deg, rgba(16, 185, 129, 0.08), var(--surface-card));
+}
+
+:root[data-theme="light"] .task-card.autocheck-incorrect {
+    background: linear-gradient(160deg, rgba(239, 68, 68, 0.08), var(--surface-card));
 }
 
 .task-header {
@@ -2060,7 +2068,7 @@ body.creator-theme-active .students-grid {
 }
 
 .template-card {
-    background: linear-gradient(160deg, rgba(10, 10, 18, 0.98), rgba(20, 20, 32, 0.92));
+    background: var(--surface-card);
     border: 1px solid var(--stroke-1);
     border-radius: var(--radius-lg);
     padding: 1.8rem;
