@@ -276,6 +276,18 @@ body::after {
     padding-top: 90px;
 }
 
+@media (min-width: 1024px) {
+    .app-shell--main {
+        margin-left: 290px !important;
+        margin-right: 1.5rem !important;
+        width: calc(100% - 290px - 1.5rem) !important;
+        max-width: 1480px !important;
+        padding-top: calc(80px + 1.5rem) !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+}
+
 .app-topbar {
     position: fixed;
     top: 0;
@@ -307,25 +319,15 @@ body::after {
 }
 
 @media (min-width: 1024px) {
-    .app-shell--main {
-        margin-left: calc(260px + 2rem + max(2rem, calc((100% - 260px - 2rem - 1480px) / 2))) !important;
-        margin-right: max(2rem, calc((100% - 260px - 2rem - 1480px) / 2)) !important;
-        width: auto !important;
-        padding-top: calc(80px + 1.5rem) !important;
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-        max-width: none !important;
-    }
-
     .app-topbar.nav-primary {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
         pointer-events: none;
-        left: calc(260px + 2rem);
-        width: calc(100% - 260px - 2rem);
+        left: 290px;
+        width: calc(100% - 290px - 1.5rem);
         height: 80px;
-        padding-right: max(2rem, calc((100% - 260px - 2rem - 1480px) / 2));
+        padding-right: 0;
     }
 
     .app-topbar .nav-brand {
@@ -373,7 +375,14 @@ body::after {
         margin-bottom: 0.5rem;
     }
 
+    .sidebar-header .brand-caption {
+        white-space: nowrap;
+        font-size: 1.15rem; /* Сделать чуть меньше, чтобы точно влезало, если шрифт крупный */
+        letter-spacing: 0.05em;
+    }
+
     .app-sidebar .nav-links {
+        display: flex;
         flex-direction: column;
         align-items: stretch;
         gap: 0.2rem;
@@ -382,20 +391,26 @@ body::after {
     }
 
     .app-sidebar .nav-link {
+        display: flex;
+        align-items: center;
         width: 100%;
         justify-content: flex-start;
         padding: 0.85rem 1.1rem;
         border-radius: var(--radius-md);
-        border-color: transparent;
+        border: 1px solid transparent;
         box-shadow: none !important;
         background: transparent !important;
         color: var(--text-muted);
-        font-size: 1rem;
+        font-size: 0.95rem;
+        font-weight: 500;
+        text-decoration: none;
+        transition: all 0.2s ease;
     }
 
     .app-sidebar .nav-link:hover {
         background: var(--overlay-hover) !important;
         color: var(--text-primary);
+        transform: none;
     }
 
     .app-sidebar .nav-link.active {
@@ -404,77 +419,28 @@ body::after {
         border-color: transparent;
     }
 
-    .app-sidebar .nav-dropdown {
-        width: 100%;
-    }
-
-    .app-sidebar .nav-dropdown-trigger {
-        width: 100%;
-        pointer-events: none;
-        opacity: 0.5;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        padding: 1.5rem 1rem 0.5rem;
-        background: transparent !important;
-    }
-
-    .app-sidebar .nav-dropdown-trigger .nav-link-icon {
-        display: none;
-    }
-
-    .app-sidebar .nav-dropdown-content {
-        position: static;
-        opacity: 1 !important;
-        visibility: visible !important;
-        max-height: none !important;
-        transform: none;
-        box-shadow: none;
-        border: none !important;
-        background: transparent;
-        padding: 0 !important;
-        margin: 0 !important;
-        min-width: auto;
-        display: block !important;
-        overflow: visible;
-        transition: none;
-    }
-
-    .app-sidebar .dropdown-item {
-        padding: 0.85rem 1.1rem;
-        font-size: 0.95rem;
-        border-radius: var(--radius-md);
-        color: var(--text-muted);
-        margin-bottom: 0.2rem;
-    }
-
-    .app-sidebar .dropdown-item:hover {
-        background: var(--overlay-hover);
-        color: var(--text-primary);
-        padding-left: 1.1rem; /* remove shift effect */
-    }
-
-    .app-sidebar .dropdown-item.active {
-        background: var(--overlay-press);
-        color: var(--accent-1);
-    }
-
-    .app-sidebar .dropdown-item .nav-link-icon {
-        opacity: 0.8;
-    }
-
     .app-sidebar-group-title {
         font-size: 0.7rem;
         letter-spacing: 0.12em;
         text-transform: uppercase;
         color: var(--text-muted);
-        padding: 1rem 1rem 0.5rem;
-        margin-top: 0.5rem;
+        padding: 1.5rem 1rem 0.5rem;
     }
 
     .app-sidebar-group-title:first-child {
-        margin-top: 0;
         padding-top: 0;
+    }
+    
+    .app-sidebar .sidebar-group-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+    }
+
+    .app-sidebar .nav-dropdown-trigger,
+    .app-sidebar .nav-dropdown-content,
+    .app-sidebar .dropdown-item {
+        display: none !important; /* Убираем дропдауны полностью из сайдбара */
     }
 }
 
