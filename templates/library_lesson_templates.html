@@ -51,9 +51,12 @@
     </style>
 </head>
 <body>
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'library' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         <main>
             <section class="hero">
@@ -123,7 +126,9 @@
                 {% endif %}
             </section>
         </main>
+    </main>
     </div>
+</div>
 
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script>

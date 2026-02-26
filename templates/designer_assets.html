@@ -12,9 +12,12 @@
 </head>
 <body>
     {% from '_ui_icon.html' import ui_icon %}
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'assets' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         {% include '_ux_enhancements.html' %}
 
@@ -137,7 +140,9 @@
                 </div>
             </div>
         </section>
+    </main>
     </div>
+</div>
 
     <script>
     (function() {

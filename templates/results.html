@@ -231,9 +231,12 @@
     </script>
     {% endif %}
 
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = active_page | default('generator') %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         <section class="glass-panel results-hero">
             <div>
@@ -440,7 +443,9 @@
                 </div>
             </form>
         </div>
+    </main>
     </div>
+</div>
     <script>
         // Функция для временного уведомления, если toast не загружен
         function showTemporaryNotification(message, type) {

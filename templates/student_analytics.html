@@ -60,9 +60,12 @@
     </script>
     {% endif %}
     
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'dashboard' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
@@ -206,7 +209,9 @@
             </div>
         </section>
         {% endif %}
+    </main>
     </div>
+</div>
     
     <script>
         document.addEventListener("DOMContentLoaded", function() {

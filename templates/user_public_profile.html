@@ -36,9 +36,12 @@
         {% for i in range(36) %}<span class="star">★</span>{% endfor %}
     </div>
     {% endif %}
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = None %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         {% if public_user.is_creator() %}
         
@@ -285,7 +288,9 @@
         <div class="modal modal-avatar-wrap" onclick="event.stopPropagation()">
             <img id="avatarModalImg" src="" alt="Аватар в полном размере">
         </div>
+    </main>
     </div>
+</div>
 
     <script>
         function openAvatarModal(url) {

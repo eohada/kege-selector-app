@@ -220,9 +220,12 @@
     </script>
     {% endif %}
 
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'plans' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         <section class="glass-panel">
             <div>
@@ -236,7 +239,9 @@
                 {{ plans_content|markdown|safe }}
             </div>
         </section>
+    </main>
     </div>
+</div>
     
     <script>
         // Дополнительная обработка для улучшения отображения

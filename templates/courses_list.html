@@ -12,9 +12,12 @@
     {% endif %}
 </head>
 <body>
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'students' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         <main style="margin-top: 1.25rem;">
             <div class="page-header" style="display:flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
@@ -89,7 +92,9 @@
             </div>
             {% endif %}
         </main>
+    </main>
     </div>
+</div>
 </body>
 </html>
 

@@ -153,9 +153,12 @@
     </style>
 </head>
 <body>
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'assignments' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         <main style="margin-top: 1.25rem;">
         <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.95rem;"><i class="fas fa-arrow-left" style="margin-right: 0.35rem;"></i>К заданиям</a></p>
@@ -379,7 +382,9 @@
                     <span class="toast-icon">${icons[type] || '●'}</span>
                     <span class="toast-message">${message}</span>
                     <button class="toast-close" onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; cursor: pointer; padding: 0; font-size: 1.1em;">✕</button>
-                </div>
+                </main>
+    </div>
+</div>
             `;
             
             container.appendChild(toast);

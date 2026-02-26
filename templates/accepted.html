@@ -18,9 +18,12 @@
 <body class="{% if active_lesson %}lesson-active{% endif %}">
     {% include '_active_lesson_banner.html' %}
     
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = active_page | default('generator') %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
@@ -127,7 +130,9 @@
             </div>
         </section>
         {% endif %}
+    </main>
     </div>
+</div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {

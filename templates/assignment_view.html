@@ -169,9 +169,12 @@
     </style>
 </head>
 <body>
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'assignments' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         <main style="margin-top: 1.25rem;">
             <section class="page-hero">
@@ -378,7 +381,9 @@
                 </section>
             </div>
         </main>
+    </main>
     </div>
+</div>
 
     <script>
         (function () {

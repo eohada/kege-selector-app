@@ -11,9 +11,12 @@
     {% endif %}
 </head>
 <body>
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'admin' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         {% include '_ux_enhancements.html' %}
 
@@ -207,7 +210,9 @@
             <button onclick="location.reload()" class="neo-button accent">{{ ui_icon('action.refresh', 'sm', decorative=true) }} Обновить</button>
             <a href="{{ url_for('admin.diagnostics_api') }}" class="neo-button outline" target="_blank" style="text-decoration: none;">📄 JSON API</a>
         </div>
+    </main>
     </div>
+</div>
 
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script>

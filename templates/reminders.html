@@ -208,9 +208,12 @@
     </style>
 </head>
 <body>
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'reminders' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
         
         <main class="app-content">
             <div class="reminders-container">
@@ -363,7 +366,9 @@
                 </div>
             </form>
         </div>
+    </main>
     </div>
+</div>
 
     <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>
     <script src="{{ url_for('static', filename='audit-tracker.js') }}"></script>

@@ -54,9 +54,12 @@
         {% for i in range(36) %}<span class="star">★</span>{% endfor %}
     </div>
     {% endif %}
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = None %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
         {% include '_ux_enhancements.html' %}
         <main class="profile-container
             {% if current_user and current_user.is_creator() %}theme-creator
@@ -869,7 +872,9 @@
                     area.innerHTML = `<div style="color: var(--danger);">Ошибка: ${data.error}</div>`;
                 }
             } catch (e) {
-                area.innerHTML = `<div style="color: var(--danger);">Ошибка соединения</div>`;
+                area.innerHTML = `<div style="color: var(--danger);">Ошибка соединения</main>
+    </div>
+</div>`;
             }
         }
         

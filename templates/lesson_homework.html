@@ -454,9 +454,12 @@
     </style>
 </head>
 <body>
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = None %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
         
         <header class="lesson-header glass-panel">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
@@ -3237,7 +3240,9 @@
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; background: var(--surface-2); border-radius: var(--radius-lg);">
                     <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--accent-1); margin-bottom: 1rem;"></i>
                     <span style="color: var(--text-muted);">Создание доски...</span>
-                </div>
+                </main>
+    </div>
+</div>
             `;
             
             try {

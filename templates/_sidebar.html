@@ -1,0 +1,15 @@
+{% from '_ui_icon.html' import ui_icon %}
+
+<aside class="app-sidebar" aria-label="Боковая навигация">
+    <div class="sidebar-header">
+        <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
+            <div class="brand-mark">
+                <span style="font-weight: 900; letter-spacing: 0.06em;">B</span>
+            </div>
+            <div class="brand-caption">BooStudy</div>
+        </a>
+    </div>
+    <nav class="nav-links">
+        {% include '_nav_links_body.html' %}
+    </nav>
+</aside>

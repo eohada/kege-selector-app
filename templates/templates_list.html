@@ -12,9 +12,12 @@
     {% include '_ux_enhancements.html' %}
 </head>
 <body>
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'templates' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
         {% set can_manage_templates = (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or has_permission(current_user, 'task.manage'))) %}
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -122,7 +125,9 @@
         </section>
         {% endif %}
         {% endfor %}
+    </main>
     </div>
+</div>
 
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script src="{{ url_for('static', filename='flash-to-toast.js') }}"></script>

@@ -15,9 +15,12 @@
   </style>
 </head>
 <body>
-  <div class="app-shell app-shell--main">
+  <div class="app-layout">
     {% set active_page = 'rubrics' %}
-    {% include '_primary_nav.html' %}
+    {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
     <main style="margin-top: 1.25rem;">
       <section class="glass-panel" style="margin-bottom: 1.25rem;">
@@ -147,7 +150,9 @@
                 <button type="button" class="neo-button danger sm" onclick="removeCriterion(${idx})">Удалить</button>
               </div>
             </div>
-          </div>
+          </main>
+    </div>
+</div>
         `;
         root.appendChild(wrap);
       });

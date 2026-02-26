@@ -53,9 +53,12 @@
 <body class="{% if active_lesson %}lesson-active{% endif %}">
     {% include '_active_lesson_banner.html' %}
     
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'dashboard' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         {% include '_ux_enhancements.html' %}
 
@@ -77,7 +80,9 @@
             <button class="neo-button accent copy-btn" onclick="copyToClipboard()" id="copyBtn">{{ ui_icon('action.copy', 'sm', decorative=true) }} Копировать</button>
             <div class="markdown-text" id="markdownText">{{ markdown_content }}</div>
         </section>
+    </main>
     </div>
+</div>
     
     <script>
         function copyToClipboard() {

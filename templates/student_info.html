@@ -26,9 +26,12 @@
     </style>
 </head>
 <body>
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'students' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
         {% include '_mobile_menu.html' %}
 
         <div class="profile-card theme-student info-card" style="margin-bottom: 2rem;">
@@ -205,6 +208,8 @@
                 {% endif %}
             </div>
         </div>
+    </main>
     </div>
+</div>
 </body>
 </html>

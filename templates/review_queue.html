@@ -119,9 +119,12 @@
     </style>
 </head>
 <body>
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = active_page | default('review_queue') %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         <main style="margin-top: 1.25rem;">
             <section class="queue-hero">
@@ -386,7 +389,9 @@
                 </div>
             {% endif %}
         </main>
+    </main>
     </div>
+</div>
 </body>
 </html>
 

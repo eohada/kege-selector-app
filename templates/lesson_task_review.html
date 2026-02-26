@@ -96,8 +96,11 @@
     </style>
 </head>
 <body>
-    <div class="app-shell app-shell--main">
-        {% include '_primary_nav.html' %}
+    <div class="app-layout">
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
         {% set lesson_local = (lesson.lesson_date|to_tz(tz_name)) if lesson and lesson.lesson_date else None %}
@@ -272,7 +275,9 @@
                 </aside>
             </div>
         </main>
+    </main>
     </div>
+</div>
 
     <script>
         const LESSON_ID = {{ lesson.lesson_id }};

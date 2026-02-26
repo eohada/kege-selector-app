@@ -451,9 +451,12 @@
     </script>
     {% endif %}
 
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'schedule' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         <section class="glass-panel schedule-hero">
             <div>
@@ -903,7 +906,9 @@
                     list.appendChild(el);
                 });
             } catch (e) {
-                list.innerHTML = `<div style="color: var(--danger);">Ошибка: ${e.message || e}</div>`;
+                list.innerHTML = `<div style="color: var(--danger);">Ошибка: ${e.message || e}</main>
+    </div>
+</div>`;
             }
         }
         async function createTemplate() {

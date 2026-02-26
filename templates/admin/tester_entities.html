@@ -66,9 +66,12 @@
     </style>
 </head>
 <body>
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'admin' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         {% include '_ux_enhancements.html' %}
 
@@ -205,7 +208,9 @@
             </div>
             {% endif %}
         </section>
+    </main>
     </div>
+</div>
 
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     {% with messages = get_flashed_messages(with_categories=true) %}

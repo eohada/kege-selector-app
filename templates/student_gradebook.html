@@ -25,9 +25,12 @@
   </style>
 </head>
 <body>
-  <div class="app-shell app-shell--main">
+  <div class="app-layout">
     {% set active_page = 'students' %}
-    {% include '_primary_nav.html' %}
+    {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
     <section class="glass-panel" style="margin-bottom: 1.25rem;">
       <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
@@ -260,7 +263,9 @@
         {% endif %}
       </aside>
     </div>
-  </div>
+  </main>
+    </div>
+</div>
 
 </body>
 </html>

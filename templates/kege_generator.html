@@ -204,9 +204,12 @@
     </div>
     {% endif %}
 
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = 'generator' %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
 
         <section class="glass-panel generator-hero">
             <div>
@@ -538,7 +541,9 @@
                     const hasAny = (task.triplet_answers || []).some(a => a && String(a).trim());
                     toggleAnswerBtn.disabled = !hasAny;
                     answer.innerHTML = (task.triplet_answers || ['', '', '']).map((a, i) =>
-                        `<div class="gen-answer-line"><strong>Ответ ${19 + i}:</strong> ${escapeHtml(String(a || '').trim() || '—')}</div>`
+                        `<div class="gen-answer-line"><strong>Ответ ${19 + i}:</strong> ${escapeHtml(String(a || '').trim() || '—')}</main>
+    </div>
+</div>`
                     ).join('');
                 } else if (task.answer) {
                     toggleAnswerBtn.disabled = false;

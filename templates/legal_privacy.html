@@ -11,8 +11,11 @@
   {% endif %}
 </head>
 <body>
-  <div class="app-shell app-shell--main">
-    {% include '_primary_nav.html' %}
+  <div class="app-layout">
+    {% include '_sidebar.html' %}
+    <div class="app-main">
+        {% include '_topbar.html' %}
+        <main class="app-content">
     <main style="margin-top: 1.25rem;">
       <section class="glass-panel">
         <p class="hero-eyebrow">юридическое</p>
@@ -36,7 +39,9 @@
         {% endif %}
       </section>
     </main>
-  </div>
+  </main>
+    </div>
+</div>
 </body>
 </html>
 

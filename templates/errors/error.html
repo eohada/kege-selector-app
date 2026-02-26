@@ -103,9 +103,12 @@
     </style>
 </head>
 <body>
-    <div class="app-shell app-shell--main">
+    <div class="app-layout">
         {% set active_page = none %}
-        {% include '_primary_nav.html' %}
+        {% include '_sidebar.html' %}
+        <div class="app-main">
+            {% include '_topbar.html' %}
+            <main class="app-content">
         <div class="error-wrap">
             <section class="glass-panel error-card">
                 <div class="error-kicker">
@@ -157,6 +160,8 @@
                     </div>
                 </div>
             </section>
+        </div>
+        </main>
         </div>
     </div>
 </body>
