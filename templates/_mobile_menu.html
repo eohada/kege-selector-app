@@ -13,8 +13,8 @@
     <div class="mobile-menu-header">
         <div class="nav-brand">
             <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
-                <div class="brand-mark" aria-hidden="true">B</div>
-                <div class="brand-caption">BooStudy</div>
+                <div class="brand-mark" aria-hidden="true" style="width: 32px; height: 32px; font-size: 0.8rem;">B</div>
+                <div class="brand-caption" style="font-size: 1.1rem;">BooStudy</div>
             </a>
         </div>
         <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Закрыть меню">
@@ -22,39 +22,7 @@
         </button>
     </div>
     <div class="mobile-nav-links">
-        <a href="{{ url_for('main.dashboard') }}" class="mobile-nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
-            {{ ui_icon('nav.students', 'md', title='Ученики', extra_class='mobile-nav-link-icon') }}
-            <span>Ученики</span>
-        </a>
-        <a href="{{ url_for('schedule.schedule') }}" class="mobile-nav-link {% if request.endpoint == 'schedule.schedule' %}active{% endif %}">
-            {{ ui_icon('nav.schedule', 'md', title='Расписание', extra_class='mobile-nav-link-icon') }}
-            <span>Расписание</span>
-        </a>
-        <a href="{{ url_for('kege_generator.kege_generator') }}" class="mobile-nav-link {% if request.endpoint == 'kege_generator.kege_generator' %}active{% endif %}">
-            {{ ui_icon('nav.generator', 'md', title='Генератор', extra_class='mobile-nav-link-icon') }}
-            <span>Генератор</span>
-        </a>
-        <a href="{{ url_for('main.update_plans') }}" class="mobile-nav-link {% if request.endpoint == 'main.update_plans' %}active{% endif %}">
-            {{ ui_icon('nav.plans', 'md', title='Планы', extra_class='mobile-nav-link-icon') }}
-            <span>Планы</span>
-        </a>
-        <a href="{{ url_for('reminders.reminders_list') }}" class="mobile-nav-link {% if request.endpoint == 'reminders.reminders_list' %}active{% endif %}">
-            {{ ui_icon('nav.reminders', 'md', title='Напоминания', extra_class='mobile-nav-link-icon') }}
-            <span>Напоминания</span>
-        </a>
-        <a href="{{ url_for('templates.templates_list') }}" class="mobile-nav-link {% if request.endpoint == 'templates.templates_list' or request.endpoint == 'templates.template_view' or request.endpoint == 'templates.template_edit' or request.endpoint == 'templates.template_new' or request.endpoint == 'templates.template_form' %}active{% endif %}">
-            {{ ui_icon('nav.templates', 'md', title='Шаблоны', extra_class='mobile-nav-link-icon') }}
-            <span>Шаблоны</span>
-        </a>
-    </div>
-
-    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
-        <div class="profile-section-title" style="margin: 0 0 0.6rem; padding: 0 0.2rem;">Тема</div>
-        <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема оформления">
-            <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false">Auto</button>
-            <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false">Dark</button>
-            <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
-        </div>
+        {% include '_nav_links_body.html' %}
     </div>
 </nav>
 
@@ -85,7 +53,7 @@
         if (overlay) overlay.addEventListener('click', closeMenu);
 
         // Закрытие при клике на ссылку
-        const mobileLinks = document.querySelectorAll('.mobile-nav-link');
+        const mobileLinks = document.querySelectorAll('.mobile-menu .nav-link');
         mobileLinks.forEach(link => {
             link.addEventListener('click', function() {
                 setTimeout(closeMenu, 300); // Небольшая задержка для плавности

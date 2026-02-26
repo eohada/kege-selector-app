@@ -2858,36 +2858,78 @@ body.creator-theme-active .students-grid {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    overflow-y: auto;
+    padding-bottom: 2rem;
 }
 
-.mobile-nav-link {
+.mobile-nav-links .nav-link {
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 1rem 1.2rem;
+    padding: 0.8rem 1rem;
     border-radius: var(--radius-sm);
     text-decoration: none;
     color: var(--text-muted);
     border: 1px solid transparent;
     transition: all 0.25s ease;
+    font-size: 1.05rem;
+    background: transparent !important;
+    box-shadow: none !important;
 }
 
-.mobile-nav-link:hover,
-.mobile-nav-link.active {
-    color: var(--text-primary);
-    border-color: var(--stroke-2);
-    background: var(--overlay-hover);
+.mobile-nav-links .nav-link:hover,
+.mobile-nav-links .nav-link.active {
+    color: var(--text-primary) !important;
+    background: var(--overlay-hover) !important;
 }
 
-.mobile-nav-link.active {
-    border-color: var(--accent-1);
-    background: var(--overlay-press);
+.mobile-nav-links .nav-link.active {
+    background: var(--overlay-press) !important;
+    border-color: transparent !important;
+    position: relative;
 }
 
-.mobile-nav-link-icon {
+.mobile-nav-links .nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 15%;
+    bottom: 15%;
+    width: 3px;
+    background: var(--accent-1);
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 0 8px var(--accent-1);
+}
+
+.mobile-nav-links .nav-link-icon {
     width: 24px;
     height: 24px;
     object-fit: contain;
+}
+
+.mobile-nav-links .app-sidebar-group-title {
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    opacity: 0.7;
+    padding: 1.5rem 1rem 0.5rem;
+    margin-left: 0.2rem;
+}
+
+.mobile-nav-links .app-sidebar-group-title:first-child {
+    padding-top: 0;
+}
+
+.mobile-nav-links .sidebar-group-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.mobile-nav-links .nav-dropdown-trigger,
+.mobile-nav-links .nav-dropdown-content {
+    display: none !important;
 }
 
 /* Remote admin shell */
@@ -3021,19 +3063,19 @@ body.creator-theme-active .students-grid {
     }
 
     .brand-mark {
-        width: 84px;
-        height: 84px;
-        font-size: 0.65rem;
+        width: 32px;
+        height: 32px;
+        font-size: 0.8rem;
     }
 
     .user-profile-avatar {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
         font-size: 1rem;
     }
 
     .brand-caption {
-        font-size: 1.25rem;
+        font-size: 1.1rem;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -3052,21 +3094,23 @@ body.creator-theme-active .students-grid {
     }
 
     .glass-panel {
-        padding: 1.5rem 1.2rem;
+        padding: 1rem;
         border-radius: var(--radius-md);
     }
 
     .dashboard-hero {
         grid-template-columns: 1fr;
-        gap: 1.5rem;
+        gap: 1.2rem;
+        margin-bottom: 1.5rem;
     }
 
     .hero-title {
-        font-size: clamp(1.8rem, 5vw, 2.5rem);
+        font-size: clamp(1.4rem, 5vw, 1.8rem);
+        line-height: 1.2;
     }
 
     .hero-subtitle {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
     }
 
     .hero-actions {
@@ -3426,18 +3470,20 @@ body.creator-theme-active .students-grid {
     }
 
     .students-grid {
-        grid-template-columns: 1fr;
-        gap: 1rem;
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
     }
 
     .student-card {
-        padding: 1.2rem;
+        padding: 1rem;
+        border-radius: var(--radius-md);
     }
 
     .student-avatar {
-        width: 50px;
-        height: 50px;
-        font-size: 1.2rem;
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
     }
 
     .student-name {
@@ -3448,10 +3494,11 @@ body.creator-theme-active .students-grid {
         flex-direction: column;
         align-items: flex-start;
         gap: 1rem;
+        margin-bottom: 1rem;
     }
 
     .panel-head h2 {
-        font-size: 1.4rem;
+        font-size: 1.25rem;
     }
 
     .panel-head .hero-actions {
