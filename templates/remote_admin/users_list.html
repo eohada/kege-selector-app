@@ -196,7 +196,7 @@
         {% include 'remote_admin/_header.html' %}
         {% include 'remote_admin/_sidebar.html' %}
 
-        <main style="margin-left: 250px; margin-top: 70px; padding: 2rem;">
+        <main class="remote-main">
         <section class="glass-panel" style="max-width: 1400px; padding: 2rem;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
                 <div>
@@ -317,14 +317,14 @@
                         <td>
                             <div class="action-buttons" style="display: flex; gap: 0.5rem;">
                                 <a href="{{ url_for('remote_admin.user_edit', user_id=user.id) }}" class="neo-button ghost" style="padding:0.5rem 0.75rem; text-decoration: none;" title="Редактировать">
-                                    <img src="{{ url_for('static', filename='icons/icons8-редактировать-100.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm">
+                                    {{ ui_icon('action.edit', 'sm', decorative=true) }}
                                 </a>
                                 {% if user.role != 'creator' %}
                                 <button type="button" class="neo-button danger action-delete-btn" style="padding:0.5rem 0.75rem;" title="Удалить" 
                                         data-url="{{ url_for('remote_admin.api_user_manage', user_id=user.id) }}" 
                                         data-method="DELETE"
                                         data-confirm-message="Вы уверены, что хотите удалить пользователя '{{ user.username }}'? Это действие нельзя отменить.">
-                                    <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Удалить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                    {{ ui_icon('action.trash', 'sm', decorative=true) }}
                                     <span style="display:none;">✕</span>
                                 </button>
                                 {% endif %}

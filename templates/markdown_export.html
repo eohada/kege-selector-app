@@ -63,7 +63,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <div>
                     <p class="hero-eyebrow">экспорт в markdown</p>
-                    <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Экспорт" class="ui-icon ui-icon--md"> Экспорт в Markdown (Obsidian)</h1>
+                    <h1 class="hero-title">{{ ui_icon('action.export', 'md', decorative=true) }} Экспорт в Markdown (Obsidian)</h1>
                 </div>
                 <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button ghost">← Назад к ДЗ</a>
             </div>
@@ -74,7 +74,7 @@
         </div>
         
         <section class="markdown-container">
-            <button class="neo-button accent copy-btn" onclick="copyToClipboard()" id="copyBtn"><img src="{{ url_for('static', filename='icons/icons8-копировать-100.png') }}" alt="Копировать" class="ui-icon ui-icon--sm"> Копировать</button>
+            <button class="neo-button accent copy-btn" onclick="copyToClipboard()" id="copyBtn">{{ ui_icon('action.copy', 'sm', decorative=true) }} Копировать</button>
             <div class="markdown-text" id="markdownText">{{ markdown_content }}</div>
         </section>
     </div>

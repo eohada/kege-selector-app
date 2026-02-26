@@ -34,16 +34,16 @@
                     <a href="{{ url_for('assignments.assignment_create', source='template', template_id=template.template_id, assignment_type=(template.template_type or 'homework')) }}" class="neo-button outline" style="text-decoration:none;">
                         📝 Создать работу
                     </a>
-                    <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm">Редактировать</a>
+                    <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button accent">{{ ui_icon('action.edit', 'sm', decorative=true) }}Редактировать</a>
                 </div>
             </div>
             
             <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
                 <span style="padding: 0.5rem 1rem; background: var(--surface-2); color: var(--text-primary); border-radius: var(--radius-sm); font-weight: 600;">
-                    {% if template.template_type == 'homework' %}<img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm"> Домашние задания
-                    {% elif template.template_type == 'classwork' %}<img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Классная работа" class="ui-icon ui-icon--sm"> Классные работы
-                    {% elif template.template_type == 'exam' %}<img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проверочные" class="ui-icon ui-icon--sm">Проверочные работы
-                    {% else %}<img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Уроки" class="ui-icon ui-icon--sm"> Уроки{% endif %}
+                    {% if template.template_type == 'homework' %}{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Домашние задания
+                    {% elif template.template_type == 'classwork' %}{{ ui_icon('action.school', 'sm', decorative=true) }} Классные работы
+                    {% elif template.template_type == 'exam' %}{{ ui_icon('action.check', 'sm', decorative=true) }}Проверочные работы
+                    {% else %}{{ ui_icon('nav.templates', 'sm', decorative=true) }} Уроки{% endif %}
                 </span>
                 {% if template.category %}
                 <span style="padding: 0.5rem 1rem; background: var(--accent-1); color: white; border-radius: var(--radius-sm); font-weight: 600;">{{ template.category }}</span>

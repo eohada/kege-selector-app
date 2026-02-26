@@ -221,7 +221,7 @@
                             <p style="color: var(--text-muted); margin-top: 0.5rem;">Легкие заметки с указанием времени</p>
                         </div>
                         <button class="neo-button accent" onclick="openCreateModal()">
-                            <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Создать" class="ui-icon ui-icon--sm"> Создать
+                            {{ ui_icon('action.check', 'sm', decorative=true) }} Создать
                         </button>
                     </div>
                 </section>
@@ -247,11 +247,11 @@
                                 {{ reminder.title }}
                                 {% if reminder.reminder_time %}
                                 <span class="status-badge time-badge" title="С временем напоминания">
-                                    <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" alt="Время" class="ui-icon ui-icon--sm" style="width: 14px; height: 14px; margin-right: 0.25rem;">С временем
+                                    {{ ui_icon('action.clock', 'sm', decorative=true) }}С временем
                                 </span>
                                 {% else %}
                                 <span class="status-badge no-time-badge" title="Без времени напоминания">
-                                    <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" alt="Без времени" class="ui-icon ui-icon--sm" style="width: 14px; height: 14px; margin-right: 0.25rem;">Без времени
+                                    {{ ui_icon('nav.help', 'sm', decorative=true) }}Без времени
                                 </span>
                                 {% endif %}
                                 {% if reminder.is_overdue() and not reminder.is_completed %}
@@ -274,13 +274,13 @@
                         
                         <div class="reminder-actions">
                             <button type="button" class="neo-button ghost" onclick="openEditModal({{ reminder.reminder_id }}, '{{ reminder.title|e }}', '{{ reminder.message|e if reminder.message else '' }}', {% if item.time_iso %}'{{ item.time_iso }}'{% else %}null{% endif %})">
-                                <img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm"> Редактировать
+                                {{ ui_icon('action.edit', 'sm', decorative=true) }} Редактировать
                             </button>
                             
                             <form method="POST" action="{{ url_for('reminders.reminder_toggle', reminder_id=reminder.reminder_id) }}" style="display: inline;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="neo-button {% if reminder.is_completed %}ghost{% else %}outline{% endif %}">
-                                    <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Выполнено" class="ui-icon ui-icon--sm">
+                                    {{ ui_icon('action.check', 'sm', decorative=true) }}
                                     {% if reminder.is_completed %}Отметить активным{% else %}Выполнено{% endif %}
                                 </button>
                             </form>
@@ -290,7 +290,7 @@
                                   style="display: inline;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="neo-button danger">
-                                    <img src="{{ url_for('static', filename='icons/MUSORN.png') }}" alt="Удалить" class="ui-icon ui-icon--sm"> Удалить
+                                    {{ ui_icon('action.trash', 'sm', decorative=true) }} Удалить
                                 </button>
                             </form>
                         </div>
@@ -301,7 +301,7 @@
                 <section class="glass-panel">
                     <div class="empty-state">
                         <div class="empty-state-icon">
-                            <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" alt="Нет напоминаний" style="width: 64px; height: 64px; opacity: 0.5;">
+                            <div style="opacity: 0.55;">{{ ui_icon('nav.reminders', 'lg', decorative=true) }}</div>
                         </div>
                         <h3>Нет напоминаний</h3>
                         <p>Создайте первое напоминание</p>
@@ -358,7 +358,7 @@
                 <div class="modal-footer">
                     <button type="button" class="neo-button ghost" onclick="closeCreateModal()">Отмена</button>
                     <button type="submit" class="neo-button accent" id="submitReminderBtn">
-                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Создать" class="ui-icon ui-icon--sm"> <span id="submitReminderText">Создать</span>
+                        {{ ui_icon('action.check', 'sm', decorative=true) }} <span id="submitReminderText">Создать</span>
                     </button>
                 </div>
             </form>

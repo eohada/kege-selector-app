@@ -197,7 +197,7 @@
     {% include '_active_lesson_banner.html' %}
     
     <div class="exit-lesson-mode">
-        <a href="{{ url_for('main.dashboard') }}" class="neo-button danger"><img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Выйти" class="ui-icon ui-icon--sm">Выйти из режима урока</a>
+        <a href="{{ url_for('main.dashboard') }}" class="neo-button danger">{{ ui_icon('action.close', 'sm', decorative=true) }}Выйти из режима урока</a>
     </div>
     
     <div class="app-shell">
@@ -219,16 +219,16 @@
                     {% endif %}
                     <div class="student-stats">
                         {% if student.target_score %}
-                        <div><img src="{{ url_for('static', filename='icons/icons8-мишень-100.png') }}" alt="Цель" class="ui-icon ui-icon--sm"> Цель: <span style="color: var(--accent-1); font-weight: 600;">{{ student.target_score }}</span> баллов</div>
+                        <div>{{ ui_icon('nav.generator', 'sm', decorative=true) }} Цель: <span style="color: var(--accent-1); font-weight: 600;">{{ student.target_score }}</span> баллов</div>
                         {% endif %}
                         {% if student.deadline %}
-                        <div><img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Срок" class="ui-icon ui-icon--sm"> Срок: <span style="color: var(--accent-1); font-weight: 600;">{{ student.deadline }}</span></div>
+                        <div>{{ ui_icon('action.clock', 'sm', decorative=true) }} Срок: <span style="color: var(--accent-1); font-weight: 600;">{{ student.deadline }}</span></div>
                         {% endif %}
                         {% if student.diagnostic_level %}
-                        <div><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Диагностика" class="ui-icon ui-icon--sm"> Диагностика: <span style="color: var(--accent-1); font-weight: 600;">{{ student.diagnostic_level }}</span></div>
+                        <div>{{ ui_icon('nav.stats', 'sm', decorative=true) }} Диагностика: <span style="color: var(--accent-1); font-weight: 600;">{{ student.diagnostic_level }}</span></div>
                         {% endif %}
                         {% if student.overall_rating %}
-                        <div><img src="{{ url_for('static', filename='icons/STAR.png') }}" alt="Оценка" class="ui-icon ui-icon--sm"> Оценка: <span style="color: var(--accent-1); font-weight: 600;">{{ student.overall_rating }}</span></div>
+                        <div>{{ ui_icon('action.star', 'sm', decorative=true) }} Оценка: <span style="color: var(--accent-1); font-weight: 600;">{{ student.overall_rating }}</span></div>
                         {% endif %}
                     </div>
                 </div>
@@ -240,11 +240,11 @@
             <h3>Текущий урок</h3>
             <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Дата:</strong> {{ current_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
             {% if current_lesson.lesson_type == 'exam' %}
-            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проверочный" class="ui-icon ui-icon--sm">Проверочный урок</div>
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> {{ ui_icon('action.check', 'sm', decorative=true) }}Проверочный урок</div>
             {% elif current_lesson.lesson_type == 'introductory' %}
-            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" alt="Вводный" class="ui-icon ui-icon--sm">Вводный урок</div>
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> {{ ui_icon('nav.help', 'sm', decorative=true) }}Вводный урок</div>
             {% else %}
-            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Обычный" class="ui-icon ui-icon--sm">Обычный урок</div>
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> {{ ui_icon('nav.templates', 'sm', decorative=true) }}Обычный урок</div>
             {% endif %}
             {% if current_lesson.topic %}
             <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тема:</strong> {{ current_lesson.topic }}</div>
@@ -256,21 +256,21 @@
             <div style="margin-top: 0.5em; color: var(--text-primary);"><strong>Домашнее задание:</strong> {{ current_lesson.homework }}</div>
             {% endif %}
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=current_lesson.lesson_id) }}" style="margin-top: 1rem;">
-                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить урок</button>
+                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить урок</button>
             </form>
         </section>
         {% endif %}
         
         {% if upcoming_lesson and not current_lesson %}
         <section class="upcoming-lesson-banner">
-            <h3><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="План" class="ui-icon ui-icon--sm">Ближайший запланированный урок</h3>
+            <h3>{{ ui_icon('nav.schedule', 'sm', decorative=true) }}Ближайший запланированный урок</h3>
             <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Дата:</strong> {{ upcoming_lesson.lesson_date.strftime('%d.%m.%Y %H:%M') }}</div>
             {% if upcoming_lesson.lesson_type == 'exam' %}
-            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проверочный" class="ui-icon ui-icon--sm">Проверочный урок</div>
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> {{ ui_icon('action.check', 'sm', decorative=true) }}Проверочный урок</div>
             {% elif upcoming_lesson.lesson_type == 'introductory' %}
-            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" alt="Вводный" class="ui-icon ui-icon--sm">Вводный урок</div>
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> {{ ui_icon('nav.help', 'sm', decorative=true) }}Вводный урок</div>
             {% else %}
-            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Обычный" class="ui-icon ui-icon--sm">Обычный урок</div>
+            <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тип:</strong> {{ ui_icon('nav.templates', 'sm', decorative=true) }}Обычный урок</div>
             {% endif %}
             {% if upcoming_lesson.topic %}
             <div style="color: var(--text-primary); margin-bottom: 0.5em;"><strong>Тема:</strong> {{ upcoming_lesson.topic }}</div>
@@ -282,26 +282,26 @@
                 <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; color: var(--text-muted); font-size: 0.95em;">
                     <input type="checkbox" name="student_late" value="1"> Ученик опоздал
                 </label>
-                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Начать" class="ui-icon ui-icon--sm">Начать урок</button>
+                <button type="submit" class="neo-button accent">{{ ui_icon('action.school', 'sm', decorative=true) }}Начать урок</button>
             </form>
         </section>
         {% endif %}
         
         <section class="quick-actions">
             <a href="{{ url_for('kege_generator.kege_generator') }}" class="quick-action-card">
-                <div class="quick-action-icon"><img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--md ui-icon--only"></div>
+                <div class="quick-action-icon">{{ ui_icon('nav.generator', 'md', decorative=true, extra_class='ui-icon--only') }}</div>
                 <div class="quick-action-title">Генератор КЕГЭ</div>
                 <div class="quick-action-desc">Подобрать задания для практики</div>
             </a>
             
             <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="quick-action-card">
-                <div class="quick-action-icon"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--only"></div>
+                <div class="quick-action-icon">{{ ui_icon('action.plus', 'md', decorative=true, extra_class='ui-icon--only') }}</div>
                 <div class="quick-action-title">Добавить урок</div>
                 <div class="quick-action-desc">Запланировать новое занятие</div>
             </a>
             
             <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="quick-action-card">
-                <div class="quick-action-icon"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Профиль" class="ui-icon ui-icon--md ui-icon--only"></div>
+                <div class="quick-action-icon">{{ ui_icon('nav.students', 'md', decorative=true, extra_class='ui-icon--only') }}</div>
                 <div class="quick-action-title">Профиль</div>
                 <div class="quick-action-desc">Открыть полный профиль ученика</div>
             </a>
@@ -325,17 +325,17 @@
                                 {% if lesson.topic %} - {{ lesson.topic }}{% endif %}
                             </div>
                             <div style="color: var(--text-muted); font-size: 0.9em;">
-                                <img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Время" class="ui-icon ui-icon--sm"> {{ lesson.duration }} минут | 
-                                {% if lesson.status == 'completed' %}<img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Проведен" class="ui-icon ui-icon--sm">Проведен{% if lesson.student_late %} <span class="status-badge status-badge--late" title="Ученик опоздал">Опоздание</span>{% endif %}
-                                {% elif lesson.status == 'planned' %}<img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="План" class="ui-icon ui-icon--sm">Запланирован
-                                {% elif lesson.status == 'cancelled' %}<img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Отменен" class="ui-icon ui-icon--sm">Отменен
-                                {% else %}<img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" alt="Статус" class="ui-icon ui-icon--sm"> {{ lesson.status }}{% if lesson.student_late %} <span class="status-badge status-badge--late" title="Ученик опоздал">Опоздание</span>{% endif %}{% endif %}
+                                {{ ui_icon('action.clock', 'sm', decorative=true) }} {{ lesson.duration }} минут |
+                                {% if lesson.status == 'completed' %}{{ ui_icon('action.check', 'sm', decorative=true) }}Проведен{% if lesson.student_late %} <span class="status-badge status-badge--late" title="Ученик опоздал">Опоздание</span>{% endif %}
+                                {% elif lesson.status == 'planned' %}{{ ui_icon('nav.schedule', 'sm', decorative=true) }}Запланирован
+                                {% elif lesson.status == 'cancelled' %}{{ ui_icon('action.close', 'sm', decorative=true) }}Отменен
+                                {% else %}{{ ui_icon('action.admin', 'sm', decorative=true) }} {{ lesson.status }}{% if lesson.student_late %} <span class="status-badge status-badge--late" title="Ученик опоздал">Опоздание</span>{% endif %}{% endif %}
                             </div>
                         </div>
                         <div style="display: flex; gap: 0.5em; flex-wrap: wrap;">
-                            <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.9em; padding: 0.5em 1em;"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Редактировать" class="ui-icon ui-icon--sm">Редактировать</a>
+                            <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.9em; padding: 0.5em 1em;">{{ ui_icon('action.edit', 'sm', decorative=true) }}Редактировать</a>
                             {% if lesson.homework_tasks %}
-                            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline" style="font-size: 0.9em; padding: 0.5em 1em;" title="ДЗ, классная и проверочная по этому уроку"><img src="{{ url_for('static', filename='icons/dz.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm">Задания урока</a>
+                            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline" style="font-size: 0.9em; padding: 0.5em 1em;" title="ДЗ, классная и проверочная по этому уроку">{{ ui_icon('nav.assignments', 'sm', decorative=true) }}Задания урока</a>
                             {% endif %}
                         </div>
                     </div>

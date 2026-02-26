@@ -1,4 +1,6 @@
 
+{% from '_ui_icon.html' import ui_icon %}
+
 <button class="mobile-menu-toggle" id="mobileMenuToggle" aria-label="Открыть меню">
     <span></span>
     <span></span>
@@ -11,37 +13,48 @@
     <div class="mobile-menu-header">
         <div class="nav-brand">
             <a href="{{ url_for('main.index') }}" style="text-decoration: none; display: flex; align-items: center; gap: 1rem; color: inherit;">
-                <div class="brand-mark">LOGO</div>
-                <div class="brand-caption">URep</div>
+                <div class="brand-mark" aria-hidden="true">B</div>
+                <div class="brand-caption">BooStudy</div>
             </a>
         </div>
-        <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Закрыть меню">&times;</button>
+        <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Закрыть меню">
+            {{ ui_icon('action.close', 'md', decorative=true) }}
+        </button>
     </div>
     <div class="mobile-nav-links">
         <a href="{{ url_for('main.dashboard') }}" class="mobile-nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}">
-            <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="mobile-nav-link-icon">
+            {{ ui_icon('nav.students', 'md', title='Ученики', extra_class='mobile-nav-link-icon') }}
             <span>Ученики</span>
         </a>
         <a href="{{ url_for('schedule.schedule') }}" class="mobile-nav-link {% if request.endpoint == 'schedule.schedule' %}active{% endif %}">
-            <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Расписание" class="mobile-nav-link-icon">
+            {{ ui_icon('nav.schedule', 'md', title='Расписание', extra_class='mobile-nav-link-icon') }}
             <span>Расписание</span>
         </a>
         <a href="{{ url_for('kege_generator.kege_generator') }}" class="mobile-nav-link {% if request.endpoint == 'kege_generator.kege_generator' %}active{% endif %}">
-            <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="mobile-nav-link-icon">
+            {{ ui_icon('nav.generator', 'md', title='Генератор', extra_class='mobile-nav-link-icon') }}
             <span>Генератор</span>
         </a>
         <a href="{{ url_for('main.update_plans') }}" class="mobile-nav-link {% if request.endpoint == 'main.update_plans' %}active{% endif %}">
-            <img src="{{ url_for('static', filename='icons/notes_white-no-bg-preview (carve.photos).png') }}" alt="Планы" class="mobile-nav-link-icon">
+            {{ ui_icon('nav.plans', 'md', title='Планы', extra_class='mobile-nav-link-icon') }}
             <span>Планы</span>
         </a>
         <a href="{{ url_for('reminders.reminders_list') }}" class="mobile-nav-link {% if request.endpoint == 'reminders.reminders_list' %}active{% endif %}">
-            <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" alt="Напоминания" class="mobile-nav-link-icon">
+            {{ ui_icon('nav.reminders', 'md', title='Напоминания', extra_class='mobile-nav-link-icon') }}
             <span>Напоминания</span>
         </a>
         <a href="{{ url_for('templates.templates_list') }}" class="mobile-nav-link {% if request.endpoint == 'templates.templates_list' or request.endpoint == 'templates.template_view' or request.endpoint == 'templates.template_edit' or request.endpoint == 'templates.template_new' or request.endpoint == 'templates.template_form' %}active{% endif %}">
-            <img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="mobile-nav-link-icon">
+            {{ ui_icon('nav.templates', 'md', title='Шаблоны', extra_class='mobile-nav-link-icon') }}
             <span>Шаблоны</span>
         </a>
+    </div>
+
+    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
+        <div class="profile-section-title" style="margin: 0 0 0.6rem; padding: 0 0.2rem;">Тема</div>
+        <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема оформления">
+            <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false">Auto</button>
+            <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false">Dark</button>
+            <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
+        </div>
     </div>
 </nav>
 

@@ -130,7 +130,7 @@
 <body class="{% if active_lesson %}lesson-active{% endif %}">
     {% if active_lesson %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        <img src="{{ url_for('static', filename='icons/icons8-наушники-100.png') }}" alt="Урок" class="ui-icon ui-icon--sm"> Урок идет: {{ active_student.name }}
+        {{ ui_icon('nav.schedule', 'sm', decorative=true) }} Урок идет: {{ active_student.name }}
     </div>
     <div class="now-playing-panel" id="lessonMenu">
         <div class="hero-eyebrow">текущий урок</div>
@@ -144,9 +144,9 @@
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
+                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
             </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('profile.user', 'sm', decorative=true) }}Профиль</a>
         </div>
     </div>
     <script>
@@ -172,7 +172,7 @@
         {% include '_primary_nav.html' %}
 
         <section class="glass-panel student-context">
-            <h3><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Ученик" class="ui-icon ui-icon--sm"> Ученик: {{ student.name }}</h3>
+            <h3>{{ ui_icon('profile.user', 'sm', decorative=true) }} Ученик: {{ student.name }}</h3>
             <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" class="neo-button ghost">← Вернуться к профилю</a>
         </section>
 
@@ -202,7 +202,7 @@
             {{ form.hidden_tag() }}
             
             <section class="form-section">
-                <div class="form-section-title"><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Информация" class="ui-icon ui-icon--sm"> Основная информация</div>
+                <div class="form-section-title">{{ ui_icon('nav.schedule', 'sm', decorative=true) }} Основная информация</div>
                 <div class="form-grid">
                     <div class="neo-field">
                         {{ form.lesson_type.label(class='neo-label') }}
@@ -252,7 +252,7 @@
             </section>
             
             <section class="form-section">
-                <div class="form-section-title"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Содержание" class="ui-icon ui-icon--sm"> Содержание урока</div>
+                <div class="form-section-title">{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Содержание урока</div>
                 <div class="form-grid">
                     <div class="neo-field form-grid-full">
                         {{ form.topic.label(class='neo-label') }}
@@ -311,7 +311,7 @@
         <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">Задачи к уроку ученик выполняет на странице занятия (вкладки ДЗ / Классная работа / Проверочная). Либо выдайте тот же набор как <strong>работу с дедлайном</strong> — тогда она появится у ученика в разделе «Задания».</p>
         <section class="tasks-preview">
             <div class="tasks-preview-header">
-                <div class="tasks-preview-title"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="ДЗ" class="ui-icon ui-icon--sm"> Домашние задания к уроку</div>
+                <div class="tasks-preview-title">{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Домашние задания к уроку</div>
                 <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items:center;">
                     <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="neo-button accent" style="text-decoration:none;" title="Создаст отдельную работу с дедлайном; ученик увидит её в разделе «Задания»">
                         📝 Выдать с дедлайном
@@ -358,7 +358,7 @@
         
         <section class="tasks-preview">
             <div class="tasks-preview-header">
-                <div class="tasks-preview-title"><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Классная работа" class="ui-icon ui-icon--sm"> Классные работы к уроку</div>
+                <div class="tasks-preview-title">{{ ui_icon('action.school', 'sm', decorative=true) }} Классные работы к уроку</div>
                 <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items:center;">
                     <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='classwork') }}" class="neo-button accent" style="text-decoration:none;" title="Создаст отдельную работу с дедлайном">
                         📝 Выдать с дедлайном

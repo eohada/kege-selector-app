@@ -310,6 +310,19 @@
     return iconRegular;
   };
 
+  const iconHtml = (iconValue) => {
+    if (!iconValue) return '';
+    const v = String(iconValue);
+    if (v.includes('#')) {
+      const parts = v.split('#');
+      const base = parts[0] || '';
+      const id = parts.slice(1).join('#');
+      const href = `${base}#${id}`;
+      return `<svg class="lesson-chip__icon ui-icon ui-icon--sm ui-icon--only" aria-hidden="true" focusable="false"><use href="${href}"></use></svg>`;
+    }
+    return `<img class="lesson-chip__icon" src="${v}" alt="">`;
+  };
+
   const renderLessonChip = (dayCol, ev) => {
     const el = document.createElement('div');
     el.className = `lesson-chip status-${ev.status_code || 'planned'}${ev.is_conflict ? ' is-conflict' : ''}`;
@@ -348,7 +361,7 @@
     el.innerHTML = `
       <div class="lesson-chip__top">
         <div class="lesson-chip__time" data-role="time">${ev.start_time || ''}</div>
-        ${icon ? `<img class="lesson-chip__icon" src="${icon}" alt="">` : ''}
+        ${iconHtml(icon)}
       </div>
       <div class="lesson-chip__student">${ev.student || ''}</div>
       <div class="lesson-chip__meta">${topic ? topic : `${(ev.subject || 'Информатика')}${ev.grade ? ` · ${ev.grade}` : ''}`}</div>

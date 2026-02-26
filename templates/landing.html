@@ -4,19 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>URep | Презентация платформы</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --bg-dark: #050507;
-            --primary: #8F00FF;
-            --cyan: #00F0FF;
-            --glass-border: rgba(255, 255, 255, 0.08);
+            --bg-dark: var(--page-bg);
+            --primary: var(--accent-3);
+            --cyan: var(--accent-1);
+            --glass-border: var(--stroke-1);
             --glass-bg: rgba(255, 255, 255, 0.02);
-            --text-main: #FFFFFF;
-            --text-muted: #94A3B8;
+            --text-main: var(--text-primary);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
@@ -64,7 +65,7 @@
             transform: scale(1.05); box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
         }
         .btn-glow {
-            border: 1px solid rgba(255,255,255,0.2); color: white; backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border); color: var(--text-main); backdrop-filter: blur(10px);
         }
         .btn-glow:hover {
             border-color: var(--cyan); color: var(--cyan);
@@ -178,16 +179,78 @@
             opacity: 0; transform: translateY(50px); transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .reveal.active { opacity: 1; transform: translateY(0); }
+
+        .landing-topbar {
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(0,0,0,0.18);
+        }
+
+        :root[data-theme="light"] .landing-topbar {
+            background: rgba(255,255,255,0.55);
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root:not([data-theme]) .landing-topbar {
+                background: rgba(255,255,255,0.55);
+            }
+        }
+
+        .landing-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+
+        .landing-brand-mark {
+            width: 38px;
+            height: 38px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, rgba(52, 211, 195, 0.18), rgba(74, 141, 255, 0.14));
+            border: 1px solid var(--glass-border);
+            display: grid;
+            place-items: center;
+            font-family: var(--font-base);
+        }
+
+        .feature-visual.is-missing {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .feature-visual.is-missing::after {
+            content: "Изображение будет добавлено дизайнером";
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            padding: 0 1.5rem;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
+    {% from '_ui_icon.html' import ui_icon %}
 
     <div class="noise-overlay"></div>
     <canvas id="hero-canvas"></canvas>
 
-    <nav style="position: fixed; width: 100%; top: 0; z-index: 100; backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.05);">
-        <div class="container" style="height: 70px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-weight: 700; font-size: 1.2rem;">URep</div>
+    <nav class="landing-topbar">
+        <div class="container" style="height: 70px; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+            <div class="landing-brand">
+                <div class="landing-brand-mark" aria-hidden="true">B</div>
+                <div>BooStudy</div>
+            </div>
+            <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема оформления (landing)">
+                <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false">Auto</button>
+                <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false">Dark</button>
+                <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
+            </div>
         </div>
     </nav>
 
@@ -221,7 +284,7 @@
                     </ul>
                 </div>
                 <div class="feature-visual reveal">
-                    <img src="{{ url_for('static', filename='classroom.jpg') }}" alt="Классная комната" style="width: 100%; height: 100%; object-fit: cover; border-radius: 24px;">
+                    <img src="{{ url_for('static', filename='classroom.jpg') }}" alt="Классная комната" style="width: 100%; height: 100%; object-fit: cover; border-radius: 24px;" onerror="this.style.display='none'; this.closest('.feature-visual') && this.closest('.feature-visual').classList.add('is-missing');">
                 </div>
             </div>
         </div>
@@ -242,7 +305,7 @@
                     </ul>
                 </div>
                 <div class="feature-visual reveal">
-                    <img src="{{ url_for('static', filename='documents/calendar.jpg') }}" alt="Расписание" style="width: 100%; height: 100%; object-fit: cover; border-radius: 24px;">
+                    <img src="{{ url_for('static', filename='documents/calendar.jpg') }}" alt="Расписание" style="width: 100%; height: 100%; object-fit: cover; border-radius: 24px;" onerror="this.style.display='none'; this.closest('.feature-visual') && this.closest('.feature-visual').classList.add('is-missing');">
                 </div>
             </div>
         </div>
@@ -261,8 +324,8 @@
             
             <div class="feature-visual reveal" style="max-width: 900px; margin: 0 auto; aspect-ratio: 16/9; position: relative;">
                 <div id="ai-carousel" style="width: 100%; height: 100%; position: relative; overflow: hidden; border-radius: 24px;">
-                    <img id="ai-image-1" src="{{ url_for('static', filename='documents/ai1.jpg') }}" alt="AI Помощник" style="width: 100%; height: 100%; object-fit: cover; display: block;">
-                    <img id="ai-image-2" src="{{ url_for('static', filename='documents/ai2.jpg') }}" alt="AI Помощник" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                    <img id="ai-image-1" src="{{ url_for('static', filename='documents/ai1.jpg') }}" alt="AI Помощник" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.style.display='none'; this.closest('.feature-visual') && this.closest('.feature-visual').classList.add('is-missing');">
+                    <img id="ai-image-2" src="{{ url_for('static', filename='documents/ai2.jpg') }}" alt="AI Помощник" style="width: 100%; height: 100%; object-fit: cover; display: none;" onerror="this.style.display='none'; this.closest('.feature-visual') && this.closest('.feature-visual').classList.add('is-missing');">
                 </div>
                 <div style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 10;">
                     <button id="ai-prev" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 8px 16px; border-radius: 8px; cursor: pointer; backdrop-filter: blur(10px);">‹</button>
@@ -401,5 +464,7 @@
             });
         }
     </script>
+
+    <script src="{{ url_for('static', filename='theme-switcher.js') }}"></script>
 </body>
 </html>

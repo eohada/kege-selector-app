@@ -35,7 +35,7 @@
 <body class="{% if active_lesson %}lesson-active{% endif %}">
     {% if active_lesson and active_student %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        <img src="{{ url_for('static', filename='icons/icons8-наушники-100.png') }}" alt="Урок" class="ui-icon ui-icon--sm"> Урок идет: {{ active_student.name }}
+        {{ ui_icon('nav.schedule', 'sm', decorative=true) }} Урок идет: {{ active_student.name }}
     </div>
     <div class="now-playing-panel" id="lessonMenu">
         <div class="hero-eyebrow">текущий урок</div>
@@ -47,9 +47,9 @@
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
+                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
             </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('profile.user', 'sm', decorative=true) }}Профиль</a>
         </div>
     </div>
     <script>
@@ -74,7 +74,7 @@
                 </a>
             </div>
             <p class="hero-eyebrow">расширенная аналитика</p>
-            <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Аналитика" class="ui-icon ui-icon--md"> {{ student.name }}</h1>
+            <h1 class="hero-title">{{ ui_icon('nav.stats', 'md', decorative=true) }} {{ student.name }}</h1>
             <p class="hero-subtitle">Детальный анализ успеваемости и навыков</p>
         </section>
 

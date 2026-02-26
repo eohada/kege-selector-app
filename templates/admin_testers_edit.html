@@ -52,8 +52,8 @@
                 </div>
 
                 <div style="display: flex; gap: 1rem; margin-top: 1rem;">
-                    <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-сохранить-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm"> Сохранить</button>
-                    <a href="{{ url_for('admin.admin_testers') }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Отмена" class="ui-icon ui-icon--sm">Отмена</a>
+                    <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }} Сохранить</button>
+                    <a href="{{ url_for('admin.admin_testers') }}" class="neo-button ghost">{{ ui_icon('action.close', 'sm', decorative=true) }}Отмена</a>
                 </div>
             </form>
         </section>

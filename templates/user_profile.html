@@ -95,7 +95,7 @@
                                 </div>
                                 {% endif %}
                                 <button class="neo-button outline" style="margin-top: 1rem;" onclick="openEditProfileModal()">
-                                    <img src="{{ url_for('static', filename='icons/redaktirovat.png') }}" class="ui-icon ui-icon--sm">
+                                    {{ ui_icon('action.edit', 'sm', decorative=true) }}
                                     Редактировать
                                 </button>
                             </div>
@@ -290,23 +290,23 @@
                                         <div class="profile-actions-grid" style="margin-top: .25rem;">
                                             {% if sub_allow_lessons %}
                                             <a href="{{ url_for('students.student_profile', student_id=linked_student.student_id) }}" class="neo-button accent" style="text-decoration:none;">
-                                                <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" class="ui-icon ui-icon--sm">
+                                                {{ ui_icon('nav.students', 'sm', decorative=true) }}
                                                 Открыть мою комнату
                                             </a>
                                             {% endif %}
                                             <a href="{{ url_for('students.student_analytics', student_id=linked_student.student_id) }}" class="neo-button outline" style="text-decoration:none;">
-                                                <img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" class="ui-icon ui-icon--sm">
+                                                {{ ui_icon('nav.stats', 'sm', decorative=true) }}
                                                 Статистика
                                             </a>
                                             {% if sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
                                             <a href="{{ url_for('trainer.trainer_embed') }}" class="neo-button outline" style="text-decoration:none;">
-                                                <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" class="ui-icon ui-icon--sm">
+                                                {{ ui_icon('nav.help', 'sm', decorative=true) }}
                                                 Тренажёр
                                             </a>
                                             {% endif %}
                                             {% if sub_allow_lessons %}
                                             <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost" style="text-decoration:none;">
-                                                <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" class="ui-icon ui-icon--sm">
+                                                {{ ui_icon('nav.assignments', 'sm', decorative=true) }}
                                                 Задания
                                             </a>
                                             {% endif %}
@@ -373,61 +373,61 @@
                                     <div class="profile-actions-grid">
                                         {% if has_permission(current_user, 'tools.schedule') or has_permission(current_user, 'schedule.view') %}
                                         <a href="{{ url_for('schedule.schedule') }}" class="neo-button accent" style="text-decoration:none;">
-                                            <img src="{{ url_for('static', filename='icons/icons8-календарь-96.png') }}" class="ui-icon ui-icon--sm">
+                                            {{ ui_icon('nav.schedule', 'sm', decorative=true) }}
                                             Расписание
                                         </a>
                                         {% endif %}
                                         <a href="{{ url_for('students.students_list') }}" class="neo-button outline" style="text-decoration:none;">
-                                            <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" class="ui-icon ui-icon--sm">
+                                            {{ ui_icon('nav.students', 'sm', decorative=true) }}
                                             {{ 'Дети' if current_user.is_parent() else 'Ученики' }}
                                         </a>
                                         {% if has_permission(current_user, 'assignment.view') %}
                                         <a href="{{ url_for('assignments.assignments_list') }}" class="neo-button outline" style="text-decoration:none;">
-                                            <img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" class="ui-icon ui-icon--sm">
+                                            {{ ui_icon('nav.assignments', 'sm', decorative=true) }}
                                             Работы
                                         </a>
                                         {% endif %}
                                         {% if has_permission(current_user, 'assignment.grade') %}
                                         <a href="{{ url_for('lessons.review_queue') }}" class="neo-button outline" style="text-decoration:none;">
-                                            <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" class="ui-icon ui-icon--sm">
+                                            {{ ui_icon('action.check', 'sm', decorative=true) }}
                                             Проверка
                                         </a>
                                         {% endif %}
                                         <a href="{{ url_for('reminders.reminders_list') }}" class="neo-button ghost" style="text-decoration:none;">
-                                            <img src="{{ url_for('static', filename='icons/VREMYA.png') }}" class="ui-icon ui-icon--sm">
+                                            {{ ui_icon('action.clock', 'sm', decorative=true) }}
                                             Напоминания
                                         </a>
                                         {% if has_permission(current_user, 'lesson.edit') %}
                                         <a href="{{ url_for('library.materials_library') }}" class="neo-button ghost" style="text-decoration:none;">
-                                            <img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" class="ui-icon ui-icon--sm">
+                                            {{ ui_icon('action.admin', 'sm', decorative=true) }}
                                             Библиотека
                                         </a>
                                         {% endif %}
                                         {% if has_permission(current_user, 'trainer.use') %}
                                         <a href="{{ url_for('trainer.trainer_embed') }}" class="neo-button ghost" style="text-decoration:none;">
-                                            <img src="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}" class="ui-icon ui-icon--sm">
+                                            {{ ui_icon('nav.help', 'sm', decorative=true) }}
                                             Тренажёр
                                         </a>
                                         {% endif %}
                                         {% if has_permission(current_user, 'rubrics.manage') %}
                                         <a href="{{ url_for('rubrics.rubrics_list') }}" class="neo-button ghost" style="text-decoration:none;">
-                                            <img src="{{ url_for('static', filename='icons/icons8-тест-100.png') }}" class="ui-icon ui-icon--sm">
+                                            {{ ui_icon('action.test', 'sm', decorative=true) }}
                                             Рубрики
                                         </a>
                                         {% endif %}
                                         {% if has_permission(current_user, 'billing.manage') %}
                                         <a href="{{ url_for('billing.billing_plans') }}" class="neo-button ghost" style="text-decoration:none;">
-                                            <img src="{{ url_for('static', filename='icons/icons8-банкнота-100.png') }}" class="ui-icon ui-icon--sm">
+                                            {{ ui_icon('nav.billing', 'sm', decorative=true) }}
                                             Тарифы
                                         </a>
                                         <a href="{{ url_for('billing.billing_subscriptions') }}" class="neo-button ghost" style="text-decoration:none;">
-                                            <img src="{{ url_for('static', filename='icons/icons8-банкнота-100.png') }}" class="ui-icon ui-icon--sm">
+                                            {{ ui_icon('nav.billing', 'sm', decorative=true) }}
                                             Подписки
                                         </a>
                                         {% endif %}
                                         {% if (current_user.is_admin() or current_user.is_creator()) and config.ADMIN_URL %}
                                         <a href="{{ config.ADMIN_URL }}" class="neo-button danger" style="text-decoration:none;" target="_blank" rel="noopener">
-                                            <img src="{{ url_for('static', filename='icons/icons8-настройки-100.png') }}" class="ui-icon ui-icon--sm">
+                                            {{ ui_icon('action.settings', 'sm', decorative=true) }}
                                             Админка
                                         </a>
                                         {% endif %}
@@ -459,7 +459,7 @@
                                 {% if current_user.is_creator() and config.ADMIN_URL %}
                                 <div class="profile-section" style="background: rgba(255, 46, 46, 0.05); border-color: rgba(255, 46, 46, 0.3);">
                                     <h3>
-                                        <img src="{{ url_for('static', filename='icons/icons8-интеграция-100.png') }}" style="width: 20px; opacity: 0.8; filter: drop-shadow(0 0 5px red);">
+                                        {{ ui_icon('action.admin', 'md', decorative=true) }}
                                         Доступ Создателя
                                     </h3>
                                     <p style="font-size: 0.9rem; margin-bottom: 1.5rem; opacity: 0.8;">
@@ -474,7 +474,7 @@
                                 <form method="POST" action="{{ url_for('auth.logout') }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="neo-button outline" style="width: 100%; justify-content: center; opacity: 0.7;">
-                                        <img src="{{ url_for('static', filename='icons/icons8-выход-100.png') }}" style="width: 18px; filter: brightness(0) invert(1);">
+                                        {{ ui_icon('action.logout', 'sm', decorative=true) }}
                                         Выйти из аккаунта
                                     </button>
                                 </form>

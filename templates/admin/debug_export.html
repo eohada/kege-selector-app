@@ -23,7 +23,7 @@
                     ← К админ панели
                 </a>
             </div>
-            <h1 style="font-size: 2em; margin-bottom: 1.5rem; color: var(--text-primary);"><img src="{{ url_for('static', filename='icons/icons8-инструменты-100.png') }}" alt="Отладка" class="ui-icon ui-icon--md"> Отладка экспорта в Markdown</h1>
+            <h1 style="font-size: 2em; margin-bottom: 1.5rem; color: var(--text-primary);">{{ ui_icon('nav.generator', 'md', decorative=true) }} Отладка экспорта в Markdown</h1>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
                 
@@ -96,7 +96,7 @@
                     </div>
                     
                     <div style="margin-top: 1rem;">
-                        <button onclick="copyToClipboard()" class="neo-button outline" style="width: 100%;"><img src="{{ url_for('static', filename='icons/icons8-копировать-100.png') }}" alt="Копировать" class="ui-icon ui-icon--sm"> Копировать Markdown</button>
+                        <button onclick="copyToClipboard()" class="neo-button outline" style="width: 100%;">{{ ui_icon('action.copy', 'sm', decorative=true) }} Копировать Markdown</button>
                     </div>
                     {% else %}
                     <div style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); padding: 2rem; text-align: center; color: var(--text-muted);">

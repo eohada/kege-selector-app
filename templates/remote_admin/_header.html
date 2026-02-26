@@ -1,20 +1,30 @@
+{% from '_ui_icon.html' import ui_icon %}
 
-<header style="position: fixed; top: 0; left: 0; right: 0; background: var(--surface-2); border-bottom: 1px solid var(--stroke-2); padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; z-index: 200;">
-    <div style="display: flex; align-items: center; gap: 1rem;">
-        <div style="background: var(--accent-1); color: #000; padding: 0.5rem 1rem; border-radius: var(--radius-sm); font-weight: 700; font-size: 1.1rem; letter-spacing: 0.5px;">
-            REMOTE CONTROL
+<header class="remote-header">
+    <div style="display:flex; align-items:center; gap: 1rem; min-width: 0;">
+        <div class="remote-badge">
+            {{ ui_icon('action.admin', 'sm', decorative=true) }}
+            Remote control
         </div>
-        <div style="color: var(--text-muted); font-size: 0.9rem;">
+        <div style="color: var(--text-muted); font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
             Центр управления платформой
         </div>
     </div>
-    
+
     {% if current_user and current_user.is_authenticated %}
-    <div style="display: flex; align-items: center; gap: 1rem;">
+    <div style="display:flex; align-items:center; gap: 0.8rem; flex-wrap: wrap; justify-content: flex-end;">
+        <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема оформления (remote)">
+            <button type="button" class="theme-toggle-btn" data-theme-value="auto" aria-pressed="false">Auto</button>
+            <button type="button" class="theme-toggle-btn" data-theme-value="dark" aria-pressed="false">Dark</button>
+            <button type="button" class="theme-toggle-btn" data-theme-value="light" aria-pressed="false">Light</button>
+        </div>
         <span style="color: var(--text-muted); font-size: 0.9rem;">{{ current_user.username }}</span>
-        <a href="{{ url_for('auth.logout') }}" class="neo-button ghost small" style="text-decoration: none;">
+        <a href="{{ url_for('auth.logout') }}" class="neo-button ghost" style="text-decoration: none; padding: 0.6rem 1rem;">
+            {{ ui_icon('action.logout', 'sm', decorative=true) }}
             Выход
         </a>
     </div>
     {% endif %}
 </header>
+
+<script src="{{ url_for('static', filename='theme-switcher.js') }}"></script>

@@ -1,92 +1,71 @@
+{% from '_ui_icon.html' import ui_icon %}
 
-<aside style="position: fixed; left: 0; top: 70px; width: 250px; height: calc(100vh - 70px); background: var(--surface-2); border-right: 1px solid var(--stroke-2); padding: 1.5rem; overflow-y: auto; z-index: 100;">
-    <nav style="display: flex; flex-direction: column; gap: 0.5rem;">
-        <a href="{{ url_for('remote_admin.dashboard') }}" 
-           class="sidebar-link {% if request.endpoint == 'remote_admin.dashboard' %}active{% endif %}"
-           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
-            <span style="font-size: 1.2rem;">📊</span>
-            <span style="font-weight: 500;">Дашборд</span>
-        </a>
-        
-        <a href="{{ url_for('remote_admin.users_list') }}" 
-           class="sidebar-link {% if request.endpoint in ['remote_admin.users_list', 'remote_admin.user_new', 'remote_admin.user_edit'] %}active{% endif %}"
-           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
-            <span style="font-size: 1.2rem;">👥</span>
-            <span style="font-weight: 500;">Пользователи</span>
+<aside class="remote-sidebar">
+    <nav class="remote-sidebar-nav">
+        <a href="{{ url_for('remote_admin.dashboard') }}"
+           class="remote-sidebar-link {% if request.endpoint == 'remote_admin.dashboard' %}active{% endif %}">
+            {{ ui_icon('nav.stats', 'md', decorative=true) }}
+            <span style="font-weight: 650;">Дашборд</span>
         </a>
 
-        <a href="{{ url_for('remote_admin.create_pack') }}" 
-           class="sidebar-link {% if request.endpoint == 'remote_admin.create_pack' %}active{% endif %}"
-           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
-            <span style="font-size: 1.2rem;">🎒</span>
-            <span style="font-weight: 500;">Создать пак</span>
+        <a href="{{ url_for('remote_admin.users_list') }}"
+           class="remote-sidebar-link {% if request.endpoint in ['remote_admin.users_list', 'remote_admin.user_new', 'remote_admin.user_edit'] %}active{% endif %}">
+            {{ ui_icon('nav.groups', 'md', decorative=true) }}
+            <span style="font-weight: 650;">Пользователи</span>
         </a>
 
-        <a href="{{ url_for('remote_admin.testers') }}" 
-           class="sidebar-link {% if request.endpoint in ['remote_admin.testers', 'remote_admin.tester_toggle', 'remote_admin.tester_delete'] %}active{% endif %}"
-           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
-            <span style="font-size: 1.2rem;">🧪</span>
-            <span style="font-weight: 500;">Тестеры</span>
+        <a href="{{ url_for('remote_admin.create_pack') }}"
+           class="remote-sidebar-link {% if request.endpoint == 'remote_admin.create_pack' %}active{% endif %}">
+            {{ ui_icon('nav.templates', 'md', decorative=true) }}
+            <span style="font-weight: 650;">Создать пак</span>
         </a>
 
-        <a href="{{ url_for('remote_admin.bot_panel') }}" 
-           class="sidebar-link {% if request.endpoint in ['remote_admin.bot_panel', 'remote_admin.bot_admins_add', 'remote_admin.bot_admins_toggle', 'remote_admin.bot_admins_delete', 'remote_admin.bot_broadcast', 'remote_admin.bot_error_reply', 'remote_admin.bot_error_status'] %}active{% endif %}"
-           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
-            <span style="font-size: 1.2rem;">🤖</span>
-            <span style="font-weight: 500;">Бот: уведомления</span>
+        <a href="{{ url_for('remote_admin.testers') }}"
+           class="remote-sidebar-link {% if request.endpoint in ['remote_admin.testers', 'remote_admin.tester_toggle', 'remote_admin.tester_delete'] %}active{% endif %}">
+            {{ ui_icon('action.check', 'md', decorative=true) }}
+            <span style="font-weight: 650;">Тестеры</span>
         </a>
 
-        <a href="{{ url_for('remote_admin.permissions') }}" 
-           class="sidebar-link {% if request.endpoint == 'remote_admin.permissions' %}active{% endif %}"
-           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
-            <span style="font-size: 1.2rem;">🔐</span>
-            <span style="font-weight: 500;">Права доступа</span>
+        <a href="{{ url_for('remote_admin.bot_panel') }}"
+           class="remote-sidebar-link {% if request.endpoint in ['remote_admin.bot_panel', 'remote_admin.bot_admins_add', 'remote_admin.bot_admins_toggle', 'remote_admin.bot_admins_delete', 'remote_admin.bot_broadcast', 'remote_admin.bot_error_reply', 'remote_admin.bot_error_status'] %}active{% endif %}">
+            {{ ui_icon('nav.generator', 'md', decorative=true) }}
+            <span style="font-weight: 650;">Бот: уведомления</span>
         </a>
 
-        <a href="{{ url_for('remote_admin.audit_logs') }}" 
-           class="sidebar-link {% if request.endpoint == 'remote_admin.audit_logs' %}active{% endif %}"
-           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
-            <span style="font-size: 1.2rem;">📋</span>
-            <span style="font-weight: 500;">Логи действий</span>
+        <a href="{{ url_for('remote_admin.permissions') }}"
+           class="remote-sidebar-link {% if request.endpoint == 'remote_admin.permissions' %}active{% endif %}">
+            {{ ui_icon('action.admin', 'md', decorative=true) }}
+            <span style="font-weight: 650;">Права доступа</span>
         </a>
 
-        <a href="{{ url_for('remote_admin.maintenance') }}" 
-           class="sidebar-link {% if request.endpoint == 'remote_admin.maintenance' %}active{% endif %}"
-           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
-            <span style="font-size: 1.2rem;">🔧</span>
-            <span style="font-weight: 500;">Тех. работы</span>
+        <a href="{{ url_for('remote_admin.audit_logs') }}"
+           class="remote-sidebar-link {% if request.endpoint == 'remote_admin.audit_logs' %}active{% endif %}">
+            {{ ui_icon('nav.assignments', 'md', decorative=true) }}
+            <span style="font-weight: 650;">Логи действий</span>
         </a>
 
-        <a href="{{ url_for('remote_admin.task_formator') }}" 
-           class="sidebar-link {% if request.endpoint == 'remote_admin.task_formator' %}active{% endif %}"
-           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
-            <span style="font-size: 1.2rem;">🧱</span>
-            <span style="font-weight: 500;">Формироватор</span>
+        <a href="{{ url_for('remote_admin.maintenance') }}"
+           class="remote-sidebar-link {% if request.endpoint == 'remote_admin.maintenance' %}active{% endif %}">
+            {{ ui_icon('nav.schedule', 'md', decorative=true) }}
+            <span style="font-weight: 650;">Тех. работы</span>
         </a>
 
-        <a href="{{ url_for('remote_admin.sync_reference_prototypes') }}" 
-           class="sidebar-link {% if request.endpoint == 'remote_admin.sync_reference_prototypes' %}active{% endif %}"
-           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
-            <span style="font-size: 1.2rem;">📥</span>
-            <span style="font-weight: 500;">Эталоны 1–27</span>
+        <a href="{{ url_for('remote_admin.task_formator') }}"
+           class="remote-sidebar-link {% if request.endpoint == 'remote_admin.task_formator' %}active{% endif %}">
+            {{ ui_icon('nav.templates', 'md', decorative=true) }}
+            <span style="font-weight: 650;">Формироватор</span>
         </a>
 
-        <a href="{{ url_for('remote_admin.task_solutions') }}" 
-           class="sidebar-link {% if request.endpoint == 'remote_admin.task_solutions' %}active{% endif %}"
-           style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: var(--radius-sm); text-decoration: none; color: var(--text-primary); transition: all 0.2s;">
-            <span style="font-size: 1.2rem;">📝</span>
-            <span style="font-weight: 500;">Решения заданий</span>
+        <a href="{{ url_for('remote_admin.sync_reference_prototypes') }}"
+           class="remote-sidebar-link {% if request.endpoint == 'remote_admin.sync_reference_prototypes' %}active{% endif %}">
+            {{ ui_icon('action.export', 'md', decorative=true) }}
+            <span style="font-weight: 650;">Эталоны 1–27</span>
+        </a>
+
+        <a href="{{ url_for('remote_admin.task_solutions') }}"
+           class="remote-sidebar-link {% if request.endpoint == 'remote_admin.task_solutions' %}active{% endif %}">
+            {{ ui_icon('nav.assignments', 'md', decorative=true) }}
+            <span style="font-weight: 650;">Решения заданий</span>
         </a>
     </nav>
 </aside>
-
-<style>
-.sidebar-link:hover {
-    background: var(--surface-3);
-}
-.sidebar-link.active {
-    background: var(--accent-1);
-    color: #000;
-    font-weight: 600;
-}
-</style>

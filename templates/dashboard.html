@@ -14,7 +14,7 @@
 <body class="{% if active_lesson %}lesson-active{% endif %}">
     {% if active_lesson %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        <img src="{{ url_for('static', filename='icons/comfort.png') }}" alt="Урок" class="ui-icon ui-icon--sm">Урок идет: {{ active_student.name }}
+        {{ ui_icon('nav.schedule', 'sm', decorative=true) }}Урок идет: {{ active_student.name }}
     </div>
     <div class="now-playing-panel" id="lessonMenu">
         <div class="hero-eyebrow">текущий урок</div>
@@ -26,9 +26,9 @@
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
+                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
             </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('nav.students', 'sm', decorative=true) }}Профиль</a>
         </div>
     </div>
     <script>
@@ -66,15 +66,15 @@
                 <div class="hero-actions">
                     {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
                     <a href="{{ url_for('main.export_data') }}" class="neo-button accent">
-                        <img src="{{ url_for('static', filename='icons/EKSPORT.png') }}" alt="Экспорт" class="ui-icon ui-icon--md">
+                        {{ ui_icon('action.export', 'md', decorative=true) }}
                         Экспорт
                     </a>
                     <a href="{{ url_for('main.import_data') }}" class="neo-button outline">
-                        <img src="{{ url_for('static', filename='icons/icons8-загрузка-настольного-компьютера-100.png') }}" alt="Импорт" class="ui-icon ui-icon--md">
+                        {{ ui_icon('action.import', 'md', decorative=true) }}
                         Импорт
                     </a>
                     <a href="{{ url_for('main.backup_db') }}" class="neo-button ghost">
-                        <img src="{{ url_for('static', filename='icons/BACKUP.png') }}" alt="Бэкап БД" class="ui-icon ui-icon--md">
+                        {{ ui_icon('action.backup', 'md', decorative=true) }}
                         Бэкап БД
                     </a>
                     {% endif %}
@@ -173,7 +173,7 @@
                 </div>
                 <div class="filters-actions">
                     <button type="submit" class="neo-button accent" data-tooltip="Применить фильтры (Enter)">
-                        <img src="{{ url_for('static', filename='icons/icons8-лупа-100-2.png') }}" alt="Найти" class="ui-icon ui-icon--sm">
+                        {{ ui_icon('action.search', 'sm', decorative=true) }}
                         Найти
                     </button>
                     {% if search_query or category_filter %}
@@ -185,13 +185,13 @@
                 <a href="{{ url_for('main.dashboard', show_archive='false', search=search_query, category=category_filter) }}" 
                    class="neo-button {% if not show_archive %}accent{% else %}ghost{% endif %}" 
                    style="text-decoration: none;">
-                    <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Активные" style="width: 18px; height: 18px; margin-right: 0.4rem; vertical-align: middle;">
+                    {{ ui_icon('nav.students', 'sm', decorative=true) }}
                     Активные ({{ total_students }})
                 </a>
                 <a href="{{ url_for('main.dashboard', show_archive='true', search=search_query, category=category_filter) }}" 
                    class="neo-button {% if show_archive %}accent{% else %}ghost{% endif %}" 
                    style="text-decoration: none;">
-                    <img src="{{ url_for('static', filename='icons/ARHIV.png') }}" alt="Архив" class="ui-icon">
+                    {{ ui_icon('nav.archive', 'sm', decorative=true) }}
                     Архив ({{ archived_students_count }})
                 </a>
             </div>
@@ -268,7 +268,7 @@
                 </div>
                 <div class="hero-actions">
                     {% if not show_archive and (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator())) %}
-                    <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">Добавить</a>
+                    <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)">{{ ui_icon('action.plus', 'sm', decorative=true) }}Добавить</a>
                     {% endif %}
                 </div>
             </div>
@@ -314,32 +314,32 @@
                     {% endif %}
                     <div class="student-insights">
                         {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.goal_text %}
-                        <div><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--sm">Цель: {{ student.goal_text }}</div> 
+                        <div>{{ ui_icon('nav.students', 'sm', decorative=true) }}Цель: {{ student.goal_text }}</div> 
                         {% elif student.category == 'ЛЕВЕЛАП' and student.goal_text %}
-                        <div><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--sm">Цель: {{ student.goal_text }}</div> 
+                        <div>{{ ui_icon('nav.students', 'sm', decorative=true) }}Цель: {{ student.goal_text }}</div> 
                         {% elif student.target_score %}
-                        <div><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Цель" class="ui-icon ui-icon--sm">{% if student.category == 'ОГЭ' %}Целевая оценка{% else %}Цель{% endif %}: {{ student.target_score }}{% if student.category != 'ОГЭ' %} баллов{% endif %}</div> 
+                        <div>{{ ui_icon('nav.students', 'sm', decorative=true) }}{% if student.category == 'ОГЭ' %}Целевая оценка{% else %}Цель{% endif %}: {{ student.target_score }}{% if student.category != 'ОГЭ' %} баллов{% endif %}</div> 
                         {% endif %}
                         {% if student.category != 'ПРОГРАММИРОВАНИЕ' and student.deadline %}
-                        <div><img src="{{ url_for('static', filename='icons/SROK.png') }}" alt="Срок" class="ui-icon ui-icon--sm">Срок: {{ student.deadline }}</div> 
+                        <div>{{ ui_icon('action.clock', 'sm', decorative=true) }}Срок: {{ student.deadline }}</div> 
                         {% endif %}
                         {% if student.school_class %}
-                        <div><img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="Класс" class="ui-icon ui-icon--sm">Класс: {{ student.school_class }}</div> 
+                        <div>{{ ui_icon('action.school', 'sm', decorative=true) }}Класс: {{ student.school_class }}</div> 
                         {% endif %}
                         {% if student.category == 'ПРОГРАММИРОВАНИЕ' and student.programming_language %}
                         <div>Язык: {{ student.programming_language }}</div> 
                         {% endif %}
                         {% if student.diagnostic_level %}
-                        <div><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Диагностика" class="ui-icon ui-icon--sm">Диагностика: <span>{{ student.diagnostic_level }}</span></div>
+                        <div>{{ ui_icon('nav.stats', 'sm', decorative=true) }}Диагностика: <span>{{ student.diagnostic_level }}</span></div>
                         {% endif %}
                         {% if student.overall_rating %}
-                        <div><img src="{{ url_for('static', filename='icons/OSENKA.png') }}" alt="Оценка" class="ui-icon ui-icon--sm">Оценка: <span>{{ student.overall_rating }}</span></div>
+                        <div>{{ ui_icon('action.star', 'sm', decorative=true) }}Оценка: <span>{{ student.overall_rating }}</span></div>
                         {% endif %}
                         {% if student.strengths %}
-                        <div><img src="{{ url_for('static', filename='icons/SILSTORON.png') }}" alt="Сильные стороны" class="ui-icon ui-icon--sm">Сильные стороны: <span>{{ student.strengths[:60] }}{% if student.strengths|length > 60 %}…{% endif %}</span></div>
+                        <div>{{ ui_icon('nav.stats', 'sm', decorative=true) }}Сильные стороны: <span>{{ student.strengths[:60] }}{% if student.strengths|length > 60 %}…{% endif %}</span></div>
                         {% endif %}
                         {% if student.weaknesses %}
-                        <div><img src="{{ url_for('static', filename='icons/ROSTA ZONA.png') }}" alt="Зоны роста" class="ui-icon ui-icon--sm">Зоны роста: <span>{{ student.weaknesses[:60] }}{% if student.weaknesses|length > 60 %}…{% endif %}</span></div>
+                        <div>{{ ui_icon('nav.stats', 'sm', decorative=true) }}Зоны роста: <span>{{ student.weaknesses[:60] }}{% if student.weaknesses|length > 60 %}…{% endif %}</span></div>
                         {% endif %}
                     </div>
                     </a>
@@ -369,9 +369,9 @@
             <div class="empty-state">
                 <div class="empty-state-icon">
                     {% if show_archive %}
-                        <img src="{{ url_for('static', filename='icons/archiv.png') }}" alt="Архив" class="ui-icon ui-icon--md ui-icon--only">
+                        {{ ui_icon('nav.archive', 'md', decorative=true, extra_class='ui-icon--only') }}
                     {% else %}
-                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Ученики" class="ui-icon ui-icon--md ui-icon--only">
+                        {{ ui_icon('nav.students', 'md', decorative=true, extra_class='ui-icon--only') }}
                     {% endif %}
                 </div>
                 <h3 class="empty-state-title">{% if show_archive %}Архив пуст{% else %}Пока нет учеников{% endif %}</h3>
@@ -379,7 +379,7 @@
                 {% if not show_archive %}
                 <div class="empty-state-actions">
                     {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
-                    <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">Добавить ученика</a>
+                    <a href="{{ url_for('students.student_new') }}" class="neo-button accent" data-tooltip="Создать нового ученика (Ctrl+N)">{{ ui_icon('action.plus', 'sm', decorative=true) }}Добавить ученика</a>
                     {% endif %}
                 </div>
                 {% endif %}

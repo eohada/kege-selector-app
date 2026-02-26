@@ -129,7 +129,7 @@
                         <div class="hero-actions">
                             {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator()) %}
                             <a href="{{ url_for('students.student_new') }}" class="neo-button accent">
-                                <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Добавить" class="ui-icon ui-icon--sm">
+                                {{ ui_icon('action.plus', 'sm', decorative=true) }}
                                 Добавить
                             </a>
                             {% endif %}
@@ -169,13 +169,13 @@
                                 <div class="tags-row">
                                     {% if student.category %}
                                     <span class="tag">
-                                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="" class="ui-icon ui-icon--sm">
+                                        {{ ui_icon('nav.students', 'sm', decorative=true) }}
                                         {{ student.category }}
                                     </span>
                                     {% endif %}
                                     {% if student.school_class %}
                                     <span class="tag">
-                                        <img src="{{ url_for('static', filename='icons/icons8-школа-100.png') }}" alt="" class="ui-icon ui-icon--sm">
+                                        {{ ui_icon('action.school', 'sm', decorative=true) }}
                                         {{ student.school_class }} класс
                                     </span>
                                     {% endif %}

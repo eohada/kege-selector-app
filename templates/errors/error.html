@@ -120,17 +120,17 @@
 
                 <div class="error-actions">
                     <a href="{{ url_for('main.index') }}" class="neo-button accent">
-                        <img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Главная" class="ui-icon ui-icon--sm">
+                        {{ ui_icon('nav.students', 'sm', decorative=true) }}
                         На главную
                     </a>
                     {% if current_user and current_user.is_authenticated %}
                     <a href="{{ url_for('main.dashboard') }}" class="neo-button outline">
-                        <img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Дашборд" class="ui-icon ui-icon--sm">
+                        {{ ui_icon('nav.schedule', 'sm', decorative=true) }}
                         В дашборд
                     </a>
                     {% else %}
                     <a href="{{ url_for('auth.login') }}" class="neo-button outline">
-                        <img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Войти" class="ui-icon ui-icon--sm">
+                        {{ ui_icon('profile.user', 'sm', decorative=true) }}
                         Войти
                     </a>
                     {% endif %}

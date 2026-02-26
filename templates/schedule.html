@@ -418,7 +418,7 @@
 <body class="{% if active_lesson %}lesson-active{% endif %}" data-csrf-token="{{ csrf_token() if csrf_token else '' }}">
     {% if active_lesson %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        <img src="{{ url_for('static', filename='icons/comfort.png') }}" alt="Урок" class="ui-icon ui-icon--sm">Урок идет: {{ active_student.name }}
+        {{ ui_icon('nav.schedule', 'sm', decorative=true) }}Урок идет: {{ active_student.name }}
     </div>
     <div class="now-playing-panel" id="lessonMenu">
         <div class="hero-eyebrow">текущий урок</div>
@@ -430,9 +430,9 @@
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
+                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
             </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('nav.students', 'sm', decorative=true) }}Профиль</a>
         </div>
     </div>
     <script>
@@ -572,9 +572,9 @@
                  data-set-status-url-tpl="{{ url_for('schedule.schedule_set_status', lesson_id=0) }}"
                  data-update-url-tpl="{{ url_for('schedule.schedule_update_lesson', lesson_id=0) }}"
                  data-delete-url-tpl="{{ url_for('schedule.schedule_delete_lesson', lesson_id=0) }}"
-                 data-icon-regular="{{ url_for('static', filename='icons/icons8-урок-100.png') }}"
-                 data-icon-exam="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}"
-                 data-icon-intro="{{ url_for('static', filename='icons/icons8-лампочка-96.png') }}">
+                 data-icon-regular="{{ url_for('static', filename='icons/sprite.svg') }}#nav-schedule"
+                 data-icon-exam="{{ url_for('static', filename='icons/sprite.svg') }}#nav-stats"
+                 data-icon-intro="{{ url_for('static', filename='icons/sprite.svg') }}#nav-help">
 
                 <div class="schedule-grid-wrap">
                     <div class="schedule-grid-head">

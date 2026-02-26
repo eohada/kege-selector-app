@@ -1,0 +1,231 @@
+{
+  "version": 1,
+  "updatedAt": "2026-02-26",
+  "slots": [
+    {
+      "key": "nav.students",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html", "templates/_mobile_menu.html"]
+    },
+    {
+      "key": "nav.schedule",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html", "templates/_mobile_menu.html", "templates/schedule.html"]
+    },
+    {
+      "key": "nav.help",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html"]
+    },
+    {
+      "key": "nav.assignments",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html"]
+    },
+    {
+      "key": "nav.stats",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html"]
+    },
+    {
+      "key": "nav.trainer",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html"]
+    },
+    {
+      "key": "nav.generator",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html", "templates/_mobile_menu.html", "templates/kege_generator.html"]
+    },
+    {
+      "key": "nav.plans",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html", "templates/_mobile_menu.html", "templates/update_plans.html"]
+    },
+    {
+      "key": "nav.templates",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html", "templates/_mobile_menu.html", "templates/templates_list.html"]
+    },
+    {
+      "key": "nav.reminders",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html", "templates/_mobile_menu.html", "templates/reminders.html"]
+    },
+    {
+      "key": "nav.groups",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html", "templates/groups_list.html"]
+    },
+    {
+      "key": "nav.library",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html", "templates/library_materials.html"]
+    },
+    {
+      "key": "nav.billing",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html", "templates/billing_plans.html", "templates/billing_subscriptions.html"]
+    },
+    {
+      "key": "nav.assets",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html", "templates/designer_assets.html"]
+    },
+
+    {
+      "key": "profile.user",
+      "type": "icon",
+      "context": "menu",
+      "recommendedSize": "16x16",
+      "usedIn": ["templates/_primary_nav.html"]
+    },
+    {
+      "key": "profile.bell",
+      "type": "icon",
+      "context": "menu",
+      "recommendedSize": "16x16",
+      "usedIn": ["templates/_primary_nav.html"]
+    },
+    {
+      "key": "action.admin",
+      "type": "icon",
+      "context": "menu",
+      "recommendedSize": "16x16",
+      "usedIn": ["templates/_primary_nav.html"]
+    },
+    {
+      "key": "action.logout",
+      "type": "icon",
+      "context": "menu",
+      "recommendedSize": "16x16",
+      "usedIn": ["templates/_primary_nav.html", "templates/remote_admin/_header.html"]
+    },
+    {
+      "key": "action.check",
+      "type": "icon",
+      "context": "status",
+      "recommendedSize": "16x16",
+      "usedIn": ["templates/_primary_nav.html", "templates/lesson_mode.html", "templates/dashboard.html"]
+    },
+    {
+      "key": "action.close",
+      "type": "icon",
+      "context": "action",
+      "recommendedSize": "16x16",
+      "usedIn": ["templates/_mobile_menu.html"]
+    },
+    {
+      "key": "action.plus",
+      "type": "icon",
+      "context": "action",
+      "recommendedSize": "16x16",
+      "usedIn": ["templates/students_list.html", "templates/_manual_task_cards.html"]
+    },
+    {
+      "key": "action.export",
+      "type": "icon",
+      "context": "action",
+      "recommendedSize": "20x20",
+      "usedIn": ["templates/dashboard.html", "templates/admin_audit.html"]
+    },
+    {
+      "key": "action.backup",
+      "type": "icon",
+      "context": "action",
+      "recommendedSize": "20x20",
+      "usedIn": ["templates/dashboard.html"]
+    },
+    {
+      "key": "action.image",
+      "type": "icon",
+      "context": "action",
+      "recommendedSize": "20x20",
+      "usedIn": ["templates/designer_assets.html"]
+    },
+
+    {
+      "key": "theme.auto",
+      "type": "icon",
+      "context": "theme",
+      "recommendedSize": "16x16",
+      "usedIn": ["templates/_primary_nav.html"]
+    },
+    {
+      "key": "theme.moon",
+      "type": "icon",
+      "context": "theme",
+      "recommendedSize": "16x16",
+      "usedIn": ["templates/_primary_nav.html"]
+    },
+    {
+      "key": "theme.sun",
+      "type": "icon",
+      "context": "theme",
+      "recommendedSize": "16x16",
+      "usedIn": ["templates/_primary_nav.html"]
+    },
+
+    {
+      "key": "landing.classroom",
+      "type": "image",
+      "context": "landing",
+      "recommendedSize": "1920x1080",
+      "targetPath": "static/classroom.jpg",
+      "usedIn": ["templates/landing.html"]
+    },
+    {
+      "key": "landing.calendar",
+      "type": "image",
+      "context": "landing",
+      "recommendedSize": "1920x1080",
+      "targetPath": "static/documents/calendar.jpg",
+      "usedIn": ["templates/landing.html"]
+    },
+    {
+      "key": "landing.ai1",
+      "type": "image",
+      "context": "landing",
+      "recommendedSize": "1920x1080",
+      "targetPath": "static/documents/ai1.jpg",
+      "usedIn": ["templates/landing.html"]
+    },
+    {
+      "key": "landing.ai2",
+      "type": "image",
+      "context": "landing",
+      "recommendedSize": "1920x1080",
+      "targetPath": "static/documents/ai2.jpg",
+      "usedIn": ["templates/landing.html"]
+    }
+  ]
+}
+

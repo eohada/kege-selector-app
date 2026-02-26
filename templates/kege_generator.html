@@ -185,7 +185,7 @@
 
     {% if active_lesson %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        <img src="{{ url_for('static', filename='icons/comfort.png') }}" alt="Урок" class="ui-icon ui-icon--sm">Урок идет: {{ active_student.name }}
+        {{ ui_icon('nav.schedule', 'sm', decorative=true) }}Урок идет: {{ active_student.name }}
     </div>
     <div class="now-playing-panel" id="lessonMenu">
         <div class="hero-eyebrow">текущий урок</div>
@@ -197,9 +197,9 @@
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
+                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
             </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/students_white-no-bg-preview (carve.photos).png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('nav.students', 'sm', decorative=true) }}Профиль</a>
         </div>
     </div>
     {% endif %}
@@ -263,7 +263,7 @@
         </section>
         {% elif template_id %}
         <section class="glass-panel generator-mode {{ mode_class }}">
-            <div class="generator-mode__icon"><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблон" class="ui-icon ui-icon--md ui-icon--only"></div>
+            <div class="generator-mode__icon">{{ ui_icon('nav.templates', 'md', decorative=true, extra_class='ui-icon--only') }}</div>
             <div style="flex: 1;">
                 <div class="generator-mode__title">Режим редактирования шаблона</div>
                 <div class="generator-mode__hint">
@@ -288,10 +288,10 @@
                     </div>
                     <div class="generator-actions">
                         <button type="button" class="neo-button accent" id="genStartBtn">
-                            <img src="{{ url_for('static', filename='icons/RAKET.png') }}" alt="Старт" class="ui-icon ui-icon--sm">Старт
+                            {{ ui_icon('action.play', 'sm', decorative=true) }}Старт
                         </button>
                         <button type="button" class="neo-button ghost" id="genStopBtn" disabled>
-                            <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Стоп" class="ui-icon ui-icon--sm">Стоп
+                            {{ ui_icon('action.stop', 'sm', decorative=true) }}Стоп
                         </button>
                     </div>
                     <label class="neo-checkbox" style="margin-top:0.4rem;">
@@ -307,11 +307,11 @@
                         <summary style="cursor:pointer; color: var(--text-primary); font-weight: 700;">Расширенные действия</summary>
                         <div style="margin-top: 1rem;">
                             <div class="generator-links" style="margin-bottom: 1rem;">
-                                <a href="{{ url_for('assignments.assignments_accepted', assignment_type=assignment_type) }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Принятые" class="ui-icon ui-icon--sm">Принятые</a>
+                                <a href="{{ url_for('assignments.assignments_accepted', assignment_type=assignment_type) }}" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Принятые</a>
                                 {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
                                 <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type=assignment_type) }}" class="neo-button outline">📝 Создать работу</a>
                                 {% endif %}
-                                <a href="{{ url_for('assignments.assignments_skipped') }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/MINUS.png') }}" alt="Пропущенные" class="ui-icon ui-icon--sm">Пропущенные</a>
+                                <a href="{{ url_for('assignments.assignments_skipped') }}" class="neo-button ghost">{{ ui_icon('action.minus', 'sm', decorative=true) }}Пропущенные</a>
                             </div>
                             <form method="POST"
                                   action="{{ url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type, template_id=template_id) if lesson_id or template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type, template_id=template_id) if template_id else url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}"
@@ -349,7 +349,7 @@
                      data-template-id="{{ template_id or '' }}">
                 <div class="gen-empty" id="genEmpty">
                     <div style="display:flex; gap: 0.75rem; align-items:center; margin-bottom: 0.75rem;">
-                        <img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--md ui-icon--only">
+                        {{ ui_icon('nav.generator', 'md', decorative=true, extra_class='ui-icon--only') }}
                         <div style="font-weight: 800; color: var(--text-primary); font-size: 1.15rem;">Готов к запуску</div>
                     </div>
                     Выбери номер задания слева и нажми <strong>Старт</strong>. Дальше ты работаешь в потоке — быстро и без лишних кликов.
@@ -359,16 +359,16 @@
                     <div class="gen-task-top">
                         <div class="gen-task-badges">
                             <span class="gen-pill" id="genTaskBadge">
-                                <img src="{{ url_for('static', filename='icons/lesson.png') }}" alt="Задание" class="ui-icon ui-icon--sm ui-icon--only">
+                                {{ ui_icon('nav.assignments', 'sm', decorative=true, extra_class='ui-icon--only') }}
                                 <span id="genTaskTitle">Задание</span>
                             </span>
                             <a id="genSourceLink" class="gen-pill" href="#" target="_blank" rel="noopener" style="text-decoration:none; display:none;">
-                                <img src="{{ url_for('static', filename='icons/lupa.png') }}" alt="Источник" class="ui-icon ui-icon--sm ui-icon--only">
+                                {{ ui_icon('action.link', 'sm', decorative=true, extra_class='ui-icon--only') }}
                                 источник
                             </a>
                         </div>
                         <button type="button" class="neo-button ghost" id="genToggleAnswerBtn" disabled>
-                            <img src="{{ url_for('static', filename='icons/icons8-спрятать-100.png') }}" alt="Ответ" class="ui-icon ui-icon--sm">Ответ
+                            {{ ui_icon('action.eye', 'sm', decorative=true) }}Ответ
                         </button>
                     </div>
 
@@ -377,13 +377,13 @@
 
                     <div class="gen-actions-row">
                         <button type="button" class="neo-button accent" id="genAcceptBtn" disabled>
-                            <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Принять" class="ui-icon ui-icon--sm">Принять
+                            {{ ui_icon('action.check', 'sm', decorative=true) }}Принять
                         </button>
                         <button type="button" class="neo-button ghost" id="genSkipBtn" disabled>
-                            <img src="{{ url_for('static', filename='icons/MINUS.png') }}" alt="Пропустить" class="ui-icon ui-icon--sm">Пропустить
+                            {{ ui_icon('action.minus', 'sm', decorative=true) }}Пропустить
                         </button>
                         <button type="button" class="neo-button danger" id="genBlacklistBtn" disabled>
-                            <img src="{{ url_for('static', filename='icons/musor.png') }}" alt="Blacklist" class="ui-icon ui-icon--sm">Blacklist
+                            {{ ui_icon('action.trash', 'sm', decorative=true) }}Blacklist
                         </button>
                     </div>
 
@@ -394,7 +394,7 @@
                         </div>
                         <div class="gen-actions-row" style="margin-top:0.75rem;">
                             <button type="button" class="neo-button danger" id="genBlacklistConfirmBtn">
-                                <img src="{{ url_for('static', filename='icons/archiv.png') }}" alt="Подтвердить" class="ui-icon ui-icon--sm">Добавить
+                                {{ ui_icon('nav.archive', 'sm', decorative=true) }}Добавить
                             </button>
                             <button type="button" class="neo-button ghost" id="genBlacklistCancelBtn">Отмена</button>
                         </div>

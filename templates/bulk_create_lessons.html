@@ -23,7 +23,7 @@
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div>
                 <p class="hero-eyebrow">массовое создание</p>
-                <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Создание" class="ui-icon ui-icon--md"> Массовое создание уроков</h1>
+                <h1 class="hero-title">{{ ui_icon('nav.schedule', 'md', decorative=true) }} Массовое создание уроков</h1>
             </div>
         </section>
 
@@ -79,7 +79,7 @@
                 </div>
                 
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                    <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/schedule_white.png') }}" alt="Создать" class="ui-icon ui-icon--sm"> Создать уроки</button>
+                    <button type="submit" class="neo-button accent">{{ ui_icon('nav.schedule', 'sm', decorative=true) }} Создать уроки</button>
                     <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost">← Назад</a>
                 </div>
             </form>

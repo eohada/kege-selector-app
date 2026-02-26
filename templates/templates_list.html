@@ -20,12 +20,12 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <div>
                     <p class="hero-eyebrow">библиотека шаблонов</p>
-                    <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/SHABL.png') }}" alt="Шаблоны" class="ui-icon ui-icon--md">Шаблоны заданий</h1>
+                    <h1 class="hero-title">{{ ui_icon('nav.templates', 'md', decorative=true) }}Шаблоны заданий</h1>
                     <p class="hero-subtitle">Готовые наборы заданий для быстрого формирования ДЗ, классных и проверочных работ</p>
                 </div>
                 {% if can_manage_templates %}
-                <a href="{{ url_for('templates.template_new') }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Создать" class="ui-icon ui-icon--sm">Создать шаблон</a>
-                <a href="{{ url_for('templates.template_new', mode='manual') }}" class="neo-button outline" style="margin-left: 1rem;"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Создать" class="ui-icon ui-icon--sm"> Создать вручную</a>
+                <a href="{{ url_for('templates.template_new') }}" class="neo-button accent">{{ ui_icon('action.plus', 'sm', decorative=true) }}Создать шаблон</a>
+                <a href="{{ url_for('templates.template_new', mode='manual') }}" class="neo-button outline" style="margin-left: 1rem;">{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Создать вручную</a>
                 {% endif %}
             </div>
         </section>
@@ -56,10 +56,10 @@
         </section>
 
         {% for type_key, type_name, type_icon in [
-            ('homework', 'Домашние задания', url_for('static', filename='icons/icons8-документ-100.png')),
-            ('classwork', 'Классные работы', url_for('static', filename='icons/icons8-школа-100.png')),
-            ('exam', 'Проверочные работы', url_for('static', filename='icons/icons8-bar-chart-100.png')),
-            ('lesson', 'Уроки', url_for('static', filename='icons/SHABL.png'))
+            ('homework', 'Домашние задания', 'nav.assignments'),
+            ('classwork', 'Классные работы', 'action.school'),
+            ('exam', 'Проверочные работы', 'nav.stats'),
+            ('lesson', 'Уроки', 'nav.templates')
         ] %}
         {% set type_templates = templates_by_type.get(type_key, []) %}
         {% if not current_type or current_type == type_key %}
@@ -67,7 +67,7 @@
             <div class="panel-head">
                 <div>
                     <p class="eyebrow">
-                        <img src="{{ type_icon }}" alt="{{ type_name }}" class="ui-icon ui-icon--sm">
+                        {{ ui_icon(type_icon, 'sm', decorative=true) }}
                         {{ type_name }}
                     </p>
                     <h2>{{ type_templates|length }} шаблонов</h2>
@@ -77,7 +77,7 @@
                     <a href="{{ url_for('templates.template_new') }}?template_type={{ type_key }}{% if current_category %}&category={{ current_category }}{% endif %}"
                        class="neo-button outline"
                        style="padding: 0.55rem 0.8rem; min-width: 0; text-decoration: none;"
-                       title="Создать шаблон в разделе «{{ type_name }}»"><img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Создать" class="ui-icon ui-icon--sm ui-icon--only"></a>
+                       title="Создать шаблон в разделе «{{ type_name }}»">{{ ui_icon('action.plus', 'sm', decorative=true, extra_class='ui-icon--only') }}</a>
                     {% endif %}
                 </div>
             </div>
@@ -103,10 +103,10 @@
                     </div>
 
                     <div class="template-actions">
-                        <a href="{{ url_for('templates.template_view', template_id=template.template_id) }}" class="neo-button ghost" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/icons8-спрятать-100.png') }}" alt="Просмотр" class="ui-icon ui-icon--sm">Просмотр</a>
+                        <a href="{{ url_for('templates.template_view', template_id=template.template_id) }}" class="neo-button ghost" style="text-decoration: none;">{{ ui_icon('action.eye', 'sm', decorative=true) }}Просмотр</a>
                         {% if can_manage_templates %}
-                        <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button ghost" style="text-decoration: none;"><img src="{{ url_for('static', filename='icons/REDACT.png') }}" alt="Изменить" class="ui-icon ui-icon--sm">Изменить</a>
-                        <button type="button" class="neo-button ghost danger" onclick="confirmDeleteTemplate({{ template.template_id }})" style="flex: 0 0 auto; padding: 0.9rem 0.8rem;"><img src="{{ url_for('static', filename='icons/MUSORN.png') }}" alt="Удалить" class="ui-icon ui-icon--sm ui-icon--only"></button>
+                        <a href="{{ url_for('templates.template_edit', template_id=template.template_id) }}" class="neo-button ghost" style="text-decoration: none;">{{ ui_icon('action.edit', 'sm', decorative=true) }}Изменить</a>
+                        <button type="button" class="neo-button ghost danger" onclick="confirmDeleteTemplate({{ template.template_id }})" style="flex: 0 0 auto; padding: 0.9rem 0.8rem;">{{ ui_icon('action.trash', 'sm', decorative=true, extra_class='ui-icon--only') }}</button>
                         {% endif %}
                     </div>
                 </div>
@@ -114,7 +114,7 @@
             </div>
             {% else %}
             <div class="empty-state" style="padding: 3rem; text-align: center;">
-                <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.4;"><img src="{{ url_for('static', filename='icons/icons8-пустая-папка-100.png') }}" alt="Пусто" style="width: 64px; height: 64px; object-fit: contain;"></div>
+                <div style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.5;">{{ ui_icon('nav.templates', 'lg', decorative=true) }}</div>
                 <h3>Нет шаблонов</h3>
                 <p style="color: var(--text-muted);">Создайте первый шаблон для этого типа</p>
             </div>

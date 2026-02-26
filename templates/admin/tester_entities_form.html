@@ -184,7 +184,7 @@
                             {% if tester %}
                                 💾 Сохранить изменения
                             {% else %}
-                                <img src="{{ url_for('static', filename='icons/SULP.png') }}" alt="Создать" class="ui-icon ui-icon--sm">Создать тестировщика
+                                {{ ui_icon('action.plus', 'sm', decorative=true) }}Создать тестировщика
                             {% endif %}
                         </button>
                         <a href="{{ url_for('admin.admin_tester_entities') }}" class="neo-button outline" style="text-decoration: none; flex: 1; text-align: center;">

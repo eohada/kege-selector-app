@@ -23,7 +23,7 @@
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div>
                 <p class="hero-eyebrow">импорт данных</p>
-                <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-загрузка-настольного-компьютера-100.png') }}" alt="Импорт" class="ui-icon ui-icon--md">Импорт данных</h1>
+                <h1 class="hero-title">{{ ui_icon('action.import', 'md', decorative=true) }}Импорт данных</h1>
             </div>
         </section>
 
@@ -49,8 +49,8 @@
                 </div>
                 
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                    <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-загрузка-настольного-компьютера-100.png') }}" alt="Импорт" class="ui-icon ui-icon--sm">Импортировать</button>
-                    <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Отмена" class="ui-icon ui-icon--sm">Отмена</a>
+                    <button type="submit" class="neo-button accent">{{ ui_icon('action.import', 'sm', decorative=true) }}Импортировать</button>
+                    <a href="{{ url_for('main.dashboard') }}" class="neo-button ghost">{{ ui_icon('action.close', 'sm', decorative=true) }}Отмена</a>
                 </div>
             </form>
         </section>

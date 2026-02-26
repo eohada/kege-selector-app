@@ -23,7 +23,7 @@
                 </a>
             </div>
             <p class="hero-eyebrow">ручное создание</p>
-            <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Создание" class="ui-icon ui-icon--md"> Ручное создание заданий</h1>
+            <h1 class="hero-title">{{ ui_icon('nav.assignments', 'md', decorative=true) }} Ручное создание заданий</h1>
             <p class="hero-subtitle">Добавление собственных заданий для ученика {{ lesson.student.name }}</p>
         </section>
 
@@ -33,7 +33,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div id="status-text" style="color: var(--text-muted);">Заданий: <span id="tasks-count">0</span></div>
                 <button onclick="saveTasks()" class="neo-button accent">
-                    <img src="{{ url_for('static', filename='icons/icons8-сохранить-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm"> Сохранить и добавить в урок
+                    {{ ui_icon('action.check', 'sm', decorative=true) }} Сохранить и добавить в урок
                 </button>
             </div>
         </section>

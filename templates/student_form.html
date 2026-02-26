@@ -15,7 +15,7 @@
 <body class="{% if active_lesson %}lesson-active{% endif %}">
     {% if active_lesson %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        <img src="{{ url_for('static', filename='icons/icons8-наушники-100.png') }}" alt="Урок" class="ui-icon ui-icon--sm"> Урок идет: {{ active_student.name }}
+        {{ ui_icon('nav.schedule', 'sm', decorative=true) }} Урок идет: {{ active_student.name }}
     </div>
     <div class="now-playing-panel" id="lessonMenu">
         <div class="hero-eyebrow">текущий урок</div>
@@ -27,9 +27,9 @@
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
+                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
             </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('profile.user', 'sm', decorative=true) }}Профиль</a>
         </div>
     </div>
     <script>
@@ -93,7 +93,7 @@
             </section>
             
             <section class="form-section"> 
-                <div class="form-section-title"><img src="{{ url_for('static', filename='icons/icons8-мишень-100.png') }}" alt="Цели" class="ui-icon ui-icon--sm"> Цели и сроки</div>
+                <div class="form-section-title">{{ ui_icon('nav.generator', 'sm', decorative=true) }} Цели и сроки</div>
                 <div class="form-grid"> 
                     <div class="neo-field category-field" data-field="numeric-goal"> 
                         <label class="neo-label" for="{{ form.target_score.id }}" id="targetScoreLabel">Целевой балл (0-100)</label> 
@@ -122,7 +122,7 @@
             </section>
             
             <section class="form-section">
-                <div class="form-section-title"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Диагностика" class="ui-icon ui-icon--sm"> Диагностика и оценка</div>
+                <div class="form-section-title">{{ ui_icon('nav.stats', 'sm', decorative=true) }} Диагностика и оценка</div>
                 <div class="form-grid form-grid-compact">
                     <div class="neo-field">
                         {{ form.diagnostic_level.label(class='neo-label') }}
@@ -157,7 +157,7 @@
             </section>
             
             <section class="form-section">
-                <div class="form-section-title"><img src="{{ url_for('static', filename='icons/icons8-документ-100.png') }}" alt="Описание" class="ui-icon ui-icon--sm"> Описание</div>
+                <div class="form-section-title">{{ ui_icon('nav.assignments', 'sm', decorative=true) }} Описание</div>
                 <div class="form-grid">
                     <div class="neo-field form-grid-full">
                         {{ form.description.label(class='neo-label') }}

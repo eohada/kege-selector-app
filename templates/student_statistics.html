@@ -28,7 +28,7 @@
 <body class="{% if active_lesson %}lesson-active{% endif %}">
     {% if active_lesson and active_student %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        <img src="{{ url_for('static', filename='icons/icons8-наушники-100.png') }}" alt="Урок" class="ui-icon ui-icon--sm"> Урок идет: {{ active_student.name }}
+        {{ ui_icon('nav.schedule', 'sm', decorative=true) }} Урок идет: {{ active_student.name }}
     </div>
     <div class="now-playing-panel" id="lessonMenu">
         <div class="hero-eyebrow">текущий урок</div>
@@ -40,9 +40,9 @@
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
+                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
             </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('profile.user', 'sm', decorative=true) }}Профиль</a>
         </div>
     </div>
     <script>
@@ -63,7 +63,7 @@
                 </a>
             </div>
             <p class="hero-eyebrow">статистика выполнения</p>
-            <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Статистика" class="ui-icon ui-icon--md"> {{ student.name }}</h1>
+            <h1 class="hero-title">{{ ui_icon('nav.stats', 'md', decorative=true) }} {{ student.name }}</h1>
             <p class="hero-subtitle">Процент выполнения заданий по номерам</p>
         </section>
         
@@ -127,7 +127,7 @@
                         </div>
                         <div>
                             <label style="display: block; font-size: 0.9em; margin-bottom: 0.25rem; color: var(--text-muted);">
-                                <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Правильно" class="ui-icon ui-icon--sm">Правильно (добавить):
+                                {{ ui_icon('action.check', 'sm', decorative=true) }}Правильно (добавить):
                             </label>
                             <input type="number" 
                                    min="0" 
@@ -143,7 +143,7 @@
                         </div>
                         <div>
                             <label style="display: block; font-size: 0.9em; margin-bottom: 0.25rem; color: var(--text-muted);">
-                                <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Неправильно" class="ui-icon ui-icon--sm">Неправильно (добавить):
+                                {{ ui_icon('action.close', 'sm', decorative=true) }}Неправильно (добавить):
                             </label>
                             <input type="number" 
                                    min="0" 
@@ -161,7 +161,7 @@
                             <button type="button" 
                                     class="neo-button accent stat-save-btn" 
                                     data-task-number="{{ item.task_number }}">
-                                <img src="{{ url_for('static', filename='icons/icons8-сохранить-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm"> Сохранить
+                                {{ ui_icon('action.check', 'sm', decorative=true) }} Сохранить
                             </button>
                         </div>
                     </div>
@@ -172,7 +172,7 @@
         {% else %}
         <section class="glass-panel">
             <div class="empty-state">
-                <div style="font-size: 4rem; margin-bottom: 0.6rem;"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Нет данных" style="width: 64px; height: 64px; object-fit: contain;"></div>
+                <div style="font-size: 4rem; margin-bottom: 0.6rem; opacity: 0.55;">{{ ui_icon('nav.stats', 'lg', decorative=true) }}</div>
                 <h3>Нет данных для статистики</h3>
                 <p style="color: var(--text-muted);">Выполните задания и проведите автопроверку, чтобы увидеть статистику.</p>
             </div>

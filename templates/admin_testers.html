@@ -83,7 +83,7 @@
                   class="confirm-delete-form" 
                   style="margin-bottom: 2rem;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="neo-button danger"><img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Очистить" class="ui-icon ui-icon--sm"> Очистить все логи пользователей</button>
+                <button type="submit" class="neo-button danger">{{ ui_icon('action.trash', 'sm', decorative=true) }} Очистить все логи пользователей</button>
             </form>
 
             <table class="testers-table">
@@ -132,7 +132,7 @@
                                       class="confirm-delete-form" 
                                       style="display: inline;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button type="submit" class="neo-button danger" style="font-size: 0.9rem; padding: 0.5rem 1rem;"><img src="{{ url_for('static', filename='icons/icons8-удалить-100.png') }}" alt="Удалить" class="ui-icon ui-icon--sm"> Удалить</button>
+                                    <button type="submit" class="neo-button danger" style="font-size: 0.9rem; padding: 0.5rem 1rem;">{{ ui_icon('action.trash', 'sm', decorative=true) }} Удалить</button>
                                 </form>
                                 {% endif %}
                             </div>

@@ -15,7 +15,7 @@
         {% include 'remote_admin/_header.html' %}
         {% include 'remote_admin/_sidebar.html' %}
 
-        <main style="margin-left: 250px; margin-top: 70px; padding: 2rem;">
+        <main class="remote-main">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <div class="flash-messages" style="max-width: 900px; margin-bottom: 1rem;">

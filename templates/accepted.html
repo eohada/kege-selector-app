@@ -26,7 +26,7 @@
             <div style="display:flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;">
                 <div>
                 <p class="hero-eyebrow">принятые задания</p>
-                <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Принято" class="ui-icon ui-icon--sm">Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %}</h1>
+                <h1 class="hero-title">{{ ui_icon('action.check', 'sm', decorative=true) }}Принятые задания{% if task_type %}: Задание {{ task_type }}{% endif %}</h1>
                 <p class="hero-subtitle">Всего: {{ tasks|length }} шт.</p>
             </div>
                 <div class="hero-actions" style="margin-top: 0;">
@@ -67,9 +67,9 @@
                     <div>
                         <b style="color: var(--text-primary);">№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b>
                         <span style="color: var(--text-muted); margin: 0 0.5em;">|</span>
-                        <a href="{{ task.source_url }}" target="_blank" class="neo-button ghost" style="font-size: 0.9em; padding: 0.4em 0.8em;"><img src="{{ url_for('static', filename='icons/lupa.png') }}" alt="Источник" class="ui-icon ui-icon--sm">Источник</a>
+                        <a href="{{ task.source_url }}" target="_blank" class="neo-button ghost" style="font-size: 0.9em; padding: 0.4em 0.8em;">{{ ui_icon('action.link', 'sm', decorative=true) }}Источник</a>
                     </div>
-                    <span class="neo-button accent" style="font-size: 0.85em; padding: 0.4em 0.8em; cursor: default;"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Принято" class="ui-icon ui-icon--sm">ПРИНЯТО</span>
+                    <span class="neo-button accent" style="font-size: 0.85em; padding: 0.4em 0.8em; cursor: default;">{{ ui_icon('action.check', 'sm', decorative=true) }}ПРИНЯТО</span>
                 </div>
                 
                 <div class="task-content" style="line-height: 1.8; font-size: 1.05em; color: var(--text-primary); margin-bottom: 1.5rem;">
@@ -122,7 +122,7 @@
                 <h3 class="empty-state-title">Нет принятых заданий</h3>
                 <p class="empty-state-description">Принятые задания будут отображаться здесь</p>
                 <div class="empty-state-actions">
-                    <a href="{{ back_url | default(url_for('assignments.assignments_list')) }}" class="neo-button accent"><img src="{{ url_for('static', filename='icons/generator_white-no-bg-preview (carve.photos).png') }}" alt="Генератор" class="ui-icon ui-icon--sm">Назад</a>
+                    <a href="{{ back_url | default(url_for('assignments.assignments_list')) }}" class="neo-button accent">{{ ui_icon('nav.generator', 'sm', decorative=true) }}Назад</a>
                 </div>
             </div>
         </section>

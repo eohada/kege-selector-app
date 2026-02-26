@@ -265,7 +265,7 @@
 
             <div style="margin-top: 2rem; text-align: center;">
                 <a href="{{ url_for('admin.admin_audit_export', **filters) }}" class="neo-button accent">
-                    <img src="{{ url_for('static', filename='icons/EKSPORT.png') }}" alt="Экспорт" class="ui-icon ui-icon--sm">Экспорт в CSV
+                    {{ ui_icon('action.export', 'sm', decorative=true) }}Экспорт в CSV
                 </a>
             </div>
         </section>

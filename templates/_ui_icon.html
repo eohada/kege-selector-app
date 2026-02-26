@@ -1,0 +1,12 @@
+{# UI Icon macro (SVG sprite). Keeps layout stable even if icon is missing. #}
+{% macro ui_icon(key, size='sm', title=None, decorative=True, extra_class='') -%}
+  {% set safe_id = (key|string)|replace('.', '-')|replace('/', '-')|replace('\\', '-') %}
+  {% set svg_class = 'ui-icon ui-icon--' ~ size %}
+  {% if extra_class %}{% set svg_class = svg_class ~ ' ' ~ extra_class %}{% endif %}
+  <span class="ui-icon-slot ui-icon-slot--{{ size }}" {% if key %}data-asset-key="{{ key }}"{% endif %} {% if decorative %}aria-hidden="true"{% endif %}>
+    <svg class="{{ svg_class }}" {% if decorative %}aria-hidden="true"{% else %}role="img"{% endif %} {% if (not decorative) and title %}aria-label="{{ title }}"{% endif %} focusable="false">
+      <use href="{{ url_for('static', filename='icons/sprite.svg') }}#{{ safe_id }}"></use>
+    </svg>
+  </span>
+{%- endmacro %}
+

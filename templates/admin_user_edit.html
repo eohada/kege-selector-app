@@ -202,12 +202,12 @@
                             <div style="display: flex; gap: 0.5rem; align-items: center;">
                                 {% if not tie.is_confirmed %}
                                 <button type="button" class="neo-button action-confirm-btn" style="padding: 0.5rem 0.75rem; background: var(--success);" title="Подтвердить" data-url="{{ url_for('admin.admin_family_tie_confirm', tie_id=tie.tie_id) }}">
-                                    <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Подтвердить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                    {{ ui_icon('action.check', 'sm', decorative=true) }}
                                     <span style="display: none;">✓</span>
                                 </button>
                                 {% endif %}
                                 <button type="button" class="neo-button danger action-delete-btn" style="padding: 0.5rem 0.75rem;" title="Удалить" data-url="{{ url_for('admin.admin_family_tie_delete', tie_id=tie.tie_id) }}" data-confirm-message="Вы уверены, что хотите удалить эту семейную связь? Это действие нельзя отменить.">
-                                    <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Удалить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                    {{ ui_icon('action.trash', 'sm', decorative=true) }}
                                     <span style="display: none;">✕</span>
                                 </button>
                             </div>
@@ -296,7 +296,7 @@
                                 </div>
                             </div>
                             <button type="button" class="neo-button danger action-delete-btn" style="padding: 0.5rem 0.75rem;" title="Удалить" data-url="{{ url_for('admin.admin_enrollment_delete', enrollment_id=enrollment.enrollment_id) }}" data-confirm-message="Вы уверены, что хотите удалить этот учебный контракт? Это действие нельзя отменить.">
-                                <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Удалить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                {{ ui_icon('action.trash', 'sm', decorative=true) }}
                                 <span style="display: none;">✕</span>
                             </button>
                         </div>
@@ -430,7 +430,7 @@
 
                 <div class="hero-actions">
                     <button type="submit" class="neo-button accent">
-                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm">
+                        {{ ui_icon('action.check', 'sm', decorative=true) }}
                         {% if user %}Сохранить изменения{% else %}Создать пользователя{% endif %}
                     </button>
                     <a href="{{ url_for('admin.admin_users') }}" class="neo-button ghost">Отмена</a>
@@ -439,7 +439,7 @@
                             <button type="button" class="neo-button danger action-delete-btn" 
                                     data-url="{{ url_for('admin.admin_sandbox_user_delete', user_id=user.id) }}" 
                                     data-confirm-message="Вы уверены, что хотите удалить пользователя '{{ user.username }}'? Это действие нельзя отменить.">
-                                <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Удалить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                {{ ui_icon('action.trash', 'sm', decorative=true) }}
                                 <span style="display:none;">✕</span>
                                 Удалить пользователя
                             </button>
@@ -447,7 +447,7 @@
                             <button type="button" class="neo-button danger action-delete-btn" 
                                     data-url="{{ url_for('admin.admin_testers_delete', user_id=user.id) }}" 
                                     data-confirm-message="Вы уверены, что хотите удалить пользователя '{{ user.username }}'? Это действие нельзя отменить.">
-                                <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Удалить" class="ui-icon ui-icon--sm" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+                                {{ ui_icon('action.trash', 'sm', decorative=true) }}
                                 <span style="display:none;">✕</span>
                                 Удалить пользователя
                             </button>

@@ -397,7 +397,7 @@
 <body class="{% if active_lesson %}lesson-active{% endif %}">
     {% if active_lesson and active_student %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
-        <img src="{{ url_for('static', filename='icons/icons8-наушники-100.png') }}" alt="Урок" class="ui-icon ui-icon--sm"> Урок идет: {{ active_student.name }}
+        {{ ui_icon('nav.schedule', 'sm', decorative=true) }} Урок идет: {{ active_student.name }}
     </div>
     <div class="now-playing-panel" id="lessonMenu">
         <div class="hero-eyebrow">текущий урок</div>
@@ -409,9 +409,9 @@
         <p style="margin: 0;"><strong>Длительность:</strong> {{ active_lesson.duration }} минут</p>
         <div class="hero-actions" style="margin-top: 1rem;">
             <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=active_lesson.lesson_id) }}">
-                <button type="submit" class="neo-button accent"><img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Завершить" class="ui-icon ui-icon--sm">Завершить</button>
+                <button type="submit" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Завершить</button>
             </form>
-            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost"><img src="{{ url_for('static', filename='icons/icons8-пользователь-100.png') }}" alt="Профиль" class="ui-icon ui-icon--sm">Профиль</a>
+            <a href="{{ url_for('students.student_profile', student_id=active_student.student_id) }}" class="neo-button ghost">{{ ui_icon('profile.user', 'sm', decorative=true) }}Профиль</a>
         </div>
     </div>
     <script>
@@ -433,7 +433,7 @@
                 </a>
             </div>
             <p class="hero-eyebrow">статистика и аналитика</p>
-            <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/icons8-bar-chart-100.png') }}" alt="Статистика" class="ui-icon ui-icon--md"> {{ student.name }}</h1>
+            <h1 class="hero-title">{{ ui_icon('nav.stats', 'md', decorative=true) }} {{ student.name }}</h1>
         </section>
 
         <div class="stats-tabs">
@@ -651,7 +651,7 @@
                                     id="addNewTaskBtn" 
                                     class="neo-button accent"
                                     style="white-space: nowrap;">
-                                <img src="{{ url_for('static', filename='icons/icons8-плюс-100.png') }}" alt="Добавить" class="ui-icon ui-icon--sm" style="width: 16px; height: 16px; vertical-align: middle;"> Добавить задание
+                                {{ ui_icon('action.plus', 'sm', decorative=true) }} Добавить задание
                             </button>
                         </div>
                     </div>
@@ -692,7 +692,7 @@
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div>
                                     <label style="display: block; font-size: 0.9em; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 500;">
-                                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" alt="Правильно" class="ui-icon ui-icon--sm" style="width: 16px; height: 16px; vertical-align: middle;"> Правильно:
+                                        {{ ui_icon('action.check', 'sm', decorative=true) }} Правильно:
                                     </label>
                                     <input type="number" 
                                            min="0" 
@@ -709,7 +709,7 @@
                                 </div>
                                 <div>
                                     <label style="display: block; font-size: 0.9em; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 500;">
-                                        <img src="{{ url_for('static', filename='icons/icons8-умножение-96.png') }}" alt="Неправильно" class="ui-icon ui-icon--sm" style="width: 16px; height: 16px; vertical-align: middle;"> Неправильно:
+                                        {{ ui_icon('action.close', 'sm', decorative=true) }} Неправильно:
                                     </label>
                                     <input type="number" 
                                            min="0" 
@@ -730,7 +730,7 @@
                                 <button type="button" 
                                         class="neo-button accent stat-save-btn" 
                                         data-task-number="{{ item.task_number }}">
-                                    <img src="{{ url_for('static', filename='icons/icons8-сохранить-100.png') }}" alt="Сохранить" class="ui-icon ui-icon--sm" style="width: 16px; height: 16px; vertical-align: middle;"> Сохранить
+                                    {{ ui_icon('action.check', 'sm', decorative=true) }} Сохранить
                                 </button>
                             </div>
                         </div>

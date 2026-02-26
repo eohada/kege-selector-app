@@ -25,7 +25,7 @@
         <section class="glass-panel" style="margin-bottom: 2rem;">
             <div>
                 <p class="hero-eyebrow">пропущенные задания</p>
-                <h1 class="hero-title"><img src="{{ url_for('static', filename='icons/MINUS.png') }}" alt="Пропущено" class="ui-icon ui-icon--sm">Пропущенные задания{% if task_type %}: Задание {{ task_type }}{% endif %}</h1>
+                <h1 class="hero-title">{{ ui_icon('action.minus', 'sm', decorative=true) }}Пропущенные задания{% if task_type %}: Задание {{ task_type }}{% endif %}</h1>
                 <p class="hero-subtitle">Всего: {{ tasks|length }} шт.</p>
             </div>
         </section>

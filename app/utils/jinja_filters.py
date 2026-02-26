@@ -5,7 +5,53 @@ import re
 from bs4 import BeautifulSoup
 
 from app.auth.rbac_utils import mask_contact_info
+from flask import url_for
 from flask_login import current_user
+from markupsafe import Markup, escape
+
+
+def _normalize_icon_key_to_id(key: str) -> str:
+    key = (key or "").strip()
+    key = key.replace("\\", "-").replace("/", "-").replace(".", "-")
+    key = re.sub(r"[^a-zA-Z0-9_-]+", "-", key)
+    key = re.sub(r"-{2,}", "-", key).strip("-")
+    return key
+
+
+def ui_icon(key, size="sm", title=None, decorative=True, extra_class=""):
+    """
+    Глобальная функция для шаблонов: рендер SVG-иконки из спрайта.
+    Использование в Jinja: {{ ui_icon('nav.students', 'md') }}
+    """
+    safe_id = _normalize_icon_key_to_id(str(key or ""))
+    size = str(size or "sm")
+    if size not in ("sm", "md", "lg"):
+        size = "sm"
+
+    svg_class = f"ui-icon ui-icon--{size}"
+    if extra_class:
+        svg_class = f"{svg_class} {extra_class}"
+
+    # sprite.svg#id
+    sprite_href = url_for("static", filename="icons/sprite.svg") + f"#{safe_id}"
+
+    wrapper_aria = ' aria-hidden="true"' if decorative else ""
+    aria_attr = ' aria-hidden="true"' if decorative else ""
+    role_attr = "" if decorative else ' role="img"'
+    label_attr = ""
+    if (not decorative) and title:
+        label_attr = f' aria-label="{escape(str(title))}"'
+
+    html = (
+        f'<span class="ui-icon-slot ui-icon-slot--{escape(size)}" '
+        f'data-asset-key="{escape(str(key or ""))}"'
+        f"{wrapper_aria}>"
+        f'<svg class="{escape(svg_class)}"{aria_attr}{role_attr}{label_attr} focusable="false">'
+        f'<use href="{escape(sprite_href)}"></use>'
+        f"</svg>"
+        f"</span>"
+    )
+    return Markup(html)
 
 
 def _deduplicate_latex_blocks(html: str) -> str:
@@ -130,3 +176,4 @@ def init_jinja_filters(app):
     """Инициализация Jinja2 фильтров"""
     app.jinja_env.filters['mask_contact'] = mask_contact_if_tutor
     app.jinja_env.filters['deduplicate_formulas'] = deduplicate_formulas
+    app.jinja_env.globals["ui_icon"] = ui_icon

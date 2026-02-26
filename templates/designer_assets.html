@@ -11,8 +11,9 @@
     {% endif %}
 </head>
 <body>
+    {% from '_ui_icon.html' import ui_icon %}
     <div class="app-shell">
-        {% set active_page = 'dashboard' %}
+        {% set active_page = 'assets' %}
         {% include '_primary_nav.html' %}
 
         {% include '_ux_enhancements.html' %}
@@ -24,68 +25,168 @@
                         ← На главную
                     </a>
                     <h1 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                        <img src="{{ url_for('static', filename='icons/icons8-image-100.png') }}" class="ui-icon ui-icon--md" onerror="this.src='{{ url_for('static', filename='icons/SHABL.png') }}'"> 
+                        {{ ui_icon('action.image', 'md', decorative=true) }}
                         Управление ассетами
                     </h1>
                 </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem;">
-                {% for asset in assets %}
-                <div class="asset-card" style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); overflow: hidden;">
-                    <div style="height: 150px; display: flex; align-items: center; justify-content: center; background: var(--surface-3); padding: 1rem;">
-                        <img src="{{ asset.url }}" alt="{{ asset.filename }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
-                    </div>
-                    <div style="padding: 1rem;">
-                        <div style="font-weight: 600; margin-bottom: 0.5rem; word-break: break-all;">{{ asset.filename }}</div>
-                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Папка: {{ asset.folder }}</div>
-                        
-                        <form action="{{ url_for('designer.replace_asset') }}" method="POST" enctype="multipart/form-data" class="replace-form">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="folder" value="{{ asset.folder }}">
-                            <input type="hidden" name="filename" value="{{ asset.filename }}">
-                            
-                            <label class="neo-button ghost" style="width: 100%; text-align: center; cursor: pointer; display: block;">
-                                Заменить файл
-                                <input type="file" name="file" style="display: none;" onchange="this.form.submit()">
-                            </label>
-                        </form>
-                    </div>
+            <div style="display:flex; align-items:center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+                <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
+                    <button type="button" class="neo-button outline" id="tabSlotsBtn" aria-controls="assetsSlotsPane" aria-selected="true">
+                        Слоты
+                    </button>
+                    <button type="button" class="neo-button ghost" id="tabFilesBtn" aria-controls="assetsFilesPane" aria-selected="false">
+                        Файлы
+                    </button>
                 </div>
-                {% endfor %}
+
+                <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap: wrap;">
+                    <input id="assetsSearch" type="text" placeholder="Поиск по ключу (например: nav.students)" style="min-width: 320px; max-width: 520px; width: min(520px, 100%); padding: 0.75rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary); outline: none;">
+                    <label style="display:flex; align-items:center; gap:0.5rem; color: var(--text-muted); font-size: 0.9rem;">
+                        <input id="assetsOnlyMissing" type="checkbox" style="accent-color: var(--accent-1);">
+                        Только отсутствующие
+                    </label>
+                </div>
+            </div>
+
+            <div id="assetsSlotsPane">
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1.25rem;">
+                    {% for slot in slots %}
+                    <div class="asset-card" data-slot-key="{{ slot.key }}" data-slot-type="{{ slot.type }}" data-slot-present="{{ '1' if slot.present else '0' }}" style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); overflow: hidden;">
+                        <div style="height: 150px; display:flex; align-items:center; justify-content:center; background: var(--surface-3); padding: 1rem;">
+                            {% if slot.type == 'icon' %}
+                                <div style="display:flex; flex-direction:column; align-items:center; gap:0.65rem;">
+                                    <div style="width: 64px; height: 64px; border-radius: 18px; border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02); display:flex; align-items:center; justify-content:center;">
+                                        {{ ui_icon(slot.key, 'lg', decorative=true) }}
+                                    </div>
+                                    <div style="font-size: 0.85rem; color: var(--text-muted);">
+                                        {% if slot.present %}В спрайте{% else %}Нет иконки{% endif %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                {% if slot.present and slot.url %}
+                                    <img src="{{ slot.url }}" alt="{{ slot.key }}" style="max-width: 100%; max-height: 100%; object-fit: cover; border-radius: var(--radius-md);">
+                                {% else %}
+                                    <div style="text-align:center; color: var(--text-muted);">
+                                        <div style="font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.85rem;">Нет изображения</div>
+                                        <div style="margin-top: 0.35rem; font-size: 0.85rem;">{{ slot.targetPath or '' }}</div>
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <div style="padding: 1rem;">
+                            <div style="display:flex; align-items:baseline; justify-content: space-between; gap: 1rem;">
+                                <div style="min-width:0;">
+                                    <div style="font-weight: 800; font-size: 0.95rem; word-break: break-word;">{{ slot.key }}</div>
+                                    <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem;">
+                                        {{ slot.type }}{% if slot.context %} · {{ slot.context }}{% endif %}{% if slot.recommendedSize %} · {{ slot.recommendedSize }}{% endif %}
+                                    </div>
+                                </div>
+                                <div style="flex-shrink:0; font-size: 0.78rem; padding: 0.25rem 0.55rem; border-radius: 999px; border: 1px solid var(--stroke-1); color: {% if slot.present %}var(--success){% else %}var(--warning){% endif %};">
+                                    {% if slot.present %}OK{% else %}TODO{% endif %}
+                                </div>
+                            </div>
+
+                            {% if slot.usedIn %}
+                            <div style="margin-top: 0.7rem; font-size: 0.78rem; color: var(--text-muted); line-height: 1.4;">
+                                <div style="text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.68rem; margin-bottom: 0.35rem;">Используется</div>
+                                <div style="word-break: break-word;">{{ slot.usedIn|join(', ') }}</div>
+                            </div>
+                            {% endif %}
+
+                            <form action="{{ url_for('designer.upload_asset') }}" method="POST" enctype="multipart/form-data" style="margin-top: 0.9rem;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="slot_key" value="{{ slot.key }}">
+
+                                <label class="neo-button {% if slot.present %}ghost{% else %}accent{% endif %}" style="width: 100%; text-align: center; cursor: pointer; display: block;">
+                                    {% if slot.present %}Заменить{% else %}Загрузить{% endif %}
+                                    <input type="file" name="file" style="display:none;" onchange="this.form.submit()">
+                                </label>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div id="assetsFilesPane" style="display:none;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.25rem;">
+                    {% for asset in assets %}
+                    <div class="asset-card" style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); overflow: hidden;">
+                        <div style="height: 150px; display: flex; align-items: center; justify-content: center; background: var(--surface-3); padding: 1rem;">
+                            <img src="{{ asset.url }}" alt="{{ asset.filename }}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                        </div>
+                        <div style="padding: 1rem;">
+                            <div style="font-weight: 700; margin-bottom: 0.5rem; word-break: break-word;">{{ asset.filename }}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Папка: {{ asset.folder }}</div>
+
+                            <form action="{{ url_for('designer.replace_asset') }}" method="POST" enctype="multipart/form-data">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="folder" value="{{ asset.folder }}">
+                                <input type="hidden" name="filename" value="{{ asset.filename }}">
+
+                                <label class="neo-button ghost" style="width: 100%; text-align: center; cursor: pointer; display: block;">
+                                    Заменить файл
+                                    <input type="file" name="file" style="display: none;" onchange="this.form.submit()">
+                                </label>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
             </div>
         </section>
     </div>
 
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        // Flash messages handling
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-            try {
-                var msg = {{ message|tojson }};
-                var cat = '{{ category }}';
-                var toastFunc = window.toast || toast;
-                if (toastFunc) {
-                    if (cat === 'error' || cat === 'danger') {
-                        toastFunc.error(msg);
-                    } else if (cat === 'warning') {
-                        toastFunc.warning(msg);
-                    } else if (cat === 'info') {
-                        toastFunc.info(msg);
-                    } else {
-                        toastFunc.success(msg);
-                    }
-                }
-            } catch (e) {
-                console.error('Ошибка при отображении flash сообщения:', e);
+    (function() {
+        'use strict';
+
+        const tabSlotsBtn = document.getElementById('tabSlotsBtn');
+        const tabFilesBtn = document.getElementById('tabFilesBtn');
+        const slotsPane = document.getElementById('assetsSlotsPane');
+        const filesPane = document.getElementById('assetsFilesPane');
+        const search = document.getElementById('assetsSearch');
+        const onlyMissing = document.getElementById('assetsOnlyMissing');
+
+        function setTab(tab) {
+            const isSlots = tab === 'slots';
+            if (slotsPane) slotsPane.style.display = isSlots ? '' : 'none';
+            if (filesPane) filesPane.style.display = isSlots ? 'none' : '';
+            if (tabSlotsBtn) {
+                tabSlotsBtn.classList.toggle('outline', isSlots);
+                tabSlotsBtn.classList.toggle('ghost', !isSlots);
+                tabSlotsBtn.setAttribute('aria-selected', isSlots ? 'true' : 'false');
             }
-            {% endfor %}
-        {% endif %}
-        {% endwith %}
-    });
+            if (tabFilesBtn) {
+                tabFilesBtn.classList.toggle('outline', !isSlots);
+                tabFilesBtn.classList.toggle('ghost', isSlots);
+                tabFilesBtn.setAttribute('aria-selected', !isSlots ? 'true' : 'false');
+            }
+        }
+
+        function applyFilters() {
+            const q = (search && search.value ? search.value : '').trim().toLowerCase();
+            const missingOnly = !!(onlyMissing && onlyMissing.checked);
+            document.querySelectorAll('[data-slot-key]').forEach((card) => {
+                const key = (card.getAttribute('data-slot-key') || '').toLowerCase();
+                const present = card.getAttribute('data-slot-present') === '1';
+                const matches = !q || key.includes(q);
+                const okMissing = !missingOnly || !present;
+                card.style.display = (matches && okMissing) ? '' : 'none';
+            });
+        }
+
+        if (tabSlotsBtn) tabSlotsBtn.addEventListener('click', () => setTab('slots'));
+        if (tabFilesBtn) tabFilesBtn.addEventListener('click', () => setTab('files'));
+
+        if (search) search.addEventListener('input', applyFilters);
+        if (onlyMissing) onlyMissing.addEventListener('change', applyFilters);
+
+        setTab('slots');
+        applyFilters();
+    })();
     </script>
 </body>
 </html>

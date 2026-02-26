@@ -254,7 +254,7 @@
                         ← К админ панели
                     </a>
                     <h1 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                        <img src="{{ url_for('static', filename='icons/icons8-settings-100.png') }}" class="ui-icon ui-icon--md"> 
+                        {{ ui_icon('action.settings', 'md', decorative=true) }}
                         Управление правами доступа
                     </h1>
                 </div>
@@ -325,7 +325,7 @@
 
                 <div class="hero-actions" style="margin-top: 2rem; border-top: 1px solid var(--stroke-1); padding-top: 1.5rem; justify-content: center; display: none;" id="saveActions">
                     <button type="submit" class="neo-button accent" style="min-width: 250px;">
-                        <img src="{{ url_for('static', filename='icons/icons8-галочка-100.png') }}" class="ui-icon ui-icon--sm">
+                        {{ ui_icon('action.check', 'sm', decorative=true) }}
                         Сохранить изменения
                     </button>
                 </div>
