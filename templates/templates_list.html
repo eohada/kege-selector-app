@@ -12,7 +12,7 @@
     {% include '_ux_enhancements.html' %}
 </head>
 <body>
-    <div class="app-shell">
+    <div class="app-shell app-shell--main">
         {% set active_page = 'templates' %}
         {% include '_primary_nav.html' %}
         {% set can_manage_templates = (current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or has_permission(current_user, 'task.manage'))) %}

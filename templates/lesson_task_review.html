@@ -96,7 +96,7 @@
     </style>
 </head>
 <body>
-    <div class="app-shell">
+    <div class="app-shell app-shell--main">
         {% include '_primary_nav.html' %}
 
         {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}

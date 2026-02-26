@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-02-26",
+  "updatedAt": "2026-02-27",
   "slots": [
     {
       "key": "nav.students",
@@ -225,6 +225,22 @@
       "recommendedSize": "1920x1080",
       "targetPath": "static/documents/ai2.jpg",
       "usedIn": ["templates/landing.html"]
+    },
+    {
+      "key": "nav.sidebar.toggle",
+      "type": "icon",
+      "context": "nav",
+      "recommendedSize": "24x24",
+      "usedIn": ["templates/_primary_nav.html"],
+      "description": "Иконка сворачивания/разворачивания сайдбара (desktop)"
+    },
+    {
+      "key": "action.quick",
+      "type": "icon",
+      "context": "action",
+      "recommendedSize": "20x20",
+      "usedIn": ["templates/_primary_nav.html"],
+      "description": "Быстрое действие в topbar/sidebar (зарезервировано)"
     }
   ]
 }

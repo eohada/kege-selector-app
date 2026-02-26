@@ -1,6 +1,6 @@
 {% from '_ui_icon.html' import ui_icon %}
 
-<header class="nav-primary">
+<header class="nav-primary app-topbar">
     <div class="nav-brand">
         {% if current_user and current_user.is_authenticated %}
         <div class="nav-user-actions">
@@ -57,193 +57,16 @@
 
     {% include '_mobile_menu.html' %}
 
-    <nav class="nav-links">
-        {% if current_user.is_parent() %}
-        
-        {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
-        <a href="{{ url_for('parents.parent_dashboard') }}" class="nav-link {% if active_page == 'parent_dashboard' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.students', 'md', title='Мои дети', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">Мои дети</span>
-            </span>
-        </a>
-        {% if sub_allow_lessons and (has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule')) %}
-        <a href="{{ url_for('schedule.schedule') }}" class="nav-link {% if active_page == 'schedule' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.schedule', 'md', title='Расписание', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">Расписание</span>
-            </span>
-        </a>
-        {% endif %}
-        <a href="{{ url_for('main.faq') }}" class="nav-link {% if active_page == 'faq' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.help', 'md', title='FAQ', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">FAQ</span>
-            </span>
-        </a>
-        {% elif current_user.is_student() %}
-        
-        {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
-        {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
-        {% if current_student %}
-        {% if sub_allow_lessons %}
-        <a href="{{ url_for('students.student_profile', student_id=current_student.student_id) }}" class="nav-link {% if active_page == 'student_profile' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.students', 'md', title='Комната ученика', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">Комната ученика</span>
-            </span>
-        </a>
-        <a href="{{ url_for('assignments.submissions_list') }}" class="nav-link {% if active_page == 'assignments' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.assignments', 'md', title='Задания', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">Задания</span>
-            </span>
-        </a>
-        {% endif %}
-        <a href="{{ url_for('students.student_analytics', student_id=current_student.student_id) if current_student else '#' }}" class="nav-link {% if active_page == 'student_analytics' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.stats', 'md', title='Статистика', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">Статистика</span>
-            </span>
-        </a>
-        {% if sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
-        <a href="{{ url_for('trainer.trainer_embed') }}" class="nav-link {% if active_page == 'trainer' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.trainer', 'md', title='Тренажёр', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">Тренажёр</span>
-            </span>
-        </a>
-        {% endif %}
-        {% if sub_allow_lessons and (has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule')) %}
-        <a href="{{ url_for('schedule.schedule') }}" class="nav-link {% if active_page == 'schedule' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.schedule', 'md', title='Расписание', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">Расписание</span>
-            </span>
-        </a>
-        {% endif %}
-        <a href="{{ url_for('main.faq') }}" class="nav-link {% if active_page == 'faq' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.help', 'md', title='FAQ', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">FAQ</span>
-            </span>
-        </a>
-        {% endif %}
-        {% else %}
-        
-        <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.students', 'md', title='Ученики', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">Ученики</span>
-            </span>
-        </a>
-
-        <a href="{{ url_for('schedule.schedule') }}" class="nav-link {% if active_page == 'schedule' %}active{% endif %}">
-            <span class="nav-link-content">
-                {{ ui_icon('nav.schedule', 'md', title='Расписание', extra_class='nav-link-icon') }}
-                <span class="nav-link-label">Расписание</span>
-            </span>
-        </a>
-
-        <div class="nav-dropdown">
-            <div class="nav-link nav-dropdown-trigger {% if active_page in ['assignments', 'review_queue', 'reminders'] %}active{% endif %}">
-                <span class="nav-link-content">
-                    {{ ui_icon('nav.assignments', 'md', title='Учёба', extra_class='nav-link-icon') }}
-                    <span class="nav-link-label">Учёба</span>
-                </span>
-            </div>
-            <div class="nav-dropdown-content">
-                {% if current_user.is_authenticated and has_permission(current_user, 'assignment.view') %}
-                <a href="{{ url_for('assignments.assignments_list') }}" class="dropdown-item {% if active_page == 'assignments' %}active{% endif %}">
-                    {{ ui_icon('nav.assignments', 'md', title='Работы', extra_class='nav-link-icon') }}
-                    <span>Работы</span>
-                </a>
-                {% endif %}
-                {% if current_user.is_authenticated and has_permission(current_user, 'assignment.grade') %}
-                <a href="{{ url_for('lessons.review_queue') }}" class="dropdown-item {% if active_page == 'review_queue' %}active{% endif %}">
-                    {{ ui_icon('action.check', 'md', title='Проверка', extra_class='nav-link-icon') }}
-                    <span>Проверка</span>
-                </a>
-                {% endif %}
-                {% if current_user.is_authenticated and has_permission(current_user, 'trainer.use') %}
-                <a href="{{ url_for('trainer.trainer_embed') }}" class="dropdown-item {% if active_page == 'trainer' %}active{% endif %}">
-                    {{ ui_icon('nav.trainer', 'md', title='Тренажёр', extra_class='nav-link-icon') }}
-                    <span>Тренажёр</span>
-                </a>
-                {% endif %}
-                <a href="{{ url_for('reminders.reminders_list') }}" class="dropdown-item {% if active_page == 'reminders' %}active{% endif %}">
-                    {{ ui_icon('nav.reminders', 'md', title='Напоминания', extra_class='nav-link-icon') }}
-                    <span>Напоминания</span>
-                </a>
-            </div>
-        </div>
-        {% endif %}
-
-        {% if not current_user.is_parent() and not current_user.is_student() %}
-        
-        <div class="nav-dropdown">
-            <div class="nav-link nav-dropdown-trigger {% if active_page in ['generator', 'plans', 'templates', 'groups', 'onboarding', 'rubrics', 'library', 'billing', 'assets'] %}active{% endif %}">
-                <span class="nav-link-content">
-                    {{ ui_icon('nav.generator', 'md', title='Инструменты', extra_class='nav-link-icon') }}
-                    <span class="nav-link-label">Инструменты</span>
-                </span>
-            </div>
-            <div class="nav-dropdown-content">
-                {% if current_user.is_authenticated and has_permission(current_user, 'groups.view') %}
-                <a href="{{ url_for('groups.groups_list') }}" class="dropdown-item {% if active_page == 'groups' %}active{% endif %}">
-                    {{ ui_icon('nav.groups', 'md', title='Группы', extra_class='nav-link-icon') }}
-                    <span>Группы</span>
-                </a>
-                {% endif %}
-                {% if current_user.is_authenticated and has_permission(current_user, 'onboarding.view') %}
-                <a href="{{ url_for('onboarding.invites_list') }}" class="dropdown-item {% if active_page == 'onboarding' %}active{% endif %}">
-                    {{ ui_icon('nav.groups', 'md', title='Приглашения', extra_class='nav-link-icon') }}
-                    <span>Приглашения</span>
-                </a>
-                {% endif %}
-                {% if current_user.is_authenticated and has_permission(current_user, 'rubrics.manage') %}
-                <a href="{{ url_for('rubrics.rubrics_list') }}" class="dropdown-item {% if active_page == 'rubrics' %}active{% endif %}">
-                    {{ ui_icon('nav.assignments', 'md', title='Рубрики', extra_class='nav-link-icon') }}
-                    <span>Рубрики</span>
-                </a>
-                {% endif %}
-                <a href="{{ url_for('kege_generator.kege_generator') }}" class="dropdown-item {% if active_page == 'generator' %}active{% endif %}">
-                    {{ ui_icon('nav.generator', 'md', title='Генератор', extra_class='nav-link-icon') }}
-                    <span>Генератор</span>
-                </a>
-                <a href="{{ url_for('main.update_plans') }}" class="dropdown-item {% if active_page == 'plans' %}active{% endif %}">
-                    {{ ui_icon('nav.plans', 'md', title='Планы', extra_class='nav-link-icon') }}
-                    <span>Планы</span>
-                </a>
-                {% if current_user.is_authenticated and (current_user.is_admin() or current_user.is_creator() or has_permission(current_user, 'task.manage')) %}
-                <a href="{{ url_for('templates.templates_list') }}" class="dropdown-item {% if active_page == 'templates' %}active{% endif %}">
-                    {{ ui_icon('nav.templates', 'md', title='Шаблоны', extra_class='nav-link-icon') }}
-                    <span>Шаблоны</span>
-                </a>
-                {% endif %}
-                {% if current_user.is_authenticated and has_permission(current_user, 'lesson.edit') %}
-                <a href="{{ url_for('library.materials_library') }}" class="dropdown-item {% if active_page == 'library' %}active{% endif %}">
-                    {{ ui_icon('nav.library', 'md', title='Библиотека', extra_class='nav-link-icon') }}
-                    <span>Библиотека</span>
-                </a>
-                {% endif %}
-                {% if current_user.is_authenticated and has_permission(current_user, 'assets.manage') %}
-                <a href="{{ url_for('designer.assets_manager') }}" class="dropdown-item {% if active_page == 'assets' %}active{% endif %}">
-                    {{ ui_icon('nav.assets', 'md', title='Ассеты', extra_class='nav-link-icon') }}
-                    <span>Ассеты</span>
-                </a>
-                {% endif %}
-                {% if current_user.is_authenticated and has_permission(current_user, 'billing.manage') %}
-                <a href="{{ url_for('billing.billing_plans') }}" class="dropdown-item {% if active_page == 'billing' %}active{% endif %}">
-                    {{ ui_icon('nav.billing', 'md', title='Тарифы/подписки', extra_class='nav-link-icon') }}
-                    <span>Тарифы/подписки</span>
-                </a>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
+    <nav class="nav-links nav-links--header" aria-label="Основная навигация">
+        {% include '_nav_links_body.html' %}
     </nav>
 </header>
+
+<aside class="app-sidebar" aria-label="Боковая навигация">
+    <nav class="nav-links">
+        {% include '_nav_links_body.html' %}
+    </nav>
+</aside>
 
 <script src="{{ url_for('static', filename='theme-switcher.js') }}"></script>
 
