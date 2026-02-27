@@ -203,6 +203,7 @@
                             </span></span>
                             <span class="pill">📅 Дедлайн: <span class="meta-strong">{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</span></span>
                             <span class="pill">🧩 Задач: <span class="meta-strong">{{ assignment.tasks|length }}</span></span>
+                            <span class="pill">🔄 Попыток: <span class="meta-strong">{{ assignment.max_attempts_default or 1 }}</span></span>
                             <span class="pill">👥 Учеников: <span class="meta-strong">{{ counts.total if counts is defined else (submissions|length) }}</span></span>
                         </div>
                     </div>

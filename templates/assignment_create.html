@@ -217,9 +217,21 @@
                                 <input id="ca_deadline" class="neo-input" type="datetime-local" name="deadline" required>
                             </div>
                             <div class="neo-field">
+                                <label class="neo-label" for="ca_hard_deadline">Жёсткий дедлайн</label>
+                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.35rem;">
+                                    <input type="checkbox" id="ca_hard_deadline" name="hard_deadline" value="1">
+                                    <span style="color: var(--text-muted); font-size: 0.9em;">Запретить сдачу после дедлайна</span>
+                                </label>
+                            </div>
+                            <div class="neo-field">
                                 <label class="neo-label" for="ca_time_limit">Время выполнения (минут)</label>
                                 <input id="ca_time_limit" class="neo-input" type="number" name="time_limit_minutes" min="5" max="480" placeholder="Например: 90 (для 1,5 часов)" title="Минимум 5, максимум 480 минут (8 часов)">
                                 <small style="display: block; margin-top: 0.35rem; color: var(--text-muted); font-size: 0.8em;">Опционально. После начала выполнения у ученика запустится таймер обратного отсчета</small>
+                            </div>
+                            <div class="neo-field">
+                                <label class="neo-label" for="ca_max_attempts">Попыток сдачи (по умолчанию)</label>
+                                <input id="ca_max_attempts" class="neo-input" type="number" name="max_attempts_default" min="1" max="20" value="1" title="Сколько раз ученик может сдать работу (и по заданиям можно задать отдельно в карточке работы)">
+                                <small style="display: block; margin-top: 0.35rem; color: var(--text-muted); font-size: 0.8em;">По умолчанию 1. Для отдельных заданий можно задать в карточке работы после создания.</small>
                             </div>
                         </div>
 
@@ -338,11 +350,16 @@
                 const deadlineDate = new Date(deadlineLocal);
                 if (!Number.isFinite(deadlineDate.getTime())) { window.toast?.error?.('Некорректный дедлайн'); if (btn) { btn.disabled = false; btn.textContent = 'Создать работу'; } return; }
 
+                const maxAttemptsEl = document.getElementById('ca_max_attempts');
+                const maxAttempts = maxAttemptsEl ? Math.max(1, Math.min(20, parseInt(maxAttemptsEl.value, 10) || 1)) : 1;
+                const hardDeadline = !!document.getElementById('ca_hard_deadline')?.checked;
+
                 const payload = {
                     title,
                     type,
                     deadline: deadlineDate.toISOString(),
-                    hard_deadline: false,
+                    hard_deadline: hardDeadline,
+                    max_attempts_default: maxAttempts,
                     time_limit_minutes: timeLimitMinutes,
                     description: '',
                     tasks: taskIds.slice(0, 500).map((taskId, idx) => ({ task_id: taskId, max_score: 1, order: idx })),

@@ -441,9 +441,17 @@ def distribute_assignment():
         deadline_str = data.get('deadline')
         hard_deadline = data.get('hard_deadline', False)
         time_limit_minutes = data.get('time_limit_minutes')
+        max_attempts_default = data.get('max_attempts_default')
+        if max_attempts_default is not None:
+            try:
+                max_attempts_default = max(1, int(max_attempts_default))
+            except (TypeError, ValueError):
+                max_attempts_default = 1
+        else:
+            max_attempts_default = 1
         description = data.get('description', '').strip()
         lesson_id = data.get('lesson_id')
-        tasks_data = data.get('tasks', [])  # [{"task_id": 123, "max_score": 1, "order": 0}, ...]
+        tasks_data = data.get('tasks', [])  # [{"task_id": 123, "max_score": 1, "order": 0, "max_attempts": null}, ...]
         recipient_ids = data.get('recipientIds', [])  # Список student_id
         group_id = data.get('groupId')  # "all" или конкретная группа
         
@@ -488,6 +496,7 @@ def distribute_assignment():
             deadline=deadline,
             hard_deadline=hard_deadline,
             time_limit_minutes=time_limit_minutes,
+            max_attempts_default=max_attempts_default,
             created_by_id=current_user.id,
             lesson_id=lesson_id,
             is_active=True
@@ -500,6 +509,12 @@ def distribute_assignment():
             max_score = task_data.get('max_score', 1)
             order_index = task_data.get('order', idx)
             requires_manual = task_data.get('requires_manual_grading', False)
+            task_max_attempts = task_data.get('max_attempts')
+            if task_max_attempts is not None:
+                try:
+                    task_max_attempts = max(1, int(task_max_attempts))
+                except (TypeError, ValueError):
+                    task_max_attempts = None
             
             if not task_id:
                 continue
@@ -518,6 +533,7 @@ def distribute_assignment():
                 task_id=task_id,
                 order_index=order_index,
                 max_score=max_score,
+                max_attempts=task_max_attempts,
                 requires_manual_grading=requires_manual_grading
             )
             db.session.add(assignment_task)
@@ -1230,6 +1246,7 @@ def assignment_duplicate(assignment_id: int):
         deadline=new_deadline,
         hard_deadline=bool(src.hard_deadline),
         time_limit_minutes=src.time_limit_minutes,
+        max_attempts_default=getattr(src, 'max_attempts_default', None),
         created_by_id=current_user.id,
         lesson_id=None,
         rubric_template_id=src.rubric_template_id,
@@ -1244,6 +1261,7 @@ def assignment_duplicate(assignment_id: int):
             task_id=t.task_id,
             order_index=t.order_index,
             max_score=t.max_score,
+            max_attempts=getattr(t, 'max_attempts', None),
             requires_manual_grading=bool(t.requires_manual_grading),
         ))
 
@@ -1462,6 +1480,7 @@ def submission_view(submission_id):
             joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
             joinedload(Submission.assignment).joinedload(Assignment.created_by),
             joinedload(Submission.answers),
+            joinedload(Submission.attempts),
             joinedload(Submission.comments).joinedload(SubmissionComment.author)
         ).get_or_404(submission_id)
     except Exception as e:
@@ -1494,6 +1513,12 @@ def submission_view(submission_id):
             is_deadline_passed = False
         can_submit = not (is_deadline_passed and assignment.hard_deadline)
         
+        attempts_used = len(submission.attempts or [])
+        effective_max_attempts = assignment.get_effective_max_attempts()
+        if attempts_used >= effective_max_attempts:
+            can_submit = False
+        attempts_left = max(0, effective_max_attempts - attempts_used)
+        
         tasks_data = []
         for assignment_task in sorted(assignment.tasks, key=lambda t: t.order_index):
             answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
@@ -1508,7 +1533,10 @@ def submission_view(submission_id):
                              assignment=assignment,
                              tasks_data=tasks_data,
                              is_deadline_passed=is_deadline_passed,
-                             can_submit=can_submit)
+                             can_submit=can_submit,
+                             attempts_used=attempts_used,
+                             effective_max_attempts=effective_max_attempts,
+                             attempts_left=attempts_left)
     except Exception as e:
         logger.error(f"Error processing submission_view for submission {submission_id}: {e}", exc_info=True)
         flash('Ошибка при обработке данных работы', 'danger')
@@ -1705,12 +1733,17 @@ def submission_submit(submission_id):
         if not student or submission.student_id != student.student_id:
             return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
         
-        if submission.status not in ['IN_PROGRESS', 'ASSIGNED']:
+        if submission.status not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
             return jsonify({'success': False, 'error': 'Работа уже сдана'}), 400
         
         assignment = submission.assignment
         now = moscow_now()
         deadline = _ensure_aware_datetime(assignment.deadline)
+        
+        attempts_used = len(submission.attempts or [])
+        effective_max = assignment.get_effective_max_attempts()
+        if attempts_used >= effective_max:
+            return jsonify({'success': False, 'error': f'Исчерпан лимит попыток ({attempts_used}/{effective_max})'}), 403
         
         is_late = deadline and now > deadline
         if is_late and assignment.hard_deadline:

@@ -1405,6 +1405,7 @@ class Assignment(db.Model):
     deadline = db.Column(db.DateTime, nullable=False)  # Дедлайн сдачи
     hard_deadline = db.Column(db.Boolean, default=False)  # Если True - нельзя сдать после дедлайна
     time_limit_minutes = db.Column(db.Integer, nullable=True)  # Ограничение времени выполнения (для exam/test)
+    max_attempts_default = db.Column(db.Integer, nullable=True)  # Макс. попыток сдачи по умолчанию (1 если NULL)
     
     created_by_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)  # Учитель, создавший работу
     lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=True)  # Связь с уроком (если есть)
@@ -1420,6 +1421,17 @@ class Assignment(db.Model):
     tasks = db.relationship('AssignmentTask', back_populates='assignment', lazy=True, cascade='all, delete-orphan')
     submissions = db.relationship('Submission', back_populates='assignment', lazy=True, cascade='all, delete-orphan')
     rubric_template = db.relationship('RubricTemplate', foreign_keys=[rubric_template_id])
+    
+    def get_effective_max_attempts(self) -> int:
+        """Учитывает max_attempts_default работы и переопределение по заданиям (минимум по всем задачам)."""
+        default = max(1, int(self.max_attempts_default or 1))
+        if not self.tasks:
+            return default
+        effective = default
+        for t in self.tasks:
+            task_max = int(t.max_attempts) if getattr(t, 'max_attempts', None) is not None else default
+            effective = min(effective, max(1, task_max))
+        return max(1, effective)
     
     def __repr__(self):
         return f'<Assignment {self.assignment_id}: {self.title} ({self.assignment_type})>'
@@ -1439,6 +1451,7 @@ class AssignmentTask(db.Model):
     order_index = db.Column(db.Integer, nullable=False, default=0)  # Порядок отображения
     
     max_score = db.Column(db.Integer, nullable=False, default=1)  # Максимальный балл за задачу
+    max_attempts = db.Column(db.Integer, nullable=True)  # Переопределение лимита попыток для этого задания (NULL = из Assignment)
     
     requires_manual_grading = db.Column(db.Boolean, default=False, nullable=False)  # Требует ли ручной проверки
     

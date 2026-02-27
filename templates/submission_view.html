@@ -193,6 +193,10 @@
                     <span class="info-label">Дедлайн</span>
                     <span class="info-value">{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</span>
                 </div>
+                <div class="info-item">
+                    <span class="info-label">Попытки</span>
+                    <span class="info-value">{{ attempts_used }} / {{ effective_max_attempts }}{% if attempts_left is defined and attempts_left >= 0 and attempts_left < effective_max_attempts %} <span style="color: var(--text-muted); font-size: 0.9em;">(осталось {{ attempts_left }})</span>{% endif %}</span>
+                </div>
                 {% if submission.started_at %}
                 <div class="info-item">
                     <span class="info-label">Начато</span>
@@ -220,7 +224,7 @@
             {% endif %}
         </div>
         
-        {% if submission.status in ['ASSIGNED', 'IN_PROGRESS'] %}
+        {% if submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %}
         <form id="submission-form">
             {% for task_item in tasks_data %}
             <div class="task-card" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
@@ -231,7 +235,7 @@
                     </div>
                 </div>
                 
-                {% if submission.status == 'ASSIGNED' %}
+                {% if submission.status == 'ASSIGNED' and not submission.started_at %}
                 <div class="task-content" style="color: var(--text-muted); font-style: italic;">
                     Условия задания будут доступны после нажатия «Начать выполнение». Пока видно только номер и краткая информация.
                 </div>
@@ -257,7 +261,7 @@
             </div>
             {% endfor %}
             
-            {% if submission.status == 'ASSIGNED' %}
+                    {% if submission.status == 'ASSIGNED' %}
             <div style="text-align: center; margin: 2.5rem 0;">
                 <button type="button" id="start-btn" class="neo-button accent" data-prevent-double-submit="true" style="padding: 1.2rem 2.5rem; font-size: 1.05em; font-weight: 700; letter-spacing: 0.5px;">
                     ▶ Начать выполнение
@@ -265,7 +269,7 @@
             </div>
             {% endif %}
             
-            {% if submission.status == 'IN_PROGRESS' and can_submit %}
+            {% if submission.status in ['IN_PROGRESS', 'RETURNED'] and can_submit %}
             <div class="submit-section" style="display: flex; justify-content: space-between; align-items: center; gap: 2rem; margin: 2.5rem 0; padding: 1.5rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg);">
                 <div style="display: flex; align-items: center; gap: 1.5rem;">
                     {% if assignment.time_limit_minutes and submission.started_at %}

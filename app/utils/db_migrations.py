@@ -1192,6 +1192,23 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add rubric_template_id to {assignments_table}: {e}")
                             db.session.rollback()
+                    if 'max_attempts_default' not in cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{assignments_table}" ADD COLUMN max_attempts_default INTEGER'))
+                            logger.info(f"Added max_attempts_default to {assignments_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add max_attempts_default to {assignments_table}: {e}")
+                            db.session.rollback()
+                assignment_tasks_table = _resolve_table_name(table_names, 'AssignmentTasks')
+                if assignment_tasks_table:
+                    at_cols = {c['name'] for c in inspector.get_columns(assignment_tasks_table)}
+                    if 'max_attempts' not in at_cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{assignment_tasks_table}" ADD COLUMN max_attempts INTEGER'))
+                            logger.info(f"Added max_attempts to {assignment_tasks_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add max_attempts to {assignment_tasks_table}: {e}")
+                            db.session.rollback()
                 if submissions_table:
                     cols = {c['name'] for c in inspector.get_columns(submissions_table)}
                     if 'rubric_template_id' not in cols:
