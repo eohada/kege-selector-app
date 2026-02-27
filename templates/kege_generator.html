@@ -358,7 +358,8 @@
             <section class="glass-panel gen-deck" id="genDeck"
                      data-lesson-id="{{ lesson_id or '' }}"
                      data-assignment-type="{{ assignment_type }}"
-                     data-template-id="{{ template_id or '' }}">
+                     data-template-id="{{ template_id or '' }}"
+                     data-recipient-ids="{{ (generator_recipient_ids or []) | tojson }}">
                 <div class="gen-empty" id="genEmpty">
                     <div style="display:flex; gap: 0.75rem; align-items:center; margin-bottom: 0.75rem;">
                         {{ ui_icon('nav.generator', 'md', decorative=true, extra_class='ui-icon--only') }}
@@ -478,10 +479,17 @@
             let acceptedInSession = [];
 
             function getCtx() {
+                let recipientIds = [];
+                try {
+                    const raw = deck.dataset.recipientIds;
+                    if (raw) recipientIds = JSON.parse(raw);
+                    if (!Array.isArray(recipientIds)) recipientIds = [];
+                } catch (e) {}
                 return {
                     lesson_id: deck.dataset.lessonId || null,
                     assignment_type: deck.dataset.assignmentType || 'homework',
                     template_id: deck.dataset.templateId || null,
+                    recipient_ids: recipientIds,
                 };
             }
 
@@ -602,13 +610,15 @@
                 try {
                     const task_type = taskTypeSelect.value;
                     const ctx = getCtx();
-                    const data = await postJSON('/kege-generator/stream/start', {
+                    const payload = {
                         task_type,
                         lesson_id: ctx.lesson_id,
                         assignment_type: ctx.assignment_type,
                         template_id: ctx.template_id,
                         use_skipped: !!useSkipped.checked
-                    });
+                    };
+                    if (ctx.recipient_ids && ctx.recipient_ids.length) payload.recipient_ids = ctx.recipient_ids;
+                    const data = await postJSON('/kege-generator/stream/start', payload);
                     if (data.done) {
                         renderTask(null);
                         if (window.toast) window.toast.warning('Задания закончились. Попробуй включить пропущенные или сбросить историю.');
@@ -630,7 +640,7 @@
                 setBusy(true);
                 try {
                     const ctx = getCtx();
-                    const data = await postJSON('/kege-generator/stream/act', {
+                    const actPayload = {
                         action,
                         task_id: currentTask.task_id,
                         task_type: currentTask.task_number,
@@ -639,7 +649,9 @@
                         template_id: ctx.template_id,
                         use_skipped: !!useSkipped.checked,
                         ...(extra || {})
-                    });
+                    };
+                    if (ctx.recipient_ids && ctx.recipient_ids.length) actPayload.recipient_ids = ctx.recipient_ids;
+                    const data = await postJSON('/kege-generator/stream/act', actPayload);
                     if (data.done) {
                         animateSwap(null, data.message || 'Готово.');
                         if (window.toast) window.toast.info('Задания закончились.');
@@ -661,7 +673,10 @@
 
             document.getElementById('genCreateWorkBtn')?.addEventListener('click', function() {
                 const ctx = getCtx();
-                const base = '/assignments/create?assignment_type=' + encodeURIComponent(ctx.assignment_type || 'homework');
+                let base = '/assignments/create?assignment_type=' + encodeURIComponent(ctx.assignment_type || 'homework');
+                if (ctx.recipient_ids && ctx.recipient_ids.length) {
+                    base += '&recipient_ids=' + ctx.recipient_ids.join(',');
+                }
                 const url = acceptedInSession.length
                     ? base + '&source=generator&task_ids=' + acceptedInSession.join(',')
                     : base + '&source=manual';

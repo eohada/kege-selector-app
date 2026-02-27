@@ -1,5 +1,32 @@
 from .db_models import db, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, moscow_now, Lesson, LessonTask, StudentTaskSeen
-from sqlalchemy import text  # Используем text() для сырого SQL (PostgreSQL setval/pg_get_serial_sequence и выборки) 
+from sqlalchemy import text
+
+# Импорт для подзапроса «уже в работах у учеников» (избегаем циклического импорта через text/SQL)
+def get_task_ids_in_assignments_for_students(student_ids):
+    """
+    Возвращает множество task_id, которые уже встречаются в работах (Assignments),
+    назначенных хотя бы одному из переданных учеников.
+    Используется для фильтрации генератора и подсказок при ручном/шаблонном выборе.
+    """
+    if not student_ids:
+        return set()
+    try:
+        ids = [int(x) for x in student_ids if x is not None]
+    except (TypeError, ValueError):
+        return set()
+    if not ids:
+        return set()
+    q = text("""
+        SELECT DISTINCT AT.task_id
+        FROM "AssignmentTasks" AS AT
+        JOIN "Submissions" AS S ON S.assignment_id = AT.assignment_id
+        WHERE S.student_id = ANY(:student_ids)
+    """)
+    try:
+        rows = db.session.execute(q, {'student_ids': ids}).fetchall()
+        return {r[0] for r in rows}
+    except Exception:
+        return set() 
 
 def _looks_like_pg_sequence_problem(error):  # Определяем по тексту ошибки, что это сбитая sequence в PostgreSQL
     msg = str(error)  # Приводим исключение к строке для простого анализа
@@ -24,8 +51,21 @@ def _fix_pg_serial_sequence(table_name, pk_column):  # Поднимаем sequen
         db.session.rollback()  # Откатываем возможные изменения
         return False  # Сообщаем, что починить не удалось
 
-def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None):
+def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None, recipient_ids=None):
+    """recipient_ids: исключать задания, уже в работах у этих учеников."""
+    assign_excl = ""
+    params_extra = {}
+    if recipient_ids:
+        try:
+            rids = [int(x) for x in recipient_ids if x is not None]
+            if rids:
+                params_extra['recipient_ids'] = rids
+                assign_excl = ' AND T.task_id NOT IN (SELECT AT.task_id FROM "AssignmentTasks" AT JOIN "Submissions" S ON S.assignment_id = AT.assignment_id WHERE S.student_id = ANY(:recipient_ids))'
+        except (TypeError, ValueError):
+            pass
+
     if student_id:
+        params = {'task_type': task_type, 'limit_count': limit_count, 'student_id': student_id, **params_extra}
         if use_skipped:
             sql_query = text("""
                 SELECT T.task_id
@@ -44,6 +84,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
                         JOIN "Lessons" AS L ON LT.lesson_id = L.lesson_id
                         WHERE L.student_id = :student_id
                     )
+                    """ + assign_excl + """
                 ORDER BY RANDOM()
                 LIMIT :limit_count
             """)
@@ -66,11 +107,13 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
                         JOIN "Lessons" AS L ON LT.lesson_id = L.lesson_id
                         WHERE L.student_id = :student_id
                     )
+                    """ + assign_excl + """
                 ORDER BY RANDOM()
                 LIMIT :limit_count
             """)
-        result = db.session.execute(sql_query, {'task_type': task_type, 'limit_count': limit_count, 'student_id': student_id})
+        result = db.session.execute(sql_query, params)
     else:
+        params = {'task_type': task_type, 'limit_count': limit_count, **params_extra}
         if use_skipped:
             sql_query = text("""
                 SELECT T.task_id
@@ -78,6 +121,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
                 WHERE T.task_number = :task_type
                     AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                     AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
+                    """ + assign_excl + """
                 ORDER BY RANDOM()
                 LIMIT :limit_count
             """)
@@ -89,10 +133,11 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
                     AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                     AND T.task_id NOT IN (SELECT task_fk FROM "SkippedTasks")
                     AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
+                    """ + assign_excl + """
                 ORDER BY RANDOM()
                 LIMIT :limit_count
             """)
-        result = db.session.execute(sql_query, {'task_type': task_type, 'limit_count': limit_count})
+        result = db.session.execute(sql_query, params)
 
     result_rows = list(result)
     if not result_rows:
@@ -103,12 +148,10 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None)
     tasks = [tasks_dict[tid] for tid in task_ids if tid in tasks_dict]
     return tasks
 
-def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_tag=None):
+def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_tag=None, recipient_ids=None):
     """
     Возвращает одно следующее уникальное задание по условиям (или None).
-
-    Важно: состояние между шагами хранится не в cookie-session, а в БД через record_usage/record_skipped/record_blacklist.
-    Для lesson-режима поддерживается "scoped skip" через session_tag (lesson_tag), чтобы пропуски не загрязняли общий skipped.
+    recipient_ids: список student_id — исключать задания, уже входящие в работы, назначенные этим ученикам.
     """
     params = {'task_type': task_type}
 
@@ -120,6 +163,16 @@ def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_t
         else:
             skip_where = 'AND T.task_id NOT IN (SELECT task_fk FROM "SkippedTasks" WHERE session_tag IS NULL)'
 
+    assign_excl = ""
+    if recipient_ids:
+        try:
+            rids = [int(x) for x in recipient_ids if x is not None]
+            if rids:
+                params['recipient_ids'] = rids
+                assign_excl = ' AND T.task_id NOT IN (SELECT AT.task_id FROM "AssignmentTasks" AT JOIN "Submissions" S ON S.assignment_id = AT.assignment_id WHERE S.student_id = ANY(:recipient_ids))'
+        except (TypeError, ValueError):
+            pass
+
     if student_id:
         params['student_id'] = student_id
         sql_query = text(f"""
@@ -129,6 +182,7 @@ def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_t
                 AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                 AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
                 {skip_where}
+                {assign_excl}
                 AND T.task_id NOT IN (
                     SELECT STS.task_id
                     FROM "StudentTaskSeen" AS STS
@@ -151,6 +205,7 @@ def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_t
                 AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                 AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
                 {skip_where}
+                {assign_excl}
             ORDER BY RANDOM()
             LIMIT 1
         """)

@@ -280,6 +280,14 @@ def kege_generator(lesson_id=None):
                 }
             )
     
+    recipient_ids = []
+    raw_sids = request.args.get('student_ids') or request.args.get('recipient_ids')
+    if raw_sids:
+        try:
+            recipient_ids = [int(x.strip()) for x in str(raw_sids).split(',') if x.strip() and x.strip().isdigit()]
+        except (TypeError, ValueError):
+            recipient_ids = []
+
     return render_template('kege_generator.html',
                            selection_form=selection_form,
                            reset_form=reset_form,
@@ -290,7 +298,8 @@ def kege_generator(lesson_id=None):
                            assignment_type=assignment_type,
                            template_id=template_id,
                            seed_task=seed_task,
-                           seed_task_payload=_task_to_payload(seed_task) if seed_task else None)
+                           seed_task_payload=_task_to_payload(seed_task) if seed_task else None,
+                           generator_recipient_ids=recipient_ids)
 
 
 def _lesson_tag(lesson_id: int, assignment_type: str) -> str:
@@ -409,8 +418,16 @@ def generator_stream_start():
         lesson = Lesson.query.options(db.joinedload(Lesson.student)).get(lesson_id)
         student_id = lesson.student_id if lesson else None
 
+    recipient_ids = None
+    raw_rids = data.get('recipient_ids') or data.get('recipientIds')
+    if isinstance(raw_rids, list):
+        try:
+            recipient_ids = [int(x) for x in raw_rids if x is not None]
+        except (TypeError, ValueError):
+            recipient_ids = None
+
     tag = _lesson_tag(lesson_id, assignment_type) if lesson_id else None
-    task = get_next_unique_task(task_type, use_skipped=use_skipped, student_id=student_id, lesson_tag=tag)
+    task = get_next_unique_task(task_type, use_skipped=use_skipped, student_id=student_id, lesson_tag=tag, recipient_ids=recipient_ids)
 
     audit_logger.log(
         action='generator_stream_start',
@@ -592,8 +609,16 @@ def generator_stream_act():
         lesson = Lesson.query.options(db.joinedload(Lesson.student)).get(lesson_id)
         student_id = lesson.student_id if lesson else None
 
+    recipient_ids = None
+    raw_rids = data.get('recipient_ids') or data.get('recipientIds')
+    if isinstance(raw_rids, list):
+        try:
+            recipient_ids = [int(x) for x in raw_rids if x is not None]
+        except (TypeError, ValueError):
+            recipient_ids = None
+
     tag = _lesson_tag(lesson_id, assignment_type) if lesson_id else None
-    next_task = get_next_unique_task(task_type, use_skipped=use_skipped, student_id=student_id, lesson_tag=tag)
+    next_task = get_next_unique_task(task_type, use_skipped=use_skipped, student_id=student_id, lesson_tag=tag, recipient_ids=recipient_ids)
 
     return jsonify({
         'success': True,

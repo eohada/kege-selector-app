@@ -106,35 +106,37 @@
                 <div class="hero-eyebrow">Учёба</div>
                 <h1 class="title">Создать работу</h1>
                 <div class="subtitle">
-                    Один экран для создания работы: выбери источник заданий → проверь список → выбери учеников → создай.
+                    Выбери учеников → подтверди выбор → выбери источник заданий (вручную, шаблон или вход в генератор) → настрой и создай.
                 </div>
                 <div class="row" style="margin-top: .9rem;">
                     <span class="pill">Источник: <span class="mono">{{ source_label }}</span></span>
                     <span class="pill">Тип: <span class="mono">{{ assignment_type }}</span></span>
                     <span class="pill">Заданий: <span class="mono">{{ (task_ids|length) if task_ids is defined else 0 }}</span></span>
+                    {% if default_recipient_ids %}<span class="pill">Учеников: <span class="mono">{{ default_recipient_ids|length }}</span></span>{% endif %}
                 </div>
             </section>
 
             <section class="panel">
                 <h3>Источник заданий</h3>
+                <p class="hint" style="margin-bottom: .75rem;">Сначала выбери учеников в блоке «Параметры работы» ниже и нажми «Подтвердить выбор» — тогда «Вход в генератор» не будет показывать уже выданные им задания; для вручную и шаблона тоже учитываются выданные.</p>
                 <div class="source-cards">
-                    <a class="source-card {% if source=='manual' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='manual', assignment_type=assignment_type) }}">
+                    <a class="source-card {% if source=='manual' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='manual', assignment_type=assignment_type) }}{% if default_recipient_ids %}&recipient_ids={{ default_recipient_ids | join(',') }}{% endif %}" id="cardManual">
                         <div class="sc-title">Вручную</div>
-                        <div class="sc-sub">Вставить список task_id через запятую или пробел — и создать работу.</div>
+                        <div class="sc-sub">Вставить список task_id через запятую или пробел. Уже выданные выбранным ученикам можно подсветить.</div>
                     </a>
-                    <a class="source-card {% if source=='template' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='template', assignment_type=assignment_type) }}">
+                    <a class="source-card {% if source=='template' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='template', assignment_type=assignment_type) }}{% if default_recipient_ids %}&recipient_ids={{ default_recipient_ids | join(',') }}{% endif %}" id="cardTemplate">
                         <div class="sc-title">Шаблон</div>
-                        <div class="sc-sub">Взять задания из готового шаблона.</div>
+                        <div class="sc-sub">Взять задания из готового шаблона. Учитываются уже выданные выбранным ученикам.</div>
                     </a>
                     {% if lesson_id %}
-                    <a class="source-card {% if source=='lesson' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson_id, assignment_type=assignment_type) }}">
+                    <a class="source-card {% if source=='lesson' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson_id, assignment_type=assignment_type) }}{% if default_recipient_ids %}&recipient_ids={{ default_recipient_ids | join(',') }}{% endif %}">
                         <div class="sc-title">Урок</div>
                         <div class="sc-sub">Задания из текущего урока (для этого ученика).</div>
                     </a>
                     {% endif %}
-                    <a class="source-card {% if source=='accepted' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type=assignment_type, task_type=task_type) }}">
-                        <div class="sc-title">Из генератора (буфер)</div>
-                        <div class="sc-sub">Все задания, принятые в генераторе в буфер — если уже набирал там.</div>
+                    <a class="source-card" href="{{ url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}{% if default_recipient_ids %}&student_ids={{ default_recipient_ids | join(',') }}{% endif %}" id="cardGenerator">
+                        <div class="sc-title">Вход в генератор</div>
+                        <div class="sc-sub">Открыть генератор: задания, уже выданные выбранным ученикам, не показываются. Добавляешь задания → «Создать работу» → возвращаешься сюда.</div>
                     </a>
                 </div>
 
@@ -158,7 +160,13 @@
                     <label class="neo-label" for="manualTaskIds">Task IDs</label>
                     <textarea id="manualTaskIds" class="neo-input" style="min-height: 110px;" placeholder="Вставь task_id через запятую/пробел/перенос строки"></textarea>
                     <div class="hint" style="margin-top:.5rem;">Пример: <span class="mono">123, 124 130</span></div>
+                    {% if already_sent_task_ids %}
+                    <div class="hint" style="margin-top:.5rem; color: var(--text-muted);">Уже выдавались выбранным ученикам (task_id): <span class="mono">{{ already_sent_task_ids[:30] | join(', ') }}{% if already_sent_task_ids|length > 30 %}… (всего {{ already_sent_task_ids|length }}){% endif %}</span></div>
+                    {% endif %}
                 </div>
+                {% endif %}
+                {% if source=='template' and already_sent_task_ids %}
+                <div class="hint" style="margin-top:.75rem;">Уже выдавались выбранным ученикам (task_id): <span class="mono">{{ already_sent_task_ids[:25] | join(', ') }}{% if already_sent_task_ids|length > 25 %}… (всего {{ already_sent_task_ids|length }}){% endif %}</span></div>
                 {% endif %}
             </section>
 
@@ -243,9 +251,10 @@
                                     <option value="{{ st.student_id }}" {% if _sel %}selected{% endif %}>{{ st.name }}{% if st.platform_id %} · {{ st.platform_id }}{% endif %}</option>
                                 {% endfor %}
                             </select>
-                            <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top: .6rem;">
+                            <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top: .6rem; align-items: center;">
                                 <button type="button" class="neo-button ghost sm" onclick="selectAllRecipients(true)">Выбрать всех</button>
                                 <button type="button" class="neo-button ghost sm" onclick="selectAllRecipients(false)">Снять выбор</button>
+                                <button type="button" class="neo-button outline sm" id="confirmRecipientsBtn">Подтвердить выбор</button>
                             </div>
                         </div>
 
@@ -301,6 +310,16 @@
             url.searchParams.set('template_id', String(tplId || ''));
             window.location.href = url.toString();
         }
+
+        document.getElementById('confirmRecipientsBtn')?.addEventListener('click', function() {
+            const sel = document.getElementById('ca_recipients');
+            if (!sel) return;
+            const ids = Array.from(sel.selectedOptions).map(o => o.value).filter(Boolean);
+            const url = new URL(window.location.href);
+            if (ids.length) url.searchParams.set('recipient_ids', ids.join(','));
+            else url.searchParams.delete('recipient_ids');
+            window.location.href = url.toString();
+        });
 
         function defaultDeadline() {
             const d = new Date();

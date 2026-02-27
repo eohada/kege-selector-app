@@ -21,7 +21,7 @@ from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 from core.db_models import moscow_now
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents
-from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_unique_tasks, reset_history, reset_skipped
+from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_unique_tasks, get_task_ids_in_assignments_for_students, reset_history, reset_skipped
 import requests
 from flask import Response, stream_with_context, abort
 
@@ -1047,11 +1047,22 @@ def assignment_create():
     template_id = request.args.get('template_id', type=int, default=None)
     lesson_id = request.args.get('lesson_id', type=int, default=None)
     task_ids_param = request.args.get('task_ids', type=str, default=None)
+    recipient_ids_param = request.args.get('recipient_ids', type=str, default=None)
 
     tasks: list[Tasks] = []
     source_label = ''
     source_meta: dict[str, Any] = {}
     default_recipient_ids: list[int] = []
+    if recipient_ids_param:
+        try:
+            default_recipient_ids = [int(x.strip()) for x in recipient_ids_param.split(',') if x.strip() and x.strip().isdigit()]
+            scope = get_user_scope(current_user)
+            if not scope.get('can_see_all'):
+                allowed = get_students_for_tutor(current_user.id) or []
+                allowed_ids = {int(s.student_id) for s in allowed if getattr(s, 'student_id', None)}
+                default_recipient_ids = [x for x in default_recipient_ids if x in allowed_ids]
+        except Exception:
+            default_recipient_ids = []
 
     if source == 'generator' and task_ids_param:
         try:
@@ -1185,6 +1196,10 @@ def assignment_create():
     except Exception:
         task_ids = []
 
+    already_sent_task_ids: list[int] = []
+    if default_recipient_ids:
+        already_sent_task_ids = sorted(get_task_ids_in_assignments_for_students(default_recipient_ids))
+
     return render_template(
         'assignment_create.html',
         active_page='assignments',
@@ -1200,6 +1215,7 @@ def assignment_create():
         task_ids=task_ids,
         recipient_options=recipient_options,
         default_recipient_ids=default_recipient_ids,
+        already_sent_task_ids=already_sent_task_ids,
     )
 
 
