@@ -44,22 +44,22 @@
     --base-font-size: 16px; 
     --rem-base: 16px; 
     
-    --page-bg: #0A0B0E;
-    --page-gradient: radial-gradient(120% 100% at 20% 10%, rgba(31, 123, 255, 0.03), transparent 55%),
+    --page-bg: #06080D;
+    --page-gradient: radial-gradient(120% 100% at 20% 10%, rgba(31, 123, 255, 0.04), transparent 55%),
         radial-gradient(120% 110% at 80% 0%, rgba(0, 255, 213, 0.03), transparent 60%);
-    --surface-1: #16181D;
-    --surface-2: #1A1C22;
-    --surface-3: #1E2026;
-    --surface-card: #16181D;
-    --surface-card-hover: #1C1E24;
+    --surface-1: #0E1015;
+    --surface-2: #12141A;
+    --surface-3: #16181F;
+    --surface-card: #111318;
+    --surface-card-hover: #16181D;
     --surface-card-cta: transparent;
     --overlay-hover: rgba(255, 255, 255, 0.06);
     --overlay-press: rgba(255, 255, 255, 0.10);
     --overlay-card-hover: linear-gradient(135deg, rgba(0, 255, 213, 0.04), rgba(31, 123, 255, 0.04));
     --stroke-1: rgba(255, 255, 255, 0.06);
     --stroke-2: rgba(255, 255, 255, 0.12);
-    --text-primary: rgba(255, 255, 255, 0.92);
-    --text-muted: rgba(255, 255, 255, 0.55);
+    --text-primary: rgba(255, 255, 255, 0.97);
+    --text-muted: rgba(200, 210, 230, 0.62);
     --accent-1: #00E0FF;
     --accent-1-strong: #00B8D4;
     --accent-2: #4a8dff;
@@ -75,13 +75,21 @@
     --radius-lg: 20px;
     --radius-md: 14px;
     --radius-sm: 10px;
-    --shadow-soft: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 16px 40px rgba(0, 0, 0, 0.4);
+    --shadow-soft: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 16px 40px rgba(0, 0, 0, 0.4);
     --shadow-accent: 0 4px 15px rgba(0, 224, 255, 0.2), 0 0 40px rgba(0, 224, 255, 0.1);
-    --shadow-1: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 24px rgba(0, 0, 0, 0.35);
-    --shadow-2: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 4px 16px rgba(0, 0, 0, 0.25);
+    --shadow-1: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-2: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 16px rgba(0, 0, 0, 0.25);
     --focus-ring: 0 0 0 4px rgba(0, 224, 255, 0.2);
     --font-base: 'MonaspaceNeon', 'Courier New', monospace;
     color-scheme: dark;
+}
+
+:root:not([data-theme="light"]) h1,
+:root:not([data-theme="light"]) h2,
+:root:not([data-theme="light"]) h3,
+:root:not([data-theme="light"]) .hero-title,
+:root:not([data-theme="light"]) .profile-info h1 {
+    color: rgba(255, 255, 255, 0.98);
 }
 
 /* Light theme — dim-light (премиум-минимализм, не белый, мягкие тени). */
@@ -495,7 +503,7 @@ body::after {
 }
 .glass-panel {
     background: var(--surface-card);
-    border: 1px solid var(--stroke-1);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: var(--radius-lg);
     padding: 2rem;
     box-shadow: var(--shadow-soft);
@@ -3220,6 +3228,10 @@ body.creator-theme-active .students-grid {
     overflow: hidden;
     position: relative;
     box-shadow: var(--shadow-soft);
+}
+
+:root:not([data-theme="light"]) .profile-card {
+    box-shadow: var(--shadow-soft), 0 0 120px rgba(0, 224, 255, 0.035);
 }
 
 .profile-card::before {
