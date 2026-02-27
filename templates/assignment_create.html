@@ -18,8 +18,81 @@
             background: radial-gradient(900px 420px at 14% 10%, rgba(0, 255, 213, 0.10), transparent 60%),
                         radial-gradient(900px 420px at 85% 20%, rgba(31, 123, 255, 0.10), transparent 55%),
                         var(--surface-1);
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
         }
+        
+        /* Wizard Stepper */
+        .stepper {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            position: relative;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .stepper::before {
+            content: '';
+            position: absolute;
+            top: 24px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--stroke-1);
+            z-index: 1;
+        }
+        .step {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+        }
+        .step-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--surface-2);
+            border: 2px solid var(--stroke-1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+        }
+        .step.active .step-icon {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: #000;
+            box-shadow: 0 0 15px rgba(0, 255, 213, 0.3);
+        }
+        .step.completed .step-icon {
+            background: var(--surface-1);
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+        .step-label {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+        .step.active .step-label { color: var(--text-primary); }
+
+        .wizard-step-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .wizard-step-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
         .title {
             font-size: 2.0rem;
             font-weight: 900;
@@ -28,8 +101,8 @@
         .subtitle { color: var(--text-muted); margin-top: .65rem; line-height: 1.55; max-width: 980px; }
         .grid {
             display: grid;
-            grid-template-columns: 1.05fr 0.95fr;
-            gap: 0.9rem;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 1.2rem;
             margin-top: 1rem;
         }
         @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
@@ -37,9 +110,9 @@
             border: 1px solid var(--stroke-1);
             background: var(--surface-1);
             border-radius: var(--radius-lg);
-            padding: 1rem;
+            padding: 1.5rem;
         }
-        .panel h3 { margin: 0 0 .75rem 0; font-weight: 900; }
+        .panel h3 { margin: 0 0 1rem 0; font-weight: 900; font-size: 1.25rem; }
         .pill {
             display: inline-flex;
             align-items: center;
@@ -63,25 +136,34 @@
         .task-top { display:flex; justify-content: space-between; gap: .75rem; flex-wrap: wrap; align-items: center; }
         .task-title { font-weight: 900; }
         .task-sub { color: var(--text-muted); font-size: .95rem; margin-top: .35rem; line-height: 1.45; }
-        .actions { display:flex; gap:.6rem; justify-content:flex-end; flex-wrap: wrap; margin-top: 1rem; }
+        .actions { display:flex; gap:.6rem; justify-content:flex-end; flex-wrap: wrap; margin-top: 1.5rem; border-top: 1px solid var(--stroke-1); padding-top: 1.5rem; }
         .hint { color: var(--text-muted); font-size: .95rem; line-height: 1.45; }
-        .source-cards { display:flex; gap:.6rem; flex-wrap: wrap; }
+        .source-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
         .source-card {
-            flex: 1;
-            min-width: 220px;
             border: 1px solid var(--stroke-1);
-            background: rgba(255,255,255,0.02);
+            background: var(--surface-2);
             border-radius: var(--radius-lg);
-            padding: .9rem 1rem;
+            padding: 1.25rem;
             text-decoration: none;
             color: inherit;
-            transition: transform .18s ease, border-color .18s ease;
+            transition: all .2s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
-        .source-card:hover { transform: translateY(-1px); border-color: rgba(0,255,213,0.30); }
-        .source-card.active { border-color: rgba(0,255,213,0.55); box-shadow: 0 0 0 3px rgba(0,255,213,0.10); }
-        .source-card .sc-title { font-weight: 900; }
-        .source-card .sc-sub { margin-top: .35rem; color: var(--text-muted); font-size: .95rem; line-height: 1.4; }
+        .source-card:hover { transform: translateY(-3px); border-color: var(--accent-primary); background: rgba(0,255,213,0.03); }
+        .source-card.active { border-color: var(--accent-primary); box-shadow: 0 0 0 3px rgba(0,255,213,0.1); background: rgba(0,255,213,0.05); }
+        .source-card .sc-title { font-weight: 900; font-size: 1.1rem; color: var(--text-primary); }
+        .source-card .sc-sub { color: var(--text-muted); font-size: 0.9rem; line-height: 1.4; }
         .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+        
+        .wizard-nav {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--stroke-1);
+        }
     </style>
     <script>
         (function(){
@@ -102,199 +184,325 @@
         <main class="app-content">
 
         <main style="margin-top: 1.25rem;">
-            <section class="hero">
-                <div class="hero-eyebrow">Учёба</div>
-                <h1 class="title">Создать работу</h1>
-                <div class="subtitle">
-                    Выбери учеников → подтверди выбор → выбери источник заданий (вручную, шаблон или вход в генератор) → настрой и создай.
+            <div class="stepper">
+                <div class="step" id="stepIndicator1">
+                    <div class="step-icon">1</div>
+                    <div class="step-label">Ученики</div>
                 </div>
-                <div class="row" style="margin-top: .9rem;">
-                    <span class="pill">Источник: <span class="mono">{{ source_label }}</span></span>
-                    <span class="pill">Тип: <span class="mono">{{ assignment_type }}</span></span>
-                    <span class="pill">Заданий: <span class="mono">{{ (task_ids|length) if task_ids is defined else 0 }}</span></span>
-                    {% if default_recipient_ids %}<span class="pill">Учеников: <span class="mono">{{ default_recipient_ids|length }}</span></span>{% endif %}
+                <div class="step" id="stepIndicator2">
+                    <div class="step-icon">2</div>
+                    <div class="step-label">Задания</div>
+                </div>
+                <div class="step" id="stepIndicator3">
+                    <div class="step-icon">3</div>
+                    <div class="step-label">Настройки</div>
+                </div>
+            </div>
+
+            <section class="hero" id="wizardHero">
+                <div class="hero-eyebrow">Мастер создания</div>
+                <h1 class="title">Новая работа</h1>
+                <div class="subtitle" id="wizardSubtitle">
+                    Пройдите три простых шага, чтобы назначить задания ученикам.
+                </div>
+                <div class="row" style="margin-top: .9rem;" id="wizardStatusRow">
+                    <span class="pill" id="pillSource">Источник: <span class="mono">{{ source_label }}</span></span>
+                    <span class="pill" id="pillTasks">Заданий: <span class="mono">{{ (task_ids|length) if task_ids is defined else 0 }}</span></span>
+                    {% if default_recipient_ids %}
+                    <span class="pill" id="pillRecipients">Учеников: <span class="mono">{{ default_recipient_ids|length }}</span></span>
+                    {% endif %}
                 </div>
             </section>
 
-            <section class="panel">
-                <h3>Источник заданий</h3>
-                <p class="hint" style="margin-bottom: .75rem;">Сначала выбери учеников в блоке «Параметры работы» ниже и нажми «Подтвердить выбор» — тогда «Вход в генератор» не будет показывать уже выданные им задания; для вручную и шаблона тоже учитываются выданные.</p>
-                <div class="source-cards">
-                    <a class="source-card {% if source=='manual' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='manual', assignment_type=assignment_type) }}{% if default_recipient_ids %}&recipient_ids={{ default_recipient_ids | join(',') }}{% endif %}" id="cardManual">
-                        <div class="sc-title">Вручную</div>
-                        <div class="sc-sub">Вставить список task_id через запятую или пробел. Уже выданные выбранным ученикам можно подсветить.</div>
-                    </a>
-                    <a class="source-card {% if source=='template' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='template', assignment_type=assignment_type) }}{% if default_recipient_ids %}&recipient_ids={{ default_recipient_ids | join(',') }}{% endif %}" id="cardTemplate">
-                        <div class="sc-title">Шаблон</div>
-                        <div class="sc-sub">Взять задания из готового шаблона. Учитываются уже выданные выбранным ученикам.</div>
-                    </a>
-                    {% if lesson_id %}
-                    <a class="source-card {% if source=='lesson' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson_id, assignment_type=assignment_type) }}{% if default_recipient_ids %}&recipient_ids={{ default_recipient_ids | join(',') }}{% endif %}">
-                        <div class="sc-title">Урок</div>
-                        <div class="sc-sub">Задания из текущего урока (для этого ученика).</div>
-                    </a>
-                    {% endif %}
-                    <a class="source-card" href="{{ url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}{% if default_recipient_ids %}&student_ids={{ default_recipient_ids | join(',') }}{% endif %}" id="cardGenerator">
-                        <div class="sc-title">Вход в генератор</div>
-                        <div class="sc-sub">Открыть генератор: задания, уже выданные выбранным ученикам, не показываются. Добавляешь задания → «Создать работу» → возвращаешься сюда.</div>
-                    </a>
-                </div>
-
-                {% if source=='template' %}
-                <div style="margin-top: 1rem;">
-                    <label class="neo-label" for="templatePicker">Выбери шаблон</label>
-                    <select id="templatePicker" class="neo-select" onchange="onTemplatePick(this.value)">
-                        <option value="">— выбрать —</option>
-                        {% for tpl in (templates or []) %}
-                            <option value="{{ tpl.template_id }}" {% if template_id and tpl.template_id == template_id %}selected{% endif %}>
-                                {{ tpl.name }} · {{ tpl.template_type }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                    <div class="hint" style="margin-top:.5rem;">После выбора мы покажем задачи и ты сможешь сразу создать работу.</div>
-                </div>
-                {% endif %}
-
-                {% if source=='manual' %}
-                <div style="margin-top: 1rem;">
-                    <label class="neo-label" for="manualTaskIds">Task IDs</label>
-                    <textarea id="manualTaskIds" class="neo-input" style="min-height: 110px;" placeholder="Вставь task_id через запятую/пробел/перенос строки"></textarea>
-                    <div class="hint" style="margin-top:.5rem;">Пример: <span class="mono">123, 124 130</span></div>
-                    {% if already_sent_task_ids %}
-                    <div class="hint" style="margin-top:.5rem; color: var(--text-muted);">Уже выдавались выбранным ученикам (task_id): <span class="mono">{{ already_sent_task_ids[:30] | join(', ') }}{% if already_sent_task_ids|length > 30 %}… (всего {{ already_sent_task_ids|length }}){% endif %}</span></div>
-                    {% endif %}
-                </div>
-                {% endif %}
-                {% if source=='template' and already_sent_task_ids %}
-                <div class="hint" style="margin-top:.75rem;">Уже выдавались выбранным ученикам (task_id): <span class="mono">{{ already_sent_task_ids[:25] | join(', ') }}{% if already_sent_task_ids|length > 25 %}… (всего {{ already_sent_task_ids|length }}){% endif %}</span></div>
-                {% endif %}
-            </section>
-
-            <section class="grid">
-                <div class="panel">
-                    <h3>Задания (превью)</h3>
-                    {% if tasks and tasks|length > 0 %}
-                        <div class="task-list">
-                            {% for t in tasks[:12] %}
-                            <div class="task-item">
-                                <div class="task-top">
-                                    <div class="task-title">#{{ t.task_id }} · №{{ t.task_number }} {% if t.site_task_id %}· site {{ t.site_task_id }}{% endif %}</div>
-                                    {% if t.source_url %}<a class="neo-button ghost sm" style="text-decoration:none;" href="{{ t.source_url }}" target="_blank">Источник</a>{% endif %}
-                                </div>
-                                <div class="task-sub">
-                                    {{ (t.content_html or '')|striptags|truncate(220, True, '…') }}
-                                </div>
-                            </div>
+            <!-- ШАГ 1: УЧЕНИКИ -->
+            <div class="wizard-step-content" id="stepContent1">
+                <section class="panel">
+                    <h3>Кому выдаём?</h3>
+                    <p class="hint" style="margin-bottom: 1.5rem;">Выберите одного или нескольких учеников. Это важно: мы сразу отфильтруем задания, которые они уже решали.</p>
+                    
+                    <div class="neo-field">
+                        <label class="neo-label" for="ca_recipients">Выберите из списка</label>
+                        <select id="ca_recipients" class="neo-select" name="recipients" multiple size="12" style="min-height: 300px;">
+                            {% for st in (recipient_options or []) %}
+                                {% set _sel = (default_recipient_ids is defined and (st.student_id in default_recipient_ids)) %}
+                                <option value="{{ st.student_id }}" {% if _sel %}selected{% endif %}>{{ st.name }}{% if st.platform_id %} · {{ st.platform_id }}{% endif %}</option>
                             {% endfor %}
+                        </select>
+                        <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top: 1rem;">
+                            <button type="button" class="neo-button ghost sm" onclick="selectAllRecipients(true)">Выбрать всех</button>
+                            <button type="button" class="neo-button ghost sm" onclick="selectAllRecipients(false)">Снять выбор</button>
                         </div>
-                        {% if tasks|length > 12 %}
-                            <div class="hint" style="margin-top:.75rem;">Показаны первые 12. Всего заданий: <span class="mono">{{ tasks|length }}</span>.</div>
+                    </div>
+
+                    <div class="wizard-nav">
+                        <div></div>
+                        <button type="button" class="neo-button accent" id="btnToStep2">Далее: Выбор заданий {{ ui_icon('action.chevron_right', 'sm') }}</button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ШАГ 2: ИСТОЧНИК -->
+            <div class="wizard-step-content" id="stepContent2">
+                <section class="panel">
+                    <h3>Что выдаём?</h3>
+                    <p class="hint" style="margin-bottom: 1.5rem;">Выберите способ добавления задач. Мы подскажем, если задачи уже выдавались выбранным ученикам.</p>
+                    
+                    <div class="source-cards">
+                        <a class="source-card {% if source=='manual' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='manual', assignment_type=assignment_type) }}{% if default_recipient_ids %}&recipient_ids={{ default_recipient_ids | join(',') }}{% endif %}" id="cardManual">
+                            <div class="sc-title">{{ ui_icon('action.edit', 'sm') }} Вручную</div>
+                            <div class="sc-sub">Вставить список task_id (например, из файлов или чата).</div>
+                        </a>
+                        <a class="source-card {% if source=='template' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='template', assignment_type=assignment_type) }}{% if default_recipient_ids %}&recipient_ids={{ default_recipient_ids | join(',') }}{% endif %}" id="cardTemplate">
+                            <div class="sc-title">{{ ui_icon('action.copy', 'sm') }} Из шаблона</div>
+                            <div class="sc-sub">Использовать готовый набор задач (вариант, тематическая подборка).</div>
+                        </a>
+                        {% if lesson_id %}
+                        <a class="source-card {% if source=='lesson' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson_id, assignment_type=assignment_type) }}{% if default_recipient_ids %}&recipient_ids={{ default_recipient_ids | join(',') }}{% endif %}">
+                            <div class="sc-title">{{ ui_icon('nav.lessons', 'sm') }} Из урока</div>
+                            <div class="sc-sub">Взять задачи, которые вы только что разбирали на занятии.</div>
+                        </a>
                         {% endif %}
-                    {% else %}
-                        <div class="hint">
-                            {% if source=='template' and not template_id %}
-                                Выбери шаблон — появится список задач.
-                            {% elif source=='manual' %}
-                                Вставь task_id и нажми «Создать» — мы создадим работу с этими задачами.
-                            {% else %}
-                                Нет задач в выбранном источнике.
-                            {% endif %}
-                        </div>
-                    {% endif %}
-                </div>
+                        <a class="source-card" href="{{ url_for('kege_generator.kege_generator', assignment_type=assignment_type) }}{% if default_recipient_ids %}&student_ids={{ default_recipient_ids | join(',') }}{% endif %}" id="cardGenerator">
+                            <div class="sc-title">{{ ui_icon('nav.generator', 'sm') }} Генератор</div>
+                            <div class="sc-sub">Подобрать новые задачи в реальном времени (анти-повтор включен).</div>
+                        </a>
+                    </div>
 
-                <div class="panel">
-                    <h3>Параметры работы</h3>
-                    <form id="createAssignmentForm">
-                        <div class="neo-field">
-                            <label class="neo-label" for="ca_title">Название *</label>
-                            <input id="ca_title" class="neo-input" name="title" required placeholder="Например: ДЗ · неделя 3">
-                        </div>
-
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: .75rem;">
-                            <div class="neo-field">
-                                <label class="neo-label" for="ca_type">Тип</label>
-                                <select id="ca_type" class="neo-select" name="type">
-                                    <option value="homework" {% if assignment_type=='homework' %}selected{% endif %}>ДЗ</option>
-                                    <option value="classwork" {% if assignment_type=='classwork' %}selected{% endif %}>КР</option>
-                                    <option value="exam" {% if assignment_type=='exam' %}selected{% endif %}>Проверочная</option>
-                                </select>
-                            </div>
-                            <div class="neo-field">
-                                <label class="neo-label" for="ca_deadline">Дедлайн *</label>
-                                <input id="ca_deadline" class="neo-input" type="datetime-local" name="deadline" required>
-                            </div>
-                            <div class="neo-field">
-                                <label class="neo-label" for="ca_hard_deadline">Жёсткий дедлайн</label>
-                                <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.35rem;">
-                                    <input type="checkbox" id="ca_hard_deadline" name="hard_deadline" value="1">
-                                    <span style="color: var(--text-muted); font-size: 0.9em;">Запретить сдачу после дедлайна</span>
-                                </label>
-                            </div>
-                            <div class="neo-field">
-                                <label class="neo-label" for="ca_time_limit">Время выполнения (минут)</label>
-                                <input id="ca_time_limit" class="neo-input" type="number" name="time_limit_minutes" min="5" max="480" placeholder="Например: 90 (для 1,5 часов)" title="Минимум 5, максимум 480 минут (8 часов)">
-                                <small style="display: block; margin-top: 0.35rem; color: var(--text-muted); font-size: 0.8em;">Опционально. После начала выполнения у ученика запустится таймер обратного отсчета</small>
-                            </div>
-                            <div class="neo-field">
-                                <label class="neo-label" for="ca_max_attempts">Попыток сдачи (по умолчанию)</label>
-                                <input id="ca_max_attempts" class="neo-input" type="number" name="max_attempts_default" min="1" max="20" value="1" title="Сколько раз ученик может сдать работу (и по заданиям можно задать отдельно в карточке работы)">
-                                <small style="display: block; margin-top: 0.35rem; color: var(--text-muted); font-size: 0.8em;">По умолчанию 1. Для отдельных заданий можно задать в карточке работы после создания.</small>
-                            </div>
-                        </div>
-
-                        <div class="neo-field" style="margin-top: .75rem;">
-                            <label class="neo-label" for="ca_recipients">Кому назначить *</label>
-                            <select id="ca_recipients" class="neo-select" name="recipients" multiple size="10" style="min-height: 260px;">
-                                {% for st in (recipient_options or []) %}
-                                    {% set _sel = (default_recipient_ids is defined and (st.student_id in default_recipient_ids)) %}
-                                    <option value="{{ st.student_id }}" {% if _sel %}selected{% endif %}>{{ st.name }}{% if st.platform_id %} · {{ st.platform_id }}{% endif %}</option>
+                    <div style="margin-top: 2rem;">
+                        {% if source=='template' %}
+                        <div class="panel" style="background: rgba(255,255,255,0.02); border-style: dashed;">
+                            <label class="neo-label" for="templatePicker">Выберите шаблон</label>
+                            <select id="templatePicker" class="neo-select" onchange="onTemplatePick(this.value)">
+                                <option value="">— выбрать —</option>
+                                {% for tpl in (templates or []) %}
+                                    <option value="{{ tpl.template_id }}" {% if template_id and tpl.template_id == template_id %}selected{% endif %}>
+                                        {{ tpl.name }} · {{ tpl.template_type }}
+                                    </option>
                                 {% endfor %}
                             </select>
-                            <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top: .6rem; align-items: center;">
-                                <button type="button" class="neo-button ghost sm" onclick="selectAllRecipients(true)">Выбрать всех</button>
-                                <button type="button" class="neo-button ghost sm" onclick="selectAllRecipients(false)">Снять выбор</button>
-                                <button type="button" class="neo-button outline sm" id="confirmRecipientsBtn">Подтвердить выбор</button>
+                            {% if already_sent_task_ids %}
+                            <div class="hint" style="margin-top:1rem; color: var(--accent-primary);">
+                                {{ ui_icon('action.info', 'sm') }} В этом шаблоне есть задачи, которые ученики уже решали.
                             </div>
+                            {% endif %}
                         </div>
+                        {% endif %}
 
-                        <div class="actions">
-                            <a class="neo-button outline" style="text-decoration:none;" href="{{ url_for('assignments.assignments_list') }}">Отмена</a>
-                            <button type="submit" class="neo-button accent" id="ca_submit_btn">Создать работу</button>
+                        {% if source=='manual' %}
+                        <div class="panel" style="background: rgba(255,255,255,0.02); border-style: dashed;">
+                            <label class="neo-label" for="manualTaskIds">Task IDs</label>
+                            <textarea id="manualTaskIds" class="neo-input" style="min-height: 120px;" placeholder="Введите номера задач через запятую или пробел..."></textarea>
+                            {% if already_sent_task_ids %}
+                            <div class="hint" style="margin-top:1rem;">
+                                <strong>Уже решали (id):</strong> <span class="mono" style="font-size: 0.85rem;">{{ already_sent_task_ids[:20] | join(', ') }}{% if already_sent_task_ids|length > 20 %}...{% endif %}</span>
+                            </div>
+                            {% endif %}
                         </div>
-                        <div class="hint" style="margin-top:.6rem;">
-                            Создание идёт через единый API <span class="mono">/assignments/distribute</span>.
-                        </div>
-                    </form>
+                        {% endif %}
+                    </div>
+
+                    <div class="wizard-nav">
+                        <button type="button" class="neo-button ghost" id="btnBackToStep1">{{ ui_icon('action.chevron_left', 'sm') }} Назад к ученикам</button>
+                        <button type="button" class="neo-button accent" id="btnToStep3">Далее: Настройки работы {{ ui_icon('action.chevron_right', 'sm') }}</button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ШАГ 3: НАСТРОЙКИ И ПРЕДПРОСМОТР -->
+            <div class="wizard-step-content" id="stepContent3">
+                <div class="grid">
+                    <div class="panel">
+                        <h3>Список задач</h3>
+                        {% if tasks and tasks|length > 0 %}
+                            <div class="task-list">
+                                {% for t in tasks[:20] %}
+                                <div class="task-item">
+                                    <div class="task-top">
+                                        <div class="task-title">#{{ t.task_id }} · №{{ t.task_number }}</div>
+                                        {% if t.source_url %}<a class="neo-button ghost sm" href="{{ t.source_url }}" target="_blank">Источник</a>{% endif %}
+                                    </div>
+                                    <div class="task-sub">
+                                        {{ (t.content_html or '')|striptags|truncate(160) }}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% if tasks|length > 20 %}
+                                <div class="hint" style="margin-top:1rem;">Показаны первые 20 из {{ tasks|length }} задач.</div>
+                            {% endif %}
+                        {% else %}
+                            <div class="hint" style="padding: 2rem; text-align: center; border: 1px dashed var(--stroke-1); border-radius: var(--radius-md);">
+                                Задачи не выбраны. Вернитесь на шаг назад.
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="panel">
+                        <h3>Параметры и выдача</h3>
+                        <form id="createAssignmentForm">
+                            <div class="neo-field">
+                                <label class="neo-label" for="ca_title">Название работы *</label>
+                                <input id="ca_title" class="neo-input" name="title" required>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                <div class="neo-field">
+                                    <label class="neo-label" for="ca_type">Тип</label>
+                                    <select id="ca_type" class="neo-select" name="type">
+                                        <option value="homework" {% if assignment_type=='homework' %}selected{% endif %}>Домашняя</option>
+                                        <option value="classwork" {% if assignment_type=='classwork' %}selected{% endif %}>Классная</option>
+                                        <option value="exam" {% if assignment_type=='exam' %}selected{% endif %}>Проверочная</option>
+                                    </select>
+                                </div>
+                                <div class="neo-field">
+                                    <label class="neo-label" for="ca_deadline">Дедлайн *</label>
+                                    <input id="ca_deadline" class="neo-input" type="datetime-local" name="deadline" required>
+                                </div>
+                            </div>
+
+                            <div class="neo-field" style="margin-top: 1rem;">
+                                <label class="neo-label">Дополнительно</label>
+                                <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+                                    <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                                        <input type="checkbox" id="ca_hard_deadline" name="hard_deadline" value="1">
+                                        <span class="hint" style="color: var(--text-primary);">Запретить сдачу после дедлайна</span>
+                                    </label>
+                                    <div style="display: flex; align-items: center; gap: 1rem;">
+                                        <div style="flex: 1;">
+                                            <span class="neo-label" style="font-size: 0.85rem;">Лимит времени (мин)</span>
+                                            <input id="ca_time_limit" class="neo-input sm" type="number" name="time_limit_minutes" placeholder="Нет" min="5" max="480">
+                                        </div>
+                                        <div style="flex: 1;">
+                                            <span class="neo-label" style="font-size: 0.85rem;">Попыток сдачи</span>
+                                            <input id="ca_max_attempts" class="neo-input sm" type="number" name="max_attempts_default" value="1" min="1" max="20">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="wizard-nav" style="border: none; padding: 0;">
+                                <button type="button" class="neo-button ghost" id="btnBackToStep2">{{ ui_icon('action.chevron_left', 'sm') }} К выбору задач</button>
+                                <button type="submit" class="neo-button accent" id="ca_submit_btn">Создать и отправить</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-            </section>
+            </div>
         </main>
     </main>
     </div>
 </div>
 
-    <script type="application/json" id="task-ids-data">{{ (task_ids or [])|tojson }}</script>
     <script>
         const ASSIGNMENTS_DISTRIBUTE_URL = "{{ url_for('assignments.distribute_assignment') }}";
         const ASSIGNMENT_VIEW_URL_TPL = "{{ url_for('assignments.assignment_view', assignment_id=0) }}";
         const CSRF_TOKEN = (document.querySelector('meta[name=\"csrf-token\"]') || {getAttribute: () => null}).getAttribute('content') || '';
 
+        // --- Wizard Logic ---
+        let currentStep = 1;
+
+        function updateWizardUI() {
+            // Content
+            document.querySelectorAll('.wizard-step-content').forEach(el => el.classList.remove('active'));
+            document.getElementById('stepContent' + currentStep).classList.add('active');
+
+            // Stepper
+            document.querySelectorAll('.step').forEach((el, idx) => {
+                const stepNum = idx + 1;
+                el.classList.remove('active', 'completed');
+                if (stepNum === currentStep) el.classList.add('active');
+                else if (stepNum < currentStep) el.classList.add('completed');
+            });
+
+            // Pills & Status
+            const taskCount = getTaskIds().length;
+            const recSel = document.getElementById('ca_recipients');
+            const recCount = recSel ? Array.from(recSel.selectedOptions).length : 0;
+            
+            document.getElementById('pillTasks').querySelector('.mono').textContent = taskCount;
+            const pillRec = document.getElementById('pillRecipients');
+            if (pillRec) pillRec.querySelector('.mono').textContent = recCount;
+
+            // Hero adjustments
+            const subtitle = document.getElementById('wizardSubtitle');
+            if (currentStep === 1) subtitle.textContent = "Шаг 1: Выберите учеников, которым хотите назначить работу.";
+            else if (currentStep === 2) subtitle.textContent = "Шаг 2: Выберите источник задач. Мы отфильтруем те, что ученики уже решали.";
+            else subtitle.textContent = "Шаг 3: Проверьте список задач и установите параметры выдачи.";
+        }
+
+        function setStep(step) {
+            if (step === 2) {
+                const recSel = document.getElementById('ca_recipients');
+                const recCount = recSel ? Array.from(recSel.selectedOptions).length : 0;
+                if (recCount === 0) {
+                    window.toast?.error?.('Сначала выберите хотя бы одного ученика');
+                    return;
+                }
+            }
+            if (step === 3) {
+                const taskCount = getTaskIds().length;
+                if (taskCount === 0) {
+                    window.toast?.error?.('Сначала выберите задачи (через ручной ввод или шаблон)');
+                    return;
+                }
+            }
+            currentStep = step;
+            updateWizardUI();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // --- Navigation Buttons ---
+        document.getElementById('btnToStep2')?.addEventListener('click', () => {
+            const sel = document.getElementById('ca_recipients');
+            const ids = Array.from(sel.selectedOptions).map(o => o.value).filter(Boolean);
+            if (!ids.length) {
+                window.toast?.error?.('Выберите хотя бы одного ученика');
+                return;
+            }
+            // Если мы на Шаге 1 и меняем учеников, нам нужно перезагрузить страницу, чтобы бэкенд посчитал "already_sent_task_ids"
+            const url = new URL(window.location.href);
+            const currentRecs = url.searchParams.get('recipient_ids') || '';
+            const newRecs = ids.join(',');
+            if (currentRecs !== newRecs) {
+                url.searchParams.set('recipient_ids', newRecs);
+                window.location.href = url.toString();
+            } else {
+                setStep(2);
+            }
+        });
+
+        document.getElementById('btnBackToStep1')?.addEventListener('click', () => setStep(1));
+        
+        document.getElementById('btnToStep3')?.addEventListener('click', () => {
+            const taskCount = getTaskIds().length;
+            if (taskCount === 0) {
+                window.toast?.error?.('Список задач пуст. Введите ID или выберите шаблон.');
+                return;
+            }
+            setStep(3);
+        });
+
+        document.getElementById('btnBackToStep2')?.addEventListener('click', () => setStep(2));
+
+        // --- Existing Logic ---
         function getTaskIds() {
-            // Server-provided list
+            // Manual source: parse textarea
+            try {
+                const ta = document.getElementById('manualTaskIds');
+                if (ta && ta.offsetParent !== null) { // if visible
+                    const raw = (ta.value || '').trim();
+                    if (!raw) return [];
+                    return raw.split(/[^0-9]+/g).map(x => parseInt(x, 10)).filter(Number.isFinite);
+                }
+            } catch (e) {}
+
+            // Server-provided list (e.g. from template or generator return)
             try {
                 const el = document.getElementById('task-ids-data');
                 const ids = JSON.parse(el?.textContent || '[]');
                 if (Array.isArray(ids) && ids.length) return ids.map(x => parseInt(x, 10)).filter(Number.isFinite);
             } catch (e) {}
-
-            // Manual source: parse textarea
-            try {
-                const ta = document.getElementById('manualTaskIds');
-                if (!ta) return [];
-                const raw = (ta.value || '').replace(/\\s+/g, ' ').trim();
-                if (!raw) return [];
-                return raw.split(/[^0-9]+/g).map(x => parseInt(x, 10)).filter(Number.isFinite);
-            } catch (e) {}
+            
             return [];
         }
 
@@ -302,6 +510,7 @@
             const sel = document.getElementById('ca_recipients');
             if (!sel) return;
             Array.from(sel.options).forEach(o => { o.selected = !!flag; });
+            updateWizardUI();
         }
 
         function onTemplatePick(tplId) {
@@ -311,26 +520,24 @@
             window.location.href = url.toString();
         }
 
-        document.getElementById('confirmRecipientsBtn')?.addEventListener('click', function() {
-            const sel = document.getElementById('ca_recipients');
-            if (!sel) return;
-            const ids = Array.from(sel.selectedOptions).map(o => o.value).filter(Boolean);
-            const url = new URL(window.location.href);
-            if (ids.length) url.searchParams.set('recipient_ids', ids.join(','));
-            else url.searchParams.delete('recipient_ids');
-            window.location.href = url.toString();
-        });
-
-        function defaultDeadline() {
-            const d = new Date();
-            d.setDate(d.getDate() + 1);
-            d.setHours(23, 59, 0, 0);
-            const pad = (n) => String(n).padStart(2, '0');
-            return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        }
-
+        // Auto-detect initial step
         document.addEventListener('DOMContentLoaded', function () {
-            const deadlineEl = document.getElementById('ca_deadline');
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasRecipients = !!urlParams.get('recipient_ids');
+            const hasTasks = getTaskIds().length > 0;
+            const source = urlParams.get('source');
+
+            const taskIdsDataEl = document.getElementById('task-ids-data');
+            const initialTaskIds = taskIdsDataEl ? JSON.parse(taskIdsDataEl.textContent || '[]') : [];
+            const hasRecipients = !!urlParams.get('recipient_ids');
+            const source = urlParams.get('source');
+
+            if (hasRecipients && initialTaskIds.length > 0) currentStep = 3;
+            else if (hasRecipients || source === 'template' || source === 'manual') currentStep = 2;
+            else currentStep = 1;
+
+            updateWizardUI();
+
             if (deadlineEl && !deadlineEl.value) deadlineEl.value = defaultDeadline();
 
             const titleEl = document.getElementById('ca_title');
