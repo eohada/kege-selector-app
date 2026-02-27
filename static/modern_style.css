@@ -44,22 +44,22 @@
     --base-font-size: 16px; 
     --rem-base: 16px; 
     
-    --page-bg: #0F1115;
-    --page-gradient: radial-gradient(120% 100% at 20% 10%, rgba(31, 123, 255, 0.04), transparent 55%),
-        radial-gradient(120% 110% at 80% 0%, rgba(0, 255, 213, 0.04), transparent 60%);
-    --surface-1: rgba(21, 23, 28, 0.98);
-    --surface-2: rgba(28, 30, 36, 0.95);
-    --surface-3: rgba(35, 38, 45, 0.9);
-    --surface-card: #1C1E24;
-    --surface-card-hover: #22252C;
+    --page-bg: #0A0B0E;
+    --page-gradient: radial-gradient(120% 100% at 20% 10%, rgba(31, 123, 255, 0.03), transparent 55%),
+        radial-gradient(120% 110% at 80% 0%, rgba(0, 255, 213, 0.03), transparent 60%);
+    --surface-1: #16181D;
+    --surface-2: #1A1C22;
+    --surface-3: #1E2026;
+    --surface-card: #16181D;
+    --surface-card-hover: #1C1E24;
     --surface-card-cta: transparent;
-    --overlay-hover: rgba(255, 255, 255, 0.05);
-    --overlay-press: rgba(255, 255, 255, 0.08);
+    --overlay-hover: rgba(255, 255, 255, 0.06);
+    --overlay-press: rgba(255, 255, 255, 0.10);
     --overlay-card-hover: linear-gradient(135deg, rgba(0, 255, 213, 0.04), rgba(31, 123, 255, 0.04));
-    --stroke-1: rgba(255, 255, 255, 0.05);
-    --stroke-2: rgba(255, 255, 255, 0.10);
-    --text-primary: rgba(255, 255, 255, 0.87);
-    --text-muted: rgba(255, 255, 255, 0.60);
+    --stroke-1: rgba(255, 255, 255, 0.06);
+    --stroke-2: rgba(255, 255, 255, 0.12);
+    --text-primary: rgba(255, 255, 255, 0.92);
+    --text-muted: rgba(255, 255, 255, 0.55);
     --accent-1: #00E0FF;
     --accent-1-strong: #00B8D4;
     --accent-2: #4a8dff;
@@ -390,8 +390,9 @@ body::after {
         bottom: 1rem;
         width: 260px;
         z-index: 101;
-        background: var(--surface-1);
+        background: var(--surface-card);
         border: 1px solid var(--stroke-1);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: var(--radius-lg);
         box-shadow: var(--shadow-soft);
         padding: 0;
@@ -435,7 +436,7 @@ body::after {
         border: none;
         box-shadow: none !important;
         background: transparent !important;
-        color: var(--text-muted);
+        color: var(--text-primary);
         font-size: 0.9rem;
         font-weight: 500;
         text-decoration: none;
@@ -1186,8 +1187,17 @@ header.nav-primary,
     color: var(--accent-on);
 }
 
+:root:not([data-theme="light"]) .neo-button.accent {
+    background: #00D1DC;
+    border-color: #00E0FF;
+    color: #0A1628;
+    box-shadow: 0 0 0 1px rgba(0, 224, 255, 0.3), 0 4px 20px rgba(0, 224, 255, 0.25), 0 0 45px rgba(0, 224, 255, 0.12);
+}
+
 :root:not([data-theme="light"]) .neo-button.accent:hover {
-    box-shadow: 0 4px 15px rgba(0, 224, 255, 0.25), 0 0 50px rgba(0, 224, 255, 0.12);
+    background: #00DEE8;
+    color: #0A1628;
+    box-shadow: 0 0 0 1px rgba(0, 224, 255, 0.4), 0 4px 20px rgba(0, 224, 255, 0.3), 0 0 55px rgba(0, 224, 255, 0.15);
 }
 
 .neo-button.ghost {
