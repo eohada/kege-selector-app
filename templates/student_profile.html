@@ -279,7 +279,7 @@
                     </div>
                 </div>
                 <div class="hero-actions {% if current_user.is_student() or current_user.is_parent() %}student-actions{% endif %}">
-                    <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="neo-button ghost" style="text-decoration:none;">
+                    <a href="{% if current_user.is_student() and student.user_id == current_user.id %}{{ url_for('auth.user_profile') }}{% else %}{{ url_for('students.student_info', student_id=student.student_id) }}{% endif %}" class="neo-button ghost" style="text-decoration:none;">
                         <i class="fas fa-user ui-icon ui-icon--sm"></i> Профиль ученика
                     </a>
                     {% if not current_user.is_student() and not current_user.is_parent() %}
@@ -319,9 +319,17 @@
                         {% else %}{% set lessons_remaining_class = 'lessons-remaining--ok' %}{% endif %}
                         <div style="margin-top: .6rem; display: flex; align-items: center; gap: .5rem;">
                             <span style="color: var(--text-muted);">Осталось уроков:</span>
-                            <span class="{{ lessons_remaining_class }}" style="font-size: 1.5rem; font-weight: 900;">
-                                {{ student_subscription.lessons_remaining }}
-                            </span>
+                            <div class="manual-lesson-counter" style="display: flex; align-items: center; gap: 0.5rem;">
+                                {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
+                                    <button class="neo-button icon-only sm ghost" onclick="updateLessonsRemaining('{{ student_user.id if student_user else '' }}', -1)" title="Уменьшить" style="padding: 0 0.4rem;">-</button>
+                                {% endif %}
+                                <span class="lessons-remaining-val {{ lessons_remaining_class }}" style="font-size: 1.5rem; font-weight: 900;">
+                                    {{ student_subscription.lessons_remaining }}
+                                </span>
+                                {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
+                                    <button class="neo-button icon-only sm ghost" onclick="updateLessonsRemaining('{{ student_user.id if student_user else '' }}', 1)" title="Увеличить" style="padding: 0 0.4rem;">+</button>
+                                {% endif %}
+                            </div>
                         </div>
                     {% elif student_subscription.seconds_left is not none %}
                         {% set days_left = (student_subscription.seconds_left // 86400) %}
@@ -553,6 +561,40 @@
 
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script>
+        async function updateLessonsRemaining(userId, delta) {
+            if (!userId) return;
+            try {
+                const url = `/api/user/${userId}/lessons-remaining`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ delta: delta })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        const countEl = document.querySelector('.lessons-remaining-val');
+                        if (countEl) countEl.innerText = data.new_count;
+                        if (window.toast) window.toast.success('Количество уроков обновлено');
+                        else alert('Успешно обновлено');
+                    } else {
+                        if (window.toast) window.toast.error(data.error || 'Ошибка');
+                        else alert(data.error || 'Ошибка');
+                    }
+                } else {
+                    const err = await response.json();
+                    if (window.toast) window.toast.error(err.error || 'Ошибка сети');
+                }
+            } catch (err) {
+                console.error(err);
+                if (window.toast) window.toast.error('Ошибка соединения');
+            }
+        }
+
         document.getElementById('lessonFilter').addEventListener('change', function(e) {
             const status = e.target.value;
             const items = document.querySelectorAll('.lesson-feed-item');
