@@ -807,6 +807,8 @@ def review_queue():
                 deadline = s.assignment.deadline if (s and s.assignment) else None
             except Exception:
                 deadline = None
+            if deadline is not None and getattr(deadline, 'tzinfo', None) is None:
+                deadline = deadline.replace(tzinfo=MOSCOW_TZ)
             overdue_flag = 1 if (deadline and now_local > deadline and (s.status or '').upper() in ['SUBMITTED', 'LATE']) else 0
             late_flag = 1 if (s.status or '').upper() == 'LATE' else 0
             dt = (s.submitted_at or s.updated_at or s.assigned_at or now_local)
