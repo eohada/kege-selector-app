@@ -401,7 +401,8 @@ def student_profile(student_id):
             except Exception as e:
                 logger.warning(f"Ошибка загрузки преподавателей для ученика: {e}")
         
-        return render_template('student_profile.html', 
+        try:
+            return render_template('student_profile.html', 
                                student=student, 
                                student_user=student_user_obj,
                                student_subscription=student_subscription,
@@ -415,6 +416,10 @@ def student_profile(student_id):
                                recent_lessons=all_lessons[:6] if all_lessons else [],
                                lesson_counts={'total': len(all_lessons) if all_lessons else 0, 'planned': len(planned_lessons) if planned_lessons else 0, 'completed': len(completed_lessons) if completed_lessons else 0},
                                parents_info=parents_info)
+        except Exception as e:
+            logger.error(f"Template rendering error in student_profile: {e}", exc_info=True)
+            flash('Ошибка при отображении профиля ученика.', 'danger')
+            return redirect(url_for('main.dashboard'))
     except Exception as e:
         logger.error(f"Critical error in student_profile: {e}", exc_info=True)
         flash('Произошла ошибка при загрузке профиля ученика.', 'danger')
