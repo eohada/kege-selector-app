@@ -213,7 +213,7 @@
                 <div class="info-item">
                     <span class="info-label">Оценка</span>
                     <span class="info-value" style="color: var(--accent-1); font-size: 1.2em;">
-                        {{ submission.total_score }}/{{ submission.max_score }} ({{ "%.1f"|format(submission.percentage) }}%)
+                        {{ submission.total_score }}/{{ submission.max_score }} ({{ "%.1f"|format(submission.percentage or 0) }}%)
                     </span>
                 </div>
                 {% endif %}

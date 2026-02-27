@@ -345,7 +345,7 @@
                                         <span class="meta-strong">{{ submission.total_score }}/{{ submission.max_score }}</span>
                                     </div>
                                     <span class="pill pill--success">
-                                        {{ "%.1f"|format(submission.percentage) }}%
+                                        {{ "%.1f"|format(submission.percentage or 0) }}%
                                     </span>
                                 </div>
                                 {% endif %}
