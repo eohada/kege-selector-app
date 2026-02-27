@@ -4417,6 +4417,30 @@ body.creator-theme-active .nav-primary {
     box-shadow: var(--shadow-soft);
 }
 
+/* Светлая тема: на странице создателя не переключать всё в тёмное — оставить светлый фон и тёмный текст */
+:root[data-theme="light"] body.creator-theme-active {
+    --page-bg: #e8ecf2;
+    --page-gradient: radial-gradient(120% 100% at 20% 10%, rgba(31, 123, 255, 0.06), transparent 55%),
+        radial-gradient(120% 110% at 80% 0%, rgba(10, 163, 154, 0.06), transparent 60%);
+    --surface-1: rgba(245, 247, 250, 0.95);
+    --surface-2: rgba(238, 241, 246, 0.92);
+    --surface-3: rgba(232, 236, 242, 0.88);
+    --surface-card: rgba(248, 250, 253, 0.98);
+    --stroke-1: rgba(11, 18, 32, 0.12);
+    --stroke-2: rgba(11, 18, 32, 0.18);
+    --text-primary: #0b1220;
+    --text-muted: rgba(11, 18, 32, 0.65);
+    --accent-1: #0aa39a;
+    --accent-1-strong: #067a73;
+}
+
+:root[data-theme="light"] body.creator-theme-active .nav-primary,
+:root[data-theme="light"] body.creator-theme-active .app-sidebar {
+    background: rgba(245, 247, 250, 0.98) !important;
+    border-color: rgba(11, 18, 32, 0.12);
+    box-shadow: 0 12px 32px rgba(11, 18, 32, 0.08);
+}
+
 .theme-creator .profile-cover {
     height: 250px;
     position: relative;
@@ -4483,8 +4507,8 @@ body.creator-theme-active .nav-primary {
 
 /* Светлая тема: кастомный профиль создателя — инверсия (снежинки чёрные, баннер и ава меняются визуально) */
 :root[data-theme="light"] .creator-snowflakes .snowflake {
-    color: rgba(0, 0, 0, 0.45);
-    text-shadow: 0 0 6px rgba(0, 0, 0, 0.15);
+    color: rgba(0, 0, 0, 0.55);
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
 }
 
 :root[data-theme="light"] .theme-creator .profile-cover.has-cover {
@@ -4518,6 +4542,49 @@ body.creator-theme-active .nav-primary {
 :root[data-theme="light"] .theme-creator .profile-cover:not(.has-cover) {
     background: linear-gradient(180deg, rgba(31, 123, 255, 0.08) 0%, rgba(10, 163, 154, 0.05) 100%);
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Текст профиля создателя в светлой теме — везде читаемый тёмный */
+:root[data-theme="light"] .theme-creator .profile-info h1,
+:root[data-theme="light"] .theme-creator .profile-info .profile-status {
+    color: var(--text-primary);
+}
+
+:root[data-theme="light"] .theme-creator .profile-role-badge {
+    background: rgba(11, 18, 32, 0.08);
+    color: var(--text-primary);
+    border: 1px solid rgba(11, 18, 32, 0.18);
+    box-shadow: 0 2px 12px rgba(11, 18, 32, 0.06);
+}
+
+:root[data-theme="light"] .theme-creator .profile-section,
+:root[data-theme="light"] .theme-creator .profile-section p,
+:root[data-theme="light"] .theme-creator .profile-section dd,
+:root[data-theme="light"] .theme-creator .profile-section dt,
+:root[data-theme="light"] .theme-creator .profile-section label,
+:root[data-theme="light"] .theme-creator .profile-details-list,
+:root[data-theme="light"] .theme-creator .profile-content-grid {
+    color: var(--text-primary);
+}
+
+:root[data-theme="light"] .theme-creator .profile-section .text-muted,
+:root[data-theme="light"] .theme-creator .profile-section [style*="color: var(--text-muted)"] {
+    color: var(--text-muted) !important;
+}
+
+:root[data-theme="light"] .theme-creator .neo-button.outline {
+    border-color: rgba(11, 18, 32, 0.25);
+    color: var(--text-primary);
+}
+
+:root[data-theme="light"] .theme-creator .neo-button.outline:hover {
+    background: rgba(11, 18, 32, 0.06);
+    box-shadow: 0 4px 16px rgba(11, 18, 32, 0.08);
+}
+
+:root[data-theme="light"] .theme-creator .profile-mini-card,
+:root[data-theme="light"] .theme-creator .profile-mini-title {
+    color: var(--text-primary);
 }
 
 body.custom-theme-active {
