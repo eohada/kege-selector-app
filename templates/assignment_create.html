@@ -242,8 +242,14 @@
                                     <h3 style="font-weight: 900; margin-bottom: 1rem;">Список задач</h3>
                                     <div class="task-mini-list">
                                         {% for t in tasks %}
-                                        <div class="task-mini-item">
-                                            <span>#{{ t.task_id }} · Задание №{{ t.task_number }}</span>
+                                        <div class="task-mini-item" style="flex-direction: column; gap: 0.5rem;">
+                                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                                <span style="font-weight: 800;">#{{ t.task_id }} · Задание №{{ t.task_number }}</span>
+                                                {% if t.source_url %}<a class="neo-button ghost sm" href="{{ t.source_url }}" target="_blank" style="padding: 2px 8px; font-size: 11px;">Источник</a>{% endif %}
+                                            </div>
+                                            <div style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.4; border-top: 1px solid var(--stroke-1); padding-top: 0.5rem;">
+                                                {{ (t.content_html or '')|striptags|truncate(120) }}
+                                            </div>
                                         </div>
                                         {% endfor %}
                                         {% if not tasks and source != 'manual' %}
@@ -268,6 +274,22 @@
                                         <div class="neo-field" style="margin-top: 1rem;">
                                             <label class="neo-label">Срок сдачи (дедлайн) *</label>
                                             <input id="ca_deadline" class="neo-input" type="datetime-local" required>
+                                        </div>
+                                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                                            <div class="neo-field">
+                                                <label class="neo-label">Время (мин)</label>
+                                                <input id="ca_time_limit" class="neo-input" type="number" placeholder="Нет" min="5" max="480">
+                                            </div>
+                                            <div class="neo-field">
+                                                <label class="neo-label">Попытки</label>
+                                                <input id="ca_max_attempts" class="neo-input" type="number" value="1" min="1" max="20">
+                                            </div>
+                                        </div>
+                                        <div class="neo-field" style="margin-top: 1rem;">
+                                            <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                                                <input type="checkbox" id="ca_hard_deadline">
+                                                <span style="font-size: 0.9rem; font-weight: 700;">Запретить сдачу после дедлайна</span>
+                                            </label>
                                         </div>
                                     </form>
                                 </div>
@@ -386,6 +408,9 @@
             const type = document.getElementById('ca_type').value;
             const recipients = Array.from(document.getElementById('ca_recipients').selectedOptions).map(o => parseInt(o.value));
             const taskIds = getTaskIds();
+            const timeLimit = parseInt(document.getElementById('ca_time_limit').value) || null;
+            const maxAttempts = parseInt(document.getElementById('ca_max_attempts').value) || 1;
+            const hardDeadline = document.getElementById('ca_hard_deadline').checked;
 
             if (!title || !deadline || !recipients.length || !taskIds.length) {
                 window.toast?.error?.('Заполните все обязательные поля');
@@ -400,7 +425,11 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
                     body: JSON.stringify({
-                        title, type, deadline: new Date(deadline).toISOString(),
+                        title, type, 
+                        deadline: new Date(deadline).toISOString(),
+                        time_limit_minutes: timeLimit,
+                        max_attempts_default: maxAttempts,
+                        hard_deadline: hardDeadline,
                         recipientIds: recipients,
                         tasks: taskIds.map((id, i) => ({ task_id: id, order: i, max_score: 1 }))
                     })
@@ -422,10 +451,16 @@
         document.addEventListener('DOMContentLoaded', () => {
             const url = new URLSearchParams(location.search);
             const hasRecs = !!url.get('recipient_ids');
-            const hasTasks = getTaskIds().length > 0;
+            const initialTasks = JSON.parse(document.getElementById('task-ids-json').textContent || '[]');
+            const hasTasks = initialTasks.length > 0;
             
-            if (hasRecs && hasTasks) currentStep = 3;
-            else if (hasRecs || url.get('source')) currentStep = 2;
+            if (!hasRecs) {
+                currentStep = 1;
+            } else if (hasTasks) {
+                currentStep = 3;
+            } else {
+                currentStep = 2;
+            }
             
             // Default deadline: tomorrow 23:59
             const d = new Date();
