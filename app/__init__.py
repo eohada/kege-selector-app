@@ -455,6 +455,12 @@ def create_app(config_name=None):
 
     @app.errorhandler(500)
     def internal_error(error):
+        import traceback
+        try:
+            tb = ''.join(traceback.format_exception(type(error), error, getattr(error, '__traceback__', None))) if error else ''
+            app.logger.error("500 Internal Server Error: %s\n%s", error, tb or traceback.format_stack())
+        except Exception:
+            pass
         try:
             db.session.rollback()
         except Exception:
@@ -480,8 +486,16 @@ def create_app(config_name=None):
 
     @app.errorhandler(Exception)
     def handle_unexpected_exception(e: Exception):
+        import traceback
         if isinstance(e, HTTPException):
             return e
+        try:
+            app.logger.exception("Unhandled exception (500): %s", e)
+        except Exception:
+            try:
+                logging.getLogger(__name__).exception("Unhandled exception (500): %s", e)
+            except Exception:
+                pass
         try:
             db.session.rollback()
         except Exception:
