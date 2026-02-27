@@ -44,42 +44,42 @@
     --base-font-size: 16px; 
     --rem-base: 16px; 
     
-    --page-bg: #05060a;
-    --page-gradient: radial-gradient(140% 120% at 15% 20%, rgba(0, 255, 213, 0.10), transparent 60%),
-        radial-gradient(130% 150% at 80% 0%, rgba(31, 123, 255, 0.10), transparent 60%);
-    --surface-1: rgba(14, 16, 24, 0.98);
-    --surface-2: rgba(20, 22, 34, 0.95);
-    --surface-3: rgba(26, 28, 44, 0.9);
-    --surface-card: rgba(18, 20, 32, 0.96);
-    --surface-card-hover: rgba(24, 26, 42, 0.99);
+    --page-bg: #0F1115;
+    --page-gradient: radial-gradient(120% 100% at 20% 10%, rgba(31, 123, 255, 0.04), transparent 55%),
+        radial-gradient(120% 110% at 80% 0%, rgba(0, 255, 213, 0.04), transparent 60%);
+    --surface-1: rgba(21, 23, 28, 0.98);
+    --surface-2: rgba(28, 30, 36, 0.95);
+    --surface-3: rgba(35, 38, 45, 0.9);
+    --surface-card: #1C1E24;
+    --surface-card-hover: #22252C;
     --surface-card-cta: transparent;
     --overlay-hover: rgba(255, 255, 255, 0.05);
     --overlay-press: rgba(255, 255, 255, 0.08);
-    --overlay-card-hover: linear-gradient(135deg, rgba(0, 255, 213, 0.08), rgba(31, 123, 255, 0.05));
-    --stroke-1: rgba(255, 255, 255, 0.08);
-    --stroke-2: rgba(255, 255, 255, 0.14);
-    --text-primary: rgba(247, 251, 255, 0.96);
-    --text-muted: rgba(247, 251, 255, 0.62);
-    --accent-1: #34d3c3;
-    --accent-1-strong: #1fb3a6;
+    --overlay-card-hover: linear-gradient(135deg, rgba(0, 255, 213, 0.04), rgba(31, 123, 255, 0.04));
+    --stroke-1: rgba(255, 255, 255, 0.05);
+    --stroke-2: rgba(255, 255, 255, 0.10);
+    --text-primary: rgba(255, 255, 255, 0.87);
+    --text-muted: rgba(255, 255, 255, 0.60);
+    --accent-1: #00E0FF;
+    --accent-1-strong: #00B8D4;
     --accent-2: #4a8dff;
     --accent-2-strong: #2d6fe6;
     --accent-3: #c8a8ff;
-    --accent-grad-1: linear-gradient(120deg, rgba(0, 198, 164, 0.92), rgba(23, 96, 216, 0.9));
+    --accent-grad-1: linear-gradient(120deg, rgba(0, 224, 255, 0.92), rgba(23, 96, 216, 0.9));
     --accent-on: #001b18;
     --success: #24e5b4;
     --warning: #ffd56a;
     --danger: #ff6c91;
-    --grid-line: rgba(255,255,255,0.022);
-    --grid-line-strong: rgba(255,255,255,0.035);
+    --grid-line: rgba(255,255,255,0.02);
+    --grid-line-strong: rgba(255,255,255,0.04);
     --radius-lg: 20px;
     --radius-md: 14px;
     --radius-sm: 10px;
-    --shadow-soft: 0 16px 40px rgba(0, 0, 0, 0.35);
-    --shadow-accent: 0 12px 32px rgba(0, 198, 164, 0.25);
-    --shadow-1: 0 8px 24px rgba(0, 0, 0, 0.3);
-    --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.2);
-    --focus-ring: 0 0 0 4px rgba(0, 255, 213, 0.2);
+    --shadow-soft: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 16px 40px rgba(0, 0, 0, 0.4);
+    --shadow-accent: 0 4px 15px rgba(0, 224, 255, 0.2), 0 0 40px rgba(0, 224, 255, 0.1);
+    --shadow-1: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-2: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 4px 16px rgba(0, 0, 0, 0.25);
+    --focus-ring: 0 0 0 4px rgba(0, 224, 255, 0.2);
     --font-base: 'MonaspaceNeon', 'Courier New', monospace;
     color-scheme: dark;
 }
@@ -493,7 +493,7 @@ body::after {
     }
 }
 .glass-panel {
-    background: var(--surface-1);
+    background: var(--surface-card);
     border: 1px solid var(--stroke-1);
     border-radius: var(--radius-lg);
     padding: 2rem;
@@ -1028,12 +1028,11 @@ header.nav-primary,
 }
 
 .profile-card {
-    background: var(--surface-1);
+    background: var(--surface-card);
     border: 1px solid var(--stroke-1);
     border-radius: var(--radius-lg);
     padding: 2rem;
     box-shadow: var(--shadow-soft);
-    backdrop-filter: blur(20px);
 }
 
 .profile-card-title {
@@ -1185,6 +1184,10 @@ header.nav-primary,
 .neo-button.accent:hover {
     filter: brightness(0.92);
     color: var(--accent-on);
+}
+
+:root:not([data-theme="light"]) .neo-button.accent:hover {
+    box-shadow: 0 4px 15px rgba(0, 224, 255, 0.25), 0 0 50px rgba(0, 224, 255, 0.12);
 }
 
 .neo-button.ghost {
@@ -3201,7 +3204,7 @@ body.creator-theme-active .students-grid {
 }
 
 .profile-card {
-    background: var(--surface-1);
+    background: var(--surface-card);
     border: 1px solid var(--stroke-1);
     border-radius: var(--radius-lg);
     overflow: hidden;
@@ -3231,7 +3234,7 @@ body.creator-theme-active .students-grid {
 .profile-cover {
     height: 200px;
     width: 100%;
-    background: linear-gradient(135deg, var(--surface-3), var(--surface-2));
+    background: radial-gradient(ellipse 120% 100% at 50% 0%, #1a1528 0%, #151820 40%, #0d1118 100%);
     position: relative;
     overflow: hidden;
 }
@@ -3251,11 +3254,20 @@ body.creator-theme-active .students-grid {
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(circle at 18% 28%, var(--accent-bg, rgba(0,198,164,0.12)) 0%, transparent 55%),
-        radial-gradient(circle at 72% 18%, rgba(31,123,255,0.16) 0%, transparent 55%),
-        linear-gradient(120deg, rgba(255,255,255,0.03), rgba(255,255,255,0.0));
+        radial-gradient(ellipse 80% 60% at 80% 30%, rgba(0, 224, 255, 0.06), transparent 50%),
+        radial-gradient(ellipse 60% 80% at 20% 70%, rgba(200, 168, 255, 0.04), transparent 50%);
+    mix-blend-mode: screen;
     opacity: 1;
     z-index: 1;
+}
+
+:root[data-theme="light"] .profile-cover {
+    background: radial-gradient(circle at 0% 0%, rgba(31, 123, 255, 0.08) 0%, rgba(10, 163, 154, 0.05) 100%);
+}
+:root[data-theme="light"] .profile-cover::before {
+    background: radial-gradient(circle at 18% 28%, rgba(10, 163, 154, 0.08) 0%, transparent 55%),
+        radial-gradient(circle at 72% 18%, rgba(31, 123, 255, 0.1) 0%, transparent 55%);
+    mix-blend-mode: normal;
 }
 
 .theme-creator .profile-cover {
