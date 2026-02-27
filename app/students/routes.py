@@ -1911,12 +1911,12 @@ def lesson_new(student_id):
         
         flash(f'Урок добавлен для ученика {student.name}!', 'success')
         next_action = request.form.get('next', '').strip()  # Куда перейти сразу после создания (ДЗ/КР/Проверочная)
-        if next_action == 'homework':  # Домашнее задание
-            return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id, open_create=1))  # Открываем страницу ДЗ и автозапуск модалки
-        if next_action == 'classwork':  # Классная работа
-            return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id, open_create=1))  # Открываем страницу КР и автозапуск модалки
-        if next_action == 'exam':  # Проверочная работа
-            return redirect(url_for('lessons.lesson_exam_view', lesson_id=lesson.lesson_id, open_create=1))  # Открываем страницу проверочной и автозапуск модалки
+        if next_action == 'homework':  # Домашнее задание — через раздел «Задания»
+            return redirect(url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework'))
+        if next_action == 'classwork':  # Классная работа — в комнате урока
+            return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id, open_create=1))
+        if next_action == 'exam':  # Проверочная — через раздел «Задания»
+            return redirect(url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='exam'))
         if return_to == 'course' and course_module_id:
             try:
                 from app.models import CourseModule

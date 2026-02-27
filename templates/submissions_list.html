@@ -106,7 +106,7 @@
         {% if lesson_workspaces and lesson_workspaces|length > 0 %}
             <div style="display:flex; flex-direction: column; gap: 1rem;">
                 {% for item in lesson_workspaces %}
-                <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=item.lesson.lesson_id) }}" class="glass-panel" style="text-decoration:none; padding: 1.25rem; display:flex; justify-content: space-between; gap: 1rem; align-items: center;">
+                <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=item.lesson.lesson_id) }}" class="glass-panel" style="text-decoration:none; padding: 1.25rem; display:flex; justify-content: space-between; gap: 1rem; align-items: center;">
                     <div style="min-width: 0;">
                         <div style="font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                             {{ item.lesson.topic or 'Урок' }}

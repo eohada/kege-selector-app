@@ -415,7 +415,7 @@
                     </div>
 
                     <div style="display: flex; gap: 1rem;">
-                        <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=in_progress_lesson.lesson_id) }}" class="neo-button accent" style="padding-left: 2rem; padding-right: 2rem;">
+                        <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=in_progress_lesson.lesson_id) }}" class="neo-button accent" style="padding-left: 2rem; padding-right: 2rem;">
                             Войти в класс
                         </a>
                         {% if not current_user.is_student() and not current_user.is_parent() %}
@@ -468,7 +468,7 @@
                             <div id="lessonsContainer">
                         {% for lesson in lessons %}
                         {% set lesson_local = (lesson.lesson_date|to_tz(tz_name)) %}
-                        <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="lesson-feed-item" data-status="{{ lesson.status }}">
+                        <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="lesson-feed-item" data-status="{{ lesson.status }}">
                             <div class="lesson-date-badge">
                                 <span class="lesson-date-day">{{ lesson_local.strftime('%d') if lesson_local else '—' }}</span>
                                 <span class="lesson-date-month">{{ lesson_local.strftime('%b') if lesson_local else '—' }}</span>

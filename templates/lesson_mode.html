@@ -344,7 +344,7 @@
                         <div style="display: flex; gap: 0.5em; flex-wrap: wrap;">
                             <a href="{{ url_for('lessons.lesson_edit', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" style="font-size: 0.9em; padding: 0.5em 1em;">{{ ui_icon('action.edit', 'sm', decorative=true) }}Редактировать</a>
                             {% if lesson.homework_tasks %}
-                            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline" style="font-size: 0.9em; padding: 0.5em 1em;" title="ДЗ, классная и проверочная по этому уроку">{{ ui_icon('nav.assignments', 'sm', decorative=true) }}Задания урока</a>
+                            <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline" style="font-size: 0.9em; padding: 0.5em 1em;" title="Классная работа по этому уроку">{{ ui_icon('nav.assignments', 'sm', decorative=true) }}Задания урока</a>
                             {% endif %}
                         </div>
                     </div>

@@ -81,7 +81,7 @@
                         <div class="hero-eyebrow">цель применения</div>
                         <div style="font-weight: 900;">{{ lesson.topic or 'Урок' }} · {{ lesson.lesson_date.strftime('%d.%m.%Y %H:%M') if lesson.lesson_date else '—' }}</div>
                     </div>
-                    <a class="neo-button outline sm" href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}"><i class="fas fa-arrow-left"></i> В урок</a>
+                    <a class="neo-button outline sm" href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}"><i class="fas fa-arrow-left"></i> В урок</a>
                 </div>
             </div>
             {% endif %}

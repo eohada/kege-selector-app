@@ -328,7 +328,7 @@
                     <a href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='homework') }}" class="neo-button accent" style="text-decoration:none;" title="Создаст отдельную работу с дедлайном; ученик увидит её в разделе «Задания»">
                         📝 Выдать с дедлайном
                     </a>
-                    <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline">
+                    <a href="{{ url_for('lessons.lesson_classwork_view', lesson_id=lesson.lesson_id) }}" class="neo-button outline">
                         Открыть страницу занятия →
                     </a>
                 </div>

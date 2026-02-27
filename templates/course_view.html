@@ -222,7 +222,7 @@
                             {% if mod_lessons and mod_lessons|length > 0 %}
                                 <div style="display:flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem;">
                                     {% for l in mod_lessons %}
-                                    <a class="lesson-chip" href="{{ url_for('lessons.lesson_homework_view', lesson_id=l.lesson_id) }}">
+                                    <a class="lesson-chip" href="{{ url_for('lessons.lesson_classwork_view', lesson_id=l.lesson_id) }}">
                                         <div class="left">
                                             <div class="topic">{{ l.topic or 'Урок' }}</div>
                                             <div class="sub">

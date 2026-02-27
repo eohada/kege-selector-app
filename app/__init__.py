@@ -605,7 +605,7 @@ def create_app(config_name=None):
             
             lesson_id = session.pop('miro_auth_lesson_id', None)
             if lesson_id:
-                return redirect(url_for('lessons.lesson_homework_view', lesson_id=lesson_id) + '#tab=whiteboard')
+                return redirect(url_for('lessons.lesson_classwork_view', lesson_id=lesson_id) + '#tab=whiteboard')
             
             return redirect(url_for('main.dashboard'))
             
