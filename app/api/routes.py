@@ -43,40 +43,6 @@ def api_audit_log():
         logger.error(f'Error processing audit log: {e}', exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@api_bp.route('/api/user/<int:user_id>/lessons-remaining', methods=['POST'])
-@login_required
-def api_update_lessons_remaining(user_id):
-    """Изменение количества оставшихся уроков"""
-    from app.auth.rbac_utils import has_permission
-    if not (current_user.is_creator() or current_user.is_tutor() or has_permission(current_user, 'tools.admin')):
-        return jsonify({'success': False, 'error': 'Нет прав'}), 403
-        
-    data = request.get_json() or {}
-    delta = data.get('delta')
-    
-    if not isinstance(delta, int):
-        return jsonify({'success': False, 'error': 'Некорректное значение delta'}), 400
-        
-    from app.models import UserSubscription
-    sub = UserSubscription.query.filter_by(user_id=user_id, status='active').first()
-    
-    if not sub:
-        return jsonify({'success': False, 'error': 'Активная подписка не найдена'}), 404
-        
-    if sub.lessons_remaining is None:
-        return jsonify({'success': False, 'error': 'Тип подписки не подразумевает уроки'}), 400
-        
-    sub.lessons_remaining += delta
-    if sub.lessons_remaining < 0:
-        sub.lessons_remaining = 0
-        
-    try:
-        db.session.commit()
-        return jsonify({'success': True, 'new_count': sub.lessons_remaining})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
-
 @api_bp.route('/api/student/create', methods=['POST'])
 @login_required
 def api_student_create():

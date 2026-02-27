@@ -251,18 +251,15 @@ def student_profile(student_id):
                     cand = Student.query.get(current_user.id)
                     if cand and getattr(cand, 'user_id', None) is None:
                         me_student = cand
-                if me_student:
-                    if me_student.student_id != student_id:
-                        return redirect(url_for('students.student_profile', student_id=me_student.student_id))
-                    else:
-                        return redirect(url_for('auth.user_profile'))
+                if me_student and me_student.student_id != student_id:
+                    return redirect(url_for('students.student_profile', student_id=me_student.student_id))
             except Exception:
                 pass
 
         try:
             if current_user.is_student():
                 if getattr(student, 'user_id', None) == current_user.id:
-                    return redirect(url_for('auth.user_profile'))
+                    scope = {'can_see_all': False, 'student_ids': [current_user.id]}
                 else:
                     scope = get_user_scope(current_user)
             else:
