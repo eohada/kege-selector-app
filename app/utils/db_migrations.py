@@ -1199,6 +1199,23 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add max_attempts_default to {assignments_table}: {e}")
                             db.session.rollback()
+                    if 'allow_separate_submission' not in cols:
+                        try:
+                            if _is_postgres(app):
+                                db.session.execute(text(f'ALTER TABLE "{assignments_table}" ADD COLUMN allow_separate_submission BOOLEAN DEFAULT TRUE NOT NULL'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE "{assignments_table}" ADD COLUMN allow_separate_submission INTEGER DEFAULT 1 NOT NULL'))
+                            logger.info(f"Added allow_separate_submission to {assignments_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add allow_separate_submission to {assignments_table}: {e}")
+                            db.session.rollback()
+                    if 'time_limit_minutes' not in cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{assignments_table}" ADD COLUMN time_limit_minutes INTEGER'))
+                            logger.info(f"Added time_limit_minutes to {assignments_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add time_limit_minutes to {assignments_table}: {e}")
+                            db.session.rollback()
                 assignment_tasks_table = _resolve_table_name(table_names, 'AssignmentTasks')
                 if assignment_tasks_table:
                     at_cols = {c['name'] for c in inspector.get_columns(assignment_tasks_table)}
