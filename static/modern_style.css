@@ -4481,6 +4481,45 @@ body.creator-theme-active .nav-primary {
     100% { transform: translateY(-120vh) translateX(0) rotate(360deg); }
 }
 
+/* Светлая тема: кастомный профиль создателя — инверсия (снежинки чёрные, баннер и ава меняются визуально) */
+:root[data-theme="light"] .creator-snowflakes .snowflake {
+    color: rgba(0, 0, 0, 0.45);
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.15);
+}
+
+:root[data-theme="light"] .theme-creator .profile-cover.has-cover {
+    filter: invert(1);
+}
+
+:root[data-theme="light"] .theme-creator .profile-avatar-big img {
+    filter: invert(1);
+}
+
+:root[data-theme="light"] .theme-creator .profile-avatar-big {
+    border-color: rgba(0, 0, 0, 0.18);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    color: var(--text-primary);
+}
+
+:root[data-theme="light"] .theme-creator .profile-card {
+    border-color: rgba(0, 0, 0, 0.1);
+    box-shadow: 0 20px 60px rgba(11, 18, 32, 0.08);
+}
+
+:root[data-theme="light"] .theme-creator .profile-section {
+    border-color: rgba(0, 0, 0, 0.08);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.95));
+}
+
+:root[data-theme="light"] .theme-creator .profile-section h3 {
+    color: var(--text-primary);
+}
+
+:root[data-theme="light"] .theme-creator .profile-cover:not(.has-cover) {
+    background: linear-gradient(180deg, rgba(31, 123, 255, 0.08) 0%, rgba(10, 163, 154, 0.05) 100%);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
 body.custom-theme-active {
     --page-bg: #0d0814;
     --surface-1: rgba(22, 14, 32, 0.96);
