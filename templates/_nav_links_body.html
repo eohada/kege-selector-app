@@ -28,10 +28,10 @@
 {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
 {% if current_student %}
 {% if sub_allow_lessons %}
-<a href="{{ url_for('students.student_profile', student_id=current_student.student_id) }}" class="nav-link {% if active_page == 'student_profile' %}active{% endif %}">
+<a href="{{ url_for('auth.user_profile') }}" class="nav-link {% if active_page == 'student_profile' or request.endpoint == 'auth.user_profile' %}active{% endif %}">
     <span class="nav-link-content">
-        {{ ui_icon('nav.students', 'md', title='Комната ученика', extra_class='nav-link-icon') }}
-        <span class="nav-link-label">Комната ученика</span>
+        {{ ui_icon('nav.students', 'md', title='Мой профиль', extra_class='nav-link-icon') }}
+        <span class="nav-link-label">Мой профиль</span>
     </span>
 </a>
 <a href="{{ url_for('assignments.submissions_list') }}" class="nav-link {% if active_page == 'assignments' %}active{% endif %}">

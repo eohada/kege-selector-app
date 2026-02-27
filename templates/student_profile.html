@@ -3,44 +3,238 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Профиль · URep</title>
+    <title>{{ student.name }} · Профиль</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='loading.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% include '_ux_enhancements.html' %}
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
     <style>
         
-        .profile-content-grid {
-            grid-template-columns: minmax(420px, 1.05fr) minmax(380px, 0.95fr);
-            gap: 1.25rem;
-            align-items: start;
-        }
-        @media (max-width: 1040px) { .profile-content-grid { grid-template-columns: 1fr; } }
-        .profile-actions-grid {
+        .lesson-feed-item {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: .75rem;
+            grid-template-columns: 60px 1fr auto;
+            gap: 1.5rem;
+            padding: 1.2rem;
+            border-bottom: 1px solid var(--stroke-1);
+            transition: background 0.2s, transform 0.2s;
+            align-items: center;
+            text-decoration: none;
+            color: inherit;
         }
-        @media (max-width: 520px) { .profile-actions-grid { grid-template-columns: 1fr; } }
-        .profile-actions-grid .neo-button {
-            width: 100%;
+        
+        .lesson-feed-item:last-child {
+            border-bottom: none;
+        }
+        
+        .lesson-feed-item:hover {
+            background: var(--surface-2);
+            transform: translateX(4px);
+        }
+        
+        .lesson-date-badge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             justify-content: center;
-            white-space: normal;
-            text-align: center;
-            line-height: 1.15;
-            padding: 0.85rem 1.05rem;
-        }
-        .profile-mini-card {
-            padding: 1rem;
-            border-radius: var(--radius-lg);
+            width: 56px;
+            height: 56px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
             border: 1px solid var(--stroke-1);
-            background: rgba(255,255,255,0.02);
+            color: var(--text-muted);
+            line-height: 1;
         }
-        .profile-mini-title { font-weight: 900; margin-bottom: .35rem; }
+        
+        .lesson-date-day { 
+            font-size: 1.4rem; 
+            font-weight: 700; 
+            color: var(--text-primary); 
+            margin-bottom: 2px;
+        }
+        
+        .lesson-date-month { 
+            font-size: 0.7rem; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em;
+        }
+        
+        .lesson-info { 
+            min-width: 0; 
+        }
+        
+        .lesson-title { 
+            font-weight: 700; 
+            font-size: 1.1rem; 
+            color: var(--text-primary); 
+            margin-bottom: 0.4rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .lesson-meta { 
+            display: flex; 
+            flex-wrap: wrap;
+            gap: 1rem; 
+            font-size: 0.85rem; 
+            color: var(--text-muted); 
+            align-items: center;
+        }
+        
+        .lesson-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .status-dot.planned { background-color: var(--text-muted); box-shadow: 0 0 5px rgba(255, 255, 255, 0.2); }
+        .status-dot.in_progress { background-color: var(--accent-1); box-shadow: 0 0 8px var(--accent-1); }
+        .status-dot.completed { background-color: var(--accent-2); box-shadow: 0 0 8px var(--accent-2); }
+        .status-badge--late { font-size: 0.75em; padding: 0.15rem 0.45rem; border-radius: 999px; background: rgba(255, 180, 0, 0.15); color: var(--accent-warning, #e6a700); border: 1px solid rgba(255, 180, 0, 0.35); margin-left: 0.35rem; }
         .lessons-remaining--danger { color: var(--danger); }
         .lessons-remaining--warning { color: var(--warning); }
-        .lessons-remaining--accent { color: var(--accent-1); }
+        .lessons-remaining--ok { color: var(--accent-1); }
+        
+        .active-lesson-card {
+            background: linear-gradient(135deg, rgba(0, 255, 213, 0.05), rgba(31, 123, 255, 0.05));
+            border: 1px solid var(--accent-1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .active-lesson-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent-1);
+        }
+
+        .profile-header-simple {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--stroke-1);
+            margin-bottom: 2rem;
+        }
+
+        .profile-avatar-simple {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: var(--surface-2);
+            border: 2px solid var(--stroke-2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            overflow: hidden;
+        }
+        
+        .profile-avatar-simple img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-info-simple h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2.2rem;
+            letter-spacing: -0.02em;
+        }
+
+        .profile-stats-row {
+            display: flex;
+            gap: 1.5rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .profile-stats-row div {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .profile-stats-row strong {
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 768px) {
+            .lesson-feed-item {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            .lesson-date-badge {
+                flex-direction: row;
+                width: auto;
+                height: auto;
+                padding: 0.4rem 0.8rem;
+                gap: 0.5rem;
+                background: transparent;
+                border: none;
+                justify-content: flex-start;
+            }
+            .lesson-date-day { font-size: 1rem; margin: 0; }
+            .profile-header-simple {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+            .profile-stats-row {
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+        }
+
+        .profile-header-simple .hero-actions {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            align-items: center;
+            max-width: 640px;
+            flex: 0 0 auto;
+        }
+
+        .profile-header-simple .hero-actions.student-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.6rem;
+            align-items: stretch;
+            max-width: 720px;
+        }
+        .profile-header-simple .hero-actions.student-actions .neo-button {
+            width: 100%;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 768px) {
+            .profile-header-simple .hero-actions {
+                justify-content: center;
+                max-width: 100%;
+            }
+            .profile-header-simple .hero-actions.student-actions {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
     <script>
         (function(){
@@ -52,908 +246,323 @@
         })();
     </script>
 </head>
-    {% set display_user = student_user if student_user is defined and target_user else current_user %}
-    {% set is_viewing_other = display_user.id != current_user.id %}
-    {% set use_custom_theme = display_user and (display_user.id == custom_theme_user_id or (display_user.numeric_id is not none and (display_user.numeric_id|string) == (custom_theme_user_id|string))) %}
-<body class="{% if use_custom_theme %}custom-theme-active{% endif %}">
-    {% if display_user and display_user.is_creator() %}
-    <div class="creator-snowflakes" aria-hidden="true">
-        {% for i in range(28) %}<span class="snowflake">❄</span>{% endfor %}
-    </div>
-    {% elif use_custom_theme %}
-    <div class="custom-theme-stars" aria-hidden="true">
-        {% for i in range(36) %}<span class="star">★</span>{% endfor %}
-    </div>
-    {% endif %}
+<body>
     <div class="app-layout">
-        {% set active_page = None %}
+        {% set active_page = 'student_profile' %}
         {% include '_sidebar.html' %}
     <div class="app-main">
         {% include '_topbar.html' %}
         <main class="app-content">
-        {% include '_ux_enhancements.html' %}
-        <main class="profile-container
-            {% if current_user and student_user.is_creator() %}theme-creator
-            {% elif use_custom_theme %}theme-custom-999
-            {% elif current_user and student_user.is_admin() %}theme-admin
-            {% elif current_user and student_user.is_tutor() %}theme-tutor
-            {% elif current_user and student_user.is_content_maker() %}theme-tutor
-            {% elif current_user and student_user.is_parent() %}theme-parent
-            {% elif current_user and student_user.is_student() %}theme-student
-            {% endif %}
-        ">
-            {% if current_user %}
-                <div class="profile-card">
-                    {% set cover_url = student_user.profile.cover_url if (student_user.profile and student_user.profile.cover_url) else none %}
-                    <div class="profile-cover {% if (student_user.is_creator() or use_custom_theme) and cover_url %}has-cover{% endif %}" {% if (student_user.is_creator() or use_custom_theme) and cover_url %}style="background-image: url('{{ cover_url }}');"{% endif %}></div>
+        {% include '_mobile_menu.html' %}
 
-                    <div class="profile-header">
-                        <div class="profile-identity">
-                            <div class="profile-avatar-wrapper {% if student_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if student_user.avatar_url %}data-avatar-url="{{ student_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
-                                <div class="profile-avatar-big">
-                                    {% if student_user.avatar_url %}
-                                    <img src="{{ student_user.avatar_url }}" alt="Avatar">
-                                    {% else %}
-                                    {{ student.name[0].upper() }}
-                                    {% endif %}
-                                </div>
-                            </div>
-                            <div class="profile-info">
-                                <div class="profile-role-badge">
-                                    {{ student_user.get_primary_role_display() }}
-                                </div>
-                                <h1>{{ student.name }}</h1>
-                                {% if student_user.custom_status %}
-                                <div class="profile-status" style="color: var(--text-muted); font-size: 1.1rem; margin-top: 0.5rem; font-style: italic;">
-                                    "{{ student_user.custom_status }}"
-                                </div>
-                                {% endif %}
-                                <button class="neo-button outline" style="margin-top: 1rem;" onclick="openEditProfileModal()">
-                                    {{ ui_icon('action.edit', 'sm', decorative=true) }}
-                                    Редактировать
-                                </button>
-                            </div>
+        <div class="profile-card theme-student" style="margin-bottom: 2rem;">
+            <div class="profile-cover"></div>
+            <div class="profile-header">
+                <div class="profile-identity">
+                    <div class="profile-avatar-wrapper" style="width: 120px; height: 120px;">
+                        <div class="profile-avatar-big" style="font-size: 2.6rem;">
+                            {% if student_user and student_user.avatar_url %}
+                                <img src="{{ student_user.avatar_url }}" alt="Аватар">
+                            {% else %}
+                                {{ student.name[0]|upper }}
+                            {% endif %}
                         </div>
                     </div>
-
-                    <div style="padding: 0 2.5rem 2.5rem;">
-                        {% set tz_name = (student_user.profile.timezone if student_user.profile and student_user.profile.timezone else 'Europe/Moscow') %}
-                                {% set ics_tz_param = ('tomsk' if tz_name == 'Asia/Tomsk' else 'moscow') %}
-                                {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
-                                <div id="ics-config" style="display:none" data-tz="{{ ics_tz_param }}" data-regenerate-url="{{ url_for('schedule.schedule_regenerate_ics_token') }}" data-token="{{ student_user.schedule_ics_token or '' }}"></div>
-                                <script>
-                                    (function() {
-                                        var cfg = document.getElementById('ics-config');
-                                        if (!cfg) return;
-                                        var origin = window.location.origin;
-                                        var token = (cfg.getAttribute('data-token') || '').trim() || null;
-                                        var icsTzParam = cfg.getAttribute('data-tz') || 'moscow';
-                                        var regenUrl = cfg.getAttribute('data-regenerate-url') || '';
-                                        var link = token ? origin + '/schedule/ics/' + token + '?timezone=' + icsTzParam : '';
-                                        var el = document.querySelector('.js-ics-input');
-                                        if (el) el.value = link || '(нажмите "Обновить ссылку")';
-                                        window.copyIcsLink = async function() {
-                                            var inp = document.querySelector('.js-ics-input');
-                                            var v = inp ? inp.value || '' : '';
-                                            if (!v || v.indexOf('(') === 0) return;
-                                            try { await navigator.clipboard.writeText(v); if (window.toast) window.toast.success('Скопировано'); } catch(e) { if (window.toast) window.toast.error('Не удалось скопировать'); }
-                                        };
-                                        window.regenerateIcsToken = async function() {
-                                            try {
-                                                var r = await fetch(regenUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': (document.querySelector('meta[name="csrf-token"]') || {}).content || '' }, body: '{}' });
-                                                var data = await r.json().catch(function() { return {}; });
-                                                if (!r.ok || data.success === false) throw new Error(data.error || 'HTTP ' + r.status);
-                                                var newLink = origin + '/schedule/ics/' + data.token + '?timezone=' + icsTzParam;
-                                                var inp = document.querySelector('.js-ics-input');
-                                                if (inp) inp.value = newLink;
-                                                if (window.toast) window.toast.success('Ссылка обновлена');
-                                            } catch (e) {
-                                                if (window.toast) window.toast.error(e.message || 'Ошибка');
-                                            }
-                                        };
-                                    })();
-                                </script>
-                                {% endif %}
-                        <div class="profile-content-grid">
-                            
-                            <div class="profile-section">
-                                <h3>
-                                    Учетная запись
-                                </h3>
-                                
-                                {% if display_user.about_me %}
-                                <div class="profile-bio" style="margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--stroke-1);">
-                                    <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">О себе</div>
-                                    <div style="white-space: pre-wrap; color: var(--text-primary); line-height: 1.6;">{{ display_user.about_me }}</div>
-                                </div>
-                                {% endif %}
-
-                                {% if student_user.is_student() %}
-                                <div class="data-row">
-                                    <span class="data-label">ID ученика</span>
-                                    <span class="data-value" style="font-family: 'MonaspaceNeon', monospace; letter-spacing: 1px; color: var(--accent-color);">
-                                        {% if student and student.platform_id %}{{ student.platform_id }}{% else %}—{% endif %}
-                                    </span>
-                                </div>
-                                {% else %}
-                                <div class="data-row">
-                                    <span class="data-label">ID аккаунта</span>
-                                    <span class="data-value" style="font-family: 'MonaspaceNeon', monospace; letter-spacing: 1px; color: var(--accent-color);">{% if display_user.numeric_id %}#{{ display_user.numeric_id }}{% else %}—{% endif %}</span>
-                                </div>
-                                {% endif %}
-                                <div class="data-row">
-                                    <span class="data-label">Логин</span>
-                                    <span class="data-value">{{ student.name }}</span>
-                                </div>
-                                <div class="data-row">
-                                    <span class="data-label">Роль в системе</span>
-                                    <span class="data-value" style="color: var(--accent-color);">{{ display_user.get_roles_display() | join(', ') }}</span>
-                                </div>
-                                <div class="data-row">
-                                    <span class="data-label">Дата регистрации</span>
-                                    <span class="data-value">{{ display_user.created_at.strftime('%d.%m.%Y') if display_user.created_at else '—' }}</span>
-                                </div>
-                                <div class="data-row">
-                                    <span class="data-label">Последняя активность</span>
-                                    <span class="data-value local-time" data-timestamp="{{ display_user.last_login.isoformat() if display_user.last_login else '' }}">
-                                        {{ display_user.last_login.strftime('%d.%m.%Y %H:%M') if display_user.last_login else '—' }}
-                                    </span>
-                                </div>
-
-                                {% if student_user.is_student() or student_user.is_parent() %}
-                                <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;">
-                                    <div class="hero-eyebrow">доступ</div>
-                                    {% if subscription_access and subscription_access.subscription and subscription_access.plan %}
-                                        <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items: center; margin-top: .35rem;">
-                                            <span class="status-badge status-info" style="opacity:0.95;">{{ subscription_access.label }}</span>
-                                            <span class="status-badge status-info" style="opacity:0.85;">Тариф: <strong>{{ subscription_access.plan.title }}</strong></span>
-                                            {% if subscription_access.ends_at_utc %}
-                                                <span class="status-badge status-info" style="opacity:0.85;">
-                                                    До: <strong>{{ subscription_access.ends_at_utc.strftime('%d.%m.%Y') }}</strong>
-                                                </span>
-                                            {% endif %}
-                                        </div>
-                                        
-                                        {% if subscription_access.lessons_remaining is not none %}
-                                            <div style="margin-top: .6rem; display: flex; align-items: center; gap: .5rem;">
-                                                <span style="color: var(--text-muted);">Осталось уроков:</span>
-                                                {% set target_sub = student_subscription if student_subscription is defined and student_subscription else subscription_access %}
-                                                {% set _rem_class = 'lessons-remaining--danger' if target_sub.lessons_remaining <= 2 else ('lessons-remaining--warning' if target_sub.lessons_remaining <= 5 else 'lessons-remaining--accent') %}
-                                                
-                                                <div class="manual-lesson-counter" style="display: flex; align-items: center; gap: 0.5rem;">
-                                                    {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
-                                                        <button class="neo-button icon-only sm ghost" onclick="updateLessonsRemaining('{{ display_user.id }}', -1)" title="Уменьшить">-</button>
-                                                    {% endif %}
-                                                    
-                                                    <span class="lessons-remaining-val {{ _rem_class }}" style="font-size: 1.5rem; font-weight: 900;">{{ target_sub.lessons_remaining }}</span>
-                                                    
-                                                    {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
-                                                        <button class="neo-button icon-only sm ghost" onclick="updateLessonsRemaining('{{ display_user.id }}', 1)" title="Увеличить">+</button>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        {% elif subscription_access.seconds_left is not none %}
-                                            {% set days_left = (subscription_access.seconds_left // 86400) %}
-                                            {% set hours_left = ((subscription_access.seconds_left % 86400) // 3600) %}
-                                            <div style="margin-top: .6rem; color: var(--text-muted);">
-                                                Осталось: <strong style="color: var(--text-primary);">{{ days_left }}д {{ hours_left }}ч</strong>
-                                            </div>
-                                        {% endif %}
-                                    {% elif subscription_access and subscription_access.status == 'expired' %}
-                                        <div style="margin-top: .35rem; font-weight: 900; color: var(--danger);">
-                                            {% if subscription_access.lessons_remaining is not none and subscription_access.lessons_remaining <= 0 %}
-                                                Уроки закончились
-                                            {% else %}
-                                                Подписка истекла
-                                            {% endif %}
-                                        </div>
-                                        {% if subscription_access.ends_at_utc %}
-                                        <div style="margin-top: .35rem; color: var(--text-muted);">Закончилась: {{ subscription_access.ends_at_utc.strftime('%d.%m.%Y') }}</div>
-                                        {% endif %}
-                                    {% else %}
-                                        <div style="margin-top: .35rem; color: var(--text-muted);">Тариф не задан (доступ без ограничений/legacy).</div>
-                                    {% endif %}
-                                </div>
-                                {% endif %}
-
-                                <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;" id="telegram-notifications-block">
-                                    <div class="hero-eyebrow">уведомления</div>
-                                    <h4 style="margin: 0.35rem 0 0.5rem 0;">Telegram бот</h4>
-                                    
-                                    <div id="telegram-status-content">
-                                        
-                                        <div style="color: var(--text-muted);">Загрузка...</div>
-                                    </div>
-                                </div>
-                                
-                                {% if current_user.telegram_link %}
-                                <div class="data-row">
-                                    <span class="data-label">Telegram</span>
-                                    <a href="{{ current_user.telegram_link }}" target="_blank" class="data-value" style="text-decoration: none; color: var(--text-primary);">
-                                        {{ current_user.telegram_link.replace('https://t.me/', '@').replace('http://t.me/', '@') }}
-                                    </a>
-                                </div>
-                                {% endif %}
-                            </div>
-
-                            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-                                {% if student_user.is_student() %}
-                                <div class="profile-section">
-                                    <h3>Учебный профиль</h3>
-                                    {% if student %}
-                                        <div style="display:flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
-                                            {% if student.school_class %}
-                                            <span class="status-badge status-info">{{ student.school_class }} класс</span>
-                                            {% endif %}
-                                            {% if student.target_score %}
-                                            <span class="status-badge status-info">Цель: {{ student.target_score }}</span>
-                                            {% endif %}
-                                            {% if student.programming_language %}
-                                            <span class="status-badge status-info">{{ student.programming_language }}</span>
-                                            {% endif %}
-                                        </div>
-
-                                        {% if lesson_counts %}
-                                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
-                                            <div class="glass-panel" style="padding: 0.9rem; text-align: center;">
-                                                <div style="font-size: 0.85rem; color: var(--text-muted); overflow-wrap: anywhere; word-break: break-word; line-height: 1.15;">Всего уроков</div>
-                                                <div style="font-weight: 800; font-size: 1.4rem; margin-top: 0.25rem;">{{ lesson_counts.total }}</div>
-                                            </div>
-                                            <div class="glass-panel" style="padding: 0.9rem; text-align: center;">
-                                                <div style="font-size: 0.85rem; color: var(--text-muted); overflow-wrap: anywhere; word-break: break-word; line-height: 1.15;">Проведено</div>
-                                                <div style="font-weight: 800; font-size: 1.4rem; margin-top: 0.25rem;">{{ lesson_counts.completed }}</div>
-                                            </div>
-                                            <div class="glass-panel" style="padding: 0.9rem; text-align: center;">
-                                                <div style="font-size: 0.85rem; color: var(--text-muted); overflow-wrap: anywhere; word-break: break-word; line-height: 1.15;">Запланировано</div>
-                                                <div style="font-weight: 800; font-size: 1.4rem; margin-top: 0.25rem;">{{ lesson_counts.planned }}</div>
-                                            </div>
-                                        </div>
-                                        {% endif %}
-
-                                        {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
-                                        {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
-
-                                        <div class="profile-actions-grid" style="margin-top: .25rem;">
-                                            {% if sub_allow_lessons %}
-                                            <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button accent" style="text-decoration:none;">
-                                                {{ ui_icon('nav.stats', 'sm', decorative=true) }}
-                                                Статистика
-                                            </a>
-                                            {% endif %}
-                                            {% if sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
-                                            <a href="{{ url_for('trainer.trainer_embed') }}" class="neo-button outline" style="text-decoration:none;">
-                                                {{ ui_icon('nav.help', 'sm', decorative=true) }}
-                                                Тренажёр
-                                            </a>
-                                            {% endif %}
-                                            {% if sub_allow_lessons %}
-                                            <a href="{{ url_for('assignments.submissions_list', student_id=student.student_id) }}" class="neo-button outline" style="text-decoration:none;">
-                                                {{ ui_icon('nav.assignments', 'sm', decorative=true) }}
-                                                Задания
-                                            </a>
-                                            {% endif %}
-                                        </div>
-
-                                        {% if sub_allow_lessons and (has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule')) %}
-                                        <div class="profile-section" style="margin-top: 1rem;">
-                                            <details>
-                                                <summary style="cursor:pointer; font-weight: 900;">Синхронизация календаря</summary>
-                                                <div style="margin-top: .75rem;">
-                                                    <p style="color: var(--text-muted); margin-top: 0;">
-                                                        Приватная ссылка для внешних календарей (.ics). Не передавайте её другим.
-                                                    </p>
-                                                    <div style="display:flex; gap: .6rem; flex-wrap: wrap; align-items: center;">
-                                                        <input class="neo-input js-ics-input" readonly style="flex:1; min-width: 260px;" value="">
-                                                        <button class="neo-button outline" type="button" onclick="copyIcsLink()">Копировать</button>
-                                                        <button class="neo-button ghost" type="button" onclick="regenerateIcsToken()">Обновить ссылку</button>
-                                                    </div>
-                                                    <div style="color: var(--text-muted); font-size: .9rem; margin-top: .5rem;">
-                                                        Вставьте ссылку в Google Calendar / Apple Calendar как “Подписка по URL”.
-                                                    </div>
-                                                </div>
-                                            </details>
-                                        </div>
-                                        {% endif %}
-                                    {% else %}
-                                        <p style="color: var(--text-muted); margin: 0;">
-                                            Учебный профиль ещё не привязан к аккаунту. Сообщите преподавателю/администратору ваш логин или ID, чтобы связать аккаунт.
-                                        </p>
-                                    {% endif %}
-                                </div>
-
-                                {% if recent_lessons and recent_lessons|length > 0 %}
-                                <div class="profile-section">
-                                    <details class="profile-details">
-                                        <summary>
-                                            Лента уроков
-                                            <span class="status-badge status-info" style="opacity:.75;">{{ recent_lessons|length }}</span>
-                                        </summary>
-                                        <div class="profile-details-body" style="display:flex; flex-direction: column; gap: 0.75rem;">
-                                            {% for l in recent_lessons %}
-                                            {% set l_local = (l.lesson_date|to_tz(tz_name)) %}
-                                            <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=l.lesson_id) }}" class="glass-panel" style="text-decoration:none; padding: 0.9rem; display:flex; justify-content: space-between; gap: 1rem; align-items: center;">
-                                                <div style="min-width: 0;">
-                                                    <div style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                        {{ l.topic or 'Урок' }}
-                                                    </div>
-                                                    <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">
-                                                        {{ l_local.strftime('%d.%m.%Y %H:%M') if l_local else '—' }}
-                                                    </div>
-                                                </div>
-                                                <span class="status-badge status-info" style="white-space: nowrap;">
-                                                    {{ 'План' if l.status == 'planned' else ('Проведён' if l.status == 'completed' else ('В процессе' if l.status == 'in_progress' else l.status)) }}
-                                                </span>
-                                            </a>
-                                            {% endfor %}
-                                        </div>
-                                    </details>
-                                </div>
-                                {% endif %}
-                                {% else %}
-                                <div class="profile-section">
-                                    <h3>Быстрые действия</h3>
-                                    <div class="profile-actions-grid">
-                                        {% if has_permission(current_user, 'tools.schedule') or has_permission(current_user, 'schedule.view') %}
-                                        <a href="{{ url_for('schedule.schedule') }}" class="neo-button accent" style="text-decoration:none;">
-                                            {{ ui_icon('nav.schedule', 'sm', decorative=true) }}
-                                            Расписание
-                                        </a>
-                                        {% endif %}
-                                        <a href="{{ url_for('students.students_list') }}" class="neo-button outline" style="text-decoration:none;">
-                                            {{ ui_icon('nav.students', 'sm', decorative=true) }}
-                                            {{ 'Дети' if student_user.is_parent() else 'Ученики' }}
-                                        </a>
-                                        {% if has_permission(current_user, 'assignment.view') %}
-                                        <a href="{{ url_for('assignments.assignments_list') }}" class="neo-button outline" style="text-decoration:none;">
-                                            {{ ui_icon('nav.assignments', 'sm', decorative=true) }}
-                                            Работы
-                                        </a>
-                                        {% endif %}
-                                        {% if has_permission(current_user, 'assignment.grade') %}
-                                        <a href="{{ url_for('lessons.review_queue') }}" class="neo-button outline" style="text-decoration:none;">
-                                            {{ ui_icon('action.check', 'sm', decorative=true) }}
-                                            Проверка
-                                        </a>
-                                        {% endif %}
-                                        <a href="{{ url_for('reminders.reminders_list') }}" class="neo-button ghost" style="text-decoration:none;">
-                                            {{ ui_icon('action.clock', 'sm', decorative=true) }}
-                                            Напоминания
-                                        </a>
-                                        {% if has_permission(current_user, 'lesson.edit') %}
-                                        <a href="{{ url_for('library.materials_library') }}" class="neo-button ghost" style="text-decoration:none;">
-                                            {{ ui_icon('action.admin', 'sm', decorative=true) }}
-                                            Библиотека
-                                        </a>
-                                        {% endif %}
-                                        {% if has_permission(current_user, 'trainer.use') %}
-                                        <a href="{{ url_for('trainer.trainer_embed') }}" class="neo-button ghost" style="text-decoration:none;">
-                                            {{ ui_icon('nav.help', 'sm', decorative=true) }}
-                                            Тренажёр
-                                        </a>
-                                        {% endif %}
-                                        {% if has_permission(current_user, 'rubrics.manage') %}
-                                        <a href="{{ url_for('rubrics.rubrics_list') }}" class="neo-button ghost" style="text-decoration:none;">
-                                            {{ ui_icon('action.test', 'sm', decorative=true) }}
-                                            Рубрики
-                                        </a>
-                                        {% endif %}
-                                        {% if has_permission(current_user, 'billing.manage') %}
-                                        <a href="{{ url_for('billing.billing_plans') }}" class="neo-button ghost" style="text-decoration:none;">
-                                            {{ ui_icon('nav.billing', 'sm', decorative=true) }}
-                                            Тарифы
-                                        </a>
-                                        <a href="{{ url_for('billing.billing_subscriptions') }}" class="neo-button ghost" style="text-decoration:none;">
-                                            {{ ui_icon('nav.billing', 'sm', decorative=true) }}
-                                            Подписки
-                                        </a>
-                                        {% endif %}
-                                        {% if (student_user.is_admin() or student_user.is_creator()) and config.ADMIN_URL %}
-                                        <a href="{{ config.ADMIN_URL }}" class="neo-button danger" style="text-decoration:none;" target="_blank" rel="noopener">
-                                            {{ ui_icon('action.settings', 'sm', decorative=true) }}
-                                            Админка
-                                        </a>
-                                        {% endif %}
-                                    </div>
-                                </div>
-
-                                {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
-                                <div class="profile-section">
-                                    <details>
-                                        <summary style="cursor:pointer; font-weight: 900;">Синхронизация календаря</summary>
-                                        <div style="margin-top: .75rem;">
-                                            <p style="color: var(--text-muted); margin-top: 0;">
-                                                Приватная ссылка для внешних календарей (.ics). Не передавайте её другим.
-                                            </p>
-                                            <div style="display:flex; gap: .6rem; flex-wrap: wrap; align-items: center;">
-                                                <input class="neo-input js-ics-input" readonly style="flex:1; min-width: 260px;" value="">
-                                                <button class="neo-button outline" type="button" onclick="copyIcsLink()">Копировать</button>
-                                                <button class="neo-button ghost" type="button" onclick="regenerateIcsToken()">Обновить ссылку</button>
-                                            </div>
-                                            <div style="color: var(--text-muted); font-size: .9rem; margin-top: .5rem;">
-                                                Вставьте ссылку в Google Calendar / Apple Calendar как “Подписка по URL”.
-                                            </div>
-                                        </div>
-                                    </details>
-                                </div>
-                                {% endif %}
-                                {% endif %}
-
-                                {% if student_user.is_creator() and config.ADMIN_URL %}
-                                <div class="profile-section" style="background: rgba(255, 46, 46, 0.05); border-color: rgba(255, 46, 46, 0.3);">
-                                    <h3>
-                                        {{ ui_icon('action.admin', 'md', decorative=true) }}
-                                        Доступ Создателя
-                                    </h3>
-                                    <p style="font-size: 0.9rem; margin-bottom: 1.5rem; opacity: 0.8;">
-                                        Вам доступны расширенные права управления платформой.
-                                    </p>
-                                    <a href="{{ config.ADMIN_URL }}" class="neo-button danger" style="width: 100%; justify-content: center; background: rgba(255, 46, 46, 0.15); border-color: #ff2e2e; color: #ff2e2e;" target="_blank" rel="noopener">
-                                        Перейти в админку
-                                    </a>
-                                </div>
-                                {% endif %}
-
-                                <form method="POST" action="{{ url_for('auth.logout') }}">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button type="submit" class="neo-button outline" style="width: 100%; justify-content: center; opacity: 0.7;">
-                                        {{ ui_icon('action.logout', 'sm', decorative=true) }}
-                                        Выйти из аккаунта
-                                    </button>
-                                </form>
-                            </div>
+                    <div class="profile-info" style="min-width: 0;">
+                        <div class="profile-role-badge">Комната ученика</div>
+                        <h1 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ student.name }}</h1>
+                        <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top:.35rem;">
+                            {% if student.school_class %}<span class="status-badge status-info" style="opacity:.85;">{{ student.school_class }} класс</span>{% endif %}
+                            {% if student.target_score %}<span class="status-badge status-info" style="opacity:.85;">Цель: {{ student.target_score }}</span>{% endif %}
+                            {% if student.platform_id %}<span class="status-badge status-info" style="opacity:.75;">ID: {{ student.platform_id }}</span>{% endif %}
                         </div>
                     </div>
                 </div>
-            {% else %}
-                <div class="glass-panel" style="text-align: center; padding: 4rem;">
-                    <h1 class="hero-title">Доступ ограничен</h1>
-                    <p style="color: var(--text-muted); margin-bottom: 2rem;">Пожалуйста, войдите в систему, чтобы просмотреть профиль.</p>
-                    <a href="{{ url_for('auth.login') }}" class="neo-button accent">Войти</a>
+                <div class="hero-actions {% if current_user.is_student() or current_user.is_parent() %}student-actions{% endif %}">
+                    <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="neo-button ghost" style="text-decoration:none;">
+                        <i class="fas fa-user ui-icon ui-icon--sm"></i> Профиль ученика
+                    </a>
+                    {% if not current_user.is_student() and not current_user.is_parent() %}
+                    <a href="{{ url_for('students.lesson_new', student_id=student.student_id) }}" class="neo-button accent">
+                        <i class="fas fa-plus ui-icon ui-icon--sm"></i> Новый урок
+                    </a>
+                    <a href="{{ url_for('students.student_edit', student_id=student.student_id) }}" class="neo-button outline">
+                        <i class="fas fa-pen ui-icon ui-icon--sm"></i> Ред.
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button outline">
+                        <i class="fas fa-chart-line ui-icon ui-icon--sm"></i> Статистика
+                    </a>
+                    <a href="{{ url_for('students.student_learning_plan', student_id=student.student_id) }}" class="neo-button ghost">
+                        <i class="fas fa-route ui-icon ui-icon--sm"></i> Траектория
+                    </a>
                 </div>
-            {% endif %}
-        </main>
-
-        </main>
-    </div>
-
-    <div class="modal-overlay avatar-modal-overlay" id="avatarModal" onclick="closeAvatarModal(event)" style="z-index: 10001;">
-        <div class="modal modal-avatar-wrap" onclick="event.stopPropagation()">
-            <img id="avatarModalImg" src="" alt="Аватар в полном размере">
-        </div>
-    </div>
-
-    {% if current_user %}
-    <div class="modal-overlay" id="editProfileModal" style="z-index: 9999;">
-        <div class="modal">
-            <div class="modal-header">
-                <h2 class="modal-title">Редактировать профиль</h2>
-                <button class="modal-close" onclick="closeEditProfileModal()">&times;</button>
             </div>
-                <form id="editProfileForm" onsubmit="submitProfileEdit(event)" enctype="multipart/form-data">
-                    <div class="modal-body">
-                        <div class="neo-field">
-                            <label class="neo-label" for="avatar_file">Аватарка</label>
-                            {% if student_user.avatar_url %}
-                            <div style="margin-bottom: 1rem; text-align: center;">
-                                <img id="avatar_preview" src="{{ student_user.avatar_url }}" alt="Текущая аватарка" 
-                                     style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 2px solid var(--stroke-1);">
-                            </div>
-                            {% else %}
-                            <div style="margin-bottom: 1rem; text-align: center;">
-                                <img id="avatar_preview" src="" alt="Превью" 
-                                     style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 2px solid var(--stroke-1); display: none;">
-                            </div>
-                            {% endif %}
-                            <input type="file" id="avatar_file" name="avatar_file" class="neo-input" accept="image/*">
-                            <small style="color: var(--text-muted); font-size: 0.8rem;">Загрузите изображение (JPG, PNG, GIF, WEBP, макс. 5MB)</small>
-                        </div>
 
-                        {% if student_user.is_creator() or use_custom_theme %}
-                        <div class="neo-field" id="cover_field">
-                            <label class="neo-label" for="cover_file">Баннер профиля (GIF или изображение)</label>
-                            {% set creator_cover = student_user.profile.cover_url if (student_user.profile and student_user.profile.cover_url) else none %}
-                            {% if creator_cover %}
-                            <div style="margin-bottom: 1rem; text-align: center;">
-                                <img id="cover_preview" src="{{ creator_cover }}" alt="Текущий баннер" style="max-width: 100%; max-height: 120px; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1);">
+            {% if student_subscription %}
+            <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;">
+                <div class="hero-eyebrow">доступ</div>
+                {% if student_subscription.subscription and student_subscription.plan %}
+                    <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items: center; margin-top: .35rem;">
+                        <span class="status-badge status-info" style="opacity:0.95;">{{ student_subscription.label }}</span>
+                        <span class="status-badge status-info" style="opacity:0.85;">Тариф: <strong>{{ student_subscription.plan.title }}</strong></span>
+                        {% if student_subscription.ends_at_utc %}
+                            <span class="status-badge status-info" style="opacity:0.85;">
+                                До: <strong>{{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</strong>
+                            </span>
+                        {% endif %}
+                    </div>
+                    
+                    {% if student_subscription.lessons_remaining is not none %}
+                        {% if student_subscription.lessons_remaining <= 2 %}{% set lessons_remaining_class = 'lessons-remaining--danger' %}
+                        {% elif student_subscription.lessons_remaining <= 5 %}{% set lessons_remaining_class = 'lessons-remaining--warning' %}
+                        {% else %}{% set lessons_remaining_class = 'lessons-remaining--ok' %}{% endif %}
+                        <div style="margin-top: .6rem; display: flex; align-items: center; gap: .5rem;">
+                            <span style="color: var(--text-muted);">Осталось уроков:</span>
+                            <div class="manual-lesson-counter" style="display: flex; align-items: center; gap: 0.5rem;">
+                                {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
+                                    <button class="neo-button icon-only sm ghost" onclick="updateLessonsRemaining('{{ student_user.id if student_user else '' }}', -1)" title="Уменьшить" style="padding: 0 0.4rem;">-</button>
+                                {% endif %}
+                                <span class="lessons-remaining-val {{ lessons_remaining_class }}" style="font-size: 1.5rem; font-weight: 900;">
+                                    {{ student_subscription.lessons_remaining }}
+                                </span>
+                                {% if has_permission(current_user, 'tools.admin') or current_user.is_creator() or current_user.is_tutor() %}
+                                    <button class="neo-button icon-only sm ghost" onclick="updateLessonsRemaining('{{ student_user.id if student_user else '' }}', 1)" title="Увеличить" style="padding: 0 0.4rem;">+</button>
+                                {% endif %}
                             </div>
+                        </div>
+                    {% elif student_subscription.seconds_left is not none %}
+                        {% set days_left = (student_subscription.seconds_left // 86400) %}
+                        {% set hours_left = ((student_subscription.seconds_left % 86400) // 3600) %}
+                        <div style="margin-top: .6rem; color: var(--text-muted);">
+                            Осталось: <strong style="color: var(--text-primary);">{{ days_left }}д {{ hours_left }}ч</strong>
+                        </div>
+                    {% endif %}
+                {% elif student_subscription.status == 'expired' %}
+                    <div style="margin-top: .35rem; font-weight: 900; color: var(--danger);">
+                        {% if student_subscription.lessons_remaining is not none and student_subscription.lessons_remaining <= 0 %}
+                            Уроки закончились
+                        {% else %}
+                            Подписка истекла
+                        {% endif %}
+                    </div>
+                    {% if student_subscription.ends_at_utc %}
+                    <div style="margin-top: .35rem; color: var(--text-muted);">Закончилась: {{ student_subscription.ends_at_utc.strftime('%d.%m.%Y') }}</div>
+                    {% endif %}
+                {% else %}
+                    <div style="margin-top: .35rem; color: var(--text-muted);">Тариф не задан (legacy).</div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if tutors_list %}
+            <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;">
+                <div class="hero-eyebrow">преподаватель{% if tutors_list|length > 1 %}и{% endif %}</div>
+                <div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.5rem; align-items: center;">
+                    {% for tutor in tutors_list %}
+                    <a href="{{ url_for('auth.user_public_profile', user_id=tutor.id) }}" class="tutor-profile-link" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); border: 1px solid var(--stroke-1); text-decoration: none; color: inherit; transition: border-color .2s, background .2s;" onmouseover="this.style.borderColor='var(--accent-1)'; this.style.background='rgba(0,255,213,0.06)';" onmouseout="this.style.borderColor='var(--stroke-1)'; this.style.background='rgba(255,255,255,0.04)';">
+                        <div style="width: 44px; height: 44px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: var(--surface-2); display: flex; align-items: center; justify-content: center; font-weight: 700;">
+                            {% if tutor.avatar_url %}
+                                <img src="{{ tutor.avatar_url }}" alt="" style="width:100%; height:100%; object-fit:cover;">
                             {% else %}
-                            <div style="margin-bottom: 1rem; text-align: center;">
-                                <img id="cover_preview" src="" alt="Превью" style="max-width: 100%; max-height: 120px; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); display: none;">
-                            </div>
+                                {{ tutor.username[0]|upper }}
                             {% endif %}
-                            <input type="file" id="cover_file" name="cover_file" class="neo-input" accept="image/*">
-                            <small style="color: var(--text-muted); font-size: 0.8rem;">GIF, JPG, PNG или WEBP, макс. 8MB. Отображается в шапке профиля.</small>
+                        </div>
+                        <div style="min-width: 0;">
+                            <div style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                {% if tutor.profile and (tutor.profile.first_name or tutor.profile.last_name) %}
+                                    {{ tutor.profile.first_name or '' }} {{ tutor.profile.last_name or '' }}
+                                {% else %}
+                                    {{ tutor.username }}
+                                {% endif %}
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Профиль →</div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if student.goal_text %}
+            <div style="background: var(--surface-2); padding: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1);">
+                <span class="hero-eyebrow" style="margin-bottom: 0.5rem; display: block;">Глобальная цель</span>
+                <p style="margin: 0; line-height: 1.5;">{{ student.goal_text }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;" class="profile-grid-responsive">
+            {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
+            
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+                {% if in_progress_lesson %}
+                <section class="glass-panel active-lesson-card">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                        <div>
+                            <div class="hero-eyebrow" style="color: var(--accent-1);">Текущий урок</div>
+                            <h2 style="margin: 0.5rem 0 0 0; font-size: 1.8rem;">{{ in_progress_lesson.topic or 'Без темы' }}</h2>
+                        </div>
+                        <span class="status-badge status-info" style="background: rgba(0, 255, 213, 0.15); color: var(--accent-1); border-color: rgba(0, 255, 213, 0.3);">LIVE</span>
+                    </div>
+                    
+                    <div style="display: flex; gap: 2rem; margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
+                        {% set in_progress_local = (in_progress_lesson.lesson_date|to_tz(tz_name)) %}
+                        <div><i class="far fa-clock"></i> Начало: {{ in_progress_local.strftime('%H:%M') if in_progress_local else '—' }}</div>
+                        <div><i class="fas fa-hourglass-half"></i> Длительность: {{ in_progress_lesson.duration }} мин</div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem;">
+                        <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=in_progress_lesson.lesson_id) }}" class="neo-button accent" style="padding-left: 2rem; padding-right: 2rem;">
+                            Войти в класс
+                        </a>
+                        {% if not current_user.is_student() and not current_user.is_parent() %}
+                        <form method="POST" action="{{ url_for('lessons.lesson_complete', lesson_id=in_progress_lesson.lesson_id) }}">
+                             {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                             <input type="hidden" name="topic" value="{{ in_progress_lesson.topic }}">
+                            <button type="submit" class="neo-button outline">Завершить урок</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </section>
+                {% endif %}
+
+                <section class="glass-panel">
+                    <h3 class="form-section-title" style="border-bottom: none; margin-bottom: 1rem;"><i class="fas fa-tasks ui-icon"></i> Задания</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 0 1rem 0;">Работы с дедлайном и задания по занятиям (ДЗ, классная, проверочная) — в одном месте.</p>
+                    <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button accent" style="text-decoration: none;">
+                        Открыть все задания
+                    </a>
+                    {% if active_submissions and active_submissions|length > 0 %}
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">Срочно (с дедлайном):</div>
+                        {% for submission in active_submissions[:3] %}
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.5rem 0;">
+                            <span style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ submission.assignment.title }}</span>
+                            <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}" class="neo-button ghost" style="font-size: 0.85rem; padding: 0.35rem 0.75rem; white-space: nowrap;">Открыть</a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </section>
+
+                <section class="glass-panel">
+                    <details class="profile-details">
+                        <summary>
+                            Лента занятий
+                            <span class="status-badge status-info" style="opacity:.75;">{{ lessons|length }}</span>
+                        </summary>
+                        <div class="profile-details-body">
+                            <p style="color: var(--text-muted); font-size: 0.88rem; margin: 0 0 1rem 0;">По клику — страница занятия с вкладками ДЗ, классная работа и проверочная.</p>
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; gap: 1rem; flex-wrap: wrap;">
+                                <div style="color: var(--text-muted); font-size: .92rem;">Фильтр</div>
+                                <select id="lessonFilter" class="neo-select" style="width: auto; padding: 0.5rem 2rem 0.5rem 1rem; font-size: 0.9rem;">
+                                    <option value="all">Все занятия</option>
+                                    <option value="planned">Предстоящие</option>
+                                    <option value="completed">Прошедшие</option>
+                                </select>
+                            </div>
+
+                            <div id="lessonsContainer">
+                        {% for lesson in lessons %}
+                        {% set lesson_local = (lesson.lesson_date|to_tz(tz_name)) %}
+                        <a href="{{ url_for('lessons.lesson_homework_view', lesson_id=lesson.lesson_id) }}" class="lesson-feed-item" data-status="{{ lesson.status }}">
+                            <div class="lesson-date-badge">
+                                <span class="lesson-date-day">{{ lesson_local.strftime('%d') if lesson_local else '—' }}</span>
+                                <span class="lesson-date-month">{{ lesson_local.strftime('%b') if lesson_local else '—' }}</span>
+                            </div>
+                            <div class="lesson-info">
+                                <div class="lesson-title">{{ lesson.topic or 'Тема не определена' }}</div>
+                                <div class="lesson-meta">
+                                    <span>
+                                        <span class="status-dot {{ lesson.status }}"></span>
+                                        {% if lesson.status == 'completed' %}Проведён{% elif lesson.status == 'in_progress' %}Идёт{% else %}Запланирован{% endif %}
+                                        {% if lesson.student_late %}<span class="status-badge status-badge--late" title="Ученик опоздал">Опоздание</span>{% endif %}
+                                    </span>
+                                    <span><i class="far fa-clock"></i> {{ lesson_local.strftime('%H:%M') if lesson_local else '—' }}</span>
+                                    {% if lesson.content %}<span><i class="fas fa-book"></i> Конспект</span>{% endif %}
+                                </div>
+                            </div>
+                            <div class="neo-button ghost" style="padding: 0.5rem; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        </a>
+                        {% endfor %}
+                        
+                        {% if not lessons %}
+                        <div class="empty-state" style="padding: 3rem 1rem;">
+                            <div class="empty-state-icon" style="font-size: 2.5rem; margin-bottom: 1rem;">📅</div>
+                            <p>История занятий пуста</p>
                         </div>
                         {% endif %}
-
-                    <div class="neo-field">
-                        <label class="neo-label" for="custom_status">Статус</label>
-                        <input type="text" id="custom_status" name="custom_status" class="neo-input" 
-                               value="{{ student_user.custom_status or '' }}" placeholder="Ваш статус...">
-                    </div>
-                    
-                    <div class="neo-field">
-                        <label class="neo-label" for="about_me">О себе</label>
-                        <textarea id="about_me" name="about_me" class="neo-textarea" 
-                                  placeholder="Расскажите немного о себе...">{{ display_user.about_me or '' }}</textarea>
-                    </div>
-                    
-                    <div class="neo-field">
-                        <label class="neo-label" for="telegram_link">Telegram</label>
-                        <input type="text" id="telegram_link" name="telegram_link" class="neo-input" 
-                               value="{{ current_user.telegram_link or '' }}" placeholder="https://t.me/...">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="neo-button ghost" onclick="closeEditProfileModal()">Отмена</button>
-                    <button type="submit" class="neo-button accent">Сохранить</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        function openAvatarModal(url) {
-            var el = document.getElementById('avatarModalImg');
-            var overlay = document.getElementById('avatarModal');
-            if (el && overlay && url) { el.src = url; overlay.classList.add('active'); document.body.style.overflow = 'hidden'; }
-        }
-        function openAvatarModalFromEl(el) {
-            var url = el && el.getAttribute && el.getAttribute('data-avatar-url');
-            if (url) openAvatarModal(url);
-        }
-        function closeAvatarModal(event) {
-            if (!event) return;
-            var t = event.target;
-            if (t.id === 'avatarModal' || t.classList.contains('avatar-modal-overlay')) {
-                document.getElementById('avatarModal').classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        }
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && document.getElementById('avatarModal').classList.contains('active')) {
-                document.getElementById('avatarModal').classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        });
-
-        function openEditProfileModal() {
-            document.getElementById('editProfileModal').classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeEditProfileModal() {
-            document.getElementById('editProfileModal').classList.remove('active');
-            document.body.style.overflow = '';
-        }
-
-        // Превью аватарки и баннера при выборе файла
-        document.addEventListener('DOMContentLoaded', () => {
-            const avatarInput = document.getElementById('avatar_file');
-            if (avatarInput) {
-                avatarInput.addEventListener('change', function(e) {
-                    const file = e.target.files[0];
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = function(ev) {
-                            const preview = document.getElementById('avatar_preview');
-                            if (preview) { preview.src = ev.target.result; preview.style.display = 'block'; }
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                });
-            }
-            const coverInput = document.getElementById('cover_file');
-            if (coverInput) {
-                coverInput.addEventListener('change', function(e) {
-                    const file = e.target.files[0];
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = function(ev) {
-                            const preview = document.getElementById('cover_preview');
-                            if (preview) { preview.src = ev.target.result; preview.style.display = 'block'; }
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                });
-            }
-        });
-
-        async function submitProfileEdit(event) {
-            event.preventDefault();
-            const form = event.target;
-            const formData = new FormData(form);
-            
-            // Добавляем CSRF токен в FormData (Flask-WTF требует его в форме)
-            const csrfToken = document.querySelector('meta[name="csrf-token"]');
-            if (csrfToken) {
-                formData.append('csrf_token', csrfToken.getAttribute('content'));
-            } else {
-                console.error('CSRF token not found');
-                if (window.toast) window.toast.error('Ошибка безопасности. Обновите страницу.');
-                return;
-            }
-            
-            // Отправляем как FormData (не JSON), чтобы передать файл
-            try {
-                const response = await fetch("{{ url_for('auth.profile_update') }}", {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Server error:', response.status, errorText);
-                    if (window.toast) window.toast.error(`Ошибка сервера (${response.status})`);
-                    return;
-                }
-
-                const result = await response.json();
-                console.log('Server response:', result);
-
-                if (result.success) {
-                    if (result.avatar_url) {
-                        const avatarImg = document.querySelector('.profile-avatar-big img');
-                        if (avatarImg) {
-                            avatarImg.src = result.avatar_url + '?t=' + Date.now();
-                        } else {
-                            const avatarDiv = document.querySelector('.profile-avatar-big');
-                            if (avatarDiv) avatarDiv.innerHTML = `<img src="${result.avatar_url}?t=${Date.now()}" alt="Avatar">`;
-                        }
-                    }
-                    if (result.cover_url) {
-                        const coverEl = document.querySelector('.profile-cover');
-                        if (coverEl) {
-                            coverEl.classList.add('has-cover');
-                            coverEl.style.backgroundImage = "url('" + result.cover_url + "?t=" + Date.now() + "')";
-                        }
-                        const coverPreview = document.getElementById('cover_preview');
-                        if (coverPreview) {
-                            coverPreview.src = result.cover_url + '?t=' + Date.now();
-                            coverPreview.style.display = 'block';
-                        }
-                    }
-                    if (window.toast) window.toast.success('Профиль обновлен');
-                    setTimeout(() => window.location.reload(), 1000);
-                } else {
-                    console.error('Update failed:', result.error);
-                    if (window.toast) window.toast.error(result.error || 'Ошибка обновления');
-                }
-            } catch (e) {
-                console.error('Network error:', e);
-                if (window.toast) window.toast.error('Ошибка сети: ' + e.message);
-            }
-        }
-    </script>
-    {% endif %}
-
-    <script>
-        // Конвертация времени
-        document.addEventListener('DOMContentLoaded', () => {
-            // Активируем снежную тему только на странице профиля Creator
-            const profileContainer = document.querySelector('.profile-container.theme-creator');
-            if (profileContainer) {
-                document.body.classList.add('creator-theme-active');
-            }
-
-            document.querySelectorAll('.local-time').forEach(el => {
-                const timestamp = el.dataset.timestamp;
-                if (timestamp) {
-                    const date = new Date(timestamp);
-                    el.textContent = date.toLocaleString('ru-RU', {
-                        day: '2-digit', month: '2-digit', year: 'numeric',
-                        hour: '2-digit', minute: '2-digit'
-                    });
-                }
-            });
-        });
-    </script>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    <script type="application/json" id="flash-messages">
-    [
-        {% for category, message in messages %}
-        {"category": "{{ category }}", "message": {{ message|tojson }}}{% if not loop.last %},{% endif %}
-        {% endfor %}
-    ]
-    </script>
-    {% endif %}
-    {% endwith %}
-    
-    <script src="{{ url_for('static', filename='toast.js') }}"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var flashMessagesEl = document.getElementById('flash-messages');
-            if (flashMessagesEl) {
-                try {
-                    var messages = JSON.parse(flashMessagesEl.textContent);
-                    messages.forEach(function(msg) {
-                        var toastFunc = window.toast || (typeof toast !== 'undefined' ? toast : null);
-                        if (!toastFunc) return;
-                        
-                        var type = 'success';
-                        if (msg.category === 'error' || msg.category === 'danger') type = 'error';
-                        else if (msg.category === 'warning') type = 'warning';
-                        else if (msg.category === 'info') type = 'info';
-                        
-                        toastFunc[type](msg.message);
-                    });
-                } catch (e) {
-                    console.error('Error parsing flash messages:', e);
-                }
-            }
-        });
-    </script>
-
-    <script>
-        let telegramLinkCode = null;
-        let telegramCodeExpires = null;
-        
-        async function loadTelegramStatus() {
-            const container = document.getElementById('telegram-status-content');
-            if (!container) return;
-            
-            try {
-                const resp = await fetch('/api/telegram/status');
-                const data = await resp.json();
-                
-                if (data.success) {
-                    renderTelegramStatus(data);
-                } else {
-                    container.innerHTML = '<div style="color: var(--danger);">Ошибка загрузки</div>';
-                }
-            } catch (e) {
-                container.innerHTML = '<div style="color: var(--danger);">Ошибка соединения</div>';
-            }
-        }
-        
-        function renderTelegramStatus(data) {
-            const container = document.getElementById('telegram-status-content');
-            if (!container) return;
-            
-            if (data.linked) {
-                container.innerHTML = `
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
-                        <span style="color: var(--success); font-weight: 600;">
-                            <i class="fas fa-check-circle"></i> Telegram привязан
-                        </span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                            <input type="checkbox" id="tg-notifications-toggle" 
-                                   ${data.notifications_enabled ? 'checked' : ''} 
-                                   onchange="toggleTelegramNotifications(this.checked)">
-                            <span style="color: var(--text-muted);">Получать уведомления</span>
-                        </label>
-                        <button class="neo-button ghost sm" onclick="unlinkTelegram()">
-                            <i class="fas fa-unlink"></i> Отвязать
-                        </button>
-                    </div>
-                `;
-            } else {
-                container.innerHTML = `
-                    <div style="color: var(--text-muted); margin-bottom: 0.75rem;">
-                        Привяжите Telegram, чтобы получать уведомления о уроках, проверке ДЗ и сообщениях.
-                    </div>
-                    <div id="telegram-link-area">
-                        <button class="neo-button accent sm" onclick="generateTelegramCode()">
-                            <i class="fab fa-telegram"></i> Привязать Telegram
-                        </button>
-                    </div>
-                `;
-            }
-        }
-        
-        function getCsrfToken() {
-            return document.querySelector('meta[name="csrf-token"]')?.content || '';
-        }
-        
-        async function generateTelegramCode() {
-            const area = document.getElementById('telegram-link-area');
-            if (!area) return;
-            
-            area.innerHTML = '<div style="color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Генерация кода...</div>';
-            
-            try {
-                const resp = await fetch('/api/telegram/link-code', { 
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': getCsrfToken() }
-                });
-                const data = await resp.json();
-                
-                if (data.success) {
-                    telegramLinkCode = data.code;
-                    telegramCodeExpires = Date.now() + (data.expires_in * 1000);
-                    
-                    area.innerHTML = `
-                        <div style="background: var(--surface-2); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
-                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-                                1. Откройте бота <a href="https://t.me/urep_notify_bot" target="_blank" style="color: var(--accent-1);">@urep_notify_bot</a>
-                            </div>
-                            <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
-                                2. Отправьте команду:
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
-                                <code style="background: var(--surface-1); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); font-size: 1.1rem; font-weight: 600; letter-spacing: 0.05em;">/link ${data.code}</code>
-                                <button class="neo-button ghost sm" onclick="copyTelegramCode()" title="Скопировать">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            </div>
-                            <div style="font-size: 0.8rem; color: var(--warning);">
-                                <i class="fas fa-clock"></i> Код действителен 15 минут. Один код — одна привязка.
                             </div>
                         </div>
-                        <button class="neo-button ghost sm" style="margin-top: 0.75rem;" onclick="loadTelegramStatus()">
-                            <i class="fas fa-arrow-left"></i> Назад
-                        </button>
-                    `;
-                } else {
-                    area.innerHTML = `<div style="color: var(--danger);">Ошибка: ${data.error}</div>`;
-                }
-            } catch (e) {
-                area.innerHTML = `<div style="color: var(--danger);">Ошибка соединения</main>
+                    </details>
+                </section>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                
+                <section class="glass-panel">
+                    <h3 class="form-section-title" style="font-size: 1.1rem; margin-bottom: 1.2rem;"><i class="fas fa-info-circle ui-icon"></i> Информация</h3>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        {% if student.category %}
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--stroke-1); padding-bottom: 0.8rem;">
+                            <span style="color: var(--text-muted);">Категория</span>
+                            <span style="font-weight: 600;">{{ student.category }}</span>
+                        </div>
+                        {% endif %}
+                        {% if student.overall_rating %}
+                        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--stroke-1); padding-bottom: 0.8rem;">
+                            <span style="color: var(--text-muted);">Уровень</span>
+                            <span style="font-weight: 600;">{{ student.overall_rating }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </section>
+
+                {% if parents_info %}
+                <section class="glass-panel">
+                    <h3 class="form-section-title" style="font-size: 1.1rem; margin-bottom: 1.2rem;"><i class="fas fa-users ui-icon"></i> Связи</h3>
+                    {% for parent in parents_info %}
+                    <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--stroke-1);">
+                        <div style="font-weight: 600; margin-bottom: 0.3rem;">{{ parent.name }}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-phone"></i> {{ parent.phone or '—' }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </section>
+                {% endif %}
+
+                {% if student.notes %}
+                <section class="glass-panel">
+                    <h3 class="form-section-title" style="font-size: 1.1rem; margin-bottom: 1.2rem;"><i class="fas fa-sticky-note ui-icon"></i> Заметки</h3>
+                    <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text-muted); white-space: pre-line;">
+                        {{ student.notes }}
+                    </div>
+                </section>
+                {% endif %}
+            </div>
+        </div>
+    </main>
     </div>
-</div>`;
+</div>
+
+    <style>
+        
+        @media (max-width: 900px) {
+            .profile-grid-responsive {
+                grid-template-columns: 1fr !important;
             }
         }
-        
-        function copyTelegramCode() {
-            if (telegramLinkCode) {
-                navigator.clipboard.writeText('/link ' + telegramLinkCode);
-                if (window.toast) toast.success('Команда скопирована!');
-            }
-        }
-        
-        async function unlinkTelegram() {
-            if (!confirm('Отвязать Telegram? Вы перестанете получать уведомления.')) return;
-            
-            try {
-                const resp = await fetch('/api/telegram/unlink', { 
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': getCsrfToken() }
-                });
-                const data = await resp.json();
-                
-                if (data.success) {
-                    if (window.toast) toast.success('Telegram отвязан');
-                    loadTelegramStatus();
-                } else {
-                    if (window.toast) toast.error(data.error);
-                }
-            } catch (e) {
-                if (window.toast) toast.error('Ошибка соединения');
-            }
-        }
-        
-        async function toggleTelegramNotifications(enabled) {
-            try {
-                const resp = await fetch('/api/telegram/toggle-notifications', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCsrfToken()
-                    },
-                    body: JSON.stringify({ enabled })
-                });
-                const data = await resp.json();
-                
-                if (data.success) {
-                    if (window.toast) toast.success(enabled ? 'Уведомления включены' : 'Уведомления выключены');
-                } else {
-                    if (window.toast) toast.error(data.error);
-                    loadTelegramStatus(); // Откатить UI
-                }
-            } catch (e) {
-                if (window.toast) toast.error('Ошибка соединения');
-                loadTelegramStatus();
-            }
-        }
-        
-        // Загружаем статус при загрузке страницы
-        document.addEventListener('DOMContentLoaded', loadTelegramStatus);
-    </script>
+    </style>
+
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
     <script>
         async function updateLessonsRemaining(userId, delta) {
+            if (!userId) return;
             try {
                 const url = `/api/user/${userId}/lessons-remaining`;
                 const response = await fetch(url, {
@@ -985,6 +594,26 @@
                 if (window.toast) window.toast.error('Ошибка соединения');
             }
         }
+
+        document.getElementById('lessonFilter').addEventListener('change', function(e) {
+            const status = e.target.value;
+            const items = document.querySelectorAll('.lesson-feed-item');
+            
+            items.forEach(item => {
+                if (status === 'all') {
+                    item.style.display = 'grid';
+                } else {
+                    const itemStatus = item.getAttribute('data-status');
+                    if (status === 'completed' && itemStatus === 'completed') {
+                        item.style.display = 'grid';
+                    } else if (status === 'planned' && itemStatus === 'planned') {
+                        item.style.display = 'grid';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                }
+            });
+        });
     </script>
 </body>
 </html>

@@ -251,15 +251,18 @@ def student_profile(student_id):
                     cand = Student.query.get(current_user.id)
                     if cand and getattr(cand, 'user_id', None) is None:
                         me_student = cand
-                if me_student and me_student.student_id != student_id:
-                    return redirect(url_for('students.student_profile', student_id=me_student.student_id))
+                if me_student:
+                    if me_student.student_id != student_id:
+                        return redirect(url_for('students.student_profile', student_id=me_student.student_id))
+                    else:
+                        return redirect(url_for('auth.user_profile'))
             except Exception:
                 pass
 
         try:
             if current_user.is_student():
                 if getattr(student, 'user_id', None) == current_user.id:
-                    scope = {'can_see_all': False, 'student_ids': [current_user.id]}
+                    return redirect(url_for('auth.user_profile'))
                 else:
                     scope = get_user_scope(current_user)
             else:
@@ -401,8 +404,7 @@ def student_profile(student_id):
             except Exception as e:
                 logger.warning(f"Ошибка загрузки преподавателей для ученика: {e}")
         
-        try:
-            return render_template('student_profile.html', 
+        return render_template('student_profile.html', 
                                student=student, 
                                student_user=student_user_obj,
                                student_subscription=student_subscription,
@@ -413,13 +415,7 @@ def student_profile(student_id):
                                upcoming_lessons=upcoming_lessons,
                                in_progress_lesson=in_progress_lesson,
                                other_lessons=other_lessons,
-                               recent_lessons=all_lessons[:6] if all_lessons else [],
-                               lesson_counts={'total': len(all_lessons) if all_lessons else 0, 'planned': len(planned_lessons) if planned_lessons else 0, 'completed': len(completed_lessons) if completed_lessons else 0},
                                parents_info=parents_info)
-        except Exception as e:
-            logger.error(f"Template rendering error in student_profile: {e}", exc_info=True)
-            flash('Ошибка при отображении профиля ученика.', 'danger')
-            return redirect(url_for('main.dashboard'))
     except Exception as e:
         logger.error(f"Critical error in student_profile: {e}", exc_info=True)
         flash('Произошла ошибка при загрузке профиля ученика.', 'danger')
