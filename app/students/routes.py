@@ -412,6 +412,8 @@ def student_profile(student_id):
                                upcoming_lessons=upcoming_lessons,
                                in_progress_lesson=in_progress_lesson,
                                other_lessons=other_lessons,
+                               recent_lessons=all_lessons[:6] if all_lessons else [],
+                               lesson_counts={'total': len(all_lessons) if all_lessons else 0, 'planned': len(planned_lessons) if planned_lessons else 0, 'completed': len(completed_lessons) if completed_lessons else 0},
                                parents_info=parents_info)
     except Exception as e:
         logger.error(f"Critical error in student_profile: {e}", exc_info=True)

@@ -52,9 +52,11 @@
         })();
     </script>
 </head>
-{% set use_custom_theme = current_user and (current_user.id == custom_theme_user_id or (current_user.numeric_id is not none and (current_user.numeric_id|string) == (custom_theme_user_id|string))) %}
+    {% set display_user = target_user if target_user is defined and target_user else current_user %}
+    {% set is_viewing_other = display_user.id != current_user.id %}
+    {% set use_custom_theme = display_user and (display_user.id == custom_theme_user_id or (display_user.numeric_id is not none and (display_user.numeric_id|string) == (custom_theme_user_id|string))) %}
 <body class="{% if use_custom_theme %}custom-theme-active{% endif %}">
-    {% if current_user and current_user.is_creator() %}
+    {% if display_user and display_user.is_creator() %}
     <div class="creator-snowflakes" aria-hidden="true">
         {% for i in range(28) %}<span class="snowflake">❄</span>{% endfor %}
     </div>
@@ -71,39 +73,39 @@
         <main class="app-content">
         {% include '_ux_enhancements.html' %}
         <main class="profile-container
-            {% if current_user and current_user.is_creator() %}theme-creator
+            {% if current_user and target_user.is_creator() %}theme-creator
             {% elif use_custom_theme %}theme-custom-999
-            {% elif current_user and current_user.is_admin() %}theme-admin
-            {% elif current_user and current_user.is_tutor() %}theme-tutor
-            {% elif current_user and current_user.is_content_maker() %}theme-tutor
-            {% elif current_user and current_user.is_parent() %}theme-parent
-            {% elif current_user and current_user.is_student() %}theme-student
+            {% elif current_user and target_user.is_admin() %}theme-admin
+            {% elif current_user and target_user.is_tutor() %}theme-tutor
+            {% elif current_user and target_user.is_content_maker() %}theme-tutor
+            {% elif current_user and target_user.is_parent() %}theme-parent
+            {% elif current_user and target_user.is_student() %}theme-student
             {% endif %}
         ">
             {% if current_user %}
                 <div class="profile-card">
-                    {% set cover_url = current_user.profile.cover_url if (current_user.profile and current_user.profile.cover_url) else none %}
-                    <div class="profile-cover {% if (current_user.is_creator() or use_custom_theme) and cover_url %}has-cover{% endif %}" {% if (current_user.is_creator() or use_custom_theme) and cover_url %}style="background-image: url('{{ cover_url }}');"{% endif %}></div>
+                    {% set cover_url = target_user.profile.cover_url if (target_user.profile and target_user.profile.cover_url) else none %}
+                    <div class="profile-cover {% if (target_user.is_creator() or use_custom_theme) and cover_url %}has-cover{% endif %}" {% if (target_user.is_creator() or use_custom_theme) and cover_url %}style="background-image: url('{{ cover_url }}');"{% endif %}></div>
 
                     <div class="profile-header">
                         <div class="profile-identity">
-                            <div class="profile-avatar-wrapper {% if current_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if current_user.avatar_url %}data-avatar-url="{{ current_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
+                            <div class="profile-avatar-wrapper {% if target_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if target_user.avatar_url %}data-avatar-url="{{ target_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
                                 <div class="profile-avatar-big">
-                                    {% if current_user.avatar_url %}
-                                    <img src="{{ current_user.avatar_url }}" alt="Avatar">
+                                    {% if target_user.avatar_url %}
+                                    <img src="{{ target_user.avatar_url }}" alt="Avatar">
                                     {% else %}
-                                    {{ current_user.username[0].upper() }}
+                                    {{ target_user.username[0].upper() }}
                                     {% endif %}
                                 </div>
                             </div>
                             <div class="profile-info">
                                 <div class="profile-role-badge">
-                                    {{ current_user.get_primary_role_display() }}
+                                    {{ target_user.get_primary_role_display() }}
                                 </div>
-                                <h1>{{ current_user.username }}</h1>
-                                {% if current_user.custom_status %}
+                                <h1>{{ target_user.username }}</h1>
+                                {% if target_user.custom_status %}
                                 <div class="profile-status" style="color: var(--text-muted); font-size: 1.1rem; margin-top: 0.5rem; font-style: italic;">
-                                    "{{ current_user.custom_status }}"
+                                    "{{ target_user.custom_status }}"
                                 </div>
                                 {% endif %}
                                 <button class="neo-button outline" style="margin-top: 1rem;" onclick="openEditProfileModal()">
@@ -115,10 +117,10 @@
                     </div>
 
                     <div style="padding: 0 2.5rem 2.5rem;">
-                        {% set tz_name = (current_user.profile.timezone if current_user.profile and current_user.profile.timezone else 'Europe/Moscow') %}
+                        {% set tz_name = (target_user.profile.timezone if target_user.profile and target_user.profile.timezone else 'Europe/Moscow') %}
                                 {% set ics_tz_param = ('tomsk' if tz_name == 'Asia/Tomsk' else 'moscow') %}
                                 {% if has_permission(current_user, 'schedule.view') or has_permission(current_user, 'tools.schedule') %}
-                                <div id="ics-config" style="display:none" data-tz="{{ ics_tz_param }}" data-regenerate-url="{{ url_for('schedule.schedule_regenerate_ics_token') }}" data-token="{{ current_user.schedule_ics_token or '' }}"></div>
+                                <div id="ics-config" style="display:none" data-tz="{{ ics_tz_param }}" data-regenerate-url="{{ url_for('schedule.schedule_regenerate_ics_token') }}" data-token="{{ target_user.schedule_ics_token or '' }}"></div>
                                 <script>
                                     (function() {
                                         var cfg = document.getElementById('ics-config');
@@ -166,7 +168,7 @@
                                 </div>
                                 {% endif %}
 
-                                {% if current_user.is_student() %}
+                                {% if target_user.is_student() %}
                                 <div class="data-row">
                                     <span class="data-label">ID ученика</span>
                                     <span class="data-value" style="font-family: 'MonaspaceNeon', monospace; letter-spacing: 1px; color: var(--accent-color);">
@@ -181,7 +183,7 @@
                                 {% endif %}
                                 <div class="data-row">
                                     <span class="data-label">Логин</span>
-                                    <span class="data-value">{{ current_user.username }}</span>
+                                    <span class="data-value">{{ target_user.username }}</span>
                                 </div>
                                 <div class="data-row">
                                     <span class="data-label">Роль в системе</span>
@@ -198,7 +200,7 @@
                                     </span>
                                 </div>
 
-                                {% if current_user.is_student() or current_user.is_parent() %}
+                                {% if target_user.is_student() or target_user.is_parent() %}
                                 <div class="glass-panel" style="margin-top: 1rem; padding: 1rem;">
                                     <div class="hero-eyebrow">доступ</div>
                                     {% if subscription_access and subscription_access.subscription and subscription_access.plan %}
@@ -263,7 +265,7 @@
                             </div>
 
                             <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-                                {% if current_user.is_student() %}
+                                {% if target_user.is_student() %}
                                 <div class="profile-section">
                                     <h3>Учебный профиль</h3>
                                     {% if linked_student %}
@@ -301,15 +303,11 @@
 
                                         <div class="profile-actions-grid" style="margin-top: .25rem;">
                                             {% if sub_allow_lessons %}
-                                            <a href="{{ url_for('students.student_profile', student_id=linked_student.student_id) }}" class="neo-button accent" style="text-decoration:none;">
-                                                {{ ui_icon('nav.students', 'sm', decorative=true) }}
-                                                Открыть мою комнату
-                                            </a>
-                                            {% endif %}
-                                            <a href="{{ url_for('students.student_analytics', student_id=linked_student.student_id) }}" class="neo-button outline" style="text-decoration:none;">
+                                            <a href="{{ url_for('students.student_analytics', student_id=linked_student.student_id) }}" class="neo-button accent" style="text-decoration:none; grid-column: span 2;">
                                                 {{ ui_icon('nav.stats', 'sm', decorative=true) }}
                                                 Статистика
                                             </a>
+                                            {% endif %}
                                             {% if sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
                                             <a href="{{ url_for('trainer.trainer_embed') }}" class="neo-button outline" style="text-decoration:none;">
                                                 {{ ui_icon('nav.help', 'sm', decorative=true) }}
@@ -391,7 +389,7 @@
                                         {% endif %}
                                         <a href="{{ url_for('students.students_list') }}" class="neo-button outline" style="text-decoration:none;">
                                             {{ ui_icon('nav.students', 'sm', decorative=true) }}
-                                            {{ 'Дети' if current_user.is_parent() else 'Ученики' }}
+                                            {{ 'Дети' if target_user.is_parent() else 'Ученики' }}
                                         </a>
                                         {% if has_permission(current_user, 'assignment.view') %}
                                         <a href="{{ url_for('assignments.assignments_list') }}" class="neo-button outline" style="text-decoration:none;">
@@ -437,7 +435,7 @@
                                             Подписки
                                         </a>
                                         {% endif %}
-                                        {% if (current_user.is_admin() or current_user.is_creator()) and config.ADMIN_URL %}
+                                        {% if (target_user.is_admin() or target_user.is_creator()) and config.ADMIN_URL %}
                                         <a href="{{ config.ADMIN_URL }}" class="neo-button danger" style="text-decoration:none;" target="_blank" rel="noopener">
                                             {{ ui_icon('action.settings', 'sm', decorative=true) }}
                                             Админка
@@ -468,7 +466,7 @@
                                 {% endif %}
                                 {% endif %}
 
-                                {% if current_user.is_creator() and config.ADMIN_URL %}
+                                {% if target_user.is_creator() and config.ADMIN_URL %}
                                 <div class="profile-section" style="background: rgba(255, 46, 46, 0.05); border-color: rgba(255, 46, 46, 0.3);">
                                     <h3>
                                         {{ ui_icon('action.admin', 'md', decorative=true) }}
@@ -523,9 +521,9 @@
                     <div class="modal-body">
                         <div class="neo-field">
                             <label class="neo-label" for="avatar_file">Аватарка</label>
-                            {% if current_user.avatar_url %}
+                            {% if target_user.avatar_url %}
                             <div style="margin-bottom: 1rem; text-align: center;">
-                                <img id="avatar_preview" src="{{ current_user.avatar_url }}" alt="Текущая аватарка" 
+                                <img id="avatar_preview" src="{{ target_user.avatar_url }}" alt="Текущая аватарка" 
                                      style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 2px solid var(--stroke-1);">
                             </div>
                             {% else %}
@@ -538,10 +536,10 @@
                             <small style="color: var(--text-muted); font-size: 0.8rem;">Загрузите изображение (JPG, PNG, GIF, WEBP, макс. 5MB)</small>
                         </div>
 
-                        {% if current_user.is_creator() or use_custom_theme %}
+                        {% if target_user.is_creator() or use_custom_theme %}
                         <div class="neo-field" id="cover_field">
                             <label class="neo-label" for="cover_file">Баннер профиля (GIF или изображение)</label>
-                            {% set creator_cover = current_user.profile.cover_url if (current_user.profile and current_user.profile.cover_url) else none %}
+                            {% set creator_cover = target_user.profile.cover_url if (target_user.profile and target_user.profile.cover_url) else none %}
                             {% if creator_cover %}
                             <div style="margin-bottom: 1rem; text-align: center;">
                                 <img id="cover_preview" src="{{ creator_cover }}" alt="Текущий баннер" style="max-width: 100%; max-height: 120px; object-fit: contain; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1);">
@@ -559,7 +557,7 @@
                     <div class="neo-field">
                         <label class="neo-label" for="custom_status">Статус</label>
                         <input type="text" id="custom_status" name="custom_status" class="neo-input" 
-                               value="{{ current_user.custom_status or '' }}" placeholder="Ваш статус...">
+                               value="{{ target_user.custom_status or '' }}" placeholder="Ваш статус...">
                     </div>
                     
                     <div class="neo-field">

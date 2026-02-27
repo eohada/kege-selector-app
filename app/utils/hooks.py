@@ -79,6 +79,14 @@ def register_hooks(app):
                         WHERE status = 'planned' 
                         AND (lesson_date + (duration || ' minutes')::interval) <= :now
                     """), {'now': now_naive})
+                    
+                    result_ip = db.session.execute(text("""
+                        UPDATE "Lessons" 
+                        SET status = 'completed', updated_at = :now
+                        WHERE status = 'in_progress' 
+                        AND started_at IS NOT NULL 
+                        AND (started_at + interval '60 minutes') <= :now
+                    """), {'now': now_naive})
                 else:
                     result = db.session.execute(text("""
                         UPDATE Lessons 
@@ -86,8 +94,16 @@ def register_hooks(app):
                         WHERE status = 'planned' 
                         AND datetime(lesson_date, '+' || duration || ' minutes') <= :now
                     """), {'now': now_naive})
+                    
+                    result_ip = db.session.execute(text("""
+                        UPDATE Lessons 
+                        SET status = 'completed', updated_at = :now
+                        WHERE status = 'in_progress' 
+                        AND started_at IS NOT NULL 
+                        AND datetime(started_at, '+60 minutes') <= :now
+                    """), {'now': now_naive})
                 
-                updated_count = result.rowcount
+                updated_count = result.rowcount + result_ip.rowcount
                 
                 if updated_count > 0:
                     db.session.commit()
@@ -96,28 +112,38 @@ def register_hooks(app):
             except Exception as e:
                 logger.warning(f"Ошибка при массовом обновлении статусов, используем старый метод: {e}")
                 try:
-                    yesterday = now_naive - timedelta(days=1)
+                    two_days_ago = now_naive - timedelta(days=2)
                     
-                    planned_lessons = Lesson.query.filter(
-                        Lesson.status == 'planned',
-                        Lesson.lesson_date >= yesterday
+                    lessons_to_check = Lesson.query.filter(
+                        Lesson.status.in_(['planned', 'in_progress']),
+                        Lesson.lesson_date >= two_days_ago
                     ).all()
                     
-                    if not planned_lessons:
+                    if not lessons_to_check:
                         return
                     
                     updated_count = 0
                     now_with_tz = now if getattr(now, 'tzinfo', None) else now.replace(tzinfo=MOSCOW_TZ)
-                    for lesson in planned_lessons:
-                        lesson_date_with_tz = lesson.lesson_date
-                        if lesson_date_with_tz.tzinfo is None:
-                            lesson_date_with_tz = lesson_date_with_tz.replace(tzinfo=MOSCOW_TZ)
-                        
-                        lesson_end_time = lesson_date_with_tz + timedelta(minutes=lesson.duration)
-                        if now_with_tz >= lesson_end_time:
-                            lesson.status = 'completed'
-                            lesson.updated_at = now_naive
-                            updated_count += 1
+                    for lesson in lessons_to_check:
+                        if lesson.status == 'planned':
+                            lesson_date_with_tz = lesson.lesson_date
+                            if lesson_date_with_tz.tzinfo is None:
+                                lesson_date_with_tz = lesson_date_with_tz.replace(tzinfo=MOSCOW_TZ)
+                            
+                            lesson_end_time = lesson_date_with_tz + timedelta(minutes=lesson.duration)
+                            if now_with_tz >= lesson_end_time:
+                                lesson.status = 'completed'
+                                lesson.updated_at = now_naive
+                                updated_count += 1
+                        elif lesson.status == 'in_progress' and lesson.started_at:
+                            started_at_with_tz = lesson.started_at
+                            if started_at_with_tz.tzinfo is None:
+                                started_at_with_tz = started_at_with_tz.replace(tzinfo=MOSCOW_TZ)
+                            
+                            if now_with_tz >= started_at_with_tz + timedelta(minutes=60):
+                                lesson.status = 'completed'
+                                lesson.updated_at = now_naive
+                                updated_count += 1
                     
                     if updated_count > 0:
                         db.session.commit()
