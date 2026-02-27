@@ -315,7 +315,7 @@
 
                                         <div class="profile-actions-grid" style="margin-top: .25rem;">
                                             {% if sub_allow_lessons %}
-                                            <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button accent" style="text-decoration:none; grid-column: span 2;">
+                                            <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button accent" style="text-decoration:none;">
                                                 {{ ui_icon('nav.stats', 'sm', decorative=true) }}
                                                 Статистика
                                             </a>
@@ -327,7 +327,7 @@
                                             </a>
                                             {% endif %}
                                             {% if sub_allow_lessons %}
-                                            <a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost" style="text-decoration:none;">
+                                            <a href="{{ url_for('assignments.submissions_list', student_id=student.student_id) }}" class="neo-button outline" style="text-decoration:none;">
                                                 {{ ui_icon('nav.assignments', 'sm', decorative=true) }}
                                                 Задания
                                             </a>
