@@ -290,8 +290,17 @@
 
         <div class="gen-premium-shell">
             <section class="glass-panel generator-panel gen-start-card">
-                <h2>Запуск</h2>
-                <p>Выбери номер задания и запусти поток. Остановишься — когда захочешь.</p>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
+                    <div>
+                        <h2>Запуск</h2>
+                        <p class="hint" style="margin:0;">Выбери номер задания и нажми старт.</p>
+                    </div>
+                    {% if generator_recipient_ids %}
+                    <button type="button" id="genCreateWorkBtnTop" class="neo-button accent shadow-sm">
+                        {{ ui_icon('action.check', 'sm') }} Завершить и создать
+                    </button>
+                    {% endif %}
+                </div>
                 <form id="genStartForm" class="generator-form-grid" onsubmit="return false;">
                     {{ selection_form.hidden_tag() }}
                     <div class="neo-field">
@@ -671,7 +680,7 @@
                 }
             }
 
-            document.getElementById('genCreateWorkBtn')?.addEventListener('click', function() {
+            function finishAndCreate() {
                 const ctx = getCtx();
                 let base = '/assignments/create?assignment_type=' + encodeURIComponent(ctx.assignment_type || 'homework');
                 if (ctx.recipient_ids && ctx.recipient_ids.length) {
@@ -681,7 +690,10 @@
                     ? base + '&source=generator&task_ids=' + acceptedInSession.join(',')
                     : base + '&source=manual';
                 location.href = url;
-            });
+            }
+
+            document.getElementById('genCreateWorkBtnTop')?.addEventListener('click', finishAndCreate);
+            document.getElementById('genCreateWorkBtn')?.addEventListener('click', finishAndCreate);
 
             startBtn?.addEventListener('click', startStream);
             stopBtn?.addEventListener('click', () => {

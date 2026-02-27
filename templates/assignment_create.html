@@ -303,20 +303,27 @@
 
             // Status
             const sel = document.getElementById('ca_recipients');
-            const count = sel ? Array.from(sel.selectedOptions).length : 0;
-            document.getElementById('statusRecipients').textContent = count;
+            if (sel) {
+                const count = Array.from(sel.selectedOptions).length;
+                document.getElementById('statusRecipients').textContent = count;
+            }
+
+            // Task count status
+            const tasks = getTaskIds();
+            document.getElementById('statusTasks').textContent = tasks.length;
 
             // Generator link
             const genLink = document.getElementById('generatorLink');
-            if (genLink) {
+            if (genLink && sel) {
                 const ids = Array.from(sel.selectedOptions).map(o => o.value).join(',');
-                genLink.href = `/kege-generator?student_ids=${ids}`;
+                genLink.href = `/kege-generator?recipient_ids=${ids}`;
             }
         }
 
         function goToStep(s) {
             if (s === 2) {
-                const count = Array.from(document.getElementById('ca_recipients').selectedOptions).length;
+                const sel = document.getElementById('ca_recipients');
+                const count = sel ? Array.from(sel.selectedOptions).length : 0;
                 if (count === 0) {
                     window.toast?.error?.('Сначала выберите хотя бы одного ученика');
                     return;
@@ -361,11 +368,14 @@
 
         function getTaskIds() {
             try {
+                // Если мы в режиме ручного ввода и там что-то написано - берем оттуда
                 const ta = document.getElementById('manualTaskIds');
-                if (ta) {
+                if (ta && ta.value.trim().length > 0) {
                     return (ta.value || '').split(/[^0-9]+/).map(x => parseInt(x)).filter(x => !isNaN(x));
                 }
-                return JSON.parse(document.getElementById('task-ids-json').textContent || '[]');
+                // Иначе берем то, что прислал сервер (из шаблона или генератора)
+                const jsonEl = document.getElementById('task-ids-json');
+                return JSON.parse(jsonEl ? jsonEl.textContent : '[]');
             } catch(e) { return []; }
         }
 
