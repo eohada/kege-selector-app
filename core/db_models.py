@@ -1404,6 +1404,7 @@ class Assignment(db.Model):
     
     deadline = db.Column(db.DateTime, nullable=False)  # Дедлайн сдачи
     hard_deadline = db.Column(db.Boolean, default=False)  # Если True - нельзя сдать после дедлайна
+    allow_separate_submission = db.Column(db.Boolean, default=True, nullable=False)  # Разрешить сдавать по одной задаче
     time_limit_minutes = db.Column(db.Integer, nullable=True)  # Ограничение времени выполнения (для exam/test)
     max_attempts_default = db.Column(db.Integer, nullable=True)  # Макс. попыток сдачи по умолчанию (1 если NULL)
     

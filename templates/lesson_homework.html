@@ -1196,7 +1196,7 @@
 
                 {% else %}
                 <div class="empty-state">
-                    <div class="empty-state-icon">📋</div>
+                    <div class="empty-state-icon">{{ ui_icon('nav.assignments', 'lg') }}</div>
                     <h3>Заданий пока нет</h3>
                      {% if not is_student_view and not is_parent_view %}
                     <a href="{{ url_for('kege_generator.kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button accent">Добавить задания</a>

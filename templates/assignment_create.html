@@ -116,12 +116,33 @@
         .task-mini-item {
             background: var(--surface-2);
             border: 1px solid var(--stroke-1);
-            padding: 0.75rem 1rem;
+            padding: 0;
             border-radius: var(--radius-md);
             font-size: 0.9rem;
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
+            overflow: hidden;
         }
+        .task-mini-header {
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            background: rgba(255,255,255,0.02);
+            transition: background 0.2s;
+        }
+        .task-mini-header:hover { background: rgba(255,255,255,0.05); }
+        .task-mini-body {
+            padding: 1rem;
+            border-top: 1px solid var(--stroke-1);
+            display: none;
+            background: var(--surface-1);
+            line-height: 1.6;
+        }
+        .task-mini-body.active { display: block; }
+        .task-mini-body img { max-width: 100%; height: auto; border-radius: 4px; margin: 0.5rem 0; }
     </style>
 </head>
 <body>
@@ -237,18 +258,21 @@
                             <h2>3. Финальные настройки</h2>
                             <p class="subtitle">Проверьте список задач и установите срок сдачи.</p>
 
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                            <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
                                 <div>
-                                    <h3 style="font-weight: 900; margin-bottom: 1rem;">Список задач</h3>
+                                    <h3 style="font-weight: 900; margin-bottom: 1rem;">{{ ui_icon('nav.assignments', 'sm') }} Список задач</h3>
                                     <div class="task-mini-list">
                                         {% for t in tasks %}
-                                        <div class="task-mini-item" style="flex-direction: column; gap: 0.5rem;">
-                                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                        <div class="task-mini-item">
+                                            <div class="task-mini-header" onclick="this.nextElementSibling.classList.toggle('active')">
                                                 <span style="font-weight: 800;">#{{ t.task_id }} · Задание №{{ t.task_number }}</span>
-                                                {% if t.source_url %}<a class="neo-button ghost sm" href="{{ t.source_url }}" target="_blank" style="padding: 2px 8px; font-size: 11px;">Источник</a>{% endif %}
+                                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                                    {% if t.source_url %}<a class="neo-button ghost sm" href="{{ t.source_url }}" target="_blank" style="padding: 2px 8px; font-size: 11px;" onclick="event.stopPropagation()">Источник</a>{% endif %}
+                                                    {{ ui_icon('action.chevron_down', 'xs') }}
+                                                </div>
                                             </div>
-                                            <div style="color: var(--text-muted); font-size: 0.85rem; line-height: 1.4; border-top: 1px solid var(--stroke-1); padding-top: 0.5rem;">
-                                                {{ (t.content_html or '')|striptags|truncate(120) }}
+                                            <div class="task-mini-body">
+                                                {{ (t.content_html or 'Текст отсутствует') | safe }}
                                             </div>
                                         </div>
                                         {% endfor %}
@@ -285,10 +309,14 @@
                                                 <input id="ca_max_attempts" class="neo-input" type="number" value="1" min="1" max="20">
                                             </div>
                                         </div>
-                                        <div class="neo-field" style="margin-top: 1rem;">
+                                        <div style="display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.2rem;">
                                             <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
                                                 <input type="checkbox" id="ca_hard_deadline">
                                                 <span style="font-size: 0.9rem; font-weight: 700;">Запретить сдачу после дедлайна</span>
+                                            </label>
+                                            <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                                                <input type="checkbox" id="ca_separate_submission" checked>
+                                                <span style="font-size: 0.9rem; font-weight: 700;">Разрешить сдавать задачи по одной</span>
                                             </label>
                                         </div>
                                     </form>
@@ -411,6 +439,7 @@
             const timeLimit = parseInt(document.getElementById('ca_time_limit').value) || null;
             const maxAttempts = parseInt(document.getElementById('ca_max_attempts').value) || 1;
             const hardDeadline = document.getElementById('ca_hard_deadline').checked;
+            const allowSeparate = document.getElementById('ca_separate_submission').checked;
 
             if (!title || !deadline || !recipients.length || !taskIds.length) {
                 window.toast?.error?.('Заполните все обязательные поля');
@@ -430,6 +459,7 @@
                         time_limit_minutes: timeLimit,
                         max_attempts_default: maxAttempts,
                         hard_deadline: hardDeadline,
+                        allow_separate_submission: allowSeparate,
                         recipientIds: recipients,
                         tasks: taskIds.map((id, i) => ({ task_id: id, order: i, max_score: 1 }))
                     })

@@ -193,6 +193,14 @@
       <path fill="currentColor" d="M12 6a1 1 0 0 1 1 1v4.4l2.4 1.4a1 1 0 1 1-1 1.7l-2.9-1.7A1 1 0 0 1 11 12V7a1 1 0 0 1 1-1Z"/>
     </symbol>
 
+    <symbol id="action-warning" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M12 2L2 20h20L12 2Zm0 3.5L18.5 18H5.5L12 5.5ZM11 10v3h2v-3h-2Zm0 4v2h2v-2h-2Z"/>
+    </symbol>
+
+    <symbol id="action-lock" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M12 2a4 4 0 0 1 4 4v2h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h1V6a4 4 0 0 1 4-4Zm0 2a2 2 0 0 0-2 2v2h4V6a2 2 0 0 0-2-2Zm-1 8v4h2v-4h-2Z"/>
+    </symbol>
+
     <symbol id="action-star" viewBox="0 0 24 24">
       <path fill="currentColor" d="M12 2l2.7 6 6.6.6-5 4.3 1.5 6.4L12 16.7 6.2 19.3l1.5-6.4-5-4.3 6.6-.6L12 2Z"/>
     </symbol>

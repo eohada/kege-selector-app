@@ -198,7 +198,7 @@
         {% if form.errors %}
         <section class="glass-panel" style="border-left: 4px solid var(--danger);">
             <div style="background: rgba(255, 108, 145, 0.12); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); padding: 1rem; color: var(--danger);">
-                <strong style="display: block; margin-bottom: 0.5rem;">⚠️ Ошибки при заполнении формы:</strong>
+                <strong style="display: block; margin-bottom: 0.5rem;">{{ ui_icon('action.warning', 'sm') }} Ошибки при заполнении формы:</strong>
                 <ul style="margin: 0.5em 0 0 1.5em; list-style: disc;">
                 {% for field_name, error_list in form.errors.items() %}
                     {% for error in error_list %}
@@ -281,7 +281,7 @@
             </section>
             
             <section class="form-section" data-section="homework">
-                <div class="form-section-title">📋 Домашнее задание</div>
+                <div class="form-section-title">{{ ui_icon('nav.assignments', 'sm') }} Домашнее задание</div>
                 <div class="form-grid">
                     <div class="neo-field form-grid-full">
                         {{ form.homework.label(class='neo-label') }}

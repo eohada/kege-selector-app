@@ -375,9 +375,9 @@
             {% endif %}
             
             <div class="task-actions" style="display: flex; gap: 0.5em; flex-wrap: wrap; margin-top: 1rem;">
-                <button class="neo-button accent" data-task-id="{{ task.task_id }}" data-action="accept" data-tooltip="Принять задание">{% if lesson %}✓ {{ add_action_text }}{% else %}✓ Принять{% endif %}</button>
+                <button class="neo-button accent" data-task-id="{{ task.task_id }}" data-action="accept" data-tooltip="Принять задание">{% if lesson %}{{ ui_icon('action.check', 'sm') }} {{ add_action_text }}{% else %}{{ ui_icon('action.check', 'sm') }} Принять{% endif %}</button>
                 <button class="neo-button outline" data-task-id="{{ task.task_id }}" data-action="skip" data-tooltip="Пропустить задание (можно вернуть позже)">⊘ Пропустить</button>
-                <button class="neo-button danger" data-task-id="{{ task.task_id }}" data-action="blacklist" data-tooltip="Добавить в черный список (необратимо)">✗ В черный список</button>
+                <button class="neo-button danger" data-task-id="{{ task.task_id }}" data-action="blacklist" data-tooltip="Добавить в черный список (необратимо)">{{ ui_icon('action.close', 'sm') }} В черный список</button>
             </div>
         </section>
         {% endfor %}
@@ -397,7 +397,7 @@
                         Работа появится в разделе <strong>«Работы»</strong> и назначится выбранным ученикам.
                     </div>
                 </div>
-                <button type="button" class="neo-button ghost" onclick="closeCreateAssignmentModal()" aria-label="Закрыть">✕</button>
+                <button type="button" class="neo-button ghost" onclick="closeCreateAssignmentModal()" aria-label="Закрыть">{{ ui_icon('action.close', 'sm') }}</button>
             </div>
             <form id="createAssignmentForm" style="margin-top: 1.25rem;">
                 <div class="neo-field">

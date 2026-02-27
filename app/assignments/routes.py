@@ -440,6 +440,7 @@ def distribute_assignment():
         assignment_type = data.get('type', 'homework')  # homework, classwork, exam, test
         deadline_str = data.get('deadline')
         hard_deadline = data.get('hard_deadline', False)
+        allow_separate_submission = data.get('allow_separate_submission', True)
         time_limit_minutes = data.get('time_limit_minutes')
         max_attempts_default = data.get('max_attempts_default')
         if max_attempts_default is not None:
@@ -495,6 +496,7 @@ def distribute_assignment():
             assignment_type=assignment_type,
             deadline=deadline,
             hard_deadline=hard_deadline,
+            allow_separate_submission=allow_separate_submission,
             time_limit_minutes=time_limit_minutes,
             max_attempts_default=max_attempts_default,
             created_by_id=current_user.id,

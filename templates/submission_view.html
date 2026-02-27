@@ -170,7 +170,7 @@
         <main class="app-content">
 
         <main style="margin-top: 1.25rem;">
-        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.95rem;"><i class="fas fa-arrow-left" style="margin-right: 0.35rem;"></i>К заданиям</a></p>
+        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">{{ ui_icon('action.chevron_left', 'sm') }} К заданиям</a></p>
         <div class="submission-header">
             <h1>{{ assignment.title }}</h1>
             {% if assignment.description %}
@@ -197,6 +197,12 @@
                     <span class="info-label">Попытки</span>
                     <span class="info-value">{{ attempts_used }} / {{ effective_max_attempts }}{% if attempts_left is defined and attempts_left >= 0 and attempts_left < effective_max_attempts %} <span style="color: var(--text-muted); font-size: 0.9em;">(осталось {{ attempts_left }})</span>{% endif %}</span>
                 </div>
+                {% if assignment.time_limit_minutes %}
+                <div class="info-item">
+                    <span class="info-label">Время на выполнение</span>
+                    <span class="info-value">{{ assignment.time_limit_minutes }} мин</span>
+                </div>
+                {% endif %}
                 {% if submission.started_at %}
                 <div class="info-item">
                     <span class="info-label">Начато</span>
@@ -216,15 +222,15 @@
             {% if is_deadline_passed %}
             <div class="deadline-warning {% if assignment.hard_deadline %}deadline-passed{% endif %}">
                 {% if assignment.hard_deadline %}
-                ⚠️ Дедлайн истек. Сдача невозможна.
+                {{ ui_icon('action.warning', 'sm') }} Дедлайн истек. Сдача невозможна.
                 {% else %}
-                ⚠️ Дедлайн истек. Работа будет помечена как сданная с опозданием.
+                {{ ui_icon('action.warning', 'sm') }} Дедлайн истек. Работа будет помечена как сданная с опозданием.
                 {% endif %}
             </div>
             {% endif %}
         </div>
         
-        {% if submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] %}
+        {% if submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0 and can_submit) %}
         <form id="submission-form">
             {% for task_item in tasks_data %}
             <div class="task-card" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
@@ -238,6 +244,10 @@
                 {% if submission.status == 'ASSIGNED' and not submission.started_at %}
                 <div class="task-content" style="color: var(--text-muted); font-style: italic;">
                     Условия задания будут доступны после нажатия «Начать выполнение». Пока видно только номер и краткая информация.
+                </div>
+                {% elif submission.status == 'GRADED' and attempts_left > 0 %}
+                <div class="task-content">
+                    {{ task_item.task.content_html|deduplicate_formulas|safe }}
                 </div>
                 {% else %}
                 <div class="task-content">
@@ -254,7 +264,7 @@
                         class="answer-input"
                         name="answer"
                         data-task-id="{{ task_item.assignment_task.assignment_task_id }}"
-                        {% if submission.status == 'SUBMITTED' or not can_submit %}disabled{% endif %}
+                        {% if (submission.status == 'ASSIGNED' and not submission.started_at) or submission.status == 'SUBMITTED' or not can_submit %}disabled{% endif %}
                     >{{ task_item.answer.value if task_item.answer else '' }}</textarea>
                     <div class="autosave-indicator" id="autosave-{{ task_item.assignment_task.assignment_task_id }}"></div>
                 </div>
@@ -264,17 +274,17 @@
                     {% if submission.status == 'ASSIGNED' %}
             <div style="text-align: center; margin: 2.5rem 0;">
                 <button type="button" id="start-btn" class="neo-button accent" data-prevent-double-submit="true" style="padding: 1.2rem 2.5rem; font-size: 1.05em; font-weight: 700; letter-spacing: 0.5px;">
-                    ▶ Начать выполнение
+                    {{ ui_icon('action.play', 'sm') }} Начать выполнение
                 </button>
             </div>
             {% endif %}
             
-            {% if submission.status in ['IN_PROGRESS', 'RETURNED'] and can_submit %}
+            {% if (submission.status in ['IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0)) and can_submit %}
             <div class="submit-section" style="display: flex; justify-content: space-between; align-items: center; gap: 2rem; margin: 2.5rem 0; padding: 1.5rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg);">
                 <div style="display: flex; align-items: center; gap: 1.5rem;">
                     {% if assignment.time_limit_minutes and submission.started_at %}
                     <div id="timer-container" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.25rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
-                        <span style="font-size: 1.3em;">⏱️</span>
+                        <span style="font-size: 1.3em;">{{ ui_icon('action.clock', 'md') }}</span>
                         <div>
                             <div style="font-size: 0.8em; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Осталось времени</div>
                             <div id="timer" style="font-size: 1.8em; font-weight: 800; color: var(--accent-1); font-family: 'Monaco', 'Menlo', monospace;">{{ '%02d:%02d:%02d' % (assignment.time_limit_minutes // 60, assignment.time_limit_minutes % 60, 0) }}</div>
@@ -286,17 +296,17 @@
                     </div>
                     {% endif %}
                     <button type="button" id="autosave-btn" class="neo-button ghost" style="padding: 0.9rem 1.8rem; font-weight: 600;">
-                        💾 Сохранить черновик
+                        {{ ui_icon('action.save', 'sm') }} Сохранить черновик
                     </button>
                     <span id="last-save" class="autosave-indicator" style="font-size: 0.85em; color: var(--text-muted); font-weight: 500;"></span>
                 </div>
                 <button type="button" id="submit-btn" class="neo-button accent" data-prevent-double-submit="true" style="padding: 1rem 2.2rem; font-weight: 700; letter-spacing: 0.5px;">
-                    ✓ Сдать работу
+                    {{ ui_icon('action.check', 'sm') }} {% if submission.status in ['RETURNED', 'GRADED'] %}Сдать повторно{% else %}Сдать работу{% endif %}
                 </button>
             </div>
             {% endif %}
         </form>
-        {% elif submission.status in ['SUBMITTED', 'GRADED', 'RETURNED'] %}
+        {% elif submission.status in ['SUBMITTED'] or (submission.status == 'GRADED' and (attempts_left is not defined or attempts_left <= 0)) %}
         
         {% for task_item in tasks_data %}
         <div class="task-card">
@@ -540,14 +550,14 @@
                     } else {
                         showToast('✕ Ошибка: ' + (data.error || 'Не удалось начать выполнение'), 'error');
                         startBtn.disabled = false;
-                        startBtn.textContent = '▶ Начать выполнение';
+                        startBtn.textContent = 'Начать выполнение';
                     }
                 })
                 .catch(error => {
                     console.error('Error in submission start:', error);
                     showToast('✕ Ошибка при начале выполнения: ' + error.message, 'error');
                     startBtn.disabled = false;
-                    startBtn.textContent = '▶ Начать выполнение';
+                    startBtn.textContent = 'Начать выполнение';
                 });
             };
 
@@ -565,8 +575,8 @@
         });
         {% endif %}
         
-        {% if submission.status == 'IN_PROGRESS' %}
-        // Автосохранение при изменении
+        {% if submission.status in ['IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0) %}
+        // Автосохранение и сдача (в процессе, на доработку или повторная попытка)
         document.querySelectorAll('.answer-input').forEach(input => {
             input.addEventListener('input', function() {
                 clearTimeout(autosaveTimer);

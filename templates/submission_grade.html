@@ -227,7 +227,7 @@
                     
                     {% if task_item.answer and task_item.answer.is_correct is not none %}
                     <div style="margin-top: 0.75rem; padding: 0.5rem; background: {% if task_item.answer.is_correct %}var(--success){% else %}var(--danger){% endif %}; color: white; border-radius: var(--radius-sm); font-weight: 600;">
-                        {% if task_item.answer.is_correct %}✓ Правильно{% else %}✗ Неправильно{% endif %}
+                        {% if task_item.answer.is_correct %}{{ ui_icon('action.check', 'sm') }} Правильно{% else %}{{ ui_icon('action.close', 'sm') }} Неправильно{% endif %}
                         (Авто-проверка: {{ task_item.answer.score }}/{{ task_item.assignment_task.max_score }})
                     </div>
                     {% endif %}

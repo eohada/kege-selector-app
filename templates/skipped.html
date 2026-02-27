@@ -62,8 +62,8 @@
                     <span style="color: var(--text-primary); font-weight: 600;">Выбрать все задания</span>
                 </label>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <button class="neo-button accent" data-bulk-action="accept" data-tooltip="Принять все выбранные задания">✓ Принять выбранные</button>
-                    <button class="neo-button danger" data-bulk-action="blacklist" data-tooltip="Добавить все выбранные задания в черный список (необратимо)">✗ В черный список</button>
+                    <button class="neo-button accent" data-bulk-action="accept" data-tooltip="Принять все выбранные задания">{{ ui_icon('action.check', 'sm') }} Принять выбранные</button>
+                    <button class="neo-button danger" data-bulk-action="blacklist" data-tooltip="Добавить все выбранные задания в черный список (необратимо)">{{ ui_icon('action.close', 'sm') }} В черный список</button>
                 </div>
             </div>
         </section>
@@ -77,7 +77,7 @@
                         <div>
                             <b style="color: var(--text-primary);">№ {{ task.site_task_id if task.site_task_id else task.task_id }}</b>
                             <span style="color: var(--text-muted); margin: 0 0.5em;">|</span>
-                            <a href="{{ task.source_url }}" target="_blank" class="neo-button ghost" style="font-size: 0.9em; padding: 0.4em 0.8em; text-decoration: none;">🔗 Источник</a>
+                            <a href="{{ task.source_url }}" target="_blank" class="neo-button ghost" style="font-size: 0.9em; padding: 0.4em 0.8em; text-decoration: none;">{{ ui_icon('action.link', 'sm') }} Источник</a>
                         </div>
                     </label>
                     <span class="neo-button outline" style="font-size: 0.85em; padding: 0.4em 0.8em; cursor: default;">⊘ ПРОПУЩЕНО</span>
@@ -89,7 +89,7 @@
                 
                 {% if task.attached_files %}
                 <div class="attached-files" style="background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem;">
-                    <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">📎 Прикрепленные файлы</h4>
+                    <h4 style="color: var(--text-primary); margin-bottom: 1rem; font-weight: 600; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em;">{{ ui_icon('action.image', 'sm') }} Прикрепленные файлы</h4>
                     <ul class="file-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.75rem;">
                         {% set files = task.attached_files | from_json %}
                         {% for file in files %}
@@ -125,8 +125,8 @@
                 {% endif %}
                 
                 <div class="task-actions" style="display: flex; gap: 0.5em; flex-wrap: wrap; margin-top: 1rem;">
-                    <button class="neo-button accent" data-task-id="{{ task.task_id }}" data-action="accept" data-tooltip="Принять задание">✓ Принять (удалить из пропущенных)</button>
-                    <button class="neo-button danger" data-task-id="{{ task.task_id }}" data-action="blacklist" data-tooltip="Добавить в черный список (необратимо)">✗ В черный список</button>
+                    <button class="neo-button accent" data-task-id="{{ task.task_id }}" data-action="accept" data-tooltip="Принять задание">{{ ui_icon('action.check', 'sm') }} Принять (удалить из пропущенных)</button>
+                    <button class="neo-button danger" data-task-id="{{ task.task_id }}" data-action="blacklist" data-tooltip="Добавить в черный список (необратимо)">{{ ui_icon('action.close', 'sm') }} В черный список</button>
                 </div>
             </section>
             {% endfor %}

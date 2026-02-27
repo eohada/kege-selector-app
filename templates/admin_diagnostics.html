@@ -71,7 +71,7 @@
             </section>
 
             <section class="glass-panel">
-                <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">💾 База данных</h2>
+                <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">{{ ui_icon('action.backup', 'sm') }} База данных</h2>
                 <div style="display: flex; flex-direction: column; gap: 1rem;">
                     <div>
                         <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">Тип БД</div>
@@ -81,7 +81,7 @@
                         <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">Подключение</div>
                         <div>
                             {% if diagnostics_data.database.connection_status == 'OK' %}
-                            <span style="color: var(--accent-2); font-weight: 600;">✓ OK</span>
+                            <span style="color: var(--accent-2); font-weight: 600;">{{ ui_icon('action.check', 'sm') }} OK</span>
                             {% else %}
                             <span style="color: var(--danger); font-weight: 600;">✗ ERROR</span>
                             <div style="font-size: 0.85em; color: var(--danger); margin-top: 0.25rem;">{{ diagnostics_data.database.connection_error }}</div>
@@ -189,7 +189,7 @@
 
         {% if diagnostics_data.database.tables %}
         <section class="glass-panel" style="margin-bottom: 1.5rem;">
-            <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">📋 Таблицы в БД</h2>
+            <h2 style="margin-bottom: 1.5rem; color: var(--text-primary);">{{ ui_icon('action.copy', 'sm') }} Таблицы в БД</h2>
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                 {% for table in diagnostics_data.database.tables %}
                 <span style="padding: 0.5rem 1rem; background: var(--surface-2); border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); font-size: 0.9em;">{{ table }}</span>
