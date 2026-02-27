@@ -118,23 +118,23 @@
             <section class="panel">
                 <h3>Источник заданий</h3>
                 <div class="source-cards">
-                    <a class="source-card {% if source=='accepted' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type=assignment_type, task_type=task_type) }}">
-                        <div class="sc-title">Принятые</div>
-                        <div class="sc-sub">Использовать буфер принятых из генератора (лучший поток).</div>
+                    <a class="source-card {% if source=='manual' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='manual', assignment_type=assignment_type) }}">
+                        <div class="sc-title">Вручную</div>
+                        <div class="sc-sub">Вставить список task_id через запятую или пробел — и создать работу.</div>
                     </a>
                     <a class="source-card {% if source=='template' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='template', assignment_type=assignment_type) }}">
                         <div class="sc-title">Шаблон</div>
-                        <div class="sc-sub">Создать работу из заранее собранного набора.</div>
+                        <div class="sc-sub">Взять задания из готового шаблона.</div>
                     </a>
                     {% if lesson_id %}
                     <a class="source-card {% if source=='lesson' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='lesson', lesson_id=lesson_id, assignment_type=assignment_type) }}">
                         <div class="sc-title">Урок</div>
-                        <div class="sc-sub">Собрать работу из задач текущего урока.</div>
+                        <div class="sc-sub">Задания из текущего урока (для этого ученика).</div>
                     </a>
                     {% endif %}
-                    <a class="source-card {% if source=='manual' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='manual', assignment_type=assignment_type) }}">
-                        <div class="sc-title">Вручную</div>
-                        <div class="sc-sub">Вставить список task_id и назначить.</div>
+                    <a class="source-card {% if source=='accepted' %}active{% endif %}" href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type=assignment_type, task_type=task_type) }}">
+                        <div class="sc-title">Из генератора (буфер)</div>
+                        <div class="sc-sub">Все задания, принятые в генераторе в буфер — если уже набирал там.</div>
                     </a>
                 </div>
 

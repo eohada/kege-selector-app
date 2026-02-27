@@ -321,7 +321,7 @@
                             <div class="generator-links" style="margin-bottom: 1rem;">
                                 <a href="{{ url_for('assignments.assignments_accepted', assignment_type=assignment_type) }}" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Принятые</a>
                                 {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
-                                <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type=assignment_type) }}" class="neo-button outline">📝 Создать работу</a>
+                                <button type="button" id="genCreateWorkBtn" class="neo-button outline">📝 Создать работу</button>
                                 {% endif %}
                                 <a href="{{ url_for('assignments.assignments_skipped') }}" class="neo-button ghost">{{ ui_icon('action.minus', 'sm', decorative=true) }}Пропущенные</a>
                             </div>
@@ -474,6 +474,8 @@
 
             let currentTask = null;
             let isBusy = false;
+            /** id заданий, принятых в этой сессии генератора (для «Создать работу» → source=generator&task_ids=…) */
+            let acceptedInSession = [];
 
             function getCtx() {
                 return {
@@ -642,6 +644,12 @@
                         animateSwap(null, data.message || 'Готово.');
                         if (window.toast) window.toast.info('Задания закончились.');
                     } else {
+                        if (action === 'accept' && currentTask) {
+                            const ids = currentTask.is_triplet_19_21
+                                ? (currentTask.triplet_task_ids || [currentTask.task_id].filter(Boolean))
+                                : [currentTask.task_id];
+                            acceptedInSession.push(...ids);
+                        }
                         animateSwap(data.task, data.message);
                     }
                 } catch (e) {
@@ -650,6 +658,15 @@
                     setBusy(false);
                 }
             }
+
+            document.getElementById('genCreateWorkBtn')?.addEventListener('click', function() {
+                const ctx = getCtx();
+                const base = '/assignments/create?assignment_type=' + encodeURIComponent(ctx.assignment_type || 'homework');
+                const url = acceptedInSession.length
+                    ? base + '&source=generator&task_ids=' + acceptedInSession.join(',')
+                    : base + '&source=manual';
+                location.href = url;
+            });
 
             startBtn?.addEventListener('click', startStream);
             stopBtn?.addEventListener('click', () => {

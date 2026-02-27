@@ -1038,23 +1038,38 @@ def assignment_create():
     - source=template: из шаблона (TaskTemplate)
     - source=manual: вручную (вставить task_id)
     """
-    source = (request.args.get('source') or 'accepted').strip().lower()
-    if source not in {'accepted', 'template', 'manual', 'lesson'}:
-        source = 'accepted'
+    source = (request.args.get('source') or 'manual').strip().lower()
+    if source not in {'accepted', 'template', 'manual', 'lesson', 'generator'}:
+        source = 'manual'
 
     assignment_type = _normalize_assignment_type(request.args.get('assignment_type')) or 'homework'
     task_type = request.args.get('task_type', type=int, default=None)
     template_id = request.args.get('template_id', type=int, default=None)
     lesson_id = request.args.get('lesson_id', type=int, default=None)
+    task_ids_param = request.args.get('task_ids', type=str, default=None)
 
     tasks: list[Tasks] = []
     source_label = ''
     source_meta: dict[str, Any] = {}
     default_recipient_ids: list[int] = []
 
-    if source == 'accepted':
+    if source == 'generator' and task_ids_param:
+        try:
+            ids = [int(x.strip()) for x in task_ids_param.split(',') if x.strip() and x.strip().isdigit()]
+            ids = list(dict.fromkeys(ids))[:500]
+            if ids:
+                tasks = Tasks.query.filter(Tasks.task_id.in_(ids)).order_by(Tasks.task_id.asc()).all()
+                tasks = sorted(tasks, key=lambda t: ids.index(t.task_id) if t.task_id in ids else 999)
+            source_label = 'Из генератора'
+            source_meta = {'task_ids': ids}
+        except Exception:
+            tasks = []
+            source_label = 'Из генератора'
+    elif source == 'generator':
+        source_label = 'Вручную'
+    elif source == 'accepted':
         tasks = get_accepted_tasks(task_type=task_type)
-        source_label = 'Принятые задания'
+        source_label = 'Из генератора (буфер принятых)'
         source_meta = {'task_type': task_type}
     elif source == 'template':
         source_label = 'Шаблон'
