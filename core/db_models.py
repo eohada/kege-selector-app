@@ -1408,7 +1408,8 @@ class Assignment(db.Model):
     time_limit_minutes = db.Column(db.Integer, nullable=True)  # Ограничение времени выполнения (для exam/test)
     time_limit_strict = db.Column(db.Boolean, default=False, nullable=False)  # True: после истечения таймера блокировать сдачу; False: только помечать как не уложился
     max_attempts_default = db.Column(db.Integer, nullable=True)  # Макс. попыток сдачи по умолчанию (1 если NULL)
-    
+    attempts_per_task = db.Column(db.Boolean, default=False, nullable=False)  # True: попытки считаются на каждое задание; False: на всю работу
+
     created_by_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)  # Учитель, создавший работу
     lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=True)  # Связь с уроком (если есть)
 
@@ -1434,7 +1435,14 @@ class Assignment(db.Model):
             task_max = int(t.max_attempts) if getattr(t, 'max_attempts', None) is not None else default
             effective = min(effective, max(1, task_max))
         return max(1, effective)
-    
+
+    def get_effective_max_attempts_for_task(self, assignment_task) -> int:
+        """Макс. попыток для конкретного задания: AssignmentTask.max_attempts или max_attempts_default."""
+        default = max(1, int(self.max_attempts_default or 1))
+        if getattr(assignment_task, 'max_attempts', None) is not None:
+            return max(1, int(assignment_task.max_attempts))
+        return default
+
     def __repr__(self):
         return f'<Assignment {self.assignment_id}: {self.title} ({self.assignment_type})>'
 
@@ -1532,6 +1540,7 @@ class Answer(db.Model):
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
     submitted_separately_at = db.Column(db.DateTime, nullable=True)  # Когда ученик нажал «Сдать задание» по этому ответу (при allow_separate_submission)
+    attempts_used = db.Column(db.Integer, default=0, nullable=False)  # Сколько раз сдавали это задание (при attempts_per_task)
 
     submission = db.relationship('Submission', back_populates='answers')
     assignment_task = db.relationship('AssignmentTask', back_populates='answers')

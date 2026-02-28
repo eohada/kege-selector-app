@@ -1226,6 +1226,16 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add time_limit_strict to {assignments_table}: {e}")
                             db.session.rollback()
+                    if 'attempts_per_task' not in cols:
+                        try:
+                            if _is_postgres(app):
+                                db.session.execute(text(f'ALTER TABLE "{assignments_table}" ADD COLUMN attempts_per_task BOOLEAN DEFAULT FALSE NOT NULL'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE "{assignments_table}" ADD COLUMN attempts_per_task INTEGER DEFAULT 0 NOT NULL'))
+                            logger.info(f"Added attempts_per_task to {assignments_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add attempts_per_task to {assignments_table}: {e}")
+                            db.session.rollback()
                 assignment_tasks_table = _resolve_table_name(table_names, 'AssignmentTasks')
                 if assignment_tasks_table:
                     at_cols = {c['name'] for c in inspector.get_columns(assignment_tasks_table)}
@@ -1274,8 +1284,11 @@ def ensure_schema_columns(app):
                             col_type = 'TIMESTAMP' if _is_postgres(app) else 'DATETIME'
                             db.session.execute(text(f'ALTER TABLE "{answers_table}" ADD COLUMN submitted_separately_at {col_type}'))
                             logger.info(f"Added submitted_separately_at to {answers_table}")
+                        if 'attempts_used' not in ans_cols:
+                            db.session.execute(text(f'ALTER TABLE "{answers_table}" ADD COLUMN attempts_used INTEGER DEFAULT 0 NOT NULL'))
+                            logger.info(f"Added attempts_used to {answers_table}")
                     except Exception as e:
-                        logger.warning(f"Could not add submitted_separately_at to {answers_table}: {e}")
+                        logger.warning(f"Could not add Answer columns: {e}")
                         db.session.rollback()
             except Exception as e:
                 logger.warning(f"Could not ensure rubric columns: {e}")

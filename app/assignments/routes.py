@@ -441,6 +441,9 @@ def distribute_assignment():
         deadline_str = data.get('deadline')
         hard_deadline = data.get('hard_deadline', False)
         allow_separate_submission = data.get('allow_separate_submission', True)
+        attempts_per_task = data.get('attempts_per_task', False)
+        if attempts_per_task:
+            allow_separate_submission = True  # попытки на каждое задание подразумевают сдачу по одному
         time_limit_minutes = data.get('time_limit_minutes')
         time_limit_strict = data.get('time_limit_strict', False)
         max_attempts_default = data.get('max_attempts_default')
@@ -498,6 +501,7 @@ def distribute_assignment():
             deadline=deadline,
             hard_deadline=hard_deadline,
             allow_separate_submission=allow_separate_submission,
+            attempts_per_task=attempts_per_task,
             time_limit_minutes=time_limit_minutes,
             time_limit_strict=time_limit_strict,
             max_attempts_default=max_attempts_default,
@@ -1554,13 +1558,22 @@ def submission_view(submission_id):
             can_submit = False
         attempts_left = max(0, effective_max_attempts - attempts_used)
         
+        attempts_per_task = getattr(assignment, 'attempts_per_task', False)
+        timer_expired = False
+        if assignment.time_limit_strict and assignment.time_limit_minutes and submission.started_at:
+            limit_end = _ensure_aware_datetime(submission.started_at) + timedelta(minutes=assignment.time_limit_minutes)
+            timer_expired = now > limit_end
         tasks_data = []
         for assignment_task in sorted(assignment.tasks, key=lambda t: t.order_index):
             answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
+            max_for_task = assignment.get_effective_max_attempts_for_task(assignment_task) if attempts_per_task else 1
+            task_attempts_used = (answer.attempts_used or 0) if answer else 0
             tasks_data.append({
                 'assignment_task': assignment_task,
                 'task': assignment_task.task,
-                'answer': answer
+                'answer': answer,
+                'max_attempts_for_task': max_for_task,
+                'task_attempts_used': task_attempts_used,
             })
         
         return render_template('submission_view.html',
@@ -1573,7 +1586,9 @@ def submission_view(submission_id):
                              effective_max_attempts=effective_max_attempts,
                              attempts_left=attempts_left,
                              allow_separate_submission=assignment.allow_separate_submission,
-                             time_limit_strict=assignment.time_limit_strict)
+                             attempts_per_task=attempts_per_task,
+                             time_limit_strict=assignment.time_limit_strict,
+                             timer_expired=timer_expired)
     except Exception as e:
         logger.error(f"Error processing submission_view for submission {submission_id}: {e}", exc_info=True)
         flash('Ошибка при обработке данных работы', 'danger')
@@ -1759,7 +1774,7 @@ def submission_autosave(submission_id):
 @login_required
 @limiter.limit("30 per minute")
 def submission_submit_task(submission_id):
-    """Сдача одного задания (при allow_separate_submission). Body: { "assignment_task_id": int, "value": "..." }"""
+    """Сдача одного задания (при allow_separate_submission и attempts_per_task). Body: { "assignment_task_id": int, "value": "..." }"""
     try:
         submission = Submission.query.options(
             joinedload(Submission.assignment),
@@ -1771,8 +1786,8 @@ def submission_submit_task(submission_id):
         if submission.status not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
             return jsonify({'success': False, 'error': 'Работа уже сдана'}), 400
         assignment = submission.assignment
-        if not assignment.allow_separate_submission:
-            return jsonify({'success': False, 'error': 'Сдача по одному заданию не разрешена'}), 400
+        if not assignment.allow_separate_submission or not getattr(assignment, 'attempts_per_task', False):
+            return jsonify({'success': False, 'error': 'Сдача по одному заданию не разрешена для этой работы'}), 400
         data = request.get_json() or {}
         assignment_task_id = data.get('assignment_task_id')
         value = data.get('value', '')
@@ -1784,6 +1799,7 @@ def submission_submit_task(submission_id):
         ).first()
         if not assignment_task:
             return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+        max_for_task = assignment.get_effective_max_attempts_for_task(assignment_task)
         answer = Answer.query.filter_by(
             submission_id=submission_id,
             assignment_task_id=assignment_task_id
@@ -1795,15 +1811,30 @@ def submission_submit_task(submission_id):
                 max_score=assignment_task.max_score
             )
             db.session.add(answer)
+        if answer.attempts_used >= max_for_task:
+            return jsonify({'success': False, 'error': f'Попытки по этому заданию исчерпаны ({answer.attempts_used}/{max_for_task})'}), 403
         answer.value = value
+        answer.attempts_used = (answer.attempts_used or 0) + 1
         answer.submitted_separately_at = moscow_now()
         answer.updated_at = moscow_now()
+        is_correct, score = auto_grade_answer(answer, assignment_task)
+        if is_correct is not None:
+            answer.is_correct = is_correct
+            answer.score = score if score is not None else (assignment_task.max_score if is_correct else 0)
         if submission.status in ['ASSIGNED', 'RETURNED']:
             submission.status = 'IN_PROGRESS'
             if not submission.started_at:
                 submission.started_at = moscow_now()
         db.session.commit()
-        return jsonify({'success': True, 'submitted_separately_at': answer.submitted_separately_at.isoformat()}), 200
+        return jsonify({
+            'success': True,
+            'submitted_separately_at': answer.submitted_separately_at.isoformat(),
+            'is_correct': answer.is_correct,
+            'score': answer.score,
+            'max_score': assignment_task.max_score,
+            'attempts_used': answer.attempts_used,
+            'max_attempts': max_for_task
+        }), 200
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error in submission_submit_task: {e}", exc_info=True)

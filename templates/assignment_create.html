@@ -319,6 +319,11 @@
                                                 <span style="font-size: 0.9rem; font-weight: 700;">Запретить сдачу после дедлайна</span>
                                             </label>
                                             <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                                                <input type="checkbox" id="ca_attempts_per_task">
+                                                <span style="font-size: 0.9rem; font-weight: 700;">Попытки на каждое задание</span>
+                                            </label>
+                                            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 0 0;">Если снято — попытки считаются на всю работу, сдавать по одному заданию нельзя.</p>
+                                            <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
                                                 <input type="checkbox" id="ca_separate_submission" checked>
                                                 <span style="font-size: 0.9rem; font-weight: 700;">Разрешить сдавать задачи по одной</span>
                                             </label>
@@ -448,7 +453,8 @@
             const timeLimit = parseInt(document.getElementById('ca_time_limit').value) || null;
             const maxAttempts = parseInt(document.getElementById('ca_max_attempts').value) || 1;
             const hardDeadline = document.getElementById('ca_hard_deadline').checked;
-            const allowSeparate = document.getElementById('ca_separate_submission').checked;
+            const attemptsPerTask = document.getElementById('ca_attempts_per_task').checked;
+            const allowSeparate = attemptsPerTask || document.getElementById('ca_separate_submission').checked;
             const timeLimitStrict = document.getElementById('ca_time_limit_strict').checked;
             const description = (document.getElementById('ca_description') && document.getElementById('ca_description').value.trim()) || '';
 
@@ -472,6 +478,7 @@
                         time_limit_strict: timeLimitStrict,
                         max_attempts_default: maxAttempts,
                         hard_deadline: hardDeadline,
+                        attempts_per_task: attemptsPerTask,
                         allow_separate_submission: allowSeparate,
                         recipientIds: recipients,
                         tasks: taskIds.map((id, i) => ({ task_id: id, order: i, max_score: 1 }))
@@ -513,6 +520,10 @@
             const str = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T23:59`;
             document.getElementById('ca_deadline').value = str;
             document.getElementById('ca_title').value = 'Новая работа';
+
+            document.getElementById('ca_attempts_per_task').addEventListener('change', function() {
+                document.getElementById('ca_separate_submission').checked = this.checked;
+            });
 
             updateUI();
         });
