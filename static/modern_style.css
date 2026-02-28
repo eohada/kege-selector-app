@@ -368,12 +368,14 @@ body::after {
         box-shadow: none !important;
         backdrop-filter: none;
         -webkit-backdrop-filter: none;
-        padding: 0;
+        padding: 0 1.5rem 0 0;
         pointer-events: none;
     }
 
     .app-topbar .topbar-actions {
         justify-content: flex-end;
+        margin-right: 0;
+        padding-right: 0;
     }
 
     .app-topbar .nav-user-actions {
