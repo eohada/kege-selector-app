@@ -201,26 +201,26 @@
                                 {% elif assignment.assignment_type == 'test' %}Тест
                                 {% else %}{{ assignment.assignment_type }}{% endif %}
                             </span></span>
-                            <span class="pill">📅 Дедлайн: <span class="meta-strong">{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</span></span>
-                            <span class="pill">🧩 Задач: <span class="meta-strong">{{ assignment.tasks|length }}</span></span>
-                            <span class="pill">🔄 Попыток: <span class="meta-strong">{{ assignment.max_attempts_default or 1 }}</span></span>
-                            <span class="pill">👥 Учеников: <span class="meta-strong">{{ counts.total if counts is defined else (submissions|length) }}</span></span>
+                            <span class="pill" style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('action.clock', 'sm') }} Дедлайн: <span class="meta-strong">{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</span></span>
+                            <span class="pill" style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('nav.assignments', 'sm') }} Задач: <span class="meta-strong">{{ assignment.tasks|length }}</span></span>
+                            <span class="pill" style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('action.refresh', 'sm') }} Попыток: <span class="meta-strong">{{ assignment.max_attempts_default or 1 }}</span></span>
+                            <span class="pill" style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('nav.students', 'sm') }} Учеников: <span class="meta-strong">{{ counts.total if counts is defined else (submissions|length) }}</span></span>
                         </div>
                     </div>
 
                     <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items:center; justify-content:flex-end;">
                         {% if can_manage %}
-                        <button type="button" class="neo-button outline" onclick="duplicateAssignment({{ assignment.assignment_id }})">
-                            <i class="fas fa-clone ui-icon ui-icon--sm"></i> Дублировать
+                        <button type="button" class="neo-button outline" onclick="duplicateAssignment({{ assignment.assignment_id }})" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                            {{ ui_icon('action.copy', 'sm') }} Дублировать
                         </button>
                         {% if assignment.is_active %}
-                        <button type="button" class="neo-button ghost" onclick="archiveAssignment({{ assignment.assignment_id }})" style="color: var(--danger);">
-                            <i class="fas fa-archive ui-icon ui-icon--sm"></i> В архив
+                        <button type="button" class="neo-button ghost" onclick="archiveAssignment({{ assignment.assignment_id }})" style="color: var(--danger); display: inline-flex; align-items: center; gap: 0.4rem;">
+                            {{ ui_icon('nav.archive', 'sm') }} В архив
                         </button>
                         {% endif %}
                         {% endif %}
-                        <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted', assignment_type=assignment.assignment_type, assignment_id=assignment.assignment_id) }}" class="neo-button ghost" style="text-decoration:none;">
-                            ✅ Очередь проверки
+                        <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted', assignment_type=assignment.assignment_type, assignment_id=assignment.assignment_id) }}" class="neo-button ghost" style="text-decoration:none; display: inline-flex; align-items: center; gap: 0.4rem;">
+                            {{ ui_icon('action.check', 'sm') }} Очередь проверки
                         </a>
                     </div>
                 </div>

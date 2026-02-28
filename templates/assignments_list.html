@@ -317,15 +317,15 @@
 
                 <div class="hero-actions">
                     {% if can_create %}
-                    <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="neo-button accent" style="text-decoration:none;">
-                        📝 Создать работу
+                    <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="neo-button accent" style="text-decoration:none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        {{ ui_icon('action.plus', 'sm') }} Создать работу
                     </a>
                     {% endif %}
-                    <a href="{{ url_for('kege_generator.kege_generator') }}" class="neo-button outline" style="text-decoration:none;">
-                        ⚡ Открыть генератор
+                    <a href="{{ url_for('kege_generator.kege_generator') }}" class="neo-button outline" style="text-decoration:none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        {{ ui_icon('nav.generator', 'sm') }} Открыть генератор
                     </a>
-                    <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="neo-button ghost" style="text-decoration:none;">
-                        ✅ Очередь проверки
+                    <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="neo-button ghost" style="text-decoration:none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        {{ ui_icon('action.check', 'sm') }} Очередь проверки
                     </a>
                     <span style="color: var(--text-muted); font-weight: 800;">
                         Совет: сначала прими задания в генераторе → затем создай работу из «Принятых».
@@ -469,9 +469,9 @@
                             </div>
 
                             <div class="meta-row">
-                                <span>📅 Дедлайн: <span class="meta-strong">{{ item.assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</span></span>
-                                <span>👥 Учеников: <span class="meta-strong">{{ total }}</span></span>
-                                <span>🧩 Задач: <span class="meta-strong">{{ item.tasks_count }}</span></span>
+                                <span style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('action.clock', 'sm') }} Дедлайн: <span class="meta-strong">{{ item.assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</span></span>
+                                <span style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('nav.students', 'sm') }} Учеников: <span class="meta-strong">{{ total }}</span></span>
+                                <span style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('nav.assignments', 'sm') }} Задач: <span class="meta-strong">{{ item.tasks_count }}</span></span>
                             </div>
                         </div>
 
@@ -505,11 +505,11 @@
 
                         <div class="actions-right">
                             {% if can_create and (not item.is_archived) %}
-                            <button type="button" class="neo-button outline sm" onclick="duplicateAssignment({{ item.assignment.assignment_id }})">
-                                <i class="fas fa-clone ui-icon ui-icon--sm"></i> Дублировать
+                            <button type="button" class="neo-button outline sm" onclick="duplicateAssignment({{ item.assignment.assignment_id }})" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                                {{ ui_icon('action.copy', 'sm') }} Дублировать
                             </button>
-                            <button type="button" class="neo-button ghost sm" onclick="archiveAssignment({{ item.assignment.assignment_id }})" style="color: var(--danger);">
-                                <i class="fas fa-archive ui-icon ui-icon--sm"></i> В архив
+                            <button type="button" class="neo-button ghost sm" onclick="archiveAssignment({{ item.assignment.assignment_id }})" style="color: var(--danger); display: inline-flex; align-items: center; gap: 0.4rem;">
+                                {{ ui_icon('nav.archive', 'sm') }} В архив
                             </button>
                             {% endif %}
                         </div>
@@ -519,7 +519,7 @@
             </section>
             {% else %}
             <section class="empty-card">
-                <div style="font-size: 3.2rem; margin-bottom: .65rem;">📝</div>
+                <div style="font-size: 3.2rem; margin-bottom: .65rem;">{{ ui_icon('nav.assignments', 'lg') }}</div>
                 <div style="font-size: 1.55rem; font-weight: 900; margin-bottom: .45rem;">Пока нет работ</div>
                 <div style="color: var(--text-muted); line-height: 1.55; max-width: 820px; margin: 0 auto;">
                     Работы создаются из набора задач (обычно — из генератора). После создания здесь появится контроль прогресса и быстрые переходы к проверке.
@@ -551,15 +551,15 @@
 
                 <div style="display:flex; gap:.75rem; justify-content:center; flex-wrap: wrap; margin-top: 1.2rem;">
                     {% if can_create %}
-                    <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="neo-button accent" style="text-decoration:none;">
-                        📝 Создать работу
+                    <a href="{{ url_for('assignments.assignment_create', source='accepted', assignment_type='homework') }}" class="neo-button accent" style="text-decoration:none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        {{ ui_icon('action.plus', 'sm') }} Создать работу
                     </a>
                     {% endif %}
-                    <a href="{{ url_for('kege_generator.kege_generator') }}" class="neo-button outline" style="text-decoration:none;">
-                        ⚡ Открыть генератор
+                    <a href="{{ url_for('kege_generator.kege_generator') }}" class="neo-button outline" style="text-decoration:none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        {{ ui_icon('nav.generator', 'sm') }} Открыть генератор
                     </a>
-                    <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="neo-button ghost" style="text-decoration:none;">
-                        ✅ Очередь проверки
+                    <a href="{{ url_for('lessons.review_queue', source='assignments', status='submitted') }}" class="neo-button ghost" style="text-decoration:none; display: inline-flex; align-items: center; gap: 0.5rem;">
+                        {{ ui_icon('action.check', 'sm') }} Очередь проверки
                     </a>
                 </div>
             </section>

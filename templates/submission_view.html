@@ -148,10 +148,11 @@
         }
         
         .status-assigned { background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--stroke-1); }
-        .status-in_progress { background: var(--accent-2); color: white; }
+        .status-in_progress { background: var(--accent-1); color: white; border: 1px solid var(--accent-1-strong); }
         .status-submitted { background: var(--accent-1); color: white; }
         .status-graded { background: var(--success); color: white; }
         .status-returned { background: var(--warning); color: white; }
+        .back-to-assignments .ui-icon-slot { display: inline-flex; min-width: 1.25em; min-height: 1.25em; vertical-align: middle; }
     </style>
     <script>
         (function(){
@@ -172,7 +173,7 @@
         <main class="app-content">
 
         <main style="margin-top: 1.25rem;">
-        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; padding: 0.5rem 1rem; font-weight: 600;">{{ ui_icon('action.chevron_left', 'sm') }} К заданиям</a></p>
+        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.submissions_list') }}" class="neo-button ghost back-to-assignments" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; padding: 0.5rem 1rem; font-weight: 600;">{{ ui_icon('action.chevron_left', 'sm') }} К заданиям</a></p>
         <div class="submission-header">
             <h1>{{ assignment.title }}</h1>
             {% if assignment.description %}
