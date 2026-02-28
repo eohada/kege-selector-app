@@ -455,25 +455,38 @@ def get_students_for_tutor(tutor_user_id):
         return []
 
 
+def _effective_correct_answer(assignment_task):
+    """Эталонный ответ для сравнения: переопределение в работе или ответ из задания."""
+    override = (assignment_task.answer_override or '').strip()
+    if override:
+        return override
+    task = assignment_task.task
+    return (task.answer or '').strip()
+
+
 def auto_grade_answer(answer, assignment_task):
     """
-    Автоматическая проверка ответа
-    Возвращает (is_correct, score)
+    Автоматическая проверка ответа.
+    Возвращает (is_correct, score). Для 24–27 авто-проверка, если задан эталонный ответ (task.answer или answer_override).
     """
     task = assignment_task.task
-    
+    student_answer = (answer.value or '').strip()
+    correct_answer = _effective_correct_answer(assignment_task)
+
     if task.task_number in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]:
-        student_answer = answer.value.strip() if answer.value else ""
-        correct_answer = task.answer.strip() if task.answer else ""
-        
+        if not correct_answer:
+            return None, None
         if student_answer.lower() == correct_answer.lower():
             return True, assignment_task.max_score
-        else:
-            return False, 0
-    
+        return False, 0
+
     if task.task_number in [24, 25, 26, 27]:
-        return None, None
-    
+        if not correct_answer:
+            return None, None
+        if student_answer.lower() == correct_answer.lower():
+            return True, assignment_task.max_score
+        return False, 0
+
     return None, None
 
 
@@ -593,11 +606,11 @@ def distribute_assignment():
             if not task:
                 continue
             
-            if task.task_number in [24, 25, 26, 27] or requires_manual:
-                requires_manual_grading = True
+            has_answer = bool((task.answer or '').strip())
+            if task.task_number in [24, 25, 26, 27]:
+                requires_manual_grading = not has_answer or requires_manual
             else:
-                requires_manual_grading = False
-            
+                requires_manual_grading = requires_manual
             assignment_task = AssignmentTask(
                 assignment_id=assignment.assignment_id,
                 task_id=task_id,
@@ -1361,13 +1374,15 @@ def assignment_update(assignment_id: int):
                     task = Tasks.query.get(task_id)
                     if not task:
                         continue
-                    requires_manual = task.task_number in [24, 25, 26, 27] or t_data.get('requires_manual_grading', False)
+                    has_ans = bool((task.answer or '').strip()) or bool((t_data.get('answer_override') or '').strip())
+                    requires_manual = (task.task_number in [24, 25, 26, 27] and not has_ans) or t_data.get('requires_manual_grading', False)
                     at = AssignmentTask(
                         assignment_id=assignment.assignment_id,
                         task_id=task_id,
                         order_index=idx,
                         max_score=int(t_data.get('max_score', 1)) or 1,
                         max_attempts=t_data.get('max_attempts'),
+                        answer_override=(t_data.get('answer_override') or '').strip() or None,
                         requires_manual_grading=requires_manual,
                     )
                     db.session.add(at)
@@ -1378,6 +1393,12 @@ def assignment_update(assignment_id: int):
                     at.max_score = int(t_data.get('max_score', at.max_score)) or 1
                     if 'max_attempts' in t_data:
                         at.max_attempts = t_data['max_attempts']
+                    if 'answer_override' in t_data:
+                        at.answer_override = (t_data.get('answer_override') or '').strip() or None
+                    task = at.task
+                    if task and task.task_number in [24, 25, 26, 27]:
+                        has_ans = bool((task.answer or '').strip()) or bool((at.answer_override or '').strip())
+                        at.requires_manual_grading = not has_ans
             for at in list(assignment.tasks or []):
                 if at.task_id not in new_task_ids:
                     db.session.delete(at)
@@ -1417,7 +1438,8 @@ def assignment_add_tasks(assignment_id: int):
             task = Tasks.query.get(task_id)
             if not task:
                 continue
-            requires_manual = task.task_number in [24, 25, 26, 27]
+            has_answer = bool((task.answer or '').strip())
+            requires_manual = (task.task_number in [24, 25, 26, 27] and not has_answer)
             at = AssignmentTask(
                 assignment_id=assignment.assignment_id,
                 task_id=task_id,
@@ -1510,6 +1532,7 @@ def assignment_duplicate(assignment_id: int):
             order_index=t.order_index,
             max_score=t.max_score,
             max_attempts=getattr(t, 'max_attempts', None),
+            answer_override=getattr(t, 'answer_override', None),
             requires_manual_grading=bool(t.requires_manual_grading),
         ))
 

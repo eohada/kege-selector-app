@@ -1246,6 +1246,13 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add max_attempts to {assignment_tasks_table}: {e}")
                             db.session.rollback()
+                    if 'answer_override' not in at_cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{assignment_tasks_table}" ADD COLUMN answer_override TEXT'))
+                            logger.info(f"Added answer_override to {assignment_tasks_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add answer_override to {assignment_tasks_table}: {e}")
+                            db.session.rollback()
                 if submissions_table:
                     cols = {c['name'] for c in inspector.get_columns(submissions_table)}
                     if 'rubric_template_id' not in cols:

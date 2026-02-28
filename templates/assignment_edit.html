@@ -18,6 +18,10 @@
         .task-edit-item .task-info { font-weight: 700; color: var(--text-primary); }
         .task-edit-item .task-meta { font-size: 0.85rem; color: var(--text-muted); }
         .task-edit-item .remove-btn { flex-shrink: 0; padding: 0.35rem 0.6rem; font-size: 0.85rem; }
+        .task-edit-extra { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--stroke-1); display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-start; }
+        .task-edit-extra .answer-override-wrap { flex: 1; min-width: 200px; }
+        .task-edit-extra .answer-override-wrap label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.25rem; }
+        .task-edit-extra .answer-override-input { width: 100%; padding: 0.4rem 0.6rem; font-size: 0.9rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-1); color: var(--text-primary); }
     </style>
 </head>
 <body>
@@ -78,12 +82,24 @@
                 <div class="edit-panel">
                     <h2>Задания в работе</h2>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 0 1rem 0;">Порядок можно менять перетаскиванием. Удаление уберёт задание из работы (ответы учеников по нему сохранятся в истории).</p>
+                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 0 0 0.5rem 0;">Ссылка «Открыть источник» и поле «Эталонный ответ» видны только преподавателям; ученики их не видят. Если ответ пустой — впишите его после просмотра источника (с ним будет сравниваться ответ ученика).</p>
                     <ul class="task-edit-list" id="taskList">
                         {% for at in assignment_tasks %}
                         <li class="task-edit-item" data-assignment-task-id="{{ at.assignment_task_id }}" data-task-id="{{ at.task_id }}" data-order="{{ at.order_index }}" data-max-score="{{ at.max_score }}">
-                            <div>
-                                <span class="task-info">Задание {{ at.task.task_number }}</span>
-                                <span class="task-meta"> · #{{ at.task_id }} · {{ at.max_score }} балл(ов)</span>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
+                                    <span class="task-info">Задание {{ at.task.task_number }}</span>
+                                    <span class="task-meta"> · #{{ at.task_id }} · {{ at.max_score }} балл(ов)</span>
+                                </div>
+                                <div class="task-edit-extra">
+                                    {% if at.task.source_url %}
+                                    <a href="{{ at.task.source_url }}" target="_blank" rel="noopener noreferrer" class="neo-button ghost sm" style="text-decoration: none;">Открыть источник</a>
+                                    {% endif %}
+                                    <div class="answer-override-wrap">
+                                        <label for="answer_override_{{ at.assignment_task_id }}">Эталонный ответ (для сравнения с ответом ученика)</label>
+                                        <input type="text" id="answer_override_{{ at.assignment_task_id }}" class="answer-override-input" placeholder="Из задания или впишите вручную" value="{{ at.answer_override or at.task.answer or '' }}" data-task-id="{{ at.task_id }}">
+                                    </div>
+                                </div>
                             </div>
                             <button type="button" class="neo-button danger ghost sm remove-btn" data-task-id="{{ at.task_id }}" title="Убрать из работы">✕</button>
                         </li>
@@ -112,11 +128,17 @@
 
             function getTasksPayload() {
                 const items = document.querySelectorAll('#taskList .task-edit-item');
-                return Array.from(items).map((el, idx) => ({
-                    task_id: parseInt(el.getAttribute('data-task-id'), 10),
-                    order: idx,
-                    max_score: parseInt(el.getAttribute('data-max-score') || '1', 10)
-                }));
+                return Array.from(items).map((el, idx) => {
+                    const taskId = parseInt(el.getAttribute('data-task-id'), 10);
+                    const inp = el.querySelector('.answer-override-input');
+                    const answerOverride = inp ? (inp.value || '').trim() : '';
+                    return {
+                        task_id: taskId,
+                        order: idx,
+                        max_score: parseInt(el.getAttribute('data-max-score') || '1', 10),
+                        answer_override: answerOverride || undefined
+                    };
+                });
             }
 
             document.getElementById('taskList')?.addEventListener('click', function(e) {

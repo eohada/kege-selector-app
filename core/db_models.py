@@ -1463,6 +1463,7 @@ class AssignmentTask(db.Model):
     max_score = db.Column(db.Integer, nullable=False, default=1)  # Максимальный балл за задачу
     max_attempts = db.Column(db.Integer, nullable=True)  # Переопределение лимита попыток для этого задания (NULL = из Assignment)
     
+    answer_override = db.Column(db.Text, nullable=True)  # Эталонный ответ для сравнения (если задан — используется вместо task.answer)
     requires_manual_grading = db.Column(db.Boolean, default=False, nullable=False)  # Требует ли ручной проверки
     
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
