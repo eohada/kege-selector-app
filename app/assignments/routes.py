@@ -2173,7 +2173,9 @@ def submission_grade_save(submission_id):
         status = data.get('status', 'GRADED')  # GRADED или RETURNED
         rubric_template_id = data.get('rubric_template_id', None)
         rubric_scores = data.get('rubric_scores', None)
-        
+        new_deadline_str = (data.get('new_deadline') or '').strip()  # при RETURNED — опционально новый дедлайн
+        new_max_attempts = data.get('new_max_attempts')  # при RETURNED — опционально новое число попыток (int)
+
         if status not in ['GRADED', 'RETURNED']:
             status = 'GRADED'
         
@@ -2276,6 +2278,25 @@ def submission_grade_save(submission_id):
         # Если ученик не нажал «Сдать» (таймер истёк и т.п.), при завершении проверки фиксируем дату закрытия
         if submission.submitted_at is None:
             submission.submitted_at = moscow_now()
+
+        # При возврате на доработку — опционально обновляем дедлайн и/или число попыток работы
+        if status == 'RETURNED':
+            if new_deadline_str:
+                try:
+                    deadline_dt = datetime.fromisoformat(new_deadline_str.replace('Z', '+00:00'))
+                    if deadline_dt.tzinfo is None:
+                        deadline_dt = deadline_dt.replace(tzinfo=MOSCOW_TZ)
+                    deadline_dt = deadline_dt.astimezone(MOSCOW_TZ).replace(tzinfo=None)
+                    assignment.deadline = deadline_dt
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Invalid new_deadline for submission {submission_id}: {e}")
+            if new_max_attempts is not None:
+                try:
+                    n = int(new_max_attempts)
+                    if n >= 1:
+                        assignment.max_attempts_default = n
+                except (ValueError, TypeError):
+                    pass
 
         if status == 'GRADED':
             _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
