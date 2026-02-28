@@ -124,15 +124,25 @@
             box-sizing: border-box;
             background: var(--surface-1);
             border-top: 2px solid var(--stroke-1);
-            padding: 1.5rem 0;
+            padding: 1.5rem 1.5rem;
             margin-top: 2rem;
-            margin-left: 0;
-            margin-right: 0;
+            margin-left: -1.5rem;
+            margin-right: -1.5rem;
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 1rem;
+        }
+        @media (min-width: 1024px) {
+            .grade-page-inner .submit-section {
+                margin-left: -3rem;
+                margin-right: -3rem;
+                padding-left: 3rem;
+                padding-right: 3rem;
+            }
         }
         
         .total-score {
@@ -157,22 +167,18 @@
         .grade-page-inner {
             padding: 0 0 2rem;
             max-width: 100%;
+            overflow: visible;
         }
         #grade-form {
             width: 100%;
             max-width: 100%;
+            overflow: visible;
         }
         .grade-header {
             margin-bottom: 1.5rem;
         }
         .task-card .answer-section {
             margin-top: 1rem;
-        }
-        .submit-section {
-            padding: 1.5rem 0;
-            margin-top: 2rem;
-            flex-wrap: wrap;
-            gap: 1rem;
         }
         #grade-form .comment-input {
             min-height: 60px;
