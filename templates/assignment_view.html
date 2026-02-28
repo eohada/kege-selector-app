@@ -210,6 +210,9 @@
 
                     <div style="display:flex; gap:.6rem; flex-wrap: wrap; align-items:center; justify-content:flex-end;">
                         {% if can_manage %}
+                        <a href="{{ url_for('assignments.assignment_edit', assignment_id=assignment.assignment_id) }}" class="neo-button accent" style="display: inline-flex; align-items: center; gap: 0.4rem; text-decoration: none;">
+                            {{ ui_icon('action.edit', 'sm') }} Редактировать
+                        </a>
                         <button type="button" class="neo-button outline" onclick="duplicateAssignment({{ assignment.assignment_id }})" style="display: inline-flex; align-items: center; gap: 0.4rem;">
                             {{ ui_icon('action.copy', 'sm') }} Дублировать
                         </button>

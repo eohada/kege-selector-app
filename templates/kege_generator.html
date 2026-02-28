@@ -330,7 +330,7 @@
                             <div class="generator-links" style="margin-bottom: 1rem;">
                                 <a href="{{ url_for('assignments.assignments_accepted', assignment_type=assignment_type) }}" class="neo-button accent">{{ ui_icon('action.check', 'sm', decorative=true) }}Принятые</a>
                                 {% if current_user.is_authenticated and has_permission(current_user, 'assignment.create') %}
-                                <button type="button" id="genCreateWorkBtn" class="neo-button outline">📝 Создать работу</button>
+                                <button type="button" id="genCreateWorkBtn" class="neo-button outline"><span id="genCreateWorkBtnText">📝 Создать работу</span></button>
                                 {% endif %}
                                 <a href="{{ url_for('assignments.assignments_skipped') }}" class="neo-button ghost">{{ ui_icon('action.minus', 'sm', decorative=true) }}Пропущенные</a>
                             </div>
@@ -681,6 +681,27 @@
             }
 
             function finishAndCreate() {
+                const params = new URLSearchParams(window.location.search);
+                const returnEdit = params.get('return_edit');
+                if (returnEdit && acceptedInSession.length) {
+                    (async () => {
+                        try {
+                            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                            const r = await fetch('/assignments/' + returnEdit + '/tasks', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
+                                body: JSON.stringify({ task_ids: acceptedInSession })
+                            });
+                            const data = await r.json().catch(() => ({}));
+                            if (!r.ok || !data.success) throw new Error(data.error || 'Ошибка');
+                            if (window.toast) window.toast.success('Задания добавлены в работу');
+                            location.href = data.redirect || ('/assignments/' + returnEdit + '/edit');
+                        } catch (e) {
+                            if (window.toast) window.toast.error(e.message || 'Ошибка');
+                        }
+                    })();
+                    return;
+                }
                 const ctx = getCtx();
                 let base = '/assignments/create?assignment_type=' + encodeURIComponent(ctx.assignment_type || 'homework');
                 if (ctx.recipient_ids && ctx.recipient_ids.length) {
@@ -692,6 +713,14 @@
                 location.href = url;
             }
 
+            (function updateAddToWorkLabel() {
+                const params = new URLSearchParams(window.location.search);
+                const returnEdit = params.get('return_edit');
+                const label = returnEdit ? '➕ Добавить в работу' : '📝 Создать работу';
+                document.getElementById('genCreateWorkBtnText').textContent = label;
+                const topBtn = document.getElementById('genCreateWorkBtnTop');
+                if (topBtn) topBtn.textContent = label;
+            })();
             document.getElementById('genCreateWorkBtnTop')?.addEventListener('click', finishAndCreate);
             document.getElementById('genCreateWorkBtn')?.addEventListener('click', finishAndCreate);
 

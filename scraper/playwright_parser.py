@@ -99,6 +99,34 @@ def _parse_answer_19_21(raw_answer: str) -> list:
     return result
 
 
+def _split_content_19_21(full_html: str):
+    """
+    Разрезает общий HTML заданий 19–21 на три части по маркерам «Задание 20.» и «Задание 21.».
+    Возвращает (html_19, html_20, html_21). Если маркеры не найдены — вся строка в html_19, остальное пусто.
+    """
+    if not full_html or not full_html.strip():
+        return ('', '', '')
+    text = full_html
+    mark_20 = re.compile(r'Задание\s+20\s*\.', re.IGNORECASE)
+    mark_21 = re.compile(r'Задание\s+21\s*\.', re.IGNORECASE)
+    m20 = mark_20.search(text)
+    m21 = mark_21.search(text)
+    if not m20 and not m21:
+        return (full_html.strip(), '', '')
+    # Границы по смыслу: до «Задание 20.» — 19-е, между 20 и 21 — 20-е, после «Задание 21.» — 21-е
+    pos_20 = m20.start() if m20 else len(text)
+    pos_21 = m21.start() if m21 else len(text)
+    if pos_20 <= pos_21:
+        part_19 = text[:pos_20].strip()
+        part_20 = text[pos_20:pos_21].strip() if pos_21 < len(text) else text[pos_20:].strip()
+        part_21 = text[pos_21:].strip() if pos_21 < len(text) else ''
+    else:
+        part_19 = text[:pos_21].strip()
+        part_20 = ''
+        part_21 = text[pos_21:].strip()
+    return (part_19, part_20, part_21)
+
+
 def clean_html_content(html: str, task_number: int = None) -> str:
     """Очистка HTML-контента заданий: удаление фамилий, пустых строк, ответов, видео"""
     if not html:
@@ -557,20 +585,29 @@ def fetch_tasks(page: Page, task_number: int, task_value_url: str):
                     except Exception as e:
                         print(f"[ETL] Предупреждение: не удалось извлечь ответ для задания {it.get('taskId')}: {e}")
 
-                # Задания 19–21: одна задача на источнике = три задания с общим контентом и разными ответами
+                # Задания 19–21: одна задача на источнике = три задания; контент режем по «Задание 20.» / «Задание 21.»
                 if task_number == 19:
                     answer_lines = _parse_answer_19_21(answer)
+                    content_19, content_20, content_21 = _split_content_19_21(content_html)
+                    if not content_20 and not content_21:
+                        content_20 = content_21 = content_html
+                    elif not content_20:
+                        content_20 = content_html
+                    elif not content_21:
+                        content_21 = content_html
                     group_id = str(it.get('taskId') or '')
                     group_tasks = existing_by_group.get(group_id, {})
                     old_single_19 = existing_19_by_source.get(source_url)
+                    contents_by_num = {19: content_19, 20: content_20, 21: content_21}
 
                     if len(group_tasks) >= 3:
                         any_updated = False
                         for num in (19, 20, 21):
                             t = group_tasks.get(num)
                             if t:
-                                if t.content_html != content_html:
-                                    t.content_html = content_html
+                                part = contents_by_num.get(num) or content_html
+                                if t.content_html != part:
+                                    t.content_html = part
                                     t.last_scraped = moscow_now()
                                     any_updated = True
                                 if t.attached_files != attached_files_json:
@@ -587,7 +624,7 @@ def fetch_tasks(page: Page, task_number: int, task_value_url: str):
                         else:
                             count_skipped += 1
                     elif old_single_19:
-                        old_single_19.content_html = content_html
+                        old_single_19.content_html = content_19
                         old_single_19.attached_files = attached_files_json
                         old_single_19.answer = answer_lines[0] if answer_lines else None
                         old_single_19.task_group_id = group_id
@@ -601,7 +638,7 @@ def fetch_tasks(page: Page, task_number: int, task_value_url: str):
                                 task_group_id=group_id,
                                 site_task_id=it.get('taskId'),
                                 source_url=source_url,
-                                content_html=content_html,
+                                content_html=contents_by_num.get(sub_num) or content_html,
                                 answer=ans or None,
                                 attached_files=attached_files_json,
                                 last_scraped=moscow_now()
@@ -614,7 +651,7 @@ def fetch_tasks(page: Page, task_number: int, task_value_url: str):
                                 task_group_id=group_id,
                                 site_task_id=it.get('taskId'),
                                 source_url=source_url if sub_num == 19 else source_url,
-                                content_html=content_html,
+                                content_html=contents_by_num.get(sub_num) or content_html,
                                 answer=ans or None,
                                 attached_files=attached_files_json,
                                 last_scraped=moscow_now()

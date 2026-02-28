@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактировать работу · {{ assignment.title }}</title>
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    <style>
+        .edit-panel { border: 1px solid var(--stroke-1); background: var(--surface-1); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem; }
+        .edit-panel h2 { margin: 0 0 1rem 0; font-weight: 900; font-size: 1.25rem; }
+        .task-edit-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem; }
+        .task-edit-item { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.6rem 1rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-md); }
+        .task-edit-item .task-info { font-weight: 700; color: var(--text-primary); }
+        .task-edit-item .task-meta { font-size: 0.85rem; color: var(--text-muted); }
+        .task-edit-item .remove-btn { flex-shrink: 0; padding: 0.35rem 0.6rem; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        {% set active_page = 'assignments' %}
+        {% include '_sidebar.html' %}
+        <div class="app-main">
+            {% include '_topbar.html' %}
+            <main class="app-content" style="padding: 2rem 1.5rem;">
+                <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button outline" style="text-decoration: none; margin-bottom: 1rem;">← К работе</a>
+                <h1 style="font-size: 1.75rem; font-weight: 900; margin: 0 0 1.5rem 0;">Редактировать работу</h1>
+
+                <form id="editForm" class="edit-panel">
+                    <h2>Основные настройки</h2>
+                    <div class="neo-field">
+                        <label class="neo-label" for="edit_title">Название *</label>
+                        <input id="edit_title" class="neo-input" required value="{{ assignment.title }}" name="title">
+                    </div>
+                    <div class="neo-field" style="margin-top: 1rem;">
+                        <label class="neo-label" for="edit_description">Описание</label>
+                        <textarea id="edit_description" class="neo-input" name="description" rows="3">{{ assignment.description or '' }}</textarea>
+                    </div>
+                    <div class="neo-field" style="margin-top: 1rem;">
+                        <label class="neo-label" for="edit_deadline">Дедлайн *</label>
+                        <input id="edit_deadline" class="neo-input" type="datetime-local" required name="deadline"
+                            value="{{ assignment.deadline.strftime('%Y-%m-%dT%H:%M') if assignment.deadline else '' }}">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div class="neo-field">
+                            <label class="neo-label" for="edit_time_limit">Время (мин)</label>
+                            <input id="edit_time_limit" class="neo-input" type="number" name="time_limit_minutes" placeholder="Нет" min="0" max="480" value="{{ assignment.time_limit_minutes or '' }}">
+                        </div>
+                        <div class="neo-field">
+                            <label class="neo-label" for="edit_max_attempts">Попыток</label>
+                            <input id="edit_max_attempts" class="neo-input" type="number" name="max_attempts_default" value="{{ assignment.max_attempts_default or 1 }}" min="1" max="20">
+                        </div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.2rem;">
+                        <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                            <input type="checkbox" id="edit_hard_deadline" name="hard_deadline" {% if assignment.hard_deadline %}checked{% endif %}>
+                            <span>Запретить сдачу после дедлайна</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                            <input type="checkbox" id="edit_attempts_per_task" name="attempts_per_task" {% if assignment.attempts_per_task %}checked{% endif %}>
+                            <span>Попытки на каждое задание</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                            <input type="checkbox" id="edit_separate_submission" name="allow_separate_submission" {% if assignment.allow_separate_submission %}checked{% endif %}>
+                            <span>Разрешить сдавать по одному заданию</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                            <input type="checkbox" id="edit_time_limit_strict" name="time_limit_strict" {% if assignment.time_limit_strict %}checked{% endif %}>
+                            <span>Блокировать сдачу после истечения таймера</span>
+                        </label>
+                    </div>
+                </form>
+
+                <div class="edit-panel">
+                    <h2>Задания в работе</h2>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 0 1rem 0;">Порядок можно менять перетаскиванием. Удаление уберёт задание из работы (ответы учеников по нему сохранятся в истории).</p>
+                    <ul class="task-edit-list" id="taskList">
+                        {% for at in assignment_tasks %}
+                        <li class="task-edit-item" data-assignment-task-id="{{ at.assignment_task_id }}" data-task-id="{{ at.task_id }}" data-order="{{ at.order_index }}" data-max-score="{{ at.max_score }}">
+                            <div>
+                                <span class="task-info">Задание {{ at.task.task_number }}</span>
+                                <span class="task-meta"> · #{{ at.task_id }} · {{ at.max_score }} балл(ов)</span>
+                            </div>
+                            <button type="button" class="neo-button danger ghost sm remove-btn" data-task-id="{{ at.task_id }}" title="Убрать из работы">✕</button>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% if not assignment_tasks %}
+                    <p style="color: var(--text-muted); margin: 0;">Заданий пока нет.</p>
+                    {% endif %}
+                    <div style="margin-top: 1rem;">
+                        <a href="{{ url_for('kege_generator.kege_generator') }}?return_edit={{ assignment.assignment_id }}" class="neo-button outline" style="text-decoration: none;">➕ Добавить задания из генератора</a>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button type="button" class="neo-button accent" id="saveBtn">Сохранить изменения</button>
+                    <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button ghost" style="text-decoration: none;">Отмена</a>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const assignmentId = {{ assignment.assignment_id }};
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+            function getTasksPayload() {
+                const items = document.querySelectorAll('#taskList .task-edit-item');
+                return Array.from(items).map((el, idx) => ({
+                    task_id: parseInt(el.getAttribute('data-task-id'), 10),
+                    order: idx,
+                    max_score: parseInt(el.getAttribute('data-max-score') || '1', 10)
+                }));
+            }
+
+            document.getElementById('taskList')?.addEventListener('click', function(e) {
+                const btn = e.target.closest('.remove-btn');
+                if (btn) {
+                    const li = btn.closest('.task-edit-item');
+                    if (li) li.remove();
+                }
+            });
+
+            document.getElementById('saveBtn')?.addEventListener('click', async function() {
+                const title = document.getElementById('edit_title').value.trim();
+                if (!title) {
+                    if (window.toast) window.toast.error('Введите название');
+                    return;
+                }
+                const deadlineEl = document.getElementById('edit_deadline');
+                let deadline = deadlineEl.value;
+                if (deadline) deadline = new Date(deadline).toISOString();
+                const tasks = getTasksPayload();
+                const payload = {
+                    title: title,
+                    description: document.getElementById('edit_description').value.trim(),
+                    deadline: deadline,
+                    hard_deadline: document.getElementById('edit_hard_deadline').checked,
+                    attempts_per_task: document.getElementById('edit_attempts_per_task').checked,
+                    allow_separate_submission: document.getElementById('edit_separate_submission').checked,
+                    time_limit_minutes: document.getElementById('edit_time_limit').value ? parseInt(document.getElementById('edit_time_limit').value, 10) : null,
+                    time_limit_strict: document.getElementById('edit_time_limit_strict').checked,
+                    max_attempts_default: parseInt(document.getElementById('edit_max_attempts').value, 10) || 1,
+                    tasks: tasks
+                };
+                const btn = document.getElementById('saveBtn');
+                btn.disabled = true;
+                try {
+                    const r = await fetch('/assignments/' + assignmentId + '/update', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': token },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await r.json().catch(() => ({}));
+                    if (!r.ok || !data.success) throw new Error(data.error || 'Ошибка сохранения');
+                    if (window.toast) window.toast.success('Изменения сохранены');
+                    if (data.redirect) location.href = data.redirect;
+                } catch (e) {
+                    if (window.toast) window.toast.error(e.message || 'Ошибка');
+                } finally {
+                    btn.disabled = false;
+                }
+            });
+        })();
+    </script>
+    <script src="{{ url_for('static', filename='toast.js') }}"></script>
+</body>
+</html>

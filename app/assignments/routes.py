@@ -1289,6 +1289,153 @@ def assignment_create():
     )
 
 
+@assignments_bp.route('/assignments/<int:assignment_id>/edit', methods=['GET'])
+@login_required
+@check_access('assignment.create')
+def assignment_edit(assignment_id: int):
+    """Страница редактирования работы: название, дедлайн, состав заданий."""
+    assignment = Assignment.query.options(
+        joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
+        joinedload(Assignment.created_by),
+    ).get_or_404(assignment_id)
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all') and assignment.created_by_id != current_user.id:
+        flash('Доступ запрещен', 'danger')
+        return redirect(url_for('assignments.assignments_list'))
+    assignment_tasks = sorted(assignment.tasks or [], key=lambda at: (at.order_index, at.assignment_task_id))
+    return render_template(
+        'assignment_edit.html',
+        active_page='assignments',
+        assignment=assignment,
+        assignment_tasks=assignment_tasks,
+    )
+
+
+@assignments_bp.route('/assignments/<int:assignment_id>/update', methods=['POST', 'PUT'])
+@login_required
+@check_access('assignment.create')
+def assignment_update(assignment_id: int):
+    """Обновление работы: название, описание, дедлайн, состав заданий (порядок, баллы)."""
+    assignment = Assignment.query.get_or_404(assignment_id)
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all') and assignment.created_by_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    try:
+        data = request.get_json() or {}
+        title = (data.get('title') or '').strip()
+        if title:
+            assignment.title = title
+        description = (data.get('description') or '').strip()
+        assignment.description = description if description else None
+        deadline_str = data.get('deadline')
+        if deadline_str:
+            try:
+                deadline = datetime.fromisoformat(deadline_str.replace('Z', '+00:00'))
+                if deadline.tzinfo:
+                    deadline = deadline.astimezone(moscow_now().tzinfo).replace(tzinfo=None)
+                assignment.deadline = deadline
+            except Exception:
+                pass
+        assignment.hard_deadline = bool(data.get('hard_deadline', assignment.hard_deadline))
+        assignment.allow_separate_submission = bool(data.get('allow_separate_submission', assignment.allow_separate_submission))
+        assignment.attempts_per_task = bool(data.get('attempts_per_task', assignment.attempts_per_task))
+        if 'time_limit_minutes' in data:
+            v = data['time_limit_minutes']
+            assignment.time_limit_minutes = int(v) if v is not None and str(v).strip() != '' else None
+        assignment.time_limit_strict = bool(data.get('time_limit_strict', assignment.time_limit_strict))
+        if 'max_attempts_default' in data:
+            v = data['max_attempts_default']
+            try:
+                assignment.max_attempts_default = max(1, int(v)) if v is not None and str(v).strip() != '' else 1
+            except (TypeError, ValueError):
+                assignment.max_attempts_default = 1
+        tasks_data = data.get('tasks', [])
+        if isinstance(tasks_data, list) and len(tasks_data) > 0:
+            new_task_ids = [t.get('task_id') for t in tasks_data if t.get('task_id')]
+            existing_by_task_id = {at.task_id: at for at in (assignment.tasks or [])}
+            for idx, t_data in enumerate(tasks_data):
+                task_id = t_data.get('task_id')
+                if not task_id:
+                    continue
+                if task_id not in existing_by_task_id:
+                    task = Tasks.query.get(task_id)
+                    if not task:
+                        continue
+                    requires_manual = task.task_number in [24, 25, 26, 27] or t_data.get('requires_manual_grading', False)
+                    at = AssignmentTask(
+                        assignment_id=assignment.assignment_id,
+                        task_id=task_id,
+                        order_index=idx,
+                        max_score=int(t_data.get('max_score', 1)) or 1,
+                        max_attempts=t_data.get('max_attempts'),
+                        requires_manual_grading=requires_manual,
+                    )
+                    db.session.add(at)
+                    existing_by_task_id[task_id] = at
+                else:
+                    at = existing_by_task_id[task_id]
+                    at.order_index = idx
+                    at.max_score = int(t_data.get('max_score', at.max_score)) or 1
+                    if 'max_attempts' in t_data:
+                        at.max_attempts = t_data['max_attempts']
+            for at in list(assignment.tasks or []):
+                if at.task_id not in new_task_ids:
+                    db.session.delete(at)
+            db.session.flush()
+            new_total = sum(at.max_score for at in existing_by_task_id.values())
+            for sub in (assignment.submissions or []):
+                sub.max_score = new_total
+        db.session.commit()
+        return jsonify({'success': True, 'redirect': url_for('assignments.assignment_view', assignment_id=assignment.assignment_id)})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Assignment update failed: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@assignments_bp.route('/assignments/<int:assignment_id>/tasks', methods=['POST'])
+@login_required
+@check_access('assignment.create')
+def assignment_add_tasks(assignment_id: int):
+    """Добавить задания в работу (из генератора). Body: { "task_ids": [1,2,3] }."""
+    assignment = Assignment.query.get_or_404(assignment_id)
+    scope = get_user_scope(current_user)
+    if not scope.get('can_see_all') and assignment.created_by_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    try:
+        data = request.get_json() or {}
+        task_ids = data.get('task_ids') or []
+        if not isinstance(task_ids, list):
+            task_ids = [task_ids]
+        task_ids = [int(x) for x in task_ids if x is not None and str(x).strip() != '']
+        existing_task_ids = {at.task_id for at in (assignment.tasks or [])}
+        max_order = max((at.order_index for at in (assignment.tasks or [])), default=-1)
+        added = 0
+        for i, task_id in enumerate(task_ids):
+            if task_id in existing_task_ids:
+                continue
+            task = Tasks.query.get(task_id)
+            if not task:
+                continue
+            requires_manual = task.task_number in [24, 25, 26, 27]
+            at = AssignmentTask(
+                assignment_id=assignment.assignment_id,
+                task_id=task_id,
+                order_index=max_order + 1 + i,
+                max_score=1,
+                requires_manual_grading=requires_manual,
+            )
+            db.session.add(at)
+            existing_task_ids.add(task_id)
+            added += 1
+        db.session.commit()
+        return jsonify({'success': True, 'added': added, 'redirect': url_for('assignments.assignment_edit', assignment_id=assignment.assignment_id)})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Assignment add tasks failed: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @assignments_bp.route('/assignments/<int:assignment_id>/archive', methods=['POST'])
 @login_required
 @check_access('assignment.create')
