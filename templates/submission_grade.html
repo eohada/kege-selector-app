@@ -273,10 +273,11 @@
                 <div class="answer-section">
                     <div style="font-weight: 600; margin-bottom: 0.25rem;">Ответ ученика:</div>
                     <div class="student-answer-value">{{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}</div>
-                    {% if task_item.task and task_item.task.answer %}
+                    {% set effective_answer = task_item.assignment_task.answer_override or (task_item.task.answer if task_item.task else '') %}
+                    {% if effective_answer %}
                     <div style="margin-top: 0.75rem;">
                         <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.2rem;">Правильный ответ:</div>
-                        <div class="student-answer-value" style="background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.4);">{{ task_item.task.answer }}</div>
+                        <div class="student-answer-value" style="background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.4);">{{ effective_answer }}</div>
                     </div>
                     {% endif %}
                     {% if task_item.answer and task_item.answer.student_code %}

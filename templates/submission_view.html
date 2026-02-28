@@ -340,6 +340,12 @@
                     </div>
                     <label for="answer-{{ task_item.assignment_task.assignment_task_id }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Ваш ответ:</label>
                     <div style="padding: 0.6rem 0.9rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); white-space: pre-wrap; color: var(--text-primary);">{{ task_item.answer.value or '(нет ответа)' }}</div>
+                    {% if task_item.answer and task_item.answer.teacher_comment %}
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
+                        <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--accent-1);">Комментарий преподавателя:</div>
+                        <div style="white-space: pre-wrap;">{{ task_item.answer.teacher_comment }}</div>
+                    </div>
+                    {% endif %}
                     {% else %}
                     {% if attempts_per_task and task_item.task_attempts_used > 0 and task_item.answer %}
                     <div style="margin-bottom: 0.5rem; padding: 0.5rem 0; font-weight: 600;">
@@ -363,6 +369,12 @@
                         {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task %}disabled{% endif %}
                     >{{ task_item.answer.value if task_item.answer else '' }}</textarea>
                     <div class="autosave-indicator" id="autosave-{{ task_item.assignment_task.assignment_task_id }}"></div>
+                    {% if task_item.answer and task_item.answer.teacher_comment %}
+                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
+                        <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--accent-1);">Комментарий преподавателя:</div>
+                        <div style="white-space: pre-wrap;">{{ task_item.answer.teacher_comment }}</div>
+                    </div>
+                    {% endif %}
                     {% if submission.status in ['IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0) %}
                     <div class="code-editor-wrap" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="margin-top: 0.75rem;">
                         <button type="button" class="code-editor-toggle neo-button ghost sm" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.75rem; font-size: 0.9em;">
