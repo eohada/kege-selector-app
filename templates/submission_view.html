@@ -101,6 +101,11 @@
         .task-content {
             margin-bottom: 1.5rem;
         }
+        .task-content img {
+            max-width: 100%;
+            height: auto;
+            vertical-align: middle;
+        }
         
         .answer-input {
             width: 100%;
@@ -266,11 +271,11 @@
                 </div>
                 {% elif submission.status == 'GRADED' and attempts_left > 0 %}
                 <div class="task-content">
-                    {{ task_item.task.content_html|deduplicate_formulas|safe }}
+                    {{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|safe }}
                 </div>
                 {% else %}
                 <div class="task-content">
-                    {{ task_item.task.content_html|deduplicate_formulas|safe }}
+                    {{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|safe }}
                 </div>
                 {% endif %}
                 
@@ -376,7 +381,7 @@
             </div>
             
 <div class="task-content">
-                {{ task_item.task.content_html|deduplicate_formulas|safe }}
+                {{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|safe }}
             </div>
 
             <div style="margin-top: 1.5rem; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
@@ -796,9 +801,23 @@
             e.preventDefault();
             if (timeLimitStrict && totalSeconds <= 0) return;
             
-            const confirmMessage = totalSeconds <= 0
-                ? 'Время на выполнение истекло. Работа будет отправлена с отметкой о задержке. Продолжить?'
-                : 'Вы уверены, что хотите сдать работу? После сдачи изменить ответы будет невозможно.';
+            const emptyTaskNumbers = [];
+            document.querySelectorAll('.task-card').forEach(function(card) {
+                const header = card.querySelector('.task-number');
+                const taskId = card.getAttribute('data-task-id');
+                if (!taskId || !header) return;
+                const numMatch = header.textContent.match(/Задание\s*(\d+)/);
+                const taskNum = numMatch ? numMatch[1] : taskId;
+                const textarea = document.getElementById('answer-' + taskId);
+                if (textarea && (!textarea.value || !textarea.value.trim())) emptyTaskNumbers.push(taskNum);
+            });
+            const emptyWarning = emptyTaskNumbers.length > 0
+                ? ' Для заданий № ' + emptyTaskNumbers.join(', ') + ' ответ не введен.'
+                : '';
+            const confirmMessage = (totalSeconds <= 0
+                ? 'Время на выполнение истекло. Работа будет отправлена с отметкой о задержке.'
+                : 'Вы уверены, что хотите сдать работу? После сдачи изменить ответы будет невозможно.')
+                + (emptyWarning ? '\n\n' + emptyWarning + ' Всё равно сдать?' : ' Продолжить?');
             
             showConfirmDialog(
                 confirmMessage,

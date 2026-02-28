@@ -5,7 +5,7 @@ import re
 from bs4 import BeautifulSoup
 
 from app.auth.rbac_utils import mask_contact_info
-from flask import url_for
+from flask import url_for, request
 from flask_login import current_user
 from markupsafe import Markup, escape
 
@@ -152,6 +152,24 @@ def deduplicate_formulas(html):
         return html
 
 
+def task_content_absolute_urls(html):
+    """
+    Делает относительные src изображений в контенте задания абсолютными,
+    чтобы картинки не пропадали при открытии с разных путей (например /submissions/123).
+    """
+    if not html or not isinstance(html, str):
+        return html
+    try:
+        base = (request.url_root or '').rstrip('/')
+        if not base:
+            return html
+        # src="/path" -> src="https://site/path"
+        html = re.sub(r'\bsrc=["\']/(?!\/)', f'src="{base}/', html)
+        return html
+    except Exception:
+        return html
+
+
 def mask_contact_if_tutor(value):
     """
     Маскирует контактную информацию, если текущий пользователь - тьютор.
@@ -176,4 +194,5 @@ def init_jinja_filters(app):
     """Инициализация Jinja2 фильтров"""
     app.jinja_env.filters['mask_contact'] = mask_contact_if_tutor
     app.jinja_env.filters['deduplicate_formulas'] = deduplicate_formulas
+    app.jinja_env.filters['task_content_absolute_urls'] = task_content_absolute_urls
     app.jinja_env.globals["ui_icon"] = ui_icon

@@ -2,7 +2,7 @@
 Маршруты для системы заданий и сдачи работ
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import render_template, request, jsonify, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import and_, or_, func, case
@@ -34,6 +34,15 @@ def _ensure_aware_datetime(dt):
     if dt.tzinfo is None:
         return dt.replace(tzinfo=MOSCOW_TZ)
     return dt
+
+
+def _started_at_to_utc(dt):
+    """Приводит started_at к UTC для сравнения таймера (единая зона — без расхождений сервер/клиент)."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=MOSCOW_TZ)
+    return dt.astimezone(timezone.utc)
 
 def _normalize_assignment_type(value: str | None) -> str:
     v = (value or '').strip().lower()
@@ -1561,8 +1570,10 @@ def submission_view(submission_id):
         attempts_per_task = getattr(assignment, 'attempts_per_task', False)
         timer_expired = False
         if assignment.time_limit_strict and assignment.time_limit_minutes and submission.started_at:
-            limit_end = _ensure_aware_datetime(submission.started_at) + timedelta(minutes=assignment.time_limit_minutes)
-            timer_expired = now > limit_end
+            started_utc = _started_at_to_utc(submission.started_at)
+            now_utc = now.astimezone(timezone.utc)
+            limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
+            timer_expired = now_utc > limit_end_utc
         tasks_data = []
         for assignment_task in sorted(assignment.tasks, key=lambda t: t.order_index):
             answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
@@ -1865,7 +1876,8 @@ def submission_submit(submission_id):
         
         attempts_used = len(submission.attempts or [])
         effective_max = assignment.get_effective_max_attempts()
-        if attempts_used >= effective_max:
+        attempts_per_task = getattr(assignment, 'attempts_per_task', False)
+        if not attempts_per_task and attempts_used >= effective_max:
             return jsonify({'success': False, 'error': f'Исчерпан лимит попыток ({attempts_used}/{effective_max})'}), 403
         
         is_late = deadline and now > deadline
@@ -1874,8 +1886,10 @@ def submission_submit(submission_id):
         
         is_overtime = False
         if assignment.time_limit_minutes and submission.started_at:
-            limit_end = _ensure_aware_datetime(submission.started_at) + timedelta(minutes=assignment.time_limit_minutes)
-            if now > limit_end:
+            started_utc = _started_at_to_utc(submission.started_at)
+            now_utc = now.astimezone(timezone.utc)
+            limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
+            if now_utc > limit_end_utc:
                 if assignment.time_limit_strict:
                     return jsonify({'success': False, 'error': 'Время на выполнение истекло. Сдача заблокирована.'}), 403
                 is_overtime = True
@@ -1907,6 +1921,12 @@ def submission_submit(submission_id):
                 else:
                     all_auto_graded = False
                 continue
+            
+            if attempts_per_task:
+                max_for_task = assignment.get_effective_max_attempts_for_task(assignment_task)
+                if (answer.attempts_used or 0) < max_for_task and answer.value:
+                    answer.attempts_used = (answer.attempts_used or 0) + 1
+                    answer.submitted_separately_at = now
             
             if not assignment_task.requires_manual_grading:
                 is_correct, score = auto_grade_answer(answer, assignment_task)
