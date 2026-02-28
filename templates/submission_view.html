@@ -296,6 +296,36 @@
                 </div>
                 {% endif %}
                 
+                {% if task_item.task.attached_files %}
+                {% set files = task_item.task.attached_files | from_json %}
+                {% if files %}
+                <div class="attached-files task-attachments" style="margin-top: 1rem; padding: 1rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-md);">
+                    <strong style="color: var(--text-primary);">📎 Файлы к заданию:</strong>
+                    <ul class="file-list" style="list-style: none; padding: 0; margin: 0.5rem 0 0; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        {% for file in files %}
+                        {% if file %}
+                        {% set file_path = file.path if file.path is defined else None %}
+                        {% set file_url = file.url if file.url is defined else (file if file is string else None) %}
+                        {% set file_name = file.name if file.name is defined else (file.filename if file.filename is defined else ((file_path or file_url or '').split('/')[-1].split('?')[0] if (file_path or file_url) else 'file')) %}
+                        {% if file_path %}
+                            {% set download_url = file_path ~ (('?download_name=' ~ (file_name|urlencode)) if file_name else '') %}
+                        {% elif file_url %}
+                            {% if file_url.startswith('//') %}{% set file_url = 'https:' ~ file_url %}
+                            {% elif file_url.startswith('/') %}{% set file_url = 'https://kompege.ru' ~ file_url %}{% endif %}
+                            {% if file_url.startswith('https://kompege.ru/') or file_url.startswith('http://kompege.ru/') %}
+                                {% set download_url = url_for('assignments.attached_proxy') ~ '?url=' ~ (file_url|urlencode) %}
+                            {% else %}{% set download_url = file_url %}{% endif %}
+                        {% endif %}
+                        {% if download_url is defined %}
+                        <li><a href="{{ download_url }}" target="_blank" rel="noopener noreferrer" class="neo-button outline sm" style="font-size: 0.9rem; padding: 0.5rem 1rem; text-decoration: none;" download="{{ file_name }}">{{ file_name }}</a></li>
+                        {% endif %}
+                        {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                {% endif %}
+                
                 <div>
                     {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task and task_item.answer %}
                     <div style="margin-bottom: 0.5rem; padding: 0.5rem 0; font-weight: 600;">
@@ -429,6 +459,36 @@
 <div class="task-content">
                 {{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|safe }}
             </div>
+
+            {% if task_item.task.attached_files %}
+            {% set files = task_item.task.attached_files | from_json %}
+            {% if files %}
+            <div class="attached-files task-attachments" style="margin-top: 1rem; padding: 1rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-md);">
+                <strong style="color: var(--text-primary);">📎 Файлы к заданию:</strong>
+                <ul class="file-list" style="list-style: none; padding: 0; margin: 0.5rem 0 0; display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                    {% for file in files %}
+                    {% if file %}
+                    {% set file_path = file.path if file.path is defined else None %}
+                    {% set file_url = file.url if file.url is defined else (file if file is string else None) %}
+                    {% set file_name = file.name if file.name is defined else (file.filename if file.filename is defined else ((file_path or file_url or '').split('/')[-1].split('?')[0] if (file_path or file_url) else 'file')) %}
+                    {% if file_path %}
+                        {% set download_url = file_path ~ (('?download_name=' ~ (file_name|urlencode)) if file_name else '') %}
+                    {% elif file_url %}
+                        {% if file_url.startswith('//') %}{% set file_url = 'https:' ~ file_url %}
+                        {% elif file_url.startswith('/') %}{% set file_url = 'https://kompege.ru' ~ file_url %}{% endif %}
+                        {% if file_url.startswith('https://kompege.ru/') or file_url.startswith('http://kompege.ru/') %}
+                            {% set download_url = url_for('assignments.attached_proxy') ~ '?url=' ~ (file_url|urlencode) %}
+                        {% else %}{% set download_url = file_url %}{% endif %}
+                    {% endif %}
+                    {% if download_url is defined %}
+                    <li><a href="{{ download_url }}" target="_blank" rel="noopener noreferrer" class="neo-button outline sm" style="font-size: 0.9rem; padding: 0.5rem 1rem; text-decoration: none;" download="{{ file_name }}">{{ file_name }}</a></li>
+                    {% endif %}
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            {% endif %}
 
             <div style="margin-top: 1.5rem; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
                 <div style="font-weight: 600; margin-bottom: 0.5rem;">Ваш ответ:</div>

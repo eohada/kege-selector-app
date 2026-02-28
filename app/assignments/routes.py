@@ -1719,28 +1719,64 @@ def submission_start(submission_id):
         return jsonify({'success': False, 'error': f'Ошибка сервера: {str(e)}'}), 500
 
 
+def _attachment_fallback_url_from_db(task_id: int, filename: str):
+    """Если файла нет на диске — по task_id и имени файла ищем url в attached_files и возвращаем URL для proxy или None."""
+    import json
+    task = Tasks.query.filter_by(task_id=task_id).first()
+    if not task or not task.attached_files:
+        return None
+    try:
+        files = json.loads(task.attached_files) if isinstance(task.attached_files, str) else task.attached_files
+    except Exception:
+        return None
+    safe_name = (filename or '').strip()
+    if not safe_name:
+        return None
+    for f in (files or []):
+        if not isinstance(f, dict):
+            continue
+        name = (f.get('name') or f.get('filename') or '').strip()
+        path = (f.get('path') or '').strip()
+        path_basename = path.split('/')[-1].split('?')[0] if path else ''
+        if name == safe_name or path_basename == safe_name:
+            url = (f.get('url') or f.get('href') or '').strip()
+            if url.startswith('//'):
+                url = 'https:' + url
+            elif url.startswith('/'):
+                url = 'https://kompege.ru' + url
+            if url.startswith('https://kompege.ru/') or url.startswith('http://kompege.ru/'):
+                return url
+            break
+    return None
+
+
 @assignments_bp.route('/attachments/task/<int:task_id>/<path:filename>')
 @login_required
 def attached_task_local(task_id: int, filename: str):
-    """Раздача локально скачанных вложений заданий. Путь: TASK_ATTACHMENTS_ROOT или uploads/task_attachments."""
+    """Раздача локально скачанных вложений заданий. Если файла нет на диске — пробуем отдать через proxy по URL из БД."""
     import os
-    from flask import send_from_directory
+    from flask import send_from_directory, redirect
     custom_root = current_app.config.get('TASK_ATTACHMENTS_ROOT')
     if custom_root and os.path.isdir(custom_root):
         root = custom_root
     else:
         root = os.path.join(current_app.root_path, 'uploads', 'task_attachments')
     task_dir = os.path.join(root, str(task_id))
-    if not os.path.isdir(task_dir):
+    safe_name = os.path.basename(filename) if filename else ''
+    if not safe_name or '..' in (filename or ''):
         abort(404)
-    safe_name = os.path.basename(filename)
-    if not safe_name or '..' in filename:
-        abort(404)
-    # Имя при сохранении: из query ?download_name= или из URL
-    download_name = request.args.get('download_name', '').strip()
-    if not download_name or '..' in download_name or '/' in download_name:
-        download_name = safe_name
-    return send_from_directory(task_dir, safe_name, as_attachment=True, download_name=download_name)
+    file_on_disk = os.path.isfile(os.path.join(task_dir, safe_name)) if os.path.isdir(task_dir) else False
+    if file_on_disk:
+        download_name = request.args.get('download_name', '').strip()
+        if not download_name or '..' in download_name or '/' in download_name:
+            download_name = safe_name
+        return send_from_directory(task_dir, safe_name, as_attachment=True, download_name=download_name)
+    # Файла нет на диске — пробуем взять url из БД и отдать через proxy
+    fallback_url = _attachment_fallback_url_from_db(task_id, safe_name)
+    if fallback_url:
+        proxy_url = url_for('assignments.attached_proxy', url=fallback_url, _external=False)
+        return redirect(proxy_url)
+    abort(404)
 
 
 @assignments_bp.route('/attachments/proxy')
