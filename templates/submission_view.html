@@ -16,6 +16,14 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+    <style>
+        /* Редактор кода: в тёмной теме фон и текст по переменным темы */
+        [data-theme="dark"] .code-editor-panel .CodeMirror { background: var(--surface-1); color: var(--text-primary); }
+        [data-theme="dark"] .code-editor-panel .CodeMirror-gutters { background: var(--surface-2); border-color: var(--stroke-1); }
+        [data-theme="dark"] .code-editor-panel .CodeMirror-cursor { border-left-color: var(--text-primary); }
+        [data-theme="dark"] .code-editor-output { background: var(--surface-1) !important; color: var(--text-primary) !important; border-color: var(--stroke-1) !important; }
+    </style>
     {% include '_ux_enhancements.html' %}
     
     <style>
@@ -579,13 +587,16 @@
                 var textarea = wrapDiv && wrapDiv.querySelector('.code-editor-text');
                 if (!textarea || textarea.cmInstance || typeof CodeMirror === 'undefined') return;
                 var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-                textarea.cmInstance = CodeMirror.fromTextArea(textarea, {
+                var opts = {
                     mode: 'python',
                     theme: isDark ? 'dracula' : 'default',
                     lineNumbers: true,
                     indentUnit: 4,
-                    lineWrapping: true
-                });
+                    lineWrapping: true,
+                    autoCloseBrackets: true,
+                    matchBrackets: true
+                };
+                textarea.cmInstance = CodeMirror.fromTextArea(textarea, opts);
                 textarea.cmInstance.setSize(null, 280);
             }
             document.querySelectorAll('.code-editor-toggle').forEach(function(btn) {
@@ -1031,7 +1042,8 @@
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" id="cm-theme-dark">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
 </body>
 </html>

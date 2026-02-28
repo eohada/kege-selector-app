@@ -2092,8 +2092,9 @@ def _run_python_sandbox(code: str, timeout_sec: int = 5):
 def submission_run_code(submission_id):
     """Запуск кода ученика в песочнице (только itertools, math)."""
     submission = Submission.query.filter_by(submission_id=submission_id).first_or_404()
+    student = get_student_by_user_id(current_user.id)
+    is_owner = student and student.student_id == submission.student_id
     scope = get_user_scope(current_user)
-    is_owner = getattr(current_user, 'student_id', None) == submission.student_id
     can_see = scope.get('can_see_all') or (getattr(current_user, 'is_teacher', lambda: False)() or getattr(current_user, 'is_admin', lambda: False)())
     if not is_owner and not can_see:
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
@@ -2120,7 +2121,8 @@ def submission_save_code(submission_id):
         joinedload(Submission.assignment).joinedload(Assignment.tasks),
         joinedload(Submission.answers),
     ).filter_by(submission_id=submission_id).first_or_404()
-    if not getattr(current_user, 'student_id', None) or current_user.student_id != submission.student_id:
+    student = get_student_by_user_id(current_user.id)
+    if not student or student.student_id != submission.student_id:
         return jsonify({'success': False, 'error': 'Только автор сдачи может сохранять код'}), 403
     data = request.get_json() or {}
     code = (data.get('code') or '').strip()
