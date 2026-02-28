@@ -44,7 +44,7 @@
             background: var(--surface-1);
             border: 1px solid var(--stroke-1);
             border-radius: var(--radius-lg);
-            padding: 1.5rem;
+            padding: 1.5rem 1.75rem;
             margin-bottom: 1.5rem;
         }
         
@@ -58,16 +58,19 @@
         }
         
         .task-content {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.25rem;
             line-height: 1.8;
+            padding-right: 0.5rem;
         }
         
         .answer-section {
             background: var(--surface-2);
             border: 1px solid var(--stroke-1);
             border-radius: var(--radius-sm);
-            padding: 1rem;
-            margin-bottom: 1rem;
+            padding: 1rem 1.25rem;
+            margin-top: 1rem;
+            margin-bottom: 0;
+            min-height: 0;
         }
         
         .score-input-group {
@@ -130,6 +133,43 @@
             font-weight: 800;
             color: var(--accent-1);
         }
+        /* Компактный блок ответа ученика — не растягивать по высоте */
+        .student-answer-value {
+            display: block;
+            min-height: 0;
+            padding: 0.5rem 0.75rem;
+            white-space: pre-wrap;
+            background: var(--surface-1);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--stroke-1);
+            font-size: 1rem;
+            line-height: 1.5;
+            margin-top: 0.35rem;
+        }
+        /* Отступы страницы проверки */
+        .grade-page-inner {
+            padding: 0 0 2rem;
+            max-width: 100%;
+        }
+        .grade-header {
+            margin-bottom: 1.5rem;
+        }
+        .task-card .answer-section {
+            margin-top: 1rem;
+        }
+        .submit-section {
+            padding: 1.5rem 0;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        #grade-form .comment-input {
+            min-height: 60px;
+        }
+        button:disabled.neo-button {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
     </style>
     <script>
         (function(){
@@ -148,68 +188,60 @@
     <div class="app-main">
         {% include '_topbar.html' %}
         <main class="app-content">
+        <div class="grade-page-inner">
+        <p style="margin-bottom: 1.25rem;"><a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button ghost" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; padding: 0.5rem 1rem; font-weight: 600;">{{ ui_icon('action.chevron_left', 'sm') }} К работе</a></p>
 
-        <main style="margin-top: 1.25rem;">
-        <p style="margin-bottom: 1rem;"><a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button ghost" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; padding: 0.5rem 1rem; font-weight: 600;">{{ ui_icon('action.chevron_left', 'sm') }} К работе</a></p>
         <div class="grade-header">
-            <h1>{{ assignment.title }}</h1>
-            <div class="student-info" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.5rem; align-items: start;">
+            <h1 style="margin-bottom: 1rem;">{{ assignment.title }}</h1>
+            <!-- Итоговый статус работы — крупно и заметно -->
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 1rem; padding: 0.75rem 1rem; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
+                <span style="font-size: 0.9em; color: var(--text-muted); font-weight: 600;">Статус работы:</span>
+                <span class="status-badge status-{{ submission.status.lower() }}{% if display_status_class %} {{ display_status_class }}{% endif %}" style="padding: 0.4rem 0.9rem; border-radius: 999px; font-weight: 700; font-size: 0.95em;">
+                    {% if display_status_label %}{{ display_status_label }}
+                    {% elif submission.status == 'ASSIGNED' %}Назначено
+                    {% elif submission.status == 'IN_PROGRESS' %}В процессе
+                    {% elif submission.status == 'SUBMITTED' %}Сдано
+                    {% elif submission.status == 'GRADED' %}Проверено
+                    {% elif submission.status == 'RETURNED' %}На доработку
+                    {% else %}{{ submission.status }}{% endif %}
+                </span>
+                {% if submission.is_late %}<span style="padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.8em; font-weight: 600; background: rgba(239, 68, 68, 0.2); color: #ef4444;">С опозданием</span>{% endif %}
+                {% if submission.is_overtime %}<span style="padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.8em; font-weight: 600; background: rgba(245, 158, 11, 0.2); color: #f59e0b;">С превышением времени</span>{% endif %}
+            </div>
+            <div class="student-info" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1.25rem; align-items: start;">
                 <div>
-                    <div style="font-size: 0.9em; color: var(--text-muted);">Ученик</div>
-                    <div style="font-weight: 700; font-size: 1.2em;">{{ submission.student.name }}</div>
-                </div>
-                <div>
-                    <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">Статус</div>
-                    <span class="status-badge status-{{ submission.status.lower() }}{% if display_status_class %} {{ display_status_class }}{% endif %}" style="padding: 0.35rem 0.75rem; border-radius: 999px; font-weight: 600; font-size: 0.85em;">
-                        {% if display_status_label %}{{ display_status_label }}
-                        {% elif submission.status == 'ASSIGNED' %}Назначено
-                        {% elif submission.status == 'IN_PROGRESS' %}В процессе
-                        {% elif submission.status == 'SUBMITTED' %}Сдано
-                        {% elif submission.status == 'GRADED' %}Проверено
-                        {% elif submission.status == 'RETURNED' %}На доработку
-                        {% else %}{{ submission.status }}{% endif %}
-                    </span>
+                    <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.2rem;">Ученик</div>
+                    <div style="font-weight: 700; font-size: 1.1em;">{{ submission.student.name }}</div>
                 </div>
                 {% if assignment.deadline %}
                 <div>
-                    <div style="font-size: 0.9em; color: var(--text-muted);">Дедлайн</div>
+                    <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.2rem;">Дедлайн</div>
                     <div style="font-weight: 600;">{{ assignment.deadline.strftime('%d.%m.%Y %H:%M') }}</div>
                 </div>
                 {% endif %}
                 {% if submission.submitted_at %}
                 <div>
-                    <div style="font-size: 0.9em; color: var(--text-muted);">Сдано</div>
+                    <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.2rem;">Сдано</div>
                     <div style="font-weight: 600;">{{ submission.submitted_at.strftime('%d.%m.%Y %H:%M') }}</div>
                 </div>
                 {% endif %}
                 <div>
-                    <div style="font-size: 0.9em; color: var(--text-muted);">Попытки</div>
-                    <div style="font-weight: 600;">{{ attempts_used }} / {{ effective_max_attempts }}{% if attempts_per_task %} <span style="font-size: 0.85em; color: var(--text-muted);">(по каждому заданию)</span>{% endif %}</div>
+                    <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.2rem;">Попытки</div>
+                    <div style="font-weight: 600;">{{ attempts_used }} / {{ effective_max_attempts }}{% if attempts_per_task %} <span style="font-size: 0.8em; color: var(--text-muted);">(по заданию)</span>{% endif %}</div>
                 </div>
-                {% if submission.is_late %}
-                <div><span style="padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.8em; font-weight: 600; background: rgba(239, 68, 68, 0.2); color: #ef4444;">С опозданием</span></div>
-                {% endif %}
-                {% if submission.is_overtime %}
-                <div><span style="padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.8em; font-weight: 600; background: rgba(245, 158, 11, 0.2); color: #f59e0b;">С превышением времени</span></div>
-                {% endif %}
             </div>
             {% if rubric_templates is defined and rubric_templates %}
-                <div style="min-width: 240px;">
-                    <div style="font-size: 0.9em; color: var(--text-muted);">Рубрика</div>
-                    <select id="rubric-template" class="neo-select" style="margin-top: .25rem;">
-                        <option value="">— без рубрики —</option>
-                        {% for rt in rubric_templates %}
-                          <option value="{{ rt.rubric_id }}" {% if rubric_template and rt.rubric_id == rubric_template.rubric_id %}selected{% endif %}>
-                            {{ rt.title }}
-                          </option>
-                        {% endfor %}
-                    </select>
-                    <div style="margin-top:.35rem;">
-                        <a href="{{ url_for('rubrics.rubrics_list') }}" class="neo-button ghost sm">Управлять рубриками</a>
-                    </div>
-                </div>
-                {% endif %}
+            <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
+                <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.25rem;">Рубрика</div>
+                <select id="rubric-template" class="neo-select" style="min-width: 200px;">
+                    <option value="">— без рубрики —</option>
+                    {% for rt in rubric_templates %}
+                      <option value="{{ rt.rubric_id }}" {% if rubric_template and rt.rubric_id == rubric_template.rubric_id %}selected{% endif %}>{{ rt.title }}</option>
+                    {% endfor %}
+                </select>
+                <a href="{{ url_for('rubrics.rubrics_list') }}" class="neo-button ghost sm" style="margin-left: 0.5rem;">Управлять рубриками</a>
             </div>
+            {% endif %}
         </div>
         
         <form id="grade-form">
@@ -243,10 +275,8 @@
                 </div>
                 
                 <div class="answer-section">
-                    <div style="font-weight: 600; margin-bottom: 0.5rem;">Ответ ученика:</div>
-                    <div style="white-space: pre-wrap; padding: 0.75rem; background: var(--surface-1); border-radius: var(--radius-sm);">
-                        {{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}
-                    </div>
+                    <div style="font-weight: 600; margin-bottom: 0.25rem;">Ответ ученика:</div>
+                    <div class="student-answer-value">{{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}</div>
                     
                     {% if task_item.answer and task_item.answer.is_correct is not none %}
                     <div style="margin-top: 0.75rem; padding: 0.5rem; background: {% if task_item.answer.is_correct %}var(--success){% else %}var(--danger){% endif %}; color: white; border-radius: var(--radius-sm); font-weight: 600;">
@@ -362,7 +392,7 @@
                 </div>
             </div>
         </form>
-        </main>
+        </div>
     </main>
     </div>
 </div>
