@@ -193,7 +193,7 @@
                 <div><span style="padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.8em; font-weight: 600; background: rgba(245, 158, 11, 0.2); color: #f59e0b;">С превышением времени</span></div>
                 {% endif %}
             </div>
-            {% if submission.status in ['SUBMITTED', 'GRADED', 'RETURNED'] and rubric_templates is defined and rubric_templates %}
+            {% if rubric_templates is defined and rubric_templates %}
                 <div style="min-width: 240px;">
                     <div style="font-size: 0.9em; color: var(--text-muted);">Рубрика</div>
                     <select id="rubric-template" class="neo-select" style="margin-top: .25rem;">
@@ -212,14 +212,13 @@
             </div>
         </div>
         
-        {% if submission.status in ['SUBMITTED', 'GRADED', 'RETURNED'] %}
         <form id="grade-form">
             {% for task_item in tasks_data %}
             <div class="task-card" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header">
                     <div>
                         <div style="font-size: 1.2em; font-weight: 700; color: var(--accent-1);">
-                            Задание {{ task_item.task.task_number if task_item.task else loop.index }}
+                            Задание {{ loop.index }}
                         </div>
                         <div style="font-size: 0.9em; color: var(--text-muted); margin-top: 0.25rem;">
                             Максимальный балл: {{ task_item.assignment_task.max_score }}
@@ -348,71 +347,21 @@
             <div class="submit-section">
                 <div>
                     <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.25rem;">Итоговый балл</div>
-                    <div class="total-score" id="total-score">0 / {{ submission.max_score }}</div>
+                    <div class="total-score" id="total-score">0 / {{ submission.max_score or 0 }}</div>
                 </div>
+                {% if not can_submit_grade %}
+                <p style="color: var(--text-muted); margin: 0; align-self: center;">Работа ещё не сдана. Кнопки станут доступны после сдачи.</p>
+                {% endif %}
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                    <button type="button" id="return-btn" class="neo-button ghost" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                    <button type="button" id="return-btn" class="neo-button ghost" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;" {% if not can_submit_grade %}disabled{% endif %}>
                         {{ ui_icon('action.refresh', 'sm') }} Вернуть на доработку
                     </button>
-                    <button type="button" id="grade-btn" class="neo-button accent" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                    <button type="button" id="grade-btn" class="neo-button accent" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;" {% if not can_submit_grade %}disabled{% endif %}>
                         {{ ui_icon('action.check', 'sm') }} Завершить проверку
                     </button>
                 </div>
             </div>
         </form>
-        {% else %}
-        
-        {% for task_item in tasks_data %}
-        <div class="task-card">
-            <div class="task-header">
-                <div>
-                    <div style="font-size: 1.2em; font-weight: 700; color: var(--accent-1);">
-                        Задание {{ task_item.task.task_number if task_item.task else loop.index }}
-                    </div>
-                    {% if attempts_per_task and task_item.max_attempts_for_task is defined %}
-                    <div style="font-size: 0.9em; color: var(--text-muted); margin-top: 0.25rem;">Попытки по заданию: {{ task_item.task_attempts_used }} / {{ task_item.max_attempts_for_task }}</div>
-                    {% endif %}
-                </div>
-                {% if task_item.answer and task_item.answer.score is not none %}
-                <div style="font-size: 1.3em; font-weight: 800; color: var(--accent-1);">
-                    {{ task_item.answer.score }}/{{ task_item.assignment_task.max_score }}
-                </div>
-                {% endif %}
-            </div>
-            
-            <div class="task-content">
-                {% if task_item.task and task_item.task.content_html %}{{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|safe }}{% else %}<p style="color: var(--text-muted);">Текст задания недоступен.</p>{% endif %}
-            </div>
-            
-            <div class="answer-section">
-                <div style="font-weight: 600; margin-bottom: 0.5rem;">Ответ ученика:</div>
-                <div style="white-space: pre-wrap; padding: 0.75rem; background: var(--surface-1); border-radius: var(--radius-sm);">
-                    {{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}
-                </div>
-                
-                {% if task_item.answer and task_item.answer.teacher_comment %}
-                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
-                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--accent-1);">Комментарий:</div>
-                    <div>{{ task_item.answer.teacher_comment }}</div>
-                </div>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-        
-        {% if submission.teacher_feedback %}
-        <div class="task-card" style="background: var(--accent-1); color: white;">
-            <div style="font-weight: 700; margin-bottom: 0.5rem;">Общий комментарий преподавателя:</div>
-            <div>{{ submission.teacher_feedback }}</div>
-        </div>
-        {% endif %}
-        
-        <div style="text-align: center; margin-top: 2rem;">
-            <a href="{{ url_for('assignments.assignment_view', assignment_id=assignment.assignment_id) }}" class="neo-button accent" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none;">
-                {{ ui_icon('action.chevron_left', 'sm') }} К работе
-            </a>
-        </div>
-        {% endif %}
         </main>
     </main>
     </div>
@@ -434,7 +383,6 @@
             }
         });
         
-        {% if submission.status in ['SUBMITTED', 'GRADED', 'RETURNED'] %}
         // Подсчет итогового балла
         function updateTotalScore() {
             let total = 0;
@@ -578,7 +526,6 @@
                 }
             );
         });
-        {% endif %}
     </script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
 </body>

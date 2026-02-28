@@ -2117,6 +2117,7 @@ def submission_grade_view(submission_id):
     except Exception:
         rubric_templates = []
 
+    can_submit_grade = submission.status in ('SUBMITTED', 'GRADED', 'RETURNED')
     return render_template('submission_grade.html',
                          submission=submission,
                          assignment=assignment,
@@ -2128,7 +2129,8 @@ def submission_grade_view(submission_id):
                          attempts_used=attempts_used,
                          effective_max_attempts=effective_max_attempts,
                          attempts_left=attempts_left,
-                         attempts_per_task=attempts_per_task)
+                         attempts_per_task=attempts_per_task,
+                         can_submit_grade=can_submit_grade)
 
 
 @assignments_bp.route('/submissions/<int:submission_id>/grade', methods=['POST'])
