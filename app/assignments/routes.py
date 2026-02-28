@@ -50,6 +50,25 @@ def _started_at_to_utc(dt):
         dt = dt.astimezone(timezone.utc)
     return dt
 
+
+def _submission_display_status(submission, assignment, now):
+    """
+    Возвращает отображаемый статус для списков: "Просрочено по таймеру",
+    "Просрочено по дедлайну" или None (показывать обычный submission.status).
+    """
+    if submission.status not in ('ASSIGNED', 'IN_PROGRESS', 'RETURNED'):
+        return None
+    if getattr(assignment, 'time_limit_strict', False) and getattr(assignment, 'time_limit_minutes', None) and getattr(submission, 'started_at', None):
+        started_utc = _started_at_to_utc(submission.started_at)
+        now_utc = now.astimezone(timezone.utc)
+        limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
+        if now_utc > limit_end_utc:
+            return 'Просрочено по таймеру'
+    deadline = _ensure_aware_datetime(assignment.deadline) if getattr(assignment, 'deadline', None) else None
+    if deadline and now > deadline:
+        return 'Просрочено по дедлайну'
+    return None
+
 def _normalize_assignment_type(value: str | None) -> str:
     v = (value or '').strip().lower()
     if v in {'homework', 'classwork', 'exam', 'test'}:
@@ -1455,6 +1474,13 @@ def assignment_view(assignment_id):
 
         submissions.sort(key=_sort_key)
 
+        now = moscow_now()
+        submission_display_status = {}
+        for s in submissions:
+            label = _submission_display_status(s, assignment, now)
+            if label:
+                submission_display_status[s.submission_id] = label
+
         can_manage = bool(has_permission(current_user, 'assignment.create')) and (scope.get('can_see_all') or assignment.created_by_id == current_user.id)
 
         return render_template(
@@ -1465,6 +1491,7 @@ def assignment_view(assignment_id):
             status_filter=status_filter,
             student_query=student_query,
             can_manage=can_manage,
+            submission_display_status=submission_display_status,
         )
     except Exception as e:
         logger.error(f"Error processing assignment_view for assignment {assignment_id}: {e}", exc_info=True)
@@ -1522,7 +1549,14 @@ def submissions_list():
         logger.warning(f"Failed to build lesson_workspaces for student {student.student_id}: {e}")
         lesson_workspaces = []
 
-    return render_template('submissions_list.html', submissions=submissions, student=student, lesson_workspaces=lesson_workspaces)
+    now = moscow_now()
+    submission_display_status = {}
+    for sub in submissions:
+        label = _submission_display_status(sub, sub.assignment, now)
+        if label:
+            submission_display_status[sub.submission_id] = label
+
+    return render_template('submissions_list.html', submissions=submissions, student=student, lesson_workspaces=lesson_workspaces, submission_display_status=submission_display_status)
 
 
 @assignments_bp.route('/submissions/<int:submission_id>')

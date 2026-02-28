@@ -311,8 +311,9 @@
                                     <div style="min-width: 0;">
                                         <div class="sub-name">{{ submission.student.name if submission.student else '—' }}</div>
                                         <div class="sub-meta">
-                                            <span class="status-badge status-{{ st }}">
-                                                {% if submission.status == 'ASSIGNED' %}Назначено
+                                            <span class="status-badge status-{{ st }}{% if submission_display_status and submission_display_status.get(submission.submission_id) %} status-overdue-timer{% endif %}">
+                                                {% if submission_display_status and submission_display_status.get(submission.submission_id) %}{{ submission_display_status.get(submission.submission_id) }}
+                                                {% elif submission.status == 'ASSIGNED' %}Назначено
                                                 {% elif submission.status == 'IN_PROGRESS' %}В процессе
                                                 {% elif submission.status == 'SUBMITTED' %}Сдано
                                                 {% elif submission.status == 'LATE' %}Сдано (поздно)

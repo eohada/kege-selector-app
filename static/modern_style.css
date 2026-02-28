@@ -2521,6 +2521,13 @@ body.creator-theme-active .students-grid {
     letter-spacing: 0.05em;
 }
 
+.status-badge.status-overdue-timer,
+.status-badge.status-overdue-deadline {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+    border: 1px solid #ef4444;
+}
+
 .status-success {
     background: rgba(0, 254, 202, 0.2);
     color: var(--success);
