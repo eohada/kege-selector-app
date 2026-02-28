@@ -219,7 +219,7 @@
                 <div class="task-header">
                     <div>
                         <div style="font-size: 1.2em; font-weight: 700; color: var(--accent-1);">
-                            Задание {{ task_item.task.task_number }}
+                            Задание {{ task_item.task.task_number if task_item.task else loop.index }}
                         </div>
                         <div style="font-size: 0.9em; color: var(--text-muted); margin-top: 0.25rem;">
                             Максимальный балл: {{ task_item.assignment_task.max_score }}
@@ -240,7 +240,7 @@
                 </div>
                 
                 <div class="task-content">
-                    {{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|safe }}
+                    {% if task_item.task and task_item.task.content_html %}{{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|safe }}{% else %}<p style="color: var(--text-muted);">Текст задания недоступен.</p>{% endif %}
                 </div>
                 
                 <div class="answer-section">
@@ -367,7 +367,7 @@
             <div class="task-header">
                 <div>
                     <div style="font-size: 1.2em; font-weight: 700; color: var(--accent-1);">
-                        Задание {{ task_item.task.task_number }}
+                        Задание {{ task_item.task.task_number if task_item.task else loop.index }}
                     </div>
                     {% if attempts_per_task and task_item.max_attempts_for_task is defined %}
                     <div style="font-size: 0.9em; color: var(--text-muted); margin-top: 0.25rem;">Попытки по заданию: {{ task_item.task_attempts_used }} / {{ task_item.max_attempts_for_task }}</div>
@@ -381,7 +381,7 @@
             </div>
             
             <div class="task-content">
-                {{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|safe }}
+                {% if task_item.task and task_item.task.content_html %}{{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|safe }}{% else %}<p style="color: var(--text-muted);">Текст задания недоступен.</p>{% endif %}
             </div>
             
             <div class="answer-section">

@@ -2072,15 +2072,23 @@ def submission_grade_view(submission_id):
     elif display_status_label == 'Просрочено по дедлайну':
         display_status_class = 'status-overdue-deadline'
     attempts_used = len(submission.attempts or [])
-    effective_max_attempts = assignment.get_effective_max_attempts()
+    try:
+        effective_max_attempts = assignment.get_effective_max_attempts()
+    except Exception:
+        effective_max_attempts = 1
     attempts_left = max(0, effective_max_attempts - attempts_used)
     attempts_per_task = getattr(assignment, 'attempts_per_task', False)
 
     tasks_data = []
-    for assignment_task in sorted(assignment.tasks, key=lambda t: t.order_index):
-        answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
-        max_for_task = assignment.get_effective_max_attempts_for_task(assignment_task) if attempts_per_task else 1
-        task_attempts_used = (answer.attempts_used or 0) if answer else 0
+    for assignment_task in sorted(assignment.tasks or [], key=lambda t: getattr(t, 'order_index', 0)):
+        if getattr(assignment_task, 'task', None) is None:
+            continue
+        answer = next((a for a in (submission.answers or []) if a.assignment_task_id == assignment_task.assignment_task_id), None)
+        try:
+            max_for_task = assignment.get_effective_max_attempts_for_task(assignment_task) if attempts_per_task else 1
+        except Exception:
+            max_for_task = 1
+        task_attempts_used = (getattr(answer, 'attempts_used', None) or 0) if answer else 0
         tasks_data.append({
             'assignment_task': assignment_task,
             'task': assignment_task.task,
