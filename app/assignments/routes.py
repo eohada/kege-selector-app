@@ -2052,6 +2052,7 @@ def submission_grade_view(submission_id):
     submission = Submission.query.options(
         joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
         joinedload(Submission.answers),
+        joinedload(Submission.attempts),
         joinedload(Submission.student),
         joinedload(Submission.comments).joinedload(SubmissionComment.author)
     ).get_or_404(submission_id)
@@ -2063,13 +2064,29 @@ def submission_grade_view(submission_id):
         flash('Доступ запрещен', 'danger')
         return redirect(url_for('assignments.assignments_list'))
     
+    now = moscow_now()
+    display_status_label = _submission_display_status(submission, assignment, now)
+    display_status_class = ''
+    if display_status_label == 'Просрочено по таймеру':
+        display_status_class = 'status-overdue-timer'
+    elif display_status_label == 'Просрочено по дедлайну':
+        display_status_class = 'status-overdue-deadline'
+    attempts_used = len(submission.attempts or [])
+    effective_max_attempts = assignment.get_effective_max_attempts()
+    attempts_left = max(0, effective_max_attempts - attempts_used)
+    attempts_per_task = getattr(assignment, 'attempts_per_task', False)
+
     tasks_data = []
     for assignment_task in sorted(assignment.tasks, key=lambda t: t.order_index):
         answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
+        max_for_task = assignment.get_effective_max_attempts_for_task(assignment_task) if attempts_per_task else 1
+        task_attempts_used = (answer.attempts_used or 0) if answer else 0
         tasks_data.append({
             'assignment_task': assignment_task,
             'task': assignment_task.task,
-            'answer': answer
+            'answer': answer,
+            'max_attempts_for_task': max_for_task,
+            'task_attempts_used': task_attempts_used,
         })
 
     rubric_template = None
@@ -2097,7 +2114,13 @@ def submission_grade_view(submission_id):
                          assignment=assignment,
                          tasks_data=tasks_data,
                          rubric_template=rubric_template,
-                         rubric_templates=rubric_templates)
+                         rubric_templates=rubric_templates,
+                         display_status_label=display_status_label,
+                         display_status_class=display_status_class,
+                         attempts_used=attempts_used,
+                         effective_max_attempts=effective_max_attempts,
+                         attempts_left=attempts_left,
+                         attempts_per_task=attempts_per_task)
 
 
 @assignments_bp.route('/submissions/<int:submission_id>/grade', methods=['POST'])
@@ -2129,8 +2152,8 @@ def submission_grade_save(submission_id):
     if not scope['can_see_all'] and assignment.created_by_id != current_user.id:
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
-    if submission.status != 'SUBMITTED':
-        return jsonify({'success': False, 'error': 'Работа не сдана или уже проверена'}), 400
+    if submission.status not in ('SUBMITTED', 'GRADED', 'RETURNED'):
+        return jsonify({'success': False, 'error': 'Нельзя изменить оценку для этой сдачи'}), 400
     
     try:
         data = request.get_json()
