@@ -382,15 +382,15 @@
                 </div>
                 {% if not can_submit_grade %}
                 <p style="color: var(--text-muted); margin: 0; align-self: center;">
-                    {% if display_status_label %}Время истекло или дедлайн прошёл. Ученик не нажал «Сдать работу». Кнопки станут доступны после сдачи.
-                    {% else %}Работа ещё не сдана. Кнопки станут доступны после сдачи.{% endif %}
+                    {% if display_status_label %}Время истекло или дедлайн прошёл. Ученик не нажал «Сдать работу».
+                    {% else %}Работа ещё не сдана учеником.{% endif %}
                 </p>
                 {% endif %}
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                    <button type="button" id="return-btn" class="neo-button ghost" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;" {% if not can_submit_grade %}disabled{% endif %}>
+                    <button type="button" id="return-btn" class="neo-button ghost" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;">
                         {{ ui_icon('action.refresh', 'sm') }} Вернуть на доработку
                     </button>
-                    <button type="button" id="grade-btn" class="neo-button accent" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;" {% if not can_submit_grade %}disabled{% endif %}>
+                    <button type="button" id="grade-btn" class="neo-button accent" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;">
                         {{ ui_icon('action.check', 'sm') }} Завершить проверку
                     </button>
                 </div>
