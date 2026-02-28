@@ -310,10 +310,11 @@
                     
                     <div style="margin-top: 1rem;">
                         <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Комментарий к задаче:</label>
+                        <p style="font-size: 0.85em; color: var(--text-muted); margin: 0 0 0.5rem 0;">Ученик увидит этот комментарий при выполнении. Можно сохранить кнопкой «Сохранить комментарии» без завершения проверки.</p>
                         <textarea 
                             class="comment-input"
                             name="comment_{{ task_item.assignment_task.assignment_task_id }}"
-                            placeholder="Оставьте комментарий к ответу ученика (необязательно)"
+                            placeholder="Например: обратите внимание на единицы измерения; подсказка к заданию..."
                         >{{ task_item.answer.teacher_comment if task_item.answer and task_item.answer.teacher_comment else '' }}</textarea>
                     </div>
                 </div>
@@ -393,7 +394,10 @@
                     {% else %}Работа ещё не сдана учеником.{% endif %}
                 </p>
                 {% endif %}
-                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+                    <button type="button" id="save-comments-btn" class="neo-button ghost" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;" title="Сохранить комментарии к заданиям. Ученик увидит их при выполнении. Проверку завершать не нужно.">
+                        {{ ui_icon('action.edit', 'sm') }} Сохранить комментарии
+                    </button>
                     <button type="button" id="return-btn" class="neo-button ghost" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;">
                         {{ ui_icon('action.refresh', 'sm') }} Вернуть на доработку
                     </button>
@@ -559,6 +563,50 @@
                         alert('Ошибка: ' + (data.error || 'Не удалось сохранить оценку'));
                     }
                 }
+            });
+        });
+
+        // Сохранить только комментарии (без завершения проверки) — ученик увидит их при выполнении
+        document.getElementById('save-comments-btn')?.addEventListener('click', function() {
+            const comments = [];
+            document.querySelectorAll('.score-input').forEach(function(input) {
+                const assignmentTaskId = parseInt(input.name.replace('score_', ''), 10);
+                const ta = document.querySelector('textarea[name="comment_' + assignmentTaskId + '"]');
+                comments.push({
+                    assignment_task_id: assignmentTaskId,
+                    teacher_comment: (ta && ta.value) ? ta.value.trim() : ''
+                });
+            });
+            const data = {
+                comments: comments,
+                teacher_feedback: (document.getElementById('teacher-feedback') && document.getElementById('teacher-feedback').value) ? document.getElementById('teacher-feedback').value.trim() : ''
+            };
+            fetch('{{ url_for("assignments.submission_save_comments", submission_id=submission.submission_id) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(data)
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res.success) {
+                    if (typeof showToast === 'function') {
+                        showToast('✓ Комментарии сохранены. Ученик увидит их при выполнении.', 'success');
+                    } else {
+                        alert('Комментарии сохранены.');
+                    }
+                } else {
+                    if (typeof showToast === 'function') {
+                        showToast('✕ ' + (res.error || 'Не удалось сохранить'), 'error');
+                    } else {
+                        alert('Ошибка: ' + (res.error || 'Не удалось сохранить'));
+                    }
+                }
+            })
+            .catch(function() {
+                if (typeof showToast === 'function') showToast('✕ Ошибка сети', 'error');
             });
         });
         

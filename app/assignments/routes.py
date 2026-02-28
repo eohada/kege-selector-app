@@ -2448,6 +2448,69 @@ def submission_grade_view(submission_id):
                          can_submit_grade=can_submit_grade)
 
 
+@assignments_bp.route('/submissions/<int:submission_id>/save-comments', methods=['POST'])
+@login_required
+@check_access('assignment.grade')
+def submission_save_comments(submission_id):
+    """
+    Сохранение только комментариев к заданиям (и общего комментария) без завершения проверки.
+    Ученик увидит комментарии при выполнении работы.
+    Body: {
+        "comments": [ {"assignment_task_id": 1, "teacher_comment": "..."}, ... ],
+        "teacher_feedback": "Общий комментарий (необязательно)"
+    }
+    """
+    if current_user.is_student() or current_user.is_parent():
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    submission = Submission.query.options(
+        joinedload(Submission.assignment).joinedload(Assignment.tasks).joinedload(AssignmentTask.task),
+        joinedload(Submission.answers),
+    ).get_or_404(submission_id)
+    assignment = submission.assignment
+    if not assignment:
+        return jsonify({'success': False, 'error': 'Работа не найдена'}), 404
+    scope = get_user_scope(current_user)
+    if not scope['can_see_all'] and assignment.created_by_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    try:
+        data = request.get_json() or {}
+        comments_data = data.get('comments', [])
+        teacher_feedback = (data.get('teacher_feedback') or '').strip()
+
+        for item in comments_data:
+            assignment_task_id = item.get('assignment_task_id')
+            teacher_comment = (item.get('teacher_comment') or '').strip()
+            if assignment_task_id is None:
+                continue
+            assignment_task = next(
+                (t for t in (assignment.tasks or []) if t.assignment_task_id == int(assignment_task_id)),
+                None
+            )
+            if not assignment_task:
+                continue
+            answer = next(
+                (a for a in (submission.answers or []) if a.assignment_task_id == assignment_task.assignment_task_id),
+                None
+            )
+            if not answer:
+                answer = Answer(
+                    submission_id=submission_id,
+                    assignment_task_id=assignment_task.assignment_task_id,
+                    max_score=assignment_task.max_score,
+                )
+                db.session.add(answer)
+            answer.teacher_comment = teacher_comment or None
+
+        submission.teacher_feedback = teacher_feedback or None
+        db.session.commit()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        logger.error(f"Error in submission_save_comments for submission {submission_id}: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @assignments_bp.route('/submissions/<int:submission_id>/grade', methods=['POST'])
 @login_required
 @check_access('assignment.grade')
