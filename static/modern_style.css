@@ -3224,10 +3224,13 @@ body.creator-theme-active .students-grid {
 }
 
 .profile-container {
+    width: 100%;
     max-width: 1480px;
+    min-width: 0;
     margin: 0 auto;
     display: grid;
     gap: 2rem;
+    box-sizing: border-box;
 }
 
 .profile-card {
