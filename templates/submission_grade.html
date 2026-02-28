@@ -119,13 +119,20 @@
         .submit-section {
             position: sticky;
             bottom: 0;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
             background: var(--surface-1);
             border-top: 2px solid var(--stroke-1);
-            padding: 1.5rem;
+            padding: 1.5rem 0;
             margin-top: 2rem;
+            margin-left: 0;
+            margin-right: 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
         
         .total-score {
@@ -149,6 +156,10 @@
         /* Отступы страницы проверки */
         .grade-page-inner {
             padding: 0 0 2rem;
+            max-width: 100%;
+        }
+        #grade-form {
+            width: 100%;
             max-width: 100%;
         }
         .grade-header {
@@ -230,18 +241,6 @@
                     <div style="font-weight: 600;">{{ attempts_used }} / {{ effective_max_attempts }}{% if attempts_per_task %} <span style="font-size: 0.8em; color: var(--text-muted);">(по заданию)</span>{% endif %}</div>
                 </div>
             </div>
-            {% if rubric_templates is defined and rubric_templates %}
-            <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
-                <div style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.25rem;">Рубрика</div>
-                <select id="rubric-template" class="neo-select" style="min-width: 200px;">
-                    <option value="">— без рубрики —</option>
-                    {% for rt in rubric_templates %}
-                      <option value="{{ rt.rubric_id }}" {% if rubric_template and rt.rubric_id == rubric_template.rubric_id %}selected{% endif %}>{{ rt.title }}</option>
-                    {% endfor %}
-                </select>
-                <a href="{{ url_for('rubrics.rubrics_list') }}" class="neo-button ghost sm" style="margin-left: 0.5rem;">Управлять рубриками</a>
-            </div>
-            {% endif %}
         </div>
         
         <form id="grade-form">
@@ -277,7 +276,12 @@
                 <div class="answer-section">
                     <div style="font-weight: 600; margin-bottom: 0.25rem;">Ответ ученика:</div>
                     <div class="student-answer-value">{{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}</div>
-                    
+                    {% if task_item.task and task_item.task.answer %}
+                    <div style="margin-top: 0.75rem;">
+                        <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.2rem;">Правильный ответ:</div>
+                        <div class="student-answer-value" style="background: rgba(34, 197, 94, 0.08); border-color: rgba(34, 197, 94, 0.4);">{{ task_item.task.answer }}</div>
+                    </div>
+                    {% endif %}
                     {% if task_item.answer and task_item.answer.is_correct is not none %}
                     <div style="margin-top: 0.75rem; padding: 0.5rem; background: {% if task_item.answer.is_correct %}var(--success){% else %}var(--danger){% endif %}; color: white; border-radius: var(--radius-sm); font-weight: 600;">
                         {% if task_item.answer.is_correct %}{{ ui_icon('action.check', 'sm') }} Правильно{% else %}{{ ui_icon('action.close', 'sm') }} Неправильно{% endif %}
@@ -380,7 +384,10 @@
                     <div class="total-score" id="total-score">0 / {{ submission.max_score or 0 }}</div>
                 </div>
                 {% if not can_submit_grade %}
-                <p style="color: var(--text-muted); margin: 0; align-self: center;">Работа ещё не сдана. Кнопки станут доступны после сдачи.</p>
+                <p style="color: var(--text-muted); margin: 0; align-self: center;">
+                    {% if display_status_label %}Время истекло или дедлайн прошёл. Ученик не нажал «Сдать работу». Кнопки станут доступны после сдачи.
+                    {% else %}Работа ещё не сдана. Кнопки станут доступны после сдачи.{% endif %}
+                </p>
                 {% endif %}
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                     <button type="button" id="return-btn" class="neo-button ghost" style="padding: 0.75rem 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem;" {% if not can_submit_grade %}disabled{% endif %}>
