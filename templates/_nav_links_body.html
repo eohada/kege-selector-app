@@ -1,5 +1,5 @@
 {% from '_ui_icon.html' import ui_icon %}
-{% if current_user.is_parent() %}
+{% if current_user.is_authenticated and current_user.is_parent() %}
 
 {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
 <a href="{{ url_for('parents.parent_dashboard') }}" class="nav-link {% if active_page == 'parent_dashboard' %}active{% endif %}">
@@ -22,7 +22,7 @@
         <span class="nav-link-label">FAQ</span>
     </span>
 </a>
-{% elif current_user.is_student() %}
+{% elif current_user.is_authenticated and current_user.is_student() %}
 
 {% set sub_allow_lessons = (subscription_access.allow_lessons if subscription_access and subscription_access.allow_lessons is not none else True) %}
 {% set sub_allow_trainer = (subscription_access.allow_trainer if subscription_access and subscription_access.allow_trainer is not none else True) %}
@@ -70,7 +70,7 @@
     </span>
 </a>
 {% endif %}
-{% else %}
+{% elif current_user.is_authenticated %}
 
 <a href="{{ url_for('main.dashboard') }}" class="nav-link {% if active_page == 'dashboard' %}active{% endif %}">
     <span class="nav-link-content">
@@ -123,7 +123,7 @@
 </div>
 {% endif %}
 
-{% if not current_user.is_parent() and not current_user.is_student() %}
+{% if current_user.is_authenticated and not current_user.is_parent() and not current_user.is_student() %}
 
 <div class="sidebar-group">
     <div class="app-sidebar-group-title">Инструменты</div>
