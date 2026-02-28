@@ -37,12 +37,18 @@ def _ensure_aware_datetime(dt):
 
 
 def _started_at_to_utc(dt):
-    """Приводит started_at к UTC для сравнения таймера (единая зона — без расхождений сервер/клиент)."""
+    """
+    Приводит started_at к UTC для сравнения таймера.
+    Naive считаем UTC (типично при хранении в PostgreSQL/Docker в UTC),
+    иначе блокировка срабатывает сразу после старта.
+    """
     if dt is None:
         return None
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=MOSCOW_TZ)
-    return dt.astimezone(timezone.utc)
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt
 
 def _normalize_assignment_type(value: str | None) -> str:
     v = (value or '').strip().lower()
