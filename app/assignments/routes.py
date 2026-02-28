@@ -2162,9 +2162,10 @@ def submission_grade_save(submission_id):
     if not scope['can_see_all'] and assignment.created_by_id != current_user.id:
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
-    if submission.status not in ('SUBMITTED', 'GRADED', 'RETURNED'):
+    # Разрешаем сохранять оценку и при IN_PROGRESS/ASSIGNED (таймер истёк, ученик не нажал «Сдать» — преподаватель может завершить проверку)
+    if submission.status not in ('SUBMITTED', 'GRADED', 'RETURNED', 'IN_PROGRESS', 'ASSIGNED'):
         return jsonify({'success': False, 'error': 'Нельзя изменить оценку для этой сдачи'}), 400
-    
+
     try:
         data = request.get_json()
         scores_data = data.get('scores', [])
@@ -2272,6 +2273,9 @@ def submission_grade_save(submission_id):
 
         submission.status = status
         submission.graded_at = moscow_now()
+        # Если ученик не нажал «Сдать» (таймер истёк и т.п.), при завершении проверки фиксируем дату закрытия
+        if submission.submitted_at is None:
+            submission.submitted_at = moscow_now()
 
         if status == 'GRADED':
             _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
