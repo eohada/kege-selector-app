@@ -1406,6 +1406,7 @@ class Assignment(db.Model):
     hard_deadline = db.Column(db.Boolean, default=False)  # Если True - нельзя сдать после дедлайна
     allow_separate_submission = db.Column(db.Boolean, default=True, nullable=False)  # Разрешить сдавать по одной задаче
     time_limit_minutes = db.Column(db.Integer, nullable=True)  # Ограничение времени выполнения (для exam/test)
+    time_limit_strict = db.Column(db.Boolean, default=False, nullable=False)  # True: после истечения таймера блокировать сдачу; False: только помечать как не уложился
     max_attempts_default = db.Column(db.Integer, nullable=True)  # Макс. попыток сдачи по умолчанию (1 если NULL)
     
     created_by_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)  # Учитель, создавший работу
@@ -1485,7 +1486,8 @@ class Submission(db.Model):
     graded_at = db.Column(db.DateTime, nullable=True)  # Когда проверено
     
     is_late = db.Column(db.Boolean, default=False, nullable=False)  # Сдано с опозданием
-    
+    is_overtime = db.Column(db.Boolean, default=False, nullable=False)  # Сдано после истечения лимита времени (не уложился в таймер)
+
     total_score = db.Column(db.Integer, nullable=True)  # Общий балл
     max_score = db.Column(db.Integer, nullable=True)  # Максимальный возможный балл
     percentage = db.Column(db.Float, nullable=True)  # Процент выполнения
@@ -1529,7 +1531,8 @@ class Answer(db.Model):
     
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
-    
+    submitted_separately_at = db.Column(db.DateTime, nullable=True)  # Когда ученик нажал «Сдать задание» по этому ответу (при allow_separate_submission)
+
     submission = db.relationship('Submission', back_populates='answers')
     assignment_task = db.relationship('AssignmentTask', back_populates='answers')
     

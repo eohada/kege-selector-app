@@ -270,6 +270,17 @@
                         {% if (submission.status == 'ASSIGNED' and not submission.started_at) or submission.status == 'SUBMITTED' or not can_submit %}disabled{% endif %}
                     >{{ task_item.answer.value if task_item.answer else '' }}</textarea>
                     <div class="autosave-indicator" id="autosave-{{ task_item.assignment_task.assignment_task_id }}"></div>
+                    {% if allow_separate_submission and submission.status in ['IN_PROGRESS', 'RETURNED'] and can_submit %}
+                    <div class="submit-task-wrap" style="margin-top: 0.75rem;" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}">
+                        {% if task_item.answer and task_item.answer.submitted_separately_at %}
+                        <span class="task-submitted-badge" style="color: var(--accent-1); font-weight: 700; font-size: 0.9em;">{{ ui_icon('action.check', 'sm') }} Сдано</span>
+                        {% else %}
+                        <button type="button" class="neo-button ghost submit-task-btn" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 1rem; font-weight: 600; font-size: 0.9em;">
+                            {{ ui_icon('action.check', 'sm') }} <span class="submit-task-btn-text">Сдать это задание</span>
+                        </button>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -303,9 +314,14 @@
                     </button>
                     <span id="last-save" class="autosave-indicator" style="font-size: 0.85em; color: var(--text-muted); font-weight: 500;"></span>
                 </div>
-                <button type="button" id="submit-btn" class="neo-button accent" data-prevent-double-submit="true" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.25rem; min-height: 2.75rem; font-weight: 700; box-sizing: border-box;">
-                    {{ ui_icon('action.check', 'sm') }} {% if submission.status in ['RETURNED', 'GRADED'] %}Сдать повторно{% else %}Сдать работу{% endif %}
-                </button>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                    <div id="timer-blocked-msg" style="display: none; padding: 0.75rem 1rem; background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; border-radius: var(--radius-md); color: #ef4444; font-weight: 700; font-size: 0.95em;">
+                        {{ ui_icon('action.warning', 'sm') }} Сдача заблокирована. Время на выполнение истекло.
+                    </div>
+                    <button type="button" id="submit-btn" class="neo-button accent" data-prevent-double-submit="true" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1.25rem; min-height: 2.75rem; font-weight: 700; box-sizing: border-box;">
+                        {{ ui_icon('action.check', 'sm') }} {% if submission.status in ['RETURNED', 'GRADED'] %}Сдать повторно{% else %}Сдать работу{% endif %}
+                    </button>
+                </div>
             </div>
             {% endif %}
         </form>
@@ -590,9 +606,50 @@
         // Ручное сохранение
         document.getElementById('autosave-btn')?.addEventListener('click', autosave);
         
+        // Сдача одного задания (при allow_separate_submission)
+        document.querySelectorAll('.submit-task-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const assignmentTaskId = parseInt(btn.getAttribute('data-assignment-task-id'), 10);
+                const textarea = document.getElementById('answer-' + assignmentTaskId);
+                const value = textarea ? textarea.value : '';
+                const wrap = btn.closest('.submit-task-wrap');
+                if (!wrap) return;
+                btn.disabled = true;
+                const originalText = btn.querySelector('.submit-task-btn-text');
+                if (originalText) originalText.textContent = 'Отправка...';
+                fetch('{{ url_for("assignments.submission_submit_task", submission_id=submission.submission_id) }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ assignment_task_id: assignmentTaskId, value: value })
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        wrap.innerHTML = '<span class="task-submitted-badge" style="color: var(--accent-1); font-weight: 700; font-size: 0.9em;">✓ Сдано</span>';
+                        if (typeof showToast === 'function') showToast('Задание сдано', 'success');
+                    } else {
+                        btn.disabled = false;
+                        if (originalText) originalText.textContent = 'Сдать это задание';
+                        if (typeof showToast === 'function') showToast('Ошибка: ' + (data.error || 'Не удалось сдать'), 'error');
+                    }
+                })
+                .catch(function(err) {
+                    btn.disabled = false;
+                    if (originalText) originalText.textContent = 'Сдать это задание';
+                    if (typeof showToast === 'function') showToast('Ошибка при сдаче задания', 'error');
+                });
+            });
+        });
+        
         // Таймер обратного отсчета
         const timerElement = document.getElementById('timer');
         const timerContainer = document.getElementById('timer-container');
+        const timeLimitStrict = {{ 'true' if time_limit_strict else 'false' }};
+        const submitBtn = document.getElementById('submit-btn');
+        const timerBlockedMsg = document.getElementById('timer-blocked-msg');
         let totalSeconds = 0;
         
         if (timerElement && timerContainer) {
@@ -662,6 +719,11 @@
                     timerElement.style.color = '#ef4444';
                     timerContainer.style.borderColor = '#ef4444';
                     timerContainer.style.background = 'rgba(239, 68, 68, 0.1)';
+                    if (timeLimitStrict && submitBtn) {
+                        submitBtn.disabled = true;
+                        submitBtn.style.opacity = '0.6';
+                        if (timerBlockedMsg) timerBlockedMsg.style.display = 'block';
+                    }
                     return;
                 }
                 
@@ -690,17 +752,17 @@
             {% endif %}
         }
         
-        // Сдача работы
+        // Сдача работы (при time_limit_strict и истёкшем таймере кнопка уже отключена)
         document.getElementById('submit-btn')?.addEventListener('click', function(e) {
             e.preventDefault();
+            if (timeLimitStrict && totalSeconds <= 0) return;
             
-            // Проверка времени
-            if (totalSeconds <= 0) {
-                showToast('⚠ Время на выполнение работы истекло. Ваша работа будет отправлена с отметкой о задержке.', 'warning');
-            }
+            const confirmMessage = totalSeconds <= 0
+                ? 'Время на выполнение истекло. Работа будет отправлена с отметкой о задержке. Продолжить?'
+                : 'Вы уверены, что хотите сдать работу? После сдачи изменить ответы будет невозможно.';
             
             showConfirmDialog(
-                'Вы уверены, что хотите сдать работу? После сдачи изменить ответы будет невозможно.',
+                confirmMessage,
                 () => {
                     console.log('Submitting assignment...');
                     const submitBtn = document.getElementById('submit-btn');

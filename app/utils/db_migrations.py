@@ -1216,6 +1216,16 @@ def ensure_schema_columns(app):
                         except Exception as e:
                             logger.warning(f"Could not add time_limit_minutes to {assignments_table}: {e}")
                             db.session.rollback()
+                    if 'time_limit_strict' not in cols:
+                        try:
+                            if _is_postgres(app):
+                                db.session.execute(text(f'ALTER TABLE "{assignments_table}" ADD COLUMN time_limit_strict BOOLEAN DEFAULT FALSE NOT NULL'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE "{assignments_table}" ADD COLUMN time_limit_strict INTEGER DEFAULT 0 NOT NULL'))
+                            logger.info(f"Added time_limit_strict to {assignments_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add time_limit_strict to {assignments_table}: {e}")
+                            db.session.rollback()
                 assignment_tasks_table = _resolve_table_name(table_names, 'AssignmentTasks')
                 if assignment_tasks_table:
                     at_cols = {c['name'] for c in inspector.get_columns(assignment_tasks_table)}
@@ -1246,6 +1256,27 @@ def ensure_schema_columns(app):
                             except Exception as e2:
                                 logger.warning(f"Could not add rubric_scores to {submissions_table}: {e} / {e2}")
                                 db.session.rollback()
+                    if 'is_overtime' not in cols:
+                        try:
+                            if _is_postgres(app):
+                                db.session.execute(text(f'ALTER TABLE "{submissions_table}" ADD COLUMN is_overtime BOOLEAN DEFAULT FALSE NOT NULL'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE "{submissions_table}" ADD COLUMN is_overtime INTEGER DEFAULT 0 NOT NULL'))
+                            logger.info(f"Added is_overtime to {submissions_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add is_overtime to {submissions_table}: {e}")
+                            db.session.rollback()
+                answers_table = _resolve_table_name(table_names, 'Answers')
+                if answers_table:
+                    try:
+                        ans_cols = {c['name'] for c in inspector.get_columns(answers_table)}
+                        if 'submitted_separately_at' not in ans_cols:
+                            col_type = 'TIMESTAMP' if _is_postgres(app) else 'DATETIME'
+                            db.session.execute(text(f'ALTER TABLE "{answers_table}" ADD COLUMN submitted_separately_at {col_type}'))
+                            logger.info(f"Added submitted_separately_at to {answers_table}")
+                    except Exception as e:
+                        logger.warning(f"Could not add submitted_separately_at to {answers_table}: {e}")
+                        db.session.rollback()
             except Exception as e:
                 logger.warning(f"Could not ensure rubric columns: {e}")
             

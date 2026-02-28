@@ -296,6 +296,10 @@
                                             </select>
                                         </div>
                                         <div class="neo-field" style="margin-top: 1rem;">
+                                            <label class="neo-label">Описание / комментарий для ученика</label>
+                                            <textarea id="ca_description" class="neo-input" rows="3" placeholder="Ученик увидит этот текст перед началом выполнения"></textarea>
+                                        </div>
+                                        <div class="neo-field" style="margin-top: 1rem;">
                                             <label class="neo-label">Срок сдачи (дедлайн) *</label>
                                             <input id="ca_deadline" class="neo-input" type="datetime-local" required>
                                         </div>
@@ -318,6 +322,11 @@
                                                 <input type="checkbox" id="ca_separate_submission" checked>
                                                 <span style="font-size: 0.9rem; font-weight: 700;">Разрешить сдавать задачи по одной</span>
                                             </label>
+                                            <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+                                                <input type="checkbox" id="ca_time_limit_strict">
+                                                <span style="font-size: 0.9rem; font-weight: 700;">Блокировать сдачу после истечения таймера</span>
+                                            </label>
+                                            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">Если снято — работа только помечается как не уложившаяся в время, сдача разрешена.</p>
                                         </div>
                                     </form>
                                 </div>
@@ -440,6 +449,8 @@
             const maxAttempts = parseInt(document.getElementById('ca_max_attempts').value) || 1;
             const hardDeadline = document.getElementById('ca_hard_deadline').checked;
             const allowSeparate = document.getElementById('ca_separate_submission').checked;
+            const timeLimitStrict = document.getElementById('ca_time_limit_strict').checked;
+            const description = (document.getElementById('ca_description') && document.getElementById('ca_description').value.trim()) || '';
 
             if (!title || !deadline || !recipients.length || !taskIds.length) {
                 window.toast?.error?.('Заполните все обязательные поля');
@@ -454,9 +465,11 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
                     body: JSON.stringify({
-                        title, type, 
+                        title, type,
+                        description,
                         deadline: new Date(deadline).toISOString(),
                         time_limit_minutes: timeLimit,
+                        time_limit_strict: timeLimitStrict,
                         max_attempts_default: maxAttempts,
                         hard_deadline: hardDeadline,
                         allow_separate_submission: allowSeparate,

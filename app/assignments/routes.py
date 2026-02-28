@@ -442,6 +442,7 @@ def distribute_assignment():
         hard_deadline = data.get('hard_deadline', False)
         allow_separate_submission = data.get('allow_separate_submission', True)
         time_limit_minutes = data.get('time_limit_minutes')
+        time_limit_strict = data.get('time_limit_strict', False)
         max_attempts_default = data.get('max_attempts_default')
         if max_attempts_default is not None:
             try:
@@ -498,6 +499,7 @@ def distribute_assignment():
             hard_deadline=hard_deadline,
             allow_separate_submission=allow_separate_submission,
             time_limit_minutes=time_limit_minutes,
+            time_limit_strict=time_limit_strict,
             max_attempts_default=max_attempts_default,
             created_by_id=current_user.id,
             lesson_id=lesson_id,
@@ -1569,7 +1571,9 @@ def submission_view(submission_id):
                              can_submit=can_submit,
                              attempts_used=attempts_used,
                              effective_max_attempts=effective_max_attempts,
-                             attempts_left=attempts_left)
+                             attempts_left=attempts_left,
+                             allow_separate_submission=assignment.allow_separate_submission,
+                             time_limit_strict=assignment.time_limit_strict)
     except Exception as e:
         logger.error(f"Error processing submission_view for submission {submission_id}: {e}", exc_info=True)
         flash('Ошибка при обработке данных работы', 'danger')
@@ -1751,6 +1755,61 @@ def submission_autosave(submission_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@assignments_bp.route('/submissions/<int:submission_id>/submit-task', methods=['POST'])
+@login_required
+@limiter.limit("30 per minute")
+def submission_submit_task(submission_id):
+    """Сдача одного задания (при allow_separate_submission). Body: { "assignment_task_id": int, "value": "..." }"""
+    try:
+        submission = Submission.query.options(
+            joinedload(Submission.assignment),
+            joinedload(Submission.answers)
+        ).get_or_404(submission_id)
+        student = get_student_by_user_id(current_user.id)
+        if not student or submission.student_id != student.student_id:
+            return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+        if submission.status not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
+            return jsonify({'success': False, 'error': 'Работа уже сдана'}), 400
+        assignment = submission.assignment
+        if not assignment.allow_separate_submission:
+            return jsonify({'success': False, 'error': 'Сдача по одному заданию не разрешена'}), 400
+        data = request.get_json() or {}
+        assignment_task_id = data.get('assignment_task_id')
+        value = data.get('value', '')
+        if not assignment_task_id:
+            return jsonify({'success': False, 'error': 'Укажите assignment_task_id'}), 400
+        assignment_task = AssignmentTask.query.filter_by(
+            assignment_task_id=assignment_task_id,
+            assignment_id=submission.assignment_id
+        ).first()
+        if not assignment_task:
+            return jsonify({'success': False, 'error': 'Задание не найдено'}), 404
+        answer = Answer.query.filter_by(
+            submission_id=submission_id,
+            assignment_task_id=assignment_task_id
+        ).first()
+        if not answer:
+            answer = Answer(
+                submission_id=submission_id,
+                assignment_task_id=assignment_task_id,
+                max_score=assignment_task.max_score
+            )
+            db.session.add(answer)
+        answer.value = value
+        answer.submitted_separately_at = moscow_now()
+        answer.updated_at = moscow_now()
+        if submission.status in ['ASSIGNED', 'RETURNED']:
+            submission.status = 'IN_PROGRESS'
+            if not submission.started_at:
+                submission.started_at = moscow_now()
+        db.session.commit()
+        return jsonify({'success': True, 'submitted_separately_at': answer.submitted_separately_at.isoformat()}), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in submission_submit_task: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @assignments_bp.route('/submissions/<int:submission_id>/submit', methods=['POST'])
 @login_required
 @limiter.limit("10 per minute")
@@ -1782,9 +1841,17 @@ def submission_submit(submission_id):
         if is_late and assignment.hard_deadline:
             return jsonify({'success': False, 'error': 'Дедлайн истек, сдача невозможна'}), 403
         
+        is_overtime = False
+        if assignment.time_limit_minutes and submission.started_at:
+            limit_end = _ensure_aware_datetime(submission.started_at) + timedelta(minutes=assignment.time_limit_minutes)
+            if now > limit_end:
+                if assignment.time_limit_strict:
+                    return jsonify({'success': False, 'error': 'Время на выполнение истекло. Сдача заблокирована.'}), 403
+                is_overtime = True
         submission.status = 'SUBMITTED'
         submission.submitted_at = now
         submission.is_late = is_late
+        submission.is_overtime = is_overtime
         
         all_auto_graded = True
         total_score = 0
