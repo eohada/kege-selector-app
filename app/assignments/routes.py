@@ -24,8 +24,36 @@ from app.notifications.service import notify_student_and_parents
 from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_unique_tasks, get_task_ids_in_assignments_for_students, reset_history, reset_skipped
 import requests
 from flask import Response, stream_with_context, abort
+import subprocess
+import sys
 
 logger = logging.getLogger(__name__)
+
+# Редактор кода: песочница для запуска Python (только itertools, math)
+_PYTHON_RUNNER = r"""
+import sys
+import io
+code = sys.stdin.read()
+out = io.StringIO()
+err = io.StringIO()
+sys.stdout = out
+sys.stderr = err
+try:
+    import itertools
+    import math
+    safe_builtins = {'print': print, 'len': len, 'range': range, 'list': list, 'dict': dict, 'str': str, 'int': int, 'float': float,
+                     'sum': sum, 'min': min, 'max': max, 'abs': abs, 'sorted': sorted, 'map': map, 'filter': filter, 'zip': zip,
+                     'enumerate': enumerate, 'tuple': tuple, 'set': set, 'bool': bool, 'True': True, 'False': False, 'None': None,
+                     'round': round, 'repr': repr, 'any': any, 'all': all}
+    safe = {'__builtins__': safe_builtins, 'itertools': itertools, 'math': math}
+    exec(code, safe)
+except Exception as e:
+    err.write(str(e))
+sys.stdout = sys.__stdout__
+sys.stderr = sys.__stderr__
+print(out.getvalue())
+print(err.getvalue(), file=sys.__stderr__)
+"""
 
 def _ensure_aware_datetime(dt):
     """Конвертирует naive datetime в aware (Moscow timezone)"""
@@ -2040,6 +2068,85 @@ def submission_submit(submission_id):
         db.session.rollback()
         return jsonify({'success': False, 'error': f'Ошибка при сдаче работы: {str(e)}'}), 500
 
+
+def _run_python_sandbox(code: str, timeout_sec: int = 5):
+    """Запуск кода Python в песочнице (только itertools, math). Возвращает (stdout, stderr)."""
+    try:
+        proc = subprocess.run(
+            [sys.executable, '-c', _PYTHON_RUNNER],
+            input=code,
+            capture_output=True,
+            text=True,
+            timeout=timeout_sec,
+        )
+        return proc.stdout or '', proc.stderr or ''
+    except subprocess.TimeoutExpired:
+        return '', 'Превышено время выполнения (макс. {} с).'.format(timeout_sec)
+    except Exception as e:
+        return '', str(e)
+
+
+@assignments_bp.route('/submissions/<int:submission_id>/run-code', methods=['POST'])
+@login_required
+@limiter.limit('30/minute')
+def submission_run_code(submission_id):
+    """Запуск кода ученика в песочнице (только itertools, math)."""
+    submission = Submission.query.filter_by(submission_id=submission_id).first_or_404()
+    scope = get_user_scope(current_user)
+    is_owner = getattr(current_user, 'student_id', None) == submission.student_id
+    can_see = scope.get('can_see_all') or (getattr(current_user, 'is_teacher', lambda: False)() or getattr(current_user, 'is_admin', lambda: False)())
+    if not is_owner and not can_see:
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+    data = request.get_json() or {}
+    code = (data.get('code') or '').strip()
+    assignment_task_id = data.get('assignment_task_id')
+    if not code:
+        return jsonify({'success': False, 'error': 'Код не передан'}), 400
+    assignment = submission.assignment
+    if assignment_task_id is not None:
+        at = next((t for t in (assignment.tasks or []) if t.assignment_task_id == assignment_task_id), None)
+        if not at:
+            return jsonify({'success': False, 'error': 'Задание не найдено'}), 400
+    stdout, stderr = _run_python_sandbox(code)
+    return jsonify({'success': True, 'stdout': stdout, 'stderr': stderr})
+
+
+@assignments_bp.route('/submissions/<int:submission_id>/save-code', methods=['POST'])
+@login_required
+@limiter.limit('60/minute')
+def submission_save_code(submission_id):
+    """Сохранение кода ученика для задания (для проверки преподавателем)."""
+    submission = Submission.query.options(
+        joinedload(Submission.assignment).joinedload(Assignment.tasks),
+        joinedload(Submission.answers),
+    ).filter_by(submission_id=submission_id).first_or_404()
+    if not getattr(current_user, 'student_id', None) or current_user.student_id != submission.student_id:
+        return jsonify({'success': False, 'error': 'Только автор сдачи может сохранять код'}), 403
+    data = request.get_json() or {}
+    code = (data.get('code') or '').strip()
+    assignment_task_id = data.get('assignment_task_id')
+    if assignment_task_id is None:
+        return jsonify({'success': False, 'error': 'Не указано задание'}), 400
+    assignment = submission.assignment
+    at = next((t for t in (assignment.tasks or []) if t.assignment_task_id == int(assignment_task_id)), None)
+    if not at:
+        return jsonify({'success': False, 'error': 'Задание не найдено'}), 400
+    answer = next((a for a in (submission.answers or []) if a.assignment_task_id == at.assignment_task_id), None)
+    if not answer:
+        answer = Answer(
+            submission_id=submission_id,
+            assignment_task_id=at.assignment_task_id,
+            max_score=at.max_score,
+        )
+        db.session.add(answer)
+    answer.student_code = code[: 100_000]
+    answer.student_code_saved_at = moscow_now()
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    return jsonify({'success': True, 'saved_at': answer.student_code_saved_at.isoformat()})
 
 
 @assignments_bp.route('/submissions/<int:submission_id>/grade')

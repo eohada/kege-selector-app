@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='confirm-dialog.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
     {% include '_ux_enhancements.html' %}
     
     <style>
@@ -324,6 +325,28 @@
                         {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task %}disabled{% endif %}
                     >{{ task_item.answer.value if task_item.answer else '' }}</textarea>
                     <div class="autosave-indicator" id="autosave-{{ task_item.assignment_task.assignment_task_id }}"></div>
+                    {% if submission.status in ['IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0) %}
+                    <div class="code-editor-wrap" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="margin-top: 0.75rem;">
+                        <button type="button" class="code-editor-toggle neo-button ghost sm" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.75rem; font-size: 0.9em;">
+                            <span class="code-editor-toggle-icon">▶</span> Редактор кода
+                        </button>
+                        <div class="code-editor-panel" style="display: none; margin-top: 0.75rem; padding: 1rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: var(--radius-md);">
+                            <p style="font-size: 0.85em; color: var(--text-muted); margin-bottom: 0.5rem;">Python 3. Доступны только <code>itertools</code> и <code>math</code>.</p>
+                            <div class="code-editor-cm-wrap" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); overflow: hidden;">
+                                <textarea class="code-editor-text" rows="14" placeholder="# Ваш код&#10;import math&#10;print(math.sqrt(16))" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="width: 100%; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; padding: 0.75rem; border: none; background: var(--surface-1); color: var(--text-primary); resize: vertical; box-sizing: border-box;">{{ task_item.answer.student_code if task_item.answer and task_item.answer.student_code else '' }}</textarea>
+                            </div>
+                            <div class="code-editor-actions" style="display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap;">
+                                <button type="button" class="code-editor-run neo-button ghost sm">Запустить</button>
+                                <button type="button" class="code-editor-save neo-button accent sm">Сохранить код</button>
+                                <span class="code-editor-saved-hint" style="font-size: 0.85em; color: var(--text-muted); align-self: center;">{% if task_item.answer and task_item.answer.student_code_saved_at %}Сохранено {{ task_item.answer.student_code_saved_at.strftime('%d.%m.%Y %H:%M') }}{% endif %}</span>
+                            </div>
+                            <div class="code-editor-output-wrap" style="margin-top: 0.75rem;">
+                                <label style="font-size: 0.85em; font-weight: 600;">Вывод:</label>
+                                <pre class="code-editor-output" style="margin: 0.35rem 0 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; min-height: 3rem; max-height: 12rem; overflow: auto;"></pre>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                     {% if attempts_per_task and allow_separate_submission and submission.status in ['IN_PROGRESS', 'RETURNED'] and task_item.task_attempts_used < task_item.max_attempts_for_task %}
                     <div class="submit-task-wrap" style="margin-top: 0.75rem;" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" data-max-attempts="{{ task_item.max_attempts_for_task }}" data-attempts-used="{{ task_item.task_attempts_used }}">
                         {% if time_limit_strict and timer_expired %}
@@ -542,6 +565,105 @@
                     ignoreClass: 'katex'
                 });
             }
+
+            // Редактор кода: открытие/закрытие панели, опционально CodeMirror
+            function getCodeFromEditor(wrap) {
+                var textarea = wrap && wrap.querySelector('.code-editor-text');
+                if (!textarea) return '';
+                if (textarea.cmInstance) return textarea.cmInstance.getValue();
+                return textarea.value || '';
+            }
+            function initCodeMirrorIfNeeded(wrap) {
+                var panel = wrap && wrap.querySelector('.code-editor-panel');
+                var wrapDiv = panel && panel.querySelector('.code-editor-cm-wrap');
+                var textarea = wrapDiv && wrapDiv.querySelector('.code-editor-text');
+                if (!textarea || textarea.cmInstance || typeof CodeMirror === 'undefined') return;
+                var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                textarea.cmInstance = CodeMirror.fromTextArea(textarea, {
+                    mode: 'python',
+                    theme: isDark ? 'dracula' : 'default',
+                    lineNumbers: true,
+                    indentUnit: 4,
+                    lineWrapping: true
+                });
+                textarea.cmInstance.setSize(null, 280);
+            }
+            document.querySelectorAll('.code-editor-toggle').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var wrap = btn.closest('.code-editor-wrap');
+                    var panel = wrap && wrap.querySelector('.code-editor-panel');
+                    var icon = wrap && wrap.querySelector('.code-editor-toggle-icon');
+                    if (!panel) return;
+                    var isHidden = panel.style.display === 'none';
+                    panel.style.display = isHidden ? 'block' : 'none';
+                    if (icon) icon.textContent = isHidden ? '▼' : '▶';
+                    if (isHidden) initCodeMirrorIfNeeded(wrap);
+                });
+            });
+
+            var submissionId = {{ submission.submission_id }};
+            var runCodeUrl = '{{ url_for("assignments.submission_run_code", submission_id=submission.submission_id) }}';
+            var saveCodeUrl = '{{ url_for("assignments.submission_save_code", submission_id=submission.submission_id) }}';
+            var csrfToken = document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').content;
+
+            document.querySelectorAll('.code-editor-run').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var wrap = btn.closest('.code-editor-wrap');
+                    var taskId = wrap && wrap.getAttribute('data-assignment-task-id');
+                    var output = wrap && wrap.querySelector('.code-editor-output');
+                    if (!taskId || !output) return;
+                    var code = getCodeFromEditor(wrap);
+                    btn.disabled = true;
+                    output.textContent = 'Запуск...';
+                    fetch(runCodeUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                        body: JSON.stringify({ code: code, assignment_task_id: parseInt(taskId, 10) })
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            var text = (data.stdout || '') + (data.stderr ? '\n--- stderr ---\n' + data.stderr : '');
+                            output.textContent = text || '(пусто)';
+                        } else {
+                            output.textContent = 'Ошибка: ' + (data.error || 'Не удалось запустить');
+                        }
+                    })
+                    .catch(function(e) {
+                        output.textContent = 'Ошибка: ' + (e && e.message || 'Сеть');
+                    })
+                    .then(function() { btn.disabled = false; });
+                });
+            });
+
+            document.querySelectorAll('.code-editor-save').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var wrap = btn.closest('.code-editor-wrap');
+                    var taskId = wrap && wrap.getAttribute('data-assignment-task-id');
+                    var hint = wrap && wrap.querySelector('.code-editor-saved-hint');
+                    if (!taskId) return;
+                    var code = getCodeFromEditor(wrap);
+                    btn.disabled = true;
+                    fetch(saveCodeUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                        body: JSON.stringify({ code: code, assignment_task_id: parseInt(taskId, 10) })
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.success) {
+                            if (typeof showToast === 'function') showToast('Код сохранён. Преподаватель сможет его просмотреть.', 'success');
+                            if (hint) { hint.textContent = 'Сохранено только что'; hint.style.display = ''; }
+                        } else {
+                            if (typeof showToast === 'function') showToast('Ошибка: ' + (data.error || 'Не удалось сохранить'), 'error');
+                        }
+                    })
+                    .catch(function(e) {
+                        if (typeof showToast === 'function') showToast('Ошибка сети', 'error');
+                    })
+                    .then(function() { btn.disabled = false; });
+                });
+            });
         });
         
         // Автосохранение
@@ -907,6 +1029,9 @@
         });
         {% endif %}
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" id="cm-theme-dark">
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
 </body>
 </html>

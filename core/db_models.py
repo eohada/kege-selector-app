@@ -1541,6 +1541,8 @@ class Answer(db.Model):
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
     submitted_separately_at = db.Column(db.DateTime, nullable=True)  # Когда ученик нажал «Сдать задание» по этому ответу (при allow_separate_submission)
     attempts_used = db.Column(db.Integer, default=0, nullable=False)  # Сколько раз сдавали это задание (при attempts_per_task)
+    student_code = db.Column(db.Text, nullable=True)  # Код ученика в редакторе (Python), для проверки преподавателем
+    student_code_saved_at = db.Column(db.DateTime, nullable=True)  # Когда ученик нажал «Сохранить код»
 
     submission = db.relationship('Submission', back_populates='answers')
     assignment_task = db.relationship('AssignmentTask', back_populates='answers')

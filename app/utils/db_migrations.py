@@ -1287,6 +1287,13 @@ def ensure_schema_columns(app):
                         if 'attempts_used' not in ans_cols:
                             db.session.execute(text(f'ALTER TABLE "{answers_table}" ADD COLUMN attempts_used INTEGER DEFAULT 0 NOT NULL'))
                             logger.info(f"Added attempts_used to {answers_table}")
+                        if 'student_code' not in ans_cols:
+                            db.session.execute(text(f'ALTER TABLE "{answers_table}" ADD COLUMN student_code TEXT'))
+                            logger.info(f"Added student_code to {answers_table}")
+                        if 'student_code_saved_at' not in ans_cols:
+                            col_type = 'TIMESTAMP' if _is_postgres(app) else 'DATETIME'
+                            db.session.execute(text(f'ALTER TABLE "{answers_table}" ADD COLUMN student_code_saved_at {col_type}'))
+                            logger.info(f"Added student_code_saved_at to {answers_table}")
                     except Exception as e:
                         logger.warning(f"Could not add Answer columns: {e}")
                         db.session.rollback()
