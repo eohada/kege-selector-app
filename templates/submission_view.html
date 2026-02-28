@@ -165,6 +165,14 @@
             text-decoration: line-through;
             cursor: not-allowed;
         }
+        button.submit-task-btn-overdue,
+        button.submit-task-btn.submit-task-btn-overdue {
+            background: rgba(239, 68, 68, 0.25) !important;
+            border-color: #ef4444 !important;
+            color: #ef4444 !important;
+            text-decoration: line-through;
+            cursor: not-allowed;
+        }
         
         .status-assigned { background: var(--surface-2); color: var(--text-primary); border: 1px solid var(--stroke-1); }
         .status-in_progress { background: var(--accent-1); color: white; border: 1px solid var(--accent-1-strong); }
@@ -316,12 +324,19 @@
                         {% if attempts_per_task and task_item.task_attempts_used >= task_item.max_attempts_for_task %}disabled{% endif %}
                     >{{ task_item.answer.value if task_item.answer else '' }}</textarea>
                     <div class="autosave-indicator" id="autosave-{{ task_item.assignment_task.assignment_task_id }}"></div>
-                    {% if attempts_per_task and allow_separate_submission and submission.status in ['IN_PROGRESS', 'RETURNED'] and can_submit and task_item.task_attempts_used < task_item.max_attempts_for_task %}
+                    {% if attempts_per_task and allow_separate_submission and submission.status in ['IN_PROGRESS', 'RETURNED'] and task_item.task_attempts_used < task_item.max_attempts_for_task %}
                     <div class="submit-task-wrap" style="margin-top: 0.75rem;" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" data-max-attempts="{{ task_item.max_attempts_for_task }}" data-attempts-used="{{ task_item.task_attempts_used }}">
+                        {% if time_limit_strict and timer_expired %}
+                        <button type="button" class="neo-button ghost submit-task-btn submit-task-btn-overdue" disabled style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 1rem; font-weight: 600; font-size: 0.9em; background: rgba(239, 68, 68, 0.25); border-color: #ef4444; color: #ef4444; text-decoration: line-through; cursor: not-allowed;">
+                            {{ ui_icon('action.check', 'sm') }} <span class="submit-task-btn-text">Сдать это задание</span>
+                        </button>
+                        <span style="margin-left: 0.5rem; font-size: 0.85em; color: #ef4444; font-weight: 600;">Сдача заблокирована (время истекло)</span>
+                        {% elif can_submit %}
                         <button type="button" class="neo-button ghost submit-task-btn" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 1rem; font-weight: 600; font-size: 0.9em;">
                             {{ ui_icon('action.check', 'sm') }} <span class="submit-task-btn-text">Сдать это задание</span>
                         </button>
                         <span class="task-attempts-hint" style="margin-left: 0.5rem; font-size: 0.85em; color: var(--text-muted);">(попытка {{ task_item.task_attempts_used }}/{{ task_item.max_attempts_for_task }})</span>
+                        {% endif %}
                     </div>
                     {% endif %}
                     {% endif %}
@@ -767,6 +782,24 @@
                         submitBtn.disabled = true;
                         submitBtn.classList.add('submit-btn-overdue');
                         if (timerBlockedMsg) timerBlockedMsg.style.display = 'block';
+                    }
+                    if (timeLimitStrict) {
+                        document.querySelectorAll('.submit-task-btn:not(.submit-task-btn-overdue)').forEach(function(btn) {
+                            btn.disabled = true;
+                            btn.classList.add('submit-task-btn-overdue');
+                            btn.style.background = 'rgba(239, 68, 68, 0.25)';
+                            btn.style.borderColor = '#ef4444';
+                            btn.style.color = '#ef4444';
+                            btn.style.textDecoration = 'line-through';
+                            btn.style.cursor = 'not-allowed';
+                            var wrap = btn.closest('.submit-task-wrap');
+                            var hint = wrap ? wrap.querySelector('.task-attempts-hint') : null;
+                            if (hint) {
+                                hint.textContent = 'Сдача заблокирована (время истекло)';
+                                hint.style.color = '#ef4444';
+                                hint.style.fontWeight = '600';
+                            }
+                        });
                     }
                     return;
                 }

@@ -1509,8 +1509,9 @@ def submissions_list():
         flash('Профиль ученика не найден', 'warning')
         return redirect(url_for('auth.user_profile'))
     
-    submissions = Submission.query.filter_by(
-        student_id=student.student_id
+    submissions = Submission.query.join(Submission.assignment).filter(
+        Submission.student_id == student.student_id,
+        Assignment.is_active.is_(True)
     ).options(
         joinedload(Submission.assignment).joinedload(Assignment.tasks),
         joinedload(Submission.assignment).joinedload(Assignment.created_by),
@@ -1839,6 +1840,13 @@ def submission_submit_task(submission_id):
         assignment = submission.assignment
         if not assignment.allow_separate_submission or not getattr(assignment, 'attempts_per_task', False):
             return jsonify({'success': False, 'error': 'Сдача по одному заданию не разрешена для этой работы'}), 400
+        if getattr(assignment, 'time_limit_strict', False) and getattr(assignment, 'time_limit_minutes', None) and getattr(submission, 'started_at', None):
+            now = moscow_now()
+            started_utc = _started_at_to_utc(submission.started_at)
+            now_utc = now.astimezone(timezone.utc)
+            limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
+            if now_utc > limit_end_utc:
+                return jsonify({'success': False, 'error': 'Время на выполнение истекло. Сдача заблокирована.'}), 403
         data = request.get_json() or {}
         assignment_task_id = data.get('assignment_task_id')
         value = data.get('value', '')
