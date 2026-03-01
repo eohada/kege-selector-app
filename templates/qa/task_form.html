@@ -1,114 +1,61 @@
-{% extends 'base.html' %}
-
-{% block content %}
-{% include '_ux_enhancements.html' %}
-
-<style>
-    /* Neon Form Styles */
-    :root {
-        --board-bg: #121218;
-        --card-bg: #1e1e2f;
-    }
-
-    /* Dark mode overrides */
-    body {
-        background-color: var(--board-bg);
-        color: #fff;
-    }
-
-    .form-container {
-        max-width: 600px;
-        margin: 4rem auto;
-        padding: 2rem;
-        background: var(--surface-1, var(--card-bg));
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 16px;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .form-container::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0; height: 2px;
-        background: linear-gradient(90deg, #ff4757, #ff9f43);
-    }
-
-    .form-title {
-        font-family: 'MonaspaceNeon', sans-serif;
-        font-size: 1.5rem;
-        margin-bottom: 1.5rem;
-        color: #fff;
-    }
-
-    .form-group {
-        margin-bottom: 1.5rem;
-    }
-
-    .form-label {
-        display: block;
-        margin-bottom: 0.5rem;
-        font-size: 0.9rem;
-        color: var(--text-muted);
-    }
-
-    .form-control {
-        width: 100%;
-        padding: 0.8rem 1rem;
-        background: var(--surface-2, rgba(0,0,0,0.2));
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 8px;
-        color: #fff;
-        transition: all 0.2s;
-    }
-    .form-control:focus {
-        border-color: var(--accent-1);
-        box-shadow: 0 0 0 2px rgba(var(--accent-1-rgb), 0.2);
-        outline: none;
-    }
-
-    .btn-group {
-        display: flex;
-        gap: 1rem;
-        margin-top: 2rem;
-    }
-</style>
-
-<div class="container-fluid">
-    <div class="form-container">
-        <h2 class="form-title">Создать стратегическую задачу</h2>
-        
-        <form method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            
-            <div class="form-group">
-                <label for="title" class="form-label">Заголовок</label>
-                <input type="text" class="form-control" id="title" name="title" required placeholder="Например: Проверить оплату через Stripe">
-            </div>
-            
-            <div class="form-group">
-                <label for="description" class="form-label">Описание</label>
-                <textarea class="form-control" id="description" name="description" rows="4" placeholder="Детали задачи..."></textarea>
-            </div>
-            
-            <div class="form-group">
-                <label for="context_url" class="form-label">URL (необязательно)</label>
-                <input type="text" class="form-control" id="context_url" name="context_url" value="{{ request.args.get('context_url', '') }}">
-            </div>
-            
-            <div class="form-group">
-                <label for="target_user_id" class="form-label">ID пользователя (контекст)</label>
-                <input type="text" class="form-control" id="target_user_id" name="target_user_id" value="{{ request.args.get('target_user_id', '') }}">
-            </div>
-            
-            <div class="btn-group">
-                <button type="submit" class="neo-button accent">
-                    {{ ui_icon('action.add', 'sm') }} Создать задачу
-                </button>
-                <a href="{{ url_for('qa.board') }}" class="neo-button ghost">Отмена</a>
-            </div>
-        </form>
+{% from '_ui_icon.html' import ui_icon %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Новая задача · QA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+    .form-container { max-width: 600px; margin: 2rem auto; padding: 2rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: 16px; }
+    .form-group { margin-bottom: 1.5rem; }
+    .form-label { display: block; margin-bottom: 0.5rem; font-size: 0.9rem; color: var(--text-muted); }
+    .form-control { width: 100%; padding: 0.8rem 1rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: 8px; color: var(--text-primary); }
+    .btn-group { display: flex; gap: 1rem; margin-top: 2rem; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        {% set active_page = 'qa_board' %}
+        {% include '_sidebar.html' %}
+        <div class="app-main">
+            {% include '_topbar.html' %}
+            <main class="app-content">
+                {% include '_ux_enhancements.html' %}
+                <div class="container-fluid">
+                    <div class="form-container">
+                        <h2 class="mb-4" style="color: var(--text-primary);">Создать стратегическую задачу</h2>
+                        <form method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="form-group">
+                                <label for="title" class="form-label">Заголовок</label>
+                                <input type="text" class="form-control" id="title" name="title" required placeholder="Например: Проверить оплату через Stripe">
+                            </div>
+                            <div class="form-group">
+                                <label for="description" class="form-label">Описание</label>
+                                <textarea class="form-control" id="description" name="description" rows="4" placeholder="Детали задачи..."></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="context_url" class="form-label">URL (необязательно)</label>
+                                <input type="text" class="form-control" id="context_url" name="context_url" value="{{ request.args.get('context_url', '') }}">
+                            </div>
+                            <div class="form-group">
+                                <label for="target_user_id" class="form-label">ID пользователя (контекст)</label>
+                                <input type="text" class="form-control" id="target_user_id" name="target_user_id" value="{{ request.args.get('target_user_id', '') }}">
+                            </div>
+                            <div class="btn-group">
+                                <button type="submit" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Создать задачу</button>
+                                <a href="{{ url_for('qa.board') }}" class="neo-button ghost">Отмена</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </main>
+        </div>
     </div>
-</div>
-{% endblock %}
+</body>
+</html>

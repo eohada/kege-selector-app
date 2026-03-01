@@ -333,25 +333,7 @@ def create_app(config_name=None):
                     student_data = {'student_id': student.student_id}
             except Exception:
                 student_data = None
-        # Список пользователей для подмены в QA God Mode (ученики, преподаватели, родители)
-        qa_impersonation_users = []
-        from flask import session
-        qa_can_see = current_user.is_authenticated and (
-            getattr(current_user, 'role', None) in ['chief_tester', 'creator', 'chief_admin', 'tester', 'admin']
-            or session.get('impersonator_id')
-        )
-        if qa_can_see:
-            try:
-                from app.models import User
-                from sqlalchemy import or_
-                from app.models import UserRole
-                subq = db.session.query(UserRole.user_id).filter(UserRole.role.in_(['student', 'tutor', 'parent'])).distinct()
-                q = User.query.filter(or_(User.role.in_(['student', 'tutor', 'parent']), User.id.in_(subq))).filter(User.id != current_user.id).order_by(User.id).limit(80)
-                for u in q.all():
-                    qa_impersonation_users.append({'id': u.id, 'username': u.username or ('id_' + str(u.id)), 'role': u.roles()[0] if u.roles() else (u.role or '—'), 'role_display': u.get_primary_role_display()})
-            except Exception:
-                qa_impersonation_users = []
-        return dict(current_student=student_data, has_permission=has_permission, custom_theme_user_id=int(app.config.get('CUSTOM_THEME_USER_ID', 999)), qa_impersonation_users=qa_impersonation_users)
+        return dict(current_student=student_data, has_permission=has_permission, custom_theme_user_id=int(app.config.get('CUSTOM_THEME_USER_ID', 999)))
     
     from app.admin.routes import (
         sandbox_internal_summary,

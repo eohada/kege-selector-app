@@ -10,9 +10,9 @@ from core.db_models import User, Student, Enrollment, QATask, QAComment
 qa_bp = Blueprint('qa', __name__, url_prefix='/qa')
 
 def is_qa_authorized():
-    """Проверка прав: только Chief QA, Creator или тот, кто уже в режиме God Mode"""
-    # Roles from User.get_role_display: creator, chief_admin, admin, chief_tester, etc.
-    return current_user.role in ['chief_tester', 'creator', 'chief_admin'] or 'impersonator_id' in session
+    """Проверка прав: Chief Tester, Creator, Chief Admin или уже в режиме подмены."""
+    roles = getattr(current_user, 'roles', lambda: [])() or [getattr(current_user, 'role', None)]
+    return any(r in roles for r in ['chief_tester', 'creator', 'chief_admin', 'tester', 'admin']) or 'impersonator_id' in session
 
 # ==========================================
 # 1. IMPERSONATION (Тумблер ролей)
@@ -48,6 +48,44 @@ def revert_impersonation():
         flash('Вы вернулись в свой QA-аккаунт', 'success')
     
     return redirect(request.referrer or url_for('main.index'))
+
+
+@qa_bp.route('/impersonate-as-role', methods=['POST'])
+@login_required
+def impersonate_as_role():
+    """Создать временного пользователя (ученик/препода/родитель) и войти под ним."""
+    if not is_qa_authorized():
+        return jsonify({'error': 'Forbidden'}), 403
+    role = (request.form.get('role') or (request.get_json(silent=True) or {}).get('role') or '').strip().lower()
+    if role not in ('student', 'tutor', 'parent'):
+        return jsonify({'error': 'Укажите role: student, tutor или parent'}), 400
+    try:
+        from werkzeug.security import generate_password_hash
+        uid = str(uuid.uuid4())[:6]
+        pwd = generate_password_hash('123456')
+        if role == 'student':
+            u = User(role='student', username=f'qa_temp_student_{uid}', email=f'qa_temp_student_{uid}@qa.local', password_hash=pwd)
+            db.session.add(u)
+            db.session.flush()
+            db.session.add(Student(user_id=u.id, platform_id=f'qa_{uid}', name=f'QA Ученик {uid}'))
+        elif role == 'tutor':
+            u = User(role='tutor', username=f'qa_temp_tutor_{uid}', email=f'qa_temp_tutor_{uid}@qa.local', password_hash=pwd)
+            db.session.add(u)
+            db.session.flush()
+        else:
+            u = User(role='parent', username=f'qa_temp_parent_{uid}', email=f'qa_temp_parent_{uid}@qa.local', password_hash=pwd)
+            db.session.add(u)
+            db.session.flush()
+        db.session.commit()
+        if 'impersonator_id' not in session:
+            session['impersonator_id'] = current_user.id
+        login_user(u)
+        flash(f'Вход под временным пользователем: {role} ({u.username})', 'success')
+        return redirect(request.referrer or url_for('main.index'))
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 
 # ==========================================
 # 2. ФАБРИКА ДАННЫХ (Mock Data)
@@ -144,27 +182,51 @@ def pay_course():
 @qa_bp.route('/board')
 @login_required
 def board():
-    if current_user.role not in ['chief_tester', 'creator', 'admin', 'tester']:
+    if not is_qa_authorized():
         return "Access denied", 403
-    # Получаем все задачи, сортируем по дате создания
     tasks = QATask.query.order_by(QATask.created_at.desc()).all()
     return render_template('qa/board.html', tasks=tasks)
+
+
+@qa_bp.route('/bug-report', methods=['GET', 'POST'])
+@login_required
+def bug_report():
+    """Создание баг-репорта. Доступно главному тестировщику и создателю."""
+    if not is_qa_authorized():
+        return "Access denied", 403
+    context_url = request.args.get('context_url') or request.form.get('context_url') or ''
+    target_user_id = request.args.get('target_user_id') or request.form.get('target_user_id') or ''
+    if request.method == 'POST':
+        title = (request.form.get('title') or '').strip() or 'Баг с страницы'
+        description = (request.form.get('description') or '').strip()
+        if title:
+            task = QATask(
+                title=title,
+                description=description or None,
+                context_url=context_url or None,
+                target_user_id=int(target_user_id) if target_user_id and str(target_user_id).isdigit() else None,
+                reporter_id=current_user.id,
+                status='todo',
+                priority='high'
+            )
+            db.session.add(task)
+            db.session.commit()
+            flash('Баг-репорт создан и добавлен на доску.', 'success')
+            return redirect(url_for('qa.board'))
+    return render_template('qa/bug_report.html', context_url=context_url, target_user_id=target_user_id)
+
 
 @qa_bp.route('/tasks/new', methods=['GET', 'POST'])
 @login_required
 def task_new():
-    # Строгая проверка: создавать задачи может ТОЛЬКО Создатель (creator).
-    # Главный тестировщик и остальные могут репортить баги через виджет, 
-    # но стратегические задачи на доске создает Creator.
+    """Стратегические задачи. Только Creator."""
     if not current_user.is_creator():
-         return "Access denied: Only Creator can create tasks here.", 403
-
+        return "Access denied: Only Creator can create tasks here.", 403
     if request.method == 'POST':
         title = request.form.get('title')
         description = request.form.get('description')
         context_url = request.form.get('context_url')
         target_user_id = request.form.get('target_user_id')
-        
         if title:
             task = QATask(
                 title=title,

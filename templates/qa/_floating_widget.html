@@ -208,22 +208,22 @@
         {% endif %}
         {% endif %}
 
-        <div class="qa-section-title">Быстрая смена роли</div>
-        {% if (qa_impersonation_users|default([]))|length == 0 %}
-        <p class="qa-text-small" style="margin: 0 0 10px 0; color: var(--text-muted);">Нет пользователей (ученик/препода/родитель) в базе. Создайте их или используйте «Создать: Препод + 2 Ученика».</p>
-        {% endif %}
-        <form id="impersonateForm" method="POST" action="">
+        <div class="qa-section-title">Войти как временный пользователь</div>
+        <p class="qa-text-small" style="margin: 0 0 10px 0; color: var(--text-muted); font-size: 11px;">Создаётся новый пользователь и вход под ним. Для возврата — кнопка выше.</p>
+        <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" style="margin-bottom: 8px;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
-            <select class="qa-select" id="targetUserId" name="target_user_id">
-                <option value="">— Выберите пользователя —</option>
-                {% for u in qa_impersonation_users|default([]) %}
-                <option value="{{ u.id }}">{{ u.role_display }}: {{ u.username }} (ID: {{ u.id }})</option>
-                {% endfor %}
-            </select>
-            <button type="submit" class="qa-btn" style="justify-content: center;" {% if (qa_impersonation_users|default([]))|length == 0 %}disabled{% endif %}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 1 20.49 15"/></svg>
-                Переключиться
-            </button>
+            <input type="hidden" name="role" value="student">
+            <button type="submit" class="qa-btn" style="justify-content: center;">👤 Войти как ученик</button>
+        </form>
+        <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" style="margin-bottom: 8px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+            <input type="hidden" name="role" value="tutor">
+            <button type="submit" class="qa-btn" style="justify-content: center;">👨‍🏫 Войти как преподаватель</button>
+        </form>
+        <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" style="margin-bottom: 8px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+            <input type="hidden" name="role" value="parent">
+            <button type="submit" class="qa-btn" style="justify-content: center;">👪 Войти как родитель</button>
         </form>
 
         <div class="qa-section-title">Манипуляторы</div>
@@ -254,24 +254,6 @@
 </div>
 
 <script>
-(function() {
-    var form = document.getElementById('impersonateForm');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            var select = document.getElementById('targetUserId');
-            var val = select && select.value ? select.value.trim() : '';
-            if (!val) {
-                if (typeof toast !== 'undefined') toast.warning('Выберите пользователя из списка');
-                else alert('Выберите пользователя из списка');
-                return;
-            }
-            form.action = '/qa/impersonate/' + val;
-            form.submit();
-        });
-    }
-})();
-
     function generateMockData(event) {
         const btn = event.target;
         const originalText = btn.innerHTML;
@@ -319,7 +301,6 @@
     function reportBug() {
         const currentUrl = encodeURIComponent(window.location.href);
         const userId = '{{ current_user.id }}';
-        // Если это модальное окно, лучше его открывать, но для MVP редирект на форму
-        window.location.href = `/qa/tasks/new?context_url=${currentUrl}&target_user_id=${userId}`;
+        window.location.href = `/qa/bug-report?context_url=${currentUrl}&target_user_id=${userId}`;
     }
 </script>
