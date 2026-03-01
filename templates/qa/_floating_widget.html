@@ -192,16 +192,35 @@
             </form>
         {% endif %}
 
+        {% if config.get('PROD_URL') or config.get('SANDBOX_URL') %}
+        <div class="qa-section-title">Окружение</div>
+        {% if config.get('SANDBOX_URL') and not config.get('IS_SANDBOX') %}
+        <a href="{{ config.SANDBOX_URL }}" class="qa-btn" style="text-decoration: none; justify-content: center;" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            Перейти в песочницу
+        </a>
+        {% endif %}
+        {% if config.get('PROD_URL') and config.get('IS_SANDBOX') %}
+        <a href="{{ config.PROD_URL }}" class="qa-btn" style="text-decoration: none; justify-content: center;" target="_blank" rel="noopener">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Перейти на прод
+        </a>
+        {% endif %}
+        {% endif %}
+
         <div class="qa-section-title">Быстрая смена роли</div>
-        <form action="" method="POST" id="impersonateForm">
+        {% if (qa_impersonation_users|default([]))|length == 0 %}
+        <p class="qa-text-small" style="margin: 0 0 10px 0; color: var(--text-muted);">Нет пользователей (ученик/препода/родитель) в базе. Создайте их или используйте «Создать: Препод + 2 Ученика».</p>
+        {% endif %}
+        <form id="impersonateForm" method="POST" action="">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
-            <select class="qa-select" id="targetUserId" onchange="updateFormAction()">
-                <option value="">-- Выбрать роль --</option>
-                <option value="15">Ученик (ID: 15)</option>
-                <option value="16">Преподаватель (ID: 16)</option>
-                <option value="17">Родитель (ID: 17)</option>
+            <select class="qa-select" id="targetUserId" name="target_user_id">
+                <option value="">— Выберите пользователя —</option>
+                {% for u in qa_impersonation_users|default([]) %}
+                <option value="{{ u.id }}">{{ u.role_display }}: {{ u.username }} (ID: {{ u.id }})</option>
+                {% endfor %}
             </select>
-            <button type="submit" class="qa-btn" style="justify-content: center;">
+            <button type="submit" class="qa-btn" style="justify-content: center;" {% if (qa_impersonation_users|default([]))|length == 0 %}disabled{% endif %}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 1 20.49 15"/></svg>
                 Переключиться
             </button>
@@ -235,13 +254,23 @@
 </div>
 
 <script>
-    function updateFormAction() {
-        const select = document.getElementById('targetUserId');
-        const form = document.getElementById('impersonateForm');
-        if (select.value) {
-            form.action = `/qa/impersonate/${select.value}`;
-        }
+(function() {
+    var form = document.getElementById('impersonateForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var select = document.getElementById('targetUserId');
+            var val = select && select.value ? select.value.trim() : '';
+            if (!val) {
+                if (typeof toast !== 'undefined') toast.warning('Выберите пользователя из списка');
+                else alert('Выберите пользователя из списка');
+                return;
+            }
+            form.action = '/qa/impersonate/' + val;
+            form.submit();
+        });
     }
+})();
 
     function generateMockData(event) {
         const btn = event.target;

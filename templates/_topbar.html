@@ -9,6 +9,11 @@
     </a>
 
     <div class="topbar-actions" style="display: flex; align-items: center; gap: 1rem; margin-left: auto;">
+        {% if config.get('IS_SANDBOX') %}
+        <div class="sandbox-badge" style="background: rgba(255, 71, 87, 0.2); color: #ff6b81; border: 1px solid #ff4757; padding: 4px 10px; border-radius: 6px; font-weight: bold; font-size: 0.8rem; letter-spacing: 1px;">
+            SANDBOX MODE
+        </div>
+        {% endif %}
         {% if current_user and current_user.is_authenticated %}
         <div class="nav-user-actions">
             <div class="profile-dropdown">
