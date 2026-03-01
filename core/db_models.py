@@ -1753,6 +1753,7 @@ class QATask(db.Model):
 
     reporter_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
     assignee_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+    assignee_ids = db.Column(db.JSON, nullable=True)  # список id исполнителей (главный тестер + тестеры)
 
     context_url = db.Column(db.String(500), nullable=True)
     target_user_id = db.Column(db.Integer, nullable=True)

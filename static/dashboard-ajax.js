@@ -108,26 +108,26 @@ function initStudentCards() {
                 return; 
             }
 
+            const card = this.closest('.student-card');
             const studentData = {
                 id: studentId,
                 name: studentName,
                 card: card ? card.cloneNode(true) : null
             };
 
+            const safeName = String(studentName).replace(/`/g, "'");
             showConfirmModal({
                 title: 'Удалить ученика?',
-                message: `Вы уверены, что хотите удалить ученика "${studentName}"? Это действие нельзя отменить!`,
+                message: 'Вы уверены, что хотите удалить ученика «' + safeName + '»? Это действие нельзя отменить!',
                 confirmText: 'Удалить',
                 cancelText: 'Отмена',
                 confirmClass: 'danger',
                 onConfirm: async () => {
-                    await performDelete(studentId, studentName, card, loaderId, studentData);
+                    await performDelete(studentId, studentName, card, null, studentData);
                 }
             });
-            
-            return;
-        }
-        
+        });
+
         async function performDelete(studentId, studentName, card, loaderId, studentData) {
 
             if (!loaderId && card) {

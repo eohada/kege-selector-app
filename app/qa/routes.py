@@ -325,44 +325,85 @@ def board():
     if not is_qa_authorized():
         return "Access denied", 403
     tasks = QATask.query.filter(QATask.task_type == 'task').order_by(QATask.created_at.desc()).all()
-    return render_template('qa/board.html', tasks=tasks, can_edit_status=current_user.is_creator() or current_user.is_chief_tester() or current_user.is_tester())
+    testers = User.query.filter(User.role.in_(['chief_tester', 'tester'])).all()
+    can_edit_status = current_user.is_creator() or current_user.is_chief_tester() or current_user.is_tester()
+    can_edit_assignee = current_user.is_creator() or current_user.is_chief_tester()
+    assignee_ids = set()
+    for t in tasks:
+        if getattr(t, 'assignee_ids', None) and isinstance(t.assignee_ids, list):
+            assignee_ids.update(x for x in t.assignee_ids if x)
+        elif getattr(t, 'assignee_id', None):
+            assignee_ids.add(t.assignee_id)
+    assignee_map = {u.id: u for u in User.query.filter(User.id.in_(assignee_ids)).all()} if assignee_ids else {}
+    return render_template('qa/board.html', tasks=tasks, testers=testers, assignee_map=assignee_map,
+                           can_edit_status=can_edit_status, can_edit_assignee=can_edit_assignee)
 
 
 @qa_bp.route('/tasks/<int:task_id>/status', methods=['POST'])
 @login_required
 def task_set_status(task_id):
-    """Смена статуса задачи на доске. Может Creator или назначенный Tester."""
-    if not is_qa_authorized():
-        return jsonify({'error': 'Forbidden'}), 403
-    task = QATask.query.get_or_404(task_id)
-    if task.task_type != 'task':
-        return jsonify({'error': 'Not a board task'}), 400
-    if not current_user.is_creator() and task.assignee_id != current_user.id:
-        return jsonify({'error': 'Только создатель или исполнитель могут менять статус'}), 403
-    status = (request.form.get('status') or (request.get_json(silent=True) or {}).get('status') or '').strip()
-    if status not in ('todo', 'in_progress', 'review', 'done'):
-        return jsonify({'error': 'Invalid status'}), 400
-    task.status = status
-    db.session.commit()
-    if request.want_json or request.get_json(silent=True) is not None or (request.headers.get('X-Requested-With') == 'XMLHttpRequest'):
-        return jsonify({'success': True, 'status': status})
-    flash('Статус обновлён', 'success')
-    return redirect(url_for('qa.board'))
+    """Смена статуса задачи на доске. Может Creator, Chief Tester или любой из исполнителей."""
+    try:
+        if not is_qa_authorized():
+            return jsonify({'error': 'Forbidden'}), 403
+        task = QATask.query.get_or_404(task_id)
+        if task.task_type != 'task':
+            return jsonify({'error': 'Not a board task'}), 400
+        assignee_ids = getattr(task, 'assignee_ids', None) or (([task.assignee_id] if task.assignee_id else []))
+        can_edit = (
+            current_user.is_creator() or current_user.is_chief_tester() or
+            current_user.id == task.assignee_id or current_user.id in assignee_ids
+        )
+        if not can_edit:
+            return jsonify({'error': 'Только создатель, главный тестер или исполнитель могут менять статус'}), 403
+        if request.content_type and 'application/json' in (request.content_type or ''):
+            data = request.get_json(silent=True) or {}
+            status = (data.get('status') or '').strip()
+        else:
+            status = (request.form.get('status') or '').strip()
+        if status not in ('todo', 'in_progress', 'review', 'done'):
+            return jsonify({'error': 'Invalid status'}), 400
+        task.status = status
+        db.session.commit()
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or (request.content_type and 'application/json' in (request.content_type or '')):
+            return jsonify({'success': True, 'status': status})
+        flash('Статус обновлён', 'success')
+        return redirect(url_for('qa.board'))
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception(e)
+        return jsonify({'error': str(e)}), 500
 
 
 @qa_bp.route('/tasks/<int:task_id>/assign', methods=['POST'])
 @login_required
 def task_assign(task_id):
-    """Назначить исполнителя (только Creator)."""
-    if not current_user.is_creator():
+    """Назначить исполнителя(ей). Creator или Chief Tester. assignee_ids — список id (главный тестер может добавить себя и тестеров)."""
+    if not current_user.is_creator() and not current_user.is_chief_tester():
         return jsonify({'error': 'Forbidden'}), 403
     task = QATask.query.get_or_404(task_id)
     if task.task_type != 'task':
         return jsonify({'error': 'Not a board task'}), 400
-    assignee_id = request.form.get('assignee_id', type=int) or (request.get_json(silent=True) or {}).get('assignee_id')
-    task.assignee_id = assignee_id if assignee_id else None
+    if request.content_type and 'application/json' in (request.content_type or ''):
+        data = request.get_json(silent=True) or {}
+        assignee_ids = data.get('assignee_ids')
+        if assignee_ids is not None:
+            task.assignee_ids = [int(x) for x in assignee_ids if x is not None and str(x).isdigit()]
+            task.assignee_id = task.assignee_ids[0] if task.assignee_ids else None
+        else:
+            raw = data.get('assignee_id')
+            try:
+                aid = int(raw) if raw is not None else None
+            except (TypeError, ValueError):
+                aid = None
+            task.assignee_id = aid
+            task.assignee_ids = [aid] if aid else []
+    else:
+        assignee_id = request.form.get('assignee_id', type=int)
+        task.assignee_id = assignee_id if assignee_id else None
+        task.assignee_ids = [assignee_id] if assignee_id else []
     db.session.commit()
-    if request.want_json or request.get_json(silent=True) is not None:
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or (request.content_type and 'application/json' in (request.content_type or '')):
         return jsonify({'success': True})
     flash('Исполнитель назначен', 'success')
     return redirect(url_for('qa.board'))
@@ -390,7 +431,8 @@ def bug_report():
             try:
                 header, encoded = screenshot_data.split(",", 1)
                 data = base64.b64decode(encoded)
-                filename = f"bug_{int(time.time())}_{current_user.id}.png"
+                ext = 'jpg' if 'image/jpeg' in header or 'image/jpg' in header else 'png'
+                filename = f"bug_{int(time.time())}_{current_user.id}.{ext}"
                 
                 # Путь сохранения (static/uploads/qa_screenshots)
                 upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'qa_screenshots')

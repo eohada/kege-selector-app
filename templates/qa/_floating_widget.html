@@ -266,18 +266,21 @@
                 <span class="qa-accordion-icon">▼</span>
             </div>
             <div class="qa-accordion-content">
-                <button class="qa-btn" onclick="openBugModal()">
-                    🐞 Создать баг-репорт
-                </button>
-                <a href="{{ url_for('qa.board') }}" class="qa-btn" style="text-decoration: none;">
-                    📋 Канбан-доска
-                </a>
-                <a href="{{ url_for('qa.bug_reports') }}" class="qa-btn" style="text-decoration: none;">
-                    🐛 Список багов
-                </a>
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/pay_course')">
-                    💳 Имитировать оплату
-                </button>
+                <button class="qa-btn" onclick="openBugModal()">🐞 Создать баг-репорт</button>
+                <a href="{{ url_for('qa.board') }}" class="qa-btn" style="text-decoration: none;">📋 Канбан-доска</a>
+                <a href="{{ url_for('qa.bug_reports') }}" class="qa-btn" style="text-decoration: none;">🐛 Список багов</a>
+            </div>
+        </div>
+
+        <div class="qa-accordion">
+            <div class="qa-accordion-header" onclick="this.parentElement.classList.toggle('active')">
+                Быстрые действия
+                <span class="qa-accordion-icon">▼</span>
+            </div>
+            <div class="qa-accordion-content">
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/pass_assignment')">✅ Сдать текущее ДЗ (100%)</button>
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/pay_course')">💳 Имитировать оплату</button>
+                <a href="{{ url_for('qa.pool') }}" class="qa-btn" style="text-decoration: none;">⚙️ Привязки профилей</a>
             </div>
         </div>
     </div>
@@ -319,20 +322,36 @@
     }
 
     function openBugModal() {
-        toggleQAWidget(); // Скрыть виджет чтобы он не попал на скрин
-        
-        // Ждем небольшую задержку для анимации закрытия
+        toggleQAWidget();
         setTimeout(() => {
-            html2canvas(document.body).then(canvas => {
-                const dataUrl = canvas.toDataURL("image/png");
+            // Только видимая область экрана (viewport), чтобы скрин соответствовал тому, что видит тестировщик
+            var opts = {
+                scrollX: -window.scrollX,
+                scrollY: -window.scrollY,
+                windowWidth: document.documentElement.clientWidth,
+                windowHeight: document.documentElement.clientHeight,
+                useCORS: true
+            };
+            html2canvas(document.body, opts).then(function(canvas) {
+                var maxW = 1200;
+                var w = canvas.width, h = canvas.height;
+                if (w > maxW) {
+                    var c2 = document.createElement('canvas');
+                    c2.width = maxW;
+                    c2.height = Math.round(h * maxW / w);
+                    var ctx = c2.getContext('2d');
+                    ctx.drawImage(canvas, 0, 0, w, h, 0, 0, c2.width, c2.height);
+                    canvas = c2;
+                }
+                var dataUrl = canvas.toDataURL('image/jpeg', 0.75);
                 document.getElementById('bugScreenshotData').value = dataUrl;
-                document.getElementById('bugScreenshotPreview').style.backgroundImage = `url(${dataUrl})`;
+                document.getElementById('bugScreenshotPreview').style.backgroundImage = 'url(' + dataUrl + ')';
                 document.getElementById('bugContextUrl').value = window.location.href;
-                
                 document.getElementById('bugModalOverlay').classList.add('open');
-            }).catch(err => {
+            }).catch(function(err) {
                 console.error("Screenshot failed:", err);
-                alert("Не удалось сделать скриншот. Но вы можете описать баг текстом.");
+                document.getElementById('bugScreenshotData').value = '';
+                document.getElementById('bugContextUrl').value = window.location.href;
                 document.getElementById('bugModalOverlay').classList.add('open');
             });
         }, 300);
@@ -355,24 +374,31 @@
             method: 'POST',
             body: formData,
             headers: {
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content,
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || '',
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(res => res.json())
-        .then(data => {
-            if(data.success) {
-                if(typeof toast !== 'undefined') toast.success('Баг-репорт отправлен!');
+        .then(function(res) {
+            if (res.status === 413) {
+                return res.text().then(function() { return { success: false, error: 'Скриншот слишком большой. Попробуйте описать баг текстом без скрина.' }; });
+            }
+            return res.json().then(function(data) { return data; }).catch(function() { return { success: false, error: 'Неверный ответ сервера' }; });
+        })
+        .then(function(data) {
+            if (data && data.success) {
+                if (typeof toast !== 'undefined') toast.success('Баг-репорт отправлен!');
                 else alert('Баг-репорт отправлен!');
                 closeBugModal();
                 e.target.reset();
             } else {
-                alert('Ошибка: ' + (data.error || 'Unknown error'));
+                var msg = (data && data.error) ? data.error : 'Ошибка отправки';
+                if (typeof toast !== 'undefined') toast.error(msg); else alert(msg);
             }
         })
-        .catch(err => {
+        .catch(function(err) {
             console.error(err);
-            alert('Ошибка сети');
+            var msg = 'Ошибка сети или сервера. Проверьте соединение.';
+            if (typeof toast !== 'undefined') toast.error(msg); else alert(msg);
         })
         .finally(() => {
             btn.innerText = originalText;

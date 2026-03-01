@@ -73,8 +73,15 @@
                     {% endif %}
                     <div class="task-meta">
                         <span>{{ task.created_at.strftime('%d.%m') if task.created_at else '' }}</span>
-                        {% if task.assignee %}<div class="avatar-sm" title="{{ task.assignee.username }}">{{ (task.assignee.username or '?')[:1] }}</div>{% else %}<span class="task-badge">—</span>{% endif %}
+                        {% set _aids = (task.assignee_ids or [task.assignee_id] if task.assignee_id else []) %}
+                        {% if _aids %}{% for aid in _aids %}{% if assignee_map.get(aid) %}<span class="task-badge" title="{{ assignee_map[aid].username }}">{{ (assignee_map[aid].username or '?')[:1] }}</span>{% endif %}{% endfor %}{% else %}<span class="task-badge">—</span>{% endif %}
                     </div>
+                    {% if can_edit_assignee %}
+                    <div class="qa-assignees-edit" data-task-id="{{ task.id }}" data-assignee-ids="{{ (task.assignee_ids or [task.assignee_id] if task.assignee_id else [])|join(',') }}" style="margin-top: 6px; font-size: 0.75rem;">
+                        <button type="button" class="neo-button ghost sm" onclick="toggleAssignees(this)" style="font-size: 0.7rem;">Исполнители</button>
+                        <div class="qa-assignees-form" style="display:none; margin-top: 6px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 6px;">{% for u in testers %}<label style="display:block;margin-bottom:4px;"><input type="checkbox" class="qa-assignee-cb" data-user-id="{{ u.id }}"> {{ u.username }}</label>{% endfor %}<button type="button" class="neo-button accent sm" style="margin-top:6px;font-size:0.7rem;" onclick="saveAssignees(this)">Сохранить</button></div>
+                    </div>
+                    {% endif %}
                     {% if can_edit_status %}
                     <div style="margin-top: 0.5rem; display: flex; gap: 4px; flex-wrap: wrap;">
                         <button type="button" onclick="updateTaskStatus({{ task.id }}, 'in_progress', this)" class="neo-button ghost sm" style="font-size: 0.7rem;">В работу</button>
@@ -95,12 +102,17 @@
                     <div class="task-title">{{ task.title }}</div>
                     <div class="task-meta">
                         <span class="task-badge" style="color: #00f2ff;">В работе</span>
-                        {% if task.assignee %}<div class="avatar-sm">{{ (task.assignee.username or '?')[:1] }}</div>{% endif %}
+                        {% set _aids = (task.assignee_ids or [task.assignee_id] if task.assignee_id else []) %}
+                        {% if _aids %}{% for aid in _aids %}{% if assignee_map.get(aid) %}<span class="task-badge">{{ (assignee_map[aid].username or '?')[:1] }}</span>{% endif %}{% endfor %}{% else %}<span class="task-badge">—</span>{% endif %}
                     </div>
+                    {% if can_edit_assignee %}
+                    <div class="qa-assignees-edit" data-task-id="{{ task.id }}" data-assignee-ids="{{ (task.assignee_ids or [task.assignee_id] if task.assignee_id else [])|join(',') }}" style="margin-top: 6px; font-size: 0.75rem;">
+                        <button type="button" class="neo-button ghost sm" onclick="toggleAssignees(this)" style="font-size: 0.7rem;">Исполнители</button>
+                        <div class="qa-assignees-form" style="display:none; margin-top: 6px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 6px;">{% for u in testers %}<label style="display:block;margin-bottom:4px;"><input type="checkbox" class="qa-assignee-cb" data-user-id="{{ u.id }}"> {{ u.username }}</label>{% endfor %}<button type="button" class="neo-button accent sm" style="margin-top:6px;font-size:0.7rem;" onclick="saveAssignees(this)">Сохранить</button></div>
+                    </div>
+                    {% endif %}
                     {% if can_edit_status %}
-                    <div style="margin-top: 0.5rem; display: flex; gap: 4px;">
-                        <button type="button" onclick="updateTaskStatus({{ task.id }}, 'review', this)" class="neo-button ghost sm" style="font-size: 0.7rem;">На ревью</button>
-                    </div>
+                    <div style="margin-top: 0.5rem;"><button type="button" onclick="updateTaskStatus({{ task.id }}, 'review', this)" class="neo-button ghost sm" style="font-size: 0.7rem;">На ревью</button></div>
                     {% endif %}
                 </div>
                 {% else %}
@@ -115,10 +127,15 @@
                 <div class="task-card">
                     <div class="task-priority p-{{ task.priority or 'medium' }}"></div>
                     <div class="task-title">{{ task.title }}</div>
-                    {% if can_edit_status %}
-                    <div style="margin-top: 0.5rem;">
-                        <button type="button" onclick="updateTaskStatus({{ task.id }}, 'done', this)" class="neo-button ghost sm" style="width: 100%; font-size: 0.7rem;">Одобрить (Done)</button>
+                    <div class="task-meta">{% set _aids = (task.assignee_ids or [task.assignee_id] if task.assignee_id else []) %}{% if _aids %}{% for aid in _aids %}{% if assignee_map.get(aid) %}<span class="task-badge">{{ (assignee_map[aid].username or '?')[:1] }}</span>{% endif %}{% endfor %}{% else %}<span class="task-badge">—</span>{% endif %}</div>
+                    {% if can_edit_assignee %}
+                    <div class="qa-assignees-edit" data-task-id="{{ task.id }}" data-assignee-ids="{{ (task.assignee_ids or [task.assignee_id] if task.assignee_id else [])|join(',') }}" style="margin-top:6px;font-size:0.75rem;">
+                        <button type="button" class="neo-button ghost sm" onclick="toggleAssignees(this)" style="font-size:0.7rem;">Исполнители</button>
+                        <div class="qa-assignees-form" style="display:none;margin-top:6px;padding:6px;background:rgba(0,0,0,0.2);border-radius:6px;">{% for u in testers %}<label style="display:block;margin-bottom:4px;"><input type="checkbox" class="qa-assignee-cb" data-user-id="{{ u.id }}"> {{ u.username }}</label>{% endfor %}<button type="button" class="neo-button accent sm" style="margin-top:6px;font-size:0.7rem;" onclick="saveAssignees(this)">Сохранить</button></div>
                     </div>
+                    {% endif %}
+                    {% if can_edit_status %}
+                    <div style="margin-top: 0.5rem;"><button type="button" onclick="updateTaskStatus({{ task.id }}, 'done', this)" class="neo-button ghost sm" style="width: 100%; font-size: 0.7rem;">Одобрить (Done)</button></div>
                     {% endif %}
                 </div>
                 {% else %}
@@ -147,40 +164,59 @@
     </div>
     <script>
     function updateTaskStatus(taskId, status, btn) {
-        if(btn) {
-            btn.innerHTML = '...';
-            btn.disabled = true;
-        }
-
-        fetch(`/qa/tasks/${taskId}/status`, {
+        if (btn) { btn.innerHTML = '...'; btn.disabled = true; }
+        var csrf = document.querySelector('meta[name="csrf-token"]');
+        fetch('/qa/tasks/' + taskId + '/status', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+                'X-CSRFToken': csrf ? csrf.content : '',
                 'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({ status: status })
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert('Ошибка: ' + (data.error || 'Не удалось обновить статус'));
-                if(btn) {
-                    btn.innerHTML = 'Ошибка';
-                    btn.disabled = false;
-                }
-            }
+        .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+        .then(function(r) {
+            if (r.ok && r.data.success) location.reload();
+            else { alert(r.data && r.data.error ? r.data.error : 'Не удалось обновить статус'); if (btn) { btn.innerHTML = 'В работу'; btn.disabled = false; } }
         })
-        .catch(err => {
-            console.error(err);
-            alert('Ошибка сети');
-            if(btn) {
-                btn.innerHTML = 'Ошибка';
-                btn.disabled = false;
-            }
-        });
+        .catch(function() { alert('Ошибка сети'); if (btn) { btn.innerHTML = 'В работу'; btn.disabled = false; } });
+    }
+
+    function toggleAssignees(btn) {
+        var block = btn.closest('.qa-assignees-edit');
+        var form = block.querySelector('.qa-assignees-form');
+        if (form.style.display === 'none') {
+            var ids = (block.getAttribute('data-assignee-ids') || '').split(',').filter(Boolean).map(Number);
+            form.querySelectorAll('.qa-assignee-cb').forEach(function(cb) {
+                cb.checked = ids.indexOf(parseInt(cb.dataset.userId, 10)) !== -1;
+            });
+            form.style.display = 'block';
+        } else {
+            form.style.display = 'none';
+        }
+    }
+
+    function saveAssignees(btn) {
+        var block = btn.closest('.qa-assignees-edit');
+        var taskId = block.dataset.taskId;
+        var ids = [];
+        block.querySelectorAll('.qa-assignee-cb:checked').forEach(function(cb) { ids.push(parseInt(cb.dataset.userId, 10)); });
+        btn.disabled = true;
+        btn.textContent = '...';
+        var csrf = document.querySelector('meta[name="csrf-token"]');
+        fetch('/qa/tasks/' + taskId + '/assign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf ? csrf.content : '', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ assignee_ids: ids })
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data && data.success) location.reload();
+            else alert(data && data.error ? data.error : 'Ошибка сохранения');
+        })
+        .catch(function() { alert('Ошибка сети'); })
+        .finally(function() { btn.disabled = false; btn.textContent = 'Сохранить'; });
     }
     </script>
 </body>

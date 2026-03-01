@@ -24,7 +24,9 @@ def has_permission(user, permission_name):
         
     if user.is_creator():
         return True
-        
+    if user.is_chief_tester():
+        return True
+
     try:
         cp = getattr(user, 'custom_permissions', None)
         if isinstance(cp, dict) and (permission_name in cp):
