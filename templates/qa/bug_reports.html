@@ -57,9 +57,10 @@
                 {% if r.context_url %} · <a href="{{ r.context_url }}" target="_blank" rel="noopener" style="color: #00f2ff;">Контекст</a>{% endif %}
             </div>
             {% if r.screenshot_path %}
+            {% set _scr = r.screenshot_path.replace('static/', '') %}
             <div style="margin-bottom: 0.75rem;">
-                <a href="{{ url_for('static', filename=r.screenshot_path.replace('static/', '')) }}" target="_blank">
-                    <img src="{{ url_for('static', filename=r.screenshot_path.replace('static/', '')) }}" alt="Screenshot" style="max-width: 200px; max-height: 150px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
+                <a href="{{ url_for('static', filename=_scr) }}" target="_blank" rel="noopener">
+                    <img src="{{ url_for('static', filename=_scr) }}" alt="Скриншот" style="max-width: 200px; max-height: 150px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);" loading="lazy" onerror="this.style.display='none'">
                 </a>
             </div>
             {% endif %}

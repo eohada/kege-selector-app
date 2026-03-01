@@ -252,6 +252,15 @@
                 </div>
                 {% endfor %}
                 
+                <div style="margin: 12px 0 8px 0; font-size: 11px; color: var(--text-muted);">Администратор</div>
+                <div class="qa-user-row">
+                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+                        <input type="hidden" name="username" value="qa_pool_admin_1">
+                        <button type="submit" class="qa-user-btn">🛡️ Qa Pool Admin 1</button>
+                    </form>
+                </div>
+                
                 <div style="margin-top: 12px;">
                     <a href="{{ url_for('qa.pool') }}" class="qa-btn" style="text-decoration: none; justify-content: center; font-size: 11px;">
                         ⚙️ Управление привязками
@@ -269,18 +278,48 @@
                 <button class="qa-btn" onclick="openBugModal()">🐞 Создать баг-репорт</button>
                 <a href="{{ url_for('qa.board') }}" class="qa-btn" style="text-decoration: none;">📋 Канбан-доска</a>
                 <a href="{{ url_for('qa.bug_reports') }}" class="qa-btn" style="text-decoration: none;">🐛 Список багов</a>
+                <a href="{{ url_for('qa.pool') }}" class="qa-btn" style="text-decoration: none;">⚙️ Привязки профилей</a>
+                {% if current_user.is_chief_tester() or current_user.is_creator() %}
+                <a href="{{ url_for('qa.testers') }}" class="qa-btn" style="text-decoration: none;">👥 Управление тестерами</a>
+                {% endif %}
             </div>
         </div>
 
         <div class="qa-accordion">
             <div class="qa-accordion-header" onclick="this.parentElement.classList.toggle('active')">
-                Быстрые действия
+                Манипуляторы (ученик)
                 <span class="qa-accordion-icon">▼</span>
             </div>
             <div class="qa-accordion-content">
-                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/pass_assignment')">✅ Сдать текущее ДЗ (100%)</button>
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/pass_assignment')">✅ Сдать ДЗ на 100%</button>
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/fail_assignment')">❌ Провалить ДЗ (0%)</button>
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/pass_assignment_half')">📊 ДЗ на 50%</button>
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/reset_lesson_progress')">🔄 Сбросить прогресс урока</button>
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/expire_subscription')">⏱️ Истечение подписки (пэйвол)</button>
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/mock_notifications')">🔔 5 тестовых уведомлений</button>
+            </div>
+        </div>
+
+        <div class="qa-accordion">
+            <div class="qa-accordion-header" onclick="this.parentElement.classList.toggle('active')">
+                Манипуляторы (преподаватель)
+                <span class="qa-accordion-icon">▼</span>
+            </div>
+            <div class="qa-accordion-content">
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/bulk_approve')">✅ Одобрить все ДЗ</button>
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/bulk_reject')">↩️ Отклонить все ДЗ</button>
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/inject_submission')">➕ Подкинуть ДЗ на проверку</button>
+            </div>
+        </div>
+
+        <div class="qa-accordion">
+            <div class="qa-accordion-header" onclick="this.parentElement.classList.toggle('active')">
+                Пресеты
+                <span class="qa-accordion-icon">▼</span>
+            </div>
+            <div class="qa-accordion-content">
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/tabula_rasa')" style="border-color: rgba(255,100,100,0.4); color: #ff8888;">🗑️ Tabula Rasa (с чистого листа)</button>
                 <button class="qa-btn" onclick="manipulateState('/qa/manipulate/pay_course')">💳 Имитировать оплату</button>
-                <a href="{{ url_for('qa.pool') }}" class="qa-btn" style="text-decoration: none;">⚙️ Привязки профилей</a>
             </div>
         </div>
     </div>
@@ -301,8 +340,9 @@
                 <textarea class="qa-input" name="description" rows="3" placeholder="Описание и шаги воспроизведения..."></textarea>
                 
                 <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">Скриншот (автоматически):</div>
-                <div class="qa-screenshot-preview" id="bugScreenshotPreview">
-                    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:rgba(255,255,255,0.3);">Загрузка...</div>
+                <div class="qa-screenshot-preview" id="bugScreenshotPreview" style="position:relative; min-height:120px;">
+                    <img id="bugScreenshotImg" alt="Скриншот" style="max-width:100%; max-height:180px; width:auto; height:auto; border-radius:8px; display:none;">
+                    <span id="bugScreenshotPlaceholder" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:rgba(255,255,255,0.4); font-size:12px;">Загрузка...</span>
                 </div>
                 
                 <div style="margin-top:16px; display:flex; gap:10px;">
@@ -323,16 +363,29 @@
 
     function openBugModal() {
         toggleQAWidget();
-        setTimeout(() => {
-            // Только видимая область экрана (viewport), чтобы скрин соответствовал тому, что видит тестировщик
-            var opts = {
+        var placeholder = document.getElementById('bugScreenshotPlaceholder');
+        var imgEl = document.getElementById('bugScreenshotImg');
+        if (imgEl) { imgEl.style.display = 'none'; imgEl.removeAttribute('src'); }
+        if (placeholder) placeholder.textContent = 'Загрузка...';
+        setTimeout(function() {
+            // Сначала пробуем видимую область; при пустом canvas — полную страницу
+            var viewportOpts = {
                 scrollX: -window.scrollX,
                 scrollY: -window.scrollY,
                 windowWidth: document.documentElement.clientWidth,
                 windowHeight: document.documentElement.clientHeight,
-                useCORS: true
+                useCORS: true,
+                allowTaint: true
             };
-            html2canvas(document.body, opts).then(function(canvas) {
+            html2canvas(document.body, viewportOpts).then(function(canvas) {
+                var w = canvas.width, h = canvas.height;
+                if (w < 50 || h < 50) {
+                    return html2canvas(document.body, { useCORS: true, allowTaint: true });
+                }
+                return Promise.resolve(canvas);
+            }).catch(function() {
+                return html2canvas(document.body, { useCORS: true, allowTaint: true });
+            }).then(function(canvas) {
                 var maxW = 1200;
                 var w = canvas.width, h = canvas.height;
                 if (w > maxW) {
@@ -345,13 +398,19 @@
                 }
                 var dataUrl = canvas.toDataURL('image/jpeg', 0.75);
                 document.getElementById('bugScreenshotData').value = dataUrl;
-                document.getElementById('bugScreenshotPreview').style.backgroundImage = 'url(' + dataUrl + ')';
                 document.getElementById('bugContextUrl').value = window.location.href;
+                if (imgEl) {
+                    imgEl.src = dataUrl;
+                    imgEl.style.display = 'block';
+                }
+                if (placeholder) placeholder.style.display = 'none';
                 document.getElementById('bugModalOverlay').classList.add('open');
             }).catch(function(err) {
                 console.error("Screenshot failed:", err);
                 document.getElementById('bugScreenshotData').value = '';
                 document.getElementById('bugContextUrl').value = window.location.href;
+                if (placeholder) placeholder.textContent = 'Скриншот недоступен. Опишите баг текстом.';
+                if (imgEl) imgEl.style.display = 'none';
                 document.getElementById('bugModalOverlay').classList.add('open');
             });
         }, 300);
