@@ -21,6 +21,7 @@ from werkzeug.security import generate_password_hash  # Хешируем пар�
 from app.admin import admin_bp
 from app.models import User, AuditLog, MaintenanceMode, db, moscow_now, MOSCOW_TZ, Tasks, Lesson, LessonTask, Topic
 from app.models import UserProfile, FamilyTie, Enrollment, Student, UserRole
+from app.models import Submission, Answer, UserSubscription, UserNotification, BotAdmin, SubmissionComment, Assignment
 from core.db_models import Tester, task_topics
 from core.audit_logger import audit_logger
 from app import csrf
@@ -1864,10 +1865,112 @@ def admin_topic_delete(topic_id):
         logger.error(f"Error deleting topic: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+@admin_bp.route('/admin/users/<int:user_id>/delete', methods=['POST'])
+@login_required
+def admin_user_delete(user_id):
+    """Удаление пользователя с полным каскадом (с страницы «Управление пользователями»). Редирект обратно на admin/users."""
+    if not (current_user.is_admin() or current_user.is_creator()):
+        flash('Доступ запрещен.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    user = User.query.get_or_404(user_id)
+    if user.is_creator():
+        flash('Нельзя удалить создателя.', 'error')
+        return redirect(url_for('admin.admin_users'))
+    if Assignment.query.filter_by(created_by_id=user_id).limit(1).first():
+        flash('Нельзя удалить: у пользователя есть созданные работы. Сначала передайте или удалите их.', 'error')
+        return redirect(url_for('admin.admin_users'))
+    username = user.username
+    try:
+        deleted_logs = 0
+        try:
+            deleted_logs = db.session.execute(delete(AuditLog).where(AuditLog.user_id == user_id)).rowcount
+        except Exception as e:
+            logger.warning("Error deleting AuditLog for user %s: %s", user_id, e)
+            db.session.rollback()
+
+        try:
+            FamilyTie.query.filter(
+                (FamilyTie.parent_id == user_id) | (FamilyTie.student_id == user_id)
+            ).delete(synchronize_session=False)
+        except Exception as e:
+            logger.warning("Error deleting FamilyTie for user %s: %s", user_id, e)
+
+        try:
+            Enrollment.query.filter(
+                (Enrollment.student_id == user_id) | (Enrollment.tutor_id == user_id)
+            ).delete(synchronize_session=False)
+        except Exception as e:
+            logger.warning("Error deleting Enrollment for user %s: %s", user_id, e)
+
+        student_rec = Student.query.filter_by(user_id=user_id).first()
+        if student_rec:
+            try:
+                for sub in Submission.query.filter_by(student_id=student_rec.student_id).all():
+                    db.session.delete(sub)
+            except Exception as e:
+                logger.warning("Error deleting Submission for student %s: %s", student_rec.student_id, e)
+            try:
+                db.session.delete(student_rec)
+            except Exception as e:
+                logger.warning("Error deleting Student for user %s: %s", user_id, e)
+
+        try:
+            UserSubscription.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+        except Exception as e:
+            logger.warning("Error deleting UserSubscription for user %s: %s", user_id, e)
+
+        try:
+            UserNotification.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+        except Exception as e:
+            logger.warning("Error deleting UserNotification for user %s: %s", user_id, e)
+
+        try:
+            UserRole.query.filter_by(user_id=user_id).delete(synchronize_session=False)
+        except Exception as e:
+            logger.warning("Error deleting UserRole for user %s: %s", user_id, e)
+
+        try:
+            SubmissionComment.query.filter_by(author_id=user_id).delete(synchronize_session=False)
+        except Exception as e:
+            logger.warning("Error deleting SubmissionComment for user %s: %s", user_id, e)
+
+        try:
+            bot_admin = BotAdmin.query.filter_by(user_id=user_id).first()
+            if bot_admin:
+                db.session.delete(bot_admin)
+        except Exception as e:
+            logger.warning("Error deleting BotAdmin for user %s: %s", user_id, e)
+
+        try:
+            user_profile = UserProfile.query.filter_by(user_id=user_id).first()
+            if user_profile:
+                db.session.delete(user_profile)
+        except Exception as e:
+            logger.warning("Error deleting UserProfile for user %s: %s", user_id, e)
+
+        db.session.delete(user)
+        db.session.commit()
+
+        audit_logger.log(
+            action='delete_user',
+            entity='User',
+            entity_id=user_id,
+            status='success',
+            metadata={'username': username, 'deleted_logs': deleted_logs}
+        )
+        flash(f'Пользователь «{username}» удалён (логов: {deleted_logs}).', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.exception("Error deleting user %s: %s", user_id, e)
+        flash(f'Ошибка при удалении: {str(e)}', 'error')
+    return redirect(url_for('admin.admin_users'))
+
+
 @admin_bp.route('/admin/users')
 @login_required
 def admin_users():
-    """Управление пользователями (RBAC) - список всех пользователей"""
+    """Управление пользователями (RBAC) - список всех пользователей. Учитываются роли из UserRole и User.role."""
     if not (current_user.is_admin() or current_user.is_creator()):
         flash('Доступ запрещен. Требуется роль "Администратор" или "Создатель".', 'danger')
         return redirect(url_for('main.dashboard'))
@@ -1877,9 +1980,11 @@ def admin_users():
         is_active_filter = request.args.get('is_active')
         
         query = User.query
-        
         if role_filter:
-            query = query.filter(User.role == role_filter)
+            ids_with_role = db.session.query(UserRole.user_id).filter(UserRole.role == role_filter).distinct()
+            query = query.filter(
+                (User.role == role_filter) | (User.id.in_(ids_with_role))
+            )
         if is_active_filter is not None:
             is_active = is_active_filter.lower() == 'true'
             query = query.filter(User.is_active == is_active)
@@ -1888,7 +1993,10 @@ def admin_users():
         
         role_stats = {}
         for role in ['creator', 'chief_admin', 'admin', 'tutor', 'student', 'parent', 'tester', 'chief_tester', 'designer', 'content_maker']:
-            role_stats[role] = User.query.filter_by(role=role).count()
+            subq = db.session.query(UserRole.user_id).filter(UserRole.role == role).distinct()
+            role_stats[role] = db.session.query(User.id).filter(
+                (User.role == role) | (User.id.in_(subq))
+            ).distinct().count()
         
         environment = os.environ.get('ENVIRONMENT', 'local')
         is_sandbox = _is_sandbox(environment)
