@@ -1732,3 +1732,39 @@ class AnalyticsEvent(db.Model):
         Index('ix_analytics_events_node_timestamp', 'node_id', 'timestamp'),
     )
 
+
+class QATask(db.Model):
+    __tablename__ = 'qa_tasks'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(50), default='todo') # Варианты: todo, in_progress, review, done
+    priority = db.Column(db.String(50), default='medium') # Варианты: low, medium, high, critical
+    
+    # Иерархия пользователей
+    reporter_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    assignee_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
+    
+    # Контекст для воспроизведения бага
+    context_url = db.Column(db.String(500), nullable=True)
+    target_user_id = db.Column(db.Integer, nullable=True) # ID юзера, под которым найден баг
+    
+    deadline = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    # Связи для удобного ORM доступа
+    reporter = db.relationship('User', foreign_keys=[reporter_id])
+    assignee = db.relationship('User', foreign_keys=[assignee_id])
+
+class QAComment(db.Model):
+    __tablename__ = 'qa_comments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('qa_tasks.id'), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    author = db.relationship('User', foreign_keys=[author_id])
+

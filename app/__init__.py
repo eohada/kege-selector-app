@@ -207,6 +207,7 @@ def create_app(config_name=None):
     from app.billing import billing_bp
     from app.trainer import trainer_bp
     from app.uploads import uploads_bp
+    from app.qa.routes import qa_bp
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
@@ -231,6 +232,7 @@ def create_app(config_name=None):
     app.register_blueprint(billing_bp)
     app.register_blueprint(trainer_bp)
     app.register_blueprint(uploads_bp)
+    app.register_blueprint(qa_bp)
 
     # Real-time комната урока (WebSocket)
     try:
