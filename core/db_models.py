@@ -1756,6 +1756,7 @@ class QATask(db.Model):
 
     context_url = db.Column(db.String(500), nullable=True)
     target_user_id = db.Column(db.Integer, nullable=True)
+    screenshot_path = db.Column(db.String(500), nullable=True)
 
     deadline = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=moscow_now)

@@ -1,5 +1,8 @@
+import base64
+import os
+import time
 import uuid
-from flask import Blueprint, session, redirect, url_for, request, flash, jsonify, render_template
+from flask import Blueprint, session, redirect, url_for, request, flash, jsonify, render_template, current_app
 from flask_login import login_required, current_user, login_user
 from app.models import db
 from core.db_models import User, Student, Enrollment, QATask, QAComment, FamilyTie
@@ -341,7 +344,7 @@ def task_set_status(task_id):
         return jsonify({'error': 'Invalid status'}), 400
     task.status = status
     db.session.commit()
-    if request.want_json or request.get_json(silent=True) is not None:
+    if request.want_json or request.get_json(silent=True) is not None or (request.headers.get('X-Requested-With') == 'XMLHttpRequest'):
         return jsonify({'success': True, 'status': status})
     flash('Статус обновлён', 'success')
     return redirect(url_for('qa.board'))
@@ -376,9 +379,30 @@ def bug_report():
         return "Access denied", 403
     context_url = request.args.get('context_url') or request.form.get('context_url') or ''
     target_user_id = request.args.get('target_user_id') or request.form.get('target_user_id') or ''
+    
     if request.method == 'POST':
         title = (request.form.get('title') or '').strip() or 'Баг с страницы'
         description = (request.form.get('description') or '').strip()
+        screenshot_data = request.form.get('screenshot') # Base64 string
+        
+        screenshot_path = None
+        if screenshot_data and ',' in screenshot_data:
+            try:
+                header, encoded = screenshot_data.split(",", 1)
+                data = base64.b64decode(encoded)
+                filename = f"bug_{int(time.time())}_{current_user.id}.png"
+                
+                # Путь сохранения (static/uploads/qa_screenshots)
+                upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'qa_screenshots')
+                os.makedirs(upload_dir, exist_ok=True)
+                
+                with open(os.path.join(upload_dir, filename), "wb") as f:
+                    f.write(data)
+                
+                screenshot_path = f"static/uploads/qa_screenshots/{filename}"
+            except Exception as e:
+                print(f"Screenshot save error: {e}")
+
         if title:
             task = QATask(
                 title=title,
@@ -388,12 +412,18 @@ def bug_report():
                 reporter_id=current_user.id,
                 status='new',
                 priority='high',
-                task_type='bug_report'
+                task_type='bug_report',
+                screenshot_path=screenshot_path
             )
             db.session.add(task)
             db.session.commit()
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or getattr(request, 'want_json', False):
+                 return jsonify({'success': True, 'redirect': url_for('qa.bug_reports')})
+            
             flash('Баг-репорт создан. Создатель увидит его в разделе «Баг-репорты».', 'success')
             return redirect(url_for('qa.bug_reports'))
+            
     return render_template('qa/bug_report.html', context_url=context_url, target_user_id=target_user_id)
 
 
@@ -422,7 +452,7 @@ def bug_report_set_status(task_id):
         return jsonify({'error': 'Invalid status'}), 400
     task.status = status
     db.session.commit()
-    if request.want_json or (request.get_json(silent=True) is not None):
+    if request.want_json or (request.get_json(silent=True) is not None) or (request.headers.get('X-Requested-With') == 'XMLHttpRequest'):
         return jsonify({'success': True, 'status': status})
     flash('Статус баг-репорта обновлён', 'success')
     return redirect(url_for('qa.bug_reports'))

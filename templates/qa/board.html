@@ -77,7 +77,7 @@
                     </div>
                     {% if can_edit_status %}
                     <div style="margin-top: 0.5rem; display: flex; gap: 4px; flex-wrap: wrap;">
-                        <form action="{{ url_for('qa.task_set_status', task_id=task.id) }}" method="POST" style="display: inline;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="in_progress"><button type="submit" class="neo-button ghost sm" style="font-size: 0.7rem;">В работу</button></form>
+                        <button type="button" onclick="updateTaskStatus({{ task.id }}, 'in_progress', this)" class="neo-button ghost sm" style="font-size: 0.7rem;">В работу</button>
                     </div>
                     {% endif %}
                 </div>
@@ -98,7 +98,9 @@
                         {% if task.assignee %}<div class="avatar-sm">{{ (task.assignee.username or '?')[:1] }}</div>{% endif %}
                     </div>
                     {% if can_edit_status %}
-                    <div style="margin-top: 0.5rem; display: flex; gap: 4px;"><form action="{{ url_for('qa.task_set_status', task_id=task.id) }}" method="POST" style="display: inline;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="review"><button type="submit" class="neo-button ghost sm" style="font-size: 0.7rem;">На ревью</button></form></div>
+                    <div style="margin-top: 0.5rem; display: flex; gap: 4px;">
+                        <button type="button" onclick="updateTaskStatus({{ task.id }}, 'review', this)" class="neo-button ghost sm" style="font-size: 0.7rem;">На ревью</button>
+                    </div>
                     {% endif %}
                 </div>
                 {% else %}
@@ -114,7 +116,9 @@
                     <div class="task-priority p-{{ task.priority or 'medium' }}"></div>
                     <div class="task-title">{{ task.title }}</div>
                     {% if can_edit_status %}
-                    <div style="margin-top: 0.5rem;"><form action="{{ url_for('qa.task_set_status', task_id=task.id) }}" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="done"><button type="submit" class="neo-button ghost sm" style="width: 100%; font-size: 0.7rem;">Одобрить (Done)</button></form></div>
+                    <div style="margin-top: 0.5rem;">
+                        <button type="button" onclick="updateTaskStatus({{ task.id }}, 'done', this)" class="neo-button ghost sm" style="width: 100%; font-size: 0.7rem;">Одобрить (Done)</button>
+                    </div>
                     {% endif %}
                 </div>
                 {% else %}
@@ -141,5 +145,43 @@
             </main>
         </div>
     </div>
+    <script>
+    function updateTaskStatus(taskId, status, btn) {
+        if(btn) {
+            btn.innerHTML = '...';
+            btn.disabled = true;
+        }
+
+        fetch(`/qa/tasks/${taskId}/status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ status: status })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + (data.error || 'Не удалось обновить статус'));
+                if(btn) {
+                    btn.innerHTML = 'Ошибка';
+                    btn.disabled = false;
+                }
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Ошибка сети');
+            if(btn) {
+                btn.innerHTML = 'Ошибка';
+                btn.disabled = false;
+            }
+        });
+    }
+    </script>
 </body>
 </html>

@@ -1030,6 +1030,19 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not add task_type to qa_tasks: {e}")
                     db.session.rollback()
 
+                try:
+                    tasks_columns = {col['name'] for col in inspector.get_columns(qa_tasks_table)}
+                    if 'screenshot_path' not in tasks_columns:
+                        is_pg = _is_postgres(app)
+                        if is_pg:
+                            db.session.execute(text(f'ALTER TABLE "{qa_tasks_table}" ADD COLUMN screenshot_path VARCHAR(500)'))
+                        else:
+                            db.session.execute(text(f'ALTER TABLE {qa_tasks_table} ADD COLUMN screenshot_path VARCHAR(500)'))
+                        logger.info("Added screenshot_path column to qa_tasks")
+                except Exception as e:
+                    logger.warning(f"Could not add screenshot_path to qa_tasks: {e}")
+                    db.session.rollback()
+
             try:
                 db.session.commit()
                 logger.info("Database migrations committed successfully")

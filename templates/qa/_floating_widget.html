@@ -1,31 +1,59 @@
 <style>
-    .qa-god-widget {
+    /* QA Floating Action Button */
+    .qa-fab {
         position: fixed;
         bottom: 24px;
         right: 24px;
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: rgba(18, 18, 24, 0.9);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 71, 87, 0.4);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.4), 0 0 15px rgba(255, 71, 87, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ff6b81;
+        cursor: pointer;
+        z-index: 10001;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .qa-fab:hover {
+        transform: scale(1.05);
+        box-shadow: 0 12px 28px rgba(0,0,0,0.5), 0 0 25px rgba(255, 71, 87, 0.3);
+        background: rgba(18, 18, 24, 1);
+    }
+    .qa-fab svg { width: 24px; height: 24px; }
+    
+    /* QA Widget Panel */
+    .qa-god-widget {
+        position: fixed;
+        bottom: 90px;
+        right: 24px;
         background: rgba(18, 18, 24, 0.95);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
         color: var(--text-primary, #fff);
-        width: 340px;
+        width: 320px;
+        max-height: 80vh;
         border-radius: 16px;
         border: 1px solid rgba(255, 71, 87, 0.3);
         box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 
-                    0 20px 40px -8px rgba(0,0,0,0.6),
-                    0 0 30px rgba(255, 71, 87, 0.1);
+                    0 20px 50px -10px rgba(0,0,0,0.7);
         z-index: 10000;
         font-family: 'MonaspaceNeon', system-ui, -apple-system, sans-serif;
-        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        display: none;
+        flex-direction: column;
         overflow: hidden;
-        opacity: 0.3;
+        transform-origin: bottom right;
+        animation: qa-pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .qa-god-widget:hover {
-        opacity: 1;
-        box-shadow: 0 0 0 1px rgba(255, 71, 87, 0.5), 
-                    0 24px 60px -12px rgba(0,0,0,0.8),
-                    0 0 40px rgba(255, 71, 87, 0.2);
+    @keyframes qa-pop-in {
+        from { opacity: 0; transform: scale(0.9) translateY(10px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
     }
-    
+
     .qa-header {
         display: flex;
         align-items: center;
@@ -41,20 +69,11 @@
     }
 
     .qa-body {
-        padding: 16px;
-        max-height: 70vh;
+        padding: 0;
         overflow-y: auto;
     }
-
-    .qa-section-title {
-        font-size: 11px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: var(--text-muted, #888);
-        margin: 16px 0 8px 0;
-        font-weight: 600;
-    }
-    .qa-section-title:first-child { margin-top: 0; }
+    
+    .qa-content-pad { padding: 16px; }
 
     .qa-btn {
         display: flex;
@@ -74,229 +93,291 @@
     }
     .qa-btn:hover {
         background: var(--surface-3, rgba(255,255,255,0.1));
-        transform: translateY(-1px);
         border-color: rgba(255,255,255,0.2);
     }
-    .qa-btn:active { transform: translateY(0); }
-
-    .qa-btn-danger {
-        background: rgba(255, 71, 87, 0.1);
-        border-color: rgba(255, 71, 87, 0.3);
-        color: #ff6b81;
-        justify-content: center;
-        font-weight: 600;
-    }
-    .qa-btn-danger:hover {
-        background: rgba(255, 71, 87, 0.2);
-        border-color: #ff6b81;
-        box-shadow: 0 0 15px rgba(255, 71, 87, 0.3);
-    }
-
-    .qa-btn-action {
-        border-color: rgba(46, 204, 113, 0.3);
-        color: #2ecc71;
-    }
-    .qa-btn-action:hover {
-        background: rgba(46, 204, 113, 0.1);
-        border-color: #2ecc71;
-        box-shadow: 0 0 15px rgba(46, 204, 113, 0.2);
-    }
-
-    .qa-select {
-        width: 100%;
-        padding: 10px 12px;
-        margin-bottom: 12px;
-        background: #000;
-        color: var(--text-primary, #fff);
-        border-radius: 8px;
-        border: 1px solid var(--stroke-1, rgba(255,255,255,0.15));
-        font-size: 13px;
-        outline: none;
-        appearance: none;
-        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-        background-repeat: no-repeat;
-        background-position: right 10px center;
-        background-size: 14px;
-    }
-    .qa-select:focus {
-        border-color: var(--accent-1, #70a1ff);
-    }
-
-    .qa-user-info {
-        background: rgba(0,0,0,0.3);
-        padding: 10px;
-        border-radius: 8px;
-        margin-bottom: 16px;
-        font-size: 12px;
-        line-height: 1.4;
-        border: 1px dashed rgba(255,255,255,0.1);
-    }
-    .qa-close {
-        background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; padding: 4px;
-    }
-    .qa-close:hover { color: #fff; }
     
-    .role-tag {
-        display: inline-block;
-        padding: 2px 6px;
-        border-radius: 4px;
-        background: rgba(255,255,255,0.1);
-        font-size: 10px;
+    .qa-accordion { border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .qa-accordion-header {
+        padding: 12px 16px;
+        background: rgba(255,255,255,0.02);
+        cursor: pointer;
+        font-size: 12px;
         font-weight: 600;
         text-transform: uppercase;
-        margin-top: 4px;
+        color: var(--text-muted);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-    .role-tag.impersonating {
-        background: #ff4757;
-        color: white;
-        animation: pulse 2s infinite;
-    }
+    .qa-accordion-header:hover { background: rgba(255,255,255,0.05); color: #fff; }
+    .qa-accordion-content { display: none; padding: 12px 16px; background: rgba(0,0,0,0.2); }
+    .qa-accordion.active .qa-accordion-content { display: block; }
+    .qa-accordion.active .qa-accordion-header { color: #fff; }
+    .qa-accordion-icon { transition: transform 0.2s; }
+    .qa-accordion.active .qa-accordion-icon { transform: rotate(180deg); }
 
-    @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.4); }
-        70% { box-shadow: 0 0 0 6px rgba(255, 71, 87, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+    .qa-user-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+    }
+    .qa-user-row form { flex-grow: 1; }
+    .qa-user-btn {
+        width: 100%;
+        padding: 6px 10px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 6px;
+        color: var(--text-muted);
+        font-size: 12px;
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .qa-user-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+    /* Bug Report Modal */
+    .qa-modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(5px);
+        z-index: 10002;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .qa-modal-overlay.open { display: flex; opacity: 1; }
+    .qa-modal {
+        background: #1e1e2f;
+        width: 500px;
+        max-width: 90vw;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        transform: scale(0.95);
+        transition: transform 0.2s;
+        display: flex;
+        flex-direction: column;
+    }
+    .qa-modal-overlay.open .qa-modal { transform: scale(1); }
+    .qa-modal-header { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
+    .qa-modal-body { padding: 16px; overflow-y: auto; max-height: 70vh; }
+    .qa-screenshot-preview {
+        margin-top: 10px;
+        width: 100%;
+        height: 150px;
+        border: 1px dashed rgba(255,255,255,0.2);
+        border-radius: 8px;
+        background-size: cover;
+        background-position: center;
+        position: relative;
+    }
+    .qa-input {
+        width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 6px; color: #fff; margin-bottom: 12px; font-size: 13px;
     }
 </style>
 
+<!-- Trigger Button -->
+<div class="qa-fab" onclick="toggleQAWidget()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+</div>
+
+<!-- Widget Panel -->
 <div class="qa-god-widget" id="qaWidget">
     <div class="qa-header">
-        <span style="display:flex; align-items:center; gap:6px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-            QA God Mode
-        </span>
-        <button class="qa-close" onclick="document.getElementById('qaWidget').style.display='none'">✕</button>
+        <span>QA God Mode</span>
+        <button onclick="toggleQAWidget()" style="background:none; border:none; color:inherit; cursor:pointer;">✕</button>
     </div>
     
     <div class="qa-body">
-        <div class="qa-user-info">
-            <div style="color: var(--text-muted);">Current Session:</div>
-            <div style="font-weight: 500; font-size: 14px; margin-top: 2px;">
+        <div class="qa-content-pad">
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Current Session:</div>
+            <div style="font-weight: 500; font-size: 14px; color: #fff;">
                 {{ current_user.username }} 
-                <span style="color: var(--text-muted); font-size: 11px;">(ID: {{ current_user.id }})</span>
+                <span style="opacity: 0.5;">(#{{ current_user.id }})</span>
             </div>
             {% if session.get('impersonator_id') %}
-                <div class="role-tag impersonating">⚠️ IMPERSONATION ACTIVE</div>
-            {% else %}
-                <div class="role-tag">{{ current_user.role }}</div>
+            <div style="margin-top: 8px;">
+                <form action="{{ url_for('qa.revert_impersonation') }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+                    <button type="submit" class="qa-btn" style="background: rgba(255, 71, 87, 0.1); color: #ff6b81; border-color: rgba(255, 71, 87, 0.3); justify-content: center;">
+                        Вернуться в свой аккаунт
+                    </button>
+                </form>
+            </div>
             {% endif %}
         </div>
 
-        {% if session.get('impersonator_id') %}
-            <form action="{{ url_for('qa.revert_impersonation') }}" method="POST">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
-                <button type="submit" class="qa-btn qa-btn-danger">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    Вернуться в свой аккаунт
+        <div class="qa-accordion">
+            <div class="qa-accordion-header" onclick="this.parentElement.classList.toggle('active')">
+                Профили пула
+                <span class="qa-accordion-icon">▼</span>
+            </div>
+            <div class="qa-accordion-content">
+                <div style="margin-bottom: 8px; font-size: 11px; color: var(--text-muted);">Ученики</div>
+                {% for un in ['qa_pool_student_1', 'qa_pool_student_2', 'qa_pool_student_3'] %}
+                <div class="qa-user-row">
+                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+                        <input type="hidden" name="username" value="{{ un }}">
+                        <button type="submit" class="qa-user-btn">👤 {{ un.replace('qa_pool_', '').replace('_', ' ').title() }}</button>
+                    </form>
+                </div>
+                {% endfor %}
+                
+                <div style="margin: 12px 0 8px 0; font-size: 11px; color: var(--text-muted);">Преподаватели</div>
+                {% for un in ['qa_pool_tutor_1', 'qa_pool_tutor_2', 'qa_pool_tutor_3'] %}
+                <div class="qa-user-row">
+                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+                        <input type="hidden" name="username" value="{{ un }}">
+                        <button type="submit" class="qa-user-btn">👨‍🏫 {{ un.replace('qa_pool_', '').replace('_', ' ').title() }}</button>
+                    </form>
+                </div>
+                {% endfor %}
+                
+                <div style="margin: 12px 0 8px 0; font-size: 11px; color: var(--text-muted);">Родители</div>
+                {% for un in ['qa_pool_parent_1', 'qa_pool_parent_2', 'qa_pool_parent_3'] %}
+                <div class="qa-user-row">
+                    <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
+                        <input type="hidden" name="username" value="{{ un }}">
+                        <button type="submit" class="qa-user-btn">👪 {{ un.replace('qa_pool_', '').replace('_', ' ').title() }}</button>
+                    </form>
+                </div>
+                {% endfor %}
+                
+                <div style="margin-top: 12px;">
+                    <a href="{{ url_for('qa.pool') }}" class="qa-btn" style="text-decoration: none; justify-content: center; font-size: 11px;">
+                        ⚙️ Управление привязками
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="qa-accordion">
+            <div class="qa-accordion-header" onclick="this.parentElement.classList.toggle('active')">
+                Инструменты
+                <span class="qa-accordion-icon">▼</span>
+            </div>
+            <div class="qa-accordion-content">
+                <button class="qa-btn" onclick="openBugModal()">
+                    🐞 Создать баг-репорт
                 </button>
-            </form>
-        {% endif %}
-
-        {% if config.get('PROD_URL') or config.get('SANDBOX_URL') %}
-        <div class="qa-section-title">Окружение</div>
-        {% if config.get('SANDBOX_URL') and not config.get('IS_SANDBOX') %}
-        <a href="{{ config.SANDBOX_URL }}" class="qa-btn" style="text-decoration: none; justify-content: center;" target="_blank" rel="noopener">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-            Перейти в песочницу
-        </a>
-        {% endif %}
-        {% if config.get('PROD_URL') and config.get('IS_SANDBOX') %}
-        <a href="{{ config.PROD_URL }}" class="qa-btn" style="text-decoration: none; justify-content: center;" target="_blank" rel="noopener">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            Перейти на прод
-        </a>
-        {% endif %}
-        {% endif %}
-
-        <div class="qa-section-title">Войти под профилем из пула</div>
-        <p class="qa-text-small" style="margin: 0 0 10px 0; color: var(--text-muted); font-size: 11px;">Профили пула: 3 ученика, 3 преподавателя, 3 родителя, 1 тест. админ. Привязки — на странице ниже.</p>
-        <div style="margin-bottom: 6px;"><strong style="font-size: 10px; text-transform: uppercase; color: var(--text-muted);">Ученики</strong></div>
-        {% for un in ['qa_pool_student_1', 'qa_pool_student_2', 'qa_pool_student_3'] %}
-        <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" style="margin-bottom: 6px;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
-            <input type="hidden" name="username" value="{{ un }}">
-            <button type="submit" class="qa-btn" style="justify-content: center;">👤 {{ un.replace('_', ' ').title() }}</button>
-        </form>
-        {% endfor %}
-        <div style="margin-bottom: 6px; margin-top: 10px;"><strong style="font-size: 10px; text-transform: uppercase; color: var(--text-muted);">Преподаватели</strong></div>
-        {% for un in ['qa_pool_tutor_1', 'qa_pool_tutor_2', 'qa_pool_tutor_3'] %}
-        <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" style="margin-bottom: 6px;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
-            <input type="hidden" name="username" value="{{ un }}">
-            <button type="submit" class="qa-btn" style="justify-content: center;">👨‍🏫 {{ un.replace('_', ' ').title() }}</button>
-        </form>
-        {% endfor %}
-        <div style="margin-bottom: 6px; margin-top: 10px;"><strong style="font-size: 10px; text-transform: uppercase; color: var(--text-muted);">Родители</strong></div>
-        {% for un in ['qa_pool_parent_1', 'qa_pool_parent_2', 'qa_pool_parent_3'] %}
-        <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" style="margin-bottom: 6px;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
-            <input type="hidden" name="username" value="{{ un }}">
-            <button type="submit" class="qa-btn" style="justify-content: center;">👪 {{ un.replace('_', ' ').title() }}</button>
-        </form>
-        {% endfor %}
-        <form action="{{ url_for('qa.impersonate_as_role') }}" method="POST" style="margin-bottom: 8px;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}">
-            <input type="hidden" name="username" value="qa_pool_admin_1">
-            <button type="submit" class="qa-btn" style="justify-content: center;">🛡️ Qa Pool Admin 1</button>
-        </form>
-        <a href="{{ url_for('qa.pool') }}" class="qa-btn" style="text-decoration: none; justify-content: center; margin-bottom: 12px; box-sizing: border-box;">
-            ⚙️ Управление привязками
-        </a>
-
-        <div class="qa-section-title">Манипуляторы</div>
-        <button class="qa-btn qa-btn-action" onclick="manipulateState('/qa/manipulate/pass_assignment')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-            Сдать текущее ДЗ (100%)
-        </button>
-        <button class="qa-btn qa-btn-action" onclick="manipulateState('/qa/manipulate/pay_course')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-            Имитировать оплату
-        </button>
-
-        <div class="qa-section-title">Инструменты</div>
-        <button class="qa-btn" onclick="generateMockData(event)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-            Создать: Препод + 2 Ученика
-        </button>
-        
-        <button class="qa-btn" onclick="reportBug()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-            Создать баг-репорт
-        </button>
-        <a href="{{ url_for('qa.board') }}" class="qa-btn" style="text-decoration: none;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-            Канбан-доска
-        </a>
-        <a href="{{ url_for('qa.bug_reports') }}" class="qa-btn" style="text-decoration: none;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/></svg>
-            Баг-репорты
-        </a>
+                <a href="{{ url_for('qa.board') }}" class="qa-btn" style="text-decoration: none;">
+                    📋 Канбан-доска
+                </a>
+                <a href="{{ url_for('qa.bug_reports') }}" class="qa-btn" style="text-decoration: none;">
+                    🐛 Список багов
+                </a>
+                <button class="qa-btn" onclick="manipulateState('/qa/manipulate/pay_course')">
+                    💳 Имитировать оплату
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
+<!-- Bug Report Modal -->
+<div class="qa-modal-overlay" id="bugModalOverlay">
+    <div class="qa-modal">
+        <div class="qa-modal-header">
+            <h3 style="margin:0; font-size:16px; color:#fff;">Новый баг-репорт</h3>
+            <button onclick="closeBugModal()" style="background:none; border:none; color:rgba(255,255,255,0.5); cursor:pointer;">✕</button>
+        </div>
+        <div class="qa-modal-body">
+            <form id="bugReportForm" onsubmit="submitBugReport(event)">
+                <input type="hidden" name="context_url" id="bugContextUrl">
+                <input type="hidden" name="screenshot" id="bugScreenshotData">
+                <input type="text" class="qa-input" name="title" placeholder="Краткая суть бага" required>
+                <textarea class="qa-input" name="description" rows="3" placeholder="Описание и шаги воспроизведения..."></textarea>
+                
+                <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">Скриншот (автоматически):</div>
+                <div class="qa-screenshot-preview" id="bugScreenshotPreview">
+                    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:rgba(255,255,255,0.3);">Загрузка...</div>
+                </div>
+                
+                <div style="margin-top:16px; display:flex; gap:10px;">
+                    <button type="submit" class="qa-btn" style="justify-content:center; background:var(--accent-1); border:none;">Отправить</button>
+                    <button type="button" class="qa-btn" onclick="closeBugModal()" style="justify-content:center; width:auto;">Отмена</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 <script>
-    function generateMockData(event) {
-        const btn = event.target;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '⏳ Создание...';
+    function toggleQAWidget() {
+        const w = document.getElementById('qaWidget');
+        w.style.display = (w.style.display === 'flex') ? 'none' : 'flex';
+    }
+
+    function openBugModal() {
+        toggleQAWidget(); // Скрыть виджет чтобы он не попал на скрин
         
-        fetch('/qa/factory/tutor-students', { 
+        // Ждем небольшую задержку для анимации закрытия
+        setTimeout(() => {
+            html2canvas(document.body).then(canvas => {
+                const dataUrl = canvas.toDataURL("image/png");
+                document.getElementById('bugScreenshotData').value = dataUrl;
+                document.getElementById('bugScreenshotPreview').style.backgroundImage = `url(${dataUrl})`;
+                document.getElementById('bugContextUrl').value = window.location.href;
+                
+                document.getElementById('bugModalOverlay').classList.add('open');
+            }).catch(err => {
+                console.error("Screenshot failed:", err);
+                alert("Не удалось сделать скриншот. Но вы можете описать баг текстом.");
+                document.getElementById('bugModalOverlay').classList.add('open');
+            });
+        }, 300);
+    }
+
+    function closeBugModal() {
+        document.getElementById('bugModalOverlay').classList.remove('open');
+    }
+
+    function submitBugReport(e) {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const originalText = btn.innerText;
+        btn.innerText = 'Отправка...';
+        btn.disabled = true;
+
+        const formData = new FormData(e.target);
+        
+        fetch('/qa/bug-report', {
             method: 'POST',
+            body: formData,
             headers: {
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content,
+                'X-Requested-With': 'XMLHttpRequest'
             }
         })
-            .then(response => response.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    if(typeof toast !== 'undefined') toast.success(`ID нового Препода: ${data.tutor_id}`);
-                    else alert(`✅ Успешно! ID нового Препода: ${data.tutor_id}`);
-                } else {
-                    if(typeof toast !== 'undefined') toast.error(`Ошибка: ${data.error}`);
-                    else alert(`❌ Ошибка: ${data.error}`);
-                }
-                btn.innerHTML = originalText;
-            });
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                if(typeof toast !== 'undefined') toast.success('Баг-репорт отправлен!');
+                else alert('Баг-репорт отправлен!');
+                closeBugModal();
+                e.target.reset();
+            } else {
+                alert('Ошибка: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Ошибка сети');
+        })
+        .finally(() => {
+            btn.innerText = originalText;
+            btn.disabled = false;
+        });
     }
 
     function manipulateState(endpoint) {
@@ -306,22 +387,15 @@
                 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content
             }
         })
-            .then(response => response.json())
-            .then(data => {
-                if(data.status === 'success') {
-                    if(typeof toast !== 'undefined') toast.success(data.message);
-                    else alert(`✅ ${data.message}`);
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    if(typeof toast !== 'undefined') toast.error(data.error);
-                    else alert(`❌ Ошибка: ${data.error}`);
-                }
-            });
-    }
-
-    function reportBug() {
-        const currentUrl = encodeURIComponent(window.location.href);
-        const userId = '{{ current_user.id }}';
-        window.location.href = `/qa/bug-report?context_url=${currentUrl}&target_user_id=${userId}`;
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success') {
+                if(typeof toast !== 'undefined') toast.success(data.message);
+                else alert(`✅ ${data.message}`);
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                alert(`❌ Ошибка: ${data.error}`);
+            }
+        });
     }
 </script>

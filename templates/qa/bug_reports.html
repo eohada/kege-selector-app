@@ -56,32 +56,23 @@
                 {% if r.reporter %} · Автор: {{ r.reporter.username }}{% endif %}
                 {% if r.context_url %} · <a href="{{ r.context_url }}" target="_blank" rel="noopener" style="color: #00f2ff;">Контекст</a>{% endif %}
             </div>
+            {% if r.screenshot_path %}
+            <div style="margin-bottom: 0.75rem;">
+                <a href="{{ url_for('static', filename=r.screenshot_path.replace('static/', '')) }}" target="_blank">
+                    <img src="{{ url_for('static', filename=r.screenshot_path.replace('static/', '')) }}" alt="Screenshot" style="max-width: 200px; max-height: 150px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);">
+                </a>
+            </div>
+            {% endif %}
             {% if r.description %}
             <p style="font-size: 0.9rem; color: var(--text-muted); margin: 0 0 0.5rem 0; white-space: pre-wrap;">{{ r.description }}</p>
             {% endif %}
             {% if can_edit %}
             <div class="report-actions">
                 <span style="font-size: 0.8rem; color: var(--text-muted);">Сменить статус:</span>
-                <form action="{{ url_for('qa.bug_report_set_status', task_id=r.id) }}" method="POST" style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="status" value="new">
-                    <button type="submit" class="neo-button ghost btn-sm">New</button>
-                </form>
-                <form action="{{ url_for('qa.bug_report_set_status', task_id=r.id) }}" method="POST" style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="status" value="in_progress">
-                    <button type="submit" class="neo-button ghost btn-sm">In progress</button>
-                </form>
-                <form action="{{ url_for('qa.bug_report_set_status', task_id=r.id) }}" method="POST" style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="status" value="review">
-                    <button type="submit" class="neo-button ghost btn-sm">Review</button>
-                </form>
-                <form action="{{ url_for('qa.bug_report_set_status', task_id=r.id) }}" method="POST" style="display: inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="status" value="done">
-                    <button type="submit" class="neo-button ghost btn-sm">Done</button>
-                </form>
+                <button type="button" onclick="updateStatus({{ r.id }}, 'new', this)" class="neo-button ghost btn-sm">New</button>
+                <button type="button" onclick="updateStatus({{ r.id }}, 'in_progress', this)" class="neo-button ghost btn-sm">In progress</button>
+                <button type="button" onclick="updateStatus({{ r.id }}, 'review', this)" class="neo-button ghost btn-sm">Review</button>
+                <button type="button" onclick="updateStatus({{ r.id }}, 'done', this)" class="neo-button ghost btn-sm">Done</button>
             </div>
             {% else %}
             <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.5rem;">Статус меняет только создатель платформы.</p>
@@ -95,5 +86,38 @@
             </main>
         </div>
     </div>
+    <script>
+    function updateStatus(taskId, status, btn) {
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '...';
+        btn.disabled = true;
+
+        fetch(`/qa/bug-reports/${taskId}/status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ status: status })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Ошибка: ' + (data.error || 'Не удалось обновить статус'));
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Ошибка сети');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    }
+    </script>
 </body>
 </html>
