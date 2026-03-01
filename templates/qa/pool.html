@@ -1,0 +1,140 @@
+{% from '_ui_icon.html' import ui_icon %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пул профилей QA · BooStudy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+    .pool-section { background: var(--surface-1, #1e1e2f); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); padding: 1.25rem; margin-bottom: 1.5rem; }
+    .pool-section h3 { font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 1rem; }
+    .pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 0.75rem; }
+    .pool-user { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: var(--surface-2, #2d2d3f); border-radius: 8px; font-size: 0.9rem; }
+    .pool-user .name { color: var(--text-primary); }
+    .pool-user .id { font-size: 0.75rem; color: var(--text-muted); }
+    .ties-list { list-style: none; padding: 0; margin: 0; }
+    .ties-list li { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; background: var(--surface-2); border-radius: 6px; margin-bottom: 0.5rem; font-size: 0.9rem; }
+    .add-tie-form { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; margin-top: 1rem; }
+    .add-tie-form select { padding: 0.5rem 0.75rem; background: var(--surface-2); border: 1px solid var(--stroke-1); border-radius: 8px; color: var(--text-primary); min-width: 140px; }
+    .btn-sm { padding: 0.35rem 0.6rem; font-size: 0.75rem; border-radius: 6px; }
+    </style>
+</head>
+<body>
+    <div class="app-layout">
+        {% set active_page = 'qa_board' %}
+        {% include '_sidebar.html' %}
+        <div class="app-main">
+            {% include '_topbar.html' %}
+            <main class="app-content">
+                {% include '_ux_enhancements.html' %}
+
+<div class="container-fluid mt-4 px-4">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+        <div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px;">QA</div>
+            <h1 style="font-family: 'MonaspaceNeon', sans-serif; font-size: 1.8rem; color: var(--text-primary);">Пул профилей и привязки</h1>
+        </div>
+        <a href="{{ url_for('qa.board') }}" class="neo-button ghost">{{ ui_icon('action.back', 'sm') }} Канбан</a>
+    </div>
+
+    <div class="pool-section">
+        <h3>Ученики (3)</h3>
+        <div class="pool-grid">
+            {% for u in students %}
+            <div class="pool-user"><span class="name">{{ u.username.replace('_', ' ').title() }}</span><span class="id">#{{ u.id }}</span></div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="pool-section">
+        <h3>Преподаватели (3)</h3>
+        <div class="pool-grid">
+            {% for u in tutors %}
+            <div class="pool-user"><span class="name">{{ u.username.replace('_', ' ').title() }}</span><span class="id">#{{ u.id }}</span></div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="pool-section">
+        <h3>Родители (3)</h3>
+        <div class="pool-grid">
+            {% for u in parents %}
+            <div class="pool-user"><span class="name">{{ u.username.replace('_', ' ').title() }}</span><span class="id">#{{ u.id }}</span></div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="pool-section">
+        <h3>Временный администратор (1)</h3>
+        <div class="pool-grid">
+            {% for u in admins %}
+            <div class="pool-user"><span class="name">{{ u.username.replace('_', ' ').title() }}</span><span class="id">#{{ u.id }}</span></div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="pool-section">
+        <h3>Привязки: Ученик ↔ Преподаватель (Enrollment)</h3>
+        <ul class="ties-list">
+            {% for e in enrollments %}
+            <li>
+                <span>Ученик #{{ e.student_id }} ↔ Преподаватель #{{ e.tutor_id }} ({{ e.subject }})</span>
+                <form action="{{ url_for('qa.pool_enrollment_delete', enrollment_id=e.enrollment_id) }}" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="neo-button ghost btn-sm">Удалить</button>
+                </form>
+            </li>
+            {% else %}
+            <li style="color: var(--text-muted);">Нет привязок</li>
+            {% endfor %}
+        </ul>
+        <form action="{{ url_for('qa.pool_enrollment_add') }}" method="POST" class="add-tie-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <select name="student_id" required>
+                <option value="">— Ученик —</option>
+                {% for u in students %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}
+            </select>
+            <select name="tutor_id" required>
+                <option value="">— Преподаватель —</option>
+                {% for u in tutors %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}
+            </select>
+            <button type="submit" class="neo-button accent btn-sm">Добавить привязку</button>
+        </form>
+    </div>
+
+    <div class="pool-section">
+        <h3>Привязки: Родитель ↔ Ученик (FamilyTie)</h3>
+        <ul class="ties-list">
+            {% for t in family_ties %}
+            <li>
+                <span>Родитель #{{ t.parent_id }} ↔ Ученик #{{ t.student_id }}</span>
+                <form action="{{ url_for('qa.pool_family_tie_delete', tie_id=t.tie_id) }}" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="neo-button ghost btn-sm">Удалить</button>
+                </form>
+            </li>
+            {% else %}
+            <li style="color: var(--text-muted);">Нет привязок</li>
+            {% endfor %}
+        </ul>
+        <form action="{{ url_for('qa.pool_family_tie_add') }}" method="POST" class="add-tie-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <select name="parent_id" required>
+                <option value="">— Родитель —</option>
+                {% for u in parents %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}
+            </select>
+            <select name="student_id" required>
+                <option value="">— Ученик —</option>
+                {% for u in students %}<option value="{{ u.id }}">{{ u.username }}</option>{% endfor %}
+            </select>
+            <button type="submit" class="neo-button accent btn-sm">Добавить привязку</button>
+        </form>
+    </div>
+</div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

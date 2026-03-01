@@ -804,6 +804,12 @@ class User(db.Model):
 
     schedule_ics_token = db.Column(db.String(120), nullable=True, unique=True, index=True)
 
+    # QA: пользователь из пула тестовых профилей (3 ученика, 3 препода, 3 родителя, 1 админ)
+    is_qa_pool = db.Column(db.Boolean, default=False, nullable=False, index=True)
+
+    # Пользователь из пула QA (3 ученика, 3 препода, 3 родителя, 1 админ) для тестирования
+    is_qa_pool = db.Column(db.Boolean, default=False, nullable=False, index=True)
+
 class RolePermission(db.Model):
     __tablename__ = 'RolePermissions'
     id = db.Column(db.Integer, primary_key=True)
@@ -1739,21 +1745,21 @@ class QATask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    status = db.Column(db.String(50), default='todo') # Варианты: todo, in_progress, review, done
-    priority = db.Column(db.String(50), default='medium') # Варианты: low, medium, high, critical
-    
-    # Иерархия пользователей
+    status = db.Column(db.String(50), default='todo')  # todo, in_progress, review, done
+    priority = db.Column(db.String(50), default='medium')  # low, medium, high, critical
+
+    # task = задача Creator→Tester (на доске); bug_report = баг от тестера (отдельный список, Creator управляет)
+    task_type = db.Column(db.String(30), default='task', nullable=False, index=True)
+
     reporter_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
     assignee_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True)
-    
-    # Контекст для воспроизведения бага
+
     context_url = db.Column(db.String(500), nullable=True)
-    target_user_id = db.Column(db.Integer, nullable=True) # ID юзера, под которым найден баг
-    
+    target_user_id = db.Column(db.Integer, nullable=True)
+
     deadline = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=moscow_now)
 
-    # Связи для удобного ORM доступа
     reporter = db.relationship('User', foreign_keys=[reporter_id])
     assignee = db.relationship('User', foreign_keys=[assignee_id])
 

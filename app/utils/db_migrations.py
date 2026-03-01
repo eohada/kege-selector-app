@@ -1003,8 +1003,32 @@ def ensure_schema_columns(app):
                             logger.info(f"Added column github_link to {users_table}")
                         except Exception as e:
                             logger.warning(f"Could not add github_link column (may already exist): {e}")
+                    if 'is_qa_pool' not in users_columns:
+                        try:
+                            if is_postgres:
+                                db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN is_qa_pool BOOLEAN DEFAULT FALSE NOT NULL'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN is_qa_pool INTEGER DEFAULT 0 NOT NULL'))
+                            logger.info(f"Added column is_qa_pool to {users_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add is_qa_pool column: {e}")
                 except Exception as e:
                     logger.warning(f"Error checking/updating Users table columns: {e}")
+
+            qa_tasks_table = _resolve_table_name(table_names, 'qa_tasks')
+            if qa_tasks_table:
+                try:
+                    qa_cols = {c['name'] for c in inspector.get_columns(qa_tasks_table)}
+                    if 'task_type' not in qa_cols:
+                        is_pg = _is_postgres(app)
+                        if is_pg:
+                            db.session.execute(text(f'ALTER TABLE "{qa_tasks_table}" ADD COLUMN task_type VARCHAR(30) DEFAULT \'task\' NOT NULL'))
+                        else:
+                            db.session.execute(text(f'ALTER TABLE {qa_tasks_table} ADD COLUMN task_type VARCHAR(30) DEFAULT \'task\' NOT NULL'))
+                        logger.info("Added task_type column to qa_tasks")
+                except Exception as e:
+                    logger.warning(f"Could not add task_type to qa_tasks: {e}")
+                    db.session.rollback()
 
             try:
                 db.session.commit()

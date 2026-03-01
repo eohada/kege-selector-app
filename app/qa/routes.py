@@ -2,12 +2,16 @@ import uuid
 from flask import Blueprint, session, redirect, url_for, request, flash, jsonify, render_template
 from flask_login import login_required, current_user, login_user
 from app.models import db
-# Import from app.models or core.db_models. app.models exports most things.
-# I'll use core.db_models for clarity if not in app.models yet, but I should add them there.
-# For now, I'll import from core.db_models where I defined them.
-from core.db_models import User, Student, Enrollment, QATask, QAComment
+from core.db_models import User, Student, Enrollment, QATask, QAComment, FamilyTie
 
 qa_bp = Blueprint('qa', __name__, url_prefix='/qa')
+
+QA_POOL_USERNAMES = [
+    'qa_pool_student_1', 'qa_pool_student_2', 'qa_pool_student_3',
+    'qa_pool_tutor_1', 'qa_pool_tutor_2', 'qa_pool_tutor_3',
+    'qa_pool_parent_1', 'qa_pool_parent_2', 'qa_pool_parent_3',
+    'qa_pool_admin_1',
+]
 
 def is_qa_authorized():
     """Проверка прав: Chief Tester, Creator, Chief Admin или уже в режиме подмены."""
@@ -50,15 +54,58 @@ def revert_impersonation():
     return redirect(request.referrer or url_for('main.index'))
 
 
+def _ensure_qa_pool():
+    """Создаёт пул из 3 учеников, 3 преподавателей, 3 родителей, 1 админа (is_qa_pool=True)."""
+    from werkzeug.security import generate_password_hash
+    pwd = generate_password_hash('123456')
+    created = []
+    for username in QA_POOL_USERNAMES:
+        u = User.query.filter_by(username=username).first()
+        if u:
+            if not getattr(u, 'is_qa_pool', False):
+                u.is_qa_pool = True
+                db.session.add(u)
+            continue
+        if 'student' in username:
+            u = User(role='student', username=username, email=f'{username}@qa.local', password_hash=pwd, is_qa_pool=True)
+            db.session.add(u)
+            db.session.flush()
+            db.session.add(Student(user_id=u.id, platform_id=username, name=username.replace('_', ' ').title()))
+            created.append(username)
+        elif 'tutor' in username:
+            u = User(role='tutor', username=username, email=f'{username}@qa.local', password_hash=pwd, is_qa_pool=True)
+            db.session.add(u)
+            created.append(username)
+        elif 'parent' in username:
+            u = User(role='parent', username=username, email=f'{username}@qa.local', password_hash=pwd, is_qa_pool=True)
+            db.session.add(u)
+            created.append(username)
+        else:
+            u = User(role='admin', username=username, email=f'{username}@qa.local', password_hash=pwd, is_qa_pool=True)
+            db.session.add(u)
+            created.append(username)
+    db.session.commit()
+    return created
+
+
 @qa_bp.route('/impersonate-as-role', methods=['POST'])
 @login_required
 def impersonate_as_role():
-    """Создать временного пользователя (ученик/препода/родитель) и войти под ним."""
+    """Вход под пользователем из пула (по username) или создание одноразового темп-юзера."""
     if not is_qa_authorized():
         return jsonify({'error': 'Forbidden'}), 403
-    role = (request.form.get('role') or (request.get_json(silent=True) or {}).get('role') or '').strip().lower()
+    username = (request.form.get('username') or '').strip()
+    if username and username in QA_POOL_USERNAMES:
+        u = User.query.filter_by(username=username).first()
+        if u:
+            if 'impersonator_id' not in session:
+                session['impersonator_id'] = current_user.id
+            login_user(u)
+            flash(f'Вход под: {u.username}', 'success')
+            return redirect(request.referrer or url_for('main.index'))
+    role = (request.form.get('role') or '').strip().lower()
     if role not in ('student', 'tutor', 'parent'):
-        return jsonify({'error': 'Укажите role: student, tutor или parent'}), 400
+        return jsonify({'error': 'Укажите role или username из пула'}), 400
     try:
         from werkzeug.security import generate_password_hash
         uid = str(uuid.uuid4())[:6]
@@ -80,7 +127,7 @@ def impersonate_as_role():
         if 'impersonator_id' not in session:
             session['impersonator_id'] = current_user.id
         login_user(u)
-        flash(f'Вход под временным пользователем: {role} ({u.username})', 'success')
+        flash(f'Вход под временным: {u.username}', 'success')
         return redirect(request.referrer or url_for('main.index'))
     except Exception as e:
         db.session.rollback()
@@ -176,7 +223,97 @@ def pay_course():
         return jsonify({'error': str(e)}), 500
 
 # ==========================================
-# 4. TASK TRACKER (Роуты)
+# 3.1 ПУЛ ПРОФИЛЕЙ И ПРИВЯЗКИ
+# ==========================================
+
+@qa_bp.route('/pool')
+@login_required
+def pool():
+    """Страница управления тестовыми профилями: привязка учеников к преподавателям, родителей к ученикам."""
+    if not is_qa_authorized():
+        return "Access denied", 403
+    _ensure_qa_pool()
+    pool_users = User.query.filter(User.username.in_(QA_POOL_USERNAMES)).order_by(User.username).all()
+    students = [u for u in pool_users if u.role == 'student']
+    tutors = [u for u in pool_users if u.role == 'tutor']
+    parents = [u for u in pool_users if u.role == 'parent']
+    admins = [u for u in pool_users if u.role == 'admin']
+    enrollments = Enrollment.query.filter(
+        Enrollment.student_id.in_([u.id for u in students]),
+        Enrollment.tutor_id.in_([u.id for u in tutors])
+    ).all()
+    family_ties = FamilyTie.query.filter(
+        FamilyTie.student_id.in_([u.id for u in students]),
+        FamilyTie.parent_id.in_([u.id for u in parents])
+    ).all()
+    return render_template('qa/pool.html', students=students, tutors=tutors, parents=parents, admins=admins,
+                           enrollments=enrollments, family_ties=family_ties)
+
+
+@qa_bp.route('/pool/enrollment', methods=['POST'])
+@login_required
+def pool_enrollment_add():
+    if not is_qa_authorized():
+        return "Access denied", 403
+    student_id = request.form.get('student_id', type=int)
+    tutor_id = request.form.get('tutor_id', type=int)
+    if not student_id or not tutor_id:
+        flash('Выберите ученика и преподавателя', 'error')
+        return redirect(url_for('qa.pool'))
+    if Enrollment.query.filter_by(student_id=student_id, tutor_id=tutor_id).first():
+        flash('Такая привязка уже есть', 'warning')
+        return redirect(url_for('qa.pool'))
+    db.session.add(Enrollment(student_id=student_id, tutor_id=tutor_id, subject='QA (тест)'))
+    db.session.commit()
+    flash('Ученик привязан к преподавателю', 'success')
+    return redirect(url_for('qa.pool'))
+
+
+@qa_bp.route('/pool/enrollment/<int:enrollment_id>/delete', methods=['POST'])
+@login_required
+def pool_enrollment_delete(enrollment_id):
+    if not is_qa_authorized():
+        return "Access denied", 403
+    e = Enrollment.query.get_or_404(enrollment_id)
+    db.session.delete(e)
+    db.session.commit()
+    flash('Привязка ученик–препода удалена', 'success')
+    return redirect(url_for('qa.pool'))
+
+
+@qa_bp.route('/pool/family-tie', methods=['POST'])
+@login_required
+def pool_family_tie_add():
+    if not is_qa_authorized():
+        return "Access denied", 403
+    parent_id = request.form.get('parent_id', type=int)
+    student_id = request.form.get('student_id', type=int)
+    if not parent_id or not student_id:
+        flash('Выберите родителя и ученика', 'error')
+        return redirect(url_for('qa.pool'))
+    if FamilyTie.query.filter_by(parent_id=parent_id, student_id=student_id).first():
+        flash('Такая привязка уже есть', 'warning')
+        return redirect(url_for('qa.pool'))
+    db.session.add(FamilyTie(parent_id=parent_id, student_id=student_id, is_confirmed=True))
+    db.session.commit()
+    flash('Родитель привязан к ученику', 'success')
+    return redirect(url_for('qa.pool'))
+
+
+@qa_bp.route('/pool/family-tie/<int:tie_id>/delete', methods=['POST'])
+@login_required
+def pool_family_tie_delete(tie_id):
+    if not is_qa_authorized():
+        return "Access denied", 403
+    t = FamilyTie.query.get_or_404(tie_id)
+    db.session.delete(t)
+    db.session.commit()
+    flash('Привязка родитель–ученик удалена', 'success')
+    return redirect(url_for('qa.pool'))
+
+
+# ==========================================
+# 4. КАНБАН (задачи Creator → Tester)
 # ==========================================
 
 @qa_bp.route('/board')
@@ -184,14 +321,57 @@ def pay_course():
 def board():
     if not is_qa_authorized():
         return "Access denied", 403
-    tasks = QATask.query.order_by(QATask.created_at.desc()).all()
-    return render_template('qa/board.html', tasks=tasks)
+    tasks = QATask.query.filter(QATask.task_type == 'task').order_by(QATask.created_at.desc()).all()
+    return render_template('qa/board.html', tasks=tasks, can_edit_status=current_user.is_creator() or current_user.is_chief_tester() or current_user.is_tester())
 
+
+@qa_bp.route('/tasks/<int:task_id>/status', methods=['POST'])
+@login_required
+def task_set_status(task_id):
+    """Смена статуса задачи на доске. Может Creator или назначенный Tester."""
+    if not is_qa_authorized():
+        return jsonify({'error': 'Forbidden'}), 403
+    task = QATask.query.get_or_404(task_id)
+    if task.task_type != 'task':
+        return jsonify({'error': 'Not a board task'}), 400
+    if not current_user.is_creator() and task.assignee_id != current_user.id:
+        return jsonify({'error': 'Только создатель или исполнитель могут менять статус'}), 403
+    status = (request.form.get('status') or (request.get_json(silent=True) or {}).get('status') or '').strip()
+    if status not in ('todo', 'in_progress', 'review', 'done'):
+        return jsonify({'error': 'Invalid status'}), 400
+    task.status = status
+    db.session.commit()
+    if request.want_json or request.get_json(silent=True) is not None:
+        return jsonify({'success': True, 'status': status})
+    flash('Статус обновлён', 'success')
+    return redirect(url_for('qa.board'))
+
+
+@qa_bp.route('/tasks/<int:task_id>/assign', methods=['POST'])
+@login_required
+def task_assign(task_id):
+    """Назначить исполнителя (только Creator)."""
+    if not current_user.is_creator():
+        return jsonify({'error': 'Forbidden'}), 403
+    task = QATask.query.get_or_404(task_id)
+    if task.task_type != 'task':
+        return jsonify({'error': 'Not a board task'}), 400
+    assignee_id = request.form.get('assignee_id', type=int) or (request.get_json(silent=True) or {}).get('assignee_id')
+    task.assignee_id = assignee_id if assignee_id else None
+    db.session.commit()
+    if request.want_json or request.get_json(silent=True) is not None:
+        return jsonify({'success': True})
+    flash('Исполнитель назначен', 'success')
+    return redirect(url_for('qa.board'))
+
+
+# ==========================================
+# 5. БАГ-РЕПОРТЫ (Tester → Creator, Creator управляет)
+# ==========================================
 
 @qa_bp.route('/bug-report', methods=['GET', 'POST'])
 @login_required
 def bug_report():
-    """Создание баг-репорта. Доступно главному тестировщику и создателю."""
     if not is_qa_authorized():
         return "Access denied", 403
     context_url = request.args.get('context_url') or request.form.get('context_url') or ''
@@ -206,20 +386,52 @@ def bug_report():
                 context_url=context_url or None,
                 target_user_id=int(target_user_id) if target_user_id and str(target_user_id).isdigit() else None,
                 reporter_id=current_user.id,
-                status='todo',
-                priority='high'
+                status='new',
+                priority='high',
+                task_type='bug_report'
             )
             db.session.add(task)
             db.session.commit()
-            flash('Баг-репорт создан и добавлен на доску.', 'success')
-            return redirect(url_for('qa.board'))
+            flash('Баг-репорт создан. Создатель увидит его в разделе «Баг-репорты».', 'success')
+            return redirect(url_for('qa.bug_reports'))
     return render_template('qa/bug_report.html', context_url=context_url, target_user_id=target_user_id)
+
+
+@qa_bp.route('/bug-reports')
+@login_required
+def bug_reports():
+    """Список баг-репортов. Creator может менять статус, Tester — только просмотр."""
+    if not is_qa_authorized():
+        return "Access denied", 403
+    reports = QATask.query.filter(QATask.task_type == 'bug_report').order_by(QATask.created_at.desc()).all()
+    can_edit = current_user.is_creator()
+    return render_template('qa/bug_reports.html', reports=reports, can_edit=can_edit)
+
+
+@qa_bp.route('/bug-reports/<int:task_id>/status', methods=['POST'])
+@login_required
+def bug_report_set_status(task_id):
+    """Смена статуса баг-репорта. Только Creator."""
+    if not current_user.is_creator():
+        return jsonify({'error': 'Forbidden'}), 403
+    task = QATask.query.get_or_404(task_id)
+    if task.task_type != 'bug_report':
+        return jsonify({'error': 'Not a bug report'}), 400
+    status = (request.form.get('status') or (request.get_json(silent=True) or {}).get('status') or '').strip()
+    if status not in ('new', 'in_progress', 'review', 'done'):
+        return jsonify({'error': 'Invalid status'}), 400
+    task.status = status
+    db.session.commit()
+    if request.want_json or (request.get_json(silent=True) is not None):
+        return jsonify({'success': True, 'status': status})
+    flash('Статус баг-репорта обновлён', 'success')
+    return redirect(url_for('qa.bug_reports'))
 
 
 @qa_bp.route('/tasks/new', methods=['GET', 'POST'])
 @login_required
 def task_new():
-    """Стратегические задачи. Только Creator."""
+    """Создание задачи для тестера. Только Creator."""
     if not current_user.is_creator():
         return "Access denied: Only Creator can create tasks here.", 403
     if request.method == 'POST':
@@ -227,16 +439,20 @@ def task_new():
         description = request.form.get('description')
         context_url = request.form.get('context_url')
         target_user_id = request.form.get('target_user_id')
+        assignee_id = request.form.get('assignee_id', type=int)
         if title:
             task = QATask(
                 title=title,
                 description=description,
                 context_url=context_url,
-                target_user_id=int(target_user_id) if target_user_id and target_user_id.isdigit() else None,
+                target_user_id=int(target_user_id) if target_user_id and str(target_user_id).isdigit() else None,
                 reporter_id=current_user.id,
-                status='todo'
+                status='todo',
+                task_type='task',
+                assignee_id=assignee_id or None
             )
             db.session.add(task)
             db.session.commit()
             return redirect(url_for('qa.board'))
-    return render_template('qa/task_form.html')
+    testers = User.query.filter(User.role.in_(['chief_tester', 'tester'])).all()
+    return render_template('qa/task_form.html', testers=testers)

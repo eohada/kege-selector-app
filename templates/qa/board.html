@@ -51,9 +51,12 @@
             <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px;">QA</div>
             <h1 class="qa-title">Канбан-доска</h1>
         </div>
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+        <a href="{{ url_for('qa.bug_reports') }}" class="neo-button ghost">Баг-репорты</a>
         {% if current_user.is_creator() %}
         <a href="{{ url_for('qa.task_new') }}" class="neo-button accent">{{ ui_icon('action.add', 'sm') }} Новая задача</a>
         {% endif %}
+        </div>
     </div>
 
     <div class="board-grid">
@@ -72,6 +75,11 @@
                         <span>{{ task.created_at.strftime('%d.%m') if task.created_at else '' }}</span>
                         {% if task.assignee %}<div class="avatar-sm" title="{{ task.assignee.username }}">{{ (task.assignee.username or '?')[:1] }}</div>{% else %}<span class="task-badge">—</span>{% endif %}
                     </div>
+                    {% if can_edit_status %}
+                    <div style="margin-top: 0.5rem; display: flex; gap: 4px; flex-wrap: wrap;">
+                        <form action="{{ url_for('qa.task_set_status', task_id=task.id) }}" method="POST" style="display: inline;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="in_progress"><button type="submit" class="neo-button ghost sm" style="font-size: 0.7rem;">В работу</button></form>
+                    </div>
+                    {% endif %}
                 </div>
                 {% else %}
                 <div class="empty-col">Нет задач</div>
@@ -89,6 +97,9 @@
                         <span class="task-badge" style="color: #00f2ff;">В работе</span>
                         {% if task.assignee %}<div class="avatar-sm">{{ (task.assignee.username or '?')[:1] }}</div>{% endif %}
                     </div>
+                    {% if can_edit_status %}
+                    <div style="margin-top: 0.5rem; display: flex; gap: 4px;"><form action="{{ url_for('qa.task_set_status', task_id=task.id) }}" method="POST" style="display: inline;"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="review"><button type="submit" class="neo-button ghost sm" style="font-size: 0.7rem;">На ревью</button></form></div>
+                    {% endif %}
                 </div>
                 {% else %}
                 <div class="empty-col">Нет</div>
@@ -102,7 +113,9 @@
                 <div class="task-card">
                     <div class="task-priority p-{{ task.priority or 'medium' }}"></div>
                     <div class="task-title">{{ task.title }}</div>
-                    <div style="margin-top: 0.5rem;"><button class="neo-button ghost sm" style="width: 100%; font-size: 0.7rem;">Одобрить</button></div>
+                    {% if can_edit_status %}
+                    <div style="margin-top: 0.5rem;"><form action="{{ url_for('qa.task_set_status', task_id=task.id) }}" method="POST"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="status" value="done"><button type="submit" class="neo-button ghost sm" style="width: 100%; font-size: 0.7rem;">Одобрить (Done)</button></form></div>
+                    {% endif %}
                 </div>
                 {% else %}
                 <div class="empty-col">Нет</div>
