@@ -1120,6 +1120,13 @@ def ensure_schema_columns(app):
             else:
                 try:
                     cols = {c['name'] for c in inspector.get_columns(profiles_table)}
+                    if 'cover_url' not in cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN cover_url VARCHAR(500)'))
+                            logger.info(f"Added cover_url to {profiles_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add cover_url to {profiles_table}: {e}")
+                            db.session.rollback()
                     if 'telegram_chat_id' not in cols:
                         try:
                             db.session.execute(text(f'ALTER TABLE "{profiles_table}" ADD COLUMN telegram_chat_id BIGINT'))
