@@ -153,6 +153,12 @@ def board():
 @qa_bp.route('/tasks/new', methods=['GET', 'POST'])
 @login_required
 def task_new():
+    # Строгая проверка: создавать задачи может ТОЛЬКО Создатель (creator).
+    # Главный тестировщик и остальные могут репортить баги через виджет, 
+    # но стратегические задачи на доске создает Creator.
+    if not current_user.is_creator():
+         return "Access denied: Only Creator can create tasks here.", 403
+
     if request.method == 'POST':
         title = request.form.get('title')
         description = request.form.get('description')
