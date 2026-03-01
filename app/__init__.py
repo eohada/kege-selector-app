@@ -74,9 +74,10 @@ def create_app(config_name=None):
     
     ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
     app.config['IS_SANDBOX'] = os.environ.get('IS_SANDBOX', 'False').lower() == 'true'
-    # Для переключателя Прод ↔ Песочница в QA God Mode
+    # Для переключателя Прод ↔ Песочница в QA God Mode (автовход через подписанный токен)
     app.config['PROD_URL'] = (os.environ.get('PROD_URL') or '').strip().rstrip('/') or None
     app.config['SANDBOX_URL'] = (os.environ.get('SANDBOX_URL') or '').strip().rstrip('/') or None
+    app.config['CROSS_ENV_LOGIN_SECRET'] = (os.environ.get('CROSS_ENV_LOGIN_SECRET') or '').strip() or None
     
     csrf.init_app(app)
     db.init_app(app)

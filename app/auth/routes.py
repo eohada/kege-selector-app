@@ -18,6 +18,7 @@ from app.auth import auth_bp
 from app.limiter import limiter
 from app.models import db, User, UserProfile, moscow_now, Student
 from app.utils.subscription_access import get_effective_access_for_user
+from app.utils.cross_env_login import verify_cross_env_token
 from core.audit_logger import audit_logger
 
 class LoginForm(FlaskForm):
@@ -25,6 +26,30 @@ class LoginForm(FlaskForm):
     username = StringField('Логин', validators=[DataRequired()])
     password = PasswordField('Пароль', validators=[DataRequired()])
     submit = SubmitField('Войти')
+
+def _redirect_after_login(user):
+    """Редирект после входа (для cross_env)."""
+    is_admin_env = os.environ.get('ENVIRONMENT') == 'admin'
+    if is_admin_env:
+        return url_for('remote_admin.dashboard')
+    if user.is_parent():
+        return url_for('parents.parent_dashboard')
+    if user.is_student():
+        eff = get_effective_access_for_user(user.id)
+        allow_lessons = True if eff.allow_lessons is None else bool(eff.allow_lessons)
+        allow_trainer = True if eff.allow_trainer is None else bool(eff.allow_trainer)
+        if eff.status == 'expired':
+            return url_for('auth.user_profile')
+        if (allow_lessons is False) and (allow_trainer is True):
+            return url_for('trainer.trainer_embed')
+        if (allow_lessons is False) and (allow_trainer is False):
+            return url_for('auth.user_profile')
+        student = Student.query.filter_by(user_id=user.id).first()
+        if student:
+            return url_for('students.student_profile', student_id=student.student_id)
+        return url_for('main.student_dashboard')
+    return url_for('main.dashboard')
+
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit("15 per minute")
@@ -38,6 +63,35 @@ def login():
         except Exception as e:
             logger.warning(f"Error checking authentication: {e}")
             is_authenticated = False
+        
+        # Кросс-вход с другого окружения (Прод/Песочница): GET /login?cross_env=TOKEN
+        if request.method == 'GET' and not is_authenticated:
+            cross_token = request.args.get('cross_env')
+            secret = current_app.config.get('CROSS_ENV_LOGIN_SECRET')
+            if cross_token and secret:
+                payload = verify_cross_env_token(cross_token, secret)
+                if payload:
+                    user = User.query.get(payload['user_id']) or User.query.filter_by(username=payload['username']).first()
+                    if user and user.is_active:
+                        login_user(user, remember=True)
+                        try:
+                            user.last_login = moscow_now()
+                            db.session.commit()
+                        except Exception:
+                            db.session.rollback()
+                        audit_logger.log(
+                            action='login',
+                            entity='User',
+                            entity_id=user.id,
+                            status='success',
+                            metadata={'username': user.username, 'role': user.role, 'cross_env': True}
+                        )
+                        flash('Вход выполнен (кросс-окружение).', 'success')
+                        return redirect(_redirect_after_login(user))
+                    else:
+                        flash('Пользователь не найден в этом окружении.', 'warning')
+                else:
+                    flash('Ссылка для входа устарела или неверна. Войдите вручную.', 'warning')
         
         if is_authenticated:
             if is_admin_env:

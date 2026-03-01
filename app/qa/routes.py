@@ -12,6 +12,7 @@ from app.models import (
 )
 from core.db_models import QATask, QAComment, FamilyTie
 from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES
+from app.utils.cross_env_login import build_cross_env_token
 from werkzeug.security import generate_password_hash
 
 qa_bp = Blueprint('qa', __name__, url_prefix='/qa')
@@ -850,3 +851,37 @@ def task_new():
             return redirect(url_for('qa.board'))
     testers = User.query.filter(User.role.in_(['chief_tester', 'tester'])).all()
     return render_template('qa/task_form.html', testers=testers)
+
+
+# ==========================================
+# Переход Прод ↔ Песочница с автовходом
+# ==========================================
+
+@qa_bp.route('/cross-env-redirect')
+@login_required
+def cross_env_redirect():
+    """
+    Редирект на другое окружение (прод/песочница) на /login с подписанным токеном
+    для автоматического входа под текущим пользователем.
+    """
+    if not is_qa_authorized():
+        flash('Доступ только для тестеров и администраторов.', 'warning')
+        return redirect(url_for('main.dashboard'))
+    target = request.args.get('target')
+    secret = current_app.config.get('CROSS_ENV_LOGIN_SECRET')
+    if target == 'sandbox':
+        base_url = current_app.config.get('SANDBOX_URL')
+    elif target == 'prod':
+        base_url = current_app.config.get('PROD_URL')
+    else:
+        flash('Укажите target=sandbox или target=prod.', 'warning')
+        return redirect(url_for('main.dashboard'))
+    if not base_url:
+        flash('URL другого окружения не настроен (SANDBOX_URL / PROD_URL).', 'warning')
+        return redirect(url_for('main.dashboard'))
+    if not secret:
+        flash('Кросс-вход отключён: не задан CROSS_ENV_LOGIN_SECRET.', 'warning')
+        return redirect(url_for('main.dashboard'))
+    token = build_cross_env_token(current_user.id, current_user.username, secret)
+    login_url = f"{base_url.rstrip('/')}/login?cross_env={token}"
+    return redirect(login_url)

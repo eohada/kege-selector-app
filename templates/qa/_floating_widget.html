@@ -271,6 +271,24 @@
 
         <div class="qa-accordion">
             <div class="qa-accordion-header" onclick="this.parentElement.classList.toggle('active')">
+                Окружение
+                <span class="qa-accordion-icon">▼</span>
+            </div>
+            <div class="qa-accordion-content">
+                {% if config.get('SANDBOX_URL') and not config.get('IS_SANDBOX') %}
+                <a href="{{ url_for('qa.cross_env_redirect', target='sandbox') }}" class="qa-btn" style="text-decoration: none;">🧪 Перейти в песочницу</a>
+                {% endif %}
+                {% if config.get('PROD_URL') and config.get('IS_SANDBOX') %}
+                <a href="{{ url_for('qa.cross_env_redirect', target='prod') }}" class="qa-btn" style="text-decoration: none;">🚀 Перейти на прод</a>
+                {% endif %}
+                {% if not (config.get('SANDBOX_URL') or config.get('PROD_URL')) %}
+                <div class="qa-btn" style="opacity: 0.7; cursor: default;">Настройте PROD_URL / SANDBOX_URL</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="qa-accordion">
+            <div class="qa-accordion-header" onclick="this.parentElement.classList.toggle('active')">
                 Инструменты
                 <span class="qa-accordion-icon">▼</span>
             </div>
