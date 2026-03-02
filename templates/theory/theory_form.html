@@ -167,9 +167,10 @@
                                 <label for="content">Текст теории</label>
                                 <div class="form-hint">Заголовки, списки, код, картинки — через панель инструментов или Markdown.</div>
                                 <div class="theory-editor-wrap">
-                                    <textarea id="content">{{ content|e }}</textarea>
+                                    <textarea id="content"></textarea>
                                     <input type="hidden" name="content" id="content-sync" value="">
                                 </div>
+                                <script type="application/json" id="content-initial">{{ content|tojson }}</script>
                             </div>
                             <div class="form-actions">
                                 <button type="submit" class="neo-button accent">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
@@ -192,11 +193,18 @@
     var textarea = document.getElementById('content');
     if (!textarea) return;
 
+    var initialContent = '';
+    try {
+        var el = document.getElementById('content-initial');
+        if (el && el.textContent !== undefined) initialContent = JSON.parse(el.textContent || '""');
+    } catch (e) { initialContent = ''; }
+
     var csrfToken = document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     var uploadUrl = '{{ url_for("theory.upload_image") }}';
 
     var easymde = new EasyMDE({
         element: textarea,
+        initialValue: typeof initialContent === 'string' ? initialContent : '',
         spellChecker: false,
         placeholder: 'Введите текст теории. Используйте панель: заголовки, жирный, код, ссылки, изображения.',
         toolbar: [
@@ -250,10 +258,8 @@
 
     var form = document.getElementById('theory-form');
     var contentSync = document.getElementById('content-sync');
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
+    form.addEventListener('submit', function() {
         if (contentSync) contentSync.value = easymde.value();
-        form.submit();
     });
 })();
     </script>
