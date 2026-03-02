@@ -257,9 +257,19 @@
     });
 
     var form = document.getElementById('theory-form');
-    var contentSync = document.getElementById('content-sync');
-    form.addEventListener('submit', function() {
-        if (contentSync) contentSync.value = easymde.value();
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var formData = new FormData(form);
+        formData.set('content', easymde.value());
+        var submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Сохранение…'; }
+        fetch(form.action, { method: 'POST', body: formData, redirect: 'follow' })
+            .then(function(res) {
+                if (res.redirected) window.location.href = res.url;
+                else return res.text().then(function(t) { alert('Ошибка: ' + (t || res.status)); });
+            })
+            .catch(function(err) { alert('Ошибка отправки: ' + err.message); })
+            .finally(function() { if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = {{ ('Создать' if is_new else 'Сохранить')|tojson }}; } });
     });
 })();
     </script>
