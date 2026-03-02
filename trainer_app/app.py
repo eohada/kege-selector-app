@@ -92,6 +92,10 @@ def _init_state():
     st.session_state.setdefault('history_loaded', False)
     st.session_state.setdefault('history_items', [])
     st.session_state.setdefault('session_task_count', 0)
+    st.session_state.setdefault('daily_mix', None)
+    st.session_state.setdefault('success_rates', {})
+    st.session_state.setdefault('task_start_time', None)
+    st.session_state.setdefault('show_hotkeys_modal', True)
 
 
 def _reset_workbench():
@@ -148,9 +152,95 @@ def _render_tests(payload: Any):
             st.write(f"{icon} **{r.get('name', 'тест')}**: ожидалось `{r.get('expected')}`, получено `{r.get('got')}`")
 
 
+def _inject_workbench_scripts():
+    """Инъекция JS для ресайзера, Focus Mode и хоткеев."""
+    st.markdown("""
+<script>
+(function() {
+    if (window.__workbenchScriptsInjected) return;
+    window.__workbenchScriptsInjected = true;
+
+    function setupResizer() {
+        const resizer = document.querySelector('.workbench-resizer');
+        if (!resizer) return;
+        const row = resizer.closest('[data-testid="stHorizontalBlock"]');
+        if (!row) return;
+        const cols = row.querySelectorAll('[data-testid="column"]');
+        if (cols.length < 3) return;
+        const left = cols[0];
+        const right = cols[2];
+
+        let isResizing = false;
+        resizer.onmousedown = (e) => {
+            isResizing = true;
+            document.body.style.cursor = 'col-resize';
+            e.preventDefault();
+        };
+
+        document.onmousemove = (e) => {
+            if (!isResizing) return;
+            const rect = row.getBoundingClientRect();
+            const width = ((e.clientX - rect.left) / rect.width) * 100;
+            if (width > 20 && width < 80) {
+                left.style.minWidth = '0';
+                left.style.flex = `0 0 ${width}%`;
+                left.style.width = `${width}%`;
+                right.style.minWidth = '0';
+                right.style.flex = `1 1 auto`;
+            }
+        };
+
+        document.onmouseup = () => {
+            isResizing = false;
+            document.body.style.cursor = 'default';
+        };
+    }
+
+    window.toggleFocusMode = function() {
+        const el = document.documentElement;
+        const current = el.getAttribute('data-focus-mode');
+        el.setAttribute('data-focus-mode', current === 'active' ? '' : 'active');
+    };
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'F11') {
+            e.preventDefault();
+            window.toggleFocusMode();
+        }
+        if (e.ctrlKey && e.key === 'Enter') {
+            const btns = Array.from(document.querySelectorAll('button'));
+            const checkBtn = btns.find(b => b.innerText.includes('Проверить') || b.innerText.includes('ОТПРАВИТЬ'));
+            if (checkBtn) checkBtn.click();
+        }
+        if (e.altKey && e.key === 'ArrowRight') {
+            const btns = Array.from(document.querySelectorAll('button'));
+            const nextBtn = btns.find(b => b.innerText.includes('Следующее'));
+            if (nextBtn) nextBtn.click();
+        }
+    });
+
+    // Inactivity check for AI pulse
+    let lastActivity = Date.now();
+    const updateActivity = () => { lastActivity = Date.now(); };
+    ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(n => document.addEventListener(n, updateActivity));
+    
+    setInterval(() => {
+        const aiBtn = document.querySelector('.floating-ai-btn');
+        if (!aiBtn) return;
+        const isInactive = (Date.now() - lastActivity) > 180000; // 3 min
+        aiBtn.classList.toggle('pulse', isInactive);
+    }, 5000);
+
+    setInterval(setupResizer, 1500);
+})();
+</script>
+""", unsafe_allow_html=True)
+
+
 def main():
     _inject_css()
     _inject_theme_script()
+    _inject_workbench_scripts()
     _init_state()
 
     token = _get_query_param('token')
@@ -271,10 +361,15 @@ def main():
                         st.info("→ Нажмите «Проверить RAG», чтобы узнать, есть ли примеры")
 
     counts = {}
+    success_rates = {}
     try:
         stats = client.get_task_stats()
         raw = stats.get('counts_by_task_number', {}) if isinstance(stats, dict) else {}
         counts = {int(k): int(v) for k, v in raw.items() if v}
+        
+        rates_resp = client.get_task_success_rates()
+        success_rates = rates_resp.get('rates', {}) if isinstance(rates_resp, dict) else {}
+        st.session_state['success_rates'] = success_rates
     except Exception:
         pass
 
@@ -288,7 +383,20 @@ def main():
 
     task = st.session_state.get('task')
     task_type = st.session_state.get('task_type')
-    current_card = st.session_state.get('current_card')
+
+    # Hotkeys Modal
+    if st.session_state.get('show_hotkeys_modal'):
+        with st.container(border=True):
+            st.markdown("""
+            ### ⌨️ Горячие клавиши Тренажёра
+            - **Ctrl + Enter**: Отправить ответ на проверку
+            - **Alt + Right**: Следующее задание
+            - **F11**: Дзен-режим (Focus Mode)
+            - **Ctrl + Space**: Автодополнение (в редакторе)
+            """)
+            if st.button("Понятно, в бой!"):
+                st.session_state['show_hotkeys_modal'] = False
+                st.rerun()
 
     if task_type is None and task is None:
         stats = {}
@@ -297,6 +405,20 @@ def main():
         except Exception:
             pass
         sessions_today = stats.get('sessions_today', 0) or 0
+        streak = st.session_state.get('session_task_count', 0)
+        
+        # Визуализация стрик (огня)
+        fire_emoji = "🔥" if streak > 0 else "🌑"
+        streak_html = f"""
+        <div style="display:flex;justify-content:center;margin-top:1.5rem;margin-bottom:0.5rem;">
+            <div class="streak-box">
+                <span class="streak-fire">{fire_emoji}</span>
+                <span class="streak-count">{streak}</span>
+                <div class="streak-label">задач в сессии</div>
+            </div>
+        </div>
+        """
+
         last_session = stats.get('last_session')
         def _last_session_ok(ls):
             if not ls or not ls.get('session_id'):
@@ -319,11 +441,29 @@ def main():
         <div class="hero-box">
             <p class="hero-eyebrow">тренажёр</p>
             <h1 class="hero-title">Тренажёр КЕГЭ</h1>
-            <p class="hero-sub">Привет, {username}! Выбери номер задания</p>
-            <p class="trainer-hero-hint">Выбери номер — получи задание — решай с подсказками или переходи к следующему.</p>
-            <p class="hero-sub" style="margin-top:0.25rem;font-size:0.9rem;">Сегодня: {sessions_today} заданий</p>
+            <p class="hero-sub">Привет, {username}! Твоя цель на сегодня — прогресс.</p>
+            {streak_html}
+            <p class="trainer-hero-hint">Решай подобранные задачи или выбирай номера для тренировки конкретных тем.</p>
         </div>
         """, unsafe_allow_html=True)
+
+        # Smart-лента (Daily Mix)
+        if st.button("✨ ПОДОБРАНО ДЛЯ ТЕБЯ НА СЕГОДНЯ (DAILY MIX)", use_container_width=True, type="primary"):
+            try:
+                recs_resp = client.get_recommendations()
+                recs = recs_resp.get('recommendations', [])
+                if recs:
+                    st.session_state['daily_mix'] = recs
+                    first = recs[0]
+                    st.session_state['task'] = first
+                    st.session_state['task_type'] = first.get('task_number')
+                    st.session_state['session_task_count'] = streak + 1
+                    _reset_workbench()
+                    st.rerun()
+                else:
+                    st.warning("Не удалось подобрать рекомендации.")
+            except Exception as e:
+                st.error(f"Рекомендации: {e}")
 
         if show_continue and last_session:
             tt = last_session.get('task_type')
@@ -331,14 +471,14 @@ def main():
             if created and len(created) >= 10:
                 created = created[:10] + ' ' + created[11:19] if len(created) > 19 else created[:16]
             st.markdown(f"""
-            <div class="task-card trainer-continue-card" style="margin-bottom:1rem;">
-                <div class="task-card-header">
+            <div class="task-card trainer-continue-card" style="margin-top:1rem;margin-bottom:0.5rem;padding:1.25rem;">
+                <div class="task-card-header" style="margin-bottom:0.5rem;padding-bottom:0.5rem;">
                     <span class="task-badge primary">Продолжить</span>
                 </div>
-                <p class="task-body" style="margin:0;">Задание №{tt} · {created}</p>
+                <p class="task-body" style="margin:0;font-size:0.85rem;">Задание №{tt} · {created}</p>
             </div>
             """, unsafe_allow_html=True)
-            if st.button("Продолжить с задания №" + str(tt), key="continue_last", use_container_width=True, type="primary"):
+            if st.button("Продолжить с задания №" + str(tt), key="continue_last", use_container_width=True):
                 try:
                     resp = client.get_session(int(last_session['session_id']))
                     if resp.get('success') and resp.get('session') and resp.get('task'):
@@ -350,411 +490,263 @@ def main():
                         st.session_state['tests'] = sess.get('tests')
                         st.session_state['messages'] = (sess.get('messages') or []) if isinstance(sess.get('messages'), list) else []
                         st.session_state['current_card'] = None
-                        st.session_state['session_task_count'] = (st.session_state.get('session_task_count') or 0) + 1
+                        st.session_state['session_task_count'] = streak + 1
                         st.rerun()
                 except Exception as e:
                     st.error(f"Не удалось загрузить сессию: {e}")
 
-        st.markdown("### Выбери номер задания")
+        st.markdown("<div style='margin-top:2rem;text-align:center;'>### Сетка заданий</div>", unsafe_allow_html=True)
         
         for row_start in [1, 10, 19]:
             cols = st.columns(9)
             for i, n in enumerate(range(row_start, min(row_start + 9, 28))):
                 count = counts.get(n, 0)
+                rate = success_rates.get(n)
+                
                 with cols[i]:
                     disabled = count == 0
                     label = f"{n}\n({count})" if count > 0 else f"{n}\n—"
+                    # Инжектируем wrapper для heatmap
+                    st.markdown(f"<div class='num-cell-wrapper' data-rate='{rate or 0}'>", unsafe_allow_html=True)
                     if st.button(label, key=f"num_{n}", disabled=disabled, use_container_width=True):
                         st.session_state['task_type'] = n
                         st.session_state['current_card'] = None
                         st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
         return
 
-    if task is None:
-        if current_card is None:
-            card = _pull_task(client, int(task_type))
-            if card:
-                st.session_state['current_card'] = card
-                st.rerun()
-            else:
-                st.warning("Задания закончились!")
-                if st.button("← Выбрать другой номер"):
-                    st.session_state['task_type'] = None
-                    st.rerun()
-                return
-        
-        card = st.session_state['current_card']
-        
-        st.markdown('<div class="back-btn" id="trainer-back-btn"></div>', unsafe_allow_html=True)
-        if st.button("← Сменить номер", key="back_btn", use_container_width=True):
-            st.session_state['task_type'] = None
-            st.session_state['current_card'] = None
-            st.rerun()
-        
-        st.markdown(f"""
-        <div class="trainer-screen-title">Задание №{task_type}</div>
-        <p class="trainer-screen-sub">Пропусти или начни решать</p>
-        """, unsafe_allow_html=True)
-        
-        content = (card.get('content_html') or '').strip()
-        source_url = card.get('source_url', '')
-        source_link = f'<a href="{source_url}" target="_blank" class="task-badge" style="text-decoration:none;">Источник ↗</a>' if source_url else ''
-        
-        st.markdown(f"""
-        <div class="task-card">
-            <div class="task-card-header">
-                <span class="task-badge primary">№{card.get('task_number')}</span>
-                <span class="task-badge">ID {card.get('task_id')}</span>
-                {source_link}
-            </div>
-            <div class="task-body">
-                {content}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        col1, col2 = st.columns(2, gap="large")
-        
-        with col1:
-            if st.button("⬅ ПРОПУСТИТЬ", key="skip_btn", use_container_width=True):
-                st.session_state['current_card'] = None
-                st.rerun()
-        
-        with col2:
-            if st.button("РЕШАТЬ ➡", key="accept_btn", use_container_width=True):
-                st.session_state['task'] = card
-                st.session_state['current_card'] = None
-                st.session_state['session_task_count'] = (st.session_state.get('session_task_count') or 0) + 1
-                _reset_workbench()
-                st.rerun()
-        
-        return
-
-    tid = int(task.get('task_id', 0))
-    task_num = task.get('task_number')
-    knowledge = load_task_knowledge(tid, task_number=task_num) if (tid or task_num) else None
-    tests = (knowledge or {}).get('tests') if isinstance(knowledge, dict) else None
-
-    col1, col2, col3 = st.columns([1, 2, 1])
-    session_task_count = st.session_state.get('session_task_count', 0) or 0
-    with col1:
-        st.markdown('<div class="back-btn" id="trainer-back-workbench"></div>', unsafe_allow_html=True)
-        if st.button("← Назад", use_container_width=True):
-            st.session_state['task'] = None
-            st.session_state['current_card'] = None
+    if task is None and task_type is not None:
+        # Бесшовный вход: сразу тянем задачу и в воркбенч
+        card = _pull_task(client, int(task_type))
+        if card:
+            st.session_state['task'] = card
+            st.session_state['session_task_count'] = (st.session_state.get('session_task_count', 0) or 0) + 1
+            st.session_state['task_start_time'] = datetime.now()
             _reset_workbench()
             st.rerun()
-    with col2:
-        st.markdown(f"<div class='trainer-screen-title'>Задание №{task.get('task_number')} · ID {tid}</div>", unsafe_allow_html=True)
-        st.markdown(f"<p class='trainer-session-strip'>Сессия: задание {session_task_count}</p>", unsafe_allow_html=True)
-    with col3:
-        if st.button("→ Следующее", use_container_width=True):
-            next_card = _pull_task(client, int(task_type))
-            if next_card:
-                st.session_state['task'] = next_card
-                st.session_state['current_card'] = None
-                st.session_state['session_task_count'] = session_task_count + 1
-                _reset_workbench()
-                st.rerun()
-            else:
-                st.session_state['task'] = None
+        else:
+            st.warning("Задания этого типа закончились!")
+            if st.button("← Назад к выбору"):
                 st.session_state['task_type'] = None
-                st.session_state['current_card'] = None
+                st.rerun()
+            return
+
+    # Воркбенч
+    if task:
+        tid = int(task.get('task_id', 0))
+        task_num = task.get('task_number')
+        knowledge = load_task_knowledge(tid, task_number=task_num) if (tid or task_num) else None
+        tests = (knowledge or {}).get('tests') if isinstance(knowledge, dict) else None
+
+        # Панель управления
+        ctrl_c1, ctrl_c2, ctrl_c3 = st.columns([1, 2, 1])
+        with ctrl_c1:
+            st.markdown('<div class="back-btn" id="trainer-back-workbench"></div>', unsafe_allow_html=True)
+            if st.button("← Выход", use_container_width=True):
+                st.session_state['task'] = None
                 _reset_workbench()
                 st.rerun()
+        with ctrl_c2:
+            st.markdown(f"<div style='text-align:center;'><span style='font-size:1.2rem;font-weight:700;'>№{task.get('task_number')}</span> · ID {tid}</div>", unsafe_allow_html=True)
+            streak = st.session_state.get('session_task_count', 1)
+            st.markdown(f"<p class='trainer-session-strip'>задание в сессии: {streak} <button onclick='window.toggleFocusMode()' style='background:transparent;border:none;cursor:pointer;font-size:0.8rem;margin-left:0.5rem;opacity:0.6;'>[Дзен]</button></p>", unsafe_allow_html=True)
+        with ctrl_c3:
+            if st.button("→ Следующее", use_container_width=True):
+                next_card = _pull_task(client, int(task_type))
+                if next_card:
+                    st.session_state['task'] = next_card
+                    st.session_state['session_task_count'] = streak + 1
+                    st.session_state['task_start_time'] = datetime.now()
+                    _reset_workbench()
+                    st.rerun()
+                else:
+                    st.session_state['task'] = None
+                    st.session_state['task_type'] = None
+                    st.rerun()
 
-    tab1, tab2, tab3, tab4 = st.tabs(["📄 Условие", "💻 Решение", "💡 Помощник", "📚 История"])
+        # Split-Screen
+        w_left, w_resizer, w_right = st.columns([4, 0.1, 6])
+        
+        with w_left:
+            st.markdown('<div class="workbench-left">', unsafe_allow_html=True)
+            content = (task.get('content_html') or '').strip()
+            st.markdown(f"""
+            <div class="task-card" style="padding:1.5rem; margin:0 0 1rem 0;">
+                <div class="task-body">{content}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Вложения
+            af_raw = task.get('attached_files')
+            if af_raw:
+                try:
+                    files = json.loads(af_raw) if isinstance(af_raw, str) else (af_raw if isinstance(af_raw, list) else [])
+                except Exception:
+                    files = []
+                if files:
+                    st.markdown("**📎 Вложения:**")
+                    for f in files:
+                        if isinstance(f, dict):
+                            path = f.get('path') or f.get('url') or ''
+                            name = f.get('name') or f.get('filename') or (path.split('/')[-1] if path else 'файл')
+                        else:
+                            path = str(f).strip()
+                            name = path.split('/')[-1] if path else 'файл'
+                        if path and not path.startswith('http'):
+                            attach_url = f"{get_platform_base_url()}/internal/trainer/task/{tid}/attachment?path={quote(path)}&token={client.token}"
+                            st.markdown(f"- [{name}]({attach_url})")
+                        elif path:
+                            st.markdown(f"- [{name}]({path})")
+            
+            if task.get('source_url'):
+                st.markdown(f"[Открыть источник ↗]({task.get('source_url')})")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-    with tab1:
-        content = (task.get('content_html') or '').strip()
-        st.markdown(f"""
-        <div class="task-card">
-            <div class="task-body">{content}</div>
-        </div>
-        """, unsafe_allow_html=True)
-        if task.get('source_url'):
-            st.markdown(f"[Открыть источник ↗]({task.get('source_url')})")
-        # Вложения
-        af_raw = task.get('attached_files')
-        if af_raw:
+        with w_resizer:
+            st.markdown('<div class="workbench-resizer"></div>', unsafe_allow_html=True)
+
+        with w_right:
+            st.markdown('<div class="workbench-right">', unsafe_allow_html=True)
+            _code_val = st.session_state.get('code', '')
             try:
-                files = json.loads(af_raw) if isinstance(af_raw, str) else (af_raw if isinstance(af_raw, list) else [])
+                from streamlit_ace import st_ace
+                code = st_ace(value=_code_val, language="python", theme="monokai", key="code_ace", height=400)
             except Exception:
-                files = []
-            if files:
-                st.markdown("**📎 Вложения:**")
-                for f in files:
-                    if isinstance(f, dict):
-                        path = f.get('path') or f.get('url') or ''
-                        name = f.get('name') or f.get('filename') or (path.split('/')[-1] if path else 'файл')
+                code = st.text_area("Код:", value=_code_val, height=400, key="code_area")
+            
+            if code is not None:
+                st.session_state['code'] = code
+            else:
+                code = _code_val
+
+            # Панель действий под кодом
+            act_c1, act_c2, act_c3 = st.columns(3)
+            with act_c1:
+                if st.button("▶ ЗАПУСТИТЬ", use_container_width=True, key="run_main"):
+                    st.session_state['run_result'] = run_python_program(code=code, timeout_seconds=2.0)
+            with act_c2:
+                if st.button("🧪 ТЕСТЫ", use_container_width=True, key="test_main"):
+                    if tests:
+                        st.session_state['tests'] = run_python_solve_tests(code=code, tests=tests)
                     else:
-                        path = str(f).strip()
-                        name = path.split('/')[-1] if path else 'файл'
-                    if path and not path.startswith('http'):
-                        attach_url = f"{get_platform_base_url()}/internal/trainer/task/{tid}/attachment?path={quote(path)}&token={client.token}"
-                        st.markdown(f"- [{name}]({attach_url})")
-                    elif path:
-                        st.markdown(f"- [{name}]({path})")
+                        st.info("Нет тестов")
+            with act_c3:
+                if st.button("🔍 АНАЛИЗ", use_container_width=True, key="analyze_main"):
+                    st.session_state['analysis'] = analyze_python_code(code)
 
-    with tab2:
-        _code_val = st.session_state.get('code', '')
-        try:
-            from streamlit_ace import st_ace
-            code = st_ace(value=_code_val, language="python", theme="monokai", key="code_ace")
-        except Exception:
-            code = st.text_area("Код:", value=_code_val, height=300, key="code_area")
-        if code is not None:
-            st.session_state['code'] = code
-        else:
-            code = _code_val
+            # Ответ
+            st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
+            ans_val = st.text_input("Введи ответ:", key="user_answer_wb", placeholder="Ваш ответ...")
+            
+            if st.button("🚀 ОТПРАВИТЬ НА ПРОВЕРКУ", use_container_width=True, type="primary", key="submit_wb"):
+                if not ans_val.strip():
+                    st.warning("Сначала введи ответ!")
+                else:
+                    # Считаем время
+                    spent = 0
+                    if st.session_state.get('task_start_time'):
+                        spent = int((datetime.now() - st.session_state['task_start_time']).total_seconds())
+                    
+                    try:
+                        res = client.submit_answer(tid, ans_val, time_spent_sec=spent)
+                        if res.get('is_correct'):
+                            st.success("✅ ВЕРНО! Ты молодец!")
+                            st.balloons()
+                            # Сохраняем в сессию
+                            client.save_session(
+                                task_id=tid, task_type=task_num, language='python', code=code,
+                                analysis=st.session_state.get('analysis'), tests=st.session_state.get('tests')
+                            )
+                        else:
+                            st.error(f"❌ НЕВЕРНО. Ожидалось: {res.get('expected')}")
+                    except Exception as e:
+                        st.error(f"Ошибка отправки: {e}")
 
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("🔍 Анализ", use_container_width=True):
-                st.session_state['analysis'] = analyze_python_code(code)
-        with c2:
-            if st.button("🗑 Очистить", use_container_width=True):
-                st.session_state['code'] = ''
-                st.rerun()
-
-        if st.session_state.get('analysis'):
-            with st.expander("Результат анализа"):
-                st.json(st.session_state['analysis'])
-
-        st.markdown("---")
-        st.markdown("### Проверка")
-
-        if not is_runner_enabled():
-            st.warning("Запуск выключен (TRAINER_ENABLE_RUNNER=1)")
-        else:
-            check_tab, run_tab, test_tab = st.tabs(["✅ Ответ", "▶ Запуск", "🧪 Тесты"])
-
-            with check_tab:
-                expected = task.get('answer', '')
-                ans = st.text_input("Твой ответ:", key="user_answer")
-                if st.button("Проверить", key="check_btn"):
-                    if not expected:
-                        st.warning("Нет ответа в базе")
-                    elif not ans.strip():
-                        st.warning("Введи ответ")
-                    elif _check_answer(expected, ans):
-                        st.success("✅ Верно!")
-                    else:
-                        st.error("❌ Неверно")
-
-            with run_tab:
-                stdin = st.text_area("Ввод:", height=100, key="stdin")
-                if st.button("▶ Запустить", key="run_btn"):
-                    res = run_python_program(code=code, stdin=stdin, timeout_seconds=2.0)
-                    st.session_state['run_result'] = res
-                res = st.session_state.get('run_result')
-                if res:
-                    if res.get('ok'):
+            # Выезжающий терминал (результат запуска)
+            run_res = st.session_state.get('run_result')
+            if run_res:
+                with st.expander("💻 Терминал", expanded=True):
+                    if run_res.get('ok'):
                         st.success("Выполнено")
                     else:
-                        st.error(f"Ошибка: {res.get('error')}")
-                        details = res.get('details') or ''
-                        if details:
-                            with st.expander("Подробности (traceback)"):
-                                st.code(details[:8000], language=None)
-                    stdout = (res.get('stdout') or '').strip()
+                        st.error(f"Ошибка: {run_res.get('error')}")
+                    stdout = (run_res.get('stdout') or '').strip()
                     if stdout:
-                        st.code(stdout[:5000])
+                        st.code(stdout)
+                    elif not run_res.get('ok'):
+                        st.code(run_res.get('details') or 'Нет деталей')
 
-            with test_tab:
-                if not tests:
-                    st.info("Нет тестов")
-                else:
-                    if st.button("🧪 Запустить", key="test_btn"):
-                        st.session_state['tests'] = run_python_solve_tests(code=code, tests=tests)
-                    if st.session_state.get('tests'):
-                        _render_tests(st.session_state['tests'])
-
-        st.markdown("---")
-        if st.button("💾 Сохранить прогресс", use_container_width=True):
-            try:
-                client.save_session(
-                    task_id=tid,
-                    task_type=task.get('task_number'),
-                    language='python',
-                    code=code,
-                    analysis=st.session_state.get('analysis'),
-                    tests=st.session_state.get('tests'),
-                    messages=st.session_state.get('messages'),
-                )
-                st.success("Сохранено!")
-            except Exception as e:
-                st.error(f"Ошибка: {e}")
-
-    with tab3:
-        ladder = (knowledge or {}).get('hint_ladder') if isinstance(knowledge, dict) else None
-        cur = st.session_state.get('hint_level_by_task', {}).get(tid, 0) or 0
-        btn_label = "💡 Следующая подсказка" if cur > 0 else "💡 Получить подсказку"
-
-        if st.button(btn_label, use_container_width=True):
-            next_level = min(3, cur + 1)
-            hint = None
-            lvl = next_level
-            platform_404 = False
-
-            # 1) Сначала подсказка с платформы (эталоны из БД)
-            try:
-                hr = client.get_hint(tid, level=next_level)
-                if isinstance(hr, dict):
-                    if hr.get('success') and hr.get('hint'):
-                        hint = (hr.get('hint') or '').strip()
-                        lvl = int(hr.get('level', next_level))
-                    elif hr.get('error') == 'no_hint':
-                        platform_404 = True
-            except Exception:
-                pass
-
-            # 2) Фоллбэк: локальная база знаний (hint_ladder с ключом hint)
-            if not hint and isinstance(ladder, list):
-                sorted_l = sorted([(int(x.get('level', 0)), x.get('hint')) for x in ladder if isinstance(x, dict) and x.get('hint')], key=lambda x: x[0] or 999)
-                for l, h in sorted_l:
-                    if l > cur:
-                        lvl, hint = l, h
-                        break
-
-            if hint:
-                st.session_state['hint_level_by_task'][tid] = lvl
-                st.session_state['messages'].append({'role': 'assistant', 'content': f"Подсказка номер {lvl}: {hint}"})
-            elif platform_404:
-                # Фоллбэк: LLM придумывает подсказку, опираясь ТОЛЬКО на наш контекст (knowledge, RAG)
-                has_context = bool(
-                    (isinstance(ladder, list) and ladder)
-                    or (isinstance(knowledge, dict) and (knowledge.get('common_mistakes') or knowledge.get('reference_solution')))
-                )
-                from trainer_app.llm.rag import get_rag_examples_prompt
-                if not has_context:
-                    has_context = bool(get_rag_examples_prompt(task.get('content_html') or '', k=1))
-                if has_context:
-                    try:
-                        msgs = build_messages_for_help(
-                            task=task,
-                            code=code,
-                            analysis=st.session_state.get('analysis'),
-                            history=st.session_state.get('messages', []) + [{'role': 'user', 'content': f'Дай подсказку уровня {next_level}.'}],
-                            knowledge=knowledge,
-                            fallback_mode=True,
-                        )
-                        answer = None
+            # Хинты (Floating Assistant)
+            st.markdown('<div id="ai-anchor"></div>', unsafe_allow_html=True)
+            with st.expander("🤖 ПОМОЩНИК ИИ", expanded=len(st.session_state.get('messages', [])) > 0):
+                ladder = (knowledge or {}).get('hint_ladder') if isinstance(knowledge, dict) else None
+                cur_lvl = st.session_state.get('hint_level_by_task', {}).get(tid, 0) or 0
+                
+                hint_labels = ["Наводящий вопрос", "Ключевая идея", "Скелет кода / Формула"]
+                next_lvl = cur_lvl + 1
+                
+                if next_lvl <= 3:
+                    btn_text = f"💡 Дать подсказку: {hint_labels[next_lvl-1]}"
+                    if st.button(btn_text, use_container_width=True, key=f"hint_btn_{tid}_{next_lvl}"):
+                        hint = None
+                        # 1) Платформа
                         try:
-                            pr = client.llm_chat(messages=msgs, temperature=0.2, max_tokens=500, task_id=tid, task_type=int(task.get('task_number', 0)))
-                            answer = pr.get('answer') if isinstance(pr, dict) else None
-                        except Exception:
-                            llm = get_llm_client()
-                            if llm:
-                                answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=500)
-                        err_msg = (answer or '').strip()
-                        if err_msg:
-                            st.session_state['hint_level_by_task'][tid] = next_level
-                            st.session_state['messages'].append({'role': 'assistant', 'content': f"Подсказка номер {next_level}: {err_msg}"})
-                        else:
-                            st.session_state['messages'].append({'role': 'assistant', 'content': 'Для этого задания готовых подсказок нет. Попробуй сформулировать вопрос в чате ниже.'})
-                    except Exception as e:
-                        ex_str = str(e)
-                        if '403' in ex_str or 'gigachat_error' in ex_str.lower() or 'forbidden' in ex_str.lower():
-                            msg = 'Подсказка от ИИ недоступна (ошибка API 403). Настройте GIGACHAT_CREDENTIALS. Для этого задания подсказок в базе нет.'
-                        elif '401' in ex_str or 'unauthorized' in ex_str.lower():
-                            msg = 'ИИ не настроен: неверный API‑ключ.'
-                        else:
-                            msg = f'Ошибка: {e}'
-                        st.session_state['messages'].append({'role': 'assistant', 'content': msg})
-                else:
-                    st.session_state['messages'].append({'role': 'assistant', 'content': 'Для этого задания готовых подсказок нет. Добавьте эталон в trainer_knowledge или синхронизируйте эталоны в админке. Либо сформулируйте свой вопрос в чате — попробую подсказать по аналогии.'})
-            else:
-                try:
-                    msgs = build_messages_for_help(task=task, code=code, analysis=st.session_state.get('analysis'), history=st.session_state.get('messages', []) + [{'role': 'user', 'content': 'Дай подсказку.'}], knowledge=knowledge)
-                    answer = None
+                            hr = client.get_hint(tid, level=next_lvl)
+                            if hr.get('success'):
+                                hint = hr.get('hint')
+                        except Exception: pass
+                        
+                        # 2) Локальный ladder
+                        if not hint and isinstance(ladder, list):
+                            for l_item in ladder:
+                                if int(l_item.get('level', 0)) == next_lvl:
+                                    hint = l_item.get('hint') or l_item.get('text')
+                                    break
+                        
+                        # 3) LLM
+                        if not hint:
+                            try:
+                                msgs = build_messages_for_help(
+                                    task=task, code=code, analysis=st.session_state.get('analysis'),
+                                    history=st.session_state.get('messages', []) + [{'role': 'user', 'content': f'Дай подсказку уровня {next_lvl} ({hint_labels[next_lvl-1]}).'}],
+                                    knowledge=knowledge, fallback_mode=True
+                                )
+                                pr = client.llm_chat(messages=msgs, task_id=tid)
+                                hint = pr.get('answer')
+                            except Exception as e:
+                                hint = f"Ошибка ИИ: {e}"
+                        
+                        if hint:
+                            st.session_state['hint_level_by_task'][tid] = next_lvl
+                            st.session_state['messages'].append({'role': 'assistant', 'content': f"**Подсказка {next_lvl} ({hint_labels[next_lvl-1]}):**\n\n{hint}"})
+                            st.rerun()
+
+                # История чата
+                for m in st.session_state.get('messages', []):
+                    with st.chat_message(m.get('role', 'assistant')):
+                        st.markdown(m.get('content', ''))
+
+                prompt = st.chat_input("Задать свой вопрос ИИ...")
+                if prompt:
+                    st.session_state['messages'].append({'role': 'user', 'content': prompt})
                     try:
-                        pr = client.llm_chat(messages=msgs, temperature=0.2, max_tokens=500, task_id=tid, task_type=int(task.get('task_number', 0)))
-                        answer = pr.get('answer') if isinstance(pr, dict) else None
-                    except Exception:
-                        llm = get_llm_client()
-                        if llm:
-                            answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=500)
-                    err_msg = (answer or '').strip()
-                    if not err_msg:
-                        err_msg = 'Расскажи, что уже сделал — тогда смогу подсказать точнее.'
-                    st.session_state['messages'].append({'role': 'assistant', 'content': err_msg})
-                except Exception as e:
-                    ex_str = str(e)
-                    if '403' in ex_str or 'gigachat_error' in ex_str.lower() or 'forbidden' in ex_str.lower():
-                        msg = 'Подсказка от ИИ недоступна (ошибка API 403). Настройте GIGACHAT_CREDENTIALS. Для этого задания подсказки в базе пока нет — синхронизируйте эталоны в удалённой админке.'
-                    elif '401' in ex_str or 'unauthorized' in ex_str.lower():
-                        msg = 'ИИ не настроен: неверный API‑ключ. Проверьте GIGACHAT_CREDENTIALS.'
-                    else:
-                        msg = f'Ошибка: {e}'
-                    st.session_state['messages'].append({'role': 'assistant', 'content': msg})
-            st.rerun()
+                        msgs = build_messages_for_help(task=task, code=code, history=st.session_state.get('messages'), knowledge=knowledge)
+                        pr = client.llm_chat(messages=msgs, task_id=tid)
+                        st.session_state['messages'].append({'role': 'assistant', 'content': pr.get('answer', 'Нет ответа')})
+                    except Exception as e:
+                        st.session_state['messages'].append({'role': 'assistant', 'content': f"Ошибка: {e}"})
+                    st.rerun()
 
-        for m in st.session_state.get('messages', []):
-            with st.chat_message(m.get('role', 'assistant')):
-                st.markdown(m.get('content', ''))
+            # Floating Icon for AI
+            st.markdown("""
+            <div class="floating-ai-btn pulse" onclick="const s = document.querySelector('details:has(#ai-anchor)'); if(s) s.open = !s.open;">
+                <span>🤖</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        prompt = st.chat_input("Вопрос...")
-        if prompt:
-            st.session_state['messages'].append({'role': 'user', 'content': prompt})
-            try:
-                msgs = build_messages_for_help(task=task, code=code, analysis=st.session_state.get('analysis'), history=st.session_state.get('messages'), knowledge=knowledge)
-                answer = None
-                try:
-                    pr = client.llm_chat(messages=msgs, temperature=0.2, max_tokens=700, task_id=tid, task_type=int(task.get('task_number', 0)))
-                    answer = pr.get('answer') if isinstance(pr, dict) else None
-                except Exception:
-                    llm = get_llm_client()
-                    if llm:
-                        answer = llm.chat(messages=msgs, temperature=0.2, max_tokens=700)
-                txt = (answer or '').strip()
-                if not txt:
-                    txt = 'LLM не настроен. Задайте GIGACHAT_CREDENTIALS в окружении тренажёра.'
-                st.session_state['messages'].append({'role': 'assistant', 'content': txt})
-            except Exception as e:
-                ex_str = str(e)
-                if '403' in ex_str or 'forbidden' in ex_str.lower():
-                    msg = 'ИИ недоступен (403). Настройте GIGACHAT_CREDENTIALS или проверьте API‑ключ и лимиты.'
-                elif '401' in ex_str or 'unauthorized' in ex_str.lower():
-                    msg = 'ИИ не настроен: неверный API‑ключ.'
-                else:
-                    msg = f'Ошибка: {e}'
-                st.session_state['messages'].append({'role': 'assistant', 'content': msg})
-            st.rerun()
-
-    with tab4:
-        if st.button("🔄 Обновить", key="hist_refresh"):
-            st.session_state['history_loaded'] = False
-
-        if not st.session_state.get('history_loaded'):
-            try:
-                h = client.list_sessions(limit=25)
-                st.session_state['history_items'] = h.get('sessions', []) if isinstance(h, dict) else []
-                st.session_state['history_loaded'] = True
-            except Exception:
-                st.session_state['history_items'] = []
-                st.session_state['history_loaded'] = True
-
-        items = st.session_state.get('history_items', [])
-        if not items:
-            st.info("Нет сохранённых попыток")
-        else:
-            labels = [f"#{it.get('session_id')} · №{it.get('task_type')} · {it.get('created_at')}" for it in items]
-            sel = st.selectbox("Попытка:", range(len(labels)), format_func=lambda i: labels[i], key="hist_sel")
-            if st.button("Загрузить", key="hist_load"):
-                try:
-                    sid = items[sel].get('session_id')
-                    if sid:
-                        resp = client.get_session(int(sid))
-                        sess = resp.get('session', {}) if isinstance(resp, dict) else {}
-                        if resp.get('task'):
-                            st.session_state['task'] = resp['task']
-                        st.session_state['code'] = sess.get('code', '')
-                        st.session_state['analysis'] = sess.get('analysis')
-                        st.session_state['messages'] = sess.get('messages', []) if isinstance(sess.get('messages'), list) else []
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"Ошибка: {e}")
+        return
 
 
 if __name__ == '__main__':

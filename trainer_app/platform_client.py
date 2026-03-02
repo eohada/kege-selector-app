@@ -157,6 +157,26 @@ class PlatformClient:
         r.raise_for_status()
         return r.json()
 
+    def get_recommendations(self) -> dict[str, Any]:
+        r = requests.get(f'{self.base_url}/internal/trainer/recommendations', headers=self._headers(), timeout=self.timeout_seconds)
+        r.raise_for_status()
+        return r.json()
+
+    def get_task_success_rates(self) -> dict[str, Any]:
+        r = requests.get(f'{self.base_url}/internal/trainer/task_success_rates', headers=self._headers(), timeout=self.timeout_seconds)
+        r.raise_for_status()
+        return r.json()
+
+    def submit_answer(self, task_id: int, answer: str, time_spent_sec: int | None = None) -> dict[str, Any]:
+        payload = {
+            'task_id': int(task_id),
+            'answer': answer,
+            'time_spent_sec': time_spent_sec,
+        }
+        r = requests.post(f'{self.base_url}/internal/trainer/task/submit_answer', json=payload, headers=self._headers(), timeout=self.timeout_seconds)
+        r.raise_for_status()
+        return r.json()
+
     def list_sessions(self, *, limit: int = 25) -> dict[str, Any]:
         r = requests.get(f'{self.base_url}/internal/trainer/session/list', params={'limit': int(limit)}, headers=self._headers(), timeout=self.timeout_seconds)
         r.raise_for_status()

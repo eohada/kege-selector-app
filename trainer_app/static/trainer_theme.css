@@ -522,3 +522,203 @@ div[data-baseweb="select"]:focus-within > div {
 :root[data-theme="light"] .task-card:hover::after {
     opacity: 0.04;
 }
+
+/* ---- Streak Visual ---- */
+.streak-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--surface-2);
+    border: 1px solid var(--stroke-1);
+    padding: 1rem 2rem;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2);
+    min-width: 140px;
+    animation: fadeIn 0.4s ease;
+}
+
+.streak-fire {
+    font-size: 2rem;
+    margin-bottom: 0.25rem;
+    filter: drop-shadow(0 0 10px rgba(255, 108, 145, 0.4));
+}
+
+.streak-count {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.streak-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 0.4rem;
+}
+
+/* ---- Heatmap & Grid fixes ---- */
+.num-cell-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+/* Стилизация кнопок внутри сетки для тепловой карты */
+.num-cell-wrapper button {
+    height: 70px !important;
+    padding: 0.5rem !important;
+    font-size: 0.95rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    line-height: 1.2 !important;
+    white-space: pre-wrap !important;
+}
+
+.num-cell-wrapper[data-rate] button {
+    position: relative;
+    overflow: hidden;
+}
+
+/* Индикатор прогресса внизу кнопки */
+.num-cell-wrapper::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 4px;
+    right: 4px;
+    height: 3px;
+    width: calc(var(--rate-width, 0%) - 8px);
+    background: var(--rate-color, transparent);
+    z-index: 10;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+/* Цветовые схемы для тепловой карты */
+.num-cell-wrapper[data-rate^="0"] { --rate-color: var(--danger); --rate-width: 10%; }
+.num-cell-wrapper[data-rate^="1"] { --rate-color: var(--danger); --rate-width: 15%; }
+.num-cell-wrapper[data-rate^="2"] { --rate-color: var(--danger); --rate-width: 25%; }
+.num-cell-wrapper[data-rate^="3"] { --rate-color: var(--warning); --rate-width: 35%; }
+.num-cell-wrapper[data-rate^="4"] { --rate-color: var(--warning); --rate-width: 45%; }
+.num-cell-wrapper[data-rate^="5"] { --rate-color: var(--warning); --rate-width: 55%; }
+.num-cell-wrapper[data-rate^="6"] { --rate-color: var(--accent-1); --rate-width: 65%; }
+.num-cell-wrapper[data-rate^="7"] { --rate-color: var(--accent-1); --rate-width: 75%; }
+.num-cell-wrapper[data-rate^="8"] { --rate-color: var(--success); --rate-width: 85%; }
+.num-cell-wrapper[data-rate^="9"] { --rate-color: var(--success); --rate-width: 95%; }
+.num-cell-wrapper[data-rate="100"] { --rate-color: var(--success); --rate-width: 100%; }
+
+/* ---- Split Screen Layout ---- */
+.workbench-container {
+    display: flex;
+    height: calc(100vh - 120px);
+    gap: 0;
+    margin-top: 1rem;
+    position: relative;
+    border: 1px solid var(--stroke-1);
+    border-radius: var(--radius-lg);
+    background: var(--surface-1);
+    overflow: hidden;
+}
+
+.workbench-left {
+    flex: 0 0 40%;
+    min-width: 250px;
+    max-width: 60%;
+    overflow-y: auto;
+    padding: 1.5rem;
+    border-right: 1px solid var(--stroke-1);
+    background: var(--surface-2);
+}
+
+.workbench-resizer {
+    width: 6px;
+    cursor: col-resize;
+    background: transparent;
+    transition: background 0.2s;
+    z-index: 100;
+}
+
+.workbench-resizer:hover {
+    background: var(--accent-1);
+}
+
+.workbench-right {
+    flex: 1;
+    min-width: 300px;
+    overflow-y: auto;
+    padding: 1.5rem;
+    background: var(--surface-1);
+    display: flex;
+    flex-direction: column;
+}
+
+/* ---- Focus Mode ---- */
+[data-focus-mode="active"] header,
+[data-focus-mode="active"] [data-testid="stSidebar"] {
+    display: none !important;
+}
+
+[data-focus-mode="active"] .block-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+}
+
+[data-focus-mode="active"] .workbench-container {
+    height: 100vh;
+    border-radius: 0;
+    border: none;
+}
+
+/* Floating AI Icon */
+.floating-ai-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--accent-grad-1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: var(--shadow-accent);
+    cursor: pointer;
+    z-index: 1000;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.floating-ai-btn:hover {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.floating-ai-btn.pulse {
+    animation: aiPulse 2s infinite;
+}
+
+@keyframes aiPulse {
+    0% { box-shadow: 0 0 0 0 rgba(0, 224, 255, 0.4); }
+    70% { box-shadow: 0 0 0 20px rgba(0, 224, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 224, 255, 0); }
+}
+
+/* Terminal */
+.terminal-container {
+    margin-top: auto;
+    border-top: 1px solid var(--stroke-2);
+    background: #000;
+    padding: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    max-height: 200px;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}

@@ -11,8 +11,15 @@ from flask_login import login_required, current_user
 from app.trainer import trainer_bp
 from app.auth.rbac_utils import has_permission
 from app.auth.permissions import ALL_PERMISSIONS
-from app.models import db, User, Tasks, Student, Lesson, LessonTask, TrainerSession, StudentTaskSeen, AuditLog, TrainerLlmLog, moscow_now
+from app.models import (
+    db, User, Tasks, Student, Lesson, LessonTask, TrainerSession,
+    StudentTaskSeen, AuditLog, TrainerLlmLog, moscow_now,
+    UserMastery, KnowledgeNode, AnalyticsEvent
+)
+from app.analytics.engine import AnalyticsEngine
 from app.utils.trainer_tokens import issue_trainer_token, verify_trainer_token, TrainerTokenError
+from app.lessons.utils import normalize_answer_value
+import re
 from core.audit_logger import audit_logger
 from app import csrf
 
@@ -554,6 +561,117 @@ def trainer_task_attachment(task_id: int):
     except Exception as e:
         logger.warning("trainer attachment send_file error: %s", e)
         abort(500)
+
+
+def _check_answer(expected: str, given: str) -> bool:
+    if not expected or not expected.strip():
+        return False
+    variants = [v.strip() for v in re.split(r'[|;\n]+', expected) if v.strip()]
+    norm_exp = [normalize_answer_value(v) for v in variants]
+    norm_exp = [v for v in norm_exp if v]
+    norm_given = normalize_answer_value(given)
+    return norm_given in norm_exp and norm_given != ''
+
+
+@trainer_bp.route('/internal/trainer/recommendations', methods=['GET'])
+def trainer_recommendations():
+    """Smart-лента (Daily Mix): 5-7 задач на сегодня."""
+    user = _get_trainer_user_from_token(require_permission='trainer.use')
+    st = _map_user_to_student(user) if user.role == 'student' else None
+    
+    # 1. Задачи с низким рейтингом (на повторение)
+    # 2. Новые задачи (не StudentTaskSeen)
+    # 3. Задачи из популярных тем или просто рандом
+    
+    recommendations = []
+    
+    # Сначала ищем по UserMastery (слабые места)
+    masteries = UserMastery.query.filter_by(user_id=user.id).order_by(UserMastery.rating.asc()).limit(3).all()
+    for m in masteries:
+        # Пытаемся найти подходящую задачу для этого узла
+        t = Tasks.query.filter_by(knowledge_node_id=m.node_id).order_by(db.func.random()).first()
+        if t:
+            recommendations.append(_task_to_payload(t))
+            
+    # Добиваем новыми задачами
+    exclude_ids = [r['task_id'] for r in recommendations if r]
+    if st:
+        # Исключаем виденные
+        seen_q = db.session.query(StudentTaskSeen.task_id).filter(StudentTaskSeen.student_id == st.student_id)
+        q = Tasks.query.filter(~Tasks.task_id.in_(seen_q))
+        if exclude_ids:
+            q = q.filter(~Tasks.task_id.in_(exclude_ids))
+        
+        new_tasks = q.order_by(db.func.random()).limit(7 - len(recommendations)).all()
+        for t in new_tasks:
+            recommendations.append(_task_to_payload(t))
+            
+    # Если всё еще мало, просто рандом
+    if len(recommendations) < 5:
+        q = Tasks.query
+        exclude_ids = [r['task_id'] for r in recommendations if r]
+        if exclude_ids:
+            q = q.filter(~Tasks.task_id.in_(exclude_ids))
+        rand_tasks = q.order_by(db.func.random()).limit(5 - len(recommendations)).all()
+        for t in rand_tasks:
+            recommendations.append(_task_to_payload(t))
+            
+    return jsonify({'success': True, 'recommendations': recommendations[:7]})
+
+
+@trainer_bp.route('/internal/trainer/task_success_rates', methods=['GET'])
+def trainer_task_success_rates():
+    """Процент успеха по каждому номеру задания (для тепловой карты)."""
+    user = _get_trainer_user_from_token(require_permission='trainer.use')
+    
+    # Агрегация по AnalyticsEvent
+    rows = (
+        db.session.query(Tasks.task_number, db.func.count(AnalyticsEvent.id), db.func.sum(db.cast(AnalyticsEvent.is_correct, db.Integer)))
+        .join(Tasks, AnalyticsEvent.task_id == Tasks.task_id)
+        .filter(AnalyticsEvent.user_id == user.id)
+        .group_by(Tasks.task_number)
+        .all()
+    )
+    
+    rates = {}
+    for task_num, total, correct in rows:
+        if total > 0:
+            rates[int(task_num)] = round((correct / total) * 100)
+            
+    return jsonify({'success': True, 'rates': rates})
+
+
+@trainer_bp.route('/internal/trainer/task/submit_answer', methods=['POST'])
+@csrf.exempt
+def trainer_submit_answer():
+    """Проверка ответа и обновление рейтинга (AnalyticsEngine)."""
+    user = _get_trainer_user_from_token(require_permission='trainer.use')
+    data = request.get_json(silent=True) or {}
+    
+    task_id = data.get('task_id')
+    user_answer = str(data.get('answer', '')).strip()
+    time_spent_sec = data.get('time_spent_sec')
+    
+    task = Tasks.query.get(task_id)
+    if not task:
+        return jsonify({'success': False, 'error': 'task_not_found'}), 404
+        
+    is_correct = _check_answer(task.answer, user_answer)
+    
+    # Обновляем рейтинг
+    new_rating = AnalyticsEngine.process_submission(
+        user_id=user.id,
+        task_id=task.task_id,
+        is_correct=is_correct,
+        time_spent_sec=time_spent_sec
+    )
+    
+    return jsonify({
+        'success': True,
+        'is_correct': is_correct,
+        'expected': task.answer,
+        'new_rating': new_rating
+    })
 
 
 @trainer_bp.route('/internal/trainer/task/stats', methods=['GET'])
