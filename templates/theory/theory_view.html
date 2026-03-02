@@ -6,12 +6,13 @@
     <title>Задание {{ block.task_number }} · Теория · BooStudy</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
     {% include '_ux_enhancements.html' %}
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
     <style>
-        .theory-view-container { max-width: 800px; margin: 0 auto; }
+        .theory-view-container { width: 100%; max-width: min(1100px, 92vw); margin: 0 auto; padding: 0 1rem; }
         .theory-view-header { margin-bottom: 1.5rem; }
         .theory-view-title { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
         .theory-view-content {
@@ -20,12 +21,20 @@
             border-radius: var(--radius-lg);
             padding: 1.5rem 2rem;
             line-height: 1.7;
+            max-width: 100%;
         }
-        .theory-view-content h1, .theory-view-content h2, .theory-view-content h3 { margin-top: 1.25rem; margin-bottom: 0.5rem; }
-        .theory-view-content pre, .theory-view-content code { background: var(--surface-2); padding: 0.2em 0.4em; border-radius: 4px; }
-        .theory-view-content pre { padding: 1rem; overflow-x: auto; }
+        .theory-view-content h1, .theory-view-content h2, .theory-view-content h3 { margin-top: 1.25rem; margin-bottom: 0.5rem; color: var(--text-primary); }
+        .theory-view-content strong { font-weight: 700; color: var(--text-primary); }
+        .theory-view-content em { font-style: italic; }
+        .theory-view-content del { text-decoration: line-through; color: var(--text-muted); }
+        .theory-view-content blockquote { border-left: 4px solid var(--accent-1); margin: 1rem 0; padding-left: 1rem; color: var(--text-muted); }
+        .theory-view-content pre { padding: 1rem; overflow-x: auto; border-radius: var(--radius-sm); margin: 1rem 0; }
+        .theory-view-content pre code { padding: 0; background: transparent; }
+        .theory-view-content :not(pre) > code { background: var(--surface-2); padding: 0.2em 0.4em; border-radius: 4px; font-size: 0.9em; }
         .back-link { display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; color: var(--text-muted); text-decoration: none; }
         .back-link:hover { color: var(--accent-1); }
+        [data-theme="light"] .theory-view-content pre { background: #f6f8fa; }
+        [data-theme="light"] .theory-view-content pre code { color: #24292f; }
     </style>
     <script>
         (function(){ try { var v = localStorage.getItem('ui.themeMode'); if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch(e) {} })();
@@ -54,5 +63,12 @@
             </main>
         </div>
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script>
+        document.querySelectorAll('.theory-view-content pre code').forEach(function(el) {
+            if (!el.classList.contains('hljs')) hljs.highlightElement(el);
+        });
+    </script>
 </body>
 </html>

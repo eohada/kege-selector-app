@@ -518,13 +518,20 @@ def create_app(config_name=None):
     
     @app.template_filter('markdown')
     def markdown_filter(text):
-        """Фильтр для преобразования Markdown в HTML"""
+        """Фильтр для преобразования Markdown в HTML (зачёркивание ~~...~~, код с языком)."""
         if not text:
             return ''
+        import re
         try:
             import markdown
-            md = markdown.Markdown(extensions=['extra', 'codehilite', 'nl2br'])
-            return md.convert(text)
+            try:
+                from markdown.extensions.codehilite import CodeHiliteExtension
+                md = markdown.Markdown(extensions=['extra', 'nl2br', CodeHiliteExtension(use_pygments=False)])
+            except (ImportError, TypeError):
+                md = markdown.Markdown(extensions=['extra', 'codehilite', 'nl2br'])
+            html = md.convert(text)
+            html = re.sub(r'~~(.+?)~~', r'<del>\1</del>', html, flags=re.DOTALL)
+            return html
         except ImportError:
             import re
             html = text
@@ -536,7 +543,7 @@ def create_app(config_name=None):
             
             html = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html)
             html = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html)
-            
+            html = re.sub(r'~~(.+?)~~', r'<del>\1</del>', html, flags=re.DOTALL)
             html = re.sub(r'`(.+?)`', r'<code>\1</code>', html)
             
             html = re.sub(r'^- (.+)$', r'<li>\1</li>', html, flags=re.MULTILINE)
