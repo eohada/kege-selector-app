@@ -95,8 +95,16 @@
             } catch (e) { return null; }
           }
           var lastSent = null;
+          function sendOnceLoaded() {
+            try {
+              if (iframeEl.contentWindow) lastSent = sendThemeToTrainer(iframeEl.contentWindow);
+            } catch (e) {}
+          }
           iframeEl.addEventListener('load', function() {
-            lastSent = sendThemeToTrainer(iframeEl.contentWindow);
+            sendOnceLoaded();
+            setTimeout(sendOnceLoaded, 200);
+            setTimeout(sendOnceLoaded, 600);
+            setTimeout(sendOnceLoaded, 1500);
           });
           window.addEventListener('message', function(e) {
             if (e.data && e.data.type === 'trainer-theme-request' && e.source === iframeEl.contentWindow) {

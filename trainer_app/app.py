@@ -47,14 +47,22 @@ def _inject_css():
 
 
 def _inject_theme_script():
-    """Скрипт приёма темы от родителя (postMessage) и из query params."""
+    """Скрипт приёма темы от родителя (postMessage) и из query params. Периодический запрос темы для синхронизации при переключении на платформе."""
     st.markdown("""
 <script>
 (function() {
   if (window.__trainerThemeListener) return;
   window.__trainerThemeListener = true;
   function apply(t) {
-    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    if (t === 'light' || t === 'dark') {
+      document.documentElement.setAttribute('data-theme', t);
+      try {
+        var ace = document.querySelector('.ace_editor');
+        if (ace && ace.env && ace.env.editor) {
+          ace.env.editor.setTheme(t === 'light' ? 'ace/theme/chrome' : 'ace/theme/monokai');
+        }
+      } catch (err) {}
+    }
   }
   window.addEventListener('message', function(e) {
     if (e.data && e.data.type === 'trainer-theme' && (e.data.theme === 'light' || e.data.theme === 'dark'))
@@ -65,6 +73,7 @@ def _inject_theme_script():
   if (param === 'light' || param === 'dark') apply(param);
   if (window.parent !== window) {
     setTimeout(function() { window.parent.postMessage({ type: 'trainer-theme-request' }, '*'); }, 300);
+    setInterval(function() { window.parent.postMessage({ type: 'trainer-theme-request' }, '*'); }, 2500);
   }
 })();
 </script>
@@ -430,9 +439,12 @@ def main():
             <h1 class="hero-title">Тренажёр КЕГЭ</h1>
             <p class="hero-sub">Привет, {username}! Твоя цель на сегодня — прогресс.</p>
             {streak_html}
-            <p class="trainer-hero-hint">Решай подобранные задачи или выбирай номера для тренировки конкретных тем.</p>
         </div>
         """, unsafe_allow_html=True)
+        st.markdown(
+            '<div class="trainer-hero-hint">Решай подобранные задачи или выбирай номера для тренировки конкретных тем.</div>',
+            unsafe_allow_html=True,
+        )
 
         # Smart-лента (Daily Mix)
         if st.button("Подобрано для тебя на сегодня", use_container_width=True, type="primary", key="btn_daily_mix"):
@@ -548,7 +560,7 @@ def main():
                 next_card = _pull_task(client, int(task_type))
                 if next_card:
                     st.session_state['task'] = next_card
-                    st.session_state['session_task_count'] = streak + 1
+                    st.session_state['session_task_count'] = in_session + 1
                     st.session_state['task_start_time'] = datetime.now()
                     _reset_workbench()
                     st.rerun()

@@ -478,6 +478,24 @@ div[data-baseweb="select"]:focus-within > div {
     font-family: var(--font-base) !important;
 }
 
+/* Редактор кода: вид как в блоке заданий платформы, подстройка под тему */
+.ace_editor {
+    min-height: 400px !important;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--stroke-1) !important;
+}
+:root[data-theme="light"] .ace_editor {
+    background: var(--surface-1) !important;
+}
+:root[data-theme="light"] .ace_scroller {
+    background: var(--surface-1) !important;
+}
+:root[data-theme="light"] .ace_gutter {
+    background: var(--surface-2) !important;
+    color: var(--text-muted) !important;
+    border-right: 1px solid var(--stroke-1) !important;
+}
+
 /* ---- Section headings in trainer ---- */
 .trainer-screen-title {
     text-align: center;
