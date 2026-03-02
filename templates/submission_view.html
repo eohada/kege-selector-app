@@ -754,9 +754,10 @@
             });
         });
         
-        // Автосохранение
+        // Автосохранение (не вызывать, если работа уже сдана)
         let autosaveTimer = null;
         const autosaveDelay = 2000; // 2 секунды после последнего изменения
+        const SUBMISSION_CAN_EDIT = {{ 'true' if (submission.status in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0)) else 'false' }};
         
         function collectAnswers() {
             const answers = [];
@@ -772,6 +773,7 @@
         }
         
         function autosave() {
+            if (!SUBMISSION_CAN_EDIT) return;
             const answers = collectAnswers();
             if (answers.length === 0) return;
             
@@ -783,8 +785,12 @@
                 },
                 body: JSON.stringify({ answers })
             })
-            .then(response => response.json())
-            .then(data => {
+            .then(response => response.json().catch(() => ({})).then(data => ({ status: response.status, data: data })))
+            .then(({ status, data }) => {
+                if (status === 400 && data.error && (String(data.error).indexOf('уже сдана') !== -1 || String(data.error).indexOf('Нельзя сохранять') !== -1)) {
+                    autosaveTimer = null;
+                    return;
+                }
                 if (data.success) {
                     document.getElementById('last-save').textContent = 'Сохранено: ' + new Date().toLocaleTimeString();
                     answers.forEach(answer => {
@@ -1065,6 +1071,8 @@
             showConfirmDialog(
                 confirmMessage,
                 () => {
+                    clearTimeout(autosaveTimer);
+                    autosaveTimer = null;
                     console.log('Submitting assignment...');
                     const submitBtn = document.getElementById('submit-btn');
                     submitBtn.disabled = true;
@@ -1080,15 +1088,24 @@
                     })
                     .then(response => {
                         console.log('Submit response status:', response.status);
-                        if (!response.ok) {
-                            return response.text().then(text => {
-                                console.error('Server error on submit:', response.status, text);
-                                throw new Error(`HTTP ${response.status}`);
-                            });
-                        }
-                        return response.json();
+                        return response.json().catch(() => ({})).then(data => {
+                            if (!response.ok) {
+                                const msg = data.error || ('HTTP ' + response.status);
+                                if (data.error === 'Работа уже сдана') {
+                                    showToast('Работа уже сдана. Обновляю страницу...', 'success');
+                                    setTimeout(() => location.reload(), 800);
+                                } else {
+                                    showToast('✕ ' + msg, 'error');
+                                    submitBtn.disabled = false;
+                                    submitBtn.textContent = originalText;
+                                }
+                                return;
+                            }
+                            return data;
+                        });
                     })
                     .then(data => {
+                        if (!data) return;
                         console.log('Submit response data:', data);
                         if (data.success) {
                             showToast(`✓ Работа успешно сдана! Оценка: ${data.score}/${data.max_score} (${data.percentage.toFixed(0)}%)`, 'success');
