@@ -5,3 +5,5 @@
 from flask import Blueprint
 
 theory_bp = Blueprint('theory', __name__)
+
+from app.theory import routes  # регистрация маршрутов на blueprint
