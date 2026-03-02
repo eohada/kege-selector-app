@@ -115,6 +115,12 @@
             var t = resolveTheme();
             if (t !== lastSent) { lastSent = t; sendThemeToTrainer(); }
           }, 1500);
+          window.addEventListener('storage', function(e) {
+            if (e.key === STORAGE_KEY && e.newValue) {
+              var t = e.newValue === 'light' || e.newValue === 'dark' ? e.newValue : resolveTheme();
+              if (t !== lastSent) { lastSent = t; sendThemeToTrainer(); }
+            }
+          });
         })();
         </script>
       {% endif %}

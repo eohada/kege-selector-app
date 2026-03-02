@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Редактор кода</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+    .cm-wrap { border-radius: 8px; overflow: hidden; border: 1px solid rgba(0,0,0,0.1); }
+    .CodeMirror { min-height: 380px; font-size: 14px; }
+    .sync-row { margin-top: 8px; display: flex; justify-content: flex-end; }
+    .sync-btn {
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid #0aa39a;
+      background: rgba(10, 163, 154, 0.15);
+      color: #0aa39a;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .sync-btn:hover { background: rgba(10, 163, 154, 0.25); }
+    [data-theme="dark"] .sync-btn { border-color: #00E0FF; background: rgba(0, 224, 255, 0.12); color: #00E0FF; }
+    [data-theme="dark"] .sync-btn:hover { background: rgba(0, 224, 255, 0.2); }
+  </style>
+</head>
+<body>
+  <div class="cm-wrap">
+    <textarea id="code"></textarea>
+  </div>
+  <div class="sync-row">
+    <button type="button" class="sync-btn" id="syncBtn">Применить код</button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+  <script>
+(function() {
+  var INIT_CODE = @@INIT_CODE@@;
+  var INIT_THEME = @@INIT_THEME@@;
+  var textarea = document.getElementById('code');
+  textarea.value = (typeof INIT_CODE === 'string' ? INIT_CODE : (INIT_CODE != null ? String(INIT_CODE) : '')) || '';
+
+  var isDark = (INIT_THEME || 'dark') !== 'light';
+  var editor = CodeMirror.fromTextArea(textarea, {
+    mode: 'python',
+    theme: isDark ? 'dracula' : 'default',
+    lineNumbers: true,
+    indentUnit: 4,
+    lineWrapping: true,
+    autoCloseBrackets: true,
+    matchBrackets: true
+  });
+  editor.setSize(null, 380);
+
+  window.__trainerCodeMirrorInstance = editor;
+
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'trainer-theme' && (e.data.theme === 'light' || e.data.theme === 'dark')) {
+      editor.setOption('theme', e.data.theme === 'light' ? 'default' : 'dracula');
+    }
+  });
+
+  document.getElementById('syncBtn').addEventListener('click', function() {
+    var code = editor.getValue();
+    try {
+      var parent = window.parent;
+      var url = parent.location.pathname + (parent.location.search || '');
+      var params = new URLSearchParams(parent.location.search);
+      params.set('code', code);
+      params.set('_sync', Date.now().toString());
+      parent.location = parent.location.pathname + '?' + params.toString();
+    } catch (err) {
+      console.warn('Sync failed', err);
+    }
+  });
+})();
+  </script>
+</body>
+</html>

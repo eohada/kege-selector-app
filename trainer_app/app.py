@@ -47,22 +47,29 @@ def _inject_css():
 
 
 def _inject_theme_script():
-    """Скрипт приёма темы от родителя (postMessage) и из query params. Периодический запрос темы для синхронизации при переключении на платформе."""
+    """Скрипт приёма темы от родителя (postMessage) и из query params. Периодический запрос темы для синхронизации при переключении на платформе. Обновляет и Ace, и CodeMirror."""
     st.markdown("""
 <script>
 (function() {
   if (window.__trainerThemeListener) return;
   window.__trainerThemeListener = true;
   function apply(t) {
-    if (t === 'light' || t === 'dark') {
-      document.documentElement.setAttribute('data-theme', t);
-      try {
-        var ace = document.querySelector('.ace_editor');
-        if (ace && ace.env && ace.env.editor) {
-          ace.env.editor.setTheme(t === 'light' ? 'ace/theme/chrome' : 'ace/theme/monokai');
-        }
-      } catch (err) {}
-    }
+    if (t !== 'light' && t !== 'dark') return;
+    document.documentElement.setAttribute('data-theme', t);
+    try {
+      var ace = document.querySelector('.ace_editor');
+      if (ace && ace.env && ace.env.editor) {
+        ace.env.editor.setTheme(t === 'light' ? 'ace/theme/chrome' : 'ace/theme/monokai');
+      }
+    } catch (err) {}
+    try {
+      var iframes = document.querySelectorAll('iframe');
+      for (var i = 0; i < iframes.length; i++) {
+        try {
+          iframes[i].contentWindow.postMessage({ type: 'trainer-theme', theme: t }, '*');
+        } catch (e) {}
+      }
+    } catch (err) {}
   }
   window.addEventListener('message', function(e) {
     if (e.data && e.data.type === 'trainer-theme' && (e.data.theme === 'light' || e.data.theme === 'dark'))
@@ -72,7 +79,8 @@ def _inject_theme_script():
   var param = q.get('theme');
   if (param === 'light' || param === 'dark') apply(param);
   if (window.parent !== window) {
-    setTimeout(function() { window.parent.postMessage({ type: 'trainer-theme-request' }, '*'); }, 300);
+    setTimeout(function() { window.parent.postMessage({ type: 'trainer-theme-request' }, '*'); }, 100);
+    setTimeout(function() { window.parent.postMessage({ type: 'trainer-theme-request' }, '*'); }, 500);
     setInterval(function() { window.parent.postMessage({ type: 'trainer-theme-request' }, '*'); }, 2500);
   }
 })();
@@ -85,6 +93,19 @@ def _get_query_param(name: str) -> str:
         return (st.query_params.get(name) or '').strip()
     except Exception:
         return (st.experimental_get_query_params().get(name, [''])[0] or '').strip()
+
+
+def _render_codemirror_editor(initial_code: str, theme: str, key: str = "codemirror_editor") -> None:
+    """Рендерит редактор CodeMirror (как в блоке заданий платформы) через iframe. Синхронизация кода — по кнопке «Применить код» в iframe (query-параметр code)."""
+    html_path = os.path.join(os.path.dirname(__file__), 'static', 'codemirror_editor.html')
+    if not os.path.isfile(html_path):
+        st.text_area("Код", value=initial_code, height=420, key=key)
+        return
+    with open(html_path, 'r', encoding='utf-8') as f:
+        html = f.read()
+    html = html.replace('@@INIT_CODE@@', json.dumps(initial_code))
+    html = html.replace('@@INIT_THEME@@', json.dumps(theme))
+    st.components.v1.html(html, height=450, scrolling=False)
 
 
 def _init_state():
@@ -616,18 +637,19 @@ def main():
 
         with w_right:
             st.markdown('<div class="workbench-right">', unsafe_allow_html=True)
-            _code_val = st.session_state.get('code', '')
-            _ace_theme = "chrome" if _get_query_param('theme') == 'light' else "monokai"
+            # Синхронизация кода из query (кнопка «Применить код» в CodeMirror iframe)
             try:
-                from streamlit_ace import st_ace
-                code = st_ace(value=_code_val, language="python", theme=_ace_theme, key="code_ace", height=420)
+                qp_code = st.query_params.get("code")
+                if qp_code is not None:
+                    st.session_state['code'] = qp_code
+                    st.query_params.pop("code", None)
             except Exception:
-                code = st.text_area("Код", value=_code_val, height=420, key="code_area")
-            
-            if code is not None:
-                st.session_state['code'] = code
-            else:
-                code = _code_val
+                pass
+            _code_val = st.session_state.get('code', '')
+            _cm_theme = _get_query_param('theme') or ''
+            _cm_theme = 'light' if _cm_theme == 'light' else 'dark'
+            _render_codemirror_editor(initial_code=_code_val, theme=_cm_theme, key="code_cm")
+            code = _code_val
 
             # Панель действий под кодом
             act_c1, act_c2, act_c3 = st.columns(3)
