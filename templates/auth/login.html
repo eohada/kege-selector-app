@@ -84,6 +84,10 @@
                     <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
                         {{ form.submit(class='neo-button accent', style='flex: 1;') }}
                     </div>
+                    <div style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--stroke-1); text-align: center;">
+                        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">Нет аккаунта? Попробуйте демо — без регистрации.</p>
+                        <a href="{{ url_for('auth.demo_start') }}" class="neo-button ghost" style="width: 100%; justify-content: center; text-decoration: none;">Попробовать демо</a>
+                    </div>
                 </form>
                 {% else %}
                 <div style="padding: 1rem; background: rgba(255, 108, 145, 0.12); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); color: var(--danger);">
