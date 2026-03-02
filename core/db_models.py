@@ -807,8 +807,8 @@ class User(db.Model):
     # QA: пользователь из пула тестовых профилей (3 ученика, 3 препода, 3 родителя, 1 админ)
     is_qa_pool = db.Column(db.Boolean, default=False, nullable=False, index=True)
 
-    # Пользователь из пула QA (3 ученика, 3 препода, 3 родителя, 1 админ) для тестирования
-    is_qa_pool = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    # Демо-пользователь (временный)
+    is_demo_user = db.Column(db.Boolean, default=False, nullable=False, index=True)
 
 class RolePermission(db.Model):
     __tablename__ = 'RolePermissions'

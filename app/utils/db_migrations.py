@@ -1012,6 +1012,16 @@ def ensure_schema_columns(app):
                             logger.info(f"Added column is_qa_pool to {users_table}")
                         except Exception as e:
                             logger.warning(f"Could not add is_qa_pool column: {e}")
+                    
+                    if 'is_demo_user' not in users_columns:
+                        try:
+                            if is_postgres:
+                                db.session.execute(text(f'ALTER TABLE "{users_table}" ADD COLUMN is_demo_user BOOLEAN DEFAULT FALSE NOT NULL'))
+                            else:
+                                db.session.execute(text(f'ALTER TABLE {users_table} ADD COLUMN is_demo_user INTEGER DEFAULT 0 NOT NULL'))
+                            logger.info(f"Added column is_demo_user to {users_table}")
+                        except Exception as e:
+                            logger.warning(f"Could not add is_demo_user column: {e}")
                 except Exception as e:
                     logger.warning(f"Error checking/updating Users table columns: {e}")
 

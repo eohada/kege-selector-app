@@ -226,3 +226,17 @@
         {% include 'qa/_floating_widget.html' %}
     {% endif %}
 {% endif %}
+
+{% if current_user.is_authenticated and current_user.is_demo_user %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
+<style>
+.driver-popover.demo-driver-popover { background: var(--surface-2, rgba(28,28,36,0.98)); border: 1px solid var(--stroke-1, rgba(255,255,255,0.12)); border-radius: var(--radius-lg, 12px); color: var(--text-primary, #fff); }
+.driver-popover.demo-driver-popover .driver-popover-title { color: var(--text-primary); }
+.driver-popover.demo-driver-popover .driver-popover-description { color: var(--text-muted, rgba(255,255,255,0.7)); }
+.driver-popover.demo-driver-popover .driver-popover-next-btn, .driver-popover.demo-driver-popover .driver-popover-prev-btn { background: var(--accent-1); color: #000; border: none; border-radius: 8px; }
+.driver-overlay { background: rgba(0,0,0,0.75); }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+<script src="{{ url_for('static', filename='js/demo_quest.js') }}"></script>
+{% endif %}

@@ -34,21 +34,21 @@
         <span class="nav-link-label">Комната ученика</span>
     </span>
 </a>
-<a href="{{ url_for('assignments.submissions_list') }}" class="nav-link {% if active_page == 'assignments' %}active{% endif %}">
+<a id="demo-nav-assignments" href="{{ url_for('assignments.submissions_list') }}" class="nav-link {% if active_page == 'assignments' %}active{% endif %}">
     <span class="nav-link-content">
         {{ ui_icon('nav.assignments', 'md', title='Задания', extra_class='nav-link-icon') }}
         <span class="nav-link-label">Задания</span>
     </span>
 </a>
 {% endif %}
-<a href="{{ url_for('students.student_analytics', student_id=current_student.student_id) if current_student else '#' }}" class="nav-link {% if active_page == 'student_analytics' %}active{% endif %}">
+<a id="demo-nav-stats" href="{{ url_for('students.student_analytics', student_id=current_student.student_id) if current_student else '#' }}" class="nav-link {% if active_page == 'student_analytics' %}active{% endif %}">
     <span class="nav-link-content">
         {{ ui_icon('nav.stats', 'md', title='Статистика', extra_class='nav-link-icon') }}
         <span class="nav-link-label">Статистика</span>
     </span>
 </a>
 {% if sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
-<a href="{{ url_for('trainer.trainer_embed') }}" class="nav-link {% if active_page == 'trainer' %}active{% endif %}">
+<a id="demo-nav-trainer" href="{{ url_for('trainer.trainer_embed') }}" class="nav-link {% if active_page == 'trainer' %}active{% endif %}">
     <span class="nav-link-content">
         {{ ui_icon('nav.trainer', 'md', title='Тренажёр', extra_class='nav-link-icon') }}
         <span class="nav-link-label">Тренажёр</span>

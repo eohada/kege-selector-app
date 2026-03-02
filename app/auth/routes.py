@@ -4,19 +4,20 @@
 import os
 import logging
 from werkzeug.utils import secure_filename
-from flask import render_template, request, redirect, url_for, flash, jsonify, current_app
+from flask import render_template, request, redirect, url_for, flash, jsonify, current_app, make_response, session
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import validate_csrf, CSRFError
+import uuid
 
 logger = logging.getLogger(__name__)
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
 
 from app.auth import auth_bp
 from app.limiter import limiter
-from app.models import db, User, UserProfile, moscow_now, Student
+from app.models import db, User, UserProfile, UserRole, moscow_now, Student
 from app.utils.subscription_access import get_effective_access_for_user
 from app.utils.cross_env_login import verify_cross_env_token
 from core.audit_logger import audit_logger
@@ -204,11 +205,43 @@ def logout():
     audit_logger.log(
         action='logout',
         entity='User',
+        entity_id=username, # Note: using username as entity_id for logout if current_user is already cleared
         status='success',
         metadata={'username': username}
     )
     
-    return redirect(url_for('auth.login'))
+    # Очищаем localStorage на клиенте, если это был демо-режим
+    response = make_response(redirect(url_for('auth.login')))
+    response.set_cookie('is_demo', '', expires=0) # Удаляем куки для localStorage
+    response.set_cookie('demoStep', '', expires=0) # Удаляем куки для localStorage
+    return response
+
+@auth_bp.route('/demo/start')
+def demo_start():
+    """Создает временного демо-пользователя и логинит его."""
+    if current_user.is_authenticated:
+        logout_user()
+
+    demo_username = f"demo_user_{uuid.uuid4().hex[:8]}"
+    demo_password = uuid.uuid4().hex
+    hashed_password = generate_password_hash(demo_password)
+
+    user = User(username=demo_username, email=f"{demo_username}@demo.local",
+                password_hash=hashed_password, role='student', is_demo_user=True)
+    db.session.add(user)
+    db.session.flush()
+    db.session.add(UserRole(user_id=user.id, role='student'))
+    demo_student = Student(name='Демо-ученик', user_id=user.id, is_active=True, email=f"{demo_username}@demo.local")
+    db.session.add(demo_student)
+    db.session.commit()
+
+    login_user(user, remember=True)
+    flash('Добро пожаловать в демо-режим! Пройдите квест, чтобы ознакомиться с платформой.', 'success')
+
+    response = make_response(redirect(url_for('main.dashboard')))
+    response.set_cookie('is_demo', 'true', max_age=60*60*24)
+    response.set_cookie('demoStep', '0', max_age=60*60*24)
+    return response
 
 @auth_bp.route('/user/profile')
 @login_required
