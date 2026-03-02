@@ -167,7 +167,8 @@
                                 <label for="content">Текст теории</label>
                                 <div class="form-hint">Заголовки, списки, код, картинки — через панель инструментов или Markdown.</div>
                                 <div class="theory-editor-wrap">
-                                    <textarea id="content" name="content">{{ content|e }}</textarea>
+                                    <textarea id="content">{{ content|e }}</textarea>
+                                    <input type="hidden" name="content" id="content-sync" value="">
                                 </div>
                             </div>
                             <div class="form-actions">
@@ -247,8 +248,12 @@
         autofocus: false
     });
 
-    document.getElementById('theory-form').addEventListener('submit', function() {
-        textarea.value = easymde.value();
+    var form = document.getElementById('theory-form');
+    var contentSync = document.getElementById('content-sync');
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (contentSync) contentSync.value = easymde.value();
+        form.submit();
     });
 })();
     </script>
