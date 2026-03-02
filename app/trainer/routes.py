@@ -789,6 +789,39 @@ def trainer_session_save():
     return jsonify({'success': True})
 
 
+@trainer_bp.route('/internal/trainer/stats', methods=['GET'])
+def trainer_stats():
+    """sessions_today (по Москве), last_session для блока «Продолжить»."""
+    user = _get_trainer_user_from_token(require_permission='trainer.use')
+    now = moscow_now()
+    try:
+        start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    except Exception:
+        start_of_today = now
+    sessions_today = TrainerSession.query.filter(
+        TrainerSession.user_id == user.id,
+        TrainerSession.created_at >= start_of_today,
+    ).count()
+    last = (
+        TrainerSession.query.filter_by(user_id=user.id)
+        .order_by(TrainerSession.created_at.desc(), TrainerSession.session_id.desc())
+        .limit(1)
+        .first()
+    )
+    last_session = None
+    if last:
+        last_session = {
+            'session_id': last.session_id,
+            'task_type': last.task_type,
+            'created_at': last.created_at.isoformat() if last.created_at else None,
+        }
+    return jsonify({
+        'success': True,
+        'sessions_today': sessions_today,
+        'last_session': last_session,
+    })
+
+
 @trainer_bp.route('/internal/trainer/session/list', methods=['GET'])
 def trainer_session_list():
     user = _get_trainer_user_from_token(require_permission='trainer.use')

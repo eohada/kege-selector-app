@@ -152,6 +152,11 @@ class PlatformClient:
         r.raise_for_status()
         return r.json()
 
+    def get_stats(self) -> dict[str, Any]:
+        r = requests.get(f'{self.base_url}/internal/trainer/stats', headers=self._headers(), timeout=self.timeout_seconds)
+        r.raise_for_status()
+        return r.json()
+
     def list_sessions(self, *, limit: int = 25) -> dict[str, Any]:
         r = requests.get(f'{self.base_url}/internal/trainer/session/list', params={'limit': int(limit)}, headers=self._headers(), timeout=self.timeout_seconds)
         r.raise_for_status()

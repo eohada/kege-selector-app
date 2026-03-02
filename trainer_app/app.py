@@ -4,6 +4,7 @@ import json
 import os
 import re
 import sys
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import quote
 
@@ -45,6 +46,28 @@ def _inject_css():
         )
 
 
+def _inject_theme_script():
+    """Скрипт приёма темы от родителя (postMessage) и из query params."""
+    st.markdown("""
+<script>
+(function() {
+  if (window.__trainerThemeListener) return;
+  window.__trainerThemeListener = true;
+  function apply(t) {
+    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+  }
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'trainer-theme' && (e.data.theme === 'light' || e.data.theme === 'dark'))
+      apply(e.data.theme);
+  });
+  var q = new URLSearchParams(window.location.search);
+  var param = q.get('theme');
+  if (param === 'light' || param === 'dark') apply(param);
+})();
+</script>
+""", unsafe_allow_html=True)
+
+
 def _get_query_param(name: str) -> str:
     try:
         return (st.query_params.get(name) or '').strip()
@@ -65,6 +88,7 @@ def _init_state():
     st.session_state.setdefault('hint_level_by_task', {})
     st.session_state.setdefault('history_loaded', False)
     st.session_state.setdefault('history_items', [])
+    st.session_state.setdefault('session_task_count', 0)
 
 
 def _reset_workbench():
@@ -123,6 +147,7 @@ def _render_tests(payload: Any):
 
 def main():
     _inject_css()
+    _inject_theme_script()
     _init_state()
 
     token = _get_query_param('token')
@@ -263,13 +288,69 @@ def main():
     current_card = st.session_state.get('current_card')
 
     if task_type is None and task is None:
+        stats = {}
+        try:
+            stats = client.get_stats()
+        except Exception:
+            pass
+        sessions_today = stats.get('sessions_today', 0) or 0
+        last_session = stats.get('last_session')
+        def _last_session_ok(ls):
+            if not ls or not ls.get('session_id'):
+                return False
+            created = ls.get('created_at')
+            if not created:
+                return True
+            try:
+                dt = datetime.fromisoformat(created.replace('Z', '+00:00'))
+                if dt.tzinfo:
+                    now = datetime.now(timezone.utc)
+                else:
+                    now = datetime.now()
+                return (now - dt).days < 7
+            except Exception:
+                return True
+        show_continue = _last_session_ok(last_session)
+
         st.markdown(f"""
         <div class="hero-box">
             <p class="hero-eyebrow">тренажёр</p>
             <h1 class="hero-title">Тренажёр КЕГЭ</h1>
             <p class="hero-sub">Привет, {username}! Выбери номер задания</p>
+            <p class="trainer-hero-hint">Выбери номер — получи задание — решай с подсказками или переходи к следующему.</p>
+            <p class="hero-sub" style="margin-top:0.25rem;font-size:0.9rem;">Сегодня: {sessions_today} заданий</p>
         </div>
         """, unsafe_allow_html=True)
+
+        if show_continue and last_session:
+            tt = last_session.get('task_type')
+            created = last_session.get('created_at') or ''
+            if created and len(created) >= 10:
+                created = created[:10] + ' ' + created[11:19] if len(created) > 19 else created[:16]
+            st.markdown(f"""
+            <div class="task-card trainer-continue-card" style="margin-bottom:1rem;">
+                <div class="task-card-header">
+                    <span class="task-badge primary">Продолжить</span>
+                </div>
+                <p class="task-body" style="margin:0;">Задание №{tt} · {created}</p>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button("Продолжить с задания №" + str(tt), key="continue_last", use_container_width=True, type="primary"):
+                try:
+                    resp = client.get_session(int(last_session['session_id']))
+                    if resp.get('success') and resp.get('session') and resp.get('task'):
+                        sess = resp['session']
+                        st.session_state['task'] = resp['task']
+                        st.session_state['task_type'] = sess.get('task_type')
+                        st.session_state['code'] = sess.get('code') or ''
+                        st.session_state['analysis'] = sess.get('analysis')
+                        st.session_state['tests'] = sess.get('tests')
+                        st.session_state['messages'] = (sess.get('messages') or []) if isinstance(sess.get('messages'), list) else []
+                        st.session_state['current_card'] = None
+                        st.session_state['session_task_count'] = 1
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Не удалось загрузить сессию: {e}")
 
         st.markdown("### Выбери номер задания")
         
@@ -340,6 +421,7 @@ def main():
             if st.button("РЕШАТЬ ➡", key="accept_btn", use_container_width=True):
                 st.session_state['task'] = card
                 st.session_state['current_card'] = None
+                st.session_state['session_task_count'] = 1
                 _reset_workbench()
                 st.rerun()
         
@@ -351,21 +433,34 @@ def main():
     tests = (knowledge or {}).get('tests') if isinstance(knowledge, dict) else None
 
     col1, col2, col3 = st.columns([1, 2, 1])
+    session_task_count = st.session_state.get('session_task_count', 0) or 0
     with col1:
         st.markdown('<div class="back-btn" id="trainer-back-workbench"></div>', unsafe_allow_html=True)
         if st.button("← Назад", use_container_width=True):
             st.session_state['task'] = None
             st.session_state['current_card'] = None
+            st.session_state['session_task_count'] = 0
             _reset_workbench()
             st.rerun()
     with col2:
         st.markdown(f"<div class='trainer-screen-title'>Задание №{task.get('task_number')} · ID {tid}</div>", unsafe_allow_html=True)
+        st.markdown(f"<p class='trainer-session-strip'>Сессия: задание {session_task_count}</p>", unsafe_allow_html=True)
     with col3:
         if st.button("→ Следующее", use_container_width=True):
-            st.session_state['task'] = None
-            st.session_state['current_card'] = None
-            _reset_workbench()
-            st.rerun()
+            next_card = _pull_task(client, int(task_type))
+            if next_card:
+                st.session_state['task'] = next_card
+                st.session_state['current_card'] = None
+                st.session_state['session_task_count'] = session_task_count + 1
+                _reset_workbench()
+                st.rerun()
+            else:
+                st.session_state['task'] = None
+                st.session_state['task_type'] = None
+                st.session_state['current_card'] = None
+                st.session_state['session_task_count'] = 0
+                _reset_workbench()
+                st.rerun()
 
     tab1, tab2, tab3, tab4 = st.tabs(["📄 Условие", "💻 Решение", "💡 Помощник", "📚 История"])
 

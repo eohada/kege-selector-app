@@ -66,8 +66,38 @@
         </section>
       {% else %}
         <div class="iframe-wrap">
-          <iframe src="{{ iframe_url }}" allow="clipboard-write"></iframe>
+          <iframe id="trainer-iframe" src="{{ iframe_url }}" allow="clipboard-write"></iframe>
         </div>
+        <script>
+        (function() {
+          var STORAGE_KEY = 'ui.themeMode';
+          function resolveTheme() {
+            try {
+              var v = localStorage.getItem(STORAGE_KEY);
+              if (v === 'light' || v === 'dark') return v;
+              if (v === 'auto') return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+              return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+            } catch (e) { return 'dark'; }
+          }
+          function sendThemeToTrainer() {
+            var iframe = document.getElementById('trainer-iframe');
+            if (iframe && iframe.contentWindow) {
+              try {
+                iframe.contentWindow.postMessage({ type: 'trainer-theme', theme: resolveTheme() }, '*');
+              } catch (e) {}
+            }
+          }
+          document.getElementById('trainer-iframe').addEventListener('load', function() {
+            sendThemeToTrainer();
+            lastSent = resolveTheme();
+          });
+          var lastSent = null;
+          setInterval(function() {
+            var t = resolveTheme();
+            if (t !== lastSent) { lastSent = t; sendThemeToTrainer(); }
+          }, 1500);
+        })();
+        </script>
       {% endif %}
     </main>
   </main>

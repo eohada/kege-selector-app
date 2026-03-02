@@ -125,6 +125,14 @@ header[data-testid="stHeader"] {
     color: var(--text-muted);
 }
 
+.trainer-hero-hint {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin: 0.5rem auto 0;
+    max-width: 480px;
+    line-height: 1.5;
+}
+
 /* ---- Number grid ---- */
 .num-grid {
     display: grid;
@@ -481,4 +489,36 @@ div[data-baseweb="select"]:focus-within > div {
     text-align: center;
     color: var(--text-muted);
     margin-top: 0.5rem;
+}
+
+.trainer-session-strip {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 0.25rem 0 0 0;
+}
+
+/* ---- Light theme: переопределение жёстко заданных тёмных/cyan цветов ---- */
+:root[data-theme="light"] .num-cell:hover {
+    background: rgba(10, 163, 154, 0.1);
+}
+
+:root[data-theme="light"] .task-badge.primary {
+    background: rgba(10, 163, 154, 0.15);
+}
+
+:root[data-theme="light"] [data-baseweb="tab-list"] [aria-selected="true"] {
+    background: rgba(10, 163, 154, 0.12) !important;
+}
+
+:root[data-theme="light"] .stInfo {
+    background: rgba(10, 163, 154, 0.12) !important;
+}
+
+:root[data-theme="light"] .task-card::after {
+    opacity: 0;
+}
+
+:root[data-theme="light"] .task-card:hover::after {
+    opacity: 0.04;
 }
