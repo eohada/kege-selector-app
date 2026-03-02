@@ -2,7 +2,8 @@
 Маршруты теории по заданиям ЕГЭ: просмотр для учеников, CRUD для тьютора.
 """
 import logging
-from flask import render_template, request, redirect, url_for, flash, abort
+import os
+from flask import render_template, request, redirect, url_for, flash, abort, jsonify, current_app
 from flask_login import login_required, current_user
 
 from app.theory import theory_bp
@@ -136,6 +137,37 @@ def manage_list():
         slots=slots,
         active_page='theory_manage',
     )
+
+
+@theory_bp.route('/theory/upload-image', methods=['POST'])
+@login_required
+def upload_image():
+    """Загрузка изображения для вставки в блок теории. Возвращает URL для вставки в Markdown."""
+    if not _can_manage_theory():
+        return jsonify({'success': False, 'error': 'Нет прав'}), 403
+
+    file = request.files.get('file')
+    if not file or not file.filename:
+        return jsonify({'success': False, 'error': 'Файл не выбран'}), 400
+
+    try:
+        from app.uploads.service import save_uploaded_file
+        static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
+        upload_folder = os.path.join(static_root, 'uploads', 'theory', str(current_user.id))
+        orig, abs_path, _size = save_uploaded_file(
+            file=file,
+            base_folder=upload_folder,
+            allowed_exts={'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'},
+            max_bytes=5 * 1024 * 1024,
+        )
+        rel = os.path.relpath(abs_path, static_root).replace('\\', '/')
+        url = url_for('static', filename=rel)
+        return jsonify({'success': True, 'url': url})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        logger.exception('Theory image upload failed')
+        return jsonify({'success': False, 'error': 'Ошибка загрузки'}), 500
 
 
 @theory_bp.route('/theory/manage/new', methods=['GET', 'POST'])
