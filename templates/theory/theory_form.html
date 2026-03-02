@@ -224,9 +224,10 @@
                         var file = input.files && input.files[0];
                         if (!file) return;
                         var cm = editor.codemirror;
-                        var cursor = cm.getCursor();
-                        var placeholder = cm.getRange(cursor, cursor) || '![Изображение](' + file.name + ')';
-                        cm.replaceRange('![Загрузка...]()', cursor);
+                        var from = cm.getCursor();
+                        var placeholderText = '![Загрузка...]()';
+                        cm.replaceRange(placeholderText, from);
+                        var to = { line: from.line, ch: from.ch + placeholderText.length };
 
                         var formData = new FormData();
                         formData.append('file', file);
@@ -236,14 +237,16 @@
                             .then(function(r) { return r.json(); })
                             .then(function(data) {
                                 if (data.success && data.url) {
-                                    cm.replaceRange('![' + (file.name || 'image') + '](' + data.url + ')', cursor);
+                                    cm.replaceRange('![' + (file.name || 'image') + '](' + data.url + ')', from, to);
                                 } else {
-                                    cm.replaceRange(placeholder, cursor);
+                                    cm.replaceRange('', from, to);
+                                    cm.replaceRange('![Изображение](' + (file.name || '') + ')', from);
                                     alert(data.error || 'Ошибка загрузки');
                                 }
                             })
                             .catch(function() {
-                                cm.replaceRange(placeholder, cursor);
+                                cm.replaceRange('', from, to);
+                                cm.replaceRange('![Изображение](' + (file.name || '') + ')', from);
                                 alert('Ошибка загрузки изображения');
                             });
                     };

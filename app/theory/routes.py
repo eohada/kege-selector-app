@@ -158,7 +158,7 @@ def upload_image():
             file=file,
             base_folder=upload_folder,
             allowed_exts={'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'},
-            max_bytes=5 * 1024 * 1024,
+            max_bytes=15 * 1024 * 1024,
         )
         rel = os.path.relpath(abs_path, static_root).replace('\\', '/')
         url = url_for('static', filename=rel)
