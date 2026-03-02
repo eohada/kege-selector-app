@@ -40,7 +40,7 @@
         {% if submissions %}
         <div class="submissions-list" style="display: flex; flex-direction: column; gap: 1rem;">
             {% for submission in submissions %}
-            <div class="submission-card" style="background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem; transition: transform 0.2s, box-shadow 0.2s;">
+            <div class="submission-card{% if loop.first %} demo-submission-card{% endif %}" data-demo-submission-id="{{ submission.submission_id }}" style="background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg); padding: 1.5rem; transition: transform 0.2s, box-shadow 0.2s;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 0;">
                         <h3 style="font-size: 1.25em; font-weight: 700; margin: 0 0 0.5rem 0;">
@@ -83,7 +83,7 @@
                         </div>
                     </div>
                     <div style="flex-shrink: 0;">
-                        <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}" class="neo-button accent" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; padding: 0.6rem 1.25rem; font-weight: 600;">
+                        <a href="{{ url_for('assignments.submission_view', submission_id=submission.submission_id) }}" class="neo-button accent demo-btn-begin{% if loop.first %} demo-highlight-begin{% endif %}" style="display: inline-flex; align-items: center; gap: 0.5rem; text-decoration: none; padding: 0.6rem 1.25rem; font-weight: 600;">
                             {{ ui_icon('action.play', 'sm') }}
                             {% if submission.status == 'ASSIGNED' %}Начать
                             {% elif submission.status == 'IN_PROGRESS' %}Продолжить

@@ -17,7 +17,8 @@ from wtforms.validators import DataRequired
 
 from app.auth import auth_bp
 from app.limiter import limiter
-from app.models import db, User, UserProfile, UserRole, moscow_now, Student
+from datetime import timedelta
+from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission
 from app.utils.subscription_access import get_effective_access_for_user
 from app.utils.cross_env_login import verify_cross_env_token
 from core.audit_logger import audit_logger
@@ -233,6 +234,39 @@ def demo_start():
     db.session.add(UserRole(user_id=user.id, role='student'))
     demo_student = Student(name='Демо-ученик', user_id=user.id, is_active=True, email=f"{demo_username}@demo.local")
     db.session.add(demo_student)
+    db.session.flush()
+
+    # Демо-работа «Пробник-1», чтобы в разделе «Задания» было что открыть
+    task = Tasks.query.first()
+    creator = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin', 'tutor'])).first()
+    created_by_id = creator.id if creator else user.id
+    if task:
+        deadline = moscow_now() + timedelta(days=7)
+        assignment = Assignment(
+            title='Пробник-1',
+            description='Демо-задание для знакомства с платформой. Вставь ответ и сдай работу.',
+            assignment_type='homework',
+            deadline=deadline,
+            hard_deadline=False,
+            created_by_id=created_by_id,
+            is_active=True,
+        )
+        db.session.add(assignment)
+        db.session.flush()
+        db.session.add(AssignmentTask(
+            assignment_id=assignment.assignment_id,
+            task_id=task.task_id,
+            order_index=0,
+            max_score=1,
+        ))
+        db.session.add(Submission(
+            assignment_id=assignment.assignment_id,
+            student_id=demo_student.student_id,
+            status='ASSIGNED',
+            assigned_at=moscow_now(),
+            max_score=1,
+        ))
+
     db.session.commit()
 
     login_user(user, remember=True)

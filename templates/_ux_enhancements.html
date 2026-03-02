@@ -235,7 +235,26 @@
 .driver-popover.demo-driver-popover .driver-popover-description { color: var(--text-muted, rgba(255,255,255,0.7)); }
 .driver-popover.demo-driver-popover .driver-popover-next-btn, .driver-popover.demo-driver-popover .driver-popover-prev-btn { background: var(--accent-1); color: #000; border: none; border-radius: 8px; }
 .driver-overlay { background: rgba(0,0,0,0.75); }
+#demo-quest-widget { position: fixed; bottom: 24px; right: 24px; z-index: 9998; max-width: 320px; background: rgba(18,18,24,0.96); border: 1px solid var(--accent-1, #0af); border-radius: 16px; padding: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); font-family: inherit; }
+#demo-quest-widget .demo-quest-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-1); margin-bottom: 4px; }
+#demo-quest-widget .demo-quest-step { font-weight: 700; font-size: 15px; color: var(--text-primary); margin-bottom: 6px; }
+#demo-quest-widget .demo-quest-hint { font-size: 13px; color: var(--text-muted); line-height: 1.4; margin-bottom: 12px; }
+#demo-quest-widget .demo-quest-actions { display: flex; gap: 8px; }
+#demo-quest-widget .demo-quest-btn { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; background: var(--accent-1); color: #000; }
+#demo-quest-widget .demo-quest-btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--stroke-1); }
+#demo-quest-progress { height: 4px; background: var(--surface-2); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
+#demo-quest-progress-inner { height: 100%; background: linear-gradient(90deg, var(--accent-1), var(--accent-3)); border-radius: 2px; transition: width 0.3s ease; }
 </style>
+<div id="demo-quest-widget" style="display: none;" aria-hidden="true">
+  <div class="demo-quest-title">Демо-квест</div>
+  <div id="demo-quest-progress"><div id="demo-quest-progress-inner" style="width: 0%;"></div></div>
+  <div class="demo-quest-step" id="demo-quest-step-label">Шаг 1 из 6</div>
+  <div class="demo-quest-hint" id="demo-quest-hint"></div>
+  <div class="demo-quest-actions">
+    <button type="button" class="demo-quest-btn" id="demo-quest-btn-highlight">Показать подсказку</button>
+    <a href="{{ url_for('auth.logout') }}" class="demo-quest-btn demo-quest-btn-ghost" style="text-decoration: none;">Выйти из демо</a>
+  </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
 <script src="{{ url_for('static', filename='js/demo_quest.js') }}"></script>

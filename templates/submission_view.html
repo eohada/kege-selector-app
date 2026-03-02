@@ -360,9 +360,14 @@
                     </div>
                     {% endif %}
                     <label for="answer-{{ task_item.assignment_task.assignment_task_id }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Ваш ответ:</label>
+                    {% if loop.first and current_user.is_demo_user %}
+                    <div id="demo-answer-block" style="margin-bottom: 0.5rem;">
+                        <button type="button" id="demo-paste-answer" class="neo-button accent sm" style="margin-bottom: 0.5rem; display: inline-flex; align-items: center; gap: 0.35rem;">Вставить ответ</button>
+                    </div>
+                    {% endif %}
                     <textarea 
                         id="answer-{{ task_item.assignment_task.assignment_task_id }}"
-                        class="answer-input"
+                        class="answer-input{% if loop.first and current_user.is_demo_user %} demo-first-answer{% endif %}"
                         name="answer"
                         data-task-id="{{ task_item.assignment_task.assignment_task_id }}"
                         {% if (submission.status == 'ASSIGNED' and not submission.started_at) or submission.status == 'SUBMITTED' or not can_submit %}disabled{% endif %}
@@ -426,7 +431,7 @@
             {% endif %}
             
             {% if (submission.status in ['IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0)) and can_submit %}
-            <div class="submit-section" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin: 2.5rem 0; padding: 1rem 1.5rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg);">
+            <div class="submit-section{% if current_user.is_demo_user %} demo-submit-section{% endif %}" id="{% if current_user.is_demo_user %}demo-submit-section{% endif %}" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin: 2.5rem 0; padding: 1rem 1.5rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-lg);">
                 <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
                     {% if assignment.time_limit_minutes and submission.started_at %}
                     <div id="timer-container" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; min-height: 2.75rem; box-sizing: border-box; background: var(--surface-2); border-radius: var(--radius-md); border: 1px solid var(--stroke-1);">
@@ -1110,6 +1115,34 @@
                 }
             );
         });
+        {% endif %}
+
+        {% if current_user.is_demo_user %}
+        (function() {
+            var pasteBtn = document.getElementById('demo-paste-answer');
+            if (!pasteBtn) return;
+            pasteBtn.addEventListener('click', function() {
+                var textarea = document.querySelector('.demo-first-answer');
+                if (textarea) {
+                    textarea.value = '42';
+                    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    if (typeof showToast === 'function') showToast('Ответ вставлен. Теперь нажми «Сдать работу».', 'success');
+                } else {
+                    var codeWrap = document.querySelector('.code-editor-wrap');
+                    if (codeWrap) {
+                        var cmWrap = codeWrap.querySelector('.code-editor-cm-wrap');
+                        var cmText = cmWrap && cmWrap.querySelector('.code-editor-text');
+                        if (cmText && cmText.cmInstance) {
+                            cmText.cmInstance.setValue('# Демо-ответ\nprint(42)');
+                            if (typeof showToast === 'function') showToast('Код вставлен. Сохрани и нажми «Сдать работу».', 'success');
+                        } else if (cmText) {
+                            cmText.value = '# Демо-ответ\nprint(42)';
+                            if (typeof showToast === 'function') showToast('Код вставлен. Сохрани и нажми «Сдать работу».', 'success');
+                        }
+                    }
+                }
+            });
+        })();
         {% endif %}
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
