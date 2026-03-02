@@ -8,6 +8,13 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Check secrets
+        run: |
+          if [ -z "${{ secrets.HOST }}" ]; then echo "::error::Secret HOST is not set"; exit 1; fi
+          if [ -z "${{ secrets.USERNAME }}" ]; then echo "::error::Secret USERNAME is not set"; exit 1; fi
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then echo "::error::Secret SSH_PRIVATE_KEY is not set"; exit 1; fi
+          echo "Secrets present (host, user, key)"
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -15,6 +22,10 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
+          # Если ключ с паролем — добавь в Secrets PASSphrase и раскомментируй:
+          # passphrase: ${{ secrets.SSH_PASSPHRASE }}
+          timeout: 30s
+          command_timeout: 5m
           script: |
             cd /opt/boostudy
             git pull origin main
