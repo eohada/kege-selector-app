@@ -79,17 +79,21 @@
               return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
             } catch (e) { return 'dark'; }
           }
-          function sendThemeToTrainer() {
-            var iframe = document.getElementById('trainer-iframe');
-            if (iframe && iframe.contentWindow) {
-              try {
-                iframe.contentWindow.postMessage({ type: 'trainer-theme', theme: resolveTheme() }, '*');
-              } catch (e) {}
-            }
+          function sendThemeToTrainer(target) {
+            var theme = resolveTheme();
+            try {
+              (target || document.getElementById('trainer-iframe').contentWindow).postMessage({ type: 'trainer-theme', theme: theme }, '*');
+              return theme;
+            } catch (e) { return null; }
           }
-          document.getElementById('trainer-iframe').addEventListener('load', function() {
-            sendThemeToTrainer();
-            lastSent = resolveTheme();
+          var iframeEl = document.getElementById('trainer-iframe');
+          iframeEl.addEventListener('load', function() {
+            lastSent = sendThemeToTrainer(iframeEl.contentWindow);
+          });
+          window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'trainer-theme-request' && e.source === iframeEl.contentWindow) {
+              lastSent = sendThemeToTrainer(e.source);
+            }
           });
           var lastSent = null;
           setInterval(function() {

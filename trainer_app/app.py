@@ -63,6 +63,9 @@ def _inject_theme_script():
   var q = new URLSearchParams(window.location.search);
   var param = q.get('theme');
   if (param === 'light' || param === 'dark') apply(param);
+  if (window.parent !== window) {
+    setTimeout(function() { window.parent.postMessage({ type: 'trainer-theme-request' }, '*'); }, 300);
+  }
 })();
 </script>
 """, unsafe_allow_html=True)
@@ -347,7 +350,7 @@ def main():
                         st.session_state['tests'] = sess.get('tests')
                         st.session_state['messages'] = (sess.get('messages') or []) if isinstance(sess.get('messages'), list) else []
                         st.session_state['current_card'] = None
-                        st.session_state['session_task_count'] = 1
+                        st.session_state['session_task_count'] = (st.session_state.get('session_task_count') or 0) + 1
                         st.rerun()
                 except Exception as e:
                     st.error(f"Не удалось загрузить сессию: {e}")
@@ -421,7 +424,7 @@ def main():
             if st.button("РЕШАТЬ ➡", key="accept_btn", use_container_width=True):
                 st.session_state['task'] = card
                 st.session_state['current_card'] = None
-                st.session_state['session_task_count'] = 1
+                st.session_state['session_task_count'] = (st.session_state.get('session_task_count') or 0) + 1
                 _reset_workbench()
                 st.rerun()
         
@@ -439,7 +442,6 @@ def main():
         if st.button("← Назад", use_container_width=True):
             st.session_state['task'] = None
             st.session_state['current_card'] = None
-            st.session_state['session_task_count'] = 0
             _reset_workbench()
             st.rerun()
     with col2:
@@ -458,7 +460,6 @@ def main():
                 st.session_state['task'] = None
                 st.session_state['task_type'] = None
                 st.session_state['current_card'] = None
-                st.session_state['session_task_count'] = 0
                 _reset_workbench()
                 st.rerun()
 
