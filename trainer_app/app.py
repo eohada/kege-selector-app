@@ -96,6 +96,7 @@ def _init_state():
     st.session_state.setdefault('success_rates', {})
     st.session_state.setdefault('task_start_time', None)
     st.session_state.setdefault('show_hotkeys_modal', True)
+    st.session_state.setdefault('session_correct_count', 0)
 
 
 def _reset_workbench():
@@ -209,7 +210,7 @@ def _inject_workbench_scripts():
         }
         if (e.ctrlKey && e.key === 'Enter') {
             const btns = Array.from(document.querySelectorAll('button'));
-            const checkBtn = btns.find(b => b.innerText.includes('Проверить') || b.innerText.includes('ОТПРАВИТЬ'));
+            const checkBtn = btns.find(b => b.innerText.includes('проверку') || b.innerText.includes('Проверить'));
             if (checkBtn) checkBtn.click();
         }
         if (e.altKey && e.key === 'ArrowRight') {
@@ -218,18 +219,6 @@ def _inject_workbench_scripts():
             if (nextBtn) nextBtn.click();
         }
     });
-
-    // Inactivity check for AI pulse
-    let lastActivity = Date.now();
-    const updateActivity = () => { lastActivity = Date.now(); };
-    ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(n => document.addEventListener(n, updateActivity));
-    
-    setInterval(() => {
-        const aiBtn = document.querySelector('.floating-ai-btn');
-        if (!aiBtn) return;
-        const isInactive = (Date.now() - lastActivity) > 180000; // 3 min
-        aiBtn.classList.toggle('pulse', isInactive);
-    }, 5000);
 
     setInterval(setupResizer, 1500);
 })();
@@ -388,13 +377,12 @@ def main():
     if st.session_state.get('show_hotkeys_modal'):
         with st.container(border=True):
             st.markdown("""
-            ### ⌨️ Горячие клавиши Тренажёра
-            - **Ctrl + Enter**: Отправить ответ на проверку
-            - **Alt + Right**: Следующее задание
-            - **F11**: Дзен-режим (Focus Mode)
-            - **Ctrl + Space**: Автодополнение (в редакторе)
+            ### Горячие клавиши
+            - **Ctrl + Enter** — отправить ответ на проверку
+            - **Alt + Стрелка вправо** — следующее задание
+            - **F11** — дзен-режим (скрыть шапку и меню)
             """)
-            if st.button("Понятно, в бой!"):
+            if st.button("Понятно"):
                 st.session_state['show_hotkeys_modal'] = False
                 st.rerun()
 
@@ -405,16 +393,15 @@ def main():
         except Exception:
             pass
         sessions_today = stats.get('sessions_today', 0) or 0
-        streak = st.session_state.get('session_task_count', 0)
-        
-        # Визуализация стрик (огня)
-        fire_emoji = "🔥" if streak > 0 else "🌑"
+        in_session = st.session_state.get('session_task_count', 0)
+        correct_in_session = st.session_state.get('session_correct_count', 0)
         streak_html = f"""
-        <div style="display:flex;justify-content:center;margin-top:1.5rem;margin-bottom:0.5rem;">
+        <div class="streak-box-wrap">
             <div class="streak-box">
-                <span class="streak-fire">{fire_emoji}</span>
-                <span class="streak-count">{streak}</span>
-                <div class="streak-label">задач в сессии</div>
+                <span class="streak-count">{in_session}</span>
+                <div class="streak-label">заданий в сессии</div>
+                <span class="streak-correct">{correct_in_session}</span>
+                <div class="streak-label">верно</div>
             </div>
         </div>
         """
@@ -448,7 +435,7 @@ def main():
         """, unsafe_allow_html=True)
 
         # Smart-лента (Daily Mix)
-        if st.button("✨ ПОДОБРАНО ДЛЯ ТЕБЯ НА СЕГОДНЯ (DAILY MIX)", use_container_width=True, type="primary"):
+        if st.button("Подобрано для тебя на сегодня", use_container_width=True, type="primary", key="btn_daily_mix"):
             try:
                 recs_resp = client.get_recommendations()
                 recs = recs_resp.get('recommendations', [])
@@ -457,7 +444,7 @@ def main():
                     first = recs[0]
                     st.session_state['task'] = first
                     st.session_state['task_type'] = first.get('task_number')
-                    st.session_state['session_task_count'] = streak + 1
+                    st.session_state['session_task_count'] = in_session + 1
                     _reset_workbench()
                     st.rerun()
                 else:
@@ -490,7 +477,7 @@ def main():
                         st.session_state['tests'] = sess.get('tests')
                         st.session_state['messages'] = (sess.get('messages') or []) if isinstance(sess.get('messages'), list) else []
                         st.session_state['current_card'] = None
-                        st.session_state['session_task_count'] = streak + 1
+                        st.session_state['session_task_count'] = in_session + 1
                         st.rerun()
                 except Exception as e:
                     st.error(f"Не удалось загрузить сессию: {e}")
@@ -542,16 +529,22 @@ def main():
         ctrl_c1, ctrl_c2, ctrl_c3 = st.columns([1, 2, 1])
         with ctrl_c1:
             st.markdown('<div class="back-btn" id="trainer-back-workbench"></div>', unsafe_allow_html=True)
-            if st.button("← Выход", use_container_width=True):
+            if st.button("Назад к выбору задания", key="btn_exit_workbench", use_container_width=True):
                 st.session_state['task'] = None
+                st.session_state['task_type'] = None
                 _reset_workbench()
                 st.rerun()
         with ctrl_c2:
             st.markdown(f"<div style='text-align:center;'><span style='font-size:1.2rem;font-weight:700;'>№{task.get('task_number')}</span> · ID {tid}</div>", unsafe_allow_html=True)
-            streak = st.session_state.get('session_task_count', 1)
-            st.markdown(f"<p class='trainer-session-strip'>задание в сессии: {streak} <button onclick='window.toggleFocusMode()' style='background:transparent;border:none;cursor:pointer;font-size:0.8rem;margin-left:0.5rem;opacity:0.6;'>[Дзен]</button></p>", unsafe_allow_html=True)
+            in_session = st.session_state.get('session_task_count', 1)
+            correct_in_session = st.session_state.get('session_correct_count', 0)
+            st.markdown(
+                f"<p class='trainer-session-strip'>Заданий в сессии: <strong>{in_session}</strong> · Верно решено: <strong>{correct_in_session}</strong> "
+                f"<button onclick='window.toggleFocusMode()' style='background:transparent;border:none;cursor:pointer;font-size:0.8rem;margin-left:0.5rem;opacity:0.6;'>[Дзен]</button></p>",
+                unsafe_allow_html=True
+            )
         with ctrl_c3:
-            if st.button("→ Следующее", use_container_width=True):
+            if st.button("Следующее задание", key="btn_next_task", use_container_width=True):
                 next_card = _pull_task(client, int(task_type))
                 if next_card:
                     st.session_state['task'] = next_card
@@ -584,7 +577,7 @@ def main():
                 except Exception:
                     files = []
                 if files:
-                    st.markdown("**📎 Вложения:**")
+                    st.markdown("**Вложения:**")
                     for f in files:
                         if isinstance(f, dict):
                             path = f.get('path') or f.get('url') or ''
@@ -598,8 +591,12 @@ def main():
                         elif path:
                             st.markdown(f"- [{name}]({path})")
             
-            if task.get('source_url'):
-                st.markdown(f"[Открыть источник ↗]({task.get('source_url')})")
+            # Источник — только для преподавателей/админов/создателя
+            _user = (st.session_state.get('me') or {}).get('user') or {}
+            _role = (_user.get('role') or '').strip().lower()
+            _can_see_source = _role in ('creator', 'chief_admin', 'admin', 'tutor') or is_creator
+            if _can_see_source and task.get('source_url'):
+                st.markdown(f"[Открыть источник]({task.get('source_url')})")
             st.markdown('</div>', unsafe_allow_html=True)
 
         with w_resizer:
@@ -608,11 +605,12 @@ def main():
         with w_right:
             st.markdown('<div class="workbench-right">', unsafe_allow_html=True)
             _code_val = st.session_state.get('code', '')
+            _ace_theme = "chrome" if _get_query_param('theme') == 'light' else "monokai"
             try:
                 from streamlit_ace import st_ace
-                code = st_ace(value=_code_val, language="python", theme="monokai", key="code_ace", height=400)
+                code = st_ace(value=_code_val, language="python", theme=_ace_theme, key="code_ace", height=420)
             except Exception:
-                code = st.text_area("Код:", value=_code_val, height=400, key="code_area")
+                code = st.text_area("Код", value=_code_val, height=420, key="code_area")
             
             if code is not None:
                 st.session_state['code'] = code
@@ -622,23 +620,27 @@ def main():
             # Панель действий под кодом
             act_c1, act_c2, act_c3 = st.columns(3)
             with act_c1:
-                if st.button("▶ ЗАПУСТИТЬ", use_container_width=True, key="run_main"):
+                if st.button("Запустить", use_container_width=True, key="run_main"):
                     st.session_state['run_result'] = run_python_program(code=code, timeout_seconds=2.0)
             with act_c2:
-                if st.button("🧪 ТЕСТЫ", use_container_width=True, key="test_main"):
+                if st.button("Тесты", use_container_width=True, key="test_main"):
                     if tests:
                         st.session_state['tests'] = run_python_solve_tests(code=code, tests=tests)
                     else:
-                        st.info("Нет тестов")
+                        st.info("Нет тестов для этого задания.")
             with act_c3:
-                if st.button("🔍 АНАЛИЗ", use_container_width=True, key="analyze_main"):
+                if st.button("Анализ кода", use_container_width=True, key="analyze_main"):
                     st.session_state['analysis'] = analyze_python_code(code)
+
+            if st.session_state.get('analysis'):
+                with st.expander("Результат анализа кода", expanded=True):
+                    st.json(st.session_state['analysis'])
 
             # Ответ
             st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
             ans_val = st.text_input("Введи ответ:", key="user_answer_wb", placeholder="Ваш ответ...")
             
-            if st.button("🚀 ОТПРАВИТЬ НА ПРОВЕРКУ", use_container_width=True, type="primary", key="submit_wb"):
+            if st.button("Отправить на проверку", use_container_width=True, type="primary", key="submit_wb"):
                 if not ans_val.strip():
                     st.warning("Сначала введи ответ!")
                 else:
@@ -650,22 +652,21 @@ def main():
                     try:
                         res = client.submit_answer(tid, ans_val, time_spent_sec=spent)
                         if res.get('is_correct'):
-                            st.success("✅ ВЕРНО! Ты молодец!")
-                            st.balloons()
-                            # Сохраняем в сессию
+                            st.session_state['session_correct_count'] = (st.session_state.get('session_correct_count') or 0) + 1
+                            st.success("Верно!")
                             client.save_session(
                                 task_id=tid, task_type=task_num, language='python', code=code,
                                 analysis=st.session_state.get('analysis'), tests=st.session_state.get('tests')
                             )
                         else:
-                            st.error(f"❌ НЕВЕРНО. Ожидалось: {res.get('expected')}")
+                            st.error("Ответ неверный. Проверь решение и попробуй ещё раз.")
                     except Exception as e:
                         st.error(f"Ошибка отправки: {e}")
 
             # Выезжающий терминал (результат запуска)
             run_res = st.session_state.get('run_result')
             if run_res:
-                with st.expander("💻 Терминал", expanded=True):
+                with st.expander("Терминал", expanded=True):
                     if run_res.get('ok'):
                         st.success("Выполнено")
                     else:
@@ -676,9 +677,7 @@ def main():
                     elif not run_res.get('ok'):
                         st.code(run_res.get('details') or 'Нет деталей')
 
-            # Хинты (Floating Assistant)
-            st.markdown('<div id="ai-anchor"></div>', unsafe_allow_html=True)
-            with st.expander("🤖 ПОМОЩНИК ИИ", expanded=len(st.session_state.get('messages', [])) > 0):
+            with st.expander("Помощник ИИ", expanded=len(st.session_state.get('messages', [])) > 0):
                 ladder = (knowledge or {}).get('hint_ladder') if isinstance(knowledge, dict) else None
                 cur_lvl = st.session_state.get('hint_level_by_task', {}).get(tid, 0) or 0
                 
@@ -686,7 +685,7 @@ def main():
                 next_lvl = cur_lvl + 1
                 
                 if next_lvl <= 3:
-                    btn_text = f"💡 Дать подсказку: {hint_labels[next_lvl-1]}"
+                    btn_text = f"Дать подсказку: {hint_labels[next_lvl-1]}"
                     if st.button(btn_text, use_container_width=True, key=f"hint_btn_{tid}_{next_lvl}"):
                         hint = None
                         # 1) Платформа
@@ -730,20 +729,16 @@ def main():
                 if prompt:
                     st.session_state['messages'].append({'role': 'user', 'content': prompt})
                     try:
-                        msgs = build_messages_for_help(task=task, code=code, history=st.session_state.get('messages'), knowledge=knowledge)
+                        msgs = build_messages_for_help(
+                            task=task, code=code, analysis=st.session_state.get('analysis'),
+                            history=st.session_state.get('messages'), knowledge=knowledge
+                        )
                         pr = client.llm_chat(messages=msgs, task_id=tid)
                         st.session_state['messages'].append({'role': 'assistant', 'content': pr.get('answer', 'Нет ответа')})
                     except Exception as e:
                         st.session_state['messages'].append({'role': 'assistant', 'content': f"Ошибка: {e}"})
                     st.rerun()
 
-            # Floating Icon for AI
-            st.markdown("""
-            <div class="floating-ai-btn pulse" onclick="const s = document.querySelector('details:has(#ai-anchor)'); if(s) s.open = !s.open;">
-                <span>🤖</span>
-            </div>
-            """, unsafe_allow_html=True)
-            
             st.markdown('</div>', unsafe_allow_html=True)
 
         return

@@ -66,11 +66,12 @@
         </section>
       {% else %}
         <div class="iframe-wrap">
-          <iframe id="trainer-iframe" src="{{ iframe_url }}" allow="clipboard-write"></iframe>
+          <iframe id="trainer-iframe" allow="clipboard-write"></iframe>
         </div>
         <script>
         (function() {
           var STORAGE_KEY = 'ui.themeMode';
+          var baseUrl = {{ iframe_url | tojson }};
           function resolveTheme() {
             try {
               var v = localStorage.getItem(STORAGE_KEY);
@@ -79,14 +80,21 @@
               return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
             } catch (e) { return 'dark'; }
           }
+          function getIframeUrlWithTheme() {
+            var theme = resolveTheme();
+            var sep = baseUrl.indexOf('?') >= 0 ? '&' : '?';
+            return baseUrl + sep + 'theme=' + encodeURIComponent(theme);
+          }
+          var iframeEl = document.getElementById('trainer-iframe');
+          iframeEl.src = getIframeUrlWithTheme();
           function sendThemeToTrainer(target) {
             var theme = resolveTheme();
             try {
-              (target || document.getElementById('trainer-iframe').contentWindow).postMessage({ type: 'trainer-theme', theme: theme }, '*');
+              (target || iframeEl.contentWindow).postMessage({ type: 'trainer-theme', theme: theme }, '*');
               return theme;
             } catch (e) { return null; }
           }
-          var iframeEl = document.getElementById('trainer-iframe');
+          var lastSent = null;
           iframeEl.addEventListener('load', function() {
             lastSent = sendThemeToTrainer(iframeEl.contentWindow);
           });
@@ -95,7 +103,6 @@
               lastSent = sendThemeToTrainer(e.source);
             }
           });
-          var lastSent = null;
           setInterval(function() {
             var t = resolveTheme();
             if (t !== lastSent) { lastSent = t; sendThemeToTrainer(); }
