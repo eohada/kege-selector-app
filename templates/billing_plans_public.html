@@ -65,8 +65,9 @@
     /* Древо (Tree) */
     .tp-tree-container {
       position: relative;
-      max-width: 1400px;
+      max-width: 1680px;
       margin: 0 auto;
+      padding: 0 1.5rem;
     }
     .tp-tree-svg {
       position: absolute;
@@ -131,9 +132,9 @@
     .tp-branches-row {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
-      gap: 1.25rem;
+      gap: 2rem;
       width: 100%;
-      max-width: 1400px;
+      max-width: 1680px;
       margin: 0 auto;
     }
 
@@ -271,10 +272,10 @@
     
     /* Адаптив */
     @media (max-width: 1200px) {
-      .tp-branches-row { grid-template-columns: repeat(3, 1fr); }
+      .tp-branches-row { grid-template-columns: repeat(3, 1fr); gap: 1.75rem; }
     }
     @media (max-width: 768px) {
-      .tp-branches-row { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+      .tp-branches-row { grid-template-columns: repeat(2, 1fr); gap: 1.25rem; }
     }
     @media (max-width: 600px) {
       .tp-branches-row { grid-template-columns: 1fr; }
@@ -345,7 +346,7 @@
 <body>
   <div class="app-shell">
     <nav class="tariffs-nav" style="position: fixed; width: 100%; top: 0; z-index: 100; backdrop-filter: blur(12px); border-bottom: 1px solid var(--stroke-1); background: var(--surface-1);">
-      <div style="max-width: 1400px; margin: 0 auto; padding: 0 24px; height: 70px; display: flex; justify-content: space-between; align-items: center;">
+      <div style="max-width: 1680px; margin: 0 auto; padding: 0 24px; height: 70px; display: flex; justify-content: space-between; align-items: center;">
         <div style="font-weight: 700; font-size: 1.2rem;">URep</div>
         <div class="tp-theme-wrap" style="display:flex; gap:1rem; align-items:center;">
           <a href="{{ url_for('main.landing') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">На главную</a>
