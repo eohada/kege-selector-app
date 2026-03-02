@@ -290,7 +290,56 @@
     .tp-table th, .tp-table td { padding: 1rem; border-bottom: 1px solid var(--stroke-1); text-align: left; }
     .tp-table th { background: var(--surface-2); font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); }
     .tp-spring-cell { display: flex; align-items: center; gap: 0.5rem; }
-    .tp-spring-price.hit { color: var(--accent-1); font-weight: 700; }
+    .tp-spring-price { font-weight: 700; }
+    .tp-spring-price.hit { color: var(--accent-1); }
+    .tp-old-price { text-decoration: line-through; color: var(--text-muted); }
+    .tariff-name { font-weight: 700; }
+    .tr-hit td:first-child { border-left: 3px solid var(--accent-1); }
+
+    /* Inline SVG icons (fixed size) */
+    .tp-icon { display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; flex-shrink: 0; }
+    .tp-icon--sm { width: 16px; height: 16px; }
+    .tp-icon--flower { width: 16px; height: 16px; color: var(--accent-1); }
+    .tp-icon--fire { width: 14px; height: 14px; color: var(--danger); }
+    .tp-badge-hit {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 0.7rem; font-weight: 800; padding: 3px 8px;
+      border-radius: 20px; letter-spacing: 0.02em;
+      background: linear-gradient(135deg, rgba(255,107,107,0.18), rgba(255,159,67,0.15));
+      color: var(--danger);
+    }
+    .tp-spring-header { display: inline-flex; align-items: center; gap: 6px; }
+
+    /* Detail sections extras */
+    .tp-block { margin-bottom: 3rem; }
+    .tp-block-head { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 1.25rem; }
+    .tp-block-accent { width: 3px; min-height: 2.5rem; border-radius: 99px; flex-shrink: 0; }
+    .tp-block-accent.green { background: var(--success); }
+    .tp-block-accent.blue { background: var(--accent-2); }
+    .tp-block-accent.sun { background: linear-gradient(180deg, #ffd56a, #ff9f43); }
+    .tp-subsection { margin-top: 1.5rem; }
+    .tp-branch-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary); }
+    .tp-branch-desc { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem; }
+    .tp-promo-line { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-1); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.75rem; }
+    .tp-detail-card {
+      background: var(--surface-card); border: 1px solid var(--stroke-1); border-radius: 16px;
+      padding: 1.5rem 1.75rem; margin-bottom: 1.5rem;
+    }
+    .tp-detail-card h4 { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.35rem; color: var(--text-primary); }
+    .tp-detail-card .tp-detail-price { font-size: 1.5rem; font-weight: 800; color: var(--accent-1); margin-bottom: 0.75rem; }
+    .tp-detail-card p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; margin: 0; }
+    .tp-detail-card ul { margin: 0.75rem 0 0; padding: 0; list-style: none; }
+    .tp-detail-card li { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.4rem; line-height: 1.5; }
+    .tp-detail-card li .tp-icon { margin-top: 3px; }
+
+    /* Clickable cards */
+    .tp-node-card[data-scroll-to] { cursor: pointer; }
+    .tp-node-card[data-scroll-to]:hover { box-shadow: var(--tp-glow-high); }
+    .tp-base-node[data-scroll-to] { cursor: pointer; }
+
+    @media (max-width: 768px) {
+      .tp-detail-card { padding: 1.25rem; }
+    }
   </style>
 </head>
 <body>
@@ -322,7 +371,7 @@
           <div class="tp-tree-structure">
             
             <!-- Base Node (Top) -->
-            <div class="tp-base-node" id="base-node">
+            <div class="tp-base-node" id="base-node" data-scroll-to="detail-spec">
               <div class="tp-base-badge">Точка входа</div>
               <div class="tp-base-title">Crash Test</div>
               <div class="tp-base-price">4 000 ₽</div>
@@ -339,7 +388,7 @@
                   <div class="tp-branch-name">Спецформаты</div>
                 </div>
                 <!-- Nodes -->
-                <div class="tp-node-card" data-tier="1">
+                <div class="tp-node-card" data-tier="1" data-scroll-to="detail-spec">
                   <div class="tp-node-head">
                     <div>
                       <div class="tp-node-title">Tracker</div>
@@ -366,7 +415,7 @@
                   </div>
                 </div>
 
-                <div class="tp-node-card" data-tier="2">
+                <div class="tp-node-card" data-tier="2" data-scroll-to="detail-spec">
                   <div class="tp-node-head">
                     <div>
                       <div class="tp-node-title">Custom</div>
@@ -401,13 +450,13 @@
                   <div class="tp-branch-name">SOLO</div>
                 </div>
                 
-                <div class="tp-node-card" data-tier="1">
+                <div class="tp-node-card" data-tier="1" data-scroll-to="detail-solo">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Sprint</div><div class="tp-node-subtitle">1 месяц</div></div>
                     <div class="tp-node-price-wrap"><div class="tp-node-price">5 000 ₽</div></div>
                   </div>
                 </div>
-                <div class="tp-node-card" data-tier="2">
+                <div class="tp-node-card" data-tier="2" data-scroll-to="detail-solo">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Season Pass</div><div class="tp-node-subtitle">3 месяца</div></div>
                     <div class="tp-node-price-wrap"><div class="tp-node-price">14 000 ₽</div></div>
@@ -416,7 +465,7 @@
                     <div class="tp-feature-item"><svg class="tp-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Весенний рывок</div>
                   </div>
                 </div>
-                <div class="tp-node-card" data-tier="3">
+                <div class="tp-node-card" data-tier="3" data-scroll-to="detail-solo">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Career Mode</div><div class="tp-node-subtitle">9 месяцев</div></div>
                     <div class="tp-node-price-wrap"><div class="tp-node-price accent">35 000 ₽</div></div>
@@ -435,13 +484,13 @@
                   <div class="tp-branch-name">MENTOR (Только уроки)</div>
                 </div>
                 
-                <div class="tp-node-card" data-tier="1">
+                <div class="tp-node-card" data-tier="1" data-scroll-to="detail-mentor">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Junior</div><div class="tp-node-subtitle">8 уроков (1 мес.)</div></div>
                     <div class="tp-node-price-wrap"><div class="tp-node-price">14 000 ₽</div></div>
                   </div>
                 </div>
-                <div class="tp-node-card" data-tier="2">
+                <div class="tp-node-card" data-tier="2" data-scroll-to="detail-mentor">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Middle</div><div class="tp-node-subtitle">16 уроков (2 мес.)</div></div>
                     <div class="tp-node-price-wrap">
@@ -450,8 +499,8 @@
                     </div>
                   </div>
                 </div>
-                <div class="tp-node-card" data-tier="3">
-                  <div class="tp-node-hit-badge">🔥 ХИТ</div>
+                <div class="tp-node-card" data-tier="3" data-scroll-to="detail-mentor">
+                  <div class="tp-node-hit-badge"><svg class="tp-icon tp-icon--fire" viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M12 2c1 4 4 6 4 10a4 4 0 1 1-8 0c0-4 3-6 4-10z"/></svg> ХИТ</div>
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Advanced</div><div class="tp-node-subtitle">24 урока (3 мес.)</div></div>
                     <div class="tp-node-price-wrap">
@@ -463,7 +512,7 @@
                     <div class="tp-feature-item"><svg class="tp-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Оптимальный пакет</div>
                   </div>
                 </div>
-                <div class="tp-node-card" data-tier="4">
+                <div class="tp-node-card" data-tier="4" data-scroll-to="detail-mentor">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Senior</div><div class="tp-node-subtitle">32 урока (4 мес.)</div></div>
                     <div class="tp-node-price-wrap">
@@ -484,7 +533,7 @@
                   <div class="tp-branch-name">GOD MODE (+Тренажёр)</div>
                 </div>
 
-                <div class="tp-node-card" data-tier="1">
+                <div class="tp-node-card" data-tier="1" data-scroll-to="detail-godmode">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Junior +</div><div class="tp-node-subtitle">8 ур. + 1 мес.</div></div>
                     <div class="tp-node-price-wrap">
@@ -493,7 +542,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="tp-node-card" data-tier="2">
+                <div class="tp-node-card" data-tier="2" data-scroll-to="detail-godmode">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Middle +</div><div class="tp-node-subtitle">16 ур. + 2 мес.</div></div>
                     <div class="tp-node-price-wrap">
@@ -502,8 +551,8 @@
                     </div>
                   </div>
                 </div>
-                <div class="tp-node-card" data-tier="3">
-                  <div class="tp-node-hit-badge">🔥 ХИТ</div>
+                <div class="tp-node-card" data-tier="3" data-scroll-to="detail-godmode">
+                  <div class="tp-node-hit-badge"><svg class="tp-icon tp-icon--fire" viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M12 2c1 4 4 6 4 10a4 4 0 1 1-8 0c0-4 3-6 4-10z"/></svg> ХИТ</div>
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Advanced +</div><div class="tp-node-subtitle">24 ур. + 3 мес.</div></div>
                     <div class="tp-node-price-wrap">
@@ -516,7 +565,7 @@
                     <div class="tp-feature-item"><svg class="tp-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Хит сезона</div>
                   </div>
                 </div>
-                <div class="tp-node-card" data-tier="4">
+                <div class="tp-node-card" data-tier="4" data-scroll-to="detail-godmode">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Senior +</div><div class="tp-node-subtitle">32 ур. + 4 мес.</div></div>
                     <div class="tp-node-price-wrap">
@@ -547,65 +596,73 @@
       <section id="detailed-tables" class="tp-details-section" style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
         <h2 class="tp-block-title" style="text-align:center; margin-bottom:2rem;">Детальное описание тарифов</h2>
 
-        <!-- БЛОК 2: SOLO -->
-        <div class="tp-block">
+        <!-- Спецформаты -->
+        <div class="tp-block" id="detail-spec">
+          <div class="tp-block-head">
+            <span class="tp-block-accent sun" aria-hidden="true"></span>
+            <div>
+              <h3 class="tp-block-title">Спецформаты (Точки входа и наставничество)</h3>
+              <p class="tp-block-desc">Идеальный старт для тех, кто пока не определился с форматом.</p>
+            </div>
+          </div>
+
+          <div class="tp-detail-card">
+            <h4>Crash Test (Диагностика) — 4 000 ₽ разово</h4>
+            <p>Полная диагностика уровня ученика. Включает полноценный пробник ОГЭ/ЕГЭ на платформе-тренажёре с таймером, личную ручную проверку 2-й части и созвон на 1.5 часа: разбор ошибок + пошаговый план подготовки на оставшееся время.</p>
+          </div>
+
+          <div class="tp-detail-card">
+            <h4>Tracker (Менторство) — 10 000 ₽ / мес.</h4>
+            <p>Для самостоятельных учеников, которым нужен контроль и мотивация. Включает доступ к тренажёру 24/7, индивидуальный план на неделю, еженедельный созвон (15 минут) для контроля прогресса. Без классических уроков.</p>
+          </div>
+
+          <div class="tp-detail-card">
+            <h4>Custom (Индивидуальный трек) — ~1 800 ₽ / урок</h4>
+            <p>Для 7–10 классов: подтянуть школьную программу, алгоритмы, программирование. Итоговая ставка и формат работы определяются после бесплатной часовой вводной консультации, где мы определим уровень и цели ученика.</p>
+          </div>
+        </div>
+
+        <!-- SOLO -->
+        <div class="tp-block" id="detail-solo">
           <div class="tp-block-head">
             <span class="tp-block-accent green" aria-hidden="true"></span>
             <div>
-              <h3 class="tp-block-title">БЛОК 2: SOLO (Только Тренажер)</h3>
-              <p class="tp-block-desc">Для самостоятельной практики 24/7.</p>
+              <h3 class="tp-block-title">SOLO (Только Тренажер)</h3>
+              <p class="tp-block-desc">Для тех, кто хочет практиковаться самостоятельно 24/7. Полный доступ к платформе BooStudy — все задания, темы и автоматическая проверка.</p>
             </div>
           </div>
-          <div class="tp-table-wrap">
-            <table class="tp-table">
-              <thead>
-                <tr>
-                  <th>Тариф</th>
-                  <th>Доступ</th>
-                  <th>Цена</th>
-                  <th>Описание</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td class="tariff-name">Sprint</td>
-                  <td>1 месяц</td>
-                  <td>5 000 ₽</td>
-                  <td>Быстрый старт и тест-драйв.</td>
-                </tr>
-                <tr>
-                  <td class="tariff-name">Season Pass</td>
-                  <td>3 месяца</td>
-                  <td>14 000 ₽</td>
-                  <td>Идеально для весеннего рывка.</td>
-                </tr>
-                <tr>
-                  <td class="tariff-name">Career Mode</td>
-                  <td>9 месяцев</td>
-                  <td>35 000 ₽</td>
-                  <td>Доступ на весь учебный год.</td>
-                </tr>
-              </tbody>
-            </table>
+
+          <div class="tp-detail-card">
+            <h4>Sprint — 5 000 ₽</h4>
+            <div class="tp-detail-price" style="font-size: 1rem; color: var(--text-muted); margin-bottom: 0.5rem;">1 месяц доступа</div>
+            <p>Быстрый старт и тест-драйв платформы. Попробуйте все функции, оцените задания и интерфейс тренажёра.</p>
+          </div>
+          <div class="tp-detail-card">
+            <h4>Season Pass — 14 000 ₽</h4>
+            <div class="tp-detail-price" style="font-size: 1rem; color: var(--text-muted); margin-bottom: 0.5rem;">3 месяца доступа</div>
+            <p>Идеально для весеннего рывка. Достаточно времени, чтобы проработать все слабые места и набрать уверенность.</p>
+          </div>
+          <div class="tp-detail-card">
+            <h4>Career Mode — 35 000 ₽</h4>
+            <div class="tp-detail-price" style="font-size: 1rem; color: var(--accent-1); margin-bottom: 0.5rem;">9 месяцев доступа — макс. выгода</div>
+            <p>Доступ на весь учебный год. Самая выгодная цена за месяц. Для серьёзной и планомерной подготовки.</p>
           </div>
         </div>
 
         <!-- БЛОК 3: ОГЭ -->
-        <div class="tp-block">
+        <div class="tp-block" id="detail-mentor">
           <div class="tp-block-head">
             <span class="tp-block-accent blue" aria-hidden="true"></span>
             <div>
-              <h3 class="tp-block-title">БЛОК 3: ОГЭ (Подготовка для 9 класса)</h3>
-              <p class="tp-block-desc">Базовая стоимость урока: 1 750 ₽.</p>
+              <h3 class="tp-block-title">ОГЭ (Подготовка для 9 класса)</h3>
+              <p class="tp-block-desc">Базовая стоимость урока: 1 750 ₽. Уроки с преподавателем — индивидуально, по вашему расписанию. Покупка оптом = весенняя скидка.</p>
             </div>
           </div>
 
           <div class="tp-subsection">
             <h4 class="tp-branch-title">Ветка MENTOR (Только уроки с преподавателем):</h4>
             <p class="tp-promo-line">
-              <span class="tp-icon tp-icon--flower" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M12 22c4-3 8-6 8-10 0-4-3-7-7-7-1 0-2 .5-3 1 0-2-1-4-3-5-2 1-3 3-3 5-1-.5-2-1-3-1-4 0-4 4-7 8-10 4 3 8 6 8 10 0 4-3 7-7 7-1 0-2-.5-3-1 0 2 1 4 3 5 2-1 3-3 3-5 1 .5 2 1 3 1 4 0 4-4 7-8 10z"/></svg>
-              </span>
+              <svg class="tp-icon tp-icon--flower" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2a4 4 0 0 1 0 8 4 4 0 0 1 0 8m4-12a4 4 0 0 1-8 0 4 4 0 0 1-8 0"/></svg>
               Покупать оптом — выгоднее. Весенние скидки на большие пакеты.
             </p>
             <div class="tp-table-wrap">
@@ -615,7 +672,7 @@
                     <th>Тариф</th>
                     <th>Объем</th>
                     <th>Старая цена</th>
-                    <th><span class="tp-spring-header"><span class="tp-icon tp-icon--flower" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M12 22c4-3 8-6 8-10 0-4-3-7-7-7-1 0-2 .5-3 1 0-2-1-4-3-5-2 1-3 3-3 5-1-.5-2-1-3-1-4 0-4 4-7 8-10 4 3 8 6 8 10 0 4-3 7-7 7-1 0-2-.5-3-1 0 2 1 4 3 5 2-1 3-3 3-5 1 .5 2 1 3 1 4 0 4-4 7-8 10z"/></svg></span> Весенняя цена</span></th>
+                    <th><span class="tp-spring-header"><svg class="tp-icon tp-icon--flower" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2a4 4 0 0 1 0 8 4 4 0 0 1 0 8m4-12a4 4 0 0 1-8 0 4 4 0 0 1-8 0"/></svg> Весенняя цена</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -635,7 +692,7 @@
                     <td class="tariff-name">Advanced</td>
                     <td>24 урока (3 мес.)</td>
                     <td><span class="tp-old-price">42 000 ₽</span></td>
-                    <td><div class="tp-spring-cell"><span class="tp-spring-price hit">39 000 ₽</span> <span class="tp-badge-hit"><span class="tp-icon tp-icon--fire" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M12 23c-4.5 0-8-3.5-8-8 0-2.2 1-4 2.5-5.5L12 2l5.5 7.5C18.9 11 20 12.8 20 15c0 4.5-3.5 8-8 8z"/></svg></span> ХИТ</span></div></td>
+                    <td><div class="tp-spring-cell"><span class="tp-spring-price hit">39 000 ₽</span> <span class="tp-badge-hit"><svg class="tp-icon tp-icon--fire" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" aria-hidden="true"><path d="M12 2c1 4 4 6 4 10a4 4 0 1 1-8 0c0-4 3-6 4-10z"/></svg> ХИТ</span></div></td>
                   </tr>
                   <tr>
                     <td class="tariff-name">Senior</td>
@@ -648,9 +705,9 @@
             </div>
           </div>
 
-          <div class="tp-subsection" style="margin-top:2rem;">
+          <div class="tp-subsection" style="margin-top:2rem;" id="detail-godmode">
             <h4 class="tp-branch-title">Ветка GOD MODE (Уроки + Тренажер BooStudy):</h4>
-            <p class="tp-branch-desc">Максимальный результат. Выгода суммируется со скидкой на платформу.</p>
+            <p class="tp-branch-desc">Максимальный результат. Уроки с преподавателем + тренажёр BooStudy в одном пакете. Выгода суммируется со скидкой на платформу.</p>
             <div class="tp-table-wrap">
               <table class="tp-table">
                 <thead>
@@ -658,7 +715,7 @@
                     <th>Тариф</th>
                     <th>Состав (Уроки + Платформа)</th>
                     <th>Старая цена</th>
-                    <th><span class="tp-spring-header"><span class="tp-icon tp-icon--flower" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M12 22c4-3 8-6 8-10 0-4-3-7-7-7-1 0-2 .5-3 1 0-2-1-4-3-5-2 1-3 3-3 5-1-.5-2-1-3-1-4 0-4 4-7 8-10 4 3 8 6 8 10 0 4-3 7-7 7-1 0-2-.5-3-1 0 2 1 4 3 5 2-1 3-3 3-5 1 .5 2 1 3 1 4 0 4-4 7-8 10z"/></svg></span> Весенняя цена</span></th>
+                    <th><span class="tp-spring-header"><svg class="tp-icon tp-icon--flower" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2a4 4 0 0 1 0 8 4 4 0 0 1 0 8m4-12a4 4 0 0 1-8 0 4 4 0 0 1-8 0"/></svg> Весенняя цена</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -678,7 +735,7 @@
                     <td class="tariff-name">Advanced +</td>
                     <td>24 урока + 3 мес.</td>
                     <td><span class="tp-old-price">57 000 ₽</span></td>
-                    <td><div class="tp-spring-cell"><span class="tp-spring-price hit">48 000 ₽</span> <span class="tp-badge-hit"><span class="tp-icon tp-icon--fire" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M12 23c-4.5 0-8-3.5-8-8 0-2.2 1-4 2.5-5.5L12 2l5.5 7.5C18.9 11 20 12.8 20 15c0 4.5-3.5 8-8 8z"/></svg></span> ХИТ</span></div></td>
+                    <td><div class="tp-spring-cell"><span class="tp-spring-price hit">48 000 ₽</span> <span class="tp-badge-hit"><svg class="tp-icon tp-icon--fire" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" aria-hidden="true"><path d="M12 2c1 4 4 6 4 10a4 4 0 1 1-8 0c0-4 3-6 4-10z"/></svg> ХИТ</span></div></td>
                   </tr>
                   <tr>
                     <td class="tariff-name">Senior +</td>
@@ -711,7 +768,7 @@
                     <th>Тариф</th>
                     <th>Объем</th>
                     <th>Старая цена</th>
-                    <th><span class="tp-spring-header"><span class="tp-icon tp-icon--flower" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M12 22c4-3 8-6 8-10 0-4-3-7-7-7-1 0-2 .5-3 1 0-2-1-4-3-5-2 1-3 3-3 5-1-.5-2-1-3-1-4 0-4 4-7 8-10 4 3 8 6 8 10 0 4-3 7-7 7-1 0-2-.5-3-1 0 2 1 4 3 5 2-1 3-3 3-5 1 .5 2 1 3 1 4 0 4-4 7-8 10z"/></svg></span> Весенняя цена</span></th>
+                    <th><span class="tp-spring-header"><svg class="tp-icon tp-icon--flower" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2a4 4 0 0 1 0 8 4 4 0 0 1 0 8m4-12a4 4 0 0 1-8 0 4 4 0 0 1-8 0"/></svg> Весенняя цена</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -731,7 +788,7 @@
                     <td class="tariff-name">Advanced</td>
                     <td>24 урока (3 мес.)</td>
                     <td><span class="tp-old-price">48 000 ₽</span></td>
-                    <td><div class="tp-spring-cell"><span class="tp-spring-price hit">45 000 ₽</span> <span class="tp-badge-hit"><span class="tp-icon tp-icon--fire" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M12 23c-4.5 0-8-3.5-8-8 0-2.2 1-4 2.5-5.5L12 2l5.5 7.5C18.9 11 20 12.8 20 15c0 4.5-3.5 8-8 8z"/></svg></span> ХИТ</span></div></td>
+                    <td><div class="tp-spring-cell"><span class="tp-spring-price hit">45 000 ₽</span> <span class="tp-badge-hit"><svg class="tp-icon tp-icon--fire" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" aria-hidden="true"><path d="M12 2c1 4 4 6 4 10a4 4 0 1 1-8 0c0-4 3-6 4-10z"/></svg> ХИТ</span></div></td>
                   </tr>
                   <tr>
                     <td class="tariff-name">Senior</td>
@@ -754,7 +811,7 @@
                     <th>Тариф</th>
                     <th>Состав (Уроки + Платформа)</th>
                     <th>Старая цена</th>
-                    <th><span class="tp-spring-header"><span class="tp-icon tp-icon--flower" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M12 22c4-3 8-6 8-10 0-4-3-7-7-7-1 0-2 .5-3 1 0-2-1-4-3-5-2 1-3 3-3 5-1-.5-2-1-3-1-4 0-4 4-7 8-10 4 3 8 6 8 10 0 4-3 7-7 7-1 0-2-.5-3-1 0 2 1 4 3 5 2-1 3-3 3-5 1 .5 2 1 3 1 4 0 4-4 7-8 10z"/></svg></span> Весенняя цена</span></th>
+                    <th><span class="tp-spring-header"><svg class="tp-icon tp-icon--flower" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2a4 4 0 0 1 0 8 4 4 0 0 1 0 8m4-12a4 4 0 0 1-8 0 4 4 0 0 1-8 0"/></svg> Весенняя цена</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -774,7 +831,7 @@
                     <td class="tariff-name">Advanced +</td>
                     <td>24 урока + 3 мес.</td>
                     <td><span class="tp-old-price">63 000 ₽</span></td>
-                    <td><div class="tp-spring-cell"><span class="tp-spring-price hit">52 000 ₽</span> <span class="tp-badge-hit"><span class="tp-icon tp-icon--fire" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor" width="100%" height="100%"><path d="M12 23c-4.5 0-8-3.5-8-8 0-2.2 1-4 2.5-5.5L12 2l5.5 7.5C18.9 11 20 12.8 20 15c0 4.5-3.5 8-8 8z"/></svg></span> ХИТ</span></div></td>
+                    <td><div class="tp-spring-cell"><span class="tp-spring-price hit">52 000 ₽</span> <span class="tp-badge-hit"><svg class="tp-icon tp-icon--fire" viewBox="0 0 24 24" fill="currentColor" width="14" height="14" aria-hidden="true"><path d="M12 2c1 4 4 6 4 10a4 4 0 1 1-8 0c0-4 3-6 4-10z"/></svg> ХИТ</span></div></td>
                   </tr>
                   <tr>
                     <td class="tariff-name">Senior +</td>
@@ -865,10 +922,18 @@
       setTimeout(drawTreeLines, 500);
     })();
     
-    // Smooth scroll
+    // Smooth scroll for "Ознакомиться подробнее"
     document.querySelector('.tp-scroll-btn').addEventListener('click', function(e) {
       e.preventDefault();
       document.querySelector('#detailed-tables').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // Clickable tree cards
+    document.querySelectorAll('[data-scroll-to]').forEach(function(card) {
+      card.addEventListener('click', function() {
+        var target = document.getElementById(card.getAttribute('data-scroll-to'));
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     });
   </script>
 </body>
