@@ -127,14 +127,14 @@
     .tp-base-price { font-size: 2rem; font-weight: 800; color: var(--accent-1); margin-bottom: 0.75rem; }
     .tp-base-desc { font-size: 0.95rem; color: var(--text-muted); line-height: 1.5; }
 
-    /* Ветки (Branches) Row */
+    /* Ветки (Branches) Row — сетка 6 колонок, все ветки в одном ряду */
     .tp-branches-row {
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      gap: 2rem;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 1.25rem;
       width: 100%;
-      flex-wrap: wrap;
+      max-width: 1400px;
+      margin: 0 auto;
     }
 
     /* Колонка ветки */
@@ -142,9 +142,7 @@
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
-      flex: 1;
-      min-width: 220px;
-      max-width: 280px;
+      min-width: 0;
       position: relative;
     }
     .tp-branch-header {
@@ -272,15 +270,14 @@
     }
     
     /* Адаптив */
-    @media (max-width: 1400px) {
-      .tp-branches-row { flex-wrap: wrap; justify-content: center; }
-      .tp-branch-col { width: 30%; max-width: none; min-width: 200px; }
+    @media (max-width: 1200px) {
+      .tp-branches-row { grid-template-columns: repeat(3, 1fr); }
     }
-    @media (max-width: 1024px) {
-      .tp-branch-col { width: 45%; }
+    @media (max-width: 768px) {
+      .tp-branches-row { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
     }
     @media (max-width: 600px) {
-      .tp-branch-col { width: 100%; min-width: 0; }
+      .tp-branches-row { grid-template-columns: 1fr; }
       .tp-tree-svg { display: none; }
       .tp-hero-title { font-size: 2rem; }
     }
