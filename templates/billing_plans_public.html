@@ -143,8 +143,8 @@
       flex-direction: column;
       gap: 1.5rem;
       flex: 1;
-      min-width: 260px;
-      max-width: 320px;
+      min-width: 220px;
+      max-width: 280px;
       position: relative;
     }
     .tp-branch-header {
@@ -272,13 +272,16 @@
     }
     
     /* Адаптив */
-    @media (max-width: 1024px) {
+    @media (max-width: 1400px) {
       .tp-branches-row { flex-wrap: wrap; justify-content: center; }
-      .tp-branch-col { width: 45%; max-width: none; }
+      .tp-branch-col { width: 30%; max-width: none; min-width: 200px; }
+    }
+    @media (max-width: 1024px) {
+      .tp-branch-col { width: 45%; }
     }
     @media (max-width: 600px) {
       .tp-branch-col { width: 100%; min-width: 0; }
-      .tp-tree-svg { display: none; } /* На мобилках линии могут мешать или быть лишними при вертикальном стаке */
+      .tp-tree-svg { display: none; }
       .tp-hero-title { font-size: 2rem; }
     }
 
@@ -312,8 +315,8 @@
 
     /* Detail sections extras */
     .tp-block { margin-bottom: 3rem; }
-    .tp-block-head { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 1.25rem; }
-    .tp-block-accent { width: 3px; min-height: 2.5rem; border-radius: 99px; flex-shrink: 0; }
+    .tp-block-head { display: flex; align-items: stretch; gap: 0.75rem; margin-bottom: 1.25rem; }
+    .tp-block-accent { width: 3px; border-radius: 99px; flex-shrink: 0; align-self: stretch; }
     .tp-block-accent.green { background: var(--success); }
     .tp-block-accent.blue { background: var(--accent-2); }
     .tp-block-accent.sun { background: linear-gradient(180deg, #ffd56a, #ff9f43); }
@@ -481,16 +484,16 @@
               <div class="tp-branch-col">
                 <div class="tp-branch-header">
                   <div class="tp-branch-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-                  <div class="tp-branch-name">MENTOR (Только уроки)</div>
+                  <div class="tp-branch-name">ОГЭ · MENTOR</div>
                 </div>
                 
-                <div class="tp-node-card" data-tier="1" data-scroll-to="detail-mentor">
+                <div class="tp-node-card" data-tier="1" data-scroll-to="detail-oge-mentor">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Junior</div><div class="tp-node-subtitle">8 уроков (1 мес.)</div></div>
                     <div class="tp-node-price-wrap"><div class="tp-node-price">14 000 ₽</div></div>
                   </div>
                 </div>
-                <div class="tp-node-card" data-tier="2" data-scroll-to="detail-mentor">
+                <div class="tp-node-card" data-tier="2" data-scroll-to="detail-oge-mentor">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Middle</div><div class="tp-node-subtitle">16 уроков (2 мес.)</div></div>
                     <div class="tp-node-price-wrap">
@@ -499,7 +502,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="tp-node-card" data-tier="3" data-scroll-to="detail-mentor">
+                <div class="tp-node-card" data-tier="3" data-scroll-to="detail-oge-mentor">
                   <div class="tp-node-hit-badge"><svg class="tp-icon tp-icon--fire" viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M12 2c1 4 4 6 4 10a4 4 0 1 1-8 0c0-4 3-6 4-10z"/></svg> ХИТ</div>
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Advanced</div><div class="tp-node-subtitle">24 урока (3 мес.)</div></div>
@@ -512,7 +515,7 @@
                     <div class="tp-feature-item"><svg class="tp-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Оптимальный пакет</div>
                   </div>
                 </div>
-                <div class="tp-node-card" data-tier="4" data-scroll-to="detail-mentor">
+                <div class="tp-node-card" data-tier="4" data-scroll-to="detail-oge-mentor">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Senior</div><div class="tp-node-subtitle">32 урока (4 мес.)</div></div>
                     <div class="tp-node-price-wrap">
@@ -530,10 +533,10 @@
               <div class="tp-branch-col">
                 <div class="tp-branch-header">
                   <div class="tp-branch-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
-                  <div class="tp-branch-name">GOD MODE (+Тренажёр)</div>
+                  <div class="tp-branch-name">ОГЭ · GOD MODE</div>
                 </div>
 
-                <div class="tp-node-card" data-tier="1" data-scroll-to="detail-godmode">
+                <div class="tp-node-card" data-tier="1" data-scroll-to="detail-oge-godmode">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Junior +</div><div class="tp-node-subtitle">8 ур. + 1 мес.</div></div>
                     <div class="tp-node-price-wrap">
@@ -542,7 +545,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="tp-node-card" data-tier="2" data-scroll-to="detail-godmode">
+                <div class="tp-node-card" data-tier="2" data-scroll-to="detail-oge-godmode">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Middle +</div><div class="tp-node-subtitle">16 ур. + 2 мес.</div></div>
                     <div class="tp-node-price-wrap">
@@ -551,7 +554,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="tp-node-card" data-tier="3" data-scroll-to="detail-godmode">
+                <div class="tp-node-card" data-tier="3" data-scroll-to="detail-oge-godmode">
                   <div class="tp-node-hit-badge"><svg class="tp-icon tp-icon--fire" viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M12 2c1 4 4 6 4 10a4 4 0 1 1-8 0c0-4 3-6 4-10z"/></svg> ХИТ</div>
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Advanced +</div><div class="tp-node-subtitle">24 ур. + 3 мес.</div></div>
@@ -565,12 +568,115 @@
                     <div class="tp-feature-item"><svg class="tp-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Хит сезона</div>
                   </div>
                 </div>
-                <div class="tp-node-card" data-tier="4" data-scroll-to="detail-godmode">
+                <div class="tp-node-card" data-tier="4" data-scroll-to="detail-oge-godmode">
                   <div class="tp-node-head">
                     <div><div class="tp-node-title">Senior +</div><div class="tp-node-subtitle">32 ур. + 4 мес.</div></div>
                     <div class="tp-node-price-wrap">
                       <div class="tp-node-price-old">76 000 ₽</div>
                       <div class="tp-node-price accent">64 000 ₽</div>
+                    </div>
+                  </div>
+                  <div class="tp-node-features">
+                    <div class="tp-feature-item"><svg class="tp-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Макс. результат</div>
+                    <div class="tp-feature-item"><svg class="tp-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>До экзамена</div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Branch 5: ЕГЭ MENTOR -->
+              <div class="tp-branch-col">
+                <div class="tp-branch-header">
+                  <div class="tp-branch-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/></svg></div>
+                  <div class="tp-branch-name">ЕГЭ · MENTOR</div>
+                </div>
+
+                <div class="tp-node-card" data-tier="1" data-scroll-to="detail-ege-mentor">
+                  <div class="tp-node-head">
+                    <div><div class="tp-node-title">Junior</div><div class="tp-node-subtitle">8 уроков (1 мес.)</div></div>
+                    <div class="tp-node-price-wrap"><div class="tp-node-price">16 000 ₽</div></div>
+                  </div>
+                </div>
+                <div class="tp-node-card" data-tier="2" data-scroll-to="detail-ege-mentor">
+                  <div class="tp-node-head">
+                    <div><div class="tp-node-title">Middle</div><div class="tp-node-subtitle">16 уроков (2 мес.)</div></div>
+                    <div class="tp-node-price-wrap">
+                      <div class="tp-node-price-old">32 000 ₽</div>
+                      <div class="tp-node-price">31 000 ₽</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="tp-node-card" data-tier="3" data-scroll-to="detail-ege-mentor">
+                  <div class="tp-node-hit-badge"><svg class="tp-icon tp-icon--fire" viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M12 2c1 4 4 6 4 10a4 4 0 1 1-8 0c0-4 3-6 4-10z"/></svg> ХИТ</div>
+                  <div class="tp-node-head">
+                    <div><div class="tp-node-title">Advanced</div><div class="tp-node-subtitle">24 урока (3 мес.)</div></div>
+                    <div class="tp-node-price-wrap">
+                      <div class="tp-node-price-old">48 000 ₽</div>
+                      <div class="tp-node-price accent">45 000 ₽</div>
+                    </div>
+                  </div>
+                  <div class="tp-node-features">
+                    <div class="tp-feature-item"><svg class="tp-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Оптимальный пакет</div>
+                  </div>
+                </div>
+                <div class="tp-node-card" data-tier="4" data-scroll-to="detail-ege-mentor">
+                  <div class="tp-node-head">
+                    <div><div class="tp-node-title">Senior</div><div class="tp-node-subtitle">32 урока (4 мес.)</div></div>
+                    <div class="tp-node-price-wrap">
+                      <div class="tp-node-price-old">64 000 ₽</div>
+                      <div class="tp-node-price accent">60 000 ₽</div>
+                    </div>
+                  </div>
+                  <div class="tp-node-features">
+                    <div class="tp-feature-item"><svg class="tp-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Макс. результат</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Branch 6: ЕГЭ GOD MODE -->
+              <div class="tp-branch-col">
+                <div class="tp-branch-header">
+                  <div class="tp-branch-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+                  <div class="tp-branch-name">ЕГЭ · GOD MODE</div>
+                </div>
+
+                <div class="tp-node-card" data-tier="1" data-scroll-to="detail-ege-godmode">
+                  <div class="tp-node-head">
+                    <div><div class="tp-node-title">Junior +</div><div class="tp-node-subtitle">8 ур. + 1 мес.</div></div>
+                    <div class="tp-node-price-wrap">
+                      <div class="tp-node-price-old">21 000 ₽</div>
+                      <div class="tp-node-price">19 000 ₽</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="tp-node-card" data-tier="2" data-scroll-to="detail-ege-godmode">
+                  <div class="tp-node-head">
+                    <div><div class="tp-node-title">Middle +</div><div class="tp-node-subtitle">16 ур. + 2 мес.</div></div>
+                    <div class="tp-node-price-wrap">
+                      <div class="tp-node-price-old">42 000 ₽</div>
+                      <div class="tp-node-price">37 000 ₽</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="tp-node-card" data-tier="3" data-scroll-to="detail-ege-godmode">
+                  <div class="tp-node-hit-badge"><svg class="tp-icon tp-icon--fire" viewBox="0 0 24 24" fill="currentColor" width="12" height="12"><path d="M12 2c1 4 4 6 4 10a4 4 0 1 1-8 0c0-4 3-6 4-10z"/></svg> ХИТ</div>
+                  <div class="tp-node-head">
+                    <div><div class="tp-node-title">Advanced +</div><div class="tp-node-subtitle">24 ур. + 3 мес.</div></div>
+                    <div class="tp-node-price-wrap">
+                      <div class="tp-node-price-old">63 000 ₽</div>
+                      <div class="tp-node-price accent">52 000 ₽</div>
+                    </div>
+                  </div>
+                  <div class="tp-node-features">
+                    <div class="tp-feature-item"><svg class="tp-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Весенняя цена</div>
+                    <div class="tp-feature-item"><svg class="tp-feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Хит сезона</div>
+                  </div>
+                </div>
+                <div class="tp-node-card" data-tier="4" data-scroll-to="detail-ege-godmode">
+                  <div class="tp-node-head">
+                    <div><div class="tp-node-title">Senior +</div><div class="tp-node-subtitle">32 ур. + 4 мес.</div></div>
+                    <div class="tp-node-price-wrap">
+                      <div class="tp-node-price-old">84 000 ₽</div>
+                      <div class="tp-node-price accent">70 000 ₽</div>
                     </div>
                   </div>
                   <div class="tp-node-features">
@@ -650,7 +756,7 @@
         </div>
 
         <!-- БЛОК 3: ОГЭ -->
-        <div class="tp-block" id="detail-mentor">
+        <div class="tp-block" id="detail-oge-mentor">
           <div class="tp-block-head">
             <span class="tp-block-accent blue" aria-hidden="true"></span>
             <div>
@@ -705,7 +811,7 @@
             </div>
           </div>
 
-          <div class="tp-subsection" style="margin-top:2rem;" id="detail-godmode">
+          <div class="tp-subsection" style="margin-top:2rem;" id="detail-oge-godmode">
             <h4 class="tp-branch-title">Ветка GOD MODE (Уроки + Тренажер BooStudy):</h4>
             <p class="tp-branch-desc">Максимальный результат. Уроки с преподавателем + тренажёр BooStudy в одном пакете. Выгода суммируется со скидкой на платформу.</p>
             <div class="tp-table-wrap">
@@ -750,12 +856,12 @@
         </div>
 
         <!-- БЛОК 4: ЕГЭ -->
-        <div class="tp-block">
+        <div class="tp-block" id="detail-ege-mentor">
           <div class="tp-block-head">
-            <span class="tp-block-accent blue" aria-hidden="true"></span>
+            <span class="tp-block-accent sun" aria-hidden="true"></span>
             <div>
-              <h3 class="tp-block-title">БЛОК 4: ЕГЭ (Подготовка для 11 класса)</h3>
-              <p class="tp-block-desc">Базовая стоимость урока: 2 000 ₽.</p>
+              <h3 class="tp-block-title">ЕГЭ (Подготовка для 11 класса)</h3>
+              <p class="tp-block-desc">Базовая стоимость урока: 2 000 ₽. Индивидуальные занятия с репетитором + платформа для тренировок.</p>
             </div>
           </div>
 
@@ -801,7 +907,7 @@
             </div>
           </div>
 
-          <div class="tp-subsection" style="margin-top:2rem;">
+          <div class="tp-subsection" style="margin-top:2rem;" id="detail-ege-godmode">
             <h4 class="tp-branch-title">Ветка GOD MODE (Уроки + Тренажер BooStudy):</h4>
             <p class="tp-branch-desc">Премиальная подготовка со специальным предложением на весну.</p>
             <div class="tp-table-wrap">
