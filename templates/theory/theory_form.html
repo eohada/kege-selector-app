@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if is_new %}Новый блок теории{% else %}Редактирование · Задание {{ task_number }}{% endif %} · BooStudy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .form-container { max-width: 700px; margin: 0 auto; }
+        .form-group { margin-bottom: 1.25rem; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-primary); }
+        .form-group input[type="text"], .form-group input[type="number"], .form-group select { width: 100%; max-width: 400px; padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-1); color: var(--text-primary); }
+        .form-group textarea { width: 100%; min-height: 280px; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-1); color: var(--text-primary); font-family: inherit; resize: vertical; }
+        .form-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+        .form-hint { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem; }
+    </style>
+    <script>
+        (function(){ try { var v = localStorage.getItem('ui.themeMode'); if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch(e) {} })();
+    </script>
+</head>
+<body>
+    <div class="app-layout">
+        {% set active_page = active_page|default('theory_manage') %}
+        {% include '_sidebar.html' %}
+        <div class="app-main">
+            {% include '_topbar.html' %}
+            <main class="app-content">
+                <div class="form-container">
+                    <section class="dashboard-hero" style="margin-bottom: 1.5rem;">
+                        <a href="{{ url_for('theory.manage_list') }}" style="color: var(--text-muted); text-decoration: none; margin-bottom: 0.5rem; display: inline-block;">← К списку</a>
+                        <h1 class="hero-title">{% if is_new %}Новый блок теории{% else %}Редактирование: задание {{ task_number }}{% endif %}</h1>
+                    </section>
+
+                    <form method="post" action="{% if is_new %}{{ url_for('theory.manage_new') }}{% else %}{{ url_for('theory.manage_edit', block_id=block.id) }}{% endif %}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        {% if is_new and free_numbers %}
+                        <div class="form-group">
+                            <label for="task_number">Номер задания (ЕГЭ)</label>
+                            <select id="task_number" name="task_number" required>
+                                <option value="">— выберите —</option>
+                                {% for n in free_numbers %}
+                                <option value="{{ n }}" {% if task_number == n %}selected{% endif %}>Задание {{ n }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% elif is_new %}
+                        <p class="text-muted">Все слоты (1–27) уже заняты. Удалите ненужный блок в списке или отредактируйте существующий.</p>
+                        <div class="form-actions">
+                            <a href="{{ url_for('theory.manage_list') }}" class="neo-button ghost">Вернуться</a>
+                        </div>
+                        {% else %}
+                        <input type="hidden" name="task_number" value="{{ task_number }}">
+                        {% endif %}
+
+                        {% if is_new and not free_numbers %}
+                        {% else %}
+                        <div class="form-group">
+                            <label for="title">Заголовок (необязательно)</label>
+                            <input type="text" id="title" name="title" value="{{ title|e }}" placeholder="Например: Задание 5. Графы">
+                        </div>
+                        <div class="form-group">
+                            <label for="content">Текст теории</label>
+                            <textarea id="content" name="content" placeholder="Markdown или HTML. Материал можно вставить сюда.">{{ content|e }}</textarea>
+                            <div class="form-hint">Поддерживается Markdown: заголовки # ## ###, **жирный**, списки, код. Формулы — через KaTeX в HTML при необходимости.</div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="neo-button accent">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
+                            <a href="{{ url_for('theory.manage_list') }}" class="neo-button ghost">Отмена</a>
+                        </div>
+                        {% endif %}
+                    </form>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

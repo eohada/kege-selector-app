@@ -1776,3 +1776,33 @@ class QAComment(db.Model):
 
     author = db.relationship('User', foreign_keys=[author_id])
 
+
+class TheoryBlock(db.Model):
+    """Теоретический блок по заданию ЕГЭ (один блок на номер задания 1–27)."""
+    __tablename__ = 'TheoryBlocks'
+    id = db.Column(db.Integer, primary_key=True)
+    task_number = db.Column(db.Integer, nullable=False, unique=True, index=True)  # 1–27
+    title = db.Column(db.String(200), nullable=True)  # например "Задание 5. Графы"
+    content = db.Column(db.Text, nullable=True)  # HTML или Markdown — материал закинешь сам
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+    author_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
+
+    author = db.relationship('User', foreign_keys=[author_id])
+
+
+class StudentTheoryAccess(db.Model):
+    """Запрет/разрешение просмотра теории по номеру задания для конкретного ученика.
+    Если записи нет — доступ разрешён (по умолчанию). can_view=False — запретить просмотр."""
+    __tablename__ = 'StudentTheoryAccess'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='CASCADE'), nullable=False, index=True)
+    task_number = db.Column(db.Integer, nullable=False, index=True)  # 1–27
+    can_view = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
+
+    __table_args__ = (db.UniqueConstraint('student_id', 'task_number', name='uq_student_theory_access'),)
+
+    student = db.relationship('Student', foreign_keys=[student_id])
+

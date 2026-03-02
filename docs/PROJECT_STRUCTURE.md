@@ -35,6 +35,8 @@
   - `routes.py` - Календарь, создание уроков из расписания
 - **`templates_manager/`** - Управление шаблонами
   - `routes.py` - CRUD шаблонов, применение к урокам
+- **`theory/`** - Теория по заданиям ЕГЭ (1–27)
+  - `routes.py` - Просмотр для учеников, CRUD блоков и управление доступом по номерам
 - **`utils/`** - Утилиты и хуки
   - `hooks.py` - before_request, after_request хуки, context processors
   - `db_migrations.py` - Миграции базы данных
@@ -42,7 +44,7 @@
 ### `/core` - Ядро приложения
 Базовые компоненты, используемые во всем приложении.
 
-- **`db_models.py`** - Все модели SQLAlchemy
+- **`db_models.py`** - Все модели SQLAlchemy (в т.ч. TheoryBlock, StudentTheoryAccess)
 - **`selector_logic.py`** - Логика выбора уникальных заданий
 - **`audit_logger.py`** - Система аудита действий
 - **`audit_decorators.py`** - Декораторы для автоматического аудита

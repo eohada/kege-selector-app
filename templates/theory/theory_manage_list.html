@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление теорией · BooStudy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .theory-manage-container { max-width: 1000px; margin: 0 auto; }
+        .hero-actions .neo-button { margin-right: 0.5rem; }
+        .slots-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; }
+        .slot-card {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .slot-card.has-content { border-color: rgba(0, 255, 213, 0.3); }
+        .slot-card-num { font-weight: 700; color: var(--accent-1); }
+        .slot-card-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    </style>
+    <script>
+        (function(){ try { var v = localStorage.getItem('ui.themeMode'); if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch(e) {} })();
+    </script>
+</head>
+<body>
+    <div class="app-layout">
+        {% set active_page = active_page|default('theory_manage') %}
+        {% include '_sidebar.html' %}
+        <div class="app-main">
+            {% include '_topbar.html' %}
+            <main class="app-content">
+                <div class="theory-manage-container">
+                    <section class="dashboard-hero" style="margin-bottom: 1.5rem;">
+                        <div class="hero-pane" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                            <div>
+                                <p class="hero-eyebrow">контент для учеников</p>
+                                <h1 class="hero-title">Теория по заданиям ЕГЭ</h1>
+                                <p class="hero-subtitle">Создавайте и редактируйте блоки теории по номерам заданий (1–27).</p>
+                            </div>
+                            <div class="hero-actions">
+                                <a href="{{ url_for('theory.manage_access_index') }}" class="neo-button ghost">Доступ учеников</a>
+                                <a href="{{ url_for('theory.manage_new') }}" class="neo-button accent">+ Добавить блок</a>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="slots-grid">
+                        {% for num, block in slots %}
+                        <div class="slot-card {% if block %}has-content{% endif %}">
+                            <div>
+                                <span class="slot-card-num">Задание {{ num }}</span>
+                                {% if block and block.title %}
+                                <div style="font-size: 0.85rem; color: var(--text-muted);">{{ block.title }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="slot-card-actions">
+                                {% if block %}
+                                <a href="{{ url_for('theory.manage_edit', block_id=block.id) }}" class="neo-button ghost">Изменить</a>
+                                <form method="post" action="{{ url_for('theory.manage_delete', block_id=block.id) }}" style="display: inline;" onsubmit="return confirm('Удалить блок теории по заданию {{ num }}?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="neo-button danger">Удалить</button>
+                                </form>
+                                {% else %}
+                                <a href="{{ url_for('theory.manage_new') }}?task_number={{ num }}" class="neo-button outline">Создать</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

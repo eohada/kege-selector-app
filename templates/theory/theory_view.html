@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Задание {{ block.task_number }} · Теория · BooStudy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .theory-view-container { max-width: 800px; margin: 0 auto; }
+        .theory-view-header { margin-bottom: 1.5rem; }
+        .theory-view-title { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
+        .theory-view-content {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem 2rem;
+            line-height: 1.7;
+        }
+        .theory-view-content h1, .theory-view-content h2, .theory-view-content h3 { margin-top: 1.25rem; margin-bottom: 0.5rem; }
+        .theory-view-content pre, .theory-view-content code { background: var(--surface-2); padding: 0.2em 0.4em; border-radius: 4px; }
+        .theory-view-content pre { padding: 1rem; overflow-x: auto; }
+        .back-link { display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; color: var(--text-muted); text-decoration: none; }
+        .back-link:hover { color: var(--accent-1); }
+    </style>
+    <script>
+        (function(){ try { var v = localStorage.getItem('ui.themeMode'); if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch(e) {} })();
+    </script>
+</head>
+<body>
+    <div class="app-layout">
+        {% set active_page = active_page|default('theory') %}
+        {% include '_sidebar.html' %}
+        <div class="app-main">
+            {% include '_topbar.html' %}
+            <main class="app-content">
+                <div class="theory-view-container">
+                    <a href="{{ url_for('theory.theory_index') }}" class="back-link">← К списку теории</a>
+                    <section class="theory-view-header">
+                        <h1 class="theory-view-title">{{ block.title or 'Задание ' ~ block.task_number }}</h1>
+                    </section>
+                    <div class="theory-view-content">
+                        {% if block.content %}
+                        {{ block.content | markdown | safe }}
+                        {% else %}
+                        <p class="text-muted">Материал пока не добавлен.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

@@ -58,7 +58,10 @@ ALL_PERMISSIONS = {
 
     'trainer.use': {'name': 'Доступ к тренажёру', 'category': 'trainer'},
     'trainer.manage_knowledge': {'name': 'Управление базой примеров тренажёра', 'category': 'trainer'},
-    
+
+    'theory.view': {'name': 'Просмотр теории по заданиям ЕГЭ', 'category': 'content'},
+    'theory.manage': {'name': 'Управление теоретическим блоком (создание/редактирование)', 'category': 'content'},
+
     'system.logs': {'name': 'Просмотр логов', 'category': 'system'},
     'system.settings': {'name': 'Настройки системы', 'category': 'system'},
 }
@@ -75,10 +78,11 @@ DEFAULT_ROLE_PERMISSIONS = {
         'onboarding.view', 'onboarding.invite', 'user.view_list',
         'tools.schedule', 'schedule.view', 'diagnostics.view', 'diagnostics.checkpoints',
         'trainer.use', 'trainer.manage_knowledge', 'assets.manage',
+        'theory.view', 'theory.manage',
     ],
     'designer': ['assets.manage'],
-    'tutor': ['lesson.create', 'lesson.edit', 'plan.view', 'plan.edit', 'gradebook.view', 'gradebook.edit', 'groups.view', 'groups.manage', 'onboarding.view', 'onboarding.invite', 'user.view_list', 'tools.schedule', 'schedule.view', 'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view', 'rubrics.manage', 'diagnostics.view', 'diagnostics.checkpoints', 'trainer.use', 'trainer.manage_knowledge'],
-    'student': ['plan.view', 'gradebook.view', 'assignment.view', 'schedule.view', 'diagnostics.view', 'trainer.use'],
-    'parent': ['plan.view', 'gradebook.view', 'assignment.view', 'schedule.view', 'diagnostics.view', 'trainer.use'],
+    'tutor': ['lesson.create', 'lesson.edit', 'plan.view', 'plan.edit', 'gradebook.view', 'gradebook.edit', 'groups.view', 'groups.manage', 'onboarding.view', 'onboarding.invite', 'user.view_list', 'tools.schedule', 'schedule.view', 'task.manage', 'assignment.create', 'assignment.grade', 'assignment.view', 'rubrics.manage', 'diagnostics.view', 'diagnostics.checkpoints', 'trainer.use', 'trainer.manage_knowledge', 'theory.view', 'theory.manage'],
+    'student': ['plan.view', 'gradebook.view', 'assignment.view', 'schedule.view', 'diagnostics.view', 'trainer.use', 'theory.view'],
+    'parent': ['plan.view', 'gradebook.view', 'assignment.view', 'schedule.view', 'diagnostics.view', 'trainer.use', 'theory.view'],
     'tester': []
 }

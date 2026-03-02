@@ -69,7 +69,9 @@ from core.db_models import (
     UserSubscription,
     TrainerSession,
     TrainerLlmLog,
-    UserConsent
+    UserConsent,
+    TheoryBlock,
+    StudentTheoryAccess,
 )
 
 __all__ = [
@@ -139,5 +141,7 @@ __all__ = [
     'UserSubscription',
     'TrainerSession',
     'TrainerLlmLog',
-    'UserConsent'
+    'UserConsent',
+    'TheoryBlock',
+    'StudentTheoryAccess',
 ]

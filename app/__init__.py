@@ -169,6 +169,7 @@ def create_app(config_name=None):
                 from app.models import Assignment, AssignmentTask, Submission, Answer  # Импортируем новые модели
                 from app.models import LessonWhiteboard  # Интерактивная доска Miro
                 from app.models import Subject, KnowledgeNode, UserMastery, AnalyticsEvent  # Аналитика (граф знаний)
+                from app.models import TheoryBlock, StudentTheoryAccess  # Теория по заданиям ЕГЭ
                 db.create_all()
                 db.session.execute(text("SELECT 1"))
                 logger.info("✓ Database connection: OK")
@@ -213,7 +214,8 @@ def create_app(config_name=None):
     from app.trainer import trainer_bp
     from app.uploads import uploads_bp
     from app.qa.routes import qa_bp
-    
+    from app.theory import theory_bp
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(students_bp)
@@ -238,6 +240,7 @@ def create_app(config_name=None):
     app.register_blueprint(trainer_bp)
     app.register_blueprint(uploads_bp)
     app.register_blueprint(qa_bp)
+    app.register_blueprint(theory_bp)
 
     # Real-time комната урока (WebSocket)
     try:

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Теория по заданиям ЕГЭ · BooStudy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% include '_ux_enhancements.html' %}
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .theory-container { max-width: 900px; margin: 0 auto; }
+        .theory-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 0.75rem;
+        }
+        .theory-card {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-lg);
+            padding: 1rem 1.25rem;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.2s ease;
+            display: block;
+        }
+        .theory-card:hover {
+            border-color: var(--accent-1);
+            box-shadow: 0 4px 12px rgba(0, 255, 213, 0.1);
+        }
+        .theory-card-num { font-weight: 700; font-size: 1.1rem; color: var(--accent-1); margin-bottom: 0.25rem; }
+        .theory-card-title { font-size: 0.9rem; color: var(--text-muted); }
+        .empty-state { text-align: center; padding: 3rem 2rem; color: var(--text-muted); }
+    </style>
+    <script>
+        (function(){ try { var v = localStorage.getItem('ui.themeMode'); if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch(e) {} })();
+    </script>
+</head>
+<body>
+    <div class="app-layout">
+        {% set active_page = active_page|default('theory') %}
+        {% include '_sidebar.html' %}
+        <div class="app-main">
+            {% include '_topbar.html' %}
+            <main class="app-content">
+                <div class="theory-container">
+                    <section class="dashboard-hero" style="margin-bottom: 1.5rem;">
+                        <p class="hero-eyebrow">подготовка к ЕГЭ</p>
+                        <h1 class="hero-title">Теория по заданиям</h1>
+                        <p class="hero-subtitle">Выберите номер задания, чтобы открыть теоретический блок.</p>
+                    </section>
+
+                    {% if visible %}
+                    <div class="theory-grid">
+                        {% for num, block in visible %}
+                        <a href="{{ url_for('theory.theory_view', task_number=num) }}" class="theory-card">
+                            <div class="theory-card-num">Задание {{ num }}</div>
+                            <div class="theory-card-title">{{ block.title if block and block.title else 'Теория' }}</div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <p>Пока нет доступных блоков теории. Обратитесь к преподавателю.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>
