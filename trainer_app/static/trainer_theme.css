@@ -1,0 +1,484 @@
+/* Trainer theme — aligned with platform modern_style.css (design tokens + components) */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+    --page-bg: #06080D;
+    --page-gradient: radial-gradient(120% 100% at 20% 10%, rgba(31, 123, 255, 0.04), transparent 55%),
+        radial-gradient(120% 110% at 80% 0%, rgba(0, 255, 213, 0.03), transparent 60%);
+    --surface-1: #0E1015;
+    --surface-2: #12141A;
+    --surface-3: #16181F;
+    --surface-card: #111318;
+    --surface-card-hover: #16181D;
+    --overlay-hover: rgba(255, 255, 255, 0.06);
+    --overlay-press: rgba(255, 255, 255, 0.10);
+    --stroke-1: rgba(255, 255, 255, 0.06);
+    --stroke-2: rgba(255, 255, 255, 0.12);
+    --text-primary: rgba(255, 255, 255, 0.97);
+    --text-muted: rgba(200, 210, 230, 0.62);
+    --accent-1: #00E0FF;
+    --accent-1-strong: #00B8D4;
+    --accent-2: #4a8dff;
+    --accent-grad-1: linear-gradient(120deg, rgba(0, 224, 255, 0.92), rgba(23, 96, 216, 0.9));
+    --accent-on: #001b18;
+    --success: #24e5b4;
+    --warning: #ffd56a;
+    --danger: #ff6c91;
+    --radius-lg: 20px;
+    --radius-md: 14px;
+    --radius-sm: 10px;
+    --shadow-soft: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 16px 40px rgba(0, 0, 0, 0.4);
+    --shadow-accent: 0 4px 15px rgba(0, 224, 255, 0.2), 0 0 40px rgba(0, 224, 255, 0.1);
+    --shadow-2: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 16px rgba(0, 0, 0, 0.25);
+    --focus-ring: 0 0 0 4px rgba(0, 224, 255, 0.2);
+    --font-base: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+    color-scheme: light;
+    --page-bg: #e8ecf2;
+    --page-gradient: radial-gradient(120% 100% at 20% 10%, rgba(31, 123, 255, 0.06), transparent 55%),
+        radial-gradient(120% 110% at 80% 0%, rgba(10, 163, 154, 0.06), transparent 60%);
+    --surface-1: rgba(245, 247, 250, 0.95);
+    --surface-2: rgba(238, 241, 246, 0.92);
+    --surface-3: rgba(232, 236, 242, 0.88);
+    --surface-card: rgba(248, 250, 253, 0.98);
+    --surface-card-hover: rgba(252, 253, 255, 0.98);
+    --stroke-1: rgba(11, 18, 32, 0.12);
+    --stroke-2: rgba(11, 18, 32, 0.18);
+    --text-primary: #0b1220;
+    --text-muted: rgba(11, 18, 32, 0.65);
+    --accent-1: #0aa39a;
+    --accent-1-strong: #067a73;
+    --accent-2: #1f5eff;
+    --accent-grad-1: linear-gradient(120deg, #0aa39a, #1f5eff);
+    --accent-on: #ffffff;
+    --success: #0ea371;
+    --warning: #c48b12;
+    --danger: #d22f5a;
+    --shadow-soft: 0 20px 60px rgba(11, 18, 32, 0.08);
+    --shadow-accent: 0 14px 40px rgba(10, 163, 154, 0.18);
+    --shadow-2: 0 8px 24px rgba(11, 18, 32, 0.06);
+    --focus-ring: 0 0 0 4px rgba(10, 163, 154, 0.25);
+}
+
+/* ---- Keyframes ---- */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* ---- Global layout ---- */
+html, body, [class*="css"] {
+    font-family: var(--font-base) !important;
+    -webkit-font-smoothing: antialiased;
+}
+
+.stApp {
+    background-color: var(--page-bg) !important;
+    background-image: var(--page-gradient) !important;
+}
+
+.block-container {
+    padding-top: 1.5rem !important;
+    padding-bottom: 2rem !important;
+    max-width: 1200px !important;
+}
+
+/* Hide Streamlit branding if present */
+header[data-testid="stHeader"] {
+    background: transparent !important;
+}
+
+/* ---- Hero ---- */
+.hero-box {
+    text-align: center;
+    padding: 2.5rem 1.25rem 2rem;
+    animation: fadeIn 0.35s ease;
+}
+
+.hero-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.35em;
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.hero-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.hero-sub {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+}
+
+/* ---- Number grid ---- */
+.num-grid {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 0.75rem;
+    max-width: 600px;
+    margin: 2rem auto;
+}
+
+.num-cell {
+    aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--stroke-1);
+    background: var(--surface-card);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.num-cell:hover {
+    border-color: var(--accent-1);
+    background: rgba(0, 224, 255, 0.08);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-2);
+}
+
+:root:not([data-theme="light"]) .num-cell:hover {
+    box-shadow: var(--shadow-accent);
+}
+
+.num-cell .count {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.num-cell.empty {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+@media (max-width: 640px) {
+    .num-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+/* ---- Task card (glass-panel style) ---- */
+.task-card {
+    background: var(--surface-card);
+    border: 1px solid var(--stroke-1);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    margin: 1.5rem 0;
+    box-shadow: var(--shadow-soft);
+    position: relative;
+    overflow: hidden;
+    animation: fadeIn 0.3s ease;
+}
+
+.task-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, var(--accent-1), var(--accent-2));
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+}
+
+.task-card:hover::after {
+    opacity: 0.05;
+}
+
+.task-card-header {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--stroke-1);
+}
+
+.task-badge {
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid var(--stroke-2);
+    background: var(--surface-2);
+    color: var(--text-primary);
+}
+
+.task-badge.primary {
+    border-color: var(--accent-1);
+    background: rgba(0, 224, 255, 0.12);
+    color: var(--accent-1);
+}
+
+.task-body {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    line-height: 1.75;
+}
+
+.task-body p { margin-bottom: 0.75rem; }
+.task-body img { max-width: 100%; border-radius: var(--radius-sm); }
+.task-body a { color: var(--accent-1); }
+
+/* ---- Buttons (neo-button style) ---- */
+div.stButton > button {
+    border-radius: var(--radius-sm) !important;
+    font-weight: 600 !important;
+    padding: 0.85rem 1.5rem !important;
+    font-size: 0.95rem !important;
+    transition: all 0.25s ease !important;
+    width: 100%;
+    font-family: var(--font-base) !important;
+    border: 1px solid var(--stroke-1) !important;
+    background: var(--overlay-hover) !important;
+    color: var(--text-primary) !important;
+}
+
+div.stButton > button:hover {
+    transform: translateY(-2px);
+    border-color: var(--stroke-2) !important;
+    background: var(--overlay-press) !important;
+}
+
+div.stButton > button:focus {
+    outline: none !important;
+    box-shadow: var(--focus-ring) !important;
+}
+
+/* Skip / Accept: only in a row with exactly 2 columns (choice screen) */
+div:has(> [data-testid="column"]:nth-child(2)):not(:has(> [data-testid="column"]:nth-child(3))) > [data-testid="column"]:first-child div.stButton > button {
+    border: 1px solid var(--danger) !important;
+    background: rgba(255, 108, 145, 0.15) !important;
+    color: var(--danger) !important;
+}
+
+div:has(> [data-testid="column"]:nth-child(2)):not(:has(> [data-testid="column"]:nth-child(3))) > [data-testid="column"]:first-child div.stButton > button:hover {
+    background: rgba(255, 108, 145, 0.25) !important;
+    box-shadow: 0 4px 16px rgba(255, 108, 145, 0.25) !important;
+}
+
+div:has(> [data-testid="column"]:nth-child(2)):not(:has(> [data-testid="column"]:nth-child(3))) > [data-testid="column"]:last-child div.stButton > button {
+    background: var(--accent-grad-1) !important;
+    border: 1px solid var(--accent-1) !important;
+    color: var(--accent-on) !important;
+    box-shadow: var(--shadow-accent) !important;
+}
+
+div:has(> [data-testid="column"]:nth-child(2)):not(:has(> [data-testid="column"]:nth-child(3))) > [data-testid="column"]:last-child div.stButton > button:hover {
+    filter: brightness(0.95);
+    box-shadow: var(--shadow-accent) !important;
+}
+
+/* Back / ghost buttons: empty .back-btn div is followed by Streamlit button */
+#trainer-back-btn + div.stButton > button,
+#trainer-back-workbench + div.stButton > button,
+.back-btn div.stButton > button,
+button[kind="secondary"] {
+    border: 1px solid var(--stroke-1) !important;
+    background: transparent !important;
+    color: var(--text-muted) !important;
+}
+
+#trainer-back-btn + div.stButton > button:hover,
+#trainer-back-workbench + div.stButton > button:hover,
+.back-btn div.stButton > button:hover,
+button[kind="secondary"]:hover {
+    border-color: var(--accent-1) !important;
+    color: var(--text-primary) !important;
+    box-shadow: var(--shadow-2) !important;
+}
+
+/* Primary action buttons (Проверить, Сохранить прогресс, Загрузить подсказку, etc.) — not in two-column skip/accept row */
+.stButton > button[kind="primary"] {
+    background: var(--accent-grad-1) !important;
+    border: 1px solid var(--accent-1) !important;
+    color: var(--accent-on) !important;
+}
+
+/* ---- Tabs ---- */
+button[data-baseweb="tab"] {
+    border-radius: var(--radius-sm) !important;
+    font-weight: 600 !important;
+    padding: 0.6rem 1.25rem !important;
+    color: var(--text-muted) !important;
+    background: var(--surface-2) !important;
+    border: 1px solid var(--stroke-1) !important;
+    transition: all 0.25s ease !important;
+}
+
+button[data-baseweb="tab"]:hover {
+    color: var(--text-primary) !important;
+    border-color: var(--stroke-2) !important;
+}
+
+[data-baseweb="tab-list"] [aria-selected="true"] {
+    color: var(--accent-1) !important;
+    border-color: var(--accent-1) !important;
+    background: rgba(0, 224, 255, 0.08) !important;
+}
+
+/* ---- Inputs & textarea ---- */
+div[data-baseweb="input"] input,
+.stTextInput input {
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid var(--stroke-1) !important;
+    background: var(--surface-2) !important;
+    color: var(--text-primary) !important;
+    padding: 1rem 1.2rem !important;
+    font-family: var(--font-base) !important;
+    transition: all 0.25s ease !important;
+}
+
+div[data-baseweb="input"] input:focus,
+.stTextInput input:focus {
+    outline: none !important;
+    border-color: var(--accent-1) !important;
+    box-shadow: var(--focus-ring) !important;
+}
+
+div[data-baseweb="input"] input::placeholder,
+.stTextInput input::placeholder {
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
+div[data-baseweb="textarea"] textarea,
+.stTextArea textarea {
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid var(--stroke-1) !important;
+    background: var(--surface-2) !important;
+    color: var(--text-primary) !important;
+    padding: 1rem 1.2rem !important;
+    font-family: var(--font-base) !important;
+    transition: all 0.25s ease !important;
+}
+
+div[data-baseweb="textarea"] textarea:focus,
+.stTextArea textarea:focus {
+    outline: none !important;
+    border-color: var(--accent-1) !important;
+    box-shadow: var(--focus-ring) !important;
+}
+
+/* ---- Expander ---- */
+[data-testid="stExpander"] summary,
+[data-testid="stExpander"] > div:first-child,
+.streamlit-expanderHeader {
+    background: var(--surface-2) !important;
+    border: 1px solid var(--stroke-1) !important;
+    border-radius: var(--radius-md) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-testid="stExpander"] > div:last-child,
+.streamlit-expanderContent {
+    background: var(--surface-2) !important;
+    border: 1px solid var(--stroke-1) !important;
+    border-top: none !important;
+    border-radius: 0 0 var(--radius-md) var(--radius-md) !important;
+}
+
+/* ---- Chat messages ---- */
+[data-testid="stChatMessage"] {
+    background: var(--surface-2) !important;
+    border: 1px solid var(--stroke-1) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 1rem !important;
+}
+
+[data-testid="stChatMessage"] p {
+    color: var(--text-primary) !important;
+}
+
+/* ---- Alerts (success, error, warning, info) ---- */
+.stSuccess {
+    background: rgba(36, 229, 180, 0.12) !important;
+    border: 1px solid var(--success) !important;
+    color: var(--success) !important;
+    border-radius: var(--radius-sm) !important;
+}
+
+.stError {
+    background: rgba(255, 108, 145, 0.12) !important;
+    border: 1px solid var(--danger) !important;
+    color: var(--danger) !important;
+    border-radius: var(--radius-sm) !important;
+}
+
+.stWarning {
+    background: rgba(255, 213, 106, 0.12) !important;
+    border: 1px solid var(--warning) !important;
+    color: var(--warning) !important;
+    border-radius: var(--radius-sm) !important;
+}
+
+.stInfo {
+    background: rgba(0, 224, 255, 0.08) !important;
+    border: 1px solid var(--accent-1) !important;
+    color: var(--accent-1) !important;
+    border-radius: var(--radius-sm) !important;
+}
+
+/* ---- Sidebar ---- */
+[data-testid="stSidebar"] {
+    background: var(--surface-1) !important;
+    border-left: 1px solid var(--stroke-1) !important;
+}
+
+[data-testid="stSidebar"] .streamlit-expanderHeader {
+    background: var(--surface-2) !important;
+}
+
+/* ---- Selectbox (history) ---- */
+div[data-baseweb="select"] > div {
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid var(--stroke-1) !important;
+    background: var(--surface-2) !important;
+    color: var(--text-primary) !important;
+}
+
+div[data-baseweb="select"]:focus-within > div {
+    border-color: var(--accent-1) !important;
+    box-shadow: var(--focus-ring) !important;
+}
+
+/* ---- Code block / ACE fallback ---- */
+.stCodeBlock code {
+    font-family: var(--font-base) !important;
+}
+
+/* ---- Section headings in trainer ---- */
+.trainer-screen-title {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 1.25rem 0;
+}
+
+.trainer-screen-sub {
+    text-align: center;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+}

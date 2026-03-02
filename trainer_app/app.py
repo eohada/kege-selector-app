@@ -33,193 +33,16 @@ except Exception:
 
 
 def _inject_css():
-    st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
-html, body, [class*="css"] { font-family: 'Inter', system-ui, sans-serif; }
-
-.stApp {
-  background: linear-gradient(135deg, #0a0c12 0%, #0d1117 50%, #070910 100%);
-}
-
-.block-container { padding-top: 1rem; padding-bottom: 1rem; max-width: 1200px; }
-
-/* Hero */
-.hero-box {
-  text-align: center;
-  padding: 40px 20px 30px;
-}
-.hero-title {
-  font-size: 2.8rem;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 8px;
-}
-.hero-sub {
-  font-size: 1.1rem;
-  color: rgba(255,255,255,0.5);
-}
-
-/* Number Grid */
-.num-grid {
-  display: grid;
-  grid-template-columns: repeat(9, 1fr);
-  gap: 10px;
-  max-width: 600px;
-  margin: 30px auto;
-}
-.num-cell {
-  aspect-ratio: 1;
-  border-radius: 14px;
-  border: 2px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.04);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: #fff;
-  font-weight: 700;
-  font-size: 1.1rem;
-}
-.num-cell:hover {
-  border-color: #00ffd5;
-  background: rgba(0,255,213,0.1);
-  transform: translateY(-3px);
-  box-shadow: 0 10px 30px rgba(0,255,213,0.2);
-}
-.num-cell .count {
-  font-size: 0.65rem;
-  color: rgba(255,255,255,0.4);
-  margin-top: 2px;
-}
-.num-cell.empty {
-  opacity: 0.25;
-  cursor: not-allowed;
-}
-
-/* Task Card */
-.task-card {
-  background: linear-gradient(160deg, rgba(20,22,32,0.98), rgba(14,16,24,0.96));
-  border: 2px solid rgba(255,255,255,0.1);
-  border-radius: 20px;
-  padding: 28px;
-  margin: 20px 0;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-}
-.task-card-header {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-}
-.task-badge {
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  border: 1px solid rgba(255,255,255,0.15);
-  background: rgba(255,255,255,0.05);
-  color: rgba(255,255,255,0.85);
-}
-.task-badge.primary {
-  border-color: rgba(0,255,213,0.5);
-  background: rgba(0,255,213,0.12);
-  color: #00ffd5;
-}
-.task-body {
-  color: rgba(255,255,255,0.92);
-  font-size: 15px;
-  line-height: 1.75;
-}
-.task-body p { margin-bottom: 12px; }
-.task-body img { max-width: 100%; border-radius: 8px; }
-
-/* Action Buttons */
-.action-row {
-  display: flex;
-  gap: 16px;
-  margin-top: 24px;
-}
-
-/* Style Streamlit buttons */
-div.stButton > button {
-  border-radius: 14px !important;
-  font-weight: 600 !important;
-  padding: 14px 28px !important;
-  font-size: 15px !important;
-  transition: all 0.2s ease !important;
-  width: 100%;
-}
-
-/* Skip button - red */
-div[data-testid="column"]:first-child div.stButton > button {
-  border: 2px solid rgba(239,68,68,0.5) !important;
-  background: rgba(239,68,68,0.1) !important;
-  color: #ef4444 !important;
-}
-div[data-testid="column"]:first-child div.stButton > button:hover {
-  background: rgba(239,68,68,0.25) !important;
-  border-color: #ef4444 !important;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(239,68,68,0.3);
-}
-
-/* Accept button - green */
-div[data-testid="column"]:last-child div.stButton > button {
-  border: 2px solid rgba(16,185,129,0.5) !important;
-  background: rgba(16,185,129,0.1) !important;
-  color: #10b981 !important;
-}
-div[data-testid="column"]:last-child div.stButton > button:hover {
-  background: rgba(16,185,129,0.25) !important;
-  border-color: #10b981 !important;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(16,185,129,0.3);
-}
-
-/* Back button */
-.back-btn button {
-  border: 1px solid rgba(255,255,255,0.15) !important;
-  background: rgba(255,255,255,0.05) !important;
-  color: rgba(255,255,255,0.7) !important;
-}
-.back-btn button:hover {
-  background: rgba(255,255,255,0.1) !important;
-}
-
-/* Workbench tabs */
-button[data-baseweb="tab"] {
-  border-radius: 12px !important;
-  font-weight: 600 !important;
-  padding: 10px 20px !important;
-}
-
-/* Code area */
-div[data-baseweb="textarea"] textarea {
-  border-radius: 12px !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
-  background: rgba(0,0,0,0.3) !important;
-  color: #fff !important;
-  font-family: 'Fira Code', monospace !important;
-}
-
-/* Input */
-div[data-baseweb="input"] input {
-  border-radius: 12px !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
-  background: rgba(255,255,255,0.04) !important;
-  color: #fff !important;
-}
-</style>
-    """, unsafe_allow_html=True)
+    theme_path = os.path.join(os.path.dirname(__file__), 'static', 'trainer_theme.css')
+    if os.path.isfile(theme_path):
+        with open(theme_path, 'r', encoding='utf-8') as f:
+            css = f.read()
+        st.markdown(f'<style>\n{css}\n</style>', unsafe_allow_html=True)
+    else:
+        st.markdown(
+            '<style>html,body{font-family:system-ui,sans-serif;background:#06080D;color:#fff;}</style>',
+            unsafe_allow_html=True,
+        )
 
 
 def _get_query_param(name: str) -> str:
@@ -442,8 +265,9 @@ def main():
     if task_type is None and task is None:
         st.markdown(f"""
         <div class="hero-box">
-            <div class="hero-title">Тренажёр КЕГЭ</div>
-            <div class="hero-sub">Привет, {username}! Выбери номер задания</div>
+            <p class="hero-eyebrow">тренажёр</p>
+            <h1 class="hero-title">Тренажёр КЕГЭ</h1>
+            <p class="hero-sub">Привет, {username}! Выбери номер задания</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -477,16 +301,15 @@ def main():
         
         card = st.session_state['current_card']
         
-        if st.button("← Сменить номер", key="back_btn"):
+        st.markdown('<div class="back-btn" id="trainer-back-btn"></div>', unsafe_allow_html=True)
+        if st.button("← Сменить номер", key="back_btn", use_container_width=True):
             st.session_state['task_type'] = None
             st.session_state['current_card'] = None
             st.rerun()
         
         st.markdown(f"""
-        <div style="text-align:center; margin: 20px 0;">
-            <div style="font-size: 1.8rem; font-weight: 800; color: #fff;">Задание №{task_type}</div>
-            <div style="color: rgba(255,255,255,0.5); margin-top: 8px;">Пропусти или начни решать</div>
-        </div>
+        <div class="trainer-screen-title">Задание №{task_type}</div>
+        <p class="trainer-screen-sub">Пропусти или начни решать</p>
         """, unsafe_allow_html=True)
         
         content = (card.get('content_html') or '').strip()
@@ -529,13 +352,14 @@ def main():
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
+        st.markdown('<div class="back-btn" id="trainer-back-workbench"></div>', unsafe_allow_html=True)
         if st.button("← Назад", use_container_width=True):
             st.session_state['task'] = None
             st.session_state['current_card'] = None
             _reset_workbench()
             st.rerun()
     with col2:
-        st.markdown(f"<div style='text-align:center; font-size:1.3rem; font-weight:700; color:#fff;'>Задание №{task.get('task_number')} · ID {tid}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='trainer-screen-title'>Задание №{task.get('task_number')} · ID {tid}</div>", unsafe_allow_html=True)
     with col3:
         if st.button("→ Следующее", use_container_width=True):
             st.session_state['task'] = None
