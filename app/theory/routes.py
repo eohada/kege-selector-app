@@ -182,6 +182,12 @@ def manage_new():
     free_numbers = [n for n in THEORY_TASK_NUMBERS if n not in existing_numbers]
 
     if request.method == 'POST':
+        logger.info('[theory/manage/new] POST: content_type=%s, form.keys=%s', request.content_type, list(request.form.keys()))
+        raw_content = request.form.get('content')
+        logger.info('[theory/manage/new] content: present=%s, type=%s, len=%s, preview=%s',
+                    raw_content is not None, type(raw_content).__name__, len(raw_content) if raw_content else 0,
+                    (raw_content[:120] + '...') if raw_content and len(raw_content) > 120 else (raw_content or ''))
+
         task_number = request.form.get('task_number', type=int)
         title = (request.form.get('title') or '').strip() or None
         content = (request.form.get('content') or '').strip() or None
@@ -202,6 +208,7 @@ def manage_new():
         )
         db.session.add(block)
         db.session.commit()
+        logger.info('[theory/manage/new] saved block_id=%s, content_len=%s', block.id, len(block.content or ''))
         flash('Блок теории по заданию {} создан.'.format(task_number), 'success')
         return redirect(url_for('theory.manage_list'))
 
@@ -233,18 +240,27 @@ def manage_edit(block_id):
     block = TheoryBlock.query.get_or_404(block_id)
 
     if request.method == 'POST':
+        logger.info('[theory/manage/edit] POST block_id=%s, content_type=%s, form.keys=%s', block_id, request.content_type, list(request.form.keys()))
+        raw_content = request.form.get('content')
+        logger.info('[theory/manage/edit] content: present=%s, len=%s, preview=%s',
+                    raw_content is not None, len(raw_content) if raw_content else 0,
+                    (raw_content[:120] + '...') if raw_content and len(raw_content) > 120 else (raw_content or ''))
+
         block.title = (request.form.get('title') or '').strip() or None
         block.content = (request.form.get('content') or '').strip() or None
         db.session.commit()
+        logger.info('[theory/manage/edit] saved block_id=%s, content_len=%s', block_id, len(block.content or ''))
         flash('Теория по заданию {} сохранена.'.format(block.task_number), 'success')
         return redirect(url_for('theory.manage_list'))
 
+    content_for_template = block.content or ''
+    logger.info('[theory/manage/edit] GET block_id=%s, content_len=%s, preview=%s', block_id, len(content_for_template), (content_for_template[:80] + '...') if len(content_for_template) > 80 else content_for_template)
     return render_template(
         'theory/theory_form.html',
         block=block,
         task_number=block.task_number,
         title=block.title or '',
-        content=block.content or '',
+        content=content_for_template,
         free_numbers=[],
         is_new=False,
         active_page='theory_manage',
