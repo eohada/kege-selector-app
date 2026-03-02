@@ -6,122 +6,354 @@
   <title>Тарифы</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
   {% include '_ux_enhancements.html' %}
-    <script>
-        (function(){
-            try {
-                var v = localStorage.getItem('ui.themeMode');
-                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
-            } catch(e) {}
-        })();
-    </script>
+  <script>
+    (function(){
+      try {
+        var v = localStorage.getItem('ui.themeMode');
+        if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+      } catch(e) {}
+    })();
+  </script>
+  <style>
+    .tariffs-page { --tp-gap: 1.5rem; --tp-radius: var(--radius-md); }
+    .tariffs-page .tp-hero { margin-bottom: 2.5rem; }
+    .tariffs-page .tp-block { margin-bottom: 2.5rem; }
+    .tariffs-page .tp-block-title { display: flex; align-items: center; gap: 0.5rem; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.35rem; color: var(--text-primary); }
+    .tariffs-page .tp-block-desc { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.25rem; }
+    .tariffs-page .tp-block-icon { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; }
+    .tariffs-page .tp-block-icon.sun { background: linear-gradient(135deg, #ffd56a, #ff9f43); }
+    .tariffs-page .tp-block-icon.green { background: var(--success); }
+    .tariffs-page .tp-block-icon.blue { width: 14px; height: 14px; background: var(--accent-2); border-radius: 2px; }
+    .tariffs-page .tp-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--tp-gap); }
+    .tariffs-page .tp-card { background: var(--surface-card); border: 1px solid var(--stroke-1); border-radius: var(--tp-radius); padding: 1.5rem; transition: border-color 0.2s, box-shadow 0.2s; }
+    .tariffs-page .tp-card:hover { border-color: var(--stroke-2); box-shadow: var(--shadow-2); }
+    .tariffs-page .tp-card.hit { border-color: var(--accent-1); box-shadow: 0 0 0 1px var(--accent-1), var(--shadow-accent); position: relative; }
+    .tariffs-page .tp-card-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary); }
+    .tariffs-page .tp-card-price { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text-primary); }
+    .tariffs-page .tp-card-desc { color: var(--text-muted); font-size: 0.9rem; line-height: 1.55; }
+    .tariffs-page .tp-card-desc ul { margin: 0.5rem 0 0 1rem; padding: 0; }
+    .tariffs-page .tp-card-desc li { margin-bottom: 0.35rem; }
+    .tariffs-page .tp-card-note { margin-top: 0.75rem; font-size: 0.85rem; font-weight: 600; color: var(--accent-1); }
+    .tariffs-page .tp-table-wrap { overflow-x: auto; border-radius: var(--tp-radius); border: 1px solid var(--stroke-1); background: var(--surface-card); }
+    .tariffs-page .tp-table { width: 100%; border-collapse: collapse; min-width: 520px; }
+    .tariffs-page .tp-table th { text-align: left; padding: 1rem 1.25rem; font-weight: 600; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--stroke-1); background: var(--surface-2); }
+    .tariffs-page .tp-table td { padding: 1rem 1.25rem; border-bottom: 1px solid var(--stroke-1); color: var(--text-primary); vertical-align: middle; }
+    .tariffs-page .tp-table tr:last-child td { border-bottom: none; }
+    .tariffs-page .tp-table tr:hover td { background: var(--overlay-hover); }
+    .tariffs-page .tp-table tr.tr-hit td:first-child { border-left: 3px solid var(--accent-1); padding-left: calc(1.25rem - 3px); }
+    .tariffs-page .tp-table .tariff-name { font-weight: 700; }
+    .tariffs-page .tp-old-price { text-decoration: line-through; color: var(--text-muted); font-size: 0.95em; margin-right: 0.5rem; }
+    .tariffs-page .tp-spring-cell { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+    .tariffs-page .tp-spring-price { font-weight: 700; color: var(--text-primary); }
+    .tariffs-page .tp-spring-price.hit { color: var(--accent-1); }
+    .tariffs-page .tp-badge-hit { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 999px; background: linear-gradient(135deg, rgba(255, 107, 107, 0.2), rgba(255, 159, 67, 0.2)); color: var(--danger); }
+    .tariffs-page .tp-spring-header { display: inline-flex; align-items: center; gap: 0.35rem; }
+    .tariffs-page .tp-flower { font-size: 1rem; line-height: 1; }
+    .tariffs-page .tp-branch-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary); }
+    .tariffs-page .tp-branch-desc { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem; }
+    .tariffs-page .tp-subsection { margin-bottom: 2rem; }
+    .tariffs-page .tp-subsection:last-child { margin-bottom: 0; }
+    .tariffs-page .tp-base-note { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem; }
+    .tariffs-page .tp-promo-line { display: inline-flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding: 0.5rem 0; color: var(--accent-1); font-weight: 600; font-size: 0.95rem; }
+    .tariffs-page .tp-cta { text-align: center; margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid var(--stroke-1); }
+    .tariffs-page .tp-card-hit-badge { position: absolute; top: 0.75rem; right: 0.75rem; }
+
+    @media (max-width: 768px) {
+      .tariffs-page .tp-cards { grid-template-columns: 1fr; }
+      .tariffs-page .tp-table-wrap { margin: 0 -1rem; border-radius: 0; border-left: none; border-right: none; }
+      .tariffs-page .tp-table { min-width: 400px; font-size: 0.9rem; }
+      .tariffs-page .tp-table th, .tariffs-page .tp-table td { padding: 0.75rem 1rem; }
+      .tariffs-page .tp-block-title { font-size: 1.3rem; }
+      .tariffs-page .tp-card-price { font-size: 1.5rem; }
+    }
+
+    @media (max-width: 480px) {
+      .tariffs-page .tp-table th:nth-child(3), .tariffs-page .tp-table td:nth-child(3) { display: none; }
+      .tariffs-page .tp-table .tp-spring-cell .tp-old-price { display: block; margin-right: 0; margin-bottom: 0.15rem; }
+    }
+  </style>
 </head>
 <body>
   <div class="app-shell">
-    <nav style="position: fixed; width: 100%; top: 0; z-index: 100; backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.05);">
-        <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; height: 70px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-weight: 700; font-size: 1.2rem;">URep</div>
-            <a href="{{ url_for('main.landing') }}" style="color: var(--text-muted); text-decoration: none;">На главную</a>
-        </div>
+    <nav style="position: fixed; width: 100%; top: 0; z-index: 100; backdrop-filter: blur(12px); border-bottom: 1px solid var(--stroke-1); background: var(--surface-1);">
+      <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; height: 70px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="font-weight: 700; font-size: 1.2rem;">URep</div>
+        <a href="{{ url_for('main.landing') }}" style="color: var(--text-muted); text-decoration: none;">На главную</a>
+      </div>
     </nav>
 
-    <main style="margin-top: 100px; padding-bottom: 2rem;">
-      <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px;">
-        <section class="glass-panel" style="margin-bottom: 1.25rem;">
-          <p class="hero-eyebrow">тарифы</p>
-          <h1 class="hero-title" style="margin-bottom:.25rem;">Выберите подходящий тариф</h1>
-          <div style="color: var(--text-muted);">Выберите план, который лучше всего подходит для ваших целей обучения.</div>
-        </section>
+    <main class="tariffs-page" style="margin-top: 100px; padding: 0 24px 2rem; max-width: 1200px; margin-left: auto; margin-right: auto;">
+      <section class="tp-hero glass-panel" style="margin-bottom: 2rem;">
+        <p class="hero-eyebrow">тарифы</p>
+        <h1 class="hero-title" style="margin-bottom: 0.25rem;">Выберите подходящий тариф</h1>
+        <div style="color: var(--text-muted);">Планы для самостоятельной подготовки, с наставником и премиум-форматы.</div>
+      </section>
 
-        {% if plans_by_group or ungrouped_plans %}
-          {% for group, group_plans in plans_by_group %}
-            {% if group_plans %}
-              <section class="glass-panel" style="margin-bottom: 1.25rem;">
-                <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem;">{{ group.title }}</h2>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
-                  {% for plan in group_plans %}
-                    <div style="border: 1px solid var(--glass-border, rgba(255,255,255,0.1)); border-radius: 12px; padding: 1.5rem; background: rgba(255,255,255,0.02);">
-                      <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">{{ plan.title }}</h3>
-                      {% if plan.description %}
-                        <p style="color: var(--text-muted); margin-bottom: 1rem; line-height: 1.6;">{{ plan.description }}</p>
-                      {% endif %}
-                      <div style="margin-bottom: 1rem;">
-                        {% if plan.price_rub %}
-                          <div style="font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem;">{{ plan.price_rub }} ₽</div>
-                        {% endif %}
-                        {% if plan.period_days %}
-                          <div style="color: var(--text-muted); font-size: 0.9rem;">на {{ plan.period_days }} дней</div>
-                        {% endif %}
-                      </div>
-                      <div style="margin-bottom: 1rem;">
-                        {% if plan.allow_lessons %}
-                          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                            <span>✓</span>
-                            <span>Доступ к урокам</span>
-                          </div>
-                        {% endif %}
-                        {% if plan.allow_trainer %}
-                          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                            <span>✓</span>
-                            <span>Доступ к тренажёру</span>
-                          </div>
-                        {% endif %}
-                      </div>
-                    </div>
-                  {% endfor %}
-                </div>
-              </section>
-            {% endif %}
-          {% endfor %}
+      <!-- БЛОК 1: Спецформаты -->
+      <section class="tp-block">
+        <h2 class="tp-block-title"><span class="tp-block-icon sun" aria-hidden="true"></span> БЛОК 1: Спецформаты (Точки входа и наставничество)</h2>
+        <p class="tp-block-desc">Отлично подходит для лид-магнитов и прогрева.</p>
+        <div class="tp-cards">
+          <div class="tp-card">
+            <h3 class="tp-card-title">Crash Test (Диагностика)</h3>
+            <div class="tp-card-price">4 000 ₽ <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted);">(разово)</span></div>
+            <div class="tp-card-desc">
+              <ul>
+                <li>Полный пробник ОГЭ/ЕГЭ на платформе-тренажере (с таймером).</li>
+                <li>Моя личная ручная проверка 2-й части.</li>
+                <li>Созвон на 1.5 часа: разбор ошибок + пошаговый план подготовки на оставшееся время.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="tp-card">
+            <h3 class="tp-card-title">Tracker (Менторство)</h3>
+            <div class="tp-card-price">10 000 ₽ <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted);">/ мес.</span></div>
+            <div class="tp-card-desc">
+              <ul>
+                <li>Для самостоятельных: доступ к тренажеру + индивидуальный план на неделю.</li>
+                <li>Еженедельный созвон (15 минут) для контроля прогресса и мотивации. Без классических уроков.</li>
+              </ul>
+            </div>
+          </div>
+          <div class="tp-card">
+            <h3 class="tp-card-title">Custom (Индивидуальный трек)</h3>
+            <div class="tp-card-price">~1 800 ₽ <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted);">/ урок</span></div>
+            <div class="tp-card-desc">
+              <ul>
+                <li>Для 7–10 классов: подтянуть школьную программу, алгоритмы, программирование.</li>
+              </ul>
+            <p class="tp-card-note">Важно: итоговая ставка и формат работы определяются после бесплатной часовой (1 час) вводной консультации, где мы определим уровень и цели ученика.</p>
+          </div>
+        </div>
+      </section>
 
-          {% if ungrouped_plans %}
-            <section class="glass-panel" style="margin-bottom: 1.25rem;">
-              <h2 style="font-size: 1.8rem; margin-bottom: 1.5rem;">Другие тарифы</h2>
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
-                {% for plan in ungrouped_plans %}
-                  <div style="border: 1px solid var(--glass-border, rgba(255,255,255,0.1)); border-radius: 12px; padding: 1.5rem; background: rgba(255,255,255,0.02);">
-                    <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem;">{{ plan.title }}</h3>
-                    {% if plan.description %}
-                      <p style="color: var(--text-muted); margin-bottom: 1rem; line-height: 1.6;">{{ plan.description }}</p>
-                    {% endif %}
-                    <div style="margin-bottom: 1rem;">
-                      {% if plan.price_rub %}
-                        <div style="font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem;">{{ plan.price_rub }} ₽</div>
-                      {% endif %}
-                      {% if plan.period_days %}
-                        <div style="color: var(--text-muted); font-size: 0.9rem;">на {{ plan.period_days }} дней</div>
-                      {% endif %}
-                    </div>
-                    <div style="margin-bottom: 1rem;">
-                      {% if plan.allow_lessons %}
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                          <span>✓</span>
-                          <span>Доступ к урокам</span>
-                        </div>
-                      {% endif %}
-                      {% if plan.allow_trainer %}
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                          <span>✓</span>
-                          <span>Доступ к тренажёру</span>
-                        </div>
-                      {% endif %}
-                    </div>
-                  </div>
-                {% endfor %}
-              </div>
-            </section>
-          {% endif %}
-        {% else %}
-          <section class="glass-panel">
-            <p style="color: var(--text-muted); text-align: center; padding: 2rem;">Тарифы пока не доступны.</p>
-          </section>
-        {% endif %}
+      <!-- БЛОК 2: SOLO -->
+      <section class="tp-block">
+        <h2 class="tp-block-title"><span class="tp-block-icon green" aria-hidden="true"></span> БЛОК 2: SOLO (Только Тренажер)</h2>
+        <p class="tp-block-desc">Для тех, кто хочет практиковаться самостоятельно 24/7.</p>
+        <div class="tp-table-wrap">
+          <table class="tp-table">
+            <thead>
+              <tr>
+                <th>Тариф</th>
+                <th>Доступ</th>
+                <th>Цена</th>
+                <th>Описание</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="tariff-name">Sprint</td>
+                <td>1 месяц</td>
+                <td>5 000 ₽</td>
+                <td>Быстрый старт и тест-драйв платформы.</td>
+              </tr>
+              <tr>
+                <td class="tariff-name">Season Pass</td>
+                <td>3 месяца</td>
+                <td>14 000 ₽</td>
+                <td>Идеально для весеннего рывка.</td>
+              </tr>
+              <tr>
+                <td class="tariff-name">Career Mode</td>
+                <td>9 месяцев</td>
+                <td>35 000 ₽</td>
+                <td>Доступ на весь учебный год.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-        <section class="glass-panel" style="text-align: center; margin-top: 2rem;">
-          <p style="color: var(--text-muted); margin-bottom: 1rem;">Для получения доступа к тарифам свяжитесь с нами.</p>
-          <a href="{{ url_for('main.landing') }}" class="neo-button accent" style="text-decoration: none;">Вернуться на главную</a>
-        </section>
-      </div>
+      <!-- БЛОК 3: ОГЭ -->
+      <section class="tp-block">
+        <h2 class="tp-block-title"><span class="tp-block-icon blue" aria-hidden="true"></span> БЛОК 3: ОГЭ (Подготовка для 9 класса)</h2>
+        <p class="tp-base-note">(База: 1 750 ₽ / урок)</p>
+
+        <div class="tp-subsection">
+          <h3 class="tp-branch-title">Ветка MENTOR (Только уроки с преподавателем):</h3>
+          <p class="tp-promo-line"><span class="tp-flower" aria-hidden="true">🌸</span> Покупать оптом — выгоднее. Весенние скидки на большие пакеты.</p>
+          <div class="tp-table-wrap">
+            <table class="tp-table">
+              <thead>
+                <tr>
+                  <th>Тариф</th>
+                  <th>Объем</th>
+                  <th>Старая цена</th>
+                  <th><span class="tp-spring-header"><span class="tp-flower" aria-hidden="true">🌸</span> Весенняя цена</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="tariff-name">Junior</td>
+                  <td>8 уроков (1 мес.)</td>
+                  <td>—</td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price">14 000 ₽</span></div></td>
+                </tr>
+                <tr>
+                  <td class="tariff-name">Middle</td>
+                  <td>16 уроков (2 мес.)</td>
+                  <td><span class="tp-old-price">28 000 ₽</span></td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price">27 000 ₽</span></div></td>
+                </tr>
+                <tr class="tr-hit" style="background: var(--overlay-hover);">
+                  <td class="tariff-name">Advanced</td>
+                  <td>24 урока (3 мес.)</td>
+                  <td><span class="tp-old-price">42 000 ₽</span></td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price hit">39 000 ₽</span> <span class="tp-badge-hit">🔥 ХИТ</span></div></td>
+                </tr>
+                <tr>
+                  <td class="tariff-name">Senior</td>
+                  <td>32 урока (4 мес.)</td>
+                  <td><span class="tp-old-price">56 000 ₽</span></td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price">52 000 ₽</span></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="tp-subsection">
+          <h3 class="tp-branch-title">Ветка GOD MODE (Уроки + Тренажер BooStudy):</h3>
+          <p class="tp-branch-desc">Максимальный результат. Выгода суммируется со скидкой на платформу.</p>
+          <div class="tp-table-wrap">
+            <table class="tp-table">
+              <thead>
+                <tr>
+                  <th>Тариф</th>
+                  <th>Состав (Уроки + Платформа)</th>
+                  <th>Старая цена</th>
+                  <th><span class="tp-spring-header"><span class="tp-flower" aria-hidden="true">🌸</span> Весенняя цена</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="tariff-name">Junior +</td>
+                  <td>8 уроков + 1 мес.</td>
+                  <td><span class="tp-old-price">19 000 ₽</span></td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price">17 500 ₽</span></div></td>
+                </tr>
+                <tr>
+                  <td class="tariff-name">Middle +</td>
+                  <td>16 уроков + 2 мес.</td>
+                  <td><span class="tp-old-price">38 000 ₽</span></td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price">34 000 ₽</span></div></td>
+                </tr>
+                <tr class="tr-hit" style="background: var(--overlay-hover);">
+                  <td class="tariff-name">Advanced +</td>
+                  <td>24 урока + 3 мес.</td>
+                  <td><span class="tp-old-price">57 000 ₽</span></td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price hit">48 000 ₽</span> <span class="tp-badge-hit">🔥 ХИТ</span></div></td>
+                </tr>
+                <tr>
+                  <td class="tariff-name">Senior +</td>
+                  <td>32 урока + 4 мес.</td>
+                  <td><span class="tp-old-price">76 000 ₽</span></td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price">64 000 ₽</span></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- БЛОК 4: ЕГЭ -->
+      <section class="tp-block">
+        <h2 class="tp-block-title"><span class="tp-block-icon blue" aria-hidden="true"></span> БЛОК 4: ЕГЭ (Подготовка для 11 класса)</h2>
+        <p class="tp-base-note">(База: 2 000 ₽ / урок)</p>
+
+        <div class="tp-subsection">
+          <h3 class="tp-branch-title">Ветка MENTOR (Только уроки с преподавателем):</h3>
+          <p class="tp-branch-desc">Бронируй время до самых экзаменов с приятным бонусом.</p>
+          <div class="tp-table-wrap">
+            <table class="tp-table">
+              <thead>
+                <tr>
+                  <th>Тариф</th>
+                  <th>Объем</th>
+                  <th>Старая цена</th>
+                  <th><span class="tp-spring-header"><span class="tp-flower" aria-hidden="true">🌸</span> Весенняя цена</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="tariff-name">Junior</td>
+                  <td>8 уроков (1 мес.)</td>
+                  <td>—</td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price">16 000 ₽</span></div></td>
+                </tr>
+                <tr>
+                  <td class="tariff-name">Middle</td>
+                  <td>16 уроков (2 мес.)</td>
+                  <td><span class="tp-old-price">32 000 ₽</span></td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price">31 000 ₽</span></div></td>
+                </tr>
+                <tr class="tr-hit" style="background: var(--overlay-hover);">
+                  <td class="tariff-name">Advanced</td>
+                  <td>24 урока (3 мес.)</td>
+                  <td><span class="tp-old-price">48 000 ₽</span></td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price hit">45 000 ₽</span> <span class="tp-badge-hit">🔥 ХИТ</span></div></td>
+                </tr>
+                <tr>
+                  <td class="tariff-name">Senior</td>
+                  <td>32 урока (4 мес.)</td>
+                  <td><span class="tp-old-price">64 000 ₽</span></td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price">60 000 ₽</span></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="tp-subsection">
+          <h3 class="tp-branch-title">Ветка GOD MODE (Уроки + Тренажер BooStudy):</h3>
+          <p class="tp-branch-desc">Премиальная подготовка со специальным предложением на весну.</p>
+          <div class="tp-table-wrap">
+            <table class="tp-table">
+              <thead>
+                <tr>
+                  <th>Тариф</th>
+                  <th>Состав (Уроки + Платформа)</th>
+                  <th>Старая цена</th>
+                  <th><span class="tp-spring-header"><span class="tp-flower" aria-hidden="true">🌸</span> Весенняя цена</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="tariff-name">Junior +</td>
+                  <td>8 уроков + 1 мес.</td>
+                  <td><span class="tp-old-price">21 000 ₽</span></td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price">19 000 ₽</span></div></td>
+                </tr>
+                <tr>
+                  <td class="tariff-name">Middle +</td>
+                  <td>16 уроков + 2 мес.</td>
+                  <td><span class="tp-old-price">42 000 ₽</span></td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price">37 000 ₽</span></div></td>
+                </tr>
+                <tr class="tr-hit" style="background: var(--overlay-hover);">
+                  <td class="tariff-name">Advanced +</td>
+                  <td>24 урока + 3 мес.</td>
+                  <td><span class="tp-old-price">63 000 ₽</span></td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price hit">52 000 ₽</span> <span class="tp-badge-hit">🔥 ХИТ</span></div></td>
+                </tr>
+                <tr>
+                  <td class="tariff-name">Senior +</td>
+                  <td>32 урока + 4 мес.</td>
+                  <td><span class="tp-old-price">84 000 ₽</span></td>
+                  <td><div class="tp-spring-cell"><span class="tp-spring-price">70 000 ₽</span></div></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="tp-cta">
+        <p style="color: var(--text-muted); margin-bottom: 1rem;">Для получения доступа к тарифам свяжитесь с нами.</p>
+        <a href="{{ url_for('main.landing') }}" class="neo-button accent" style="text-decoration: none;">Вернуться на главную</a>
+      </section>
     </main>
   </div>
 </body>
