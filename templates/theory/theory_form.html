@@ -168,7 +168,7 @@
                                 <div class="form-hint">Заголовки, списки, код, картинки — через панель инструментов или Markdown.</div>
                                 <div class="theory-editor-wrap">
                                     <textarea id="content"></textarea>
-                                    <input type="hidden" name="content" id="content-sync" value="">
+                                    <textarea name="content" id="content-sync" style="display:none; height:0; overflow:hidden; position:absolute; left:-9999px;" aria-hidden="true"></textarea>
                                 </div>
                                 <script type="application/json" id="content-initial">{{ content|tojson }}</script>
                             </div>
@@ -201,6 +201,9 @@
 
     var csrfToken = document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     var uploadUrl = '{{ url_for("theory.upload_image") }}';
+
+    var syncField = document.getElementById('content-sync');
+    if (syncField) syncField.value = typeof initialContent === 'string' ? initialContent : '';
 
     var easymde = new EasyMDE({
         element: textarea,
@@ -256,20 +259,13 @@
         autofocus: false
     });
 
+    easymde.codemirror.on('change', function() {
+        if (syncField) syncField.value = easymde.value();
+    });
+
     var form = document.getElementById('theory-form');
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        var formData = new FormData(form);
-        formData.set('content', easymde.value());
-        var submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Сохранение…'; }
-        fetch(form.action, { method: 'POST', body: formData, redirect: 'follow' })
-            .then(function(res) {
-                if (res.redirected) window.location.href = res.url;
-                else return res.text().then(function(t) { alert('Ошибка: ' + (t || res.status)); });
-            })
-            .catch(function(err) { alert('Ошибка отправки: ' + err.message); })
-            .finally(function() { if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = {{ ('Создать' if is_new else 'Сохранить')|tojson }}; } });
+    form.addEventListener('submit', function() {
+        if (syncField) syncField.value = easymde.value();
     });
 })();
     </script>
