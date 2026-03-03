@@ -179,7 +179,7 @@
       box-sizing: border-box;
       overflow: visible;
       overflow-wrap: break-word;
-      word-break: break-word;
+      word-break: normal;
     }
     .tp-node-card:hover {
       border-color: var(--stroke-2);
@@ -214,9 +214,9 @@
       text-transform: uppercase;
       z-index: 1;
     }
-    /* В узких колонках разрешаем перенос цены и уменьшаем размеры, чтобы не вылезало */
+    /* В узких колонках чуть уменьшаем размеры, без разрыва слов */
     @media (max-width: 1600px) {
-      .tp-node-price { font-size: 1rem; white-space: normal; word-break: keep-all; }
+      .tp-node-price { font-size: 1rem; }
       .tp-node-title { font-size: 1rem; }
     }
 
