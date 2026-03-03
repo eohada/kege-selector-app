@@ -16,10 +16,11 @@
     })();
   </script>
   <style>
-    /* Страница тарифов — на всю ширину, без ограничения 1480px */
+    /* Страница тарифов — на всю ширину, контент центрирован */
     .app-shell:has(.tariffs-page) { max-width: none !important; width: 100%; }
-
     .tariffs-page {
+      width: 100%;
+      box-sizing: border-box;
       --tp-gap: 2rem;
       --tp-radius: 20px;
       --tp-tree-color: var(--stroke-2);
@@ -65,14 +66,16 @@
       line-height: 1.6;
     }
 
-    /* Древо (Tree) — центрируем, отступы чтобы стрелки не обрезались */
-    .tp-tree-hero { overflow: visible; }
+    /* Древо (Tree) — явное центрирование, узкий блок по центру экрана */
+    .tp-tree-hero { overflow: visible; width: 100%; }
     .tp-tree-container {
       position: relative;
-      max-width: 1920px;
+      width: 100%;
+      max-width: 1600px;
       margin: 0 auto;
-      padding: 0 3rem;
+      padding: 0 2.5rem;
       overflow: visible;
+      box-sizing: border-box;
     }
     .tp-tree-svg {
       position: absolute;
@@ -134,14 +137,15 @@
     .tp-base-price { font-size: 2rem; font-weight: 800; color: var(--accent-1); margin-bottom: 0.75rem; }
     .tp-base-desc { font-size: 0.95rem; color: var(--text-muted); line-height: 1.5; }
 
-    /* Ветки (Branches) Row — сетка 6 колонок, карточки пошире, больше отступы */
+    /* Ветки (Branches) Row — сетка 6 колонок, в одной ширине с контейнером */
     .tp-branches-row {
       display: grid;
-      grid-template-columns: repeat(6, minmax(268px, 1fr));
+      grid-template-columns: repeat(6, minmax(220px, 1fr));
       gap: 2.5rem;
       width: 100%;
-      max-width: 1920px;
+      max-width: 1600px;
       margin: 0 auto;
+      box-sizing: border-box;
     }
 
     /* Колонка ветки */
