@@ -143,7 +143,6 @@
     pending: [],
     eventLog: [],
     layoutName: 'standard',
-    golden: null,
     glossary: null,
     cm: null,
     md: null,
@@ -1705,219 +1704,199 @@
     }
   }
 
-  function defaultLayoutConfig() {
-    return {
-      settings: {
-        hasHeaders: true,
-        constrainDragToContainer: true,
-        reorderEnabled: true,
-        selectionEnabled: false,
-        popoutWholeStack: false,
-        blockedPopoutsThrowError: true,
-        closePopoutsOnUnload: true,
-        showPopoutIcon: false,
-        showMaximiseIcon: true,
-        showCloseIcon: false
-      },
-      dimensions: {
-        borderWidth: 6,
-        minItemHeight: 120,
-        minItemWidth: 220,
-        headerHeight: 30,
-        dragProxyWidth: 300,
-        dragProxyHeight: 200
-      },
-      content: []
-    };
-  }
-
-  function presetLayouts() {
-    const base = defaultLayoutConfig();
-    const mk = (content) => Object.assign({}, base, { content });
-    const stackRight = {
-      type: 'stack',
-      content: [
-        { type: 'component', componentName: 'scratchpad', title: 'черновик' },
-        { type: 'component', componentName: 'history', title: 'история' },
-        { type: 'component', componentName: 'tests', title: 'проверка' },
-        { type: 'component', componentName: 'terminal', title: 'лог' }
-      ]
-    };
-
-    return {
-      standard: mk([{
-        type: 'row',
-        content: [
-          { type: 'component', componentName: 'condition', title: 'условие', width: 38 },
-          {
-            type: 'column',
-            width: 62,
-            content: [
-              { type: 'component', componentName: 'editor', title: 'редактор/ответ', height: 60 },
-              stackRight
-            ]
-          }
-        ]
-      }]),
-      code80: mk([{
-        type: 'row',
-        content: [
-          { type: 'component', componentName: 'condition', title: 'условие', width: 20 },
-          {
-            type: 'column',
-            width: 80,
-            content: [
-              { type: 'component', componentName: 'editor', title: 'редактор/ответ', height: 68 },
-              stackRight
-            ]
-          }
-        ]
-      }]),
-      condition60: mk([{
-        type: 'row',
-        content: [
-          { type: 'component', componentName: 'condition', title: 'условие', width: 60 },
-          {
-            type: 'column',
-            width: 40,
-            content: [
-              { type: 'component', componentName: 'editor', title: 'редактор/ответ', height: 58 },
-              stackRight
-            ]
-          }
-        ]
-      }]),
-      minimum: mk([{
-        type: 'row',
-        content: [
-          { type: 'component', componentName: 'condition', title: 'условие', width: 50 },
-          { type: 'component', componentName: 'editor', title: 'редактор/ответ', width: 50 }
-        ]
-      }]),
-      zen: (function() {
-        const z = defaultLayoutConfig();
-        z.settings.hasHeaders = false;
-        z.settings.showMaximiseIcon = false;
-        z.settings.showPopoutIcon = false;
-        z.settings.showCloseIcon = false;
-        z.dimensions.headerHeight = 0;
-        z.content = [{
-          type: 'row',
-          content: [
-            { type: 'component', componentName: 'condition', title: 'условие', width: 55 },
-            { type: 'component', componentName: 'editor', title: 'редактор/ответ', width: 45 }
-          ]
-        }];
-        return z;
-      })()
-    };
-  }
-
-  function initDockLayout() {
+  function initDockLite() {
     if (!dockEl) return;
-    const presets = presetLayouts();
-    if (cfg.zenMode === true) {
-      State.layoutName = 'zen';
-    } else {
-      const savedPreset = (lsGet(LS.preset, 'standard') || 'standard').trim();
-      State.layoutName = presets[savedPreset] ? savedPreset : 'standard';
+    dockEl.innerHTML = '';
+
+    const root = document.createElement('div');
+    root.className = 'tv2-lite';
+
+    const left = document.createElement('div');
+    left.className = 'tv2-lite-left';
+    const resizer = document.createElement('div');
+    resizer.className = 'tv2-lite-resizer';
+    const right = document.createElement('div');
+    right.className = 'tv2-lite-right';
+
+    // left: condition
+    const condition = makeConditionComponent();
+    State.conditionView = condition;
+    left.appendChild(condition.el);
+
+    // right top: editor
+    const editorWrap = document.createElement('div');
+    editorWrap.style.minHeight = '0';
+    const editor = makeEditorComponent();
+    State.editorView = editor;
+    editorWrap.appendChild(editor.el);
+
+    // vertical resizer between editor and bottom panel
+    const vresizer = document.createElement('div');
+    vresizer.className = 'tv2-lite-vresizer';
+
+    // bottom: tabs + panels
+    const bottom = document.createElement('div');
+    bottom.className = 'tv2-lite-bottom';
+
+    const tabs = document.createElement('div');
+    tabs.className = 'tv2-lite-tabs';
+
+    const panel = document.createElement('div');
+    panel.className = 'tv2-lite-panel';
+
+    const btns = [
+      { id: 'terminal', label: 'терминал' },
+      { id: 'черновик', label: 'черновик' },
+      { id: 'история', label: 'история' },
+      { id: 'проверка', label: 'проверка' }
+    ];
+    const btnMap = {};
+    btns.forEach((b) => {
+      const x = document.createElement('button');
+      x.type = 'button';
+      x.className = 'tv2-lite-tabbtn';
+      x.textContent = b.label;
+      x.setAttribute('data-tab', b.id);
+      tabs.appendChild(x);
+      btnMap[b.id] = x;
+    });
+
+    // create panels
+    const terminal = makeTerminalComponent();
+    State.terminalView = terminal;
+    const scratch = makeScratchpadComponent();
+    const history = makeHistoryComponent();
+    State.historyView = history;
+    const tests = makeTestsComponent();
+    State.testsView = tests;
+
+    const panes = {
+      terminal: terminal.el,
+      'черновик': scratch.el,
+      'история': history.el,
+      'проверка': tests.el
+    };
+
+    function setTab(id) {
+      Object.keys(btnMap).forEach((k) => btnMap[k].classList.toggle('is-active', k === id));
+      panel.innerHTML = '';
+      panel.appendChild(panes[id]);
+      try {
+        if (id === 'terminal') terminal.render();
+        if (id === 'история') history.render();
+        if (id === 'проверка') tests.render();
+        if (id === 'черновик') scratch.mountMd();
+      } catch (_) {}
+      lsSet(LS.layout('dock_lite_active_tab'), id);
     }
 
-    function buildLayoutConfig() {
-      const stored = safeJsonParse(lsGet(LS.layout(State.layoutName), 'null'), null);
-      if (stored && typeof stored === 'object' && Array.isArray(stored.content) && stored.content.length) return stored;
-      return presets[State.layoutName];
+    Object.keys(btnMap).forEach((k) => btnMap[k].addEventListener('click', () => setTab(k)));
+    const initialTab = lsGet(LS.layout('dock_lite_active_tab'), 'terminal') || 'terminal';
+    setTab(panes[initialTab] ? initialTab : 'terminal');
+
+    bottom.appendChild(tabs);
+    bottom.appendChild(panel);
+
+    right.appendChild(editorWrap);
+    right.appendChild(vresizer);
+    right.appendChild(bottom);
+
+    root.appendChild(left);
+    root.appendChild(resizer);
+    root.appendChild(right);
+    dockEl.appendChild(root);
+
+    // init editors after mount
+    setTimeout(() => {
+      try { editor.mountEditor(); } catch (_) {}
+      try { condition.render(); } catch (_) {}
+      if (State.currentTask) loadDraftsForTask(State.currentTask.task_id);
+      try { if (State.editorView && State.editorView.updateAttemptsUI && State.currentTask) State.editorView.updateAttemptsUI(State.currentTask.task_id); } catch (_) {}
+    }, 0);
+
+    // horizontal resizer
+    let isResizing = false;
+    let startX = 0;
+    let startLeftPx = 0;
+    resizer.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startLeftPx = left.getBoundingClientRect().width;
+      document.body.style.cursor = 'col-resize';
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      const dx = e.clientX - startX;
+      const total = root.getBoundingClientRect().width;
+      const nextPx = clamp(startLeftPx + dx, 240, total - 320);
+      const pct = (nextPx / total) * 100;
+      root.style.gridTemplateColumns = `minmax(240px, ${pct}%) 10px 1fr`;
+      lsSet(LS.layout('dock_lite_left_pct'), String(pct));
+    });
+    window.addEventListener('mouseup', () => {
+      if (!isResizing) return;
+      isResizing = false;
+      document.body.style.cursor = 'default';
+    });
+
+    // vertical resizer
+    let isV = false;
+    let startY = 0;
+    let startTopPx = 0;
+    vresizer.addEventListener('mousedown', (e) => {
+      isV = true;
+      startY = e.clientY;
+      startTopPx = editorWrap.getBoundingClientRect().height;
+      document.body.style.cursor = 'row-resize';
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!isV) return;
+      const dy = e.clientY - startY;
+      const total = right.getBoundingClientRect().height;
+      const nextTop = clamp(startTopPx + dy, 220, total - 180);
+      const bottomH = total - nextTop - 10;
+      right.style.gridTemplateRows = `${nextTop}px 10px ${bottomH}px`;
+      lsSet(LS.layout('dock_lite_editor_px'), String(nextTop));
+    });
+    window.addEventListener('mouseup', () => {
+      if (!isV) return;
+      isV = false;
+      document.body.style.cursor = 'default';
+    });
+
+    // apply stored sizes
+    const leftPct = Number(lsGet(LS.layout('dock_lite_left_pct'), ''));
+    if (Number.isFinite(leftPct) && leftPct >= 15 && leftPct <= 75) {
+      root.style.gridTemplateColumns = `minmax(240px, ${leftPct}%) 10px 1fr`;
+    }
+    const editorPx = Number(lsGet(LS.layout('dock_lite_editor_px'), ''));
+    if (Number.isFinite(editorPx) && editorPx >= 220) {
+      const total = right.getBoundingClientRect().height;
+      const bottomH = Math.max(180, total - editorPx - 10);
+      right.style.gridTemplateRows = `${editorPx}px 10px ${bottomH}px`;
     }
 
-    function mount(config) {
-      dockEl.innerHTML = '';
-      const gl = new GoldenLayout(config, window.jQuery ? window.jQuery(dockEl) : dockEl);
-
-      gl.registerComponent('condition', (container) => {
-        const comp = makeConditionComponent();
-        State.conditionView = comp;
-        container.getElement().append(comp.el);
-        setTimeout(() => comp.render(), 0);
-      });
-
-      gl.registerComponent('editor', (container) => {
-        const comp = makeEditorComponent();
-        State.editorView = comp;
-        container.getElement().append(comp.el);
-        setTimeout(() => {
-          comp.mountEditor();
-          if (State.currentTask) loadDraftsForTask(State.currentTask.task_id);
-        }, 0);
-      });
-
-      gl.registerComponent('scratchpad', (container) => {
-        const comp = makeScratchpadComponent();
-        container.getElement().append(comp.el);
-        setTimeout(() => {
-          comp.mountMd();
-          if (State.currentTask) {
-            const md = lsGet(LS.scratchMd(State.currentTask.task_id), '');
-            try { if (State.md) State.md.value(md || ''); } catch (_) {}
-            try { if (State.scratchCanvasApi) State.scratchCanvasApi.loadForTask(State.currentTask.task_id); } catch (_) {}
-          }
-        }, 0);
-      });
-
-      gl.registerComponent('history', (container) => {
-        const comp = makeHistoryComponent();
-        State.historyView = comp;
-        container.getElement().append(comp.el);
-        setTimeout(() => comp.render(), 0);
-      });
-
-      gl.registerComponent('tests', (container) => {
-        const comp = makeTestsComponent();
-        State.testsView = comp;
-        container.getElement().append(comp.el);
-        setTimeout(() => comp.render(), 0);
-      });
-
-      gl.registerComponent('terminal', (container) => {
-        const comp = makeTerminalComponent();
-        State.terminalView = comp;
-        container.getElement().append(comp.el);
-        setTimeout(() => comp.render(), 0);
-      });
-
-      gl.on('stateChanged', () => {
-        try {
-          const st = gl.toConfig();
-          lsSet(LS.layout(State.layoutName), JSON.stringify(st));
-        } catch (_) {}
-      });
-
-      gl.init();
-      State.golden = gl;
-    }
-
-    mount(buildLayoutConfig());
-
-    // preset button
-    const order = ['standard', 'code80', 'condition60', 'minimum'];
-    function presetLabel(name) {
-      if (name === 'standard') return 'пресет: стандарт';
-      if (name === 'code80') return 'пресет: код 80%';
-      if (name === 'condition60') return 'пресет: условие 60%';
-      if (name === 'minimum') return 'пресет: минимум';
-      return 'пресет';
-    }
+    // presets
     if (presetBtn) {
-      presetBtn.textContent = presetLabel(State.layoutName);
-      presetBtn.addEventListener('click', () => {
-        if (cfg.zenMode === true) return;
-        const idx = order.indexOf(State.layoutName);
-        const next = order[(idx + 1) % order.length];
-        State.layoutName = next;
-        lsSet(LS.preset, next);
-        presetBtn.textContent = presetLabel(next);
-        mount(buildLayoutConfig());
-        logEvent('preset_change', { preset: next });
-      });
+      const presets = [
+        { name: 'стандарт', left: 40 },
+        { name: 'код 80%', left: 20 },
+        { name: 'условие 60%', left: 60 },
+        { name: 'минимум', left: 50 }
+      ];
+      let idx = 0;
+      const apply = () => {
+        const p = presets[idx];
+        root.style.gridTemplateColumns = `minmax(240px, ${p.left}%) 10px 1fr`;
+        presetBtn.textContent = `пресет: ${p.name}`;
+      };
+      apply();
+      presetBtn.onclick = () => {
+        idx = (idx + 1) % presets.length;
+        apply();
+      };
     }
   }
 
@@ -2083,12 +2062,7 @@
     initThemeToggle();
     initZenToggle();
     initControls();
-    try {
-      if (typeof window.GoldenLayout === 'function') initDockLayout();
-      else initFallbackLayout('goldenlayout_not_loaded');
-    } catch (e) {
-      initFallbackLayout(e && e.message ? e.message : 'goldenlayout_init_failed');
-    }
+    initDockLite();
 
     loadGlossary().then(() => {
       if (State.conditionView) State.conditionView.render();
