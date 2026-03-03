@@ -16,6 +16,9 @@
     })();
   </script>
   <style>
+    /* Страница тарифов — на всю ширину, без ограничения 1480px */
+    .app-shell:has(.tariffs-page) { max-width: none !important; width: 100%; }
+
     .tariffs-page {
       --tp-gap: 2rem;
       --tp-radius: 20px;
@@ -62,18 +65,21 @@
       line-height: 1.6;
     }
 
-    /* Древо (Tree) */
+    /* Древо (Tree) — центрируем, отступы чтобы стрелки не обрезались */
+    .tp-tree-hero { overflow: visible; }
     .tp-tree-container {
       position: relative;
       max-width: 1920px;
       margin: 0 auto;
-      padding: 0 2rem;
+      padding: 0 3rem;
+      overflow: visible;
     }
     .tp-tree-svg {
       position: absolute;
       top: 0; left: 0; width: 100%; height: 100%;
       pointer-events: none;
       z-index: 0;
+      overflow: visible;
     }
     .tp-tree-path {
       stroke: var(--tp-tree-color);
