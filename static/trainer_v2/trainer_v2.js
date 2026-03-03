@@ -34,7 +34,8 @@
     versions: (taskId) => `tv2.versions.${userId}.${taskId}`,
     eventLog: `tv2.log.${userId}`,
     chat: (taskId) => `tv2.chat.${userId}.${taskId}`,
-    canvasScalePct: `tv2.canvasScalePct.${userId}`
+    canvasZoomPct: `tv2.canvasZoomPct.${userId}`,
+    canvasScalePct: `tv2.canvasScalePct.${userId}` // legacy key (older "масштаб" slider)
   };
 
   function $(sel, root) { return (root || document).querySelector(sel); }
@@ -86,10 +87,31 @@
       .replaceAll("'", '&#039;');
   }
 
+  function stripHtmlToText(html) {
+    try {
+      const div = document.createElement('div');
+      div.innerHTML = String(html || '');
+      return String(div.textContent || div.innerText || '').replace(/\r/g, '');
+    } catch (_) {
+      return String(html || '');
+    }
+  }
+
+  function getTaskConditionText(task) {
+    if (!task) return '';
+    const direct = (task.content || task.content_text || task.text || '');
+    if (direct && String(direct).trim()) return String(direct).trim();
+    const html = (task.content_html || task.html || '');
+    const txt = stripHtmlToText(html);
+    return String(txt || '').trim();
+  }
+
   async function apiFetch(path, opts) {
     const url = `${cfg.baseApi}${path}`;
     const headers = Object.assign({}, (opts && opts.headers) || {});
     headers['X-Trainer-Token'] = token;
+    // чтобы глобальный оверлей "Загрузка…" не перекрывал UI тренажёра
+    headers['X-No-Loading-Overlay'] = '1';
     if (!headers['Content-Type'] && opts && opts.body) headers['Content-Type'] = 'application/json';
     const res = await fetch(url, Object.assign({}, opts || {}, { headers }));
     const data = await res.json().catch(() => ({}));
@@ -302,7 +324,7 @@
 
   async function loadGlossary() {
     try {
-      const res = await fetch('/static/trainer_v2/glossary.json', { cache: 'no-store' });
+      const res = await fetch('/static/trainer_v2/glossary.json', { cache: 'no-store', headers: { 'X-No-Loading-Overlay': '1' } });
       const data = await res.json().catch(() => null);
       if (data && Array.isArray(data.terms)) {
         State.glossary = data.terms
@@ -1517,11 +1539,8 @@
       const llm = State.llmInfo;
       if (!llm) status.textContent = 'проверка подключения...';
       else {
-        const picked = llm.picked || null;
-        const isOk = !!picked;
-        status.textContent = isOk
-          ? `подключено · ${String((picked.provider || '')).trim()}${picked.model ? ' · ' + String(picked.model) : ''}`
-          : 'помощник недоступен (llm не настроен на сервере)';
+        const isOk = !!(llm && llm.picked);
+        status.textContent = isOk ? 'подключено' : 'помощник недоступен';
       }
 
       const arr = readChat(task.task_id);
@@ -1579,7 +1598,18 @@
       parts.push(`тип: ${State.taskType || task.task_type || '—'}`);
       parts.push(`id: ${task.task_id}`);
       if (task.task_number) parts.push(`номер: ${task.task_number}`);
-      if (task.content) parts.push(`условие:\n${String(task.content).slice(0, 8000)}`);
+      const cond = getTaskConditionText(task);
+      if (cond) parts.push(`условие:\n${String(cond).slice(0, 9000)}`);
+      try {
+        const attached = parseAttachedFiles(task.attached_files || task.attachments || task.attached || null);
+        if (attached && attached.length) {
+          const names = attached
+            .map(a => (a && (a.name || a.filename || a.path || a.file)) ? String(a.name || a.filename || a.path || a.file) : '')
+            .filter(Boolean)
+            .slice(0, 10);
+          if (names.length) parts.push(`вложения:\n- ${names.join('\n- ')}`);
+        }
+      } catch (_) {}
       try {
         const code = getCurrentCode();
         if (code && code.trim()) parts.push(`код ученика:\n${String(code).slice(0, 8000)}`);
@@ -1675,6 +1705,9 @@
     let strokes = [];
     let drawing = false;
     let cur = null;
+    let zoom = 1.0;
+    let panX = 0; // css px
+    let panY = 0; // css px
 
     function resize() {
       const rect = canvas.getBoundingClientRect();
@@ -1691,26 +1724,31 @@
     }
 
     function redraw() {
-      ctx.save();
-      ctx.scale(1, 1);
+      // фон (в экранных координатах)
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = getThemeBg();
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // линии (в мировых координатах, с трансформацией вида)
+      ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, dpr * panX, dpr * panY);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       strokes.forEach((s) => {
         ctx.strokeStyle = s.color;
-        ctx.lineWidth = s.width * dpr;
+        // толщина должна быть стабильной на экране (а не раздуваться при зуме)
+        ctx.lineWidth = (s.width * dpr) / zoom;
         ctx.beginPath();
         s.points.forEach((p, idx) => {
-          const x = p.x * dpr;
-          const y = p.y * dpr;
+          const x = p.x;
+          const y = p.y;
           if (idx === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         });
         ctx.stroke();
       });
-      ctx.restore();
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
     function save() {
@@ -1728,9 +1766,11 @@
 
     function pointerPos(e) {
       const rect = canvas.getBoundingClientRect();
-      const x = (e.clientX - rect.left);
-      const y = (e.clientY - rect.top);
-      return { x, y };
+      const sx = (e.clientX - rect.left);
+      const sy = (e.clientY - rect.top);
+      const x = (sx - panX) / zoom;
+      const y = (sy - panY) / zoom;
+      return { x, y, sx, sy };
     }
 
     function onDown(e) {
@@ -1766,12 +1806,53 @@
     canvas.addEventListener('pointercancel', onUp);
     window.addEventListener('resize', () => resize());
 
-    setTimeout(resize, 0);
+    function clampZoom(z) { return clamp(z, 0.5, 3.0); }
+
+    function setZoom(nextZoom, anchorSx, anchorSy) {
+      const rect = canvas.getBoundingClientRect();
+      const ax = Number.isFinite(anchorSx) ? anchorSx : rect.width / 2;
+      const ay = Number.isFinite(anchorSy) ? anchorSy : rect.height / 2;
+      const wx = (ax - panX) / zoom;
+      const wy = (ay - panY) / zoom;
+      zoom = clampZoom(Number(nextZoom) || 1.0);
+      panX = ax - wx * zoom;
+      panY = ay - wy * zoom;
+      try { lsSet(LS.canvasZoomPct, String(Math.round(zoom * 100))); } catch (_) {}
+      redraw();
+    }
+
+    function wheelZoom(e) {
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left;
+      const sy = e.clientY - rect.top;
+      const delta = (e.deltaY || 0);
+      const factor = delta > 0 ? 0.92 : 1.08;
+      setZoom(zoom * factor, sx, sy);
+      e.preventDefault();
+    }
+
+    canvas.addEventListener('wheel', wheelZoom, { passive: false });
+
+    function loadZoomFromStorage() {
+      const saved = Number(lsGet(LS.canvasZoomPct, ''));
+      const legacy = Number(lsGet(LS.canvasScalePct, ''));
+      const pct = Number.isFinite(saved) ? saved : (Number.isFinite(legacy) ? legacy : 100);
+      setZoom(clamp(pct, 50, 300) / 100, null, null);
+      // миграция legacy-ключа (best-effort)
+      try {
+        if (!Number.isFinite(saved) && Number.isFinite(legacy)) lsDel(LS.canvasScalePct);
+      } catch (_) {}
+    }
+
+    setTimeout(() => { resize(); loadZoomFromStorage(); }, 0);
 
     return {
       resize,
       redraw,
       loadForTask,
+      setZoomPct: (pct) => setZoom(clamp(Number(pct) || 100, 50, 300) / 100, null, null),
+      getZoomPct: () => Math.round(zoom * 100),
+      resetView: () => { zoom = 1.0; panX = 0; panY = 0; try { lsSet(LS.canvasZoomPct, '100'); } catch (_) {} redraw(); },
       undo: () => { strokes.pop(); redraw(); save(); },
       clear: () => { strokes = []; redraw(); save(); },
       exportPng: () => {
@@ -1833,20 +1914,27 @@
     width.max = '10';
     width.value = '3';
 
-    const scaleWrap = document.createElement('div');
-    scaleWrap.className = 'tv2-canvas-scale';
-    const scaleLabel = document.createElement('div');
-    scaleLabel.className = 'tv2-canvas-scale-label';
-    scaleLabel.textContent = 'масштаб: 100%';
-    const scale = document.createElement('input');
-    scale.type = 'range';
-    scale.id = 'tv2CanvasScale';
-    scale.min = '60';
-    scale.max = '200';
-    scale.step = '5';
-    scale.value = '100';
-    scaleWrap.appendChild(scaleLabel);
-    scaleWrap.appendChild(scale);
+    const zoomWrap = document.createElement('div');
+    zoomWrap.className = 'tv2-canvas-zoom';
+    const zoomLabel = document.createElement('div');
+    zoomLabel.className = 'tv2-canvas-zoom-label';
+    zoomLabel.textContent = 'zoom: 100%';
+    const zoomOut = document.createElement('button');
+    zoomOut.type = 'button';
+    zoomOut.className = 'tv2-btn';
+    zoomOut.textContent = '−';
+    const zoomIn = document.createElement('button');
+    zoomIn.type = 'button';
+    zoomIn.className = 'tv2-btn';
+    zoomIn.textContent = '+';
+    const zoomReset = document.createElement('button');
+    zoomReset.type = 'button';
+    zoomReset.className = 'tv2-btn';
+    zoomReset.textContent = '100%';
+    zoomWrap.appendChild(zoomLabel);
+    zoomWrap.appendChild(zoomOut);
+    zoomWrap.appendChild(zoomIn);
+    zoomWrap.appendChild(zoomReset);
 
     const undoBtn = document.createElement('button');
     undoBtn.type = 'button';
@@ -1865,7 +1953,7 @@
 
     toolbar.appendChild(color);
     toolbar.appendChild(width);
-    toolbar.appendChild(scaleWrap);
+    toolbar.appendChild(zoomWrap);
     toolbar.appendChild(undoBtn);
     toolbar.appendChild(clearBtn);
     toolbar.appendChild(exportBtn);
@@ -1890,7 +1978,10 @@
       tabCanvas.classList.toggle('is-active', !isMd);
       mdWrap.style.display = isMd ? 'block' : 'none';
       canvasCard.style.display = isMd ? 'none' : 'grid';
-      if (!isMd && State.scratchCanvasApi) State.scratchCanvasApi.resize();
+      if (!isMd && State.scratchCanvasApi) {
+        State.scratchCanvasApi.resize();
+        try { syncZoomLabel(); } catch (_) {}
+      }
     }
 
     tabMd.addEventListener('click', () => setTab('md'));
@@ -1931,18 +2022,30 @@
     clearBtn.addEventListener('click', () => canvasApi.clear());
     exportBtn.addEventListener('click', () => canvasApi.exportPng());
 
-    const BASE_CANVAS_H = 320;
-    function applyScalePct(pct) {
-      const p = clamp(Number(pct) || 100, 60, 200);
-      canvas.style.height = `${Math.round(BASE_CANVAS_H * (p / 100))}px`;
-      scaleLabel.textContent = `масштаб: ${p}%`;
-      lsSet(LS.canvasScalePct, String(p));
-      try { canvasApi.resize(); } catch (_) {}
+    function syncZoomLabel() {
+      try {
+        zoomLabel.textContent = `zoom: ${canvasApi.getZoomPct()}%`;
+      } catch (_) {
+        zoomLabel.textContent = 'zoom: —';
+      }
     }
-    const savedPct = Number(lsGet(LS.canvasScalePct, ''));
-    if (Number.isFinite(savedPct)) scale.value = String(clamp(savedPct, 60, 200));
-    applyScalePct(scale.value);
-    scale.addEventListener('input', () => applyScalePct(scale.value));
+
+    zoomOut.addEventListener('click', () => {
+      try { canvasApi.setZoomPct(canvasApi.getZoomPct() - 10); } catch (_) {}
+      syncZoomLabel();
+    });
+    zoomIn.addEventListener('click', () => {
+      try { canvasApi.setZoomPct(canvasApi.getZoomPct() + 10); } catch (_) {}
+      syncZoomLabel();
+    });
+    zoomReset.addEventListener('click', () => {
+      try { canvasApi.resetView(); } catch (_) {}
+      syncZoomLabel();
+    });
+
+    // обновлять label после зума колёсиком
+    canvas.addEventListener('wheel', () => setTimeout(syncZoomLabel, 0), { passive: true });
+    setTimeout(syncZoomLabel, 0);
 
     // export markdown
     const exportMdBtn = document.createElement('button');

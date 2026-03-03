@@ -634,7 +634,7 @@ mark.tv2-hl {
   align-items: center;
 }
 
-.tv2-canvas-scale {
+.tv2-canvas-zoom {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -645,15 +645,11 @@ mark.tv2-hl {
   background: rgba(255,255,255,0.02);
 }
 
-.tv2-canvas-scale-label {
+.tv2-canvas-zoom-label {
   font-weight: 900;
   font-size: 0.82rem;
   color: var(--tv2-muted);
   white-space: nowrap;
-}
-
-.tv2-canvas-scale input[type="range"] {
-  width: 160px;
 }
 
 .tv2-canvas {

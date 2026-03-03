@@ -4,6 +4,7 @@
     var activeFetches = 0;
     var overlayTimer = null;
     var overlayEl = null;
+    var SKIP_HEADER = 'x-no-loading-overlay';
 
     function getOverlay() {
         if (overlayEl) return overlayEl;
@@ -61,18 +62,35 @@
     if (typeof originalFetch !== 'function') return;
     window.fetch = function() {
         var args = arguments;
-        onFetchStart();
+        var opts = (args && args.length > 1) ? args[1] : null;
+        var headers = opts && opts.headers ? opts.headers : null;
+        var skip = false;
+        try {
+            if (headers) {
+                if (typeof Headers !== 'undefined' && headers instanceof Headers) {
+                    var hv = headers.get(SKIP_HEADER) || headers.get('X-No-Loading-Overlay');
+                    if (hv && String(hv).toLowerCase() !== 'false' && String(hv) !== '0') skip = true;
+                } else if (typeof headers === 'object') {
+                    var hv2 = headers[SKIP_HEADER] || headers['X-No-Loading-Overlay'] || headers['x-no-loading-overlay'];
+                    if (hv2 && String(hv2).toLowerCase() !== 'false' && String(hv2) !== '0') skip = true;
+                }
+            }
+        } catch (e) {
+            skip = false;
+        }
+
+        if (!skip) onFetchStart();
         var p = originalFetch.apply(this, args);
         if (p && typeof p.then === 'function') {
             p.then(function(res) {
-                onFetchEnd();
+                if (!skip) onFetchEnd();
                 return res;
             }, function(err) {
-                onFetchEnd();
+                if (!skip) onFetchEnd();
                 throw err;
             });
         } else {
-            onFetchEnd();
+            if (!skip) onFetchEnd();
         }
         return p;
     };
