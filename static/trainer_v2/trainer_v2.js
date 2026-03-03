@@ -22,6 +22,7 @@
     layout: (name) => `tv2.layout.${userId}.${name}`,
     preset: `tv2.preset.${userId}`,
     lastTaskType: `tv2.lastTaskType.${userId}`,
+    attempts: (taskId) => `tv2.attempts.${userId}.${taskId}`,
     visited: `tv2.visited.${userId}`,
     pending: `tv2.pending.${userId}`,
     code: (taskId) => `tv2.code.${userId}.${taskId}`,
@@ -151,7 +152,8 @@
     testsView: null,
     terminalView: null,
     conditionView: null,
-    editorView: null
+    editorView: null,
+    lastRun: null
   };
 
   function logEvent(kind, payload) {
@@ -336,6 +338,12 @@
     const payload = { task_id: taskId, answer: answer || '' };
     if (timeSpentSec != null) payload.time_spent_sec = timeSpentSec;
     const res = await apiFetch('/task/submit_answer', { method: 'POST', body: JSON.stringify(payload) });
+    return res;
+  }
+
+  async function runCode({ code, stdin, timeoutSeconds }) {
+    const payload = { code: code || '', stdin: stdin || '', timeout_seconds: timeoutSeconds != null ? timeoutSeconds : 2.0 };
+    const res = await apiFetch('/code/run', { method: 'POST', body: JSON.stringify(payload) });
     return res;
   }
 
@@ -920,10 +928,15 @@
     const btnRow = document.createElement('div');
     btnRow.className = 'tv2-editor-actions';
 
+    const runBtn = document.createElement('button');
+    runBtn.type = 'button';
+    runBtn.className = 'tv2-btn';
+    runBtn.textContent = 'запустить код';
+
     const sendBtn = document.createElement('button');
     sendBtn.type = 'button';
     sendBtn.className = 'tv2-btn';
-    sendBtn.textContent = 'отправить (в фоне)';
+    sendBtn.textContent = 'проверить ответ';
 
     const saveBtn = document.createElement('button');
     saveBtn.type = 'button';
@@ -937,6 +950,7 @@
       logEvent('draft_save', { task_id: task.task_id });
     });
 
+    btnRow.appendChild(runBtn);
     btnRow.appendChild(sendBtn);
     btnRow.appendChild(saveBtn);
 
@@ -1017,6 +1031,69 @@
     function getAnswer() { return ans.value || ''; }
     function setAnswer(v) { ans.value = String(v || ''); }
 
+    function maxAttemptsForTask() {
+      return 3;
+    }
+
+    function getAttempts(taskId) {
+      const raw = safeJsonParse(lsGet(LS.attempts(taskId), '{}'), {});
+      const used = Number(raw.used || 0);
+      const max = Number(raw.max || maxAttemptsForTask());
+      return { used: Number.isFinite(used) ? used : 0, max: Number.isFinite(max) ? max : maxAttemptsForTask() };
+    }
+
+    function setAttempts(taskId, used, max) {
+      lsSet(LS.attempts(taskId), JSON.stringify({ used: used, max: max }));
+    }
+
+    function updateAttemptsUI(taskId) {
+      const t = getAttempts(taskId);
+      const left = Math.max(0, t.max - t.used);
+      sendBtn.disabled = left <= 0;
+      ans.disabled = left <= 0;
+      sendBtn.style.opacity = left <= 0 ? '0.6' : '1';
+      ans.style.opacity = left <= 0 ? '0.7' : '1';
+      if (taskMetaEl) {
+        const base = taskMetaEl.textContent || '';
+        const cleaned = base.replace(/\s*·\s*попытки:\s*\d+\/\d+\s*$/i, '').trim();
+        taskMetaEl.textContent = `${cleaned} · попытки: ${t.used}/${t.max}`;
+      }
+    }
+
+    runBtn.addEventListener('click', async () => {
+      const task = State.currentTask;
+      const code = getCurrentCode();
+      if (!task) return;
+      if (!code.trim()) {
+        pushInlineToast({ kind: 'error', title: 'запуск', message: 'код пустой' });
+        return;
+      }
+      runBtn.disabled = true;
+      const original = runBtn.textContent;
+      runBtn.textContent = 'запуск...';
+      pushVersion(task.task_id, 'run', 'запуск кода');
+      try {
+        const res = await runCode({ code: code, stdin: '', timeoutSeconds: 2.0 });
+        State.lastRun = res.run || res.result || res;
+        if (State.terminalView && typeof State.terminalView.render === 'function') State.terminalView.render();
+        const ok = State.lastRun && State.lastRun.ok;
+        pushInlineToast({
+          kind: ok ? 'success' : 'error',
+          title: 'запуск',
+          message: ok ? 'выполнено (см. терминал)' : 'ошибка (см. терминал)'
+        });
+        logEvent('run_done', { task_id: task.task_id, ok: !!ok });
+      } catch (e) {
+        State.lastRun = { ok: false, error: 'runner_error', details: e.message, stdout: '', stderr: '' };
+        if (State.terminalView && typeof State.terminalView.render === 'function') State.terminalView.render();
+        pushInlineToast({ kind: 'error', title: 'запуск', message: `ошибка: ${e.message}` });
+        logEvent('run_fail', { task_id: task.task_id, error: e.message });
+      } finally {
+        runBtn.disabled = false;
+        runBtn.textContent = original;
+      }
+    });
+
     sendBtn.addEventListener('click', async () => {
       const task = State.currentTask;
       if (!task) return;
@@ -1027,78 +1104,49 @@
       }
 
       saveDraftsForTask(task.task_id);
-      pushVersion(task.task_id, 'submit', 'отправка на проверку');
+      pushVersion(task.task_id, 'submit', 'проверка ответа');
 
-      const pendingId = makeId('p');
-      const entry = {
-        id: pendingId,
-        taskId: task.task_id,
-        taskType: task.task_number,
-        answer: val,
-        code: getCurrentCode(),
-        createdAt: nowMs(),
-        status: 'sending'
-      };
-      State.pending.unshift(entry);
-      if (State.pending.length > 50) State.pending.splice(50);
-      lsSet(LS.pending, JSON.stringify(State.pending));
-      updateQueueBadge();
-      if (State.testsView && typeof State.testsView.render === 'function') State.testsView.render();
+      const attempts = getAttempts(task.task_id);
+      if (attempts.used >= attempts.max) {
+        pushInlineToast({ kind: 'error', title: 'попытки', message: 'попытки исчерпаны для этой задачи' });
+        updateAttemptsUI(task.task_id);
+        return;
+      }
 
-      pushInlineToast({
-        kind: 'success',
-        title: 'проверка отправлена',
-        message: 'можно переходить к следующей задаче; результат придёт в уведомлении'
-      });
+      sendBtn.disabled = true;
+      const originalText = sendBtn.textContent;
+      sendBtn.textContent = 'проверка...';
 
-      logEvent('submit_async_start', { task_id: task.task_id, pending_id: pendingId });
-
-      // переход к следующей задаче сразу
-      goNext().catch((e) => {
-        pushInlineToast({ kind: 'error', title: 'следующее', message: `не удалось открыть следующее задание: ${e.message}` });
-      });
-
-      // фоновая проверка
       try {
-        const res = await submitAnswer({ taskId: entry.taskId, answer: entry.answer, timeSpentSec: timeSpentSec() });
-        entry.status = 'done';
-        entry.result = res;
-        lsSet(LS.pending, JSON.stringify(State.pending));
-        updateQueueBadge();
-
+        const res = await submitAnswer({ taskId: task.task_id, answer: val, timeSpentSec: timeSpentSec() });
         const ok = !!res.is_correct;
         if (ok) {
+          // сбрасываем попытки после успеха
+          setAttempts(task.task_id, 0, maxAttemptsForTask());
+          updateAttemptsUI(task.task_id);
           pushInlineToast({
             kind: 'success',
             title: 'проверка',
-            message: `задача №${task.task_number} · верно · рейтинг: ${res.new_rating != null ? res.new_rating : '—'}`
+            message: `верно · рейтинг: ${res.new_rating != null ? res.new_rating : '—'}`
           });
         } else {
+          const nextUsed = attempts.used + 1;
+          setAttempts(task.task_id, nextUsed, attempts.max);
+          updateAttemptsUI(task.task_id);
+          const left = Math.max(0, attempts.max - nextUsed);
           pushInlineToast({
             kind: 'error',
             title: 'проверка',
-            message: `задача №${task.task_number} · неверно · можно вернуться и поправить`,
-            actions: [
-              { label: 'вернуться', onClick: () => openTaskById(entry.taskId) }
-            ]
+            message: left > 0 ? `неверно · осталось попыток: ${left}` : 'неверно · попытки исчерпаны'
           });
         }
-
-        logEvent('submit_async_done', { task_id: entry.taskId, is_correct: ok, new_rating: res.new_rating });
-        if (State.testsView && typeof State.testsView.render === 'function') State.testsView.render();
+        logEvent('submit_done', { task_id: task.task_id, is_correct: ok, new_rating: res.new_rating });
       } catch (e) {
-        entry.status = 'failed';
-        entry.error = e.message;
-        lsSet(LS.pending, JSON.stringify(State.pending));
-        updateQueueBadge();
-        pushInlineToast({
-          kind: 'error',
-          title: 'проверка',
-          message: `ошибка проверки: ${e.message}`,
-          actions: [{ label: 'вернуться', onClick: () => openTaskById(entry.taskId) }]
-        });
-        logEvent('submit_async_fail', { task_id: entry.taskId, error: e.message });
-        if (State.testsView && typeof State.testsView.render === 'function') State.testsView.render();
+        pushInlineToast({ kind: 'error', title: 'проверка', message: `ошибка: ${e.message}` });
+        logEvent('submit_fail', { task_id: task.task_id, error: e.message });
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = originalText;
       }
     });
 
@@ -1106,7 +1154,8 @@
       el: wrap,
       mountEditor,
       getAnswer,
-      setAnswer
+      setAnswer,
+      updateAttemptsUI
     };
   }
 
@@ -1132,50 +1181,10 @@
         list.innerHTML = '<div class="tv2-muted">задача не выбрана</div>';
         return;
       }
-      const items = State.pending.slice(0, 20);
-      const relevant = items.filter(p => p.taskId === task.task_id).slice(0, 6);
-      if (relevant.length === 0) {
-        const card = document.createElement('div');
-        card.className = 'tv2-card';
-        card.innerHTML = `<div class="tv2-muted">пока нет проверок для этой задачи</div>`;
-        list.appendChild(card);
-        return;
-      }
-      relevant.forEach((p) => {
-        const card = document.createElement('div');
-        card.className = 'tv2-card';
-        const status = p.status;
-        const head = document.createElement('div');
-        head.style.display = 'flex';
-        head.style.justifyContent = 'space-between';
-        head.style.gap = '0.75rem';
-        head.style.flexWrap = 'wrap';
-        const left = document.createElement('div');
-        left.innerHTML = `<div style="font-weight:900;">${escapeHtml(status)}</div><div class="tv2-muted">отправлено: ${escapeHtml(fmtTime(p.createdAt))}</div>`;
-        const right = document.createElement('div');
-        right.className = 'tv2-muted';
-        right.style.fontFamily = 'var(--tv2-font-mono)';
-        right.textContent = `id: ${p.id}`;
-        head.appendChild(left);
-        head.appendChild(right);
-        card.appendChild(head);
-
-        const body = document.createElement('div');
-        body.style.marginTop = '0.6rem';
-        body.style.display = 'grid';
-        body.style.gap = '0.35rem';
-        body.innerHTML = `<div class="tv2-muted">ответ: <span style="color:var(--tv2-text); font-weight:900;">${escapeHtml(p.answer || '')}</span></div>`;
-        if (p.result) {
-          body.innerHTML += `<div class="tv2-muted">вердикт: <span style="font-weight:900; color:${p.result.is_correct ? 'var(--tv2-success)' : 'var(--tv2-danger)'};">${p.result.is_correct ? 'верно' : 'неверно'}</span></div>`;
-          body.innerHTML += `<div class="tv2-muted">ожидалось: <span style="color:var(--tv2-text); font-weight:900;">${escapeHtml(p.result.expected || '—')}</span></div>`;
-          body.innerHTML += `<div class="tv2-muted">рейтинг: <span style="color:var(--tv2-text); font-weight:900;">${escapeHtml(p.result.new_rating != null ? p.result.new_rating : '—')}</span></div>`;
-        }
-        if (p.error) {
-          body.innerHTML += `<div class="tv2-muted">ошибка: <span style="color:var(--tv2-danger); font-weight:900;">${escapeHtml(p.error)}</span></div>`;
-        }
-        card.appendChild(body);
-        list.appendChild(card);
-      });
+      const card = document.createElement('div');
+      card.className = 'tv2-card';
+      card.innerHTML = `<div class="tv2-muted">проверка ответов выполняется кнопкой «проверить ответ» (без фоновой очереди)</div>`;
+      list.appendChild(card);
     }
 
     return { el: wrap, render };
@@ -1374,7 +1383,7 @@
     wrap.className = 'tv2-panel tv2-panel-scroll';
     const title = document.createElement('h2');
     title.className = 'tv2-h1';
-    title.textContent = 'лог';
+    title.textContent = 'терминал';
     const list = document.createElement('div');
     list.style.display = 'grid';
     list.style.gap = '0.65rem';
@@ -1383,21 +1392,40 @@
 
     function render() {
       list.innerHTML = '';
-      const arr = State.eventLog.slice(-60).reverse();
-      if (arr.length === 0) {
-        list.innerHTML = '<div class="tv2-muted">лог пуст</div>';
-        return;
-      }
-      arr.forEach((e) => {
+      if (State.lastRun) {
+        const r = State.lastRun;
         const card = document.createElement('div');
         card.className = 'tv2-card';
-        card.innerHTML = `<div style="display:flex; justify-content:space-between; gap:.75rem; flex-wrap:wrap;">\n` +
-          `<div style="font-weight:900;">${escapeHtml(e.kind)}</div>\n` +
-          `<div class="tv2-muted" style="font-family: var(--tv2-font-mono);">${escapeHtml(fmtTime(e.ts))}</div>\n` +
+        const ok = !!r.ok;
+        card.innerHTML =
+          `<div style="display:flex; justify-content:space-between; gap:.75rem; flex-wrap:wrap;">` +
+          `<div style="font-weight:900;">${ok ? 'выполнено' : 'ошибка'}</div>` +
+          `<div class="tv2-muted" style="font-family: var(--tv2-font-mono);">${escapeHtml(r.error || '')}</div>` +
           `</div>` +
-          (e.payload ? `<pre class="tv2-diff-pre" style="white-space:pre-wrap; background: transparent; border:0; padding:.6rem 0 0 0;">${escapeHtml(JSON.stringify(e.payload, null, 2))}</pre>` : '');
+          `<div class="tv2-muted" style="margin-top:.5rem; font-weight:900;">stdout</div>` +
+          `<pre class="tv2-diff-pre" style="white-space:pre-wrap;">${escapeHtml((r.stdout || '').trim() || '(пусто)')}</pre>` +
+          `<div class="tv2-muted" style="margin-top:.5rem; font-weight:900;">stderr</div>` +
+          `<pre class="tv2-diff-pre" style="white-space:pre-wrap;">${escapeHtml((r.stderr || '').trim() || '(пусто)')}</pre>` +
+          (r.details ? `<div class="tv2-muted" style="margin-top:.5rem; font-weight:900;">details</div><pre class="tv2-diff-pre" style="white-space:pre-wrap;">${escapeHtml(String(r.details).slice(0, 4000))}</pre>` : '');
         list.appendChild(card);
-      });
+      } else {
+        const empty = document.createElement('div');
+        empty.className = 'tv2-card';
+        empty.innerHTML = '<div class="tv2-muted">пока нет запусков. нажми «запустить код».</div>';
+        list.appendChild(empty);
+      }
+
+      const arr = State.eventLog.slice(-40).reverse();
+      if (arr.length === 0) return;
+      const logCard = document.createElement('div');
+      logCard.className = 'tv2-card';
+      logCard.innerHTML = '<div style="font-weight:900;">события</div>';
+      const pre = document.createElement('pre');
+      pre.className = 'tv2-diff-pre';
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.textContent = arr.map(e => `[${fmtTime(e.ts)}] ${e.kind}`).join('\n');
+      logCard.appendChild(pre);
+      list.appendChild(logCard);
     }
 
     return { el: wrap, render };
@@ -1818,7 +1846,7 @@
 
     function mount(config) {
       dockEl.innerHTML = '';
-      const gl = new GoldenLayout(config, dockEl);
+      const gl = new GoldenLayout(config, window.jQuery ? window.jQuery(dockEl) : dockEl);
 
       gl.registerComponent('condition', (container) => {
         const comp = makeConditionComponent();
@@ -1981,6 +2009,27 @@
     });
 
     logEvent('dock_fallback', { reason: String(reason || 'unknown') });
+
+    // presets in fallback: cycle split ratio
+    if (presetBtn) {
+      const presets = [
+        { name: 'стандарт', left: 40 },
+        { name: 'код 80%', left: 20 },
+        { name: 'условие 60%', left: 60 },
+        { name: 'минимум', left: 50 }
+      ];
+      let idx = 0;
+      const apply = () => {
+        const p = presets[idx];
+        shell.style.gridTemplateColumns = `minmax(260px, ${p.left}%) 1fr`;
+        presetBtn.textContent = `пресет: ${p.name}`;
+      };
+      apply();
+      presetBtn.onclick = () => {
+        idx = (idx + 1) % presets.length;
+        apply();
+      };
+    }
   }
 
   function loadPending() {

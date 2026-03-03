@@ -714,6 +714,39 @@ def trainer_submit_answer():
     })
 
 
+@trainer_bp.route('/internal/trainer/code/run', methods=['POST'])
+@csrf.exempt
+def trainer_code_run():
+    """
+    Запуск кода (runner) для trainer v2.
+    Feature-flagged: TRAINER_ENABLE_RUNNER=true.
+    Body: { code: str, stdin?: str, timeout_seconds?: float }
+    """
+    _ = _get_trainer_user_from_token(require_permission='trainer.use')
+    try:
+        from trainer_app.runner.sandbox import is_runner_enabled, run_python_program
+    except Exception:
+        return jsonify({'success': False, 'error': 'runner_import_failed'}), 500
+
+    if not is_runner_enabled():
+        return jsonify({'success': False, 'error': 'runner_disabled'}), 403
+
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'bad_request'}), 400
+
+    code = str(data.get('code') or '')
+    stdin = str(data.get('stdin') or '')
+    try:
+        timeout_seconds = float(data.get('timeout_seconds') or 2.0)
+    except Exception:
+        timeout_seconds = 2.0
+    timeout_seconds = max(0.5, min(timeout_seconds, 5.0))
+
+    res = run_python_program(code=code, stdin=stdin, timeout_seconds=timeout_seconds)
+    return jsonify({'success': True, 'run': res})
+
+
 @trainer_bp.route('/internal/trainer/task/stats', methods=['GET'])
 def trainer_task_stats():
     _ = _get_trainer_user_from_token(require_permission='trainer.use')
