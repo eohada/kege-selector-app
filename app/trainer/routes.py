@@ -195,6 +195,46 @@ def trainer_embed():
     return render_template('trainer_embed.html', trainer_url=trainer_url, iframe_url=iframe_url, config_error=None)
 
 
+@trainer_bp.route('/trainer/v2', strict_slashes=False)
+@login_required
+def trainer_v2():
+    """
+    Trainer v2 UI (без Streamlit): полноценный фронтенд внутри платформы.
+
+    Внутренние trainer api авторизуются токеном (X-Trainer-Token / Bearer),
+    поэтому выдаём короткоживущий токен и прокидываем его в шаблон.
+    """
+    if not has_permission(current_user, 'trainer.use'):
+        abort(403)
+
+    try:
+        token = issue_trainer_token(user_id=current_user.id, ttl_seconds=10 * 60)
+    except Exception as e:
+        return render_template('trainer_v2.html', trainer_token=None, config_error=str(e), zen_mode=False, passthrough={})
+
+    passthrough = {}
+    for k in ('lesson_id', 'task_id', 'task_type', 'template_id', 'assignment_type'):
+        v = (request.args.get(k) or '').strip()
+        if v:
+            passthrough[k] = v
+
+    zen_mode = (request.args.get('zen') or '').strip() in ('1', 'true', 'yes', 'on')
+
+    try:
+        audit_logger.log(action='trainer_v2_open', entity='Trainer', entity_id=current_user.id, status='success')
+    except Exception:
+        pass
+
+    return render_template(
+        'trainer_v2.html',
+        trainer_token=token,
+        config_error=None,
+        zen_mode=zen_mode,
+        passthrough=passthrough,
+        active_page='trainer',
+    )
+
+
 
 @trainer_bp.route('/internal/trainer/token/validate', methods=['POST'])
 @csrf.exempt

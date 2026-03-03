@@ -48,7 +48,7 @@
     </span>
 </a>
 {% if sub_allow_trainer and has_permission(current_user, 'trainer.use') %}
-<a id="demo-nav-trainer" href="{{ url_for('trainer.trainer_embed') }}" class="nav-link {% if active_page == 'trainer' %}active{% endif %}">
+<a id="demo-nav-trainer" href="{{ url_for('trainer.trainer_v2') }}" class="nav-link {% if active_page == 'trainer' %}active{% endif %}">
     <span class="nav-link-content">
         {{ ui_icon('nav.trainer', 'md', title='Тренажёр', extra_class='nav-link-icon') }}
         <span class="nav-link-label">Тренажёр</span>
@@ -114,7 +114,7 @@
         </a>
         {% endif %}
         {% if current_user.is_authenticated and has_permission(current_user, 'trainer.use') %}
-        <a href="{{ url_for('trainer.trainer_embed') }}" class="nav-link {% if active_page == 'trainer' %}active{% endif %}">
+        <a href="{{ url_for('trainer.trainer_v2') }}" class="nav-link {% if active_page == 'trainer' %}active{% endif %}">
             <span class="nav-link-content">
                 {{ ui_icon('nav.trainer', 'md', title='Тренажёр', extra_class='nav-link-icon') }}
                 <span class="nav-link-label">Тренажёр</span>

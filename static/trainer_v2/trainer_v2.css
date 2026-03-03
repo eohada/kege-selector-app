@@ -1,0 +1,629 @@
+/* trainer v2 — локальные токены и док‑ui (не зависят от :root[data-theme]) */
+
+:root {
+  --tv2-font-ui: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  --tv2-font-mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.trainer-v2-shell {
+  margin-top: 1.25rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.trainer-v2-shell.is-zen {
+  margin: 0;
+  padding: 0;
+}
+
+.trainer-v2-zen-body {
+  margin: 0;
+  padding: 0;
+  background: #0b0d12;
+}
+
+.trainer-v2-shell.is-zen .trainer-v2-hero {
+  display: none;
+}
+
+.trainer-v2-shell.is-zen .trainer-v2-topbar {
+  display: none;
+}
+
+.trainer-v2-zen-overlay {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: 200000;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--tv2-stroke-1);
+  background: rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(10px);
+}
+
+.trainer-v2-root[data-tv2-theme="light"] .trainer-v2-zen-overlay,
+:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .trainer-v2-zen-overlay {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.trainer-v2-zen-exit {
+  border: 1px solid var(--tv2-stroke-1);
+  background: rgba(255,255,255,0.03);
+  color: var(--tv2-text);
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  font-weight: 900;
+  font-size: 0.85rem;
+  font-family: var(--tv2-font-ui);
+}
+
+.trainer-v2-zen-exit:hover {
+  border-color: var(--tv2-accent);
+}
+
+.trainer-v2-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.trainer-v2-hero-left {
+  min-width: 240px;
+}
+
+.trainer-v2-subtitle {
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.trainer-v2-hero-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.trainer-v2-pill {
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--stroke-1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.trainer-v2-actions {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.trainer-v2-theme-toggle {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--stroke-1);
+  background: rgba(255,255,255,0.02);
+}
+
+.trainer-v2-theme-btn {
+  border: 0;
+  cursor: pointer;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 800;
+  font-size: 0.85rem;
+  font-family: var(--tv2-font-ui);
+}
+
+.trainer-v2-theme-btn.is-active {
+  background: rgba(0, 255, 213, 0.12);
+  color: var(--accent-1);
+}
+
+/* локальная тема тренажёра */
+.trainer-v2-root {
+  --tv2-bg: #0b0d12;
+  --tv2-surface-1: #0e1015;
+  --tv2-surface-2: #12141a;
+  --tv2-surface-3: #16181f;
+  --tv2-stroke-1: rgba(255,255,255,0.08);
+  --tv2-stroke-2: rgba(255,255,255,0.14);
+  --tv2-text: rgba(255,255,255,0.97);
+  --tv2-muted: rgba(200,210,230,0.62);
+  --tv2-accent: #00e0ff;
+  --tv2-danger: #ff6c91;
+  --tv2-success: #24e5b4;
+  --tv2-shadow: 0 18px 50px rgba(0,0,0,0.40);
+  --tv2-radius-lg: 18px;
+  --tv2-radius-md: 14px;
+  --tv2-radius-sm: 10px;
+  --tv2-focus: 0 0 0 4px rgba(0, 224, 255, 0.18);
+
+  font-family: var(--tv2-font-ui);
+}
+
+.trainer-v2-root[data-tv2-theme="light"],
+:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] {
+  --tv2-bg: #eef2f7;
+  --tv2-surface-1: rgba(248, 250, 253, 0.98);
+  --tv2-surface-2: rgba(238, 241, 246, 0.92);
+  --tv2-surface-3: rgba(232, 236, 242, 0.88);
+  --tv2-stroke-1: rgba(11, 18, 32, 0.12);
+  --tv2-stroke-2: rgba(11, 18, 32, 0.18);
+  --tv2-text: #0b1220;
+  --tv2-muted: rgba(11, 18, 32, 0.65);
+  --tv2-accent: #0aa39a;
+  --tv2-danger: #d22f5a;
+  --tv2-success: #0ea371;
+  --tv2-shadow: 0 18px 50px rgba(11,18,32,0.12);
+  --tv2-focus: 0 0 0 4px rgba(10, 163, 154, 0.22);
+}
+
+.trainer-v2-root[data-tv2-theme="dark"],
+:root:not([data-theme="light"]) .trainer-v2-root[data-tv2-theme="auto"] {
+  /* default tokens already dark; keep block for readability */
+}
+
+.trainer-v2-root {
+  background: var(--tv2-bg);
+  border-radius: var(--tv2-radius-lg);
+  border: 1px solid var(--tv2-stroke-1);
+  overflow: hidden;
+  box-shadow: var(--tv2-shadow);
+  position: relative;
+}
+
+.trainer-v2-shell.is-zen .trainer-v2-root {
+  border-radius: 0;
+  border: 0;
+  box-shadow: none;
+  min-height: 100vh;
+}
+
+.trainer-v2-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 1rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+  border-bottom: 1px solid var(--tv2-stroke-1);
+}
+
+.trainer-v2-topbar-left,
+.trainer-v2-topbar-right {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.trainer-v2-label {
+  color: var(--tv2-muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+}
+
+.trainer-v2-select {
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--tv2-radius-sm);
+  border: 1px solid var(--tv2-stroke-1);
+  background: var(--tv2-surface-2);
+  color: var(--tv2-text);
+  font-weight: 800;
+  font-family: var(--tv2-font-mono);
+  min-width: 84px;
+}
+
+.trainer-v2-select:focus {
+  outline: none;
+  box-shadow: var(--tv2-focus);
+}
+
+.trainer-v2-queue {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--tv2-stroke-1);
+  background: var(--tv2-surface-2);
+  color: var(--tv2-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-family: var(--tv2-font-mono);
+}
+
+.trainer-v2-dock {
+  height: min(78vh, 860px);
+}
+
+.trainer-v2-shell.is-zen .trainer-v2-dock {
+  height: 100vh;
+}
+
+/* golden-layout overrides */
+.trainer-v2-root .lm_goldenlayout {
+  background: var(--tv2-bg);
+}
+
+.trainer-v2-root .lm_header {
+  background: var(--tv2-surface-2);
+  border-bottom: 1px solid var(--tv2-stroke-1);
+}
+
+.trainer-v2-root .lm_tab {
+  background: transparent;
+  color: var(--tv2-muted);
+  font-family: var(--tv2-font-ui);
+  font-weight: 800;
+  border: 0;
+  border-radius: 0;
+}
+
+.trainer-v2-root .lm_tab.lm_active {
+  background: rgba(255,255,255,0.04);
+  color: var(--tv2-text);
+}
+
+.trainer-v2-root .lm_splitter {
+  background: transparent;
+}
+
+.trainer-v2-root .lm_splitter:hover,
+.trainer-v2-root .lm_splitter.lm_dragging {
+  background: rgba(0,0,0,0.06);
+}
+
+.trainer-v2-root .lm_content {
+  background: var(--tv2-surface-1);
+}
+
+.tv2-panel {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  gap: 0.75rem;
+  overflow: hidden;
+}
+
+.tv2-panel-scroll {
+  overflow: auto;
+}
+
+.tv2-h1 {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: var(--tv2-text);
+  margin: 0;
+}
+
+.tv2-muted {
+  color: var(--tv2-muted);
+}
+
+.tv2-card {
+  border-radius: var(--tv2-radius-lg);
+  border: 1px solid var(--tv2-stroke-1);
+  background: rgba(255,255,255,0.02);
+  padding: 1rem;
+}
+
+.trainer-v2-root[data-tv2-theme="light"] .tv2-card,
+:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .tv2-card {
+  background: rgba(11,18,32,0.03);
+}
+
+/* condition typography */
+.tv2-task-content {
+  color: var(--tv2-text);
+  font-family: var(--tv2-font-ui);
+  line-height: 1.72;
+  font-size: 0.98rem;
+}
+
+.tv2-task-content pre,
+.tv2-task-content code {
+  font-family: var(--tv2-font-mono);
+  font-size: 0.92em;
+}
+
+.tv2-task-content pre {
+  padding: 0.85rem 1rem;
+  border-radius: var(--tv2-radius-md);
+  background: var(--tv2-surface-2);
+  border: 1px solid var(--tv2-stroke-1);
+  overflow: auto;
+}
+
+.tv2-task-content table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: var(--tv2-radius-md);
+  border: 1px solid var(--tv2-stroke-1);
+}
+
+.tv2-task-content th,
+.tv2-task-content td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid var(--tv2-stroke-1);
+  vertical-align: top;
+}
+
+.tv2-task-content th {
+  background: var(--tv2-surface-2);
+  font-weight: 900;
+  text-align: left;
+}
+
+.tv2-term {
+  border-bottom: 1px dashed rgba(0, 224, 255, 0.55);
+  cursor: help;
+}
+
+.trainer-v2-root[data-tv2-theme="light"] .tv2-term,
+:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .tv2-term {
+  border-bottom-color: rgba(10, 163, 154, 0.65);
+}
+
+mark.tv2-hl {
+  background: rgba(255, 213, 106, 0.32);
+  color: inherit;
+  padding: 0 0.08em;
+  border-radius: 0.2em;
+}
+
+.tv2-popover {
+  position: fixed;
+  z-index: 100000;
+  max-width: min(420px, calc(100vw - 24px));
+  background: var(--tv2-surface-1);
+  border: 1px solid var(--tv2-stroke-2);
+  border-radius: var(--tv2-radius-lg);
+  box-shadow: var(--tv2-shadow);
+  padding: 0.85rem 0.95rem;
+  color: var(--tv2-text);
+}
+
+.tv2-popover-title {
+  font-weight: 900;
+  margin-bottom: 0.35rem;
+}
+
+.tv2-popover-body {
+  color: var(--tv2-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.tv2-popover-actions {
+  margin-top: 0.65rem;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tv2-btn {
+  border: 1px solid var(--tv2-stroke-1);
+  background: rgba(255,255,255,0.03);
+  color: var(--tv2-text);
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 0.85rem;
+  font-family: var(--tv2-font-ui);
+}
+
+.tv2-btn:hover {
+  border-color: var(--tv2-accent);
+}
+
+.tv2-btn-danger {
+  border-color: rgba(255, 108, 145, 0.55);
+  background: rgba(255, 108, 145, 0.10);
+  color: var(--tv2-danger);
+}
+
+.tv2-input {
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--tv2-radius-md);
+  border: 1px solid var(--tv2-stroke-1);
+  background: var(--tv2-surface-2);
+  color: var(--tv2-text);
+  font-family: var(--tv2-font-mono);
+}
+
+.tv2-input:focus {
+  outline: none;
+  box-shadow: var(--tv2-focus);
+}
+
+/* editor */
+.tv2-editor-wrap {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+.tv2-editor-box {
+  border: 1px solid var(--tv2-stroke-1);
+  border-radius: var(--tv2-radius-lg);
+  overflow: hidden;
+  background: var(--tv2-surface-2);
+}
+
+.tv2-editor-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.tv2-inline-toast-area,
+.trainer-v2-toast-area {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 100000;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.tv2-inline-toast {
+  max-width: min(420px, calc(100vw - 36px));
+  border-radius: var(--tv2-radius-lg);
+  border: 1px solid var(--tv2-stroke-1);
+  background: var(--tv2-surface-1);
+  box-shadow: var(--tv2-shadow);
+  padding: 0.85rem 0.95rem;
+  color: var(--tv2-text);
+}
+
+.tv2-inline-toast.success { border-color: rgba(36, 229, 180, 0.35); }
+.tv2-inline-toast.error { border-color: rgba(255, 108, 145, 0.45); }
+
+.tv2-inline-toast .title {
+  font-weight: 900;
+  margin-bottom: 0.25rem;
+}
+
+.tv2-inline-toast .msg {
+  color: var(--tv2-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* scratchpad */
+.tv2-scratch-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tv2-scratch-tab {
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--tv2-stroke-1);
+  background: rgba(255,255,255,0.02);
+  color: var(--tv2-muted);
+  cursor: pointer;
+  font-weight: 900;
+  font-size: 0.85rem;
+}
+
+.tv2-scratch-tab.is-active {
+  border-color: rgba(0,224,255,0.45);
+  color: var(--tv2-text);
+  background: rgba(0,224,255,0.08);
+}
+
+.trainer-v2-root[data-tv2-theme="light"] .tv2-scratch-tab.is-active,
+:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .tv2-scratch-tab.is-active {
+  border-color: rgba(10,163,154,0.45);
+  background: rgba(10,163,154,0.08);
+}
+
+.tv2-canvas-wrap {
+  border: 1px solid var(--tv2-stroke-1);
+  border-radius: var(--tv2-radius-lg);
+  overflow: hidden;
+  background: var(--tv2-surface-2);
+}
+
+.tv2-canvas-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.tv2-canvas {
+  display: block;
+  width: 100%;
+  height: 320px;
+  touch-action: none;
+  background: transparent;
+}
+
+/* history */
+.tv2-history-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.tv2-history-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.8rem 0.9rem;
+  border-radius: var(--tv2-radius-lg);
+  border: 1px solid var(--tv2-stroke-1);
+  background: rgba(255,255,255,0.02);
+}
+
+.tv2-history-item:hover { border-color: rgba(0,224,255,0.35); }
+
+.tv2-history-meta {
+  font-family: var(--tv2-font-mono);
+  color: var(--tv2-muted);
+  font-size: 0.82rem;
+}
+
+.tv2-diff-wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  min-height: 0;
+}
+
+@media (max-width: 980px) {
+  .trainer-v2-dock { height: 76vh; }
+  .tv2-diff-wrap { grid-template-columns: 1fr; }
+}
+
+.tv2-diff-col {
+  min-height: 0;
+  border-radius: var(--tv2-radius-lg);
+  border: 1px solid var(--tv2-stroke-1);
+  background: var(--tv2-surface-2);
+  overflow: auto;
+}
+
+.tv2-diff-pre {
+  margin: 0;
+  padding: 0.85rem 0.95rem;
+  font-family: var(--tv2-font-mono);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--tv2-text);
+  white-space: pre;
+}
+
+.tv2-line-add { background: rgba(36,229,180,0.10); }
+.tv2-line-del { background: rgba(255,108,145,0.10); }
+
