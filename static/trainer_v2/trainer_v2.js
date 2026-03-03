@@ -799,6 +799,9 @@
     sourceLink.target = '_blank';
     sourceLink.rel = 'noopener';
     sourceLink.style.display = 'none';
+    sourceLink.addEventListener('click', (e) => {
+      if (!sourceLink.href || sourceLink.getAttribute('aria-disabled') === 'true') e.preventDefault();
+    });
 
     actions.appendChild(clearHlBtn);
     actions.appendChild(sourceLink);
@@ -825,9 +828,21 @@
     function render() {
       const task = State.currentTask;
       const canViewSource = !!(cfg.canViewSource === true || cfg.canViewSource === 'true');
-      if (canViewSource && task && (task.source_url || '').trim()) {
-        sourceLink.href = (task.source_url || '').trim();
+      const hasSourceUrl = task && (task.source_url || '').trim();
+      if (canViewSource && task) {
         sourceLink.style.display = '';
+        if (hasSourceUrl) {
+          sourceLink.href = (task.source_url || '').trim();
+          sourceLink.textContent = 'открыть источник';
+          sourceLink.removeAttribute('aria-disabled');
+          sourceLink.classList.remove('tv2-source-empty');
+        } else {
+          sourceLink.removeAttribute('href');
+          sourceLink.href = '#';
+          sourceLink.textContent = 'источник не указан';
+          sourceLink.setAttribute('aria-disabled', 'true');
+          sourceLink.classList.add('tv2-source-empty');
+        }
       } else {
         sourceLink.removeAttribute('href');
         sourceLink.style.display = 'none';

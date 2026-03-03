@@ -624,6 +624,12 @@ mark.tv2-hl {
   transform: translateY(0);
 }
 
+.tv2-source-link.tv2-source-empty {
+  opacity: 0.7;
+  cursor: default;
+  pointer-events: none;
+}
+
 .tv2-btn-danger {
   border-color: rgba(255, 108, 145, 0.55);
   background: rgba(255, 108, 145, 0.10);
