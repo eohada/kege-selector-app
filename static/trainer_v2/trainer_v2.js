@@ -12,10 +12,10 @@
   const taskTypeEl = document.getElementById('tv2TaskType');
   const startBtn = document.getElementById('tv2StartBtn');
   const nextBtn = document.getElementById('tv2NextBtn');
-  const presetBtn = document.getElementById('tv2PresetBtn');
-  const storageHelpBtn = document.getElementById('tv2StorageHelpBtn');
+  const presetBtn = null;
+  const storageHelpBtn = null;
   const queueInfoEl = document.getElementById('tv2QueueInfo');
-  const zenBtn = document.getElementById('tv2ZenBtn');
+  const zenBtn = null;
   const inlineToastArea = document.getElementById('tv2InlineToastArea');
 
   const LS = {
@@ -494,6 +494,7 @@
     logEvent('task_open', { task_id: task.task_id, task_number: task.task_number });
     if (!keepDrafts) loadDraftsForTask(task.task_id);
     try { if (State.editorView && State.editorView.updateAttemptsUI) State.editorView.updateAttemptsUI(task.task_id); } catch (_) {}
+    try { if (State.editorView && State.editorView.showFab) State.editorView.showFab(true); } catch (_) {}
     if (State.conditionView && typeof State.conditionView.render === 'function') State.conditionView.render();
     if (State.testsView && typeof State.testsView.render === 'function') State.testsView.render();
     if (State.historyView && typeof State.historyView.render === 'function') State.historyView.render();
@@ -1031,40 +1032,28 @@
     ans.placeholder = 'ответ (для проверки)';
     ans.setAttribute('id', 'tv2AnswerInput');
 
-    const btnRow = document.createElement('div');
-    btnRow.className = 'tv2-editor-actions';
-
     const runBtn = document.createElement('button');
     runBtn.type = 'button';
-    runBtn.className = 'tv2-btn';
-    runBtn.textContent = 'запустить код';
+    runBtn.className = 'tv2-fab-outline';
+    runBtn.textContent = 'запустить';
 
     const sendBtn = document.createElement('button');
     sendBtn.type = 'button';
-    sendBtn.className = 'tv2-btn';
-    sendBtn.textContent = 'проверить ответ';
+    sendBtn.className = 'tv2-fab-primary';
+    sendBtn.textContent = 'проверить';
 
-    const saveBtn = document.createElement('button');
-    saveBtn.type = 'button';
-    saveBtn.className = 'tv2-btn';
-    saveBtn.textContent = 'сохранить черновик';
-    saveBtn.addEventListener('click', () => {
-      const task = State.currentTask;
-      if (!task) return;
-      saveDraftsForTask(task.task_id);
-      pushInlineToast({ kind: 'success', title: 'черновик', message: 'код и ответ сохранены локально для этой задачи' });
-      logEvent('draft_save', { task_id: task.task_id });
-    });
-
-    btnRow.appendChild(runBtn);
-    btnRow.appendChild(sendBtn);
-    btnRow.appendChild(saveBtn);
+    const fab = document.createElement('div');
+    fab.className = 'tv2-fab';
+    fab.style.display = 'none';
+    fab.appendChild(runBtn);
+    fab.appendChild(sendBtn);
 
     bottom.appendChild(ans);
-    bottom.appendChild(btnRow);
 
+    grid.style.position = 'relative';
     grid.appendChild(editorBox);
     grid.appendChild(bottom);
+    grid.appendChild(fab);
 
     wrap.appendChild(head);
     wrap.appendChild(grid);
@@ -1137,6 +1126,10 @@
     function getAnswer() { return ans.value || ''; }
     function setAnswer(v) { ans.value = String(v || ''); }
 
+    function showFab(visible) {
+      fab.style.display = visible ? '' : 'none';
+    }
+
     function getAttempts(taskId) {
       const raw = safeJsonParse(lsGet(LS.attempts(taskId), '{}'), {});
       const used = Number(raw.used || 0);
@@ -1166,7 +1159,7 @@
       }
       runBtn.disabled = true;
       const original = runBtn.textContent;
-      runBtn.textContent = 'запуск...';
+      runBtn.textContent = '...';
       pushVersion(task.task_id, 'run', 'запуск кода');
       try {
         const res = await runCode({ code: code, stdin: '', timeoutSeconds: 2.0 });
@@ -1207,7 +1200,7 @@
 
       sendBtn.disabled = true;
       const originalText = sendBtn.textContent;
-      sendBtn.textContent = 'проверка...';
+      sendBtn.textContent = '...';
 
       try {
         const res = await submitAnswer({ taskId: task.task_id, answer: val, timeSpentSec: timeSpentSec() });
@@ -1246,7 +1239,8 @@
       mountEditor,
       getAnswer,
       setAnswer,
-      updateAttemptsUI
+      updateAttemptsUI,
+      showFab
     };
   }
 
@@ -1274,7 +1268,7 @@
       }
       const card = document.createElement('div');
       card.className = 'tv2-card';
-      card.innerHTML = `<div class="tv2-muted">проверка ответов выполняется кнопкой «проверить ответ» (без фоновой очереди)</div>`;
+      card.innerHTML = `<div class="tv2-muted">проверка ответов выполняется кнопкой «проверить» в плавающей панели</div>`;
       list.appendChild(card);
     }
 
@@ -1785,7 +1779,7 @@
     function getThemeBg() {
       const m = getTrainerThemeMode();
       const eff = effectiveTheme(m);
-      return eff === 'light' ? 'rgba(255,255,255,0.95)' : 'rgba(14,16,21,0.95)';
+      return eff === 'light' ? '#F5F5F7' : '#151518';
     }
 
     function redraw() {
@@ -2312,7 +2306,7 @@
       const total = root.getBoundingClientRect().width;
       const nextPx = clamp(startLeftPx + dx, 240, total - 320);
       const pct = (nextPx / total) * 100;
-      root.style.gridTemplateColumns = `minmax(240px, ${pct}%) 10px 1fr`;
+      root.style.gridTemplateColumns = `minmax(240px, ${pct}%) 6px 1fr`;
       lsSet(LS.layout('dock_lite_left_pct'), String(pct));
     });
     window.addEventListener('mouseup', () => {
@@ -2337,8 +2331,8 @@
       const dy = e.clientY - startY;
       const total = right.getBoundingClientRect().height;
       const nextTop = clamp(startTopPx + dy, 220, total - 180);
-      const bottomH = total - nextTop - 10;
-      right.style.gridTemplateRows = `${nextTop}px 10px ${bottomH}px`;
+      const bottomH = total - nextTop - 6;
+      right.style.gridTemplateRows = `${nextTop}px 6px ${bottomH}px`;
       lsSet(LS.layout('dock_lite_editor_px'), String(nextTop));
     });
     window.addEventListener('mouseup', () => {
@@ -2350,13 +2344,13 @@
     // apply stored sizes
     const leftPct = Number(lsGet(LS.layout('dock_lite_left_pct'), ''));
     if (Number.isFinite(leftPct) && leftPct >= 15 && leftPct <= 75) {
-      root.style.gridTemplateColumns = `minmax(240px, ${leftPct}%) 10px 1fr`;
+      root.style.gridTemplateColumns = `minmax(240px, ${leftPct}%) 6px 1fr`;
     }
     const editorPx = Number(lsGet(LS.layout('dock_lite_editor_px'), ''));
     if (Number.isFinite(editorPx) && editorPx >= 220) {
       const total = right.getBoundingClientRect().height;
       const bottomH = Math.max(180, total - editorPx - 10);
-      right.style.gridTemplateRows = `${editorPx}px 10px ${bottomH}px`;
+      right.style.gridTemplateRows = `${editorPx}px 6px ${bottomH}px`;
     }
 
     // presets
@@ -2370,7 +2364,7 @@
       let idx = 0;
       const apply = () => {
         const p = presets[idx];
-        root.style.gridTemplateColumns = `minmax(240px, ${p.left}%) 10px 1fr`;
+        root.style.gridTemplateColumns = `minmax(240px, ${p.left}%) 6px 1fr`;
         presetBtn.textContent = `пресет: ${p.name}`;
       };
       apply();
@@ -2435,7 +2429,6 @@
 
     const left = document.createElement('div');
     left.style.minWidth = '0';
-    left.style.borderRight = '1px solid var(--tv2-stroke-1)';
     const right = document.createElement('div');
     right.style.minWidth = '0';
     right.style.display = 'grid';
@@ -2451,8 +2444,8 @@
     right.appendChild(editor.el);
 
     const terminalWrap = document.createElement('div');
-    terminalWrap.style.borderTop = '1px solid var(--tv2-stroke-1)';
-    terminalWrap.style.background = 'rgba(255,255,255,0.02)';
+    terminalWrap.style.borderTop = 'none';
+    terminalWrap.style.background = 'transparent';
     terminalWrap.style.padding = '0.5rem';
     terminalWrap.style.display = 'grid';
     terminalWrap.style.gap = '0.5rem';
@@ -2536,6 +2529,158 @@
     }
   }
 
+  /* ── Command Palette (Ctrl+K) ─────────────────────────────── */
+  let cmdPaletteOpen = false;
+  let cmdBackdrop = null;
+
+  function getCommandList() {
+    const cmds = [
+      { id: 'next', label: 'Следующая задача', action: () => goNext().catch(() => {}) },
+      { id: 'start', label: 'Начать поток', action: () => startFlow().catch(() => {}) },
+      { id: 'reset-code', label: 'Сбросить код', action: () => { if (State.cm) State.cm.setValue(''); } },
+      { id: 'theme-auto', label: 'Тема: авто', action: () => { lsSet(LS.theme, 'auto'); applyTrainerTheme('auto'); } },
+      { id: 'theme-dark', label: 'Тема: тёмная', action: () => { lsSet(LS.theme, 'dark'); applyTrainerTheme('dark'); } },
+      { id: 'theme-light', label: 'Тема: светлая', action: () => { lsSet(LS.theme, 'light'); applyTrainerTheme('light'); } },
+      { id: 'preset-std', label: 'Пресет: стандарт (40/60)', action: () => applyPreset(40) },
+      { id: 'preset-code', label: 'Пресет: код 80%', action: () => applyPreset(20) },
+      { id: 'preset-cond', label: 'Пресет: условие 60%', action: () => applyPreset(60) },
+      { id: 'preset-min', label: 'Пресет: минимум (50/50)', action: () => applyPreset(50) },
+      { id: 'zen', label: 'Zen-режим', action: () => toggleZen() },
+      { id: 'storage', label: 'Где сохраняется?', action: () => pushInlineToast({ kind: 'success', title: 'хранение', message: 'черновики, снапшоты, подсветки и заметки сохраняются локально в браузере (localStorage) и привязаны к пользователю и задаче.' }) },
+      { id: 'snapshot', label: 'Сохранить снапшот', action: () => { const t = State.currentTask; if (t) { pushVersion(t.task_id, 'snapshot', 'ручной снимок'); pushInlineToast({ kind: 'success', title: 'снапшот', message: 'версия сохранена' }); } } },
+      { id: 'save-draft', label: 'Сохранить черновик', action: () => { const t = State.currentTask; if (t) { saveDraftsForTask(t.task_id); pushInlineToast({ kind: 'success', title: 'черновик', message: 'код и ответ сохранены' }); } } },
+    ];
+    const canViewSource = !!(cfg.canViewSource === true || cfg.canViewSource === 'true');
+    if (canViewSource && State.currentTask && (State.currentTask.source_url || '').trim()) {
+      cmds.push({ id: 'source', label: 'Открыть источник', action: () => window.open(State.currentTask.source_url, '_blank', 'noopener') });
+    }
+    return cmds;
+  }
+
+  function applyPreset(leftPct) {
+    const root = $('.tv2-lite', dockEl);
+    if (root) root.style.gridTemplateColumns = `minmax(260px, ${leftPct}%) 6px 1fr`;
+  }
+
+  function toggleZen() {
+    const url = new URL(window.location.href);
+    const isZen = url.searchParams.get('zen') === '1' || cfg.zenMode === true;
+    try {
+      if (State.currentTask && State.currentTask.task_id) {
+        saveDraftsForTask(State.currentTask.task_id);
+        url.searchParams.set('task_id', String(State.currentTask.task_id));
+      }
+    } catch (_) {}
+    try {
+      const t = State.taskType || getTaskTypeFromUI();
+      if (Number.isFinite(t) && t >= 1 && t <= 27) url.searchParams.set('task_type', String(t));
+    } catch (_) {}
+    if (isZen) url.searchParams.delete('zen');
+    else url.searchParams.set('zen', '1');
+    window.location.href = url.toString();
+  }
+
+  function openCmdPalette() {
+    if (cmdPaletteOpen) return;
+    cmdPaletteOpen = true;
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'tv2-cmd-backdrop';
+    cmdBackdrop = backdrop;
+
+    const box = document.createElement('div');
+    box.className = 'tv2-cmd-box';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'tv2-cmd-input';
+    input.placeholder = 'введите команду...';
+    input.setAttribute('autocomplete', 'off');
+
+    const list = document.createElement('div');
+    list.className = 'tv2-cmd-list';
+
+    box.appendChild(input);
+    box.appendChild(list);
+    backdrop.appendChild(box);
+    (rootEl || document.body).appendChild(backdrop);
+
+    let focusIdx = 0;
+    const allCmds = getCommandList();
+
+    function renderList(filter) {
+      list.innerHTML = '';
+      const q = (filter || '').trim().toLowerCase();
+      const filtered = q ? allCmds.filter(c => c.label.toLowerCase().includes(q)) : allCmds;
+      if (filtered.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'tv2-cmd-empty';
+        empty.textContent = 'ничего не найдено';
+        list.appendChild(empty);
+        return;
+      }
+      focusIdx = Math.min(focusIdx, filtered.length - 1);
+      filtered.forEach((cmd, i) => {
+        const item = document.createElement('div');
+        item.className = 'tv2-cmd-item';
+        if (i === focusIdx) item.classList.add('is-focused');
+        item.textContent = cmd.label;
+        item.addEventListener('click', () => { closeCmdPalette(); cmd.action(); });
+        item.addEventListener('mouseenter', () => {
+          focusIdx = i;
+          $all('.tv2-cmd-item', list).forEach((el, j) => el.classList.toggle('is-focused', j === i));
+        });
+        list.appendChild(item);
+      });
+    }
+
+    renderList('');
+    setTimeout(() => input.focus(), 0);
+
+    input.addEventListener('input', () => { focusIdx = 0; renderList(input.value); });
+    input.addEventListener('keydown', (e) => {
+      const q = (input.value || '').trim().toLowerCase();
+      const filtered = q ? allCmds.filter(c => c.label.toLowerCase().includes(q)) : allCmds;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        focusIdx = Math.min(focusIdx + 1, filtered.length - 1);
+        renderList(input.value);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        focusIdx = Math.max(focusIdx - 1, 0);
+        renderList(input.value);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (filtered[focusIdx]) { closeCmdPalette(); filtered[focusIdx].action(); }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        closeCmdPalette();
+      }
+    });
+
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeCmdPalette(); });
+  }
+
+  function closeCmdPalette() {
+    if (!cmdPaletteOpen) return;
+    cmdPaletteOpen = false;
+    if (cmdBackdrop) { cmdBackdrop.remove(); cmdBackdrop = null; }
+  }
+
+  function initCmdPalette() {
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        if (cmdPaletteOpen) closeCmdPalette();
+        else openCmdPalette();
+      }
+      if (e.key === 'Escape' && cmdPaletteOpen) {
+        e.preventDefault();
+        closeCmdPalette();
+      }
+    });
+  }
+
   function bootstrap() {
     initEventLog();
     initVisited();
@@ -2543,6 +2688,7 @@
     initThemeToggle();
     initZenToggle();
     initControls();
+    initCmdPalette();
     initDockLite();
     updateStreakUI();
 
