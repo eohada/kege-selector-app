@@ -35,7 +35,8 @@
     eventLog: `tv2.log.${userId}`,
     chat: (taskId) => `tv2.chat.${userId}.${taskId}`,
     canvasZoomPct: `tv2.canvasZoomPct.${userId}`,
-    canvasScalePct: `tv2.canvasScalePct.${userId}` // legacy key (older "масштаб" slider)
+    canvasScalePct: `tv2.canvasScalePct.${userId}`, // legacy key (older "масштаб" slider)
+    streak: `tv2.streak.${userId}`
   };
 
   function $(sel, root) { return (root || document).querySelector(sel); }
@@ -202,6 +203,32 @@
     const cnt = State.pending.filter(p => p.status === 'sending').length;
     queueInfoEl.textContent = String(cnt);
     queueInfoEl.style.color = cnt > 0 ? 'var(--tv2-accent)' : 'var(--tv2-muted)';
+  }
+
+  function getStreak() {
+    return Number(lsGet(LS.streak, '0')) || 0;
+  }
+
+  function setStreak(val) {
+    lsSet(LS.streak, String(val));
+    updateStreakUI();
+  }
+
+  function updateStreakUI() {
+    const el = document.getElementById('tv2StreakInfo');
+    if (!el) return;
+    const v = getStreak();
+    el.textContent = v;
+    if (v > 0) {
+      el.classList.add('is-active');
+      if (v >= 3) el.classList.add('is-hot');
+      else el.classList.remove('is-hot');
+      el.classList.remove('bump');
+      void el.offsetWidth;
+      el.classList.add('bump');
+    } else {
+      el.classList.remove('is-active', 'is-hot', 'bump');
+    }
   }
 
   function setTaskMeta(task) {
@@ -1156,6 +1183,7 @@
         const ok = !!res.is_correct;
         if (ok) {
           setAttempts(task.task_id, nextUsedBase);
+          setStreak(getStreak() + 1);
           updateAttemptsUI(task.task_id);
           pushInlineToast({
             kind: 'success',
@@ -1164,6 +1192,7 @@
           });
         } else {
           setAttempts(task.task_id, nextUsedBase);
+          setStreak(0);
           updateAttemptsUI(task.task_id);
           pushInlineToast({
             kind: 'error',
@@ -1708,6 +1737,11 @@
     let zoom = 1.0;
     let panX = 0; // css px
     let panY = 0; // css px
+    let panning = false;
+    let panStartSx = 0;
+    let panStartSy = 0;
+    let panStartPx = 0;
+    let panStartPy = 0;
 
     function resize() {
       const rect = canvas.getBoundingClientRect();
@@ -1774,8 +1808,18 @@
     }
 
     function onDown(e) {
-      drawing = true;
       const pos = pointerPos(e);
+      if (e.button === 2) {
+        panning = true;
+        panStartSx = pos.sx;
+        panStartSy = pos.sy;
+        panStartPx = panX;
+        panStartPy = panY;
+        canvas.style.cursor = 'grabbing';
+        e.preventDefault();
+        return;
+      }
+      drawing = true;
       const color = ($('#tv2CanvasColor') && $('#tv2CanvasColor').value) || '#00e0ff';
       const width = Number($('#tv2CanvasWidth') && $('#tv2CanvasWidth').value) || 2.5;
       cur = { color, width, points: [{ x: pos.x, y: pos.y }] };
@@ -1785,14 +1829,29 @@
     }
 
     function onMove(e) {
-      if (!drawing || !cur) return;
       const pos = pointerPos(e);
+      if (panning) {
+        const dx = pos.sx - panStartSx;
+        const dy = pos.sy - panStartSy;
+        panX = panStartPx + dx;
+        panY = panStartPy + dy;
+        redraw();
+        e.preventDefault();
+        return;
+      }
+      if (!drawing || !cur) return;
       cur.points.push({ x: pos.x, y: pos.y });
       redraw();
       e.preventDefault();
     }
 
     function onUp(e) {
+      if (panning) {
+        panning = false;
+        canvas.style.cursor = 'crosshair'; // default canvas cursor for drawing
+        e.preventDefault();
+        return;
+      }
       if (!drawing) return;
       drawing = false;
       cur = null;
@@ -1800,6 +1859,7 @@
       e.preventDefault();
     }
 
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
     canvas.addEventListener('pointerdown', onDown);
     canvas.addEventListener('pointermove', onMove);
     canvas.addEventListener('pointerup', onUp);
@@ -2453,6 +2513,7 @@
     initZenToggle();
     initControls();
     initDockLite();
+    updateStreakUI();
 
     loadGlossary().then(() => {
       if (State.conditionView) State.conditionView.render();

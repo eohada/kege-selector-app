@@ -212,3 +212,4 @@ class AnalyticsEngine:
             prob = cls.calculate_probability(user_rating, exam_task_rating)
             total_expected += prob * (node.exam_points or 1)
         return round(total_expected, 1)
+
