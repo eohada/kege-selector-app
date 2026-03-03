@@ -98,8 +98,11 @@
 }
 
 .trainer-v2-subtitle {
-  color: var(--text-muted);
+  color: var(--tv2-muted);
   margin-top: 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .trainer-v2-hero-right {
@@ -222,6 +225,7 @@
   color: var(--tv2-muted);
   font-size: 0.8rem;
   font-weight: 500;
+  text-transform: capitalize;
   letter-spacing: 0.02em;
   text-transform: lowercase;
 }
@@ -406,6 +410,7 @@
   font-weight: 600;
   font-size: 0.82rem;
   transition: var(--tv2-transition);
+  text-transform: capitalize;
 }
 
 .tv2-lite-tabbtn:hover {
@@ -440,11 +445,12 @@
 }
 
 .tv2-h1 {
-  font-size: 0.92rem;
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 800;
   color: var(--tv2-text);
   margin: 0;
   letter-spacing: -0.01em;
+  text-transform: capitalize;
 }
 
 .tv2-muted {
@@ -519,32 +525,49 @@
 }
 
 mark.tv2-hl {
-  background: rgba(255, 213, 106, 0.32);
+  background: rgba(255, 213, 106, 0.35);
   color: inherit;
-  padding: 0 0.08em;
-  border-radius: 0.2em;
+  padding: 0.05em 0.12em;
+  border-radius: 0.25em;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  position: relative;
+}
+
+mark.tv2-hl:hover {
+  background: rgba(255, 213, 106, 0.55);
 }
 
 .tv2-popover {
   position: fixed;
   z-index: 100000;
   max-width: min(420px, calc(100vw - 24px));
-  background: var(--tv2-surface-2);
-  border: 1px solid var(--tv2-stroke-1);
+  background: #1E1E22;
+  border: 1px solid var(--tv2-stroke-2);
   border-radius: var(--tv2-radius-md);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
   padding: 0.85rem 0.95rem;
   color: var(--tv2-text);
+  backdrop-filter: none;
+}
+
+.trainer-v2-root[data-tv2-theme="light"] .tv2-popover,
+:root[data-theme="light"] .trainer-v2-root[data-tv2-theme="auto"] .tv2-popover {
+  background: #FFFFFF;
+  border-color: #D4D4D8;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.12);
 }
 
 .tv2-popover-title {
-  font-weight: 900;
+  font-weight: 800;
+  font-size: 0.88rem;
   margin-bottom: 0.35rem;
+  text-transform: capitalize;
 }
 
 .tv2-popover-body {
   color: var(--tv2-muted);
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   line-height: 1.55;
   white-space: pre-wrap;
 }
@@ -567,6 +590,7 @@ mark.tv2-hl {
   font-size: 0.82rem;
   font-family: var(--tv2-font-ui);
   transition: var(--tv2-transition);
+  text-transform: capitalize;
 }
 
 .tv2-btn:hover {
@@ -626,6 +650,7 @@ mark.tv2-hl {
   border-radius: var(--tv2-radius-md);
   overflow: hidden;
   background: var(--tv2-surface-1);
+  position: relative;
 }
 
 .tv2-editor-actions {
@@ -659,6 +684,7 @@ mark.tv2-hl {
 .tv2-inline-toast .title {
   font-weight: 900;
   margin-bottom: 0.25rem;
+  text-transform: capitalize;
 }
 
 .tv2-inline-toast .msg {
@@ -684,6 +710,7 @@ mark.tv2-hl {
   font-weight: 600;
   font-size: 0.82rem;
   transition: var(--tv2-transition);
+  text-transform: capitalize;
 }
 
 .tv2-scratch-tab:hover {
@@ -879,31 +906,43 @@ mark.tv2-hl {
 /* Floating Action Bar */
 .tv2-fab {
   position: absolute;
-  bottom: 14px;
-  right: 14px;
+  bottom: 10px;
+  right: 10px;
   display: flex;
   gap: 8px;
   z-index: 100;
   opacity: 0;
   transform: translateY(6px);
   animation: tv2-fab-in 0.3s ease-out 0.1s forwards;
+  pointer-events: none;
 }
+
+.tv2-fab > * { pointer-events: auto; }
 
 @keyframes tv2-fab-in {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.tv2-fab-primary {
-  background: var(--tv2-accent);
-  color: #fff;
+.tv2-fab-primary,
+.tv2-fab-outline {
+  min-width: 120px;
+  text-align: center;
   font-weight: 700;
-  font-size: 0.85rem;
-  border: none;
+  font-size: 0.82rem;
   border-radius: 999px;
-  padding: 0.5rem 1.1rem;
+  padding: 0.55rem 1.2rem;
   cursor: pointer;
   font-family: var(--tv2-font-ui);
   transition: var(--tv2-transition);
+  white-space: nowrap;
+  line-height: 1.35;
+  box-sizing: border-box;
+}
+
+.tv2-fab-primary {
+  background: var(--tv2-accent);
+  color: #fff;
+  border: 1px solid transparent;
   box-shadow: 0 2px 12px rgba(108, 108, 255, 0.25);
 }
 
@@ -919,13 +958,6 @@ mark.tv2-hl {
   background: var(--tv2-surface-2);
   border: 1px solid var(--tv2-stroke-1);
   color: var(--tv2-text);
-  font-weight: 600;
-  font-size: 0.85rem;
-  border-radius: 999px;
-  padding: 0.5rem 1.1rem;
-  cursor: pointer;
-  font-family: var(--tv2-font-ui);
-  transition: var(--tv2-transition);
 }
 
 .tv2-fab-outline:hover {
@@ -1013,6 +1045,7 @@ mark.tv2-hl {
   font-size: 0.88rem;
   font-weight: 500;
   transition: background 0.12s ease;
+  text-transform: capitalize;
 }
 
 .tv2-cmd-item:hover,

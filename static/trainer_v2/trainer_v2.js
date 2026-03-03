@@ -953,6 +953,39 @@
     content.addEventListener('mouseup', () => setTimeout(onSel, 0));
     content.addEventListener('keyup', () => setTimeout(onSel, 0));
 
+    content.addEventListener('click', (e) => {
+      const mark = e.target.closest('mark.tv2-hl');
+      if (!mark) return;
+      const hlId = mark.getAttribute('data-hl-id');
+      if (!hlId) return;
+      const task = State.currentTask;
+      if (!task) return;
+      e.stopPropagation();
+      const rect = mark.getBoundingClientRect();
+      mountPopover({
+        anchorRect: rect,
+        title: 'Подсветка',
+        body: `«${mark.textContent.slice(0, 80)}${mark.textContent.length > 80 ? '…' : ''}»`,
+        actions: [
+          {
+            label: 'убрать',
+            danger: true,
+            onClick: () => {
+              const list = safeJsonParse(lsGet(LS.highlights(task.task_id), '[]'), []);
+              const filtered = Array.isArray(list) ? list.filter(h => String(h.id) !== String(hlId)) : [];
+              lsSet(LS.highlights(task.task_id), JSON.stringify(filtered));
+              try {
+                clearHighlights(content);
+                applyHighlightsByOffsets(content, filtered);
+              } catch (_) {}
+              logEvent('highlight_remove', { task_id: task.task_id, hl_id: hlId });
+            }
+          },
+          { label: 'оставить', onClick: () => {} }
+        ]
+      });
+    });
+
     initGlossaryTooltips(content);
 
     return { el: wrap, render };
@@ -1050,10 +1083,9 @@
 
     bottom.appendChild(ans);
 
-    grid.style.position = 'relative';
+    editorBox.appendChild(fab);
     grid.appendChild(editorBox);
     grid.appendChild(bottom);
-    grid.appendChild(fab);
 
     wrap.appendChild(head);
     wrap.appendChild(grid);
@@ -2671,14 +2703,18 @@
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         if (cmdPaletteOpen) closeCmdPalette();
         else openCmdPalette();
+        return false;
       }
       if (e.key === 'Escape' && cmdPaletteOpen) {
         e.preventDefault();
+        e.stopPropagation();
         closeCmdPalette();
       }
-    });
+    }, true);
   }
 
   function bootstrap() {
