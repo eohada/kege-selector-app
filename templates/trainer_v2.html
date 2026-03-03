@@ -118,6 +118,7 @@
       baseApi: '/internal/trainer',
       currentUserId: {{ (current_user.id if current_user and current_user.is_authenticated else 0) | int }},
       canViewTheory: {{ 'true' if (current_user and current_user.is_authenticated and has_permission(current_user, 'theory.view')) else 'false' }},
+      canViewSource: {{ 'true' if (current_user and current_user.is_authenticated and current_user.role in ['creator', 'chief_admin', 'admin', 'tutor']) else 'false' }},
     };
   </script>
 

@@ -793,7 +793,15 @@
       logEvent('highlights_clear', { task_id: task.task_id });
     });
 
+    const sourceLink = document.createElement('a');
+    sourceLink.className = 'tv2-btn tv2-source-link';
+    sourceLink.textContent = 'открыть источник';
+    sourceLink.target = '_blank';
+    sourceLink.rel = 'noopener';
+    sourceLink.style.display = 'none';
+
     actions.appendChild(clearHlBtn);
+    actions.appendChild(sourceLink);
     head.appendChild(title);
     head.appendChild(actions);
 
@@ -816,6 +824,14 @@
 
     function render() {
       const task = State.currentTask;
+      const canViewSource = !!(cfg.canViewSource === true || cfg.canViewSource === 'true');
+      if (canViewSource && task && (task.source_url || '').trim()) {
+        sourceLink.href = (task.source_url || '').trim();
+        sourceLink.style.display = '';
+      } else {
+        sourceLink.removeAttribute('href');
+        sourceLink.style.display = 'none';
+      }
       if (!task) {
         content.innerHTML = '<div class="tv2-muted">задача не выбрана</div>';
         attachWrap.innerHTML = '';
