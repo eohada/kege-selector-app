@@ -32,7 +32,9 @@
     scratchMd: (taskId) => `tv2.scratch.md.${userId}.${taskId}`,
     scratchCanvas: (taskId) => `tv2.scratch.canvas.${userId}.${taskId}`,
     versions: (taskId) => `tv2.versions.${userId}.${taskId}`,
-    eventLog: `tv2.log.${userId}`
+    eventLog: `tv2.log.${userId}`,
+    chat: (taskId) => `tv2.chat.${userId}.${taskId}`,
+    canvasScalePct: `tv2.canvasScalePct.${userId}`
   };
 
   function $(sel, root) { return (root || document).querySelector(sel); }
@@ -153,7 +155,9 @@
     terminalView: null,
     conditionView: null,
     editorView: null,
-    lastRun: null
+    assistantView: null,
+    lastRun: null,
+    llmInfo: null
   };
 
   function logEvent(kind, payload) {
@@ -252,6 +256,16 @@
     zenBtn.addEventListener('click', () => {
       const url = new URL(window.location.href);
       const isZen = url.searchParams.get('zen') === '1' || cfg.zenMode === true;
+      try {
+        if (State.currentTask && State.currentTask.task_id) {
+          saveDraftsForTask(State.currentTask.task_id);
+          url.searchParams.set('task_id', String(State.currentTask.task_id));
+        }
+      } catch (_) {}
+      try {
+        const t = State.taskType || getTaskTypeFromUI();
+        if (Number.isFinite(t) && t >= 1 && t <= 27) url.searchParams.set('task_type', String(t));
+      } catch (_) {}
       if (isZen) url.searchParams.delete('zen');
       else url.searchParams.set('zen', '1');
       window.location.href = url.toString();
@@ -261,6 +275,16 @@
     if (exitBtn) {
       exitBtn.addEventListener('click', () => {
         const url = new URL(window.location.href);
+        try {
+          if (State.currentTask && State.currentTask.task_id) {
+            saveDraftsForTask(State.currentTask.task_id);
+            url.searchParams.set('task_id', String(State.currentTask.task_id));
+          }
+        } catch (_) {}
+        try {
+          const t = State.taskType || getTaskTypeFromUI();
+          if (Number.isFinite(t) && t >= 1 && t <= 27) url.searchParams.set('task_type', String(t));
+        } catch (_) {}
         url.searchParams.delete('zen');
         window.location.href = url.toString();
       });
@@ -424,6 +448,7 @@
     if (State.conditionView && typeof State.conditionView.render === 'function') State.conditionView.render();
     if (State.testsView && typeof State.testsView.render === 'function') State.testsView.render();
     if (State.historyView && typeof State.historyView.render === 'function') State.historyView.render();
+    try { if (State.assistantView && typeof State.assistantView.loadForTask === 'function') State.assistantView.loadForTask(task.task_id); } catch (_) {}
     if (State.scratchCanvasApi && typeof State.scratchCanvasApi.loadForTask === 'function') State.scratchCanvasApi.loadForTask(task.task_id);
     if (State.md && typeof State.md.value === 'function') {
       const md = lsGet(LS.scratchMd(task.task_id), '');
@@ -1398,21 +1423,250 @@
         empty.innerHTML = '<div class="tv2-muted">пока нет запусков. нажми «запустить код».</div>';
         list.appendChild(empty);
       }
-
-      const arr = State.eventLog.slice(-40).reverse();
-      if (arr.length === 0) return;
-      const logCard = document.createElement('div');
-      logCard.className = 'tv2-card';
-      logCard.innerHTML = '<div style="font-weight:900;">события</div>';
-      const pre = document.createElement('pre');
-      pre.className = 'tv2-diff-pre';
-      pre.style.whiteSpace = 'pre-wrap';
-      pre.textContent = arr.map(e => `[${fmtTime(e.ts)}] ${e.kind}`).join('\n');
-      logCard.appendChild(pre);
-      list.appendChild(logCard);
     }
 
     return { el: wrap, render };
+  }
+
+  function makeAssistantComponent() {
+    const wrap = document.createElement('div');
+    wrap.className = 'tv2-panel tv2-panel-scroll';
+
+    const title = document.createElement('h2');
+    title.className = 'tv2-h1';
+    title.textContent = 'помощник';
+
+    const status = document.createElement('div');
+    status.className = 'tv2-muted';
+    status.style.marginTop = '-0.2rem';
+
+    const hintRow = document.createElement('div');
+    hintRow.className = 'tv2-chat-actions';
+
+    const hint1 = document.createElement('button');
+    hint1.type = 'button';
+    hint1.className = 'tv2-btn';
+    hint1.textContent = 'подсказка 1';
+    const hint2 = hint1.cloneNode(true);
+    hint2.textContent = 'подсказка 2';
+    const hint3 = hint1.cloneNode(true);
+    hint3.textContent = 'подсказка 3';
+
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'tv2-btn tv2-btn-danger';
+    clearBtn.textContent = 'очистить чат';
+
+    hintRow.appendChild(hint1);
+    hintRow.appendChild(hint2);
+    hintRow.appendChild(hint3);
+    hintRow.appendChild(clearBtn);
+
+    const list = document.createElement('div');
+    list.className = 'tv2-chat-list';
+
+    const composer = document.createElement('div');
+    composer.className = 'tv2-chat-composer';
+    const ta = document.createElement('textarea');
+    ta.className = 'tv2-chat-input';
+    ta.rows = 2;
+    ta.placeholder = 'вопрос по условию / коду / ошибке...';
+    ta.setAttribute('aria-label', 'сообщение помощнику');
+    const send = document.createElement('button');
+    send.type = 'button';
+    send.className = 'tv2-btn';
+    send.textContent = 'отправить';
+    composer.appendChild(ta);
+    composer.appendChild(send);
+
+    wrap.appendChild(title);
+    wrap.appendChild(status);
+    wrap.appendChild(hintRow);
+    wrap.appendChild(list);
+    wrap.appendChild(composer);
+
+    function getTaskId() {
+      return (State.currentTask && State.currentTask.task_id) ? Number(State.currentTask.task_id) : null;
+    }
+
+    function readChat(taskId) {
+      const raw = safeJsonParse(lsGet(LS.chat(taskId), '[]'), []);
+      return Array.isArray(raw) ? raw : [];
+    }
+
+    function writeChat(taskId, arr) {
+      lsSet(LS.chat(taskId), JSON.stringify(Array.isArray(arr) ? arr.slice(-60) : []));
+    }
+
+    function appendMsg(taskId, role, content) {
+      const arr = readChat(taskId);
+      arr.push({ role: role, content: String(content || ''), ts: nowMs() });
+      writeChat(taskId, arr);
+      render();
+    }
+
+    function render() {
+      list.innerHTML = '';
+      const task = State.currentTask;
+      if (!task || !task.task_id) {
+        list.innerHTML = '<div class="tv2-muted">задача не выбрана</div>';
+        status.textContent = '—';
+        return;
+      }
+
+      const llm = State.llmInfo;
+      if (!llm) status.textContent = 'проверка подключения...';
+      else {
+        const picked = llm.picked || null;
+        const isOk = !!picked;
+        status.textContent = isOk
+          ? `подключено · ${String((picked.provider || '')).trim()}${picked.model ? ' · ' + String(picked.model) : ''}`
+          : 'помощник недоступен (llm не настроен на сервере)';
+      }
+
+      const arr = readChat(task.task_id);
+      if (arr.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'tv2-card';
+        empty.innerHTML = '<div class="tv2-muted">подсказки и чат привязаны к текущей задаче. начни с «подсказка 1» или задай вопрос.</div>';
+        list.appendChild(empty);
+        return;
+      }
+
+      arr.slice(-60).forEach((m) => {
+        const item = document.createElement('div');
+        item.className = `tv2-chat-msg ${m.role === 'user' ? 'is-user' : 'is-assistant'}`.trim();
+        const head = document.createElement('div');
+        head.className = 'tv2-chat-meta';
+        head.textContent = `${m.role === 'user' ? 'ученик' : 'помощник'} · ${fmtTime(m.ts || nowMs())}`;
+        const body = document.createElement('div');
+        body.className = 'tv2-chat-bubble';
+        body.textContent = String(m.content || '');
+        item.appendChild(head);
+        item.appendChild(body);
+        list.appendChild(item);
+      });
+      list.scrollTop = list.scrollHeight;
+    }
+
+    async function fetchHint(level) {
+      const taskId = getTaskId();
+      if (!taskId) return;
+      const lvl = clamp(Number(level) || 1, 1, 5);
+      try {
+        const res = await apiFetch(`/task/${encodeURIComponent(taskId)}/hint?level=${encodeURIComponent(String(lvl))}`, { method: 'GET' });
+        appendMsg(taskId, 'assistant', `подсказка ${res.level}: ${res.hint}`);
+      } catch (e) {
+        pushInlineToast({ kind: 'error', title: 'подсказка', message: e.message });
+      }
+    }
+
+    function buildSystemPrompt() {
+      return [
+        'ты — помощник в тренажёре по подготовке к егэ.',
+        'нельзя раскрывать итоговый ответ целиком, даже если он известен.',
+        'нужно помогать шагами: уточняющие вопросы, план решения, проверки, типичные ошибки.',
+        'если ученик просит “дай ответ”, нужно отказать и предложить подсказку/проверку рассуждений.',
+        'если в сообщении есть код/ошибка, сначала объясни причину, затем предложи правку.',
+      ].join('\n');
+    }
+
+    function buildContextMessage() {
+      const task = State.currentTask;
+      if (!task) return '';
+      const parts = [];
+      parts.push(`контекст задачи:`);
+      parts.push(`тип: ${State.taskType || task.task_type || '—'}`);
+      parts.push(`id: ${task.task_id}`);
+      if (task.task_number) parts.push(`номер: ${task.task_number}`);
+      if (task.content) parts.push(`условие:\n${String(task.content).slice(0, 8000)}`);
+      try {
+        const code = getCurrentCode();
+        if (code && code.trim()) parts.push(`код ученика:\n${String(code).slice(0, 8000)}`);
+      } catch (_) {}
+      try {
+        const ans = getCurrentAnswer();
+        if (ans && String(ans).trim()) parts.push(`ответ ученика:\n${String(ans).slice(0, 2000)}`);
+      } catch (_) {}
+      return parts.join('\n\n');
+    }
+
+    async function sendChat() {
+      const taskId = getTaskId();
+      if (!taskId) return;
+      const text = String(ta.value || '').trim();
+      if (!text) return;
+
+      const llm = State.llmInfo;
+      const picked = llm && llm.picked ? llm.picked : null;
+      if (!picked) {
+        pushInlineToast({ kind: 'error', title: 'помощник', message: 'помощник недоступен: llm не настроен на сервере' });
+        return;
+      }
+
+      ta.value = '';
+      appendMsg(taskId, 'user', text);
+
+      const convo = readChat(taskId).filter(x => x && (x.role === 'user' || x.role === 'assistant'));
+      const last = convo.slice(-16).map(m => ({ role: m.role, content: String(m.content || '').slice(0, 4000) }));
+
+      const messages = [
+        { role: 'system', content: buildSystemPrompt() },
+        { role: 'user', content: buildContextMessage() },
+        ...last
+      ];
+
+      send.disabled = true;
+      const prevText = send.textContent;
+      send.textContent = '...';
+      try {
+        const res = await apiFetch('/llm/chat', {
+          method: 'POST',
+          body: JSON.stringify({
+            messages,
+            temperature: 0.2,
+            max_tokens: 700,
+            task_id: taskId,
+            task_type: State.taskType || null
+          })
+        });
+        appendMsg(taskId, 'assistant', String(res.answer || '').trim() || '(пустой ответ)');
+      } catch (e) {
+        pushInlineToast({ kind: 'error', title: 'помощник', message: e.message });
+      } finally {
+        send.disabled = false;
+        send.textContent = prevText;
+      }
+    }
+
+    hint1.addEventListener('click', () => fetchHint(1));
+    hint2.addEventListener('click', () => fetchHint(2));
+    hint3.addEventListener('click', () => fetchHint(3));
+    clearBtn.addEventListener('click', () => {
+      const taskId = getTaskId();
+      if (!taskId) return;
+      writeChat(taskId, []);
+      render();
+      pushInlineToast({ kind: 'success', title: 'помощник', message: 'чат очищен для текущей задачи' });
+    });
+
+    send.addEventListener('click', () => sendChat());
+    ta.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        sendChat();
+      }
+    });
+
+    function loadForTask(taskId) {
+      try {
+        const id = Number(taskId);
+        if (!Number.isFinite(id)) return;
+        render();
+      } catch (_) {}
+    }
+
+    return { el: wrap, render, loadForTask };
   }
 
   function createCanvasApi(canvas, taskIdGetter) {
@@ -1562,7 +1816,6 @@
     const canvasCard = document.createElement('div');
     canvasCard.className = 'tv2-card';
     canvasCard.style.display = 'none';
-    canvasCard.style.display = 'none';
     canvasCard.style.gap = '0.75rem';
 
     const toolbar = document.createElement('div');
@@ -1579,6 +1832,21 @@
     width.min = '1';
     width.max = '10';
     width.value = '3';
+
+    const scaleWrap = document.createElement('div');
+    scaleWrap.className = 'tv2-canvas-scale';
+    const scaleLabel = document.createElement('div');
+    scaleLabel.className = 'tv2-canvas-scale-label';
+    scaleLabel.textContent = 'масштаб: 100%';
+    const scale = document.createElement('input');
+    scale.type = 'range';
+    scale.id = 'tv2CanvasScale';
+    scale.min = '60';
+    scale.max = '200';
+    scale.step = '5';
+    scale.value = '100';
+    scaleWrap.appendChild(scaleLabel);
+    scaleWrap.appendChild(scale);
 
     const undoBtn = document.createElement('button');
     undoBtn.type = 'button';
@@ -1597,6 +1865,7 @@
 
     toolbar.appendChild(color);
     toolbar.appendChild(width);
+    toolbar.appendChild(scaleWrap);
     toolbar.appendChild(undoBtn);
     toolbar.appendChild(clearBtn);
     toolbar.appendChild(exportBtn);
@@ -1661,6 +1930,19 @@
     undoBtn.addEventListener('click', () => canvasApi.undo());
     clearBtn.addEventListener('click', () => canvasApi.clear());
     exportBtn.addEventListener('click', () => canvasApi.exportPng());
+
+    const BASE_CANVAS_H = 320;
+    function applyScalePct(pct) {
+      const p = clamp(Number(pct) || 100, 60, 200);
+      canvas.style.height = `${Math.round(BASE_CANVAS_H * (p / 100))}px`;
+      scaleLabel.textContent = `масштаб: ${p}%`;
+      lsSet(LS.canvasScalePct, String(p));
+      try { canvasApi.resize(); } catch (_) {}
+    }
+    const savedPct = Number(lsGet(LS.canvasScalePct, ''));
+    if (Number.isFinite(savedPct)) scale.value = String(clamp(savedPct, 60, 200));
+    applyScalePct(scale.value);
+    scale.addEventListener('input', () => applyScalePct(scale.value));
 
     // export markdown
     const exportMdBtn = document.createElement('button');
@@ -1748,7 +2030,8 @@
       { id: 'terminal', label: 'терминал' },
       { id: 'черновик', label: 'черновик' },
       { id: 'история', label: 'история' },
-      { id: 'проверка', label: 'проверка' }
+      { id: 'проверка', label: 'проверка' },
+      { id: 'помощник', label: 'помощник' }
     ];
     const btnMap = {};
     btns.forEach((b) => {
@@ -1769,12 +2052,15 @@
     State.historyView = history;
     const tests = makeTestsComponent();
     State.testsView = tests;
+    const assistant = makeAssistantComponent();
+    State.assistantView = assistant;
 
     const panes = {
       terminal: terminal.el,
       'черновик': scratch.el,
       'история': history.el,
-      'проверка': tests.el
+      'проверка': tests.el,
+      'помощник': assistant.el
     };
 
     function setTab(id) {
@@ -1786,6 +2072,7 @@
         if (id === 'история') history.render();
         if (id === 'проверка') tests.render();
         if (id === 'черновик') scratch.mountMd();
+        if (id === 'помощник') assistant.render();
       } catch (_) {}
       lsSet(LS.layout('dock_lite_active_tab'), id);
     }
@@ -2067,6 +2354,10 @@
     loadGlossary().then(() => {
       if (State.conditionView) State.conditionView.render();
     });
+
+    apiFetch('/llm/info', { method: 'GET' })
+      .then((r) => { State.llmInfo = (r && r.llm) ? r.llm : null; try { if (State.assistantView && State.assistantView.render) State.assistantView.render(); } catch (_) {} })
+      .catch(() => { State.llmInfo = { picked: null }; try { if (State.assistantView && State.assistantView.render) State.assistantView.render(); } catch (_) {} });
 
     // автозапуск, если task_type задан
     const pt = cfg.passthrough || {};
