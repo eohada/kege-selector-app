@@ -13,6 +13,7 @@
   const startBtn = document.getElementById('tv2StartBtn');
   const nextBtn = document.getElementById('tv2NextBtn');
   const presetBtn = document.getElementById('tv2PresetBtn');
+  const storageHelpBtn = document.getElementById('tv2StorageHelpBtn');
   const queueInfoEl = document.getElementById('tv2QueueInfo');
   const zenBtn = document.getElementById('tv2ZenBtn');
   const inlineToastArea = document.getElementById('tv2InlineToastArea');
@@ -420,6 +421,7 @@
     ensureTaskVisited(task);
     logEvent('task_open', { task_id: task.task_id, task_number: task.task_number });
     if (!keepDrafts) loadDraftsForTask(task.task_id);
+    try { if (State.editorView && State.editorView.updateAttemptsUI) State.editorView.updateAttemptsUI(task.task_id); } catch (_) {}
     if (State.conditionView && typeof State.conditionView.render === 'function') State.conditionView.render();
     if (State.testsView && typeof State.testsView.render === 'function') State.testsView.render();
     if (State.historyView && typeof State.historyView.render === 'function') State.historyView.render();
@@ -1031,32 +1033,22 @@
     function getAnswer() { return ans.value || ''; }
     function setAnswer(v) { ans.value = String(v || ''); }
 
-    function maxAttemptsForTask() {
-      return 3;
-    }
-
     function getAttempts(taskId) {
       const raw = safeJsonParse(lsGet(LS.attempts(taskId), '{}'), {});
       const used = Number(raw.used || 0);
-      const max = Number(raw.max || maxAttemptsForTask());
-      return { used: Number.isFinite(used) ? used : 0, max: Number.isFinite(max) ? max : maxAttemptsForTask() };
+      return { used: Number.isFinite(used) ? used : 0 };
     }
 
-    function setAttempts(taskId, used, max) {
-      lsSet(LS.attempts(taskId), JSON.stringify({ used: used, max: max }));
+    function setAttempts(taskId, used) {
+      lsSet(LS.attempts(taskId), JSON.stringify({ used: used }));
     }
 
     function updateAttemptsUI(taskId) {
       const t = getAttempts(taskId);
-      const left = Math.max(0, t.max - t.used);
-      sendBtn.disabled = left <= 0;
-      ans.disabled = left <= 0;
-      sendBtn.style.opacity = left <= 0 ? '0.6' : '1';
-      ans.style.opacity = left <= 0 ? '0.7' : '1';
       if (taskMetaEl) {
         const base = taskMetaEl.textContent || '';
-        const cleaned = base.replace(/\s*·\s*попытки:\s*\d+\/\d+\s*$/i, '').trim();
-        taskMetaEl.textContent = `${cleaned} · попытки: ${t.used}/${t.max}`;
+        const cleaned = base.replace(/\s*·\s*попытки:\s*\d+\s*$/i, '').trim();
+        taskMetaEl.textContent = `${cleaned} · попытки: ${t.used}`;
       }
     }
 
@@ -1107,11 +1099,7 @@
       pushVersion(task.task_id, 'submit', 'проверка ответа');
 
       const attempts = getAttempts(task.task_id);
-      if (attempts.used >= attempts.max) {
-        pushInlineToast({ kind: 'error', title: 'попытки', message: 'попытки исчерпаны для этой задачи' });
-        updateAttemptsUI(task.task_id);
-        return;
-      }
+      const nextUsedBase = attempts.used + 1;
 
       sendBtn.disabled = true;
       const originalText = sendBtn.textContent;
@@ -1121,8 +1109,7 @@
         const res = await submitAnswer({ taskId: task.task_id, answer: val, timeSpentSec: timeSpentSec() });
         const ok = !!res.is_correct;
         if (ok) {
-          // сбрасываем попытки после успеха
-          setAttempts(task.task_id, 0, maxAttemptsForTask());
+          setAttempts(task.task_id, nextUsedBase);
           updateAttemptsUI(task.task_id);
           pushInlineToast({
             kind: 'success',
@@ -1130,14 +1117,12 @@
             message: `верно · рейтинг: ${res.new_rating != null ? res.new_rating : '—'}`
           });
         } else {
-          const nextUsed = attempts.used + 1;
-          setAttempts(task.task_id, nextUsed, attempts.max);
+          setAttempts(task.task_id, nextUsedBase);
           updateAttemptsUI(task.task_id);
-          const left = Math.max(0, attempts.max - nextUsed);
           pushInlineToast({
             kind: 'error',
             title: 'проверка',
-            message: left > 0 ? `неверно · осталось попыток: ${left}` : 'неверно · попытки исчерпаны'
+            message: 'неверно · можно попробовать ещё раз'
           });
         }
         logEvent('submit_done', { task_id: task.task_id, is_correct: ok, new_rating: res.new_rating });
@@ -1964,6 +1949,16 @@
         });
       });
     }
+
+    if (storageHelpBtn) {
+      storageHelpBtn.addEventListener('click', () => {
+        pushInlineToast({
+          kind: 'success',
+          title: 'хранение данных',
+          message: 'черновики, снапшоты, подсветки и заметки сохраняются локально в браузере (localStorage) и привязаны к пользователю и задаче. если открыть тренажёр в другом браузере/устройстве — данных там не будет.'
+        });
+      });
+    }
   }
 
   function initFallbackLayout(reason) {
@@ -1983,6 +1978,9 @@
     left.style.borderRight = '1px solid var(--tv2-stroke-1)';
     const right = document.createElement('div');
     right.style.minWidth = '0';
+    right.style.display = 'grid';
+    right.style.gridTemplateRows = '1fr auto';
+    right.style.minHeight = '0';
 
     const condition = makeConditionComponent();
     State.conditionView = condition;
@@ -1992,6 +1990,38 @@
     State.editorView = editor;
     right.appendChild(editor.el);
 
+    const terminalWrap = document.createElement('div');
+    terminalWrap.style.borderTop = '1px solid var(--tv2-stroke-1)';
+    terminalWrap.style.background = 'rgba(255,255,255,0.02)';
+    terminalWrap.style.padding = '0.5rem';
+    terminalWrap.style.display = 'grid';
+    terminalWrap.style.gap = '0.5rem';
+
+    const termToggle = document.createElement('button');
+    termToggle.type = 'button';
+    termToggle.className = 'tv2-btn';
+    termToggle.textContent = 'терминал (показать)';
+
+    const termBody = document.createElement('div');
+    termBody.style.display = 'none';
+    termBody.style.maxHeight = '260px';
+    termBody.style.overflow = 'auto';
+
+    const terminal = makeTerminalComponent();
+    State.terminalView = terminal;
+    termBody.appendChild(terminal.el);
+
+    termToggle.addEventListener('click', () => {
+      const open = termBody.style.display !== 'none';
+      termBody.style.display = open ? 'none' : 'block';
+      termToggle.textContent = open ? 'терминал (показать)' : 'терминал (скрыть)';
+      if (!open) terminal.render();
+    });
+
+    terminalWrap.appendChild(termToggle);
+    terminalWrap.appendChild(termBody);
+    right.appendChild(terminalWrap);
+
     shell.appendChild(left);
     shell.appendChild(right);
     dockEl.appendChild(shell);
@@ -2000,6 +2030,7 @@
       try { editor.mountEditor(); } catch (_) {}
       try { condition.render(); } catch (_) {}
       if (State.currentTask) loadDraftsForTask(State.currentTask.task_id);
+      try { if (State.editorView && State.editorView.updateAttemptsUI && State.currentTask) State.editorView.updateAttemptsUI(State.currentTask.task_id); } catch (_) {}
     }, 0);
 
     pushInlineToast({
