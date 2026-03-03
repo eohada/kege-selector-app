@@ -1938,6 +1938,51 @@
     }
   }
 
+  function initFallbackLayout(reason) {
+    if (!dockEl) return;
+    dockEl.innerHTML = '';
+    dockEl.style.height = 'min(78vh, 860px)';
+    dockEl.style.background = 'transparent';
+
+    const shell = document.createElement('div');
+    shell.style.height = '100%';
+    shell.style.display = 'grid';
+    shell.style.gridTemplateColumns = 'minmax(260px, 40%) 1fr';
+    shell.style.gap = '0';
+
+    const left = document.createElement('div');
+    left.style.minWidth = '0';
+    left.style.borderRight = '1px solid var(--tv2-stroke-1)';
+    const right = document.createElement('div');
+    right.style.minWidth = '0';
+
+    const condition = makeConditionComponent();
+    State.conditionView = condition;
+    left.appendChild(condition.el);
+
+    const editor = makeEditorComponent();
+    State.editorView = editor;
+    right.appendChild(editor.el);
+
+    shell.appendChild(left);
+    shell.appendChild(right);
+    dockEl.appendChild(shell);
+
+    setTimeout(() => {
+      try { editor.mountEditor(); } catch (_) {}
+      try { condition.render(); } catch (_) {}
+      if (State.currentTask) loadDraftsForTask(State.currentTask.task_id);
+    }, 0);
+
+    pushInlineToast({
+      kind: 'error',
+      title: 'dock ui недоступен',
+      message: `переключено на упрощённый режим (split). причина: ${reason || 'unknown'}`
+    });
+
+    logEvent('dock_fallback', { reason: String(reason || 'unknown') });
+  }
+
   function loadPending() {
     const p = safeJsonParse(lsGet(LS.pending, '[]'), []);
     if (Array.isArray(p)) {
@@ -1958,7 +2003,12 @@
     initThemeToggle();
     initZenToggle();
     initControls();
-    initDockLayout();
+    try {
+      if (typeof window.GoldenLayout === 'function') initDockLayout();
+      else initFallbackLayout('goldenlayout_not_loaded');
+    } catch (e) {
+      initFallbackLayout(e && e.message ? e.message : 'goldenlayout_init_failed');
+    }
 
     loadGlossary().then(() => {
       if (State.conditionView) State.conditionView.render();
