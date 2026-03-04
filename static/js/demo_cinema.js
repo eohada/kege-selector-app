@@ -375,7 +375,7 @@
       return self.showSubtitle('Это твой командный центр. Здесь собраны ближайшие уроки, задания и аналитика.');
     })
     .then(function () {
-      var el = qs('.app-sidebar');
+      var el = qs('.nav-links');
       return self.spotlightWithPrompt(el, 'Навигация', 'Это навигационная панель — отсюда ты попадёшь в любой раздел платформы.');
     })
     .then(function () {
@@ -593,11 +593,41 @@
     });
   };
 
-  /* ── 6: Trainer — code, assistant, terminal, answer ────────────── */
+  /* ── 6: Trainer — task 5, code with bug, assistant, fix, answer ── */
   CE.prototype.sceneTrainer = function () {
     var self = this;
-    var correctAnswer = self.ids.trainerAnswer || '42';
-    var trainerHint = self.ids.trainerHint || 'Обрати внимание на условие задачи.';
+    var correctAnswer = self.ids.trainerAnswer || '10';
+
+    var buggyCode = [
+      'for N in range(1, 1000):',
+      '    N2 = bin(N)[2:]',
+      '    if N % 3 == 0:',
+      '        R2 = N2 + N2[-3:]',
+      '    else:',
+      '        R2 = N2 + bin((N % 3) * 3)[2:]',
+      '',
+      '    R = int(R2, 2)',
+      '',
+      '    if R < 130:',
+      '        print(N)',
+    ].join('\n');
+
+    var fixedCode = [
+      'for N in range(1, 1000):',
+      '    N2 = bin(N)[2:]',
+      '    if N % 3 == 0:',
+      '        R2 = N2 + N2[-3:]',
+      '    else:',
+      '        R2 = N2 + bin(N % 3 * 3)[2:]',
+      '',
+      '    R = int(R2, 2)',
+      '',
+      '    if R < 130:',
+      '        print(N)',
+    ].join('\n');
+
+    var demoQuestion = 'Мой код выводит неправильное количество чисел. В чём может быть ошибка в обработке остатка от деления?';
+    var demoAssistantReply = 'Проверь выражение bin((N % 3) * 3)[2:] — скобки вокруг (N % 3) * 3 меняют приоритет операций. Без лишних скобок bin(N % 3 * 3)[2:] даёт другой результат, потому что % и * имеют одинаковый приоритет и выполняются слева направо. Попробуй убрать скобки и сравни вывод.';
 
     self.playEntryTransition()
     .then(function () { return wait(1000); })
@@ -617,18 +647,17 @@
     })
     .then(function () {
       var editorBox = qs('.tv2-editor-box');
-      return self.spotlightWithPrompt(editorBox, 'Редактор кода', 'Здесь пишешь код для решения задачи. Поддерживается Python с подсветкой синтаксиса.');
+      return self.spotlightWithPrompt(editorBox, 'Редактор кода', 'Здесь пишешь код для решения задачи. Давай напишем решение.');
     })
     .then(function () {
       var cmEl = qs('.CodeMirror');
       if (cmEl && cmEl.CodeMirror) {
-        cmEl.CodeMirror.setValue('n = int(input())\nresult = 0\nfor i in range(n):\n    result += i\nprint(result)');
+        cmEl.CodeMirror.setValue(buggyCode);
       }
-      return wait(600);
+      return wait(800);
     })
     .then(function () {
-      var runBtn = qs('.tv2-fab-outline');
-      return self.spotlightWithPrompt(runBtn, 'Запустить код', 'Кнопка «запустить» выполняет код и показывает результат в терминале.');
+      return self.showSubtitle('Код написан, но в нём допущена ошибка — лишние скобки в выражении. Давай обратимся к помощнику.');
     })
     .then(function () {
       var assistantTab = qs('button[data-tab="помощник"]');
@@ -637,14 +666,33 @@
     })
     .then(function () {
       var chatInput = qs('.tv2-chat-input');
-      return self.spotlightWithPrompt(chatInput, 'Помощник', 'Если застрял — открой вкладку «Помощник» и задай вопрос по заданию.');
+      return self.spotlightWithPrompt(chatInput, 'Помощник', 'Задай вопрос ИИ-помощнику по заданию.', 'Написать вопрос');
     })
     .then(function () {
       var chatInput = qs('.tv2-chat-input');
       if (chatInput) {
-        return self.typeIntoField('Как решить это задание? Подскажи подход.', chatInput);
+        return self.typeIntoField(demoQuestion, chatInput);
       }
       return wait(300);
+    })
+    .then(function () {
+      var sendBtn = qs('.tv2-chat-send') || qs('.tv2-chat-input + button') || qs('.tv2-chat-form button[type="submit"]');
+      var chatList = qs('.tv2-chat-list');
+
+      if (chatList) {
+        var userMsg = document.createElement('div');
+        userMsg.className = 'tv2-chat-msg is-user';
+        var userBubble = document.createElement('div');
+        userBubble.className = 'tv2-chat-bubble';
+        userBubble.textContent = demoQuestion;
+        userMsg.appendChild(userBubble);
+        chatList.appendChild(userMsg);
+      }
+
+      var chatInput = qs('.tv2-chat-input');
+      if (chatInput) { chatInput.value = ''; chatInput.dispatchEvent(new Event('input', { bubbles: true })); }
+
+      return wait(1200);
     })
     .then(function () {
       var chatList = qs('.tv2-chat-list');
@@ -653,7 +701,7 @@
         msg.className = 'tv2-chat-msg is-assistant';
         var bubble = document.createElement('div');
         bubble.className = 'tv2-chat-bubble';
-        bubble.textContent = trainerHint;
+        bubble.textContent = demoAssistantReply;
         msg.appendChild(bubble);
         chatList.appendChild(msg);
         msg.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -662,16 +710,31 @@
     })
     .then(function () {
       var lastMsg = qs('.tv2-chat-msg.is-assistant:last-child');
-      return self.spotlightWithPrompt(lastMsg, 'Ответ ИИ', 'Помощник подсказывает подход к решению. Теперь введём ответ.');
+      return self.spotlightWithPrompt(lastMsg, 'Ответ помощника', 'ИИ нашёл ошибку — лишние скобки меняют приоритет. Исправим код.');
+    })
+    .then(function () {
+      var cmEl = qs('.CodeMirror');
+      if (cmEl && cmEl.CodeMirror) {
+        cmEl.CodeMirror.setValue(fixedCode);
+      }
+      return wait(600);
+    })
+    .then(function () {
+      return self.showSubtitle('Код исправлен! Теперь запустим его и посмотрим результат в терминале.');
+    })
+    .then(function () {
+      var runBtn = qs('.tv2-fab-outline');
+      if (runBtn) return self.spotlightWithPrompt(runBtn, 'Запустить', 'Нажми «запустить», чтобы выполнить код.');
+      return wait(300);
     })
     .then(function () {
       var terminalTab = qs('button[data-tab="terminal"]');
       if (terminalTab) self.simulateClick(terminalTab);
-      return wait(400);
+      return wait(500);
     })
     .then(function () {
       var answerEl = qs('#tv2AnswerInput');
-      return self.spotlightWithPrompt(answerEl, 'Поле ответа', 'Впиши финальный ответ и нажми «проверить».', 'Ввести ответ');
+      return self.spotlightWithPrompt(answerEl, 'Ответ', 'Впиши ответ из вывода программы и нажми «проверить».', 'Ввести ответ');
     })
     .then(function () {
       var answerEl = qs('#tv2AnswerInput');
@@ -697,7 +760,7 @@
       return wait(200);
     })
     .then(function () {
-      return self.showSubtitle('Код, помощник, проверка — всё в одном окне. Идём смотреть аналитику.', { continueLabel: 'К аналитике' });
+      return self.showSubtitle('Написал код → спросил помощника → исправил → проверил. Так работает тренажёр.', { continueLabel: 'К аналитике' });
     })
     .then(function () {
       if (!self.running) return;

@@ -246,11 +246,26 @@ def demo_start():
     demo_submission_id = None
     demo_lesson_id = None
 
+    import re as _re
+    _surname_re = _re.compile(r'^\s*[\(<]?\s*[А-ЯЁA-Z]\.\s*[А-ЯЁA-Z]?\.?\s*[А-ЯЁа-яёA-Za-z\-]{2,}')
+
+    def _no_surname(t):
+        if not t or not t.content_html:
+            return True
+        return not _surname_re.match(t.content_html.strip())
+
     demo_tasks = []
-    for tn in [1, 5, 8, 12, 14]:
-        t = Tasks.query.filter_by(task_number=tn).first()
-        if t:
-            demo_tasks.append(t)
+    for tn in [2, 5, 8, 10, 14]:
+        candidates = Tasks.query.filter_by(task_number=tn).all()
+        chosen = None
+        for c in candidates:
+            if _no_surname(c):
+                chosen = c
+                break
+        if not chosen and candidates:
+            chosen = candidates[0]
+        if chosen:
+            demo_tasks.append(chosen)
     if not demo_tasks:
         demo_tasks = Tasks.query.limit(5).all()
 
@@ -390,12 +405,19 @@ def demo_start():
             manual_incorrect=incorrect,
         ))
 
-    # --- Trainer: find a task with known answer ---
-    trainer_task = Tasks.query.filter(
-        Tasks.task_number == 1,
+    # --- Trainer: find task 5 without surname, with known answer ---
+    trainer_candidates = Tasks.query.filter(
+        Tasks.task_number == 5,
         Tasks.answer.isnot(None),
         Tasks.answer != '',
-    ).first()
+    ).all()
+    trainer_task = None
+    for tc in trainer_candidates:
+        if _no_surname(tc):
+            trainer_task = tc
+            break
+    if not trainer_task and trainer_candidates:
+        trainer_task = trainer_candidates[0]
     if not trainer_task:
         trainer_task = Tasks.query.filter(
             Tasks.answer.isnot(None), Tasks.answer != '',
