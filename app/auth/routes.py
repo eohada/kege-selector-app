@@ -255,15 +255,23 @@ def demo_start():
 
     first_task = demo_tasks[0] if demo_tasks else Tasks.query.first()
 
-    # --- 8 completed lessons WITH LessonTasks for analytics ---
+    # --- 8 completed lessons with varied LessonTasks for realistic analytics ---
     all_task_pool = Tasks.query.limit(30).all()
     lesson_topics = [
         'Системы счисления', 'Логические выражения', 'Графы и деревья',
         'Алгоритмы обработки данных', 'Программирование на Python',
         'Кодирование информации', 'Базы данных и SQL', 'Рекурсия и динамика',
     ]
-    hw_correct_pattern = [True, True, True, False, True, True, False, True]
-    exam_correct_pattern = [True, True, False, True, True, True, True, False]
+    lesson_task_configs = [
+        (2, [True, True],        1, [True]),
+        (3, [True, False, True], 1, [False]),
+        (1, [False],             2, [True, False]),
+        (2, [True, False],       1, [True]),
+        (2, [False, True],       1, [False]),
+        (3, [True, True, False], 0, []),
+        (1, [True],              2, [False, True]),
+        (2, [True, True],        1, [True]),
+    ]
 
     for i, topic in enumerate(lesson_topics):
         completed_lesson = Lesson(
@@ -277,27 +285,26 @@ def demo_start():
         db.session.add(completed_lesson)
         db.session.flush()
 
-        task_for_lesson = all_task_pool[i % len(all_task_pool)] if all_task_pool else first_task
-        if task_for_lesson:
-            db.session.add(LessonTask(
-                lesson_id=completed_lesson.lesson_id,
-                task_id=task_for_lesson.task_id,
-                assignment_type='homework',
-                status='graded',
-                submission_correct=hw_correct_pattern[i],
-                student_answer='42',
-            ))
-            exam_task = all_task_pool[(i + 8) % len(all_task_pool)] if len(all_task_pool) > 8 else task_for_lesson
-            db.session.add(LessonTask(
-                lesson_id=completed_lesson.lesson_id,
-                task_id=exam_task.task_id,
-                assignment_type='exam',
-                status='graded',
-                submission_correct=exam_correct_pattern[i],
-                student_answer='42',
-            ))
+        n_hw, hw_correct, n_exam, exam_correct = lesson_task_configs[i]
+        for j in range(n_hw):
+            t = all_task_pool[(i * 3 + j) % len(all_task_pool)] if all_task_pool else first_task
+            if t:
+                db.session.add(LessonTask(
+                    lesson_id=completed_lesson.lesson_id, task_id=t.task_id,
+                    assignment_type='homework', status='graded',
+                    submission_correct=hw_correct[j], student_answer=t.answer or '42',
+                ))
+        for j in range(n_exam):
+            t = all_task_pool[(i * 3 + n_hw + j) % len(all_task_pool)] if all_task_pool else first_task
+            if t:
+                db.session.add(LessonTask(
+                    lesson_id=completed_lesson.lesson_id, task_id=t.task_id,
+                    assignment_type='exam', status='graded',
+                    submission_correct=exam_correct[j], student_answer=t.answer or '42',
+                ))
 
     # --- Main demo assignment (ASSIGNED — for interactive demo) ---
+    task_answer_map = {}
     if demo_tasks:
         deadline = moscow_now() + timedelta(days=7)
         assignment = Assignment(
@@ -313,15 +320,22 @@ def demo_start():
         db.session.flush()
 
         total_score = 0
+        at_objects = []
         for idx, t in enumerate(demo_tasks):
             score = 2 if t.task_number >= 19 else 1
             total_score += score
-            db.session.add(AssignmentTask(
+            at = AssignmentTask(
                 assignment_id=assignment.assignment_id,
                 task_id=t.task_id,
                 order_index=idx,
                 max_score=score,
-            ))
+            )
+            db.session.add(at)
+            at_objects.append((at, t))
+
+        db.session.flush()
+        for at, t in at_objects:
+            task_answer_map[str(at.assignment_task_id)] = t.answer or str(random.randint(10, 999))
 
         sub = Submission(
             assignment_id=assignment.assignment_id,
@@ -347,17 +361,27 @@ def demo_start():
         db.session.flush()
         demo_lesson_id = demo_lesson.lesson_id
 
-        db.session.add(LessonTask(
-            lesson_id=demo_lesson.lesson_id,
-            task_id=demo_tasks[0].task_id,
-            assignment_type='classwork',
-            status='pending',
-        ))
+        for i, t in enumerate(demo_tasks[:3]):
+            db.session.add(LessonTask(
+                lesson_id=demo_lesson.lesson_id,
+                task_id=t.task_id,
+                assignment_type='classwork',
+                status='pending',
+            ))
 
-    # --- Student stats for analytics charts ---
+    # --- Student stats for analytics — varied distribution ---
+    weak_tasks = {3, 7, 12, 18, 24}
+    strong_tasks = {1, 5, 8, 14, 20}
     for tn in range(1, 28):
-        correct = random.randint(5, 20)
-        incorrect = random.randint(1, max(2, correct // 4))
+        if tn in weak_tasks:
+            correct = random.randint(2, 6)
+            incorrect = random.randint(4, 9)
+        elif tn in strong_tasks:
+            correct = random.randint(13, 20)
+            incorrect = random.randint(0, 3)
+        else:
+            correct = random.randint(5, 14)
+            incorrect = random.randint(2, 7)
         db.session.add(StudentTaskStatistics(
             student_id=demo_student.student_id,
             task_number=tn,
@@ -365,7 +389,7 @@ def demo_start():
             manual_incorrect=incorrect,
         ))
 
-    # --- Trainer: find a good task with known answer ---
+    # --- Trainer: find a task with known answer ---
     trainer_task = Tasks.query.filter(
         Tasks.task_number == 1,
         Tasks.answer.isnot(None),
@@ -376,6 +400,19 @@ def demo_start():
             Tasks.answer.isnot(None), Tasks.answer != '',
         ).first()
 
+    trainer_hint = 'Обрати внимание на ограничения в условии и проверь граничные значения.'
+    if trainer_task and trainer_task.hints:
+        try:
+            raw = trainer_task.hints
+            if isinstance(raw, list) and raw:
+                first = raw[0]
+                if isinstance(first, str) and len(first) > 10:
+                    trainer_hint = first
+                elif isinstance(first, dict):
+                    trainer_hint = first.get('text') or first.get('content') or trainer_hint
+        except Exception:
+            pass
+
     db.session.commit()
 
     login_user(user, remember=True)
@@ -384,8 +421,11 @@ def demo_start():
         'submissionId': demo_submission_id,
         'lessonId': demo_lesson_id,
         'studentId': demo_student.student_id,
+        'taskAnswers': task_answer_map,
+        'trainerTaskId': trainer_task.task_id if trainer_task else None,
         'trainerTaskNumber': trainer_task.task_number if trainer_task else 1,
         'trainerAnswer': (trainer_task.answer or '42') if trainer_task else '42',
+        'trainerHint': trainer_hint,
     }
 
     response = make_response(redirect(url_for('main.student_dashboard')))

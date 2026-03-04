@@ -551,6 +551,14 @@ def student_dashboard():
     except Exception:
         problem_topics = []
 
+    if current_user.is_demo_user and not problem_topics:
+        problem_topics = [
+            {'id': 0, 'name': 'Системы счисления', 'avg_score': 42},
+            {'id': 0, 'name': 'Рекурсия и динамическое программирование', 'avg_score': 35},
+            {'id': 0, 'name': 'Теория игр', 'avg_score': 48},
+            {'id': 0, 'name': 'Графы и обход деревьев', 'avg_score': 55},
+        ]
+
     try:
         recent_grades = GradebookEntry.query.filter_by(student_id=student.student_id).order_by(
             GradebookEntry.created_at.desc(),

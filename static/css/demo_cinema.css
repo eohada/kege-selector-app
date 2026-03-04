@@ -500,6 +500,37 @@
   width: 8px; height: 8px;
 }
 
+/* ── Spotlight prompt (text + button under spotlight) ──────────────── */
+.cinema-spotlight-prompt {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100002;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 2rem 2.5rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 50%, rgba(0, 0, 0, 0.4) 80%, transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+.cinema-spotlight-prompt.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.cinema-spotlight-prompt-text {
+  color: #fff;
+  font-size: clamp(0.95rem, 2vw, 1.15rem);
+  text-align: center;
+  max-width: 600px;
+  line-height: 1.55;
+  margin-bottom: 1rem;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+  font-weight: 500;
+}
+
 /* ── Typing indicator ──────────────────────────────────────────────── */
 .cinema-typing-indicator {
   position: fixed;

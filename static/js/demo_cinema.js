@@ -1,7 +1,6 @@
 /**
- * Demo Cinema Engine v5
- * Fixes: analytics data, EGE tab, lesson tabs, no auto-continue,
- * skip confirmation, fill-all-answers, trainer with real task.
+ * Demo Cinema Engine v6
+ * Every step waits for user click. Real answers. Proper trainer flow.
  */
 (function () {
   'use strict';
@@ -86,12 +85,10 @@
     });
   };
 
-  /* ── Subtitle (always waits for user unless auto) ──────────────── */
+  /* ── Subtitle — ALWAYS waits for user click ────────────────────── */
   CE.prototype.showSubtitle = function (text, opts) {
     var self = this;
     opts = opts || {};
-    var autoMs   = opts.auto;
-    var withBtn  = opts.withContinue !== false && !autoMs;
     var btnLabel = opts.continueLabel || 'Далее';
 
     return new Promise(function (resolve) {
@@ -100,34 +97,93 @@
       sub.textContent = text;
       self._els.push(wrap);
 
-      var btn;
-      if (withBtn) {
-        btn = addEl('button', 'cinema-continue-btn', wrap);
-        btn.textContent = btnLabel;
-      }
+      var btn = addEl('button', 'cinema-continue-btn', wrap);
+      btn.textContent = btnLabel;
 
       requestAnimationFrame(function () {
         requestAnimationFrame(function () {
           wrap.classList.add('visible');
           sub.classList.add('visible');
-          if (btn) btn.classList.add('visible');
+          btn.classList.add('visible');
         });
       });
 
-      function dismiss() {
+      btn.onclick = function () {
+        btn.onclick = null;
         sub.classList.remove('visible');
         sub.classList.add('exit');
         wrap.classList.add('exit');
-        self._t(function () { removeEl(wrap); resolve(); }, 500);
-      }
+        setTimeout(function () { removeEl(wrap); resolve(); }, 450);
+      };
+    });
+  };
 
-      if (autoMs) {
-        self._t(dismiss, autoMs);
-      } else if (btn) {
-        btn.onclick = function () { btn.onclick = null; dismiss(); };
-      } else {
-        self._t(dismiss, 3500);
-      }
+  /* ── Spotlight + prompt — shows highlight AND text, waits for click */
+  CE.prototype.spotlightWithPrompt = function (selector, label, text, btnLabel) {
+    var self = this;
+    btnLabel = btnLabel || 'Далее';
+    return new Promise(function (resolve) {
+      var el = typeof selector === 'string' ? qs(selector) : selector;
+      if (!el) return self.showSubtitle(text, { continueLabel: btnLabel }).then(resolve);
+
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      self._t(function () {
+        var rect = el.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) return self.showSubtitle(text, { continueLabel: btnLabel }).then(resolve);
+
+        var pad = 10;
+        var vw = window.innerWidth, vh = window.innerHeight;
+        var w = Math.min(rect.width + pad * 2, vw * 0.9);
+        var h = Math.min(rect.height + pad * 2, vh * 0.75);
+        var cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+        var left = Math.max(4, Math.min(cx - w / 2, vw - w - 4));
+        var top  = Math.max(4, Math.min(cy - h / 2, vh - h - 4));
+        var br = window.getComputedStyle(el).borderRadius || '12px';
+
+        var hole = addEl('div', 'cinema-spotlight-hole');
+        hole.style.cssText = 'left:' + left + 'px;top:' + top + 'px;width:' + w + 'px;height:' + h + 'px;border-radius:' + br;
+        self._els.push(hole);
+
+        var lbl;
+        if (label) {
+          lbl = addEl('div', 'cinema-spotlight-label');
+          lbl.textContent = label;
+          lbl.style.left = (left + w / 2) + 'px';
+          var lt = top + h + 14;
+          if (lt > vh - 80) lt = Math.max(8, top - 40);
+          lbl.style.top = lt + 'px';
+          lbl.style.transform = 'translateX(-50%)';
+          self._els.push(lbl);
+        }
+
+        var promptWrap = addEl('div', 'cinema-spotlight-prompt');
+        var promptText = addEl('div', 'cinema-spotlight-prompt-text', promptWrap);
+        promptText.textContent = text;
+        var promptBtn = addEl('button', 'cinema-continue-btn', promptWrap);
+        promptBtn.textContent = btnLabel;
+        self._els.push(promptWrap);
+
+        requestAnimationFrame(function () {
+          hole.classList.add('visible', 'pulse');
+          if (lbl) lbl.classList.add('visible');
+          promptWrap.classList.add('visible');
+          promptBtn.classList.add('visible');
+        });
+
+        promptBtn.onclick = function () {
+          promptBtn.onclick = null;
+          hole.classList.remove('visible');
+          if (lbl) lbl.classList.remove('visible');
+          promptWrap.classList.remove('visible');
+          setTimeout(function () {
+            removeEl(hole);
+            if (lbl) removeEl(lbl);
+            removeEl(promptWrap);
+            resolve();
+          }, 400);
+        };
+      }, 700);
     });
   };
 
@@ -169,57 +225,6 @@
         self._t(tick, 70);
       }
       self._t(tick, 150);
-    });
-  };
-
-  /* ── Spotlight (box-shadow hole) ───────────────────────────────── */
-  CE.prototype.spotlight = function (selector, durationMs, label) {
-    var self = this;
-    durationMs = durationMs || 3000;
-    return new Promise(function (resolve) {
-      var el = typeof selector === 'string' ? qs(selector) : selector;
-      if (!el) return resolve();
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-      self._t(function () {
-        var rect = el.getBoundingClientRect();
-        if (rect.width === 0 && rect.height === 0) return resolve();
-        var pad = 10;
-        var vw = window.innerWidth, vh = window.innerHeight;
-        var w = Math.min(rect.width + pad * 2, vw * 0.9);
-        var h = Math.min(rect.height + pad * 2, vh * 0.75);
-        var cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
-        var left = Math.max(4, Math.min(cx - w / 2, vw - w - 4));
-        var top  = Math.max(4, Math.min(cy - h / 2, vh - h - 4));
-        var br = window.getComputedStyle(el).borderRadius || '12px';
-
-        var hole = addEl('div', 'cinema-spotlight-hole');
-        hole.style.cssText = 'left:' + left + 'px;top:' + top + 'px;width:' + w + 'px;height:' + h + 'px;border-radius:' + br;
-        self._els.push(hole);
-
-        var lbl;
-        if (label) {
-          lbl = addEl('div', 'cinema-spotlight-label');
-          lbl.textContent = label;
-          lbl.style.left = (left + w / 2) + 'px';
-          var lt = top + h + 14;
-          if (lt > vh - 50) lt = Math.max(8, top - 40);
-          lbl.style.top = lt + 'px';
-          lbl.style.transform = 'translateX(-50%)';
-          self._els.push(lbl);
-        }
-
-        requestAnimationFrame(function () {
-          hole.classList.add('visible', 'pulse');
-          if (lbl) lbl.classList.add('visible');
-        });
-
-        self._t(function () {
-          hole.classList.remove('visible');
-          if (lbl) lbl.classList.remove('visible');
-          self._t(function () { removeEl(hole); if (lbl) removeEl(lbl); resolve(); }, 400);
-        }, durationMs);
-      }, 700);
     });
   };
 
@@ -342,7 +347,7 @@
   };
 
   /* ═══════════════════════════════════════════════════════════════════
-     SCENES
+     SCENES — every step waits for user click
      ═══════════════════════════════════════════════════════════════════ */
 
   CE.prototype.scenePrologue = function () {
@@ -371,20 +376,15 @@
     self.playEntryTransition()
     .then(function () { return wait(400); })
     .then(function () {
-      return self.showSubtitle('Это твой личный командный центр. Всё, что нужно — на одном экране.', { continueLabel: 'Понятно' });
+      return self.showSubtitle('Это твой командный центр. Здесь собраны ближайшие уроки, задания и аналитика.');
     })
     .then(function () {
       var el = qs('#cinema-notifications') || qs('.hero-actions');
-      if (el) return self.spotlight(el, 3000, 'Быстрые действия');
-      return wait(300);
+      return self.spotlightWithPrompt(el, 'Быстрые действия', 'Отсюда можно быстро перейти к уроку, заданиям или тренажёру.');
     })
     .then(function () {
       var el = qs('#cinema-weak-topics') || qs('[data-cinema="weak-topics"]');
-      if (el) return self.spotlight(el, 3000, 'Слабые темы — фокус подготовки');
-      return wait(300);
-    })
-    .then(function () {
-      return self.showSubtitle('Любой успех начинается с планирования. Заглянем в расписание.', { continueLabel: 'К расписанию' });
+      return self.spotlightWithPrompt(el, 'Слабые темы', 'Этот блок показывает, где ты теряешь баллы. Система обновляет его автоматически.', 'К расписанию');
     })
     .then(function () { if (self.running) self.advance(2, '/schedule', 'swipeLeft'); });
   };
@@ -395,17 +395,11 @@
     self.playEntryTransition()
     .then(function () { return wait(400); })
     .then(function () {
-      return self.showSubtitle('Все уроки — в одном расписании. Никаких накладок и забытых занятий.', { continueLabel: 'Понятно' });
+      return self.showSubtitle('Все уроки — в одном расписании. Никаких накладок и забытых занятий.');
     })
     .then(function () {
-      var chip = qs('.lesson-chip');
-      if (chip) return self.spotlight(chip, 3000, 'Карточка урока');
-      var grid = qs('#scheduleGrid');
-      if (grid) return self.spotlight(grid, 3000, 'Сетка расписания');
-      return wait(500);
-    })
-    .then(function () {
-      return self.showSubtitle('Чтобы подготовиться к уроку, нужна теория. Идём за знаниями.', { continueLabel: 'К теории' });
+      var chip = qs('.lesson-chip') || qs('.day-col__body') || qs('#scheduleGrid');
+      return self.spotlightWithPrompt(chip, 'Карточка урока', 'Кликай на урок, чтобы перейти в классную комнату. А пока — к теории.', 'К теории');
     })
     .then(function () { if (self.running) self.advance(3, '/theory', 'swipeLeft'); });
   };
@@ -416,15 +410,11 @@
     self.playEntryTransition()
     .then(function () { return wait(400); })
     .then(function () {
-      return self.showSubtitle('Здесь собрана вся теория для ЕГЭ по информатике. Каждое задание — отдельный конспект.', { continueLabel: 'Покажи' });
+      return self.showSubtitle('Здесь собрана вся теория для ЕГЭ по информатике. Каждое задание — свой конспект.');
     })
     .then(function () {
       var card = qs('.theory-card');
-      if (card) return self.spotlight(card, 3000, 'Конспект по теме');
-      return wait(500);
-    })
-    .then(function () {
-      return self.showSubtitle('Теория без практики мертва. Пора решать настоящие задания.', { continueLabel: 'К заданиям' });
+      return self.spotlightWithPrompt(card, 'Конспект по теме', 'Открой конспект, изучи теорию, а потом закрепи на практике. Идём к заданиям.', 'К заданиям');
     })
     .then(function () { if (self.running) self.advance(4, '/submissions', 'glitch'); });
   };
@@ -441,15 +431,11 @@
     self.playEntryTransition()
     .then(function () { return wait(400); })
     .then(function () {
-      return self.showSubtitle('Это боевые задания от преподавателя. Дедлайны, ограничения попыток — всё серьёзно.', { continueLabel: 'Покажи' });
+      return self.showSubtitle('Это задания от преподавателя. Дедлайны, ограничения — всё по-настоящему.');
     })
     .then(function () {
       var card = qs('.demo-submission-card') || qs('.submission-card');
-      if (card) return self.spotlight(card, 3000, 'Карточка задания');
-      return wait(500);
-    })
-    .then(function () {
-      return self.showSubtitle('Давай зайдём в задание и решим его прямо сейчас.', { continueLabel: 'Открыть задание' });
+      return self.spotlightWithPrompt(card, 'Карточка задания', 'Давай откроем задание и решим его.', 'Открыть задание');
     })
     .then(function () {
       if (!self.running) return;
@@ -464,30 +450,34 @@
 
   CE.prototype.sceneSubmissionWork = function () {
     var self = this;
+    var taskAnswers = self.ids.taskAnswers || {};
+
     self.playEntryTransition()
     .then(function () { return wait(400); })
     .then(function () {
       var startBtn = qs('#start-btn');
       if (startBtn) {
-        return self.showSubtitle('Ты внутри задания. Нажми кнопку, чтобы начать выполнение и увидеть условия.', { continueLabel: 'Начать выполнение' })
+        return self.showSubtitle('Ты внутри задания. Нажми кнопку, чтобы начать выполнение.', { continueLabel: 'Начать выполнение' })
         .then(function () {
           lsSet(LS_TRANSITION, 'fade');
           self.simulateClick(startBtn);
           self.running = false;
         });
       }
-      return self.showSubtitle('Перед тобой задания с условиями. Давай заполним все ответы.', { continueLabel: 'Заполнить ответы' });
+      return self.showSubtitle('Перед тобой задания с условиями. Давай заполним ответы.', { continueLabel: 'Заполнить ответы' });
     })
     .then(function () {
       if (!self.running) return;
       var answers = qsa('.answer-input');
       var chain = Promise.resolve();
-      answers.forEach(function (textarea, idx) {
+      answers.forEach(function (textarea) {
         chain = chain.then(function () {
           textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
           return wait(400);
         }).then(function () {
-          textarea.value = '42';
+          var atId = textarea.getAttribute('data-task-id');
+          var realAnswer = (atId && taskAnswers[atId]) ? taskAnswers[atId] : '42';
+          textarea.value = realAnswer;
           textarea.dispatchEvent(new Event('input', { bubbles: true }));
           textarea.style.borderColor = 'var(--accent-1, #0af)';
           textarea.style.boxShadow = '0 0 8px rgba(0, 170, 255, 0.3)';
@@ -495,10 +485,6 @@
         });
       });
       return chain;
-    })
-    .then(function () {
-      if (!self.running) return;
-      return wait(400);
     })
     .then(function () {
       if (!self.running) return;
@@ -510,7 +496,7 @@
     })
     .then(function () {
       if (!self.running) return;
-      return self.showSubtitle('Идеальный результат! 5 из 5 баллов — 100%. Так работают задания на платформе.', { continueLabel: 'Дальше' });
+      return self.showSubtitle('Идеальный результат! 5 из 5 баллов — 100%. Так работают задания.', { continueLabel: 'Дальше' });
     })
     .then(function () {
       if (!self.running) return;
@@ -526,98 +512,87 @@
     self.playEntryTransition()
     .then(function () { return wait(400); })
     .then(function () {
-      return self.showSubtitle('Это экран урока. Преподаватель ведёт занятие, а ты решаешь задачи прямо здесь.', { continueLabel: 'Покажи' });
+      return self.showSubtitle('Это экран урока. Преподаватель ведёт занятие, а ты решаешь задачи прямо здесь.');
     })
     .then(function () {
       var navBar = qs('.task-nav-bar');
-      if (navBar) return self.spotlight(navBar, 3000, 'Навигация по заданиям');
-      return wait(300);
+      return self.spotlightWithPrompt(navBar, 'Навигация по заданиям', 'Кнопки вверху переключают между заданиями. Давай посмотрим.');
+    })
+    .then(function () {
+      var navBtns = qsa('.task-nav-btn');
+      if (navBtns.length > 0) {
+        self.simulateClick(navBtns[0]);
+      }
+      return wait(600);
+    })
+    .then(function () {
+      var card = qs('.task-card');
+      return self.spotlightWithPrompt(card, 'Задание', 'Здесь отображается условие задачи и поле для ответа.');
     })
     .then(function () {
       var navBtns = qsa('.task-nav-btn');
       if (navBtns.length > 1) {
-        self.simulateClick(navBtns[0]);
+        self.simulateClick(navBtns[1]);
         return wait(600);
       }
       return wait(300);
     })
     .then(function () {
-      var card = qs('.task-card');
-      if (card) return self.spotlight(card, 3000, 'Карточка задания на уроке');
-      return wait(300);
-    })
-    .then(function () {
-      var answerInput = qs('input[id^="submission_"]') || qs('.neo-input[placeholder*="ответ"]');
-      if (answerInput) {
-        return self.spotlight(answerInput, 2000, 'Поле для ответа').then(function () {
-          return self.typeIntoField('42', answerInput);
-        });
+      var cards = qsa('.task-card');
+      var secondCard = cards.length > 1 ? cards[1] : cards[0];
+      if (secondCard) {
+        var answerInput = secondCard.querySelector('input[id^="submission_"]') || qs('input[id^="submission_"]');
+        if (answerInput) {
+          return self.spotlightWithPrompt(answerInput, 'Поле ответа', 'Введи ответ и сохрани черновик. Давай попробуем.', 'Ввести ответ')
+          .then(function () {
+            return self.typeIntoField('42', answerInput);
+          });
+        }
       }
       return wait(300);
     })
     .then(function () {
-      var saveBtn = qs('#cinema-save-draft') || qs('[data-cinema="save-draft"]');
-      if (saveBtn) return self.spotlight(saveBtn, 2500, 'Сохрани черновик');
-      return wait(300);
+      return self.showSubtitle('Ответ введён! Застрял на задаче? Для этого есть AI-тренажёр.', { continueLabel: 'В тренажёр' });
     })
     .then(function () {
-      return self.showSubtitle('Застрял на задаче? Для этого у нас есть AI-тренажёр.', { continueLabel: 'В тренажёр' });
-    })
-    .then(function () { if (self.running) self.advance(6, '/trainer/v2', 'hyperJump'); });
+      if (!self.running) return;
+      var tid = self.ids.trainerTaskId;
+      var tn = self.ids.trainerTaskNumber || 1;
+      var url = '/trainer/v2';
+      if (tid) url += '?task_id=' + tid + '&task_type=' + tn;
+      else if (tn) url += '?task_type=' + tn;
+      self.advance(6, url, 'hyperJump');
+    });
   };
 
-  /* ── 6: Trainer — scripted scenario with real task ─────────────── */
+  /* ── 6: Trainer — real task, real answer ────────────────────────── */
   CE.prototype.sceneTrainer = function () {
     var self = this;
     var correctAnswer = self.ids.trainerAnswer || '42';
-    var taskNum = self.ids.trainerTaskNumber || 1;
-    var wrongAnswer = correctAnswer === '42' ? '99' : '0';
+    var wrongAnswer = (correctAnswer === '42' || correctAnswer === '0') ? '999' : '0';
+    var trainerHint = self.ids.trainerHint || 'Обрати внимание на условие задачи.';
     var answerEl = null;
 
     self.playEntryTransition()
-    .then(function () { return wait(600); })
+    .then(function () { return wait(800); })
     .then(function () {
-      return self.showSubtitle('Это AI-тренажёр. Здесь можно решать задачи бесконечно — ИИ поможет разобраться в ошибках.', { continueLabel: 'Начнём' });
+      return self.showSubtitle('Это AI-тренажёр. Здесь можно решать задачи бесконечно — ИИ поможет разобраться в ошибках.');
     })
     .then(function () {
       var dock = qs('#trainerV2Dock') || qs('.trainer-v2-root');
       if (dock) dock.classList.add('cinema-neon-hud');
-
-      var select = qs('#tv2TaskType');
-      if (select) {
-        select.value = String(taskNum);
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-
       qsa('#tv2NextBtn, #tv2ZenExitBtn').forEach(function (b) {
         b.style.pointerEvents = 'none'; b.style.opacity = '0.3';
       });
-      return wait(400);
+      return wait(2000);
     })
     .then(function () {
-      var startBtn = qs('#tv2StartBtn');
-      if (startBtn) return self.spotlight(startBtn, 2500, 'Загрузить задание');
-      return wait(300);
-    })
-    .then(function () {
-      return self.showSubtitle('Нажми «начать» — ИИ подберёт задание по выбранной теме.', { continueLabel: 'Загрузить задание' });
-    })
-    .then(function () {
-      var startBtn = qs('#tv2StartBtn');
-      if (startBtn) self.simulateClick(startBtn);
-      return wait(800);
-    })
-    .then(function () {
-      return self.waitForEl('#tv2AnswerInput', 8000);
+      return self.waitForEl('#tv2AnswerInput', 6000);
     })
     .then(function (el) {
       answerEl = el;
-      if (!answerEl) return wait(500);
-      return self.showSubtitle('Задание загружено. Попробуй ввести неправильный ответ — посмотрим, как реагирует ИИ.', { continueLabel: 'Ввести ответ' });
-    })
-    .then(function () {
-      if (!answerEl) return wait(300);
-      return self.spotlight(answerEl, 2000, 'Поле ответа');
+      var taskArea = qs('.tv2-condition') || qs('.tv2-task-content') || qs('.tv2-split-left');
+      return self.spotlightWithPrompt(taskArea || answerEl, 'Условие задачи', 'Задание загружено. Попробуй ввести неправильный ответ — посмотрим, как реагирует ИИ.', 'Ввести неправильный ответ');
     })
     .then(function () {
       if (!answerEl) return wait(300);
@@ -627,18 +602,16 @@
       if (!answerEl) return wait(300);
       var checkBtn = qs('.tv2-fab-primary');
       if (checkBtn) {
-        return self.spotlight(checkBtn, 1500, 'Проверить').then(function () {
-          self.simulateClick(checkBtn);
-          return wait(2500);
-        });
+        self.simulateClick(checkBtn);
+        return wait(2500);
       }
       return wait(500);
     })
     .then(function () {
-      return self.showAITooltip('Ответ неверный. Подсказка: внимательно перечитай условие — проверь граничные значения и порядок операций.', 4500);
+      return self.showAITooltip(trainerHint, 4500);
     })
     .then(function () {
-      return self.showSubtitle('ИИ даёт подсказку после каждой ошибки. Теперь введём правильный ответ.', { continueLabel: 'Исправить' });
+      return self.showSubtitle('ИИ даёт подсказку после каждой ошибки. Теперь введём правильный ответ.', { continueLabel: 'Ввести правильный ответ' });
     })
     .then(function () {
       if (!answerEl) return wait(300);
@@ -651,7 +624,7 @@
       var checkBtn = qs('.tv2-fab-primary');
       if (checkBtn) {
         self.simulateClick(checkBtn);
-        return wait(2000);
+        return wait(2500);
       }
       return wait(500);
     })
@@ -666,7 +639,7 @@
       return wait(200);
     })
     .then(function () {
-      return self.showSubtitle('Вот так работает тренажёр: ошибся — подсказка — исправил. А теперь посмотрим на аналитику.', { continueLabel: 'К аналитике' });
+      return self.showSubtitle('Ошибся — подсказка — исправил. Так работает тренажёр. Идём смотреть аналитику.', { continueLabel: 'К аналитике' });
     })
     .then(function () {
       if (!self.running) return;
@@ -682,41 +655,31 @@
     self.playEntryTransition()
     .then(function () { return wait(400); })
     .then(function () {
-      return self.showSubtitle('Здесь собрана вся аналитика подготовки. Каждое действие на платформе имеет вес.', { continueLabel: 'Покажи' });
+      return self.showSubtitle('Вся аналитика подготовки — в одном месте. Каждое действие на платформе учитывается.');
     })
     .then(function () {
       var el = qs('.metrics-grid');
-      if (el) return self.spotlight(el, 3000, 'Ключевые метрики');
-      return wait(400);
+      return self.spotlightWithPrompt(el, 'Ключевые метрики', 'GPA, процент выполнения, количество уроков — всё обновляется в реальном времени.');
     })
     .then(function () {
       var el = qs('.charts-grid');
-      if (el) return self.spotlight(el, 3000, 'Графики и тренды');
-      return wait(400);
-    })
-    .then(function () {
-      return self.showSubtitle('Это вкладка «Навыки». Теперь переключимся на «Аналитику ЕГЭ».', { continueLabel: 'Переключить' });
+      return self.spotlightWithPrompt(el, 'Графики и тренды', 'Наглядные графики показывают динамику подготовки. Теперь переключимся на аналитику ЕГЭ.', 'Аналитика ЕГЭ');
     })
     .then(function () {
       var tabBtn = qs('.stats-tab[data-tab="analytics"]');
       if (tabBtn) {
         self.simulateClick(tabBtn);
-        return wait(800);
+        return wait(1000);
       }
       return wait(300);
     })
     .then(function () {
       var table = qs('#analyticsNodesTable') || qs('.analytics-nodes-table');
-      if (table) return self.spotlight(table, 3000, 'Рейтинг по заданиям ЕГЭ');
-      return wait(400);
+      return self.spotlightWithPrompt(table, 'Рейтинг по заданиям ЕГЭ', 'Здесь видно, какие задания ты решаешь хорошо, а какие — нет.');
     })
     .then(function () {
       var el = qs('#analyticsPredictedScore');
-      if (el) return self.spotlight(el, 2500, 'Прогноз балла ЕГЭ');
-      return wait(300);
-    })
-    .then(function () {
-      return self.showSubtitle('Графики, рейтинги, прогноз баллов — всё обновляется в реальном времени.', { continueLabel: 'Финал' });
+      return self.spotlightWithPrompt(el, 'Прогноз балла', 'Система прогнозирует твой балл на основе текущей статистики.', 'Финал');
     })
     .then(function () {
       if (self.running) { lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneEpilogue(); }
@@ -731,7 +694,7 @@
 
     wait(500)
     .then(function () {
-      return self.showSubtitle('Платформа готова. Твоя сотка — это вопрос дисциплины и алгоритма. Алгоритм у нас есть.', { continueLabel: 'Выбрать тариф' });
+      return self.showSubtitle('Платформа готова. Твоя сотка — вопрос дисциплины и алгоритма. Алгоритм у нас есть.', { continueLabel: 'Выбрать тариф' });
     })
     .then(function () {
       var ctaWrap = addEl('div', 'cinema-cta-wrap');
