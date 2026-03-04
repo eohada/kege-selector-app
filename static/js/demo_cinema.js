@@ -629,6 +629,25 @@
     });
   };
 
+  /* ── Helper: inject chat messages via trainer localStorage ────── */
+  CE.prototype._injectTrainerChat = function (messages) {
+    var cfg = window.__TRAINER_V2__ || {};
+    var userId = cfg.currentUserId || 0;
+    var taskId = (cfg.passthrough && cfg.passthrough.task_id) ? cfg.passthrough.task_id : null;
+    if (!taskId) {
+      var m = window.location.search.match(/task_id=(\d+)/);
+      if (m) taskId = m[1];
+    }
+    if (!taskId) return;
+    var key = 'tv2.chat.' + userId + '.' + taskId;
+    var now = Date.now();
+    var arr = [];
+    messages.forEach(function (msg, i) {
+      arr.push({ role: msg.role, content: msg.content, ts: now + i * 1000 });
+    });
+    try { localStorage.setItem(key, JSON.stringify(arr)); } catch (e) {}
+  };
+
   /* ── 6: Trainer — task 5, gradual code, assistant, highlight, answer */
   CE.prototype.sceneTrainer = function () {
     var self = this;
@@ -672,16 +691,18 @@
     .then(function () {
       return self.waitForEl('#tv2AnswerInput', 6000);
     })
+
+    /* ── Step 1: editor spotlight, then gradually type code ──────── */
     .then(function () {
       var editorBox = qs('.tv2-editor-box');
       return self.spotlightWithPrompt(editorBox, 'Редактор кода', 'Здесь пишешь код. Смотри, как набирается решение.');
     })
-
     .then(function () {
       return self.typeIntoCodeMirror(buggyCode);
     })
     .then(function () { return wait(600); })
 
+    /* ── Step 2: highlight the buggy line ────────────────────────── */
     .then(function () {
       var cmEl = qs('.CodeMirror');
       if (cmEl && cmEl.CodeMirror) {
@@ -690,6 +711,7 @@
       return self.showSubtitle('В строке 6 ошибка — лишние скобки меняют приоритет операций. Спросим помощника.');
     })
 
+    /* ── Step 3: switch to assistant tab, type question ──────────── */
     .then(function () {
       var assistantTab = qs('button[data-tab="помощник"]');
       if (assistantTab) self.simulateClick(assistantTab);
@@ -699,67 +721,64 @@
       var chatInput = qs('.tv2-chat-input');
       return self.spotlightWithPrompt(chatInput, 'Помощник', 'Напишем вопрос и отправим его ИИ-помощнику.', 'Написать вопрос');
     })
-
     .then(function () {
       var chatInput = qs('.tv2-chat-input');
       if (chatInput) return self.typeIntoField(demoQuestion, chatInput);
       return wait(300);
     })
-    .then(function () { return wait(400); })
+    .then(function () { return wait(300); })
 
+    /* ── Step 4: "send" — inject user msg via localStorage + re-render */
     .then(function () {
-      var sendBtn = qs('.tv2-chat-composer button');
-      if (sendBtn) {
-        self.simulateClick(sendBtn);
-      } else {
-        var chatList = qs('.tv2-chat-list');
-        if (chatList) {
-          var userMsg = document.createElement('div');
-          userMsg.className = 'tv2-chat-msg is-user';
-          var meta = document.createElement('div');
-          meta.className = 'tv2-chat-meta';
-          meta.textContent = 'ученик · сейчас';
-          var bubble = document.createElement('div');
-          bubble.className = 'tv2-chat-bubble';
-          bubble.textContent = demoQuestion;
-          userMsg.appendChild(meta);
-          userMsg.appendChild(bubble);
-          chatList.appendChild(userMsg);
-        }
+      self._injectTrainerChat([
+        { role: 'user', content: demoQuestion }
+      ]);
+
+      var assistantTab = qs('button[data-tab="помощник"]');
+      if (assistantTab) {
+        var otherTab = qs('button[data-tab="terminal"]');
+        if (otherTab) self.simulateClick(otherTab);
       }
+      return wait(150);
+    })
+    .then(function () {
+      var assistantTab = qs('button[data-tab="помощник"]');
+      if (assistantTab) self.simulateClick(assistantTab);
+
       var chatInput = qs('.tv2-chat-input');
       if (chatInput) { chatInput.value = ''; chatInput.dispatchEvent(new Event('input', { bubbles: true })); }
-      return wait(1500);
+      return wait(800);
     })
 
     .then(function () {
       return self.showSubtitle('Вопрос отправлен. Ждём ответ от ИИ-помощника...');
     })
-    .then(function () { return wait(800); })
+    .then(function () { return wait(1000); })
 
+    /* ── Step 5: inject assistant reply via localStorage + re-render */
     .then(function () {
-      var chatList = qs('.tv2-chat-list');
-      if (chatList) {
-        var msg = document.createElement('div');
-        msg.className = 'tv2-chat-msg is-assistant';
-        var meta = document.createElement('div');
-        meta.className = 'tv2-chat-meta';
-        meta.textContent = 'помощник · сейчас';
-        var bubble = document.createElement('div');
-        bubble.className = 'tv2-chat-bubble';
-        bubble.textContent = demoAssistantReply;
-        msg.appendChild(meta);
-        msg.appendChild(bubble);
-        chatList.appendChild(msg);
-        msg.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      }
-      return wait(600);
+      self._injectTrainerChat([
+        { role: 'user', content: demoQuestion },
+        { role: 'assistant', content: demoAssistantReply }
+      ]);
+
+      var otherTab = qs('button[data-tab="terminal"]');
+      if (otherTab) self.simulateClick(otherTab);
+      return wait(150);
     })
     .then(function () {
-      var lastMsg = qs('.tv2-chat-msg.is-assistant:last-child');
+      var assistantTab = qs('button[data-tab="помощник"]');
+      if (assistantTab) self.simulateClick(assistantTab);
+      return wait(600);
+    })
+
+    /* ── Step 6: spotlight the assistant response ────────────────── */
+    .then(function () {
+      var lastMsg = qs('.tv2-chat-msg.is-assistant:last-child') || qs('.tv2-chat-msg.is-assistant');
       return self.spotlightWithPrompt(lastMsg, 'Ответ помощника', 'ИИ нашёл ошибку: лишние скобки в bin(). Исправляем код.');
     })
 
+    /* ── Step 7: fix the code, highlight the fixed line ──────────── */
     .then(function () {
       var cmEl = qs('.CodeMirror');
       if (cmEl && cmEl.CodeMirror) {
@@ -767,10 +786,7 @@
         cmEl.CodeMirror.setValue(fixedCode);
         cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-fixed-line');
       }
-      return wait(600);
-    })
-    .then(function () {
-      return self.showSubtitle('Строка исправлена! Скобки убраны. Запускаем код.');
+      return self.showSubtitle('Строка исправлена! Скобки убраны. Теперь запустим код.');
     })
     .then(function () {
       var cmEl = qs('.CodeMirror');
@@ -780,14 +796,28 @@
       return wait(300);
     })
 
+    /* ── Step 8: spotlight run button, let user click it ─────────── */
+    .then(function () {
+      var runBtn = qs('.tv2-fab-outline');
+      return self.spotlightWithPrompt(runBtn, 'Запустить', 'Нажми «запустить», чтобы выполнить исправленный код.', 'Запустить');
+    })
+    .then(function () {
+      var runBtn = qs('.tv2-fab-outline');
+      if (runBtn) self.simulateClick(runBtn);
+      return wait(2000);
+    })
+
+    /* ── Step 9: switch to terminal tab ──────────────────────────── */
     .then(function () {
       var terminalTab = qs('button[data-tab="terminal"]');
       if (terminalTab) self.simulateClick(terminalTab);
-      return wait(500);
+      return wait(800);
     })
+
+    /* ── Step 10: spotlight answer field, type answer ────────────── */
     .then(function () {
       var answerEl = qs('#tv2AnswerInput');
-      return self.spotlightWithPrompt(answerEl, 'Поле ответа', 'Вводим ответ, полученный из вывода программы: ' + correctAnswer, 'Ввести ответ');
+      return self.spotlightWithPrompt(answerEl, 'Поле ответа', 'Вводим ответ из вывода программы: ' + correctAnswer, 'Ввести ответ');
     })
     .then(function () {
       var answerEl = qs('#tv2AnswerInput');
@@ -802,6 +832,8 @@
       }
       return self.showSubtitle('Ответ ' + correctAnswer + ' введён. Проверяем!', { continueLabel: 'Проверить' });
     })
+
+    /* ── Step 11: check answer ──────────────────────────────────── */
     .then(function () {
       var checkBtn = qs('.tv2-fab-primary');
       if (checkBtn) {
@@ -823,7 +855,7 @@
       return wait(200);
     })
     .then(function () {
-      return self.showSubtitle('Написал код → нашёл ошибку → спросил помощника → исправил → проверил. Так работает тренажёр.', { continueLabel: 'К аналитике' });
+      return self.showSubtitle('Написал код → нашёл ошибку → спросил помощника → исправил → запустил → проверил. Так работает тренажёр.', { continueLabel: 'К аналитике' });
     })
     .then(function () {
       if (!self.running) return;
