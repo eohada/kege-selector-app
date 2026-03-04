@@ -593,6 +593,11 @@ mark.tv2-hl:hover {
   text-transform: capitalize;
 }
 
+.tv2-btn-compact {
+  padding: 0.4rem 0.6rem;
+  min-width: 64px;
+}
+
 .tv2-btn:hover {
   background: var(--tv2-surface-3);
   color: var(--tv2-text);
@@ -643,6 +648,17 @@ mark.tv2-hl:hover {
   grid-template-rows: 1fr auto;
   gap: 0.75rem;
   min-height: 0;
+}
+
+.tv2-editor-bottomrow {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.tv2-editor-bottomrow .tv2-input {
+  flex: 1 1 auto;
+  min-width: 120px;
 }
 
 .tv2-editor-box {
@@ -722,6 +738,46 @@ mark.tv2-hl:hover {
   background: var(--tv2-surface-2);
   color: var(--tv2-text);
   font-weight: 700;
+}
+
+/* EasyMDE (scratchpad markdown) — toolbar contrast */
+.trainer-v2-root .editor-toolbar {
+  border: 1px solid var(--tv2-stroke-1);
+  border-radius: var(--tv2-radius-md);
+  background: var(--tv2-surface-1);
+  padding: 0.35rem 0.4rem;
+}
+
+.trainer-v2-root .editor-toolbar a,
+.trainer-v2-root .editor-toolbar button {
+  color: var(--tv2-muted) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  transition: var(--tv2-transition);
+}
+
+.trainer-v2-root .editor-toolbar a:hover,
+.trainer-v2-root .editor-toolbar button:hover {
+  background: var(--tv2-surface-2) !important;
+  color: var(--tv2-text) !important;
+}
+
+.trainer-v2-root .editor-toolbar a.active,
+.trainer-v2-root .editor-toolbar button.active {
+  background: var(--tv2-surface-2) !important;
+  color: var(--tv2-text) !important;
+}
+
+.trainer-v2-root .editor-toolbar i,
+.trainer-v2-root .editor-toolbar span {
+  color: inherit !important;
+}
+
+.trainer-v2-root .EasyMDEContainer .CodeMirror {
+  border: none;
+  border-radius: var(--tv2-radius-md);
+  background: var(--tv2-surface-1);
 }
 
 .tv2-canvas-wrap {
@@ -905,22 +961,10 @@ mark.tv2-hl:hover {
 
 /* Floating Action Bar */
 .tv2-fab {
-  position: absolute;
-  bottom: 10px;
-  right: 10px;
   display: flex;
   gap: 8px;
-  z-index: 100;
-  opacity: 0;
-  transform: translateY(6px);
-  animation: tv2-fab-in 0.3s ease-out 0.1s forwards;
-  pointer-events: none;
-}
-
-.tv2-fab > * { pointer-events: auto; }
-
-@keyframes tv2-fab-in {
-  to { opacity: 1; transform: translateY(0); }
+  flex: 0 0 auto;
+  align-items: center;
 }
 
 .tv2-fab-primary,
@@ -937,6 +981,7 @@ mark.tv2-hl:hover {
   white-space: nowrap;
   line-height: 1.35;
   box-sizing: border-box;
+  text-transform: capitalize;
 }
 
 .tv2-fab-primary {

@@ -1065,6 +1065,9 @@
     ans.placeholder = 'ответ (для проверки)';
     ans.setAttribute('id', 'tv2AnswerInput');
 
+    const bottomRow = document.createElement('div');
+    bottomRow.className = 'tv2-editor-bottomrow';
+
     const runBtn = document.createElement('button');
     runBtn.type = 'button';
     runBtn.className = 'tv2-fab-outline';
@@ -1081,9 +1084,10 @@
     fab.appendChild(runBtn);
     fab.appendChild(sendBtn);
 
-    bottom.appendChild(ans);
+    bottomRow.appendChild(ans);
+    bottomRow.appendChild(fab);
+    bottom.appendChild(bottomRow);
 
-    editorBox.appendChild(fab);
     grid.appendChild(editorBox);
     grid.appendChild(bottom);
 
@@ -1159,7 +1163,7 @@
     function setAnswer(v) { ans.value = String(v || ''); }
 
     function showFab(visible) {
-      fab.style.display = visible ? '' : 'none';
+      fab.style.display = visible ? 'flex' : 'none';
     }
 
     function getAttempts(taskId) {
@@ -1582,8 +1586,10 @@
     ta.setAttribute('aria-label', 'сообщение помощнику');
     const send = document.createElement('button');
     send.type = 'button';
-    send.className = 'tv2-btn';
-    send.textContent = 'отправить';
+    send.className = 'tv2-btn tv2-btn-compact';
+    send.textContent = 'отпр.';
+    send.setAttribute('title', 'отправить (enter)');
+    send.setAttribute('aria-label', 'отправить сообщение');
     composer.appendChild(ta);
     composer.appendChild(send);
 
@@ -1768,10 +1774,10 @@
 
     send.addEventListener('click', () => sendChat());
     ta.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        sendChat();
-      }
+      if (e.key !== 'Enter') return;
+      if (e.shiftKey) return; // shift+enter = новая строка
+      e.preventDefault();
+      sendChat();
     });
 
     function loadForTask(taskId) {
@@ -2701,7 +2707,13 @@
 
   function initCmdPalette() {
     document.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      const key = String(e.key || '');
+      const isK =
+        e.code === 'KeyK' ||
+        key.toLowerCase() === 'k' ||
+        key === 'л' ||
+        e.keyCode === 75;
+      if ((e.ctrlKey || e.metaKey) && isK) {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
