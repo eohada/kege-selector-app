@@ -255,7 +255,7 @@ def demo_start():
         return not _surname_re.match(t.content_html.strip())
 
     demo_tasks = []
-    for tn in [2, 5, 8, 10, 14]:
+    for tn in [3, 6, 9, 10, 14]:
         candidates = Tasks.query.filter_by(task_number=tn).all()
         chosen = None
         for c in candidates:

@@ -549,6 +549,16 @@
 }
 .cinema-typing-indicator.visible { opacity: 1; }
 
+/* ── CodeMirror line highlights ───────────────────────────────────── */
+.cinema-error-line {
+  background: rgba(255, 60, 60, 0.25) !important;
+  border-left: 3px solid #f44 !important;
+}
+.cinema-fixed-line {
+  background: rgba(0, 255, 100, 0.2) !important;
+  border-left: 3px solid #0f6 !important;
+}
+
 /* ── Freeze ────────────────────────────────────────────────────────── */
 body.cinema-freeze { overflow: hidden !important; }
 

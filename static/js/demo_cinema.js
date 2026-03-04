@@ -593,12 +593,48 @@
     });
   };
 
-  /* ── 6: Trainer — task 5, code with bug, assistant, fix, answer ── */
+  /* ── Type code into CodeMirror line-by-line ──────────────────── */
+  CE.prototype.typeIntoCodeMirror = function (code) {
+    var self = this;
+    var lines = code.split('\n');
+    return new Promise(function (resolve) {
+      var cmEl = qs('.CodeMirror');
+      if (!cmEl || !cmEl.CodeMirror) return resolve();
+      var cm = cmEl.CodeMirror;
+      cm.setValue('');
+      cm.focus();
+      var lineIdx = 0;
+      function typeLine() {
+        if (!self.running || lineIdx >= lines.length) return resolve();
+        var line = lines[lineIdx];
+        var charIdx = 0;
+        function typeChar() {
+          if (!self.running || charIdx >= line.length) {
+            if (lineIdx < lines.length - 1) {
+              cm.replaceRange('\n', { line: cm.lineCount() - 1, ch: cm.getLine(cm.lineCount() - 1).length });
+            }
+            lineIdx++;
+            self._t(typeLine, 80);
+            return;
+          }
+          var lastLine = cm.lineCount() - 1;
+          var lastCh = cm.getLine(lastLine).length;
+          cm.replaceRange(line[charIdx], { line: lastLine, ch: lastCh });
+          charIdx++;
+          self._t(typeChar, 18 + Math.random() * 12);
+        }
+        typeChar();
+      }
+      self._t(typeLine, 200);
+    });
+  };
+
+  /* ── 6: Trainer — task 5, gradual code, assistant, highlight, answer */
   CE.prototype.sceneTrainer = function () {
     var self = this;
     var correctAnswer = self.ids.trainerAnswer || '10';
 
-    var buggyCode = [
+    var buggyLines = [
       'for N in range(1, 1000):',
       '    N2 = bin(N)[2:]',
       '    if N % 3 == 0:',
@@ -610,24 +646,15 @@
       '',
       '    if R < 130:',
       '        print(N)',
-    ].join('\n');
+    ];
+    var buggyCode = buggyLines.join('\n');
+    var errorLineNum = 5;
 
-    var fixedCode = [
-      'for N in range(1, 1000):',
-      '    N2 = bin(N)[2:]',
-      '    if N % 3 == 0:',
-      '        R2 = N2 + N2[-3:]',
-      '    else:',
-      '        R2 = N2 + bin(N % 3 * 3)[2:]',
-      '',
-      '    R = int(R2, 2)',
-      '',
-      '    if R < 130:',
-      '        print(N)',
-    ].join('\n');
+    var fixedCode = buggyCode.replace('bin((N % 3) * 3)[2:]', 'bin(N % 3 * 3)[2:]');
 
-    var demoQuestion = 'Мой код выводит неправильное количество чисел. В чём может быть ошибка в обработке остатка от деления?';
-    var demoAssistantReply = 'Проверь выражение bin((N % 3) * 3)[2:] — скобки вокруг (N % 3) * 3 меняют приоритет операций. Без лишних скобок bin(N % 3 * 3)[2:] даёт другой результат, потому что % и * имеют одинаковый приоритет и выполняются слева направо. Попробуй убрать скобки и сравни вывод.';
+    var demoQuestion = 'Мой код выводит неправильное количество чисел. В чём может быть ошибка в строке с bin()?';
+
+    var demoAssistantReply = 'Проверь строку R2 = N2 + bin((N % 3) * 3)[2:]. Лишние скобки вокруг (N % 3) * 3 меняют приоритет: сначала считается N % 3, а потом умножается на 3. Без скобок выражение N % 3 * 3 вычисляется слева направо (% и * равноприоритетны), что даёт другой результат. Убери внешние скобки: bin(N % 3 * 3)[2:].';
 
     self.playEntryTransition()
     .then(function () { return wait(1000); })
@@ -647,18 +674,22 @@
     })
     .then(function () {
       var editorBox = qs('.tv2-editor-box');
-      return self.spotlightWithPrompt(editorBox, 'Редактор кода', 'Здесь пишешь код для решения задачи. Давай напишем решение.');
+      return self.spotlightWithPrompt(editorBox, 'Редактор кода', 'Здесь пишешь код. Смотри, как набирается решение.');
     })
+
+    .then(function () {
+      return self.typeIntoCodeMirror(buggyCode);
+    })
+    .then(function () { return wait(600); })
+
     .then(function () {
       var cmEl = qs('.CodeMirror');
       if (cmEl && cmEl.CodeMirror) {
-        cmEl.CodeMirror.setValue(buggyCode);
+        cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-error-line');
       }
-      return wait(800);
+      return self.showSubtitle('В строке 6 ошибка — лишние скобки меняют приоритет операций. Спросим помощника.');
     })
-    .then(function () {
-      return self.showSubtitle('Код написан, но в нём допущена ошибка — лишние скобки в выражении. Давай обратимся к помощнику.');
-    })
+
     .then(function () {
       var assistantTab = qs('button[data-tab="помощник"]');
       if (assistantTab) self.simulateClick(assistantTab);
@@ -666,67 +697,89 @@
     })
     .then(function () {
       var chatInput = qs('.tv2-chat-input');
-      return self.spotlightWithPrompt(chatInput, 'Помощник', 'Задай вопрос ИИ-помощнику по заданию.', 'Написать вопрос');
+      return self.spotlightWithPrompt(chatInput, 'Помощник', 'Напишем вопрос и отправим его ИИ-помощнику.', 'Написать вопрос');
     })
+
     .then(function () {
       var chatInput = qs('.tv2-chat-input');
-      if (chatInput) {
-        return self.typeIntoField(demoQuestion, chatInput);
-      }
+      if (chatInput) return self.typeIntoField(demoQuestion, chatInput);
       return wait(300);
     })
+    .then(function () { return wait(400); })
+
     .then(function () {
-      var sendBtn = qs('.tv2-chat-send') || qs('.tv2-chat-input + button') || qs('.tv2-chat-form button[type="submit"]');
-      var chatList = qs('.tv2-chat-list');
-
-      if (chatList) {
-        var userMsg = document.createElement('div');
-        userMsg.className = 'tv2-chat-msg is-user';
-        var userBubble = document.createElement('div');
-        userBubble.className = 'tv2-chat-bubble';
-        userBubble.textContent = demoQuestion;
-        userMsg.appendChild(userBubble);
-        chatList.appendChild(userMsg);
+      var sendBtn = qs('.tv2-chat-composer button');
+      if (sendBtn) {
+        self.simulateClick(sendBtn);
+      } else {
+        var chatList = qs('.tv2-chat-list');
+        if (chatList) {
+          var userMsg = document.createElement('div');
+          userMsg.className = 'tv2-chat-msg is-user';
+          var meta = document.createElement('div');
+          meta.className = 'tv2-chat-meta';
+          meta.textContent = 'ученик · сейчас';
+          var bubble = document.createElement('div');
+          bubble.className = 'tv2-chat-bubble';
+          bubble.textContent = demoQuestion;
+          userMsg.appendChild(meta);
+          userMsg.appendChild(bubble);
+          chatList.appendChild(userMsg);
+        }
       }
-
       var chatInput = qs('.tv2-chat-input');
       if (chatInput) { chatInput.value = ''; chatInput.dispatchEvent(new Event('input', { bubbles: true })); }
-
-      return wait(1200);
+      return wait(1500);
     })
+
+    .then(function () {
+      return self.showSubtitle('Вопрос отправлен. Ждём ответ от ИИ-помощника...');
+    })
+    .then(function () { return wait(800); })
+
     .then(function () {
       var chatList = qs('.tv2-chat-list');
       if (chatList) {
         var msg = document.createElement('div');
         msg.className = 'tv2-chat-msg is-assistant';
+        var meta = document.createElement('div');
+        meta.className = 'tv2-chat-meta';
+        meta.textContent = 'помощник · сейчас';
         var bubble = document.createElement('div');
         bubble.className = 'tv2-chat-bubble';
         bubble.textContent = demoAssistantReply;
+        msg.appendChild(meta);
         msg.appendChild(bubble);
         chatList.appendChild(msg);
         msg.scrollIntoView({ behavior: 'smooth', block: 'end' });
       }
-      return wait(800);
+      return wait(600);
     })
     .then(function () {
       var lastMsg = qs('.tv2-chat-msg.is-assistant:last-child');
-      return self.spotlightWithPrompt(lastMsg, 'Ответ помощника', 'ИИ нашёл ошибку — лишние скобки меняют приоритет. Исправим код.');
+      return self.spotlightWithPrompt(lastMsg, 'Ответ помощника', 'ИИ нашёл ошибку: лишние скобки в bin(). Исправляем код.');
     })
+
     .then(function () {
       var cmEl = qs('.CodeMirror');
       if (cmEl && cmEl.CodeMirror) {
+        cmEl.CodeMirror.removeLineClass(errorLineNum, 'background', 'cinema-error-line');
         cmEl.CodeMirror.setValue(fixedCode);
+        cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-fixed-line');
       }
       return wait(600);
     })
     .then(function () {
-      return self.showSubtitle('Код исправлен! Теперь запустим его и посмотрим результат в терминале.');
+      return self.showSubtitle('Строка исправлена! Скобки убраны. Запускаем код.');
     })
     .then(function () {
-      var runBtn = qs('.tv2-fab-outline');
-      if (runBtn) return self.spotlightWithPrompt(runBtn, 'Запустить', 'Нажми «запустить», чтобы выполнить код.');
+      var cmEl = qs('.CodeMirror');
+      if (cmEl && cmEl.CodeMirror) {
+        cmEl.CodeMirror.removeLineClass(errorLineNum, 'background', 'cinema-fixed-line');
+      }
       return wait(300);
     })
+
     .then(function () {
       var terminalTab = qs('button[data-tab="terminal"]');
       if (terminalTab) self.simulateClick(terminalTab);
@@ -734,12 +787,20 @@
     })
     .then(function () {
       var answerEl = qs('#tv2AnswerInput');
-      return self.spotlightWithPrompt(answerEl, 'Ответ', 'Впиши ответ из вывода программы и нажми «проверить».', 'Ввести ответ');
+      return self.spotlightWithPrompt(answerEl, 'Поле ответа', 'Вводим ответ, полученный из вывода программы: ' + correctAnswer, 'Ввести ответ');
     })
     .then(function () {
       var answerEl = qs('#tv2AnswerInput');
       if (answerEl) return self.typeIntoField(correctAnswer, answerEl);
       return wait(300);
+    })
+    .then(function () {
+      var answerEl = qs('#tv2AnswerInput');
+      if (answerEl) {
+        answerEl.style.borderColor = '#0f0';
+        answerEl.style.boxShadow = '0 0 12px rgba(0,255,0,0.4)';
+      }
+      return self.showSubtitle('Ответ ' + correctAnswer + ' введён. Проверяем!', { continueLabel: 'Проверить' });
     })
     .then(function () {
       var checkBtn = qs('.tv2-fab-primary');
@@ -757,10 +818,12 @@
       qsa('#tv2NextBtn, #tv2ZenExitBtn').forEach(function (b) {
         b.style.pointerEvents = ''; b.style.opacity = '';
       });
+      var answerEl = qs('#tv2AnswerInput');
+      if (answerEl) { answerEl.style.borderColor = ''; answerEl.style.boxShadow = ''; }
       return wait(200);
     })
     .then(function () {
-      return self.showSubtitle('Написал код → спросил помощника → исправил → проверил. Так работает тренажёр.', { continueLabel: 'К аналитике' });
+      return self.showSubtitle('Написал код → нашёл ошибку → спросил помощника → исправил → проверил. Так работает тренажёр.', { continueLabel: 'К аналитике' });
     })
     .then(function () {
       if (!self.running) return;
