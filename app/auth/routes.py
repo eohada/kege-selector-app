@@ -221,6 +221,7 @@ def logout():
 def demo_start():
     """Создает временного демо-пользователя и запускает кинематографический тур."""
     from app.models import StudentTaskStatistics
+    from core.db_models import UserMastery, KnowledgeNode
     import random
 
     if current_user.is_authenticated:
@@ -412,6 +413,31 @@ def demo_start():
                     trainer_hint = first.get('text') or first.get('content') or trainer_hint
         except Exception:
             pass
+
+    # --- UserMastery for realistic EGE analytics ratings ---
+    strong_nodes = {1, 5, 8, 14, 20}
+    weak_nodes = {3, 7, 12, 18, 24}
+    knowledge_nodes = KnowledgeNode.query.all()
+    for node in knowledge_nodes:
+        tn = None
+        if node.code:
+            try:
+                tn = int(''.join(c for c in node.code if c.isdigit()) or '0')
+            except ValueError:
+                tn = 0
+        if tn in strong_nodes:
+            rating = random.uniform(1400, 1800)
+        elif tn in weak_nodes:
+            rating = random.uniform(700, 950)
+        else:
+            rating = random.uniform(1050, 1350)
+        db.session.add(UserMastery(
+            user_id=user.id,
+            node_id=node.id,
+            rating=round(rating, 1),
+            volatility=round(random.uniform(100, 250), 1),
+            streak_days=random.randint(0, 12),
+        ))
 
     db.session.commit()
 

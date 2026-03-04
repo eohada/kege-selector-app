@@ -41,7 +41,7 @@
         (function(){ try { var v = localStorage.getItem('ui.themeMode'); if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch(e) {} })();
     </script>
 </head>
-<body>
+<body data-cinema-scene="theory">
     <div class="app-layout">
         {% set active_page = active_page|default('theory') %}
         {% include '_sidebar.html' %}
