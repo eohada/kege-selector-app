@@ -376,12 +376,12 @@
                     <div class="file-upload-zone"
                          ondragover="event.preventDefault(); this.classList.add('bg-light')"
                          ondragleave="this.classList.remove('bg-light')"
-                         ondrop="handleFileDrop(event, {{ submission.submission_id }}, {{ task_item.assignment_task.assignment_task_id }})">
+                         ondrop="handleFileDrop(event, {{ task_item.assignment_task.assignment_task_id }})">
                         {{ ui_icon('action.backup', 'md') }}
                         <p class="text-muted mb-1" style="margin: 0.5rem 0; color: var(--text-muted);">Перетащите файл сюда или</p>
                         <label class="neo-button outline sm" style="cursor: pointer; display: inline-block; padding: 0.5rem 1rem; font-weight: 600;">
                             Выберите файл
-                            <input type="file" class="d-none" style="display: none;" onchange="uploadAnswerFile(this, {{ submission.submission_id }}, {{ task_item.assignment_task.assignment_task_id }})">
+                            <input type="file" class="d-none" style="display: none;" onchange="uploadAnswerFile(this, {{ task_item.assignment_task.assignment_task_id }})">
                         </label>
                     </div>
                     {% endif %}
@@ -592,6 +592,48 @@
     </div>
     
     <script>
+        function handleFileDrop(event, assignmentTaskId) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('bg-light');
+            const files = event.dataTransfer && event.dataTransfer.files;
+            if (!files || files.length === 0) return;
+            const file = files[0];
+            uploadFileToServer(file, assignmentTaskId);
+        }
+        
+        function uploadAnswerFile(input, assignmentTaskId) {
+            const file = input && input.files && input.files[0];
+            if (!file) return;
+            uploadFileToServer(file, assignmentTaskId);
+            input.value = '';
+        }
+        
+        function uploadFileToServer(file, assignmentTaskId) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('assignment_task_id', String(assignmentTaskId));
+            const csrfEl = document.querySelector('meta[name="csrf-token"]');
+            const csrfToken = csrfEl ? csrfEl.content : '';
+            const url = '{{ url_for("assignments.upload_answer_file", submission_id=submission.submission_id) }}';
+            fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: formData
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    if (typeof showToast === 'function') showToast('Файл загружен', 'success');
+                    setTimeout(function() { location.reload(); }, 800);
+                } else {
+                    if (typeof showToast === 'function') showToast('Ошибка: ' + (data.error || 'Не удалось загрузить'), 'error');
+                }
+            })
+            .catch(function(e) {
+                if (typeof showToast === 'function') showToast('Ошибка загрузки: ' + (e && e.message || 'Сеть'), 'error');
+            });
+        }
+        
         // Функция для показа красивых уведомлений (toast)
         function showToast(message, type = 'info') {
             let container = document.querySelector('.toast-container');
@@ -1192,4 +1234,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
-    <script src="{{ url_for('static', filename='confirm-di
+    <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
+</body>
+</html>
