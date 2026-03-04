@@ -20,7 +20,7 @@
         })();
     </script>
 </head>
-<body>
+<body data-cinema-scene="dashboard">
   <div class="app-layout">
     {% set active_page = 'dashboard' %}
     {% include '_sidebar.html' %}
@@ -37,7 +37,7 @@
         {% else %}
           <div style="color: var(--text-muted);">Профиль ученика не найден.</div>
         {% endif %}
-        <div class="hero-actions" style="margin-top: 1rem;">
+        <div class="hero-actions" id="cinema-notifications" style="margin-top: 1rem;">
           <a href="{{ url_for('notifications.notifications_list') }}" class="neo-button outline">Уведомления{% if unread_notifications %} ({{ unread_notifications }}){% endif %}</a>
           {% if student %}
           <a href="{{ url_for('students.student_analytics', student_id=student.student_id) }}" class="neo-button ghost">Аналитика</a>
@@ -105,7 +105,7 @@
       </div>
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;" class="profile-grid-responsive">
-        <section class="glass-panel">
+        <section class="glass-panel" id="cinema-weak-topics" data-cinema="weak-topics">
           <div class="panel-head">
             <div>
               <p class="eyebrow">риски</p>

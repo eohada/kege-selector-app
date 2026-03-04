@@ -403,7 +403,7 @@
         })();
     </script>
 </head>
-<body class="{% if active_lesson %}lesson-active{% endif %}">
+<body class="{% if active_lesson %}lesson-active{% endif %}" data-cinema-scene="analytics">
     {% if active_lesson and active_student %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
         {{ ui_icon('nav.schedule', 'sm', decorative=true) }} Урок идет: {{ active_student.name }}

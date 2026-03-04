@@ -337,7 +337,11 @@ def create_app(config_name=None):
                     student_data = {'student_id': student.student_id}
             except Exception:
                 student_data = None
-        return dict(current_student=student_data, has_permission=has_permission, custom_theme_user_id=int(app.config.get('CUSTOM_THEME_USER_ID', 999)))
+        cinema_demo_ids = None
+        if current_user.is_authenticated and getattr(current_user, 'is_demo_user', False):
+            from flask import session as flask_session
+            cinema_demo_ids = flask_session.get('cinema_demo_ids')
+        return dict(current_student=student_data, has_permission=has_permission, custom_theme_user_id=int(app.config.get('CUSTOM_THEME_USER_ID', 999)), cinema_demo_ids=cinema_demo_ids)
     
     from app.admin.routes import (
         sandbox_internal_summary,

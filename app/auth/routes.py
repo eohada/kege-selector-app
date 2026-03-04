@@ -18,7 +18,7 @@ from wtforms.validators import DataRequired
 from app.auth import auth_bp
 from app.limiter import limiter
 from datetime import timedelta
-from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission
+from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission, Lesson, LessonTask
 from app.utils.subscription_access import get_effective_access_for_user
 from app.utils.cross_env_login import verify_cross_env_token
 from core.audit_logger import audit_logger
@@ -213,13 +213,13 @@ def logout():
     
     # Очищаем localStorage на клиенте, если это был демо-режим
     response = make_response(redirect(url_for('auth.login')))
-    response.set_cookie('is_demo', '', expires=0) # Удаляем куки для localStorage
-    response.set_cookie('demoStep', '', expires=0) # Удаляем куки для localStorage
+    response.set_cookie('is_demo', '', expires=0)
+    response.set_cookie('cinemaMode', '', expires=0)
     return response
 
 @auth_bp.route('/demo/start')
 def demo_start():
-    """Создает временного демо-пользователя и логинит его."""
+    """Создает временного демо-пользователя и запускает кинематографический тур."""
     if current_user.is_authenticated:
         logout_user()
 
@@ -236,10 +236,13 @@ def demo_start():
     db.session.add(demo_student)
     db.session.flush()
 
-    # Демо-работа «Пробник-1», чтобы в разделе «Задания» было что открыть
     task = Tasks.query.first()
     creator = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin', 'tutor'])).first()
     created_by_id = creator.id if creator else user.id
+
+    demo_submission_id = None
+    demo_lesson_id = None
+
     if task:
         deadline = moscow_now() + timedelta(days=7)
         assignment = Assignment(
@@ -259,22 +262,50 @@ def demo_start():
             order_index=0,
             max_score=1,
         ))
-        db.session.add(Submission(
+        sub = Submission(
             assignment_id=assignment.assignment_id,
             student_id=demo_student.student_id,
             status='ASSIGNED',
             assigned_at=moscow_now(),
             max_score=1,
+        )
+        db.session.add(sub)
+        db.session.flush()
+        demo_submission_id = sub.submission_id
+
+        demo_lesson = Lesson(
+            student_id=demo_student.student_id,
+            lesson_type='regular',
+            lesson_date=moscow_now() + timedelta(hours=1),
+            duration=60,
+            status='in_progress',
+            topic='Демо-урок: Теория игр',
+            content='# Теория игр\nОсновы комбинаторики и теории игр для задания 19 ЕГЭ по информатике.',
+        )
+        db.session.add(demo_lesson)
+        db.session.flush()
+        demo_lesson_id = demo_lesson.lesson_id
+
+        db.session.add(LessonTask(
+            lesson_id=demo_lesson.lesson_id,
+            task_id=task.task_id,
+            assignment_type='classwork',
+            status='pending',
         ))
 
     db.session.commit()
 
     login_user(user, remember=True)
-    flash('Добро пожаловать в демо-режим! Пройдите квест, чтобы ознакомиться с платформой.', 'success')
 
-    response = make_response(redirect(url_for('main.dashboard')))
+    session['cinema_demo_ids'] = {
+        'submissionId': demo_submission_id,
+        'lessonId': demo_lesson_id,
+        'studentId': demo_student.student_id,
+    }
+
+    response = make_response(redirect(url_for('main.student_dashboard')))
     response.set_cookie('is_demo', 'true', max_age=60*60*24)
-    response.set_cookie('demoStep', '0', max_age=60*60*24)
+    response.set_cookie('cinemaMode', 'prologue', max_age=60*60*24)
     return response
 
 @auth_bp.route('/user/profile')

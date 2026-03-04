@@ -424,7 +424,7 @@
         })();
     </script>
 </head>
-<body class="{% if active_lesson %}lesson-active{% endif %}" data-csrf-token="{{ csrf_token() if csrf_token else '' }}">
+<body class="{% if active_lesson %}lesson-active{% endif %}" data-csrf-token="{{ csrf_token() if csrf_token else '' }}" data-cinema-scene="schedule">
     {% if active_lesson %}
     <div class="now-playing-pill" onclick="toggleLessonMenu()">
         {{ ui_icon('nav.schedule', 'sm', decorative=true) }}Урок идет: {{ active_student.name }}
@@ -481,7 +481,7 @@
             </div>
         </section>
 
-        <section class="glass-panel schedule-shell">
+        <section class="glass-panel schedule-shell" id="cinema-nearest-lesson">
             <div class="schedule-controls">
                 <div class="week-range">{{ week_label }}</div>
                 <div class="nav-buttons">

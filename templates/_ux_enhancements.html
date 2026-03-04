@@ -228,93 +228,10 @@
 {% endif %}
 
 {% if current_user.is_authenticated and current_user.is_demo_user %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css"/>
-<style>
-/* Кинематографичное затемнение: весь экран тёмный и размытый, только spotlight на одном элементе */
-.driver-overlay {
-  background: rgba(0, 0, 0, 0.92) !important;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-/* Скруглённый «вырез» вокруг кнопки/элемента — задаётся в JS (stagePadding, stageRadius) */
-/* Пульсирующее кольцо на подсвеченном элементе — явный указатель «нажми сюда» */
-.driver-active-element.demo-spotlight-ring,
-.demo-spotlight-ring {
-  box-shadow: 0 0 0 3px var(--accent-1, #0af), 0 0 0 6px rgba(0, 170, 255, 0.25), 0 0 28px rgba(0, 170, 255, 0.35) !important;
-  animation: demo-spotlight-pulse 2.2s ease-in-out infinite;
-  border-radius: inherit;
-}
-@keyframes demo-spotlight-pulse {
-  50% { box-shadow: 0 0 0 4px var(--accent-1), 0 0 0 8px rgba(0, 170, 255, 0.2), 0 0 36px rgba(0, 170, 255, 0.45) !important; }
-}
-.driver-popover.demo-driver-popover {
-  background: var(--surface-2, rgba(18, 18, 24, 0.98));
-  border: 1px solid var(--accent-1, rgba(0, 170, 255, 0.5));
-  border-radius: var(--radius-lg, 14px);
-  color: var(--text-primary, #fff);
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 170, 255, 0.15);
-}
-.driver-popover.demo-driver-popover .driver-popover-title { font-weight: 700; font-size: 1.05rem; color: var(--text-primary); }
-.driver-popover.demo-driver-popover .driver-popover-description { color: var(--text-muted, rgba(255,255,255,0.75)); line-height: 1.5; }
-.driver-popover.demo-driver-popover .driver-popover-next-btn,
-.driver-popover.demo-driver-popover .driver-popover-prev-btn,
-.driver-popover.demo-driver-popover .driver-popover-close-btn {
-  background: var(--accent-1, #0af);
-  color: #000;
-  border: none;
-  border-radius: 10px;
-  font-weight: 700;
-  padding: 0.5rem 1rem;
-}
-.driver-popover.demo-driver-popover .driver-popover-next-btn:hover,
-.driver-popover.demo-driver-popover .driver-popover-close-btn:hover { filter: brightness(1.1); }
-/* Стрелка от подсказки к подсвеченному элементу */
-.driver-popover.demo-driver-popover[data-side="right"]::before {
-  content: '';
-  position: absolute;
-  left: -10px;
-  top: 28px;
-  border: 10px solid transparent;
-  border-right-color: var(--surface-2, rgba(18, 18, 24, 0.98));
-}
-.driver-popover.demo-driver-popover[data-side="left"]::before {
-  content: '';
-  position: absolute;
-  right: -10px;
-  top: 28px;
-  border: 10px solid transparent;
-  border-left-color: var(--surface-2, rgba(18, 18, 24, 0.98));
-}
-#demo-quest-widget {
-  position: fixed; bottom: 20px; right: 20px; z-index: 9997;
-  max-width: 280px;
-  background: rgba(12, 12, 18, 0.95);
-  border: 1px solid var(--accent-1, rgba(0, 170, 255, 0.4));
-  border-radius: 14px;
-  padding: 14px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-  font-family: inherit;
-}
-#demo-quest-widget .demo-quest-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-1); margin-bottom: 4px; }
-#demo-quest-widget .demo-quest-step { font-weight: 700; font-size: 14px; color: var(--text-primary); margin-bottom: 4px; }
-#demo-quest-widget .demo-quest-hint { font-size: 12px; color: var(--text-muted); line-height: 1.4; margin-bottom: 10px; }
-#demo-quest-widget .demo-quest-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-#demo-quest-widget .demo-quest-btn { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: var(--accent-1); color: #000; }
-#demo-quest-widget .demo-quest-btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--stroke-1); }
-#demo-quest-progress { height: 3px; background: var(--surface-2); border-radius: 2px; margin-bottom: 10px; overflow: hidden; }
-#demo-quest-progress-inner { height: 100%; background: linear-gradient(90deg, var(--accent-1), var(--accent-3)); border-radius: 2px; transition: width 0.35s ease; }
-</style>
-<div id="demo-quest-widget" style="display: none;" aria-hidden="true">
-  <div class="demo-quest-title">Демо-квест</div>
-  <div id="demo-quest-progress"><div id="demo-quest-progress-inner" style="width: 0%;"></div></div>
-  <div class="demo-quest-step" id="demo-quest-step-label">Шаг 1 из 5</div>
-  <div class="demo-quest-hint" id="demo-quest-hint"></div>
-  <div class="demo-quest-actions">
-    <button type="button" class="demo-quest-btn" id="demo-quest-btn-highlight">Показать подсказку</button>
-    <a href="{{ url_for('auth.logout') }}" class="demo-quest-btn demo-quest-btn-ghost" style="text-decoration: none;">Выйти из демо</a>
-  </div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
-<script src="{{ url_for('static', filename='js/demo_quest.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/demo_cinema.css') }}">
+{% if cinema_demo_ids is defined and cinema_demo_ids %}
+<meta name="cinema-demo-ids" content='{{ cinema_demo_ids | tojson }}'>
+{% endif %}
+<div id="cinema-root"></div>
+<script src="{{ url_for('static', filename='js/demo_cinema.js') }}"></script>
 {% endif %}

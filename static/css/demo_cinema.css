@@ -1,0 +1,514 @@
+/* ===================================================================
+   Demo Cinema Engine — Cinematic Onboarding Styles
+   =================================================================== */
+
+/* ── Full-screen overlay ───────────────────────────────────────────── */
+#cinema-root {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  font-family: 'Inter', 'MonaspaceNeon', system-ui, sans-serif;
+}
+#cinema-root.active { pointer-events: auto; }
+
+#cinema-root *,
+#cinema-root *::before,
+#cinema-root *::after { box-sizing: border-box; }
+
+/* ── Black overlay (base) ──────────────────────────────────────────── */
+.cinema-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 100000;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+.cinema-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Subtitle system ───────────────────────────────────────────────── */
+.cinema-subtitle-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 100002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  pointer-events: none;
+}
+.cinema-subtitle {
+  font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+  color: rgba(255, 255, 255, 0.92);
+  text-align: center;
+  max-width: 720px;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  font-weight: 400;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.cinema-subtitle.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.cinema-subtitle.exit {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* ── Typewriter (prologue) ─────────────────────────────────────────── */
+.cinema-typewriter-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 100003;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: #000;
+}
+.cinema-typewriter {
+  font-family: 'MonaspaceNeon', 'Courier New', monospace;
+  font-size: clamp(1rem, 2vw, 1.35rem);
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 650px;
+  text-align: center;
+  line-height: 1.7;
+  min-height: 3.4em;
+}
+.cinema-typewriter .cinema-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  background: var(--accent-1, #0af);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cinema-cursor-blink 0.9s step-end infinite;
+}
+@keyframes cinema-cursor-blink {
+  50% { opacity: 0; }
+}
+
+.cinema-enter-btn {
+  margin-top: 2.5rem;
+  padding: 14px 40px;
+  border: 1px solid rgba(0, 170, 255, 0.5);
+  border-radius: 12px;
+  background: transparent;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.6s ease 0.3s, transform 0.6s ease 0.3s,
+              border-color 0.2s ease, box-shadow 0.2s ease;
+  letter-spacing: 0.03em;
+}
+.cinema-enter-btn.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.cinema-enter-btn:hover {
+  border-color: var(--accent-1, #0af);
+  box-shadow: 0 0 24px rgba(0, 170, 255, 0.3);
+}
+
+/* ── Elevator doors ────────────────────────────────────────────────── */
+.cinema-elevator-left,
+.cinema-elevator-right {
+  position: fixed;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  background: #000;
+  z-index: 100001;
+  transition: none;
+}
+.cinema-elevator-left { left: 0; }
+.cinema-elevator-right { right: 0; }
+
+.cinema-elevator-left.open {
+  animation: cinema-elevator-open-left 1.2s cubic-bezier(0.77, 0, 0.18, 1) forwards;
+}
+.cinema-elevator-right.open {
+  animation: cinema-elevator-open-right 1.2s cubic-bezier(0.77, 0, 0.18, 1) forwards;
+}
+
+@keyframes cinema-elevator-open-left {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+@keyframes cinema-elevator-open-right {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(100%); }
+}
+
+/* ── Swipe transition ──────────────────────────────────────────────── */
+.cinema-swipe-cover {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 100001;
+  transform: translateX(0);
+}
+.cinema-swipe-cover.exit-left {
+  animation: cinema-swipe-exit-left 0.7s cubic-bezier(0.77, 0, 0.18, 1) forwards;
+}
+.cinema-swipe-cover.enter-from-right {
+  transform: translateX(100%);
+  animation: cinema-swipe-enter-right 0.6s cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+@keyframes cinema-swipe-exit-left {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+@keyframes cinema-swipe-enter-right {
+  0%   { transform: translateX(100%); }
+  100% { transform: translateX(0); }
+}
+
+/* ── Glitch transition ─────────────────────────────────────────────── */
+.cinema-glitch-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 100001;
+  background: #000;
+  pointer-events: none;
+}
+.cinema-glitch-layer.active {
+  animation: cinema-glitch 0.6s steps(1) forwards;
+}
+@keyframes cinema-glitch {
+  0%    { opacity: 1; clip-path: inset(40% 0 30% 0); transform: translate(-4px, 2px); background: #0a0a0a; }
+  10%   { clip-path: inset(10% 0 60% 0); transform: translate(3px, -1px); background: #111; }
+  20%   { clip-path: inset(70% 0 5% 0); transform: translate(-2px, 3px); background: #0af; opacity: 0.15; }
+  30%   { clip-path: inset(20% 0 40% 0); transform: translate(4px, -2px); background: #000; opacity: 1; }
+  40%   { clip-path: inset(50% 0 20% 0); transform: translate(-3px, 1px); background: #111; }
+  50%   { clip-path: inset(5% 0 70% 0); transform: translate(2px, -3px); background: #0a0a0a; }
+  60%   { clip-path: inset(60% 0 10% 0); transform: translate(-1px, 2px); background: #0af; opacity: 0.1; }
+  70%   { clip-path: inset(30% 0 50% 0); transform: translate(3px, -1px); background: #000; opacity: 1; }
+  80%   { clip-path: inset(15% 0 45% 0); transform: translate(-2px, 1px); }
+  90%   { clip-path: inset(0); transform: translate(0); opacity: 0.5; }
+  100%  { clip-path: inset(0); transform: translate(0); opacity: 0; }
+}
+
+/* ── Hyperspace transition ─────────────────────────────────────────── */
+.cinema-hyperspace {
+  position: fixed;
+  inset: 0;
+  z-index: 100001;
+  background: #000;
+  overflow: hidden;
+}
+.cinema-hyperspace-stars {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(1px 1px at 20% 30%, #fff, transparent),
+    radial-gradient(1px 1px at 80% 20%, #fff, transparent),
+    radial-gradient(1px 1px at 50% 60%, #fff, transparent),
+    radial-gradient(1px 1px at 10% 80%, #fff, transparent),
+    radial-gradient(1px 1px at 70% 50%, #fff, transparent),
+    radial-gradient(1px 1px at 40% 10%, #fff, transparent),
+    radial-gradient(1px 1px at 90% 70%, #fff, transparent),
+    radial-gradient(1px 1px at 30% 90%, #fff, transparent),
+    radial-gradient(1px 1px at 60% 40%, #fff, transparent),
+    radial-gradient(1px 1px at 15% 55%, #fff, transparent);
+  animation: cinema-hyperspace-fly 1s cubic-bezier(0.55, 0, 1, 0.45) forwards;
+}
+@keyframes cinema-hyperspace-fly {
+  0%   { transform: scale(1); opacity: 1; }
+  60%  { transform: scale(6); opacity: 1; }
+  100% { transform: scale(20); opacity: 0; }
+}
+.cinema-hyperspace-streak {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 0;
+  background: linear-gradient(to bottom, transparent, rgba(0, 170, 255, 0.8), #fff);
+  transform-origin: top center;
+  animation: cinema-streak 0.8s ease-in forwards;
+}
+@keyframes cinema-streak {
+  0%   { height: 0; opacity: 0; }
+  30%  { height: 40vh; opacity: 1; }
+  100% { height: 100vh; opacity: 0; }
+}
+
+/* ── Spotlight / Focus system ──────────────────────────────────────── */
+.cinema-backdrop-blur {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+.cinema-backdrop-blur.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.cinema-spotlight-ring {
+  box-shadow:
+    0 0 0 3px var(--accent-1, #0af),
+    0 0 0 6px rgba(0, 170, 255, 0.25),
+    0 0 32px rgba(0, 170, 255, 0.35) !important;
+  animation: cinema-spotlight-pulse 2s ease-in-out infinite;
+  position: relative;
+  z-index: 99999 !important;
+  border-radius: inherit;
+}
+@keyframes cinema-spotlight-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 3px var(--accent-1, #0af),
+      0 0 0 6px rgba(0, 170, 255, 0.25),
+      0 0 32px rgba(0, 170, 255, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px var(--accent-1, #0af),
+      0 0 0 10px rgba(0, 170, 255, 0.2),
+      0 0 48px rgba(0, 170, 255, 0.45);
+  }
+}
+
+/* ── Neon HUD (trainer scene) ──────────────────────────────────────── */
+.cinema-neon-hud {
+  border: 1px solid var(--accent-1, #0af) !important;
+  box-shadow:
+    0 0 8px rgba(0, 170, 255, 0.4),
+    0 0 24px rgba(0, 170, 255, 0.2),
+    inset 0 0 12px rgba(0, 170, 255, 0.08) !important;
+  animation: cinema-neon-pulse 1.5s ease-in-out infinite;
+  position: relative;
+  z-index: 99999 !important;
+}
+@keyframes cinema-neon-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 8px rgba(0, 170, 255, 0.4),
+      0 0 24px rgba(0, 170, 255, 0.2),
+      inset 0 0 12px rgba(0, 170, 255, 0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 16px rgba(0, 170, 255, 0.6),
+      0 0 40px rgba(0, 170, 255, 0.3),
+      inset 0 0 20px rgba(0, 170, 255, 0.12);
+  }
+}
+
+/* ── AI tooltip (trainer scene) ────────────────────────────────────── */
+.cinema-ai-tooltip {
+  position: fixed;
+  z-index: 100003;
+  background: rgba(10, 10, 18, 0.96);
+  border: 1px solid var(--accent-1, #0af);
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  max-width: 380px;
+  color: #fff;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 170, 255, 0.15);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.cinema-ai-tooltip.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.cinema-ai-tooltip-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent-1, #0af);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+/* ── Flash effect ──────────────────────────────────────────────────── */
+.cinema-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 100004;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+.cinema-flash.active {
+  animation: cinema-flash-pop 0.5s ease-out forwards;
+}
+@keyframes cinema-flash-pop {
+  0%   { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
+/* ── "Correct" badge ───────────────────────────────────────────────── */
+.cinema-correct-badge {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.5);
+  z-index: 100005;
+  background: var(--success, #22c55e);
+  color: #fff;
+  font-size: 1.6rem;
+  font-weight: 800;
+  padding: 1rem 2.5rem;
+  border-radius: 16px;
+  letter-spacing: 0.05em;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 8px 32px rgba(34, 197, 94, 0.4);
+}
+.cinema-correct-badge.visible {
+  animation: cinema-correct-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes cinema-correct-pop {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  50%  { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* ── CTA button (epilogue) ─────────────────────────────────────────── */
+.cinema-cta-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 100003;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.cinema-cta-btn {
+  padding: 18px 48px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--accent-1, #0af), var(--accent-3, #a855f7));
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+  transition: opacity 0.7s ease, transform 0.7s ease, box-shadow 0.3s ease;
+  box-shadow: 0 8px 32px rgba(0, 170, 255, 0.3);
+  text-decoration: none;
+  display: inline-block;
+}
+.cinema-cta-btn.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  animation: cinema-cta-glow 2s ease-in-out infinite;
+}
+.cinema-cta-btn:hover {
+  box-shadow: 0 12px 48px rgba(0, 170, 255, 0.5);
+  transform: translateY(-2px) scale(1.03);
+}
+@keyframes cinema-cta-glow {
+  0%, 100% { box-shadow: 0 8px 32px rgba(0, 170, 255, 0.3); }
+  50% { box-shadow: 0 8px 48px rgba(0, 170, 255, 0.5), 0 0 0 2px rgba(0, 170, 255, 0.15); }
+}
+
+/* ── Control widget ────────────────────────────────────────────────── */
+.cinema-controls {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 100010;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.cinema-ctrl-btn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(12, 12, 18, 0.92);
+  color: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+.cinema-ctrl-btn:hover {
+  border-color: var(--accent-1, #0af);
+  color: #fff;
+}
+.cinema-progress-pip {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-right: 4px;
+}
+.cinema-pip {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+.cinema-pip.done {
+  background: var(--accent-1, #0af);
+}
+.cinema-pip.current {
+  background: #fff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.5);
+  width: 8px;
+  height: 8px;
+}
+
+/* ── Counter animation helper ──────────────────────────────────────── */
+.cinema-counter-anim {
+  transition: none;
+}
+
+/* ── Page body freeze (prevent scroll during cinema) ───────────────── */
+body.cinema-freeze {
+  overflow: hidden !important;
+}
+
+/* ── Mobile adjustments ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .cinema-subtitle {
+    font-size: clamp(0.95rem, 3.5vw, 1.2rem);
+    padding: 0 1rem;
+  }
+  .cinema-typewriter {
+    font-size: clamp(0.85rem, 3vw, 1.1rem);
+  }
+  .cinema-cta-btn {
+    padding: 14px 32px;
+    font-size: 1rem;
+  }
+  .cinema-controls {
+    bottom: 12px;
+    right: 12px;
+  }
+  .cinema-ai-tooltip {
+    max-width: 280px;
+    font-size: 0.85rem;
+  }
+}
