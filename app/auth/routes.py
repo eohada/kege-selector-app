@@ -220,6 +220,9 @@ def logout():
 @auth_bp.route('/demo/start')
 def demo_start():
     """Создает временного демо-пользователя и запускает кинематографический тур."""
+    from app.models import StudentTaskStatistics
+    import random
+
     if current_user.is_authenticated:
         logout_user()
 
@@ -236,18 +239,25 @@ def demo_start():
     db.session.add(demo_student)
     db.session.flush()
 
-    task = Tasks.query.first()
     creator = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin', 'tutor'])).first()
     created_by_id = creator.id if creator else user.id
 
     demo_submission_id = None
     demo_lesson_id = None
 
-    if task:
+    demo_tasks = []
+    for tn in [1, 5, 8, 12, 14]:
+        t = Tasks.query.filter_by(task_number=tn).first()
+        if t:
+            demo_tasks.append(t)
+    if not demo_tasks:
+        demo_tasks = Tasks.query.limit(5).all()
+
+    if demo_tasks:
         deadline = moscow_now() + timedelta(days=7)
         assignment = Assignment(
-            title='Пробник-1',
-            description='Демо-задание для знакомства с платформой. Вставь ответ и сдай работу.',
+            title='Тренировочный вариант ЕГЭ — информатика',
+            description='Демо-вариант: реши задания, вставь ответы и сдай работу. Система проверит автоматически.',
             assignment_type='homework',
             deadline=deadline,
             hard_deadline=False,
@@ -256,18 +266,24 @@ def demo_start():
         )
         db.session.add(assignment)
         db.session.flush()
-        db.session.add(AssignmentTask(
-            assignment_id=assignment.assignment_id,
-            task_id=task.task_id,
-            order_index=0,
-            max_score=1,
-        ))
+
+        total_score = 0
+        for idx, t in enumerate(demo_tasks):
+            score = 2 if t.task_number >= 19 else 1
+            total_score += score
+            db.session.add(AssignmentTask(
+                assignment_id=assignment.assignment_id,
+                task_id=t.task_id,
+                order_index=idx,
+                max_score=score,
+            ))
+
         sub = Submission(
             assignment_id=assignment.assignment_id,
             student_id=demo_student.student_id,
             status='ASSIGNED',
             assigned_at=moscow_now(),
-            max_score=1,
+            max_score=total_score,
         )
         db.session.add(sub)
         db.session.flush()
@@ -288,9 +304,19 @@ def demo_start():
 
         db.session.add(LessonTask(
             lesson_id=demo_lesson.lesson_id,
-            task_id=task.task_id,
+            task_id=demo_tasks[0].task_id,
             assignment_type='classwork',
             status='pending',
+        ))
+
+    for tn in range(1, 28):
+        correct = random.randint(3, 18)
+        incorrect = random.randint(0, max(1, correct // 3))
+        db.session.add(StudentTaskStatistics(
+            student_id=demo_student.student_id,
+            task_number=tn,
+            manual_correct=correct,
+            manual_incorrect=incorrect,
         ))
 
     db.session.commit()

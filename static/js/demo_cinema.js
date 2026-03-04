@@ -1,9 +1,8 @@
 /**
- * Demo Cinema Engine v3
- * - Spotlight via box-shadow hole (stacking-context proof)
- * - Real interaction: clicks buttons, types into fields
- * - User-paced with "Далее" buttons
- * - Instant black cover to prevent white flash between pages
+ * Demo Cinema Engine v4
+ * Fixes: spotlight label positioning, real interactions in submissions,
+ * visual-only trainer demo, schedule/analytics spotlight targets,
+ * smooth transitions, theory click-through.
  */
 (function () {
   'use strict';
@@ -31,6 +30,10 @@
   }
   function removeEl(el) { if (el && el.parentNode) el.parentNode.removeChild(el); }
 
+  function currentPage() {
+    return (document.body.getAttribute('data-cinema-scene') || '').toLowerCase();
+  }
+
   /* ─── Instant cover ────────────────────────────────────────────── */
   function placeInstantCover() {
     if (lsGet(LS_ACTIVE) !== 'true') return;
@@ -42,9 +45,7 @@
   }
   placeInstantCover();
 
-  /* ═══════════════════════════════════════════════════════════════════
-     CinemaEngine
-     ═══════════════════════════════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════════════════════════════ */
   function CE() {
     this.scene = parseInt(lsGet(LS_SCENE) || '0', 10);
     this.transition = lsGet(LS_TRANSITION) || '';
@@ -60,12 +61,10 @@
     this._tids.push(id);
     return id;
   };
-
   CE.prototype._clearT = function () {
     this._tids.forEach(function (id) { clearTimeout(id); });
     this._tids = [];
   };
-
   CE.prototype._cleanup = function () {
     this._clearT();
     this._els.forEach(function (el) { removeEl(el); });
@@ -73,7 +72,6 @@
     qsa('.cinema-neon-hud').forEach(function (e) { e.classList.remove('cinema-neon-hud'); });
     document.body.classList.remove('cinema-freeze');
   };
-
   CE.prototype._removeInstantCover = function () {
     var c = document.getElementById('cinema-instant-cover');
     if (c) removeEl(c);
@@ -88,7 +86,7 @@
       var start = Date.now();
       var iv = setInterval(function () {
         el = qs(selector);
-        if (el) { clearInterval(iv); return resolve(el); }
+        if (el) { clearInterval(iv); resolve(el); return; }
         if (Date.now() - start > timeoutMs) { clearInterval(iv); resolve(null); }
       }, 200);
     });
@@ -180,7 +178,7 @@
     });
   };
 
-  /* ── Spotlight (box-shadow hole approach) ───────────────────────── */
+  /* ── Spotlight (box-shadow hole) — FIXED label positioning ─────── */
   CE.prototype.spotlight = function (selector, durationMs, label) {
     var self = this;
     durationMs = durationMs || 3000;
@@ -192,14 +190,29 @@
 
       self._t(function () {
         var rect = el.getBoundingClientRect();
-        var pad = 8;
+        if (rect.width === 0 && rect.height === 0) return resolve();
+
+        var pad = 10;
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+
+        var maxW = vw * 0.85;
+        var maxH = vh * 0.7;
+        var w = Math.min(rect.width + pad * 2, maxW);
+        var h = Math.min(rect.height + pad * 2, maxH);
+
+        var cx = rect.left + rect.width / 2;
+        var cy = rect.top + rect.height / 2;
+        var left = Math.max(4, Math.min(cx - w / 2, vw - w - 4));
+        var top  = Math.max(4, Math.min(cy - h / 2, vh - h - 4));
+
         var br = window.getComputedStyle(el).borderRadius || '12px';
 
         var hole = addEl('div', 'cinema-spotlight-hole');
-        hole.style.left   = (rect.left - pad) + 'px';
-        hole.style.top    = (rect.top - pad) + 'px';
-        hole.style.width  = (rect.width + pad * 2) + 'px';
-        hole.style.height = (rect.height + pad * 2) + 'px';
+        hole.style.left   = left + 'px';
+        hole.style.top    = top + 'px';
+        hole.style.width  = w + 'px';
+        hole.style.height = h + 'px';
         hole.style.borderRadius = br;
         self._els.push(hole);
 
@@ -207,8 +220,10 @@
         if (label) {
           lbl = addEl('div', 'cinema-spotlight-label');
           lbl.textContent = label;
-          lbl.style.left = (rect.left + rect.width / 2) + 'px';
-          lbl.style.top  = (rect.bottom + pad + 12) + 'px';
+          lbl.style.left = (left + w / 2) + 'px';
+          var lblTop = top + h + 14;
+          if (lblTop > vh - 50) lblTop = Math.max(8, top - 40);
+          lbl.style.top  = lblTop + 'px';
           lbl.style.transform = 'translateX(-50%)';
           self._els.push(lbl);
         }
@@ -226,9 +241,9 @@
             removeEl(hole);
             if (lbl) removeEl(lbl);
             resolve();
-          }, 450);
+          }, 400);
         }, durationMs);
-      }, 500);
+      }, 700);
     });
   };
 
@@ -244,7 +259,6 @@
     });
   };
 
-  /* ── Simulate click ────────────────────────────────────────────── */
   CE.prototype.simulateClick = function (el) {
     if (!el) return;
     el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
@@ -302,7 +316,11 @@
           s.style.animationDelay = (Math.random() * 0.3).toFixed(2) + 's';
         }
         self._els.push(hs);
-        self._t(function () { removeEl(hs); resolve(); }, 1200);
+        self._t(function () {
+          hs.style.transition = 'opacity 0.6s ease';
+          hs.style.opacity = '0';
+          self._t(function () { removeEl(hs); resolve(); }, 700);
+        }, 1100);
       });
     }
     if (type === 'fade') {
@@ -329,7 +347,6 @@
     ov.classList.add('visible');
     setTimeout(function () { window.location.href = url; }, 450);
   };
-
   CE.prototype.advance = function (next, url, transition) {
     lsSet(LS_SCENE, String(next));
     this.navigateTo(url, transition);
@@ -345,7 +362,6 @@
       self._t(function () { removeEl(f); resolve(); }, 600);
     });
   };
-
   CE.prototype.showCorrectBadge = function () {
     var self = this;
     return new Promise(function (resolve) {
@@ -356,7 +372,6 @@
       self._t(function () { removeEl(b); resolve(); }, 2200);
     });
   };
-
   CE.prototype.showAITooltip = function (text, durationMs) {
     var self = this;
     durationMs = durationMs || 3500;
@@ -388,15 +403,12 @@
     skip.textContent = 'Пропустить тур';
     skip.onclick = function () { self.endCinema(true); };
   };
-
   CE.prototype.endCinema = function (redirect) {
     this.running = false;
     this._cleanup();
     this._removeInstantCover();
-    lsRemove(LS_ACTIVE);
-    lsRemove(LS_SCENE);
-    lsRemove(LS_TRANSITION);
-    lsRemove(LS_DEMO_IDS);
+    lsRemove(LS_ACTIVE); lsRemove(LS_SCENE);
+    lsRemove(LS_TRANSITION); lsRemove(LS_DEMO_IDS);
     if (this._controls) removeEl(this._controls);
     document.body.classList.remove('cinema-freeze');
     if (redirect) window.location.href = '/student/dashboard';
@@ -447,13 +459,13 @@
     })
     .then(function () {
       var el = qs('#cinema-notifications') || qs('.hero-actions');
-      if (el) return self.spotlight(el, 3000, 'Уведомления и быстрые действия');
+      if (el) return self.spotlight(el, 3000, 'Быстрые действия');
       return wait(300);
     })
-    .then(function () { return wait(300); })
+    .then(function () { return wait(200); })
     .then(function () {
       var el = qs('#cinema-weak-topics') || qs('[data-cinema="weak-topics"]');
-      if (el) return self.spotlight(el, 3000, 'Слабые темы — фокус внимания');
+      if (el) return self.spotlight(el, 3000, 'Слабые темы — фокус подготовки');
       return wait(300);
     })
     .then(function () {
@@ -470,15 +482,18 @@
     self.playEntryTransition()
     .then(function () { return wait(400); })
     .then(function () {
-      return self.showSubtitle('Твоё расписание под строгим контролем. Никаких накладок.', { withContinue: true });
+      return self.showSubtitle('Все уроки — в одном расписании. Никаких накладок и забытых занятий.', { withContinue: true });
     })
     .then(function () {
-      var el = qs('#cinema-nearest-lesson') || qs('#scheduleGrid') || qs('.schedule-shell');
-      if (el) return self.spotlight(el, 3000, 'Ближайшие уроки');
+      var chip = qs('.lesson-chip') || qs('.day-col__body');
+      if (chip) return self.spotlight(chip, 3000, 'Карточка урока');
+      var grid = qs('#scheduleGrid');
+      if (grid) return self.spotlight(grid, 3000, 'Сетка расписания');
       return wait(500);
     })
+    .then(function () { return wait(200); })
     .then(function () {
-      return self.showSubtitle('Чтобы выжить на уроке, нужна теоретическая база. Идём за знаниями.', { withContinue: true, continueLabel: 'К теории →' });
+      return self.showSubtitle('Чтобы подготовиться к уроку, нужна теоретическая база. Идём за знаниями.', { withContinue: true, continueLabel: 'К теории →' });
     })
     .then(function () {
       if (self.running) self.advance(3, '/theory', 'swipeLeft');
@@ -491,47 +506,111 @@
     self.playEntryTransition()
     .then(function () { return wait(400); })
     .then(function () {
-      return self.showSubtitle('Вся выжимка для ЕГЭ здесь. Без воды и пыльных учебников.', { withContinue: true });
+      return self.showSubtitle('Здесь собрана вся теория для ЕГЭ по информатике. Каждое задание — отдельный конспект.', { withContinue: true });
     })
+    .then(function () { return wait(200); })
     .then(function () {
-      var g = qs('.theory-grid');
-      if (g) return self.autoScroll('.theory-grid', 1500);
+      var card = qs('.theory-card');
+      if (card) return self.spotlight(card, 3000, 'Нажми, чтобы открыть конспект');
       return wait(500);
     })
     .then(function () {
-      var card = qs('.theory-grid .glass-panel') || qs('.theory-grid > *:first-child');
-      if (card) return self.spotlight(card, 2500, 'Конспект по теме');
-      return wait(300);
-    })
-    .then(function () {
-      return self.showSubtitle('Теория без практики мертва. Время настоящей проверки.', { withContinue: true, continueLabel: 'К заданиям →' });
+      return self.showSubtitle('Каждая тема разобрана по полочкам. Но теория без практики мертва — пора решать задания.', { withContinue: true, continueLabel: 'К заданиям →' });
     })
     .then(function () {
       if (self.running) self.advance(4, '/submissions', 'glitch');
     });
   };
 
-  /* ── 4: Submissions ────────────────────────────────────────────── */
+  /* ── 4: Submissions (split: list page vs work page) ────────────── */
   CE.prototype.sceneSubmissions = function () {
+    var page = currentPage();
+    if (page === 'submission-work') {
+      this.sceneSubmissionWork();
+    } else {
+      this.sceneSubmissionsList();
+    }
+  };
+
+  CE.prototype.sceneSubmissionsList = function () {
     var self = this;
     self.playEntryTransition()
     .then(function () { return wait(400); })
     .then(function () {
-      return self.showSubtitle('Это боевые задания от преподавателя. Дедлайны, лимиты попыток — всё серьёзно.', { withContinue: true });
+      return self.showSubtitle('Это твои боевые задания от преподавателя. Дедлайны, ограничения попыток — всё по-настоящему.', { withContinue: true });
     })
+    .then(function () { return wait(200); })
     .then(function () {
       var card = qs('.demo-submission-card') || qs('.submission-card');
       if (card) return self.spotlight(card, 3000, 'Карточка задания');
       return wait(500);
     })
+    .then(function () {
+      return self.showSubtitle('Давай зайдём в задание и решим его прямо сейчас.', { auto: 2500 });
+    })
     .then(function () { return wait(300); })
     .then(function () {
       var btn = qs('.demo-highlight-begin') || qs('.demo-btn-begin');
-      if (btn) return self.spotlight(btn, 3000, 'Нажми чтобы начать работу');
-      return wait(500);
+      if (btn) {
+        return self.spotlight(btn, 2000, 'Открыть задание').then(function () {
+          var href = btn.getAttribute('href');
+          if (href) {
+            lsSet(LS_TRANSITION, 'swipeLeft');
+            var ov = addEl('div', 'cinema-overlay');
+            ov.classList.add('visible');
+            self.running = false;
+            setTimeout(function () { window.location.href = href; }, 400);
+          }
+        });
+      }
+      return wait(300);
+    });
+  };
+
+  CE.prototype.sceneSubmissionWork = function () {
+    var self = this;
+    self.playEntryTransition()
+    .then(function () { return wait(500); })
+    .then(function () {
+      return self.showSubtitle('Ты внутри задания. Здесь видно условие, поле для ответа и кнопки управления.', { withContinue: true });
     })
     .then(function () {
-      return self.showSubtitle('А теперь перенесёмся на живой урок — самый эпицентр подготовки.', { withContinue: true, continueLabel: 'К уроку →' });
+      var startBtn = qs('#start-btn');
+      if (startBtn) {
+        return self.spotlight(startBtn, 2500, 'Нажми, чтобы начать выполнение').then(function () {
+          self.simulateClick(startBtn);
+          return wait(2000);
+        });
+      }
+      return wait(200);
+    })
+    .then(function () {
+      var pasteBtn = qs('#demo-paste-answer');
+      var firstAnswer = qs('.demo-first-answer');
+      if (pasteBtn && firstAnswer) {
+        return self.spotlight(firstAnswer, 2000, 'Поле для ответа').then(function () {
+          return self.spotlight(pasteBtn, 2500, 'Вставь ответ одним нажатием').then(function () {
+            self.simulateClick(pasteBtn);
+            return wait(800);
+          });
+        });
+      } else if (firstAnswer) {
+        return self.spotlight(firstAnswer, 2000, 'Поле для ответа').then(function () {
+          return self.typeIntoField('42', firstAnswer);
+        });
+      }
+      return wait(200);
+    })
+    .then(function () { return wait(300); })
+    .then(function () {
+      var submitBtn = qs('#submit-btn');
+      if (submitBtn) {
+        return self.spotlight(submitBtn, 2500, 'Сдай работу на проверку');
+      }
+      return wait(300);
+    })
+    .then(function () {
+      return self.showSubtitle('Вот так выглядит процесс: получил задание → решил → сдал. Просто и чётко.', { withContinue: true, continueLabel: 'Дальше →' });
     })
     .then(function () {
       if (!self.running) return;
@@ -550,88 +629,78 @@
     self.playEntryTransition()
     .then(function () { return wait(400); })
     .then(function () {
-      return self.showSubtitle('Здесь ты слушаешь преподавателя и сразу решаешь задачи. Всё в одном окне.', { withContinue: true });
+      return self.showSubtitle('Это экран урока. Преподаватель ведёт занятие, а ты решаешь задачи прямо здесь.', { withContinue: true });
     })
+    .then(function () {
+      var card = qs('.task-card');
+      if (card) return self.spotlight(card, 3000, 'Карточка задания на уроке');
+      return wait(400);
+    })
+    .then(function () { return wait(200); })
     .then(function () {
       var answerInput = qs('input[id^="submission_"]') || qs('.neo-input[placeholder*="ответ"]');
       if (answerInput) {
-        return self.spotlight(answerInput, 2000, 'Поле для ответа')
-          .then(function () { return self.typeIntoField('42', answerInput); });
+        return self.spotlight(answerInput, 2000, 'Поле для ответа').then(function () {
+          return self.typeIntoField('42', answerInput);
+        });
       }
-      return wait(500);
+      return wait(300);
     })
     .then(function () { return wait(300); })
     .then(function () {
       var saveBtn = qs('#cinema-save-draft') || qs('[data-cinema="save-draft"]');
       if (saveBtn) return self.spotlight(saveBtn, 2500, 'Сохрани черновик');
-      return wait(500);
+      return wait(400);
     })
     .then(function () {
-      return self.showSubtitle('Застрял на теме? Для этого мы создали AI-тренажёр. Добро пожаловать.', { withContinue: true, continueLabel: 'В тренажёр →' });
+      return self.showSubtitle('Застрял на задаче? Для этого у нас есть AI-тренажёр. Идём туда.', { withContinue: true, continueLabel: 'В тренажёр →' });
     })
     .then(function () {
       if (self.running) self.advance(6, '/trainer/v2', 'hyperJump');
     });
   };
 
-  /* ── 6: Trainer (AI) ───────────────────────────────────────────── */
+  /* ── 6: Trainer (visual demo — no real button clicks) ──────────── */
   CE.prototype.sceneTrainer = function () {
     var self = this;
     self.playEntryTransition()
-    .then(function () { return wait(500); })
+    .then(function () { return wait(600); })
     .then(function () {
-      return self.showSubtitle('Это AI-тренажёр. Здесь можно ошибаться сколько угодно — ИИ всегда поможет.', { withContinue: true });
+      return self.showSubtitle('Это AI-тренажёр. Здесь можно бесконечно тренироваться — ИИ подберёт задание по уровню.', { withContinue: true });
     })
+    .then(function () { return wait(300); })
     .then(function () {
       var dock = qs('#trainerV2Dock') || qs('.trainer-v2-root');
       if (dock) dock.classList.add('cinema-neon-hud');
-      return wait(800);
+      return wait(600);
     })
+    .then(function () {
+      var select = qs('#tv2TaskType');
+      if (select) return self.spotlight(select, 2500, 'Выбери номер задания');
+      return wait(300);
+    })
+    .then(function () { return wait(200); })
     .then(function () {
       var startBtn = qs('#tv2StartBtn');
-      if (startBtn) {
-        return self.spotlight(startBtn, 2000, 'Загрузить задание')
-          .then(function () {
-            self.simulateClick(startBtn);
-            return wait(500);
-          });
-      }
+      if (startBtn) return self.spotlight(startBtn, 2500, 'Нажми «начать» — ИИ подберёт задачу');
       return wait(300);
     })
     .then(function () {
-      return self.waitForEl('#tv2AnswerInput', 6000);
+      return self.showSubtitle('Когда решишь задание, ИИ мгновенно проверит ответ и подскажет, если ошибёшься.', { auto: 3500 });
     })
-    .then(function (answerEl) {
-      if (answerEl) {
-        return self.spotlight(answerEl, 1500, 'Поле ответа')
-          .then(function () { return self.typeIntoField('36', answerEl); })
-          .then(function () { return wait(400); })
-          .then(function () {
-            var checkBtn = qs('.tv2-fab-primary');
-            if (checkBtn) {
-              return self.spotlight(checkBtn, 1500, 'Проверить ответ')
-                .then(function () {
-                  self.simulateClick(checkBtn);
-                  return wait(800);
-                });
-            }
-            return wait(300);
-          });
-      }
-      return wait(300);
-    })
+    .then(function () { return wait(300); })
     .then(function () {
-      return self.showAITooltip('Обнаружена типичная ошибка в задании 12. Запускаю протокол коррекции...', 3000);
+      return self.showAITooltip('Ответ неверный. Вот подсказка: обрати внимание на условие цикла — граница включительная.', 4000);
     })
     .then(function () { return self.flash(); })
     .then(function () { return self.showCorrectBadge(); })
     .then(function () {
       var dock = qs('#trainerV2Dock') || qs('.trainer-v2-root');
       if (dock) dock.classList.remove('cinema-neon-hud');
-      return wait(300);
+      return wait(200);
     })
     .then(function () {
-      return self.showSubtitle('Здесь можно ошибаться — мы научим, как правильно. Посмотрим на результаты.', { withContinue: true, continueLabel: 'К аналитике →' });
+      return self.showSubtitle('Ошибки — это нормально. Тренажёр поможет разобраться. А теперь посмотрим на аналитику.', { withContinue: true, continueLabel: 'К аналитике →' });
     })
     .then(function () {
       if (!self.running) return;
@@ -650,18 +719,24 @@
     self.playEntryTransition()
     .then(function () { return wait(400); })
     .then(function () {
-      return self.showSubtitle('Каждое твоё действие на платформе имеет вес. Вот твоя статистика.', { withContinue: true });
+      return self.showSubtitle('Здесь собрана вся аналитика твоей подготовки. Каждое действие на платформе имеет вес.', { withContinue: true });
     })
     .then(function () {
       var el = qs('.metrics-grid');
       if (el) return self.spotlight(el, 3000, 'Ключевые метрики');
-      return wait(500);
+      return wait(400);
     })
-    .then(function () { return wait(300); })
+    .then(function () { return wait(200); })
     .then(function () {
-      var el = qs('.charts-grid') || qs('#trendChart');
+      var el = qs('.charts-grid');
       if (el) return self.spotlight(el, 3000, 'Графики и тренды');
-      return wait(500);
+      return wait(400);
+    })
+    .then(function () { return wait(200); })
+    .then(function () {
+      var el = qs('#analyticsNodesTable') || qs('.analytics-nodes-table');
+      if (el) return self.spotlight(el, 3000, 'Рейтинг по заданиям');
+      return wait(400);
     })
     .then(function () { return wait(200); })
     .then(function () {
@@ -670,7 +745,7 @@
       return wait(300);
     })
     .then(function () {
-      return self.showSubtitle('Графики, тренды, прогноз баллов — всё наглядно и в реальном времени.', { withContinue: true, continueLabel: 'Финал →' });
+      return self.showSubtitle('Графики, рейтинги, прогноз баллов — всё наглядно и обновляется в реальном времени.', { withContinue: true, continueLabel: 'Финал →' });
     })
     .then(function () {
       if (self.running) { lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneEpilogue(); }
@@ -757,8 +832,8 @@
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { setTimeout(init, 200); });
+    document.addEventListener('DOMContentLoaded', function () { setTimeout(init, 250); });
   } else {
-    setTimeout(init, 200);
+    setTimeout(init, 250);
   }
 })();
