@@ -109,7 +109,7 @@
                     <p style="color: var(--text-muted); margin: 0;">Заданий пока нет.</p>
                     {% endif %}
                     <div style="margin-top: 1rem;">
-                        <a href="{{ url_for('kege_generator.kege_generator') }}?return_edit={{ assignment.assignment_id }}" class="neo-button outline" style="text-decoration: none;">➕ Добавить задания из генератора</a>
+                        <a href="{{ url_for('task_generator.task_generator') }}?return_edit={{ assignment.assignment_id }}" class="neo-button outline" style="text-decoration: none;">➕ Добавить задания из генератора</a>
                     </div>
                 </div>
 

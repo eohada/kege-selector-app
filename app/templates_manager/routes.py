@@ -11,6 +11,7 @@ from app.models import TaskTemplate, TemplateTask, Lesson, LessonTask, UsageHist
 from app.auth.rbac_utils import has_permission, get_user_scope
 from core.audit_logger import audit_logger
 from app.notifications.service import enqueue_assignment_notification
+from app.utils.course_tasks import get_task_numbers
 
 logger = logging.getLogger(__name__)
 
@@ -216,7 +217,7 @@ def template_new():
     mode = mode if mode in {'manual', 'quick'} else ''
     preset_type = preset_type if preset_type in ['homework', 'classwork', 'exam', 'lesson'] else ''  # Валидация типа
     preset_category = preset_category if preset_category in ['ЕГЭ', 'ОГЭ', 'ЛЕВЕЛАП', 'ПРОГРАММИРОВАНИЕ'] else ''  # Валидация категории
-    return render_template('template_form.html', template=None, is_new=True, preset_type=preset_type, preset_category=preset_category, mode=mode)
+    return render_template('template_form.html', template=None, is_new=True, preset_type=preset_type, preset_category=preset_category, mode=mode, task_numbers=get_task_numbers(None))
 
 @templates_bp.route('/templates/<int:template_id>')
 @login_required
@@ -298,7 +299,8 @@ def template_edit(template_id):
                          template=template,
                          template_tasks=template_tasks,
                          is_new=False,
-                         mode='')
+                         mode='',
+                         task_numbers=get_task_numbers(None))
 
 @templates_bp.route('/templates/<int:template_id>/delete', methods=['POST'])
 @login_required

@@ -49,7 +49,7 @@
             {% include '_topbar.html' %}
             <main class="app-content">
                 <div class="theory-view-container">
-                    <a href="{{ url_for('theory.theory_index') }}" class="back-link">← К списку теории</a>
+                    <a href="{{ url_for('theory.theory_index', course_id=course_id) if course_id else url_for('theory.theory_index') }}" class="back-link">← К списку теории</a>
                     <section class="theory-view-header">
                         <h1 class="theory-view-title">{{ block.title or 'Задание ' ~ block.task_number }}</h1>
                     </section>

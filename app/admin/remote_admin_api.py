@@ -19,6 +19,7 @@ from app.models import BotAdmin, BotErrorReport, UserNotification
 from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES, DEFAULT_ROLE_PERMISSIONS
 from core.audit_logger import audit_logger
 from core.db_models import moscow_now
+from app.utils.course_tasks import get_short_answer_task_numbers
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,8 @@ def _task_formator_quick_checks(task: Tasks):
         if 'undefined' in html.lower() or 'null' in html.lower():
             checks.append({'level': 'warn', 'title': 'Подозрительные токены в условии', 'details': 'В условии встречается "undefined"/"null". Часто это артефакт парсинга.'})
 
-    if task.task_number in list(range(1, 24)):
+    short_answer_numbers = get_short_answer_task_numbers(getattr(task, 'course_id', None))
+    if task.task_number in short_answer_numbers:
         if not ans:
             checks.append({'level': 'fail', 'title': 'Нет ответа', 'details': 'Для заданий 1–23 ожидается короткий ответ. Сейчас поле answer пустое.'})
         else:

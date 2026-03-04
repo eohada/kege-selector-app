@@ -11,7 +11,7 @@ from datetime import datetime
 
 from app.main import main_bp
 from app.models import Student, Lesson, Tasks, UsageHistory, SkippedTasks, BlacklistTasks, db, moscow_now
-from app.models import User, Enrollment, FamilyTie, UserConsent
+from app.models import User, Enrollment, FamilyTie, UserConsent, StudentCourseEnrollment
 from app.students.forms import normalize_school_class
 from app.auth.rbac_utils import get_user_scope, apply_data_scope
 from sqlalchemy import func, or_
@@ -518,7 +518,7 @@ def student_dashboard():
 
     if not student:
         flash('Профиль ученика не найден.', 'warning')
-        return render_template('student_dashboard.html', student=None, plan_items=[], pending_submissions=[], unread_notifications=0, problem_topics=[])
+        return render_template('student_dashboard.html', student=None, plan_items=[], pending_submissions=[], unread_notifications=0, problem_topics=[], enrollments=[], selected_course_id=None)
 
     from app.students.stats_service import StatsService
     from app.models import StudentLearningPlanItem, Submission, UserNotification, GradebookEntry
@@ -567,6 +567,18 @@ def student_dashboard():
     except Exception:
         recent_grades = []
 
+    enrollments = []
+    try:
+        enrollments = StudentCourseEnrollment.query.filter_by(
+            student_id=student.student_id, is_active=True
+        ).options(db.joinedload(StudentCourseEnrollment.course)).order_by(
+            StudentCourseEnrollment.enrolled_at.asc()
+        ).all()
+    except Exception:
+        pass
+
+    selected_course_id = request.args.get('course_id', type=int)
+
     return render_template(
         'student_dashboard.html',
         student=student,
@@ -575,6 +587,8 @@ def student_dashboard():
         unread_notifications=unread_notifications,
         problem_topics=problem_topics,
         recent_grades=recent_grades,
+        enrollments=enrollments,
+        selected_course_id=selected_course_id,
     )
 
 @main_bp.route('/update-plans')

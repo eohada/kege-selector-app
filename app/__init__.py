@@ -67,6 +67,8 @@ def create_app(config_name=None):
     app.config['COVER_UPLOAD_ROOT'] = (os.environ.get('COVER_UPLOAD_ROOT') or '').strip() or None
     # Корень папки вложений заданий (uploads/task_attachments). На Timeweb можно задать путь к volume.
     app.config['TASK_ATTACHMENTS_ROOT'] = (os.environ.get('TASK_ATTACHMENTS_ROOT') or '').strip().rstrip(os.sep) or None
+    # Корень папки вложений ответов учеников (uploads/answer_attachments).
+    app.config['ANSWER_ATTACHMENTS_ROOT'] = os.environ.get('ANSWER_ATTACHMENTS_ROOT') or os.path.join(base_dir, 'uploads', 'answer_attachments')
 
     app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10 MB
 
@@ -195,7 +197,7 @@ def create_app(config_name=None):
     from app.students import students_bp
     from app.lessons import lessons_bp
     from app.admin import admin_bp
-    from app.kege_generator import kege_generator_bp
+    from app.task_generator import task_generator_bp
     from app.api import api_bp
     from app.schedule import schedule_bp
     from app.templates_manager import templates_bp
@@ -221,7 +223,7 @@ def create_app(config_name=None):
     app.register_blueprint(students_bp)
     app.register_blueprint(lessons_bp)
     app.register_blueprint(admin_bp)
-    app.register_blueprint(kege_generator_bp)
+    app.register_blueprint(task_generator_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(schedule_bp)
     app.register_blueprint(templates_bp)

@@ -7,7 +7,8 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, and_, case
 from app.models import (
     db, Student, Lesson, LessonTask, Tasks, Topic, task_topics,
-    StudentTaskStatistics, moscow_now, Submission, Answer, AssignmentTask, Assignment
+    StudentTaskStatistics, moscow_now, Submission, Answer, AssignmentTask, Assignment,
+    Course, CourseTaskTemplate
 )
 from app.students.utils import get_sorted_assignments
 
@@ -490,16 +491,26 @@ class StatsService:
         
         return problem_topics
 
-    def get_problem_task_numbers(self, threshold: int = 60, min_attempts: int = 3):
+    def get_problem_task_numbers(self, threshold: int = 60, min_attempts: int = 3, course_id: int | None = None):
         """
         Fallback-диагностика, когда у задач не проставлены Topic-ы:
-        считаем слабые места по номерам заданий (№1..27).
+        считаем слабые места по номерам заданий (№1..27 или по курсу).
+
+        Если course_id передан — учитываются только задачи и статистика по этому курсу.
 
         Возвращает список:
         [{'task_number': 7, 'avg_score': 42.0, 'attempts': 12}, ...]
         """
         totals = {}   # task_number -> total_weight
         corrects = {} # task_number -> correct_weight
+
+        valid_task_numbers = None
+        if course_id:
+            valid_task_numbers = {
+                t.task_number for t in CourseTaskTemplate.query.filter_by(course_id=course_id).all()
+            }
+            if not valid_task_numbers:
+                return []
 
         lessons = self._get_lessons()
         for lesson in lessons:
@@ -508,10 +519,15 @@ class StatsService:
                 weight = 2.0 if assignment_type == 'exam' else 1.0
                 for lt in assignments:
                     try:
-                        tnum = lt.task.task_number if lt.task else None
+                        task = lt.task
+                        tnum = task.task_number if task else None
+                        if course_id and task and getattr(task, 'course_id', None) != course_id:
+                            continue
                     except Exception:
                         tnum = None
                     if not tnum:
+                        continue
+                    if valid_task_numbers is not None and tnum not in valid_task_numbers:
                         continue
                     if lt.submission_correct is None:
                         continue
@@ -522,6 +538,19 @@ class StatsService:
                     totals[tnum] = float(totals.get(tnum, 0.0)) + float(weight)
                     if bool(lt.submission_correct):
                         corrects[tnum] = float(corrects.get(tnum, 0.0)) + float(weight)
+
+        if course_id:
+            for stat in StudentTaskStatistics.query.filter_by(
+                student_id=self.student_id, course_id=course_id
+            ).all():
+                tnum = stat.task_number
+                if valid_task_numbers is not None and tnum not in valid_task_numbers:
+                    continue
+                total_manual = stat.manual_correct + stat.manual_incorrect
+                if total_manual <= 0:
+                    continue
+                totals[tnum] = float(totals.get(tnum, 0.0)) + total_manual
+                corrects[tnum] = float(corrects.get(tnum, 0.0)) + stat.manual_correct
 
         subs = self._get_submissions()
         for sub in subs:
@@ -536,9 +565,13 @@ class StatsService:
                 try:
                     t = ans.assignment_task.task if ans.assignment_task else None
                     tnum = t.task_number if t else None
+                    if course_id and t and getattr(t, 'course_id', None) != course_id:
+                        continue
                 except Exception:
                     tnum = None
                 if not tnum:
+                    continue
+                if valid_task_numbers is not None and tnum not in valid_task_numbers:
                     continue
 
                 if ans.is_correct is None and ans.score is None:

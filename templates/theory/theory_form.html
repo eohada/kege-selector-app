@@ -119,7 +119,7 @@
                 <div class="theory-form-container">
                     <section class="theory-form-hero">
                         <div class="back-link">
-                            <a href="{{ url_for('theory.manage_list') }}">← К списку</a>
+                            <a href="{{ url_for('theory.manage_list', course_id=course_id) if course_id else url_for('theory.manage_list') }}">← К списку</a>
                         </div>
                         <div>
                             <h1>{% if is_new %}Новый блок теории{% else %}Редактирование: задание {{ task_number }}{% endif %}</h1>
@@ -129,6 +129,7 @@
 
                     <form method="post" action="{% if is_new %}{{ url_for('theory.manage_new') }}{% else %}{{ url_for('theory.manage_edit', block_id=block.id) }}{% endif %}" id="theory-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% if is_new and course_id %}<input type="hidden" name="course_id" value="{{ course_id }}">{% endif %}
 
                         <div class="form-section">
                             {% if is_new and free_numbers %}
@@ -145,7 +146,7 @@
                             {% elif is_new %}
                             <p class="form-hint" style="margin: 0;">Все слоты (1–27) заняты. Удалите ненужный блок в списке или отредактируйте существующий.</p>
                             <div class="form-actions">
-                                <a href="{{ url_for('theory.manage_list') }}" class="neo-button ghost">Вернуться</a>
+                                <a href="{{ url_for('theory.manage_list', course_id=course_id) if course_id else url_for('theory.manage_list') }}" class="neo-button ghost">Вернуться</a>
                             </div>
                             {% else %}
                             <input type="hidden" name="task_number" value="{{ task_number }}">
@@ -174,7 +175,7 @@
                             </div>
                             <div class="form-actions">
                                 <button type="submit" class="neo-button accent">{% if is_new %}Создать{% else %}Сохранить{% endif %}</button>
-                                <a href="{{ url_for('theory.manage_list') }}" class="neo-button ghost">Отмена</a>
+                                <a href="{{ url_for('theory.manage_list', course_id=course_id) if course_id else url_for('theory.manage_list') }}" class="neo-button ghost">Отмена</a>
                             </div>
                         </div>
                         {% endif %}

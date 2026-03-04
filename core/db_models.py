@@ -35,9 +35,48 @@ task_topics = Table('task_topics',
     Column('created_at', DateTime, default=moscow_now)
 )
 
+class Course(db.Model):
+    """Программа подготовки (тип экзамена): ЕГЭ Информатика, ОГЭ Информатика и т.д."""
+    __tablename__ = 'ExamCourses'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    slug = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+
+    task_templates = db.relationship('CourseTaskTemplate', back_populates='course', lazy=True,
+                                     order_by='CourseTaskTemplate.task_number')
+    grading_scales = db.relationship('GradingScale', back_populates='course', lazy=True)
+    enrollments = db.relationship('StudentCourseEnrollment', back_populates='course', lazy=True)
+
+    def __repr__(self):
+        return f'<Course {self.slug}: {self.title}>'
+
+
+class CourseTaskTemplate(db.Model):
+    """Спецификация: какие номера заданий входят в экзамен и их параметры."""
+    __tablename__ = 'CourseTaskTemplates'
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=False, index=True)
+    task_number = db.Column(db.Integer, nullable=False)
+    max_primary_score = db.Column(db.Integer, default=1, nullable=False)
+    requires_manual_review = db.Column(db.Boolean, default=False, nullable=False)
+    description = db.Column(db.String(300), nullable=True)
+
+    course = db.relationship('Course', back_populates='task_templates')
+
+    __table_args__ = (
+        db.UniqueConstraint('course_id', 'task_number', name='uq_course_task_number'),
+    )
+
+    def __repr__(self):
+        return f'<CourseTaskTemplate course={self.course_id} task={self.task_number}>'
+
+
 class Tasks(db.Model):
     __tablename__ = 'Tasks'
     task_id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
     task_number = db.Column(db.Integer, nullable=False, index=True)
     # Для заданий 19–21: одна задача на источнике = три задания (19, 20, 21). Связка по task_group_id (например site_task_id).
     task_group_id = db.Column(db.String(64), nullable=True, index=True)
@@ -85,6 +124,7 @@ class Tasks(db.Model):
             return base + 150.0
         return base  # medium или не размечено
 
+    course = db.relationship('Course', foreign_keys=[course_id], backref='tasks')
     usage_history = db.relationship('UsageHistory', back_populates='task', lazy=True)
     skipped_tasks = db.relationship('SkippedTasks', back_populates='task', lazy=True)
     blacklist_tasks = db.relationship('BlacklistTasks', back_populates='task', lazy=True)
@@ -204,22 +244,24 @@ class StudentTaskStatistics(db.Model):
     __tablename__ = 'StudentTaskStatistics'
     stat_id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
     task_number = db.Column(db.Integer, nullable=False)
-    manual_correct = db.Column(db.Integer, default=0, nullable=False)  # Количество правильных, добавленных вручную
-    manual_incorrect = db.Column(db.Integer, default=0, nullable=False)  # Количество неправильных, добавленных вручную
+    manual_correct = db.Column(db.Integer, default=0, nullable=False)
+    manual_incorrect = db.Column(db.Integer, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
-    
-    __table_args__ = (Index('ix_student_task_statistics', 'student_id', 'task_number', unique=True),)
-    
+
+    __table_args__ = (Index('ix_student_task_statistics', 'student_id', 'course_id', 'task_number', unique=True),)
+
     student = db.relationship('Student', back_populates='task_statistics')
+    course = db.relationship('Course', foreign_keys=[course_id])
 
 
 class StudentLearningPlanItem(db.Model):
     """
     Элемент учебной траектории ученика.
 
-    MVP: привязка к Topic и/или CourseModule + дедлайн + статус + заметки.
+    MVP: привязка к Topic и/или TrajectoryModule + дедлайн + статус + заметки.
     Статусы: planned | in_progress | done | failed
     """
     __tablename__ = 'StudentLearningPlanItems'
@@ -242,7 +284,7 @@ class StudentLearningPlanItem(db.Model):
 
     student = db.relationship('Student', back_populates='learning_plan_items')
     topic = db.relationship('Topic', foreign_keys=[topic_id])
-    course_module = db.relationship('CourseModule', foreign_keys=[course_module_id])
+    course_module = db.relationship('TrajectoryModule', foreign_keys=[course_module_id])
     created_by = db.relationship('User', foreign_keys=[created_by_user_id])
 
 
@@ -312,8 +354,8 @@ class GroupStudent(db.Model):
     )
 
 
-class Course(db.Model):
-    """Курс (программа обучения) для конкретного ученика: курс → модули → уроки."""
+class LearningTrajectory(db.Model):
+    """Индивидуальная учебная траектория ученика: траектория -> модули -> уроки."""
     __tablename__ = 'Courses'
     course_id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
@@ -329,11 +371,11 @@ class Course(db.Model):
 
     student = db.relationship('Student', foreign_keys=[student_id])
     created_by = db.relationship('User', foreign_keys=[created_by_user_id])
-    modules = db.relationship('CourseModule', back_populates='course', lazy=True, cascade='all, delete-orphan')
+    modules = db.relationship('TrajectoryModule', back_populates='trajectory', lazy=True, cascade='all, delete-orphan')
 
 
-class CourseModule(db.Model):
-    """Модуль курса (раздел/тема)."""
+class TrajectoryModule(db.Model):
+    """Модуль учебной траектории (раздел/тема)."""
     __tablename__ = 'CourseModules'
     module_id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey('Courses.course_id'), nullable=False, index=True)
@@ -345,7 +387,7 @@ class CourseModule(db.Model):
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
 
-    course = db.relationship('Course', back_populates='modules')
+    trajectory = db.relationship('LearningTrajectory', back_populates='modules')
     lessons = db.relationship('Lesson', back_populates='course_module', lazy=True)
 
 
@@ -464,6 +506,7 @@ class Lesson(db.Model):
     lesson_id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False)
     course_module_id = db.Column(db.Integer, db.ForeignKey('CourseModules.module_id'), nullable=True, index=True)
+    exam_course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
     lesson_type = db.Column(db.String(50), default='regular')
     lesson_date = db.Column(db.DateTime, nullable=False)
     duration = db.Column(db.Integer, default=60)
@@ -496,7 +539,8 @@ class Lesson(db.Model):
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
 
     student = db.relationship('Student', back_populates='lessons')
-    course_module = db.relationship('CourseModule', foreign_keys=[course_module_id], back_populates='lessons')
+    course_module = db.relationship('TrajectoryModule', foreign_keys=[course_module_id], back_populates='lessons')
+    exam_course = db.relationship('Course', foreign_keys=[exam_course_id])
     homework_tasks = db.relationship('LessonTask', back_populates='lesson', lazy=True, cascade='all, delete-orphan')
 
     @property
@@ -1416,17 +1460,19 @@ class Assignment(db.Model):
     max_attempts_default = db.Column(db.Integer, nullable=True)  # Макс. попыток сдачи по умолчанию (1 если NULL)
     attempts_per_task = db.Column(db.Boolean, default=False, nullable=False)  # True: попытки считаются на каждое задание; False: на всю работу
 
-    created_by_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)  # Учитель, создавший работу
-    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=True)  # Связь с уроком (если есть)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    lesson_id = db.Column(db.Integer, db.ForeignKey('Lessons.lesson_id'), nullable=True)
+    exam_course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
 
     rubric_template_id = db.Column(db.Integer, db.ForeignKey('RubricTemplates.rubric_id'), nullable=True, index=True)
-    
+
     created_at = db.Column(db.DateTime, default=moscow_now, nullable=False)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now, nullable=False)
     is_active = db.Column(db.Boolean, default=True, nullable=False)  # Можно ли еще работать с этой работой
     
     created_by = db.relationship('User', foreign_keys=[created_by_id], backref='created_assignments')
     lesson = db.relationship('Lesson', backref='assignments')
+    exam_course = db.relationship('Course', foreign_keys=[exam_course_id])
     tasks = db.relationship('AssignmentTask', back_populates='assignment', lazy=True, cascade='all, delete-orphan')
     submissions = db.relationship('Submission', back_populates='assignment', lazy=True, cascade='all, delete-orphan')
     rubric_template = db.relationship('RubricTemplate', foreign_keys=[rubric_template_id])
@@ -1778,17 +1824,23 @@ class QAComment(db.Model):
 
 
 class TheoryBlock(db.Model):
-    """Теоретический блок по заданию ЕГЭ (один блок на номер задания 1–27)."""
+    """Теоретический блок по заданию экзамена (привязан к course_id + task_number)."""
     __tablename__ = 'TheoryBlocks'
     id = db.Column(db.Integer, primary_key=True)
-    task_number = db.Column(db.Integer, nullable=False, unique=True, index=True)  # 1–27
-    title = db.Column(db.String(200), nullable=True)  # например "Задание 5. Графы"
-    content = db.Column(db.Text, nullable=True)  # HTML или Markdown — материал закинешь сам
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    task_number = db.Column(db.Integer, nullable=False, index=True)
+    title = db.Column(db.String(200), nullable=True)
+    content = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     author_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
 
+    course = db.relationship('Course', foreign_keys=[course_id])
     author = db.relationship('User', foreign_keys=[author_id])
+
+    __table_args__ = (
+        db.UniqueConstraint('course_id', 'task_number', name='uq_theory_course_task'),
+    )
 
 
 class StudentTheoryAccess(db.Model):
@@ -1797,12 +1849,50 @@ class StudentTheoryAccess(db.Model):
     __tablename__ = 'StudentTheoryAccess'
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id', ondelete='CASCADE'), nullable=False, index=True)
-    task_number = db.Column(db.Integer, nullable=False, index=True)  # 1–27
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=True, index=True)
+    task_number = db.Column(db.Integer, nullable=False, index=True)
     can_view = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
 
-    __table_args__ = (db.UniqueConstraint('student_id', 'task_number', name='uq_student_theory_access'),)
+    __table_args__ = (db.UniqueConstraint('student_id', 'course_id', 'task_number', name='uq_student_theory_access'),)
 
     student = db.relationship('Student', foreign_keys=[student_id])
+    course = db.relationship('Course', foreign_keys=[course_id])
+
+
+class StudentCourseEnrollment(db.Model):
+    """Подписка ученика на программу подготовки (тип экзамена)."""
+    __tablename__ = 'StudentCourseEnrollments'
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('Students.student_id'), nullable=False, index=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=False, index=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    enrolled_at = db.Column(db.DateTime, default=moscow_now)
+
+    student = db.relationship('Student', foreign_keys=[student_id], backref='course_enrollments')
+    course = db.relationship('Course', back_populates='enrollments')
+
+    __table_args__ = (
+        db.UniqueConstraint('student_id', 'course_id', name='uq_student_course_enrollment'),
+    )
+
+    def __repr__(self):
+        return f'<Enrollment student={self.student_id} course={self.course_id}>'
+
+
+class GradingScale(db.Model):
+    """Шкала перевода первичных баллов (ЕГЭ: 0-100, ОГЭ: 2-5)."""
+    __tablename__ = 'GradingScales'
+    id = db.Column(db.Integer, primary_key=True)
+    course_id = db.Column(db.Integer, db.ForeignKey('ExamCourses.id'), nullable=False, index=True)
+    min_primary = db.Column(db.Integer, nullable=False)
+    max_primary = db.Column(db.Integer, nullable=False)
+    final_grade = db.Column(db.Integer, nullable=False)
+    label = db.Column(db.String(50), nullable=True)
+
+    course = db.relationship('Course', back_populates='grading_scales')
+
+    def __repr__(self):
+        return f'<GradingScale course={self.course_id} {self.min_primary}-{self.max_primary}={self.final_grade}>'
 

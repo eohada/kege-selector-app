@@ -20,6 +20,7 @@ from app.limiter import limiter
 from datetime import timedelta
 from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission, Lesson, LessonTask
 from app.utils.subscription_access import get_effective_access_for_user
+from app.utils.course_tasks import get_task_numbers, get_max_score_for_task
 from app.utils.cross_env_login import verify_cross_env_token
 from core.audit_logger import audit_logger
 
@@ -338,7 +339,7 @@ def demo_start():
         total_score = 0
         at_objects = []
         for idx, t in enumerate(demo_tasks):
-            score = 2 if t.task_number >= 19 else 1
+            score = get_max_score_for_task(None, t.task_number)
             total_score += score
             at = AssignmentTask(
                 assignment_id=assignment.assignment_id,
@@ -386,9 +387,10 @@ def demo_start():
             ))
 
     # --- Student stats for analytics — varied distribution ---
+    task_numbers = get_task_numbers(None)
     weak_tasks = {3, 7, 12, 18, 24}
     strong_tasks = {1, 5, 8, 14, 20}
-    for tn in range(1, 28):
+    for tn in task_numbers:
         if tn in weak_tasks:
             correct = random.randint(2, 6)
             incorrect = random.randint(4, 9)

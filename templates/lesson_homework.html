@@ -1176,7 +1176,7 @@
                         <a href="{{ url_for('lessons.review_queue', source='lessons', lesson_id=lesson.lesson_id, assignment_type=assignment_type, status='submitted') }}" class="neo-button accent" style="text-decoration:none;">
                             <i class="fas fa-check"></i> Проверка (очередь)
                         </a>
-                        <a href="{{ url_for('kege_generator.kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button outline"><i class="fas fa-plus"></i> Добавить задания</a>
+                        <a href="{{ url_for('task_generator.task_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button outline"><i class="fas fa-plus"></i> Добавить задания</a>
                         {% if assignment_type == 'homework' %}
                         <a href="{{ url_for('lessons.lesson_homework_export_md', lesson_id=lesson.lesson_id) }}" class="neo-button ghost" target="_blank"><i class="fas fa-download"></i> Экспорт ДЗ</a>
                         {% elif assignment_type == 'classwork' %}
@@ -1199,7 +1199,7 @@
                     <div class="empty-state-icon">{{ ui_icon('nav.assignments', 'lg') }}</div>
                     <h3>Заданий пока нет</h3>
                      {% if not is_student_view and not is_parent_view %}
-                    <a href="{{ url_for('kege_generator.kege_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button accent">Добавить задания</a>
+                    <a href="{{ url_for('task_generator.task_generator', lesson_id=lesson.lesson_id, assignment_type=assignment_type) }}" class="neo-button accent">Добавить задания</a>
                     {% endif %}
                 </div>
                 {% endif %}

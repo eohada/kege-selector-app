@@ -26,8 +26,8 @@ from app.models import (
     Topic,
     Lesson,
     LessonTask,
-    Course,
-    CourseModule,
+    LearningTrajectory,
+    TrajectoryModule,
     db,
     moscow_now,
     MOSCOW_TZ,
@@ -519,9 +519,9 @@ def student_learning_plan(student_id: int):
     if can_edit:
         topics = Topic.query.order_by(Topic.name.asc()).all()
         modules = (
-            CourseModule.query.join(Course, CourseModule.course_id == Course.course_id)
-            .filter(Course.student_id == student.student_id)
-            .order_by(CourseModule.order_index.asc(), CourseModule.module_id.asc())
+            TrajectoryModule.query.join(LearningTrajectory, TrajectoryModule.course_id == LearningTrajectory.course_id)
+            .filter(LearningTrajectory.student_id == student.student_id)
+            .order_by(TrajectoryModule.order_index.asc(), TrajectoryModule.module_id.asc())
             .all()
         )
 
@@ -1810,13 +1810,13 @@ def lesson_new(student_id):
 
     if course_module_id:
         try:
-            from app.models import CourseModule, Course
-            module = CourseModule.query.filter_by(module_id=course_module_id).first()
+            from app.models import TrajectoryModule, LearningTrajectory
+            module = TrajectoryModule.query.filter_by(module_id=course_module_id).first()
             if not module:
                 flash('Модуль курса не найден. Урок будет создан без привязки к модулю.', 'warning')
                 course_module_id = None
             else:
-                course = Course.query.filter_by(course_id=module.course_id).first()
+                course = LearningTrajectory.query.filter_by(course_id=module.course_id).first()
                 if not course or course.student_id != student.student_id:
                     flash('Модуль курса не относится к этому ученику. Урок будет создан без привязки к модулю.', 'warning')
                     course_module_id = None
@@ -1919,8 +1919,8 @@ def lesson_new(student_id):
             return redirect(url_for('assignments.assignment_create', source='lesson', lesson_id=lesson.lesson_id, assignment_type='exam'))
         if return_to == 'course' and course_module_id:
             try:
-                from app.models import CourseModule
-                module = CourseModule.query.filter_by(module_id=course_module_id).first()
+                from app.models import TrajectoryModule
+                module = TrajectoryModule.query.filter_by(module_id=course_module_id).first()
                 if module:
                     return redirect(url_for('courses.course_view', course_id=module.course_id, _anchor=f'module-{course_module_id}'))
             except Exception:

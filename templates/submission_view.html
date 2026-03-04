@@ -1,3 +1,4 @@
+{% from '_ui_icon.html' import ui_icon %}
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -189,6 +190,16 @@
         .status-graded { background: var(--success); color: white; }
         .status-returned { background: var(--warning); color: white; }
         .back-to-assignments .ui-icon-slot { display: inline-flex; min-width: 1.25em; min-height: 1.25em; vertical-align: middle; }
+        
+        .file-upload-zone {
+            border: 2px dashed var(--stroke-1);
+            border-radius: var(--radius-md);
+            padding: 1.5rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            transition: background 0.2s ease;
+        }
+        .file-upload-zone:hover, .file-upload-zone.bg-light { background: rgba(255,255,255,0.04); }
     </style>
     <script>
         (function(){
@@ -225,6 +236,7 @@
                         {% elif submission.status == 'ASSIGNED' %}Назначено
                         {% elif submission.status == 'IN_PROGRESS' %}В процессе
                         {% elif submission.status == 'SUBMITTED' %}Сдано
+                        {% elif submission.status == 'NEEDS_MANUAL_REVIEW' %}Требует проверки
                         {% elif submission.status == 'GRADED' %}Проверено
                         {% elif submission.status == 'RETURNED' %}На доработку
                         {% else %}{{ submission.status }}{% endif %}
@@ -250,7 +262,7 @@
                     <span class="info-value">{{ submission.started_at.strftime('%d.%m.%Y %H:%M') }}</span>
                 </div>
                 {% endif %}
-                {% if submission.total_score is not none and submission.status in ['SUBMITTED', 'GRADED'] %}
+                {% if submission.total_score is not none and submission.status in ['SUBMITTED', 'GRADED', 'NEEDS_MANUAL_REVIEW'] %}
                 <div class="info-item">
                     <span class="info-label">Оценка</span>
                     <span class="info-value" style="color: var(--accent-1); font-size: 1.2em;">
@@ -360,6 +372,19 @@
                     </div>
                     {% endif %}
                     <label for="answer-{{ task_item.assignment_task.assignment_task_id }}" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Ваш ответ:</label>
+                    {% if task_item.requires_manual_review and submission.status in ['IN_PROGRESS', 'RETURNED'] and (not attempts_per_task or task_item.task_attempts_used < task_item.max_attempts_for_task) %}
+                    <div class="file-upload-zone"
+                         ondragover="event.preventDefault(); this.classList.add('bg-light')"
+                         ondragleave="this.classList.remove('bg-light')"
+                         ondrop="handleFileDrop(event, {{ submission.submission_id }}, {{ task_item.assignment_task.assignment_task_id }})">
+                        {{ ui_icon('action.backup', 'md') }}
+                        <p class="text-muted mb-1" style="margin: 0.5rem 0; color: var(--text-muted);">Перетащите файл сюда или</p>
+                        <label class="neo-button outline sm" style="cursor: pointer; display: inline-block; padding: 0.5rem 1rem; font-weight: 600;">
+                            Выберите файл
+                            <input type="file" class="d-none" style="display: none;" onchange="uploadAnswerFile(this, {{ submission.submission_id }}, {{ task_item.assignment_task.assignment_task_id }})">
+                        </label>
+                    </div>
+                    {% endif %}
                     {% if loop.first and current_user.is_demo_user %}
                     <div id="demo-answer-block" style="margin-bottom: 0.5rem;">
                         <button type="button" id="demo-paste-answer" class="neo-button accent sm" style="margin-bottom: 0.5rem; display: inline-flex; align-items: center; gap: 0.35rem;">Вставить ответ</button>
@@ -462,7 +487,7 @@
             </div>
             {% endif %}
         </form>
-        {% elif submission.status in ['SUBMITTED'] or (submission.status == 'GRADED' and (attempts_left is not defined or attempts_left <= 0)) %}
+        {% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] or (submission.status == 'GRADED' and (attempts_left is not defined or attempts_left <= 0)) %}
         
         {% for task_item in tasks_data %}
         <div class="task-card">
@@ -1167,6 +1192,4 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
-    <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
-</body>
-</html>
+    <script src="{{ url_for('static', filename='confirm-di

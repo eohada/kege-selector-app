@@ -320,6 +320,7 @@
                                                 {% elif submission.status == 'IN_PROGRESS' %}В процессе
                                                 {% elif submission.status == 'SUBMITTED' %}Сдано
                                                 {% elif submission.status == 'LATE' %}Сдано (поздно)
+                                                {% elif submission.status == 'NEEDS_MANUAL_REVIEW' %}Требует проверки
                                                 {% elif submission.status == 'GRADED' %}Проверено
                                                 {% elif submission.status == 'RETURNED' %}На доработку
                                                 {% else %}{{ submission.status }}{% endif %}
@@ -334,7 +335,7 @@
                                         <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="neo-button outline sm" style="text-decoration:none;">
                                             Открыть
                                         </a>
-                                        {% if submission.status in ['SUBMITTED', 'LATE'] %}
+                                        {% if submission.status in ['SUBMITTED', 'LATE', 'NEEDS_MANUAL_REVIEW'] %}
                                         <a href="{{ url_for('assignments.submission_grade_view', submission_id=submission.submission_id) }}" class="neo-button accent sm" style="text-decoration:none;">
                                             Проверить
                                         </a>

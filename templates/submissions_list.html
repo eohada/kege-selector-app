@@ -60,6 +60,7 @@
                                 {% elif submission.status == 'ASSIGNED' %}Назначено
                                 {% elif submission.status == 'IN_PROGRESS' %}В процессе
                                 {% elif submission.status == 'SUBMITTED' %}Сдано
+                                {% elif submission.status == 'NEEDS_MANUAL_REVIEW' %}Требует проверки
                                 {% elif submission.status == 'GRADED' %}Проверено
                                 {% elif submission.status == 'RETURNED' %}На доработку
                                 {% else %}{{ submission.status }}{% endif %}
@@ -75,7 +76,7 @@
                             {% if submission.submitted_at %}
                             <div style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('action.check', 'sm') }} Сдано: <strong>{{ submission.submitted_at.strftime('%d.%m.%Y %H:%M') }}</strong></div>
                             {% endif %}
-                            {% if submission.status == 'GRADED' and submission.total_score is not none %}
+                            {% if submission.status in ['GRADED', 'NEEDS_MANUAL_REVIEW'] and submission.total_score is not none %}
                             <div style="margin-top: 0.5rem; font-size: 1.1em; font-weight: 700; color: var(--accent-1);">
                                 Оценка: {{ submission.total_score }}/{{ submission.max_score }} ({{ "%.1f"|format(submission.percentage or 0) }}%)
                             </div>
@@ -87,7 +88,7 @@
                             {{ ui_icon('action.play', 'sm') }}
                             {% if submission.status == 'ASSIGNED' %}Начать
                             {% elif submission.status == 'IN_PROGRESS' %}Продолжить
-                            {% elif submission.status in ['SUBMITTED', 'GRADED', 'RETURNED'] %}Просмотр
+                            {% elif submission.status in ['SUBMITTED', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW'] %}Просмотр
                             {% else %}Открыть{% endif %}
                         </a>
                     </div>

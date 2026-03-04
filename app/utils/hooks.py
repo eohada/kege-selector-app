@@ -365,7 +365,7 @@ def register_hooks(app):
                 'schedule.',
                 'students.',
                 'assignments.',
-                'kege_generator.',
+                'task_generator.',
                 'diagnostics.',
                 'gradebook.',
                 'groups.',

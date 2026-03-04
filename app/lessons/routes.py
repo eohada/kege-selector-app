@@ -16,11 +16,12 @@ from app.auth.rbac_utils import check_access, get_user_scope
 from app.lessons import lessons_bp
 from app.lessons.forms import LessonForm, ensure_introductory_without_homework
 from app.lessons.utils import get_sorted_assignments, get_assignment_blocks, perform_auto_check, normalize_answer_value  # comment
-from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, LessonWhiteboard, MiroUserToken, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
+from app.models import Lesson, LessonTask, LessonTaskAttempt, LessonMessage, Student, Tasks, LessonTaskTeacherComment, User, LessonMaterialLink, MaterialAsset, GradebookEntry, Assignment, Submission, LessonWhiteboard, MiroUserToken, Course, db, moscow_now, MOSCOW_TZ, TOMSK_TZ
 from sqlalchemy.orm.attributes import flag_modified
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents, enqueue_assignment_notification
 from app.models import FamilyTie  # для доступа родителя к диалогам
+from app.utils.course_tasks import get_task_numbers
 
 logger = logging.getLogger(__name__)
 
@@ -696,7 +697,7 @@ def review_queue():
                     qs0 = qs0.filter(Submission.student_id.in_(accessible_student_ids))
         rows2 = qs0.with_entities(Submission.status, db.func.count(Submission.submission_id)).group_by(Submission.status).all()
         raw = { (s or '').upper(): int(c or 0) for s, c in rows2 }
-        status_counts_assignments['submitted'] = raw.get('SUBMITTED', 0) + raw.get('LATE', 0)
+        status_counts_assignments['submitted'] = raw.get('SUBMITTED', 0) + raw.get('LATE', 0) + raw.get('NEEDS_MANUAL_REVIEW', 0)
         status_counts_assignments['returned'] = raw.get('RETURNED', 0)
         status_counts_assignments['graded'] = raw.get('GRADED', 0)
         status_counts_assignments['pending'] = raw.get('ASSIGNED', 0) + raw.get('IN_PROGRESS', 0)
@@ -769,7 +770,7 @@ def review_queue():
     assignment_cards = []
     if source in {'all', 'assignments'}:
         status_map = {
-            'submitted': ['SUBMITTED', 'LATE'],
+            'submitted': ['SUBMITTED', 'LATE', 'NEEDS_MANUAL_REVIEW'],
             'returned': ['RETURNED'],
             'graded': ['GRADED'],
             'pending': ['ASSIGNED', 'IN_PROGRESS'],
@@ -809,7 +810,7 @@ def review_queue():
                 deadline = None
             if deadline is not None and getattr(deadline, 'tzinfo', None) is None:
                 deadline = deadline.replace(tzinfo=MOSCOW_TZ)
-            overdue_flag = 1 if (deadline and now_local > deadline and (s.status or '').upper() in ['SUBMITTED', 'LATE']) else 0
+            overdue_flag = 1 if (deadline and now_local > deadline and (s.status or '').upper() in ['SUBMITTED', 'LATE', 'NEEDS_MANUAL_REVIEW']) else 0
             late_flag = 1 if (s.status or '').upper() == 'LATE' else 0
             dt = (s.submitted_at or s.updated_at or s.assigned_at or now_local)
             return (overdue_flag, late_flag, dt)
@@ -847,6 +848,55 @@ def review_queue():
         status_counts=status_counts,
         lesson_id=lesson_id,
         assignment_id=assignment_id,
+    )
+
+
+@lessons_bp.route('/tutor/reviews')
+@login_required
+@check_access('assignment.grade')
+def tutor_manual_reviews():
+    """
+    Панель ручной проверки: все сдачи со статусом NEEDS_MANUAL_REVIEW.
+    Фильтр по курсу (course_id) — опционально.
+    """
+    course_id = request.args.get('course_id', type=int)
+    scope = get_user_scope(current_user)
+    accessible_student_ids = None
+    if not scope.get('can_see_all'):
+        accessible_student_ids = _resolve_accessible_student_ids(scope) or []
+
+    q = (
+        Submission.query
+        .options(
+            db.joinedload(Submission.assignment).joinedload(Assignment.exam_course),
+            db.joinedload(Submission.student),
+        )
+        .join(Student, Student.student_id == Submission.student_id)
+        .join(Assignment, Assignment.assignment_id == Submission.assignment_id)
+        .filter(Submission.status == 'NEEDS_MANUAL_REVIEW')
+    )
+
+    if course_id:
+        q = q.filter(Assignment.exam_course_id == course_id)
+
+    if not scope.get('can_see_all'):
+        q = q.filter(Assignment.created_by_id == current_user.id)
+        if accessible_student_ids is not None:
+            if not accessible_student_ids:
+                q = q.filter(False)
+            else:
+                q = q.filter(Submission.student_id.in_(accessible_student_ids))
+
+    submissions = q.order_by(Submission.submitted_at.desc().nullslast(), Submission.assigned_at.desc()).limit(500).all()
+
+    courses = Course.query.filter(Course.is_active == True).order_by(Course.title).all()
+
+    return render_template(
+        'tutor_reviews.html',
+        submissions=submissions,
+        courses=courses,
+        course_id=course_id,
+        active_page='tutor_reviews',
     )
 
 
@@ -2401,7 +2451,7 @@ def lesson_manual_create(lesson_id):
             logger.error(f"Error creating manual tasks: {e}", exc_info=True)
             return jsonify({'success': False, 'error': str(e)}), 500
 
-    return render_template('lesson_manual_create.html', lesson=lesson, assignment_type=assignment_type)
+    return render_template('lesson_manual_create.html', lesson=lesson, assignment_type=assignment_type, task_numbers=get_task_numbers(None))
 
 @lessons_bp.route('/lesson/<int:lesson_id>/content/save', methods=['POST'])
 @login_required

@@ -5,7 +5,7 @@ from flask_login import login_required, current_user
 
 from app.courses import courses_bp
 from app.courses.forms import CourseForm, CourseModuleForm
-from app.models import db, Student, Lesson, Course, CourseModule, User
+from app.models import db, Student, Lesson, LearningTrajectory, TrajectoryModule, User
 from app.auth.rbac_utils import get_user_scope
 
 
@@ -63,8 +63,8 @@ def _guard_student(student_id: int) -> Student:
     return student
 
 
-def _guard_course(course_id: int) -> Course:
-    course = Course.query.get_or_404(course_id)
+def _guard_course(course_id: int) -> LearningTrajectory:
+    course = LearningTrajectory.query.get_or_404(course_id)
     student = Student.query.get_or_404(course.student_id)
     if not _can_access_student(student):
         abort(403)
@@ -75,7 +75,7 @@ def _guard_course(course_id: int) -> Course:
 @login_required
 def student_courses(student_id: int):
     student = _guard_student(student_id)
-    courses = Course.query.filter_by(student_id=student.student_id).order_by(Course.updated_at.desc(), Course.created_at.desc()).all()
+    courses = LearningTrajectory.query.filter_by(student_id=student.student_id).order_by(LearningTrajectory.updated_at.desc(), LearningTrajectory.created_at.desc()).all()
     return render_template('courses_list.html', student=student, courses=courses)
 
 
@@ -89,7 +89,7 @@ def course_new(student_id: int):
 
     form = CourseForm()
     if form.validate_on_submit():
-        course = Course(
+        course = LearningTrajectory(
             student_id=student.student_id,
             created_by_user_id=current_user.id,
             title=form.title.data.strip(),
@@ -133,7 +133,7 @@ def course_view(course_id: int):
     course = _guard_course(course_id)
     student = Student.query.get_or_404(course.student_id)
 
-    modules = CourseModule.query.filter_by(course_id=course.course_id).order_by(CourseModule.order_index.asc(), CourseModule.module_id.asc()).all()
+    modules = TrajectoryModule.query.filter_by(course_id=course.course_id).order_by(TrajectoryModule.order_index.asc(), TrajectoryModule.module_id.asc()).all()
     module_ids = [m.module_id for m in modules]
 
     lessons = Lesson.query.filter_by(student_id=student.student_id).order_by(Lesson.lesson_date.desc()).all()
@@ -173,7 +173,7 @@ def module_new(course_id: int):
 
     form = CourseModuleForm()
     if form.validate_on_submit():
-        module = CourseModule(
+        module = TrajectoryModule(
             course_id=course.course_id,
             title=form.title.data.strip(),
             description=form.description.data.strip() if form.description.data else None,
@@ -201,7 +201,7 @@ def course_assign_lesson(course_id: int):
         flash('Выберите урок и модуль.', 'danger')
         return redirect(url_for('courses.course_view', course_id=course.course_id))
 
-    module = CourseModule.query.filter_by(module_id=module_id, course_id=course.course_id).first()
+    module = TrajectoryModule.query.filter_by(module_id=module_id, course_id=course.course_id).first()
     if not module:
         flash('Модуль не найден.', 'danger')
         return redirect(url_for('courses.course_view', course_id=course.course_id))

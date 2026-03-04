@@ -12,7 +12,7 @@ import math
 import logging
 from datetime import datetime
 
-from app.models import db
+from app.models import db, Course
 from core.db_models import (
     Tasks,
     KnowledgeNode,
@@ -186,16 +186,31 @@ class AnalyticsEngine:
         return new_rating
 
     @classmethod
-    def predict_exam_score(cls, user_id: int, subject_id: int | None = None) -> float:
+    def _subject_from_course(cls, course_id: int) -> Subject | None:
+        """Определяет Subject по course_id. Маппинг: ege_informatics -> kege, oge_informatics -> oge."""
+        course = Course.query.get(course_id)
+        if not course:
+            return None
+        slug_map = {'ege_informatics': 'kege', 'oge_informatics': 'oge'}
+        subject_slug = slug_map.get((course.slug or '').strip(), 'kege')
+        return Subject.query.filter_by(slug=subject_slug).first()
+
+    @classmethod
+    def predict_exam_score(cls, user_id: int, subject_id: int | None = None, course_id: int | None = None) -> float:
         """
         Предсказывает первичный балл (математическое ожидание) по предмету.
-        Если subject_id не передан, берётся предмет kege.
+        Если subject_id не передан, берётся по course_id или предмет kege.
         """
         if subject_id is None:
-            subj = Subject.query.filter_by(slug='kege').first()
-            if not subj:
-                return 0.0
-            subject_id = subj.id
+            if course_id is not None:
+                subj = cls._subject_from_course(course_id)
+                if subj:
+                    subject_id = subj.id
+            if subject_id is None:
+                subj = Subject.query.filter_by(slug='kege').first()
+                if not subj:
+                    return 0.0
+                subject_id = subj.id
         nodes = KnowledgeNode.query.filter_by(subject_id=subject_id).all()
         if not nodes:
             return 0.0

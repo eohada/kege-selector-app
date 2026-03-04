@@ -51,9 +51,11 @@ def _fix_pg_serial_sequence(table_name, pk_column):  # Поднимаем sequen
         db.session.rollback()  # Откатываем возможные изменения
         return False  # Сообщаем, что починить не удалось
 
-def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None, recipient_ids=None):
-    """recipient_ids: исключать задания, уже в работах у этих учеников."""
+def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None, recipient_ids=None, course_id=None):
+    """recipient_ids: исключать задания, уже в работах у этих учеников.
+    course_id: фильтр по программе подготовки (ExamCourse)."""
     assign_excl = ""
+    course_filter = ""
     params_extra = {}
     if recipient_ids:
         try:
@@ -63,6 +65,9 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
                 assign_excl = ' AND T.task_id NOT IN (SELECT AT.task_id FROM "AssignmentTasks" AT JOIN "Submissions" S ON S.assignment_id = AT.assignment_id WHERE S.student_id = ANY(:recipient_ids))'
         except (TypeError, ValueError):
             pass
+    if course_id:
+        course_filter = ' AND T.course_id = :course_id'
+        params_extra['course_id'] = course_id
 
     if student_id:
         params = {'task_type': task_type, 'limit_count': limit_count, 'student_id': student_id, **params_extra}
@@ -84,7 +89,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
                         JOIN "Lessons" AS L ON LT.lesson_id = L.lesson_id
                         WHERE L.student_id = :student_id
                     )
-                    """ + assign_excl + """
+                    """ + assign_excl + course_filter + """
                 ORDER BY RANDOM()
                 LIMIT :limit_count
             """)
@@ -107,7 +112,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
                         JOIN "Lessons" AS L ON LT.lesson_id = L.lesson_id
                         WHERE L.student_id = :student_id
                     )
-                    """ + assign_excl + """
+                    """ + assign_excl + course_filter + """
                 ORDER BY RANDOM()
                 LIMIT :limit_count
             """)
@@ -121,7 +126,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
                 WHERE T.task_number = :task_type
                     AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                     AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
-                    """ + assign_excl + """
+                    """ + assign_excl + course_filter + """
                 ORDER BY RANDOM()
                 LIMIT :limit_count
             """)
@@ -133,7 +138,7 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
                     AND T.task_id NOT IN (SELECT task_fk FROM "UsageHistory")
                     AND T.task_id NOT IN (SELECT task_fk FROM "SkippedTasks")
                     AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
-                    """ + assign_excl + """
+                    """ + assign_excl + course_filter + """
                 ORDER BY RANDOM()
                 LIMIT :limit_count
             """)
@@ -148,10 +153,11 @@ def get_unique_tasks(task_type, limit_count, use_skipped=False, student_id=None,
     tasks = [tasks_dict[tid] for tid in task_ids if tid in tasks_dict]
     return tasks
 
-def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_tag=None, recipient_ids=None):
+def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_tag=None, recipient_ids=None, course_id=None):
     """
     Возвращает одно следующее уникальное задание по условиям (или None).
     recipient_ids: список student_id — исключать задания, уже входящие в работы, назначенные этим ученикам.
+    course_id: фильтр по программе подготовки (ExamCourse).
     """
     params = {'task_type': task_type}
 
@@ -173,6 +179,11 @@ def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_t
         except (TypeError, ValueError):
             pass
 
+    course_filter = ""
+    if course_id:
+        course_filter = " AND T.course_id = :course_id"
+        params['course_id'] = course_id
+
     if student_id:
         params['student_id'] = student_id
         sql_query = text(f"""
@@ -183,6 +194,7 @@ def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_t
                 AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
                 {skip_where}
                 {assign_excl}
+                {course_filter}
                 AND T.task_id NOT IN (
                     SELECT STS.task_id
                     FROM "StudentTaskSeen" AS STS
@@ -206,6 +218,7 @@ def get_next_unique_task(task_type, use_skipped=False, student_id=None, lesson_t
                 AND T.task_id NOT IN (SELECT task_fk FROM "BlacklistTasks")
                 {skip_where}
                 {assign_excl}
+                {course_filter}
             ORDER BY RANDOM()
             LIMIT 1
         """)

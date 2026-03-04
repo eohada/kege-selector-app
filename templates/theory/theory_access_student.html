@@ -32,13 +32,14 @@
             <main class="app-content">
                 <div class="access-student-container">
                     <section class="dashboard-hero" style="margin-bottom: 1.5rem;">
-                        <a href="{{ url_for('theory.manage_access_index') }}" style="color: var(--text-muted); text-decoration: none; margin-bottom: 0.5rem; display: inline-block;">← К списку учеников</a>
+                        <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" style="color: var(--text-muted); text-decoration: none; margin-bottom: 0.5rem; display: inline-block;">← К списку учеников</a>
                         <h1 class="hero-title">Доступ к теории: {{ student.name or 'Ученик' }}</h1>
                         <p class="form-hint">Включите номера заданий, по которым ученик может смотреть теорию. Снятая галочка = просмотр запрещён. По умолчанию все разрешены.</p>
                     </section>
 
-                    <form method="post" action="{{ url_for('theory.manage_access_student', student_id=student.student_id) }}">
+                    <form method="post" action="{{ url_for('theory.manage_access_student', student_id=student.student_id, course_id=course_id) if course_id else url_for('theory.manage_access_student', student_id=student.student_id) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% if course_id %}<input type="hidden" name="course_id" value="{{ course_id }}">{% endif %}
                         <div class="access-grid">
                             {% for num in task_numbers %}
                             <div class="access-item">
@@ -49,7 +50,7 @@
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="neo-button accent">Сохранить</button>
-                            <a href="{{ url_for('theory.manage_access_index') }}" class="neo-button ghost">Отмена</a>
+                            <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" class="neo-button ghost">Отмена</a>
                         </div>
                     </form>
                 </div>

@@ -4,6 +4,8 @@
 """
 from core.db_models import (
     db,
+    Course,
+    CourseTaskTemplate,
     Subject,
     KnowledgeNode,
     UserMastery,
@@ -20,8 +22,8 @@ from core.db_models import (
     StudentDiagnosticCheckpoint,
     SchoolGroup,
     GroupStudent,
-    Course,
-    CourseModule,
+    LearningTrajectory,
+    TrajectoryModule,
     MaterialAsset,
     LessonMaterialLink,
     LessonRoomTemplate,
@@ -72,10 +74,14 @@ from core.db_models import (
     UserConsent,
     TheoryBlock,
     StudentTheoryAccess,
+    StudentCourseEnrollment,
+    GradingScale,
 )
 
 __all__ = [
     'db',
+    'Course',
+    'CourseTaskTemplate',
     'Subject',
     'KnowledgeNode',
     'UserMastery',
@@ -92,8 +98,8 @@ __all__ = [
     'StudentDiagnosticCheckpoint',
     'SchoolGroup',
     'GroupStudent',
-    'Course',
-    'CourseModule',
+    'LearningTrajectory',
+    'TrajectoryModule',
     'MaterialAsset',
     'LessonMaterialLink',
     'LessonRoomTemplate',
@@ -144,4 +150,6 @@ __all__ = [
     'UserConsent',
     'TheoryBlock',
     'StudentTheoryAccess',
+    'StudentCourseEnrollment',
+    'GradingScale',
 ]

@@ -76,7 +76,7 @@
           <div class="trainer-v2-topbar-left">
             <label class="trainer-v2-label" for="tv2TaskType">тип задания</label>
             <select id="tv2TaskType" class="trainer-v2-select">
-              {% for n in range(1, 28) %}
+              {% for n in task_numbers %}
                 <option value="{{ n }}">{{ n }}</option>
               {% endfor %}
             </select>

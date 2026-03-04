@@ -26,6 +26,7 @@ from core.db_models import Tester, task_topics
 from core.audit_logger import audit_logger
 from app import csrf
 from app.auth.rbac_utils import require_admin, has_permission, check_access
+from app.utils.course_tasks import get_task_numbers
 from app.auth.permissions import ALL_PERMISSIONS, PERMISSION_CATEGORIES
 
 logger = logging.getLogger(__name__)
@@ -1512,7 +1513,8 @@ def debug_export():
     task_number = request.args.get('task_number', type=int)
     custom_html = request.args.get('custom_html', '')
     
-    available_numbers = sorted([n for n in range(1, 28) if Tasks.query.filter_by(task_number=n).first()])
+    task_numbers = get_task_numbers(None)
+    available_numbers = sorted([n for n in task_numbers if Tasks.query.filter_by(task_number=n).first()])
     
     tasks_list = []
     

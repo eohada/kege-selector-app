@@ -380,7 +380,7 @@
             const genLink = document.getElementById('generatorLink');
             if (genLink && sel) {
                 const ids = Array.from(sel.selectedOptions).map(o => o.value).join(',');
-                genLink.href = `/kege-generator?recipient_ids=${ids}`;
+                genLink.href = `/task-generator?recipient_ids=${ids}`;
             }
         }
 

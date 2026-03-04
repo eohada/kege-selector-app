@@ -37,7 +37,7 @@
             <main class="app-content">
                 <div class="access-container">
                     <section class="dashboard-hero" style="margin-bottom: 1.5rem;">
-                        <a href="{{ url_for('theory.manage_list') }}" style="color: var(--text-muted); text-decoration: none; margin-bottom: 0.5rem; display: inline-block;">← Управление теорией</a>
+                        <a href="{{ url_for('theory.manage_list', course_id=course_id) if course_id else url_for('theory.manage_list') }}" style="color: var(--text-muted); text-decoration: none; margin-bottom: 0.5rem; display: inline-block;">← Управление теорией</a>
                         <h1 class="hero-title">Доступ к теории по ученикам</h1>
                         <p class="hero-subtitle">Выберите ученика, чтобы открыть или закрыть просмотр теории по конкретным номерам заданий (1–27).</p>
                     </section>
@@ -47,7 +47,7 @@
                         {% for s in students %}
                         <div class="student-row">
                             <span>{{ s.name or 'Ученик #' ~ s.student_id }}</span>
-                            <a href="{{ url_for('theory.manage_access_student', student_id=s.student_id) }}">Настроить доступ →</a>
+                            <a href="{{ url_for('theory.manage_access_student', student_id=s.student_id, course_id=course_id) if course_id else url_for('theory.manage_access_student', student_id=s.student_id) }}">Настроить доступ →</a>
                         </div>
                         {% endfor %}
                     </div>

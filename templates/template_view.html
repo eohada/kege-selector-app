@@ -116,7 +116,7 @@
                 <div style="font-size: 4rem; margin-bottom: 1rem;">📭</div>
                 <h3>Нет заданий</h3>
                 <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Добавьте задания в шаблон через генератор</p>
-                <a href="{{ url_for('kege_generator.kege_generator') }}?template_id={{ template.template_id }}" class="neo-button accent">🎲 Добавить задания</a>
+                <a href="{{ url_for('task_generator.task_generator') }}?template_id={{ template.template_id }}" class="neo-button accent">🎲 Добавить задания</a>
             </div>
         </section>
         {% endif %}

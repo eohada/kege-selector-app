@@ -209,6 +209,7 @@
                     {% elif submission.status == 'ASSIGNED' %}Назначено
                     {% elif submission.status == 'IN_PROGRESS' %}В процессе
                     {% elif submission.status == 'SUBMITTED' %}Сдано
+                    {% elif submission.status == 'NEEDS_MANUAL_REVIEW' %}Требует проверки
                     {% elif submission.status == 'GRADED' %}Проверено
                     {% elif submission.status == 'RETURNED' %}На доработку
                     {% else %}{{ submission.status }}{% endif %}

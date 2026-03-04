@@ -112,6 +112,12 @@
                 <span class="nav-link-label">Проверка</span>
             </span>
         </a>
+        <a href="{{ url_for('lessons.tutor_manual_reviews') }}" class="nav-link {% if active_page == 'tutor_reviews' %}active{% endif %}">
+            <span class="nav-link-content">
+                {{ ui_icon('action.check', 'md', title='Ручная проверка', extra_class='nav-link-icon') }}
+                <span class="nav-link-label">Ручная проверка</span>
+            </span>
+        </a>
         {% endif %}
         {% if current_user.is_authenticated and has_permission(current_user, 'trainer.use') %}
         <a href="{{ url_for('trainer.trainer_v2') }}" class="nav-link {% if active_page == 'trainer' %}active{% endif %}">
@@ -168,7 +174,7 @@
             </span>
         </a>
         {% endif %}
-        <a href="{{ url_for('kege_generator.kege_generator') }}" class="nav-link {% if active_page == 'generator' %}active{% endif %}">
+        <a href="{{ url_for('task_generator.task_generator') }}" class="nav-link {% if active_page == 'generator' %}active{% endif %}">
             <span class="nav-link-content">
                 {{ ui_icon('nav.generator', 'md', title='Генератор', extra_class='nav-link-icon') }}
                 <span class="nav-link-label">Генератор</span>

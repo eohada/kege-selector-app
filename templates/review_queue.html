@@ -365,6 +365,7 @@
                                             </div>
                                             <span class="status-badge status-info" style="opacity: 0.9; white-space: nowrap;">
                                                 {% if (s.status or '').upper() in ['SUBMITTED', 'LATE'] %}Сдано
+                                                {% elif (s.status or '').upper() == 'NEEDS_MANUAL_REVIEW' %}Требует проверки
                                                 {% elif (s.status or '').upper() == 'GRADED' %}Проверено
                                                 {% elif (s.status or '').upper() == 'RETURNED' %}На доработку
                                                 {% elif (s.status or '').upper() in ['ASSIGNED', 'IN_PROGRESS'] %}Черновик
@@ -372,7 +373,7 @@
                                             </span>
                                         </a>
 
-                                        {% if (s.status or '').upper() in ['SUBMITTED', 'LATE'] %}
+                                        {% if (s.status or '').upper() in ['SUBMITTED', 'LATE', 'NEEDS_MANUAL_REVIEW'] %}
                                         <form method="POST" action="{{ url_for('assignments.submission_quick_return', submission_id=s.submission_id) }}" style="display:inline; flex: 0 0 auto;">
                                             {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
                                             <input type="hidden" name="status" value="{{ status }}">

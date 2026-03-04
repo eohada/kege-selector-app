@@ -18,7 +18,7 @@
         
         <div class="form-group" style="margin-bottom: 1.5rem; max-width: 200px;">
             <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Номер задания (ЕГЭ)</label>
-            <input type="number" class="task-number-input" min="1" max="27" value="1" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary);">
+            <input type="number" class="task-number-input" min="{{ (task_numbers|first) if task_numbers else 1 }}" max="{{ (task_numbers|last) if task_numbers else 27 }}" value="{{ (task_numbers|first) if task_numbers else 1 }}" style="width: 100%; padding: 0.8rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-2); color: var(--text-primary);">
         </div>
 
         <div class="form-group" style="margin-bottom: 1.5rem;">

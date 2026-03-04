@@ -11,6 +11,7 @@ from sqlalchemy import func
 from app.admin import admin_bp
 from app.auth.rbac_utils import check_access
 from app.models import db, Tasks, TaskReview
+from app.utils.course_tasks import get_task_numbers, get_short_answer_task_numbers
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,8 @@ def _run_quick_checks(task: Tasks):
                 'details': 'В условии встречается "undefined"/"null". Часто это артефакт парсинга.'
             })
 
-    if task.task_number in list(range(1, 24)):
+    short_answer_numbers = get_short_answer_task_numbers(getattr(task, 'course_id', None))
+    if task.task_number in short_answer_numbers:
         if not ans:
             checks.append({
                 'level': 'fail',
@@ -205,7 +207,7 @@ def admin_task_formator():
         'skip': skip_count,
     }
 
-    task_numbers = list(range(1, 28))
+    task_numbers = get_task_numbers(request.args.get('course_id', type=int))
 
     return render_template(
         'admin_task_formator.html',

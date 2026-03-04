@@ -13,7 +13,7 @@ from app.limiter import limiter
 from app.models import (
     db, Assignment, AssignmentTask, Submission, Answer,
     Student, User, Tasks, Lesson, LessonTask, Enrollment, GradebookEntry, SubmissionAttempt, RubricTemplate,
-    TaskTemplate, TemplateTask
+    TaskTemplate, TemplateTask, CourseTaskTemplate
 )
 from app.students.utils import get_sorted_assignments
 from core.db_models import SubmissionComment, MOSCOW_TZ
@@ -22,10 +22,14 @@ from core.db_models import moscow_now
 from core.audit_logger import audit_logger
 from app.notifications.service import notify_student_and_parents
 from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_unique_tasks, get_task_ids_in_assignments_for_students, reset_history, reset_skipped
+from app.utils.course_tasks import get_task_numbers
 import requests
-from flask import Response, stream_with_context, abort
+from flask import Response, stream_with_context, abort, send_from_directory
+from werkzeug.utils import secure_filename
 import subprocess
 import sys
+import os
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +185,7 @@ def assignment_review_bulk_update(assignment_id: int):
         return redirect(url_for('assignments.assignments_list'))
 
     q = Submission.query.options(joinedload(Submission.student)).filter(Submission.assignment_id == assignment.assignment_id)
-    q = q.filter(Submission.status.in_(['SUBMITTED', 'LATE']))
+    q = q.filter(Submission.status.in_(['SUBMITTED', 'LATE', 'NEEDS_MANUAL_REVIEW']))
 
     subs = q.all()
     if not subs:
@@ -292,7 +296,7 @@ def submission_quick_return(submission_id: int):
         flash('Доступ запрещен', 'danger')
         return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
 
-    if (submission.status or '').upper() not in {'SUBMITTED', 'LATE'}:
+    if (submission.status or '').upper() not in {'SUBMITTED', 'LATE', 'NEEDS_MANUAL_REVIEW'}:
         flash('Эту сдачу нельзя вернуть из текущего статуса.', 'warning')
         return redirect(url_for('lessons.review_queue', status=status_filter, source=source, assignment_type=assignment_type, student=student_query))
 
@@ -464,30 +468,65 @@ def _effective_correct_answer(assignment_task):
     return (task.answer or '').strip()
 
 
+def _get_task_template(task):
+    """Возвращает CourseTaskTemplate для задания по course_id и task_number, или None."""
+    if not task or task.course_id is None:
+        return None
+    return CourseTaskTemplate.query.filter_by(
+        course_id=task.course_id,
+        task_number=task.task_number
+    ).first()
+
+
+def _requires_manual_from_template(task, has_answer, explicit_override=None):
+    """
+    Определяет, требуется ли ручная проверка, на основе CourseTaskTemplate.
+    Если шаблон не найден — по умолчанию не требуется (для обратной совместимости).
+    """
+    template = _get_task_template(task)
+    if template is None:
+        return bool(explicit_override) if explicit_override is not None else False
+    return (template.requires_manual_review and not has_answer) or bool(explicit_override)
+
+
+def _assignment_has_manual_review_tasks(assignment):
+    """
+    Проверяет, есть ли в работе хотя бы одно задание с requires_manual_review=True
+    в CourseTaskTemplate. Используется для установки статуса NEEDS_MANUAL_REVIEW
+    вместо GRADED после авто-проверки.
+    """
+    for at in (assignment.tasks or []):
+        task = getattr(at, 'task', None)
+        if not task:
+            continue
+        template = _get_task_template(task)
+        if template and template.requires_manual_review:
+            return True
+    return False
+
+
 def auto_grade_answer(answer, assignment_task):
     """
     Автоматическая проверка ответа.
-    Возвращает (is_correct, score). Для 24–27 авто-проверка, если задан эталонный ответ (task.answer или answer_override).
+    Возвращает (is_correct, score). Работает для любого типа экзамена (ЕГЭ, ОГЭ и т.д.)
+    на основе CourseTaskTemplate: max_primary_score для балла, requires_manual_review не влияет
+    на саму авто-проверку — если задан эталонный ответ, авто-проверка выполняется.
     """
     task = assignment_task.task
     student_answer = (answer.value or '').strip()
     correct_answer = _effective_correct_answer(assignment_task)
 
-    if task.task_number in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]:
-        if not correct_answer:
-            return None, None
-        if student_answer.lower() == correct_answer.lower():
-            return True, assignment_task.max_score
-        return False, 0
+    template = _get_task_template(task)
+    if template is None:
+        return None, None
 
-    if task.task_number in [24, 25, 26, 27]:
-        if not correct_answer:
-            return None, None
-        if student_answer.lower() == correct_answer.lower():
-            return True, assignment_task.max_score
-        return False, 0
+    if not correct_answer:
+        return None, None
 
-    return None, None
+    score_value = template.max_primary_score if template.max_primary_score is not None else assignment_task.max_score
+    if student_answer.lower() == correct_answer.lower():
+        return True, score_value
+    return False, 0
 
 
 
@@ -607,10 +646,7 @@ def distribute_assignment():
                 continue
             
             has_answer = bool((task.answer or '').strip())
-            if task.task_number in [24, 25, 26, 27]:
-                requires_manual_grading = not has_answer or requires_manual
-            else:
-                requires_manual_grading = requires_manual
+            requires_manual_grading = _requires_manual_from_template(task, has_answer, explicit_override=requires_manual)
             assignment_task = AssignmentTask(
                 assignment_id=assignment.assignment_id,
                 task_id=task_id,
@@ -685,7 +721,7 @@ def assignments_list():
             func.count(Submission.submission_id).label('total_students'),
             func.sum(
                 case(
-                    (Submission.status.in_(['SUBMITTED', 'LATE', 'GRADED', 'RETURNED']), 1),
+                    (Submission.status.in_(['SUBMITTED', 'LATE', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW']), 1),
                     else_=0,
                 )
             ).label('submitted'),
@@ -941,6 +977,7 @@ def assignments_accepted():
             accepted_base_url=url_for('assignments.assignments_accepted', assignment_type=assignment_type),
             clear_accepted_url=url_for('assignments.assignments_accepted_clear'),
             back_url=url_for('assignments.assignments_list'),
+            task_numbers=get_task_numbers(None),
         )
     except Exception as e:
         flash(f'Ошибка: {e}', 'danger')
@@ -1000,6 +1037,7 @@ def assignments_skipped():
             active_page='assignments',
             skipped_base_url=url_for('assignments.assignments_skipped'),
             back_url=url_for('assignments.assignments_list'),
+            task_numbers=get_task_numbers(None),
         )
     except Exception as e:
         flash(f'Ошибка: {e}', 'danger')
@@ -1029,15 +1067,15 @@ def assignments_generator_results():
         if not task_type or not limit_count:
             flash('Не указаны тип задания или количество заданий.', 'danger')
             if lesson_id:
-                return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
-            return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
+                return redirect(url_for('task_generator.task_generator', lesson_id=lesson_id, assignment_type=assignment_type))
+            return redirect(url_for('task_generator.task_generator', assignment_type=assignment_type))
     except Exception:
         flash('Неверные параметры запроса.', 'danger')
         assignment_type = request.args.get('assignment_type', 'homework')
         lesson_id = request.args.get('lesson_id', type=int)
         if lesson_id:
-            return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
-        return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
+            return redirect(url_for('task_generator.task_generator', lesson_id=lesson_id, assignment_type=assignment_type))
+        return redirect(url_for('task_generator.task_generator', assignment_type=assignment_type))
 
     lesson = None
     student = None
@@ -1049,7 +1087,7 @@ def assignments_generator_results():
             student_id = student.student_id if student else None
         except Exception:
             flash('Ошибка при получении урока', 'error')
-            return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
+            return redirect(url_for('task_generator.task_generator', assignment_type=assignment_type))
 
     try:
         if search_task_id:
@@ -1065,8 +1103,8 @@ def assignments_generator_results():
     except Exception as e:
         flash(f'Ошибка при генерации заданий: {str(e)}', 'error')
         if lesson_id:
-            return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
-        return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
+            return redirect(url_for('task_generator.task_generator', lesson_id=lesson_id, assignment_type=assignment_type))
+        return redirect(url_for('task_generator.task_generator', assignment_type=assignment_type))
 
     try:
         audit_logger.log(
@@ -1093,8 +1131,8 @@ def assignments_generator_results():
         else:
             flash(f'Задания типа {task_type} закончились! Попробуйте включить пропущенные задания или сбросьте историю.', 'warning')
         if lesson_id:
-            return redirect(url_for('kege_generator.kege_generator', lesson_id=lesson_id, assignment_type=assignment_type))
-        return redirect(url_for('kege_generator.kege_generator', assignment_type=assignment_type))
+            return redirect(url_for('task_generator.task_generator', lesson_id=lesson_id, assignment_type=assignment_type))
+        return redirect(url_for('task_generator.task_generator', assignment_type=assignment_type))
 
     return render_template(
         'results.html',
@@ -1375,7 +1413,7 @@ def assignment_update(assignment_id: int):
                     if not task:
                         continue
                     has_ans = bool((task.answer or '').strip()) or bool((t_data.get('answer_override') or '').strip())
-                    requires_manual = (task.task_number in [24, 25, 26, 27] and not has_ans) or t_data.get('requires_manual_grading', False)
+                    requires_manual = _requires_manual_from_template(task, has_ans, explicit_override=t_data.get('requires_manual_grading', False))
                     at = AssignmentTask(
                         assignment_id=assignment.assignment_id,
                         task_id=task_id,
@@ -1396,9 +1434,9 @@ def assignment_update(assignment_id: int):
                     if 'answer_override' in t_data:
                         at.answer_override = (t_data.get('answer_override') or '').strip() or None
                     task = at.task
-                    if task and task.task_number in [24, 25, 26, 27]:
+                    if task:
                         has_ans = bool((task.answer or '').strip()) or bool((at.answer_override or '').strip())
-                        at.requires_manual_grading = not has_ans
+                        at.requires_manual_grading = _requires_manual_from_template(task, has_ans)
             for at in list(assignment.tasks or []):
                 if at.task_id not in new_task_ids:
                     db.session.delete(at)
@@ -1439,12 +1477,14 @@ def assignment_add_tasks(assignment_id: int):
             if not task:
                 continue
             has_answer = bool((task.answer or '').strip())
-            requires_manual = (task.task_number in [24, 25, 26, 27] and not has_answer)
+            requires_manual = _requires_manual_from_template(task, has_answer)
+            template = _get_task_template(task)
+            default_score = template.max_primary_score if template and template.max_primary_score is not None else 1
             at = AssignmentTask(
                 assignment_id=assignment.assignment_id,
                 task_id=task_id,
                 order_index=max_order + 1 + i,
-                max_score=1,
+                max_score=default_score,
                 requires_manual_grading=requires_manual,
             )
             db.session.add(at)
@@ -1635,7 +1675,7 @@ def assignment_view(assignment_id):
             if status_filter == 'needs_grading':
                 return st in {'SUBMITTED', 'LATE'}
             if status_filter == 'submitted':
-                return st in {'SUBMITTED', 'LATE', 'GRADED', 'RETURNED'}
+                return st in {'SUBMITTED', 'LATE', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW'}
             if status_filter == 'pending':
                 return st in {'ASSIGNED', 'IN_PROGRESS'}
             return st.lower() == status_filter
@@ -1818,12 +1858,16 @@ def submission_view(submission_id):
             answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
             max_for_task = assignment.get_effective_max_attempts_for_task(assignment_task) if attempts_per_task else 1
             task_attempts_used = (answer.attempts_used or 0) if answer else 0
+            task = assignment_task.task
+            template = _get_task_template(task)
+            requires_manual_review = bool(template and template.requires_manual_review)
             tasks_data.append({
                 'assignment_task': assignment_task,
-                'task': assignment_task.task,
+                'task': task,
                 'answer': answer,
                 'max_attempts_for_task': max_for_task,
                 'task_attempts_used': task_attempts_used,
+                'requires_manual_review': requires_manual_review,
             })
         
         return render_template('submission_view.html',
@@ -1983,6 +2027,166 @@ def attached_proxy():
     resp = Response(stream_with_context(generate()), content_type=content_type)
     resp.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
     return resp
+
+
+@assignments_bp.route('/submissions/<int:submission_id>/upload-answer-file', methods=['POST'])
+@login_required
+@limiter.limit('30/minute')
+def upload_answer_file(submission_id):
+    """
+    Загрузка файла к ответу на задание.
+    multipart/form-data: file, assignment_task_id
+    """
+    submission = Submission.query.options(
+        joinedload(Submission.assignment).joinedload(Assignment.tasks),
+        joinedload(Submission.answers),
+    ).filter_by(submission_id=submission_id).first_or_404()
+
+    student = get_student_by_user_id(current_user.id)
+    scope = get_user_scope(current_user)
+    can_see = scope.get('can_see_all') or getattr(current_user, 'is_tutor', lambda: False)() or getattr(current_user, 'is_admin', lambda: False)()
+    is_owner = student and student.student_id == submission.student_id
+    if not is_owner and not can_see:
+        return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
+
+    if submission.status not in ['IN_PROGRESS', 'ASSIGNED', 'RETURNED']:
+        return jsonify({'success': False, 'error': 'Нельзя загружать файлы для сданной работы'}), 400
+
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'Файл не передан'}), 400
+
+    file = request.files['file']
+    if not file or not getattr(file, 'filename', None) or not str(file.filename or '').strip():
+        return jsonify({'success': False, 'error': 'Файл не выбран'}), 400
+
+    assignment_task_id = request.form.get('assignment_task_id')
+    if not assignment_task_id:
+        return jsonify({'success': False, 'error': 'Укажите assignment_task_id'}), 400
+    try:
+        assignment_task_id = int(assignment_task_id)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'Некорректный assignment_task_id'}), 400
+
+    assignment = submission.assignment
+    at = next((t for t in (assignment.tasks or []) if t.assignment_task_id == assignment_task_id), None)
+    if not at:
+        return jsonify({'success': False, 'error': 'Задание не найдено в этой работе'}), 404
+
+    root = current_app.config.get('ANSWER_ATTACHMENTS_ROOT')
+    if not root:
+        root = os.path.join(current_app.root_path, 'uploads', 'answer_attachments')
+    base_folder = os.path.join(root, f'submission_{submission_id}')
+    os.makedirs(base_folder, exist_ok=True)
+
+    raw_name = str(file.filename or '').strip()
+    safe_full = secure_filename(raw_name)
+    ext = (os.path.splitext(raw_name)[1] or '').lower()
+    safe_base = secure_filename(os.path.splitext(raw_name)[0]) or 'file'
+    orig = f"{safe_base}{ext}" if ext else f"{safe_base}"
+    allowed_exts = {'pdf', 'doc', 'docx', 'txt', 'png', 'jpg', 'jpeg', 'gif', 'xls', 'xlsx', 'zip', 'py'}
+    if ext.lstrip('.') not in allowed_exts:
+        return jsonify({'success': False, 'error': f'Тип файла не разрешён. Разрешены: {", ".join(sorted(allowed_exts))}'}), 400
+
+    stored_name = f"{int(time.time())}_{orig}"
+    abs_path = os.path.join(base_folder, stored_name)
+    if not os.path.abspath(abs_path).startswith(os.path.abspath(base_folder)):
+        return jsonify({'success': False, 'error': 'Некорректный путь'}), 400
+
+    try:
+        file.save(abs_path)
+    except Exception as e:
+        logger.warning(f"Failed to save answer file: {e}")
+        return jsonify({'success': False, 'error': 'Ошибка сохранения файла'}), 500
+
+    answer = next((a for a in (submission.answers or []) if a.assignment_task_id == assignment_task_id), None)
+    if not answer:
+        answer = Answer(
+            submission_id=submission_id,
+            assignment_task_id=assignment_task_id,
+            max_score=at.max_score,
+        )
+        db.session.add(answer)
+
+    files_list = list(answer.files) if isinstance(answer.files, list) else []
+    if answer.files is None:
+        files_list = []
+    files_list.append({
+        'filename': stored_name,
+        'original_name': raw_name,
+        'assignment_task_id': assignment_task_id,
+    })
+    answer.files = files_list
+    answer.updated_at = moscow_now()
+
+    if submission.status in ['ASSIGNED', 'RETURNED']:
+        submission.status = 'IN_PROGRESS'
+        if not submission.started_at:
+            submission.started_at = moscow_now()
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        try:
+            os.remove(abs_path)
+        except Exception:
+            pass
+        return jsonify({'success': False, 'error': 'Ошибка сохранения в БД'}), 500
+
+    return jsonify({
+        'success': True,
+        'filename': stored_name,
+        'original_name': raw_name,
+        'url': url_for('assignments.serve_answer_file', submission_id=submission_id, filename=stored_name),
+    }), 200
+
+
+@assignments_bp.route('/answer-files/<int:submission_id>/<path:filename>')
+@login_required
+def serve_answer_file(submission_id, filename):
+    """Раздача прикреплённого файла ответа."""
+    submission = Submission.query.options(
+        joinedload(Submission.answers),
+    ).filter_by(submission_id=submission_id).first_or_404()
+
+    student = get_student_by_user_id(current_user.id)
+    scope = get_user_scope(current_user)
+    can_see = scope.get('can_see_all') or getattr(current_user, 'is_tutor', lambda: False)() or getattr(current_user, 'is_admin', lambda: False)()
+    is_owner = student and student.student_id == submission.student_id
+    if not is_owner and not can_see:
+        abort(403)
+
+    safe_name = os.path.basename(filename) if filename else ''
+    if not safe_name or '..' in (filename or '') or '/' in safe_name:
+        abort(404)
+
+    found = False
+    for ans in (submission.answers or []):
+        flist = ans.files if isinstance(ans.files, list) else []
+        for f in flist:
+            if isinstance(f, dict) and f.get('filename') == safe_name:
+                found = True
+                break
+        if found:
+            break
+    if not found:
+        abort(404)
+
+    root = current_app.config.get('ANSWER_ATTACHMENTS_ROOT')
+    if not root:
+        root = os.path.join(current_app.root_path, 'uploads', 'answer_attachments')
+    dir_path = os.path.join(root, f'submission_{submission_id}')
+    file_path = os.path.join(dir_path, safe_name)
+    if not os.path.isfile(file_path) or not os.path.abspath(file_path).startswith(os.path.abspath(dir_path)):
+        abort(404)
+
+    original_name = safe_name
+    for ans in (submission.answers or []):
+        for f in (ans.files or []):
+            if isinstance(f, dict) and f.get('filename') == safe_name:
+                original_name = f.get('original_name', safe_name)
+                break
+    return send_from_directory(dir_path, safe_name, as_attachment=True, download_name=original_name)
 
 
 @assignments_bp.route('/submissions/<int:submission_id>/autosave', methods=['PUT'])
@@ -2238,9 +2442,12 @@ def submission_submit(submission_id):
         submission.percentage = (total_score / max_score * 100) if max_score > 0 else 0
         
         if all_auto_graded:
-            submission.status = 'GRADED'
+            if _assignment_has_manual_review_tasks(assignment):
+                submission.status = 'NEEDS_MANUAL_REVIEW'
+            else:
+                submission.status = 'GRADED'
+                _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
             submission.graded_at = now
-            _upsert_gradebook_from_submission(submission, actor_user_id=current_user.id)
 
         try:
             _record_submission_attempt(submission)
@@ -2432,7 +2639,7 @@ def submission_grade_view(submission_id):
     except Exception:
         rubric_templates = []
 
-    can_submit_grade = submission.status in ('SUBMITTED', 'GRADED', 'RETURNED')
+    can_submit_grade = submission.status in ('SUBMITTED', 'GRADED', 'RETURNED', 'NEEDS_MANUAL_REVIEW')
     return render_template('submission_grade.html',
                          submission=submission,
                          assignment=assignment,
@@ -2541,7 +2748,7 @@ def submission_grade_save(submission_id):
         return jsonify({'success': False, 'error': 'Доступ запрещен'}), 403
     
     # Разрешаем сохранять оценку и при IN_PROGRESS/ASSIGNED (таймер истёк, ученик не нажал «Сдать» — преподаватель может завершить проверку)
-    if submission.status not in ('SUBMITTED', 'GRADED', 'RETURNED', 'IN_PROGRESS', 'ASSIGNED'):
+    if submission.status not in ('SUBMITTED', 'GRADED', 'RETURNED', 'IN_PROGRESS', 'ASSIGNED', 'NEEDS_MANUAL_REVIEW'):
         return jsonify({'success': False, 'error': 'Нельзя изменить оценку для этой сдачи'}), 400
 
     try:

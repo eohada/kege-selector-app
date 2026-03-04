@@ -1,5 +1,6 @@
 """
 Маршруты теории по заданиям ЕГЭ: просмотр для учеников, CRUD для тьютора.
+Поддержка мульти-курсовой архитектуры: номера заданий берутся из CourseTaskTemplate.
 """
 import logging
 import os
@@ -13,26 +14,46 @@ from app.models import (
     StudentTheoryAccess,
     Student,
     User,
+    Course,
+    CourseTaskTemplate,
+    StudentCourseEnrollment,
     moscow_now,
 )
-from app.auth.rbac_utils import has_permission, check_access
+from app.auth.rbac_utils import has_permission
 
 logger = logging.getLogger(__name__)
 
-# Номера заданий ЕГЭ по информатике (1–27)
-THEORY_TASK_NUMBERS = list(range(1, 28))
 
-
-def _get_allowed_task_numbers_for_student(student_id):
+def _get_course_task_numbers(course_id):
     """
-    Для ученика: номера заданий, по которым разрешён просмотр теории.
+    Возвращает отсортированный список номеров заданий для курса из CourseTaskTemplate.
+    """
+    if course_id is None:
+        return []
+    templates = CourseTaskTemplate.query.filter_by(course_id=course_id).all()
+    return sorted({t.task_number for t in templates})
+
+
+def _get_default_course_id():
+    """Возвращает id первого активного курса (fallback при отсутствии course_id в запросе)."""
+    course = Course.query.filter_by(is_active=True).order_by(Course.id).first()
+    return course.id if course else None
+
+
+def _get_allowed_task_numbers_for_student(student_id, course_id):
+    """
+    Для ученика: номера заданий, по которым разрешён просмотр теории в рамках курса.
     Если записи в StudentTheoryAccess нет — доступ разрешён.
     can_view=False — запретить.
     """
+    task_numbers = _get_course_task_numbers(course_id)
     if not student_id:
-        return set(THEORY_TASK_NUMBERS)
-    rows = StudentTheoryAccess.query.filter_by(student_id=student_id).all()
-    allowed = set(THEORY_TASK_NUMBERS)
+        return set(task_numbers)
+    rows = StudentTheoryAccess.query.filter_by(
+        student_id=student_id,
+        course_id=course_id,
+    ).all()
+    allowed = set(task_numbers)
     for r in rows:
         if not r.can_view:
             allowed.discard(r.task_number)
@@ -41,9 +62,9 @@ def _get_allowed_task_numbers_for_student(student_id):
     return allowed
 
 
-def _student_can_view_task_number(student_id, task_number):
-    """Проверка: может ли ученик смотреть теорию по заданию task_number."""
-    return task_number in _get_allowed_task_numbers_for_student(student_id)
+def _student_can_view_task_number(student_id, task_number, course_id):
+    """Проверка: может ли ученик смотреть теорию по заданию task_number в рамках курса."""
+    return task_number in _get_allowed_task_numbers_for_student(student_id, course_id)
 
 
 # --- Просмотр для учеников (и тьюторов) ---
@@ -56,28 +77,42 @@ def theory_index():
         flash('У вас нет доступа к разделу «Теория».', 'warning')
         return redirect(url_for('main.dashboard'))
 
-    blocks = TheoryBlock.query.order_by(TheoryBlock.task_number).all()
+    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
+    if course_id is None:
+        flash('Нет доступных курсов. Обратитесь к администратору.', 'warning')
+        return render_template(
+            'theory/theory_index.html',
+            visible=[],
+            course_id=None,
+            active_page='theory',
+        )
+
+    task_numbers = _get_course_task_numbers(course_id)
+    blocks = TheoryBlock.query.filter(
+        (TheoryBlock.course_id == course_id) | (TheoryBlock.course_id.is_(None))
+    ).order_by(TheoryBlock.task_number).all()
     block_by_number = {b.task_number: b for b in blocks}
 
     # Для ученика — фильтруем по StudentTheoryAccess
-    allowed_numbers = set(THEORY_TASK_NUMBERS)
+    allowed_numbers = set(task_numbers)
     if current_user.is_student():
         student = Student.query.filter_by(user_id=current_user.id).first()
         if student:
-            allowed_numbers = _get_allowed_task_numbers_for_student(student.student_id)
+            allowed_numbers = _get_allowed_task_numbers_for_student(student.student_id, course_id)
         else:
             allowed_numbers = set()
 
     # Показываем только номера, по которым есть блок и доступ
     visible = [
         (num, block_by_number.get(num))
-        for num in THEORY_TASK_NUMBERS
+        for num in task_numbers
         if num in allowed_numbers and num in block_by_number
     ]
 
     return render_template(
         'theory/theory_index.html',
         visible=visible,
+        course_id=course_id,
         active_page='theory',
     )
 
@@ -90,23 +125,33 @@ def theory_view(task_number):
         flash('У вас нет доступа к разделу «Теория».', 'warning')
         return redirect(url_for('main.dashboard'))
 
-    if task_number not in THEORY_TASK_NUMBERS:
+    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
+    if course_id is None:
+        flash('Нет доступных курсов.', 'warning')
+        return redirect(url_for('main.dashboard'))
+
+    task_numbers = _get_course_task_numbers(course_id)
+    if task_number not in task_numbers:
         abort(404)
 
     if current_user.is_student():
         student = Student.query.filter_by(user_id=current_user.id).first()
-        if student and not _student_can_view_task_number(student.student_id, task_number):
+        if student and not _student_can_view_task_number(student.student_id, task_number, course_id):
             flash('Просмотр теории по этому заданию для вас закрыт.', 'warning')
-            return redirect(url_for('theory.theory_index'))
+            return redirect(url_for('theory.theory_index', course_id=course_id))
 
-    block = TheoryBlock.query.filter_by(task_number=task_number).first()
+    block = TheoryBlock.query.filter(
+        ((TheoryBlock.course_id == course_id) | (TheoryBlock.course_id.is_(None))),
+        TheoryBlock.task_number == task_number,
+    ).first()
     if not block:
         flash('Теория по заданию {} ещё не добавлена.'.format(task_number), 'info')
-        return redirect(url_for('theory.theory_index'))
+        return redirect(url_for('theory.theory_index', course_id=course_id))
 
     return render_template(
         'theory/theory_view.html',
         block=block,
+        course_id=course_id,
         active_page='theory',
     )
 
@@ -127,14 +172,27 @@ def manage_list():
         flash('Недостаточно прав для управления теорией.', 'danger')
         return redirect(url_for('main.dashboard'))
 
-    blocks = TheoryBlock.query.order_by(TheoryBlock.task_number).all()
+    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
+    if course_id is None:
+        flash('Нет доступных курсов. Создайте курс в настройках.', 'warning')
+        return render_template(
+            'theory/theory_manage_list.html',
+            slots=[],
+            course_id=None,
+            active_page='theory_manage',
+        )
+
+    task_numbers = _get_course_task_numbers(course_id)
+    blocks = TheoryBlock.query.filter(
+        (TheoryBlock.course_id == course_id) | (TheoryBlock.course_id.is_(None))
+    ).order_by(TheoryBlock.task_number).all()
     block_by_number = {b.task_number: b for b in blocks}
-    # Все номера 1–27: есть блок или пустой слот
-    slots = [(num, block_by_number.get(num)) for num in THEORY_TASK_NUMBERS]
+    slots = [(num, block_by_number.get(num)) for num in task_numbers]
 
     return render_template(
         'theory/theory_manage_list.html',
         slots=slots,
+        course_id=course_id,
         active_page='theory_manage',
     )
 
@@ -178,8 +236,17 @@ def manage_new():
         flash('Недостаточно прав.', 'danger')
         return redirect(url_for('main.dashboard'))
 
-    existing_numbers = {b.task_number for b in TheoryBlock.query.all()}
-    free_numbers = [n for n in THEORY_TASK_NUMBERS if n not in existing_numbers]
+    course_id = request.args.get('course_id', type=int) or request.form.get('course_id', type=int) or _get_default_course_id()
+    if course_id is None:
+        flash('Нет доступных курсов. Создайте курс в настройках.', 'danger')
+        return redirect(url_for('theory.manage_list'))
+
+    task_numbers = _get_course_task_numbers(course_id)
+    existing_blocks = TheoryBlock.query.filter(
+        (TheoryBlock.course_id == course_id) | (TheoryBlock.course_id.is_(None))
+    ).all()
+    existing_numbers = {b.task_number for b in existing_blocks}
+    free_numbers = [n for n in task_numbers if n not in existing_numbers]
 
     if request.method == 'POST':
         logger.info('[theory/manage/new] POST: content_type=%s, form.keys=%s', request.content_type, list(request.form.keys()))
@@ -192,15 +259,24 @@ def manage_new():
         title = (request.form.get('title') or '').strip() or None
         content = (request.form.get('content') or '').strip() or None
 
-        if task_number is None or task_number not in THEORY_TASK_NUMBERS:
-            flash('Выберите номер задания от 1 до 27.', 'danger')
-            return render_template('theory/theory_form.html', task_number=task_number, title=title, content=content, free_numbers=free_numbers, is_new=True)
+        if task_number is None or task_number not in task_numbers:
+            flash('Выберите номер задания из списка для курса.', 'danger')
+            return render_template(
+                'theory/theory_form.html',
+                task_number=task_number,
+                title=title,
+                content=content,
+                free_numbers=free_numbers,
+                course_id=course_id,
+                is_new=True,
+            )
 
-        if TheoryBlock.query.filter_by(task_number=task_number).first():
+        if TheoryBlock.query.filter_by(course_id=course_id, task_number=task_number).first():
             flash('Теория по заданию {} уже существует. Редактируйте её в списке.'.format(task_number), 'warning')
-            return redirect(url_for('theory.manage_list'))
+            return redirect(url_for('theory.manage_list', course_id=course_id))
 
         block = TheoryBlock(
+            course_id=course_id,
             task_number=task_number,
             title=title or 'Задание {}'.format(task_number),
             content=content,
@@ -208,12 +284,12 @@ def manage_new():
         )
         db.session.add(block)
         db.session.commit()
-        logger.info('[theory/manage/new] saved block_id=%s, content_len=%s', block.id, len(block.content or ''))
+        logger.info('[theory/manage/new] saved block_id=%s, course_id=%s, content_len=%s', block.id, course_id, len(block.content or ''))
         flash('Блок теории по заданию {} создан.'.format(task_number), 'success')
-        return redirect(url_for('theory.manage_list'))
+        return redirect(url_for('theory.manage_list', course_id=course_id))
 
     task_number_prefill = request.args.get('task_number', type=int)
-    if task_number_prefill and task_number_prefill in THEORY_TASK_NUMBERS and task_number_prefill in free_numbers:
+    if task_number_prefill and task_number_prefill in task_numbers and task_number_prefill in free_numbers:
         pass
     else:
         task_number_prefill = None
@@ -224,6 +300,7 @@ def manage_new():
         title='',
         content='',
         free_numbers=free_numbers,
+        course_id=course_id,
         is_new=True,
         active_page='theory_manage',
     )
@@ -238,6 +315,7 @@ def manage_edit(block_id):
         return redirect(url_for('main.dashboard'))
 
     block = TheoryBlock.query.get_or_404(block_id)
+    course_id = block.course_id or _get_default_course_id()
 
     if request.method == 'POST':
         logger.info('[theory/manage/edit] POST block_id=%s, content_type=%s, form.keys=%s', block_id, request.content_type, list(request.form.keys()))
@@ -251,7 +329,7 @@ def manage_edit(block_id):
         db.session.commit()
         logger.info('[theory/manage/edit] saved block_id=%s, content_len=%s', block_id, len(block.content or ''))
         flash('Теория по заданию {} сохранена.'.format(block.task_number), 'success')
-        return redirect(url_for('theory.manage_list'))
+        return redirect(url_for('theory.manage_list', course_id=course_id))
 
     content_for_template = block.content or ''
     logger.info('[theory/manage/edit] GET block_id=%s, content_len=%s, preview=%s', block_id, len(content_for_template), (content_for_template[:80] + '...') if len(content_for_template) > 80 else content_for_template)
@@ -262,6 +340,7 @@ def manage_edit(block_id):
         title=block.title or '',
         content=content_for_template,
         free_numbers=[],
+        course_id=course_id,
         is_new=False,
         active_page='theory_manage',
     )
@@ -277,10 +356,11 @@ def manage_delete(block_id):
 
     block = TheoryBlock.query.get_or_404(block_id)
     num = block.task_number
+    course_id = block.course_id or _get_default_course_id()
     db.session.delete(block)
     db.session.commit()
     flash('Блок теории по заданию {} удалён.'.format(num), 'success')
-    return redirect(url_for('theory.manage_list'))
+    return redirect(url_for('theory.manage_list', course_id=course_id))
 
 
 # --- Управление доступом учеников (запрет/разрешение по номерам) ---
@@ -292,6 +372,11 @@ def manage_access_index():
     if not _can_manage_theory():
         flash('Недостаточно прав.', 'danger')
         return redirect(url_for('main.dashboard'))
+
+    course_id = request.args.get('course_id', type=int) or _get_default_course_id()
+    if course_id is None:
+        flash('Нет доступных курсов.', 'warning')
+        return redirect(url_for('theory.manage_list'))
 
     from app.auth.rbac_utils import get_user_scope
     scope = get_user_scope(current_user)
@@ -307,6 +392,7 @@ def manage_access_index():
     return render_template(
         'theory/theory_access_list.html',
         students=students,
+        course_id=course_id,
         active_page='theory_manage',
     )
 
@@ -319,6 +405,11 @@ def manage_access_student(student_id):
         flash('Недостаточно прав.', 'danger')
         return redirect(url_for('main.dashboard'))
 
+    course_id = request.args.get('course_id', type=int) or request.form.get('course_id', type=int) or _get_default_course_id()
+    if course_id is None:
+        flash('Нет доступных курсов.', 'danger')
+        return redirect(url_for('theory.manage_list'))
+
     from app.auth.rbac_utils import get_user_scope
     student = Student.query.get_or_404(student_id)
     scope = get_user_scope(current_user)
@@ -326,18 +417,26 @@ def manage_access_student(student_id):
         sid_list = scope.get('student_ids') or []
         if student.student_id not in sid_list:
             flash('Нет доступа к этому ученику.', 'danger')
-            return redirect(url_for('theory.manage_access_index'))
+            return redirect(url_for('theory.manage_access_index', course_id=course_id))
 
-    # Текущие правила: task_number -> can_view
-    access_list = StudentTheoryAccess.query.filter_by(student_id=student_id).all()
+    task_numbers = _get_course_task_numbers(course_id)
+    # Текущие правила: task_number -> can_view (для данного курса)
+    access_list = StudentTheoryAccess.query.filter_by(
+        student_id=student_id,
+        course_id=course_id,
+    ).all()
     access_by_number = {a.task_number: a.can_view for a in access_list}
 
     if request.method == 'POST':
         # Чекбокс "разрешён" = on. Снят = запретить. Храним только запреты; при разрешении запись удаляем.
-        for num in THEORY_TASK_NUMBERS:
+        for num in task_numbers:
             key = 'allow_{}'.format(num)
             can_view = request.form.get(key) == 'on'
-            existing = StudentTheoryAccess.query.filter_by(student_id=student_id, task_number=num).first()
+            existing = StudentTheoryAccess.query.filter_by(
+                student_id=student_id,
+                course_id=course_id,
+                task_number=num,
+            ).first()
             if can_view:
                 if existing:
                     db.session.delete(existing)
@@ -346,15 +445,21 @@ def manage_access_student(student_id):
                     existing.can_view = False
                     existing.updated_at = moscow_now()
                 else:
-                    db.session.add(StudentTheoryAccess(student_id=student_id, task_number=num, can_view=False))
+                    db.session.add(StudentTheoryAccess(
+                        student_id=student_id,
+                        course_id=course_id,
+                        task_number=num,
+                        can_view=False,
+                    ))
         db.session.commit()
         flash('Доступ к теории для {} сохранён.'.format(student.name or 'ученика'), 'success')
-        return redirect(url_for('theory.manage_access_student', student_id=student_id))
+        return redirect(url_for('theory.manage_access_student', student_id=student_id, course_id=course_id))
 
     return render_template(
         'theory/theory_access_student.html',
         student=student,
-        task_numbers=THEORY_TASK_NUMBERS,
+        task_numbers=task_numbers,
         access_by_number=access_by_number,
+        course_id=course_id,
         active_page='theory_manage',
     )

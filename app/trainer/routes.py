@@ -14,10 +14,11 @@ from app.auth.permissions import ALL_PERMISSIONS
 from app.models import (
     db, User, Tasks, Student, Lesson, LessonTask, TrainerSession,
     StudentTaskSeen, AuditLog, TrainerLlmLog, moscow_now,
-    UserMastery, KnowledgeNode, AnalyticsEvent
+    UserMastery, KnowledgeNode, AnalyticsEvent, Course, CourseTaskTemplate
 )
 from app.analytics.engine import AnalyticsEngine
 from app.utils.trainer_tokens import issue_trainer_token, verify_trainer_token, TrainerTokenError
+from app.utils.course_tasks import get_task_numbers
 from app.lessons.utils import normalize_answer_value
 import re
 from core.audit_logger import audit_logger
@@ -179,7 +180,7 @@ def trainer_embed():
         return render_template('trainer_embed.html', trainer_url=trainer_url, iframe_url=None, config_error=str(e))
 
     passthrough = {}
-    for k in ('lesson_id', 'task_id', 'task_type', 'template_id', 'assignment_type'):
+    for k in ('lesson_id', 'task_id', 'task_type', 'template_id', 'assignment_type', 'course_id'):
         v = (request.args.get(k) or '').strip()
         if v:
             passthrough[k] = v
@@ -210,10 +211,10 @@ def trainer_v2():
     try:
         token = issue_trainer_token(user_id=current_user.id, ttl_seconds=10 * 60)
     except Exception as e:
-        return render_template('trainer_v2.html', trainer_token=None, config_error=str(e), zen_mode=False, passthrough={})
+        return render_template('trainer_v2.html', trainer_token=None, config_error=str(e), zen_mode=False, passthrough={}, task_numbers=get_task_numbers(None))
 
     passthrough = {}
-    for k in ('lesson_id', 'task_id', 'task_type', 'template_id', 'assignment_type'):
+    for k in ('lesson_id', 'task_id', 'task_type', 'template_id', 'assignment_type', 'course_id'):
         v = (request.args.get(k) or '').strip()
         if v:
             passthrough[k] = v
@@ -225,6 +226,7 @@ def trainer_v2():
     except Exception:
         pass
 
+    task_numbers = get_task_numbers(request.args.get('course_id', type=int))
     return render_template(
         'trainer_v2.html',
         trainer_token=token,
@@ -232,6 +234,7 @@ def trainer_v2():
         zen_mode=zen_mode,
         passthrough=passthrough,
         active_page='trainer',
+        task_numbers=task_numbers,
     )
 
 
@@ -663,15 +666,17 @@ def trainer_recommendations():
 def trainer_task_success_rates():
     """Процент успеха по каждому номеру задания (для тепловой карты)."""
     user = _get_trainer_user_from_token(require_permission='trainer.use')
+    course_id = request.args.get('course_id', type=int)
     
     # Агрегация по AnalyticsEvent
-    rows = (
+    q = (
         db.session.query(Tasks.task_number, db.func.count(AnalyticsEvent.id), db.func.sum(db.cast(AnalyticsEvent.is_correct, db.Integer)))
         .join(Tasks, AnalyticsEvent.task_id == Tasks.task_id)
         .filter(AnalyticsEvent.user_id == user.id)
-        .group_by(Tasks.task_number)
-        .all()
     )
+    if course_id is not None:
+        q = q.filter(Tasks.course_id == course_id)
+    rows = q.group_by(Tasks.task_number).all()
     
     rates = {}
     for task_num, total, correct in rows:
@@ -760,8 +765,11 @@ def trainer_task_stats():
     return jsonify({'success': True, 'counts_by_task_number': counts})
 
 
-def _task_has_knowledge(task_id: int, task_number: int) -> bool:
-    """Проверяет наличие trainer_knowledge для задания (файл существует)."""
+def _task_has_knowledge(task_id: int, task_number: int, course_id: int | None = None) -> bool:
+    """
+    Проверяет наличие trainer_knowledge для задания (файл существует).
+    Для заданий в одной группе (task_group_id, напр. 19–21) использует общий knowledge по CourseTaskTemplate.
+    """
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
     base = os.path.join(repo_root, 'trainer_knowledge', 'tasks')
     if os.path.isfile(os.path.join(base, f'{int(task_id)}.json')):
@@ -769,7 +777,19 @@ def _task_has_knowledge(task_id: int, task_number: int) -> bool:
     tn = int(task_number)
     if os.path.isfile(os.path.join(base, 'by_number', f'{tn}.json')):
         return True
-    if tn in (20, 21) and os.path.isfile(os.path.join(base, 'by_number', '19.json')):
+    # Группа заданий (19,20,21 и т.п.): ищем canonical task_number по task_group_id
+    task = Tasks.query.get(task_id)
+    if task and getattr(task, 'task_group_id', None):
+        q = Tasks.query.filter(Tasks.task_group_id == task.task_group_id)
+        if course_id:
+            q = q.filter(Tasks.course_id == course_id)
+        group_tasks = q.all()
+        if group_tasks:
+            min_tn = min((t.task_number for t in group_tasks if t.task_number is not None), default=None)
+            if min_tn is not None and min_tn != tn and os.path.isfile(os.path.join(base, 'by_number', f'{min_tn}.json')):
+                return True
+    # Fallback: legacy EGE (20, 21 -> 19) при отсутствии course_id
+    if course_id is None and tn in (20, 21) and os.path.isfile(os.path.join(base, 'by_number', '19.json')):
         return True
     return False
 
@@ -792,10 +812,13 @@ def trainer_fallback_candidates():
             task_type_filter = int(task_type_arg)
         except ValueError:
             task_type_filter = None
+    course_id = request.args.get('course_id', type=int)
 
     q = db.session.query(Tasks.task_number, Tasks.task_id, Tasks.hints)
     if task_type_filter is not None:
         q = q.filter(Tasks.task_number == task_type_filter)
+    if course_id is not None:
+        q = q.filter(Tasks.course_id == course_id)
     rows = q.all()
 
     by_number: dict[int, list[int]] = {}
@@ -805,7 +828,7 @@ def trainer_fallback_candidates():
         has_hints = bool(h) and (
             (isinstance(h, list) and len(h) > 0) or (isinstance(h, dict) and bool(h))
         )
-        if not has_hints and _task_has_knowledge(int(tid), int(n)):
+        if not has_hints and _task_has_knowledge(int(tid), int(n), course_id):
             by_number.setdefault(int(n), []).append(int(tid))
 
     counts = {n: len(ids) for n, ids in sorted(by_number.items())}
@@ -814,6 +837,17 @@ def trainer_fallback_candidates():
         'counts_by_task_number': counts,
         'task_ids_by_number': {str(k): v for k, v in by_number.items()},
     })
+
+
+def _parse_course_id(data: dict) -> int | None:
+    """Извлекает course_id из данных запроса."""
+    v = data.get('course_id')
+    if v is None or v == '':
+        return None
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
 
 
 @trainer_bp.route('/internal/trainer/task/stream/start', methods=['POST'])
@@ -829,6 +863,7 @@ def trainer_stream_start():
     except Exception:
         return jsonify({'success': False, 'error': 'task_type_required'}), 400
 
+    course_id = _parse_course_id(data)
     st = _map_user_to_student(user) if getattr(user, 'role', None) == 'student' else None
 
     task_id = data.get('task_id')
@@ -854,6 +889,8 @@ def trainer_stream_start():
         task = pinned_task
     else:
         q = Tasks.query.filter(Tasks.task_number == task_type)
+        if course_id is not None:
+            q = q.filter(Tasks.course_id == course_id)
         if exclude_ids:
             q = q.filter(~Tasks.task_id.in_(exclude_ids))
         if st:
@@ -893,6 +930,7 @@ def trainer_stream_act():
     except Exception:
         return jsonify({'success': False, 'error': 'task_type_required'}), 400
 
+    course_id = _parse_course_id(data)
     st = _map_user_to_student(user) if getattr(user, 'role', None) == 'student' else None
 
     exclude_ids: list[int] = []
@@ -905,6 +943,8 @@ def trainer_stream_act():
                 continue
 
     q = Tasks.query.filter(Tasks.task_number == task_type)
+    if course_id is not None:
+        q = q.filter(Tasks.course_id == course_id)
     if exclude_ids:
         q = q.filter(~Tasks.task_id.in_(exclude_ids))
     if st:

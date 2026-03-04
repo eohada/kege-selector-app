@@ -84,7 +84,7 @@
             <div style="margin-bottom: 2rem; padding: 1.5rem; background: var(--surface-2); border-radius: var(--radius-lg); border: 1px solid var(--stroke-1);">
                 <h3 style="margin: 0 0 1rem 0; font-size: 1.1em;">Задания в шаблоне ({{ template.template_tasks|length }})</h3>
                 <p style="color: var(--text-muted); margin: 0 0 1rem 0;">Для добавления или изменения заданий используйте генератор и сохраните выбранные задания в этот шаблон.</p>
-                <a href="{{ url_for('kege_generator.kege_generator') }}?template_id={{ template.template_id }}" class="neo-button accent">🎲 Добавить задания через генератор</a>
+                <a href="{{ url_for('task_generator.task_generator') }}?template_id={{ template.template_id }}" class="neo-button accent">🎲 Добавить задания через генератор</a>
             </div>
             {% endif %}
 
@@ -162,7 +162,7 @@
                         const params = new URLSearchParams(); // Собираем параметры
                         params.set('template_id', String(templateId)); // Передаём template_id для режима редактирования шаблона
                         params.set('assignment_type', String(formData.template_type || 'homework')); // Передаём тип (не обязательно, но полезно)
-                        window.location.href = '{{ url_for('kege_generator.kege_generator') }}' + '?' + params.toString(); // Редиректим в генератор
+                        window.location.href = '{{ url_for('task_generator.task_generator') }}' + '?' + params.toString(); // Редиректим в генератор
                         return; // Завершаем обработчик
                     } // Конец ветки generator
                     setTimeout(() => { // Небольшая задержка, чтобы тост успел показаться

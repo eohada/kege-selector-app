@@ -30,6 +30,15 @@
 
     <main style="margin-top: 1.5rem;">
       <section class="glass-panel" style="margin-bottom: 1.5rem;">
+        {% if enrollments and enrollments|length > 1 %}
+        <div class="d-flex gap-2 mb-3" style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+            {% for enrollment in enrollments %}
+            <a href="?course_id={{ enrollment.course_id }}" class="neo-button {% if selected_course_id == enrollment.course_id %}accent{% else %}ghost{% endif %} sm" style="text-decoration: none; padding: 0.5rem 1rem; font-weight: 600; font-size: 0.9rem;">
+                {{ enrollment.course.title if enrollment.course else ('Курс #' ~ enrollment.course_id) }}
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
         <p class="hero-eyebrow">ученик</p>
         <h1 class="hero-title" style="margin-bottom:.25rem;">Дашборд</h1>
         {% if student %}

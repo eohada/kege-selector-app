@@ -49,8 +49,8 @@
                                 <p class="hero-subtitle">Создавайте и редактируйте блоки теории по номерам заданий (1–27).</p>
                             </div>
                             <div class="hero-actions">
-                                <a href="{{ url_for('theory.manage_access_index') }}" class="neo-button ghost">Доступ учеников</a>
-                                <a href="{{ url_for('theory.manage_new') }}" class="neo-button accent">+ Добавить блок</a>
+                                <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" class="neo-button ghost">Доступ учеников</a>
+                                <a href="{{ url_for('theory.manage_new', course_id=course_id) if course_id else url_for('theory.manage_new') }}" class="neo-button accent">+ Добавить блок</a>
                             </div>
                         </div>
                     </section>
@@ -72,7 +72,7 @@
                                     <button type="submit" class="neo-button danger">Удалить</button>
                                 </form>
                                 {% else %}
-                                <a href="{{ url_for('theory.manage_new') }}?task_number={{ num }}" class="neo-button outline">Создать</a>
+                                <a href="{{ url_for('theory.manage_new', course_id=course_id, task_number=num) if course_id else url_for('theory.manage_new', task_number=num) }}" class="neo-button outline">Создать</a>
                                 {% endif %}
                             </div>
                         </div>

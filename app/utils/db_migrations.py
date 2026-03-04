@@ -13,7 +13,9 @@ from core.db_models import (
     LessonWhiteboard,
     InviteLink,
     LessonTaskTeacherComment, TaskReview, TaskSolution,
-    Course, CourseModule,
+    LearningTrajectory, TrajectoryModule,
+    Course as ExamCourse, CourseTaskTemplate,
+    StudentCourseEnrollment, GradingScale,
     StudentLearningPlanItem,
     StudentDiagnosticCheckpoint,
     GradebookEntry,
@@ -340,16 +342,16 @@ def ensure_schema_columns(app):
 
             if 'Courses' not in table_names and 'courses' not in table_names:
                 try:
-                    Course.__table__.create(db.engine)
-                    logger.info("Courses table created")
+                    LearningTrajectory.__table__.create(db.engine)
+                    logger.info("Courses (LearningTrajectory) table created")
                 except Exception as e:
                     logger.warning(f"Could not create Courses table: {e}")
                     db.session.rollback()
 
             if 'CourseModules' not in table_names and 'coursemodules' not in table_names:
                 try:
-                    CourseModule.__table__.create(db.engine)
-                    logger.info("CourseModules table created")
+                    TrajectoryModule.__table__.create(db.engine)
+                    logger.info("CourseModules (TrajectoryModule) table created")
                 except Exception as e:
                     logger.warning(f"Could not create CourseModules table: {e}")
                     db.session.rollback()
@@ -1462,6 +1464,9 @@ def ensure_schema_columns(app):
                     logger.warning(f"Could not add new columns to analytics_events: {e}")
                     db.session.rollback()
 
+            # ===== Многокурсовая архитектура (ExamCourses, CourseTaskTemplates, etc.) =====
+            _migrate_multi_course(app, inspector, table_names, is_postgres)
+
             try:
                 db.session.commit()
                 logger.info("RBAC and Assignments migrations committed successfully")
@@ -1473,3 +1478,186 @@ def ensure_schema_columns(app):
     except Exception as e:
         db.session.rollback()
         logger.error(f"Ошибка при миграции схемы БД: {e}", exc_info=True)
+
+
+def _migrate_multi_course(app, inspector, table_names, is_postgres):
+    """Миграция для многокурсовой архитектуры: создание таблиц и seed данных."""
+    from core.db_models import (
+        Course as ExamCourse, CourseTaskTemplate, StudentCourseEnrollment,
+        GradingScale, Student, Tasks, TheoryBlock, StudentTheoryAccess,
+        StudentTaskStatistics,
+    )
+    try:
+        for model in [ExamCourse, CourseTaskTemplate, StudentCourseEnrollment, GradingScale]:
+            tname = model.__tablename__
+            if tname.lower() not in [t.lower() for t in table_names]:
+                try:
+                    model.__table__.create(db.engine)
+                    logger.info(f"{tname} table created")
+                except Exception as e:
+                    logger.warning(f"Could not create {tname}: {e}")
+                    db.session.rollback()
+
+        db.session.commit()
+
+        # --- Новые колонки course_id / exam_course_id ---
+        _add_col = _make_safe_add_column(inspector, is_postgres)
+        _add_col('Tasks', 'course_id', 'INTEGER')
+        _add_col('TheoryBlocks', 'course_id', 'INTEGER')
+        _add_col('StudentTheoryAccess', 'course_id', 'INTEGER')
+        _add_col('StudentTaskStatistics', 'course_id', 'INTEGER')
+        _add_col('Assignments', 'exam_course_id', 'INTEGER')
+        _add_col('Lessons', 'exam_course_id', 'INTEGER')
+        db.session.commit()
+
+        # --- Seed: ExamCourse «ЕГЭ Информатика» ---
+        ege = ExamCourse.query.filter_by(slug='ege_informatics').first()
+        if not ege:
+            ege = ExamCourse(id=1, title='ЕГЭ Информатика', slug='ege_informatics', is_active=True)
+            db.session.add(ege)
+            db.session.flush()
+            logger.info("Seeded ExamCourse: ЕГЭ Информатика (id=1)")
+
+        # --- Seed: CourseTaskTemplate для ЕГЭ (1-27) ---
+        existing_templates = CourseTaskTemplate.query.filter_by(course_id=ege.id).count()
+        if existing_templates == 0:
+            ege_scores = {
+                1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1,
+                11: 1, 12: 1, 13: 1, 14: 1, 15: 1, 16: 1, 17: 1, 18: 1,
+                19: 1, 20: 1, 21: 1, 22: 1, 23: 1,
+                24: 1, 25: 2, 26: 2, 27: 2,
+            }
+            for tn in range(1, 28):
+                tmpl = CourseTaskTemplate(
+                    course_id=ege.id,
+                    task_number=tn,
+                    max_primary_score=ege_scores.get(tn, 1),
+                    requires_manual_review=False,
+                )
+                db.session.add(tmpl)
+            logger.info("Seeded 27 CourseTaskTemplates for ЕГЭ Информатика")
+
+        # --- Seed: ExamCourse «ОГЭ Информатика» ---
+        oge = ExamCourse.query.filter_by(slug='oge_informatics').first()
+        if not oge:
+            oge = ExamCourse(id=2, title='ОГЭ Информатика', slug='oge_informatics', is_active=True)
+            db.session.add(oge)
+            db.session.flush()
+            logger.info("Seeded ExamCourse: ОГЭ Информатика (id=2)")
+
+        existing_oge_templates = CourseTaskTemplate.query.filter_by(course_id=oge.id).count()
+        if existing_oge_templates == 0:
+            oge_scores = {
+                1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1,
+                11: 1, 12: 1, 13: 2, 14: 2, 15: 2,
+            }
+            for tn in range(1, 16):
+                tmpl = CourseTaskTemplate(
+                    course_id=oge.id,
+                    task_number=tn,
+                    max_primary_score=oge_scores.get(tn, 1),
+                    requires_manual_review=(tn >= 13),
+                )
+                db.session.add(tmpl)
+            logger.info("Seeded 15 CourseTaskTemplates for ОГЭ Информатика")
+
+        # --- Seed: GradingScale для ОГЭ (оценка 2-5) ---
+        existing_oge_scales = GradingScale.query.filter_by(course_id=oge.id).count()
+        if existing_oge_scales == 0:
+            oge_scale = [
+                (0, 4, 2, 'Неудовлетворительно'),
+                (5, 10, 3, 'Удовлетворительно'),
+                (11, 15, 4, 'Хорошо'),
+                (16, 19, 5, 'Отлично'),
+            ]
+            for min_p, max_p, grade, label in oge_scale:
+                db.session.add(GradingScale(
+                    course_id=oge.id, min_primary=min_p, max_primary=max_p,
+                    final_grade=grade, label=label,
+                ))
+            logger.info("Seeded GradingScale for ОГЭ Информатика")
+
+        # --- Backfill: присвоить course_id=1 всем Tasks без course_id ---
+        try:
+            updated = Tasks.query.filter(Tasks.course_id.is_(None)).update({Tasks.course_id: ege.id})
+            if updated:
+                logger.info(f"Backfilled course_id={ege.id} for {updated} Tasks")
+        except Exception as e:
+            logger.warning(f"Could not backfill Tasks.course_id: {e}")
+            db.session.rollback()
+
+        # --- Backfill: TheoryBlock ---
+        try:
+            updated = TheoryBlock.query.filter(TheoryBlock.course_id.is_(None)).update({TheoryBlock.course_id: ege.id})
+            if updated:
+                logger.info(f"Backfilled course_id={ege.id} for {updated} TheoryBlocks")
+        except Exception as e:
+            logger.warning(f"Could not backfill TheoryBlock.course_id: {e}")
+            db.session.rollback()
+
+        # --- Backfill: StudentTheoryAccess ---
+        try:
+            updated = StudentTheoryAccess.query.filter(StudentTheoryAccess.course_id.is_(None)).update({StudentTheoryAccess.course_id: ege.id})
+            if updated:
+                logger.info(f"Backfilled course_id={ege.id} for {updated} StudentTheoryAccess rows")
+        except Exception as e:
+            logger.warning(f"Could not backfill StudentTheoryAccess.course_id: {e}")
+            db.session.rollback()
+
+        # --- Backfill: StudentTaskStatistics ---
+        try:
+            updated = StudentTaskStatistics.query.filter(StudentTaskStatistics.course_id.is_(None)).update({StudentTaskStatistics.course_id: ege.id})
+            if updated:
+                logger.info(f"Backfilled course_id={ege.id} for {updated} StudentTaskStatistics rows")
+        except Exception as e:
+            logger.warning(f"Could not backfill StudentTaskStatistics.course_id: {e}")
+            db.session.rollback()
+
+        # --- Создание StudentCourseEnrollment для существующих учеников ---
+        try:
+            students = Student.query.filter(Student.is_active.is_(True)).all()
+            created_count = 0
+            for s in students:
+                cat = (s.category or '').strip().upper()
+                target_course_id = oge.id if cat == 'ОГЭ' else ege.id
+                exists = StudentCourseEnrollment.query.filter_by(
+                    student_id=s.student_id, course_id=target_course_id
+                ).first()
+                if not exists:
+                    db.session.add(StudentCourseEnrollment(
+                        student_id=s.student_id, course_id=target_course_id, is_active=True
+                    ))
+                    created_count += 1
+            if created_count:
+                logger.info(f"Created {created_count} StudentCourseEnrollments")
+        except Exception as e:
+            logger.warning(f"Could not create StudentCourseEnrollments: {e}")
+            db.session.rollback()
+
+        db.session.commit()
+        logger.info("Multi-course migration completed successfully")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in multi-course migration: {e}", exc_info=True)
+
+
+def _make_safe_add_column(inspector, is_postgres):
+    """Фабрика: возвращает функцию для безопасного добавления колонки."""
+    def _add_col(table_name, col_name, col_type):
+        try:
+            cols = {c['name'] for c in inspector.get_columns(table_name)}
+        except Exception:
+            try:
+                cols = {c['name'] for c in inspector.get_columns(table_name.lower())}
+            except Exception:
+                return
+        if col_name in cols:
+            return
+        try:
+            q = table_name if not is_postgres else f'"{table_name}"'
+            db.session.execute(text(f'ALTER TABLE {q} ADD COLUMN {col_name} {col_type}'))
+            logger.info(f"Added column {col_name} to {table_name}")
+        except Exception as e:
+            logger.warning(f"Could not add {col_name} to {table_name}: {e}")
+            db.session.rollback()
+    return _add_col

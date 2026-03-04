@@ -56,7 +56,7 @@
                     {% if visible %}
                     <div class="theory-grid">
                         {% for num, block in visible %}
-                        <a href="{{ url_for('theory.theory_view', task_number=num) }}" class="theory-card">
+                        <a href="{{ url_for('theory.theory_view', task_number=num, course_id=course_id) if course_id else url_for('theory.theory_view', task_number=num) }}" class="theory-card">
                             <div class="theory-card-num">Задание {{ num }}</div>
                             <div class="theory-card-title">{{ block.title if block and block.title else 'Теория' }}</div>
                         </a>

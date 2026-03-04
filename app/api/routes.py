@@ -10,7 +10,7 @@ from flask_login import login_required
 from sqlalchemy import or_, func
 
 from app.api import api_bp
-from app.models import Student, Lesson, Tasks, db, User, Enrollment, UserProfile
+from app.models import Student, Lesson, Tasks, db, User, Enrollment, UserProfile, Course
 from app.notifications.service import notify_student_and_parents
 from app.students.forms import normalize_school_class
 from app.utils.student_id_manager import assign_platform_id_if_needed
@@ -306,7 +306,7 @@ def api_global_search():
                 'site_task_id': task.site_task_id,
                 'task_number': task.task_number,
                 'content_preview': task.content_html[:200] + '...' if task.content_html and len(task.content_html) > 200 else (task.content_html or ''),
-                'url': url_for('kege_generator.generate_results', task_id=task.task_id)
+                'url': url_for('task_generator.generate_results', task_id=task.task_id)
             })
         
         return jsonify({
@@ -631,7 +631,17 @@ def api_analytics_summary():
                 return jsonify({'success': False, 'error': 'Ученик не найден или не привязан к пользователю'}), 404
             user_id = student.user_id
 
-        subject = Subject.query.filter_by(slug='kege').first()
+        course_id = request.args.get('course_id', type=int)
+        if course_id:
+            course = Course.query.get(course_id)
+            if course:
+                subject = AnalyticsEngine._subject_from_course(course_id)
+            else:
+                subject = None
+        else:
+            subject = None
+        if not subject:
+            subject = Subject.query.filter_by(slug='kege').first()
         if not subject:
             return jsonify({
                 'success': True,
@@ -672,7 +682,7 @@ def api_analytics_summary():
                 'last_practiced_at': _safe_isoformat(m.last_practiced_at if m else None),
             })
         by_node.sort(key=lambda x: (x['task_number'] is None, x['task_number'] or 0))
-        predicted = AnalyticsEngine.predict_exam_score(user_id, subject.id)
+        predicted = AnalyticsEngine.predict_exam_score(user_id, subject_id=subject.id, course_id=course_id)
         return jsonify({
             'success': True,
             'subject': {'id': subject.id, 'slug': subject.slug, 'name': subject.name},

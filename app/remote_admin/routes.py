@@ -6,6 +6,7 @@ from flask import render_template, request, redirect, url_for, flash, session, j
 from flask_login import login_required, current_user
 
 from app.remote_admin import remote_admin_bp
+from app.utils.course_tasks import get_task_numbers
 from app.remote_admin.environment_manager import (
     get_current_environment, set_current_environment, 
     get_environment_config, is_environment_configured,
@@ -1012,7 +1013,7 @@ def task_formator():
         data = {'success': False, 'items': [], 'summary': {'new': 0, 'ok': 0, 'needs_fix': 0, 'skip': 0}, 'total': 0, 'page': page, 'per_page': 30}
         flash(f'Ошибка загрузки: {str(e)}', 'error')
 
-    task_numbers = list(range(1, 28))
+    task_numbers = get_task_numbers(request.args.get('course_id', type=int))
 
     return render_template(
         'remote_admin/task_formator.html',
@@ -1082,7 +1083,7 @@ def task_solutions():
         items=items,
         total=total,
         stats=stats,
-        task_numbers=list(range(1, 28)),
+        task_numbers=get_task_numbers(request.args.get('course_id', type=int)),
         api_version=api_version,
     ))
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
