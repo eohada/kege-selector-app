@@ -855,7 +855,9 @@
                 });
             };
 
-            if (typeof showConfirmDialog === 'function') {
+            if (document.cookie.indexOf('is_demo=true') !== -1) {
+                doStart();
+            } else if (typeof showConfirmDialog === 'function') {
                 showConfirmDialog(
                     'Вы уверены, что хотите начать выполнение? Таймер начнёт отсчёт и условия задания станут доступны.',
                     doStart,
@@ -863,7 +865,6 @@
                     { title: 'Начать выполнение?', isDanger: false, confirmText: 'Начать', cancelText: 'Отмена' }
                 );
             } else {
-                // Если модальное окно недоступно, выполняем старт без подтверждения
                 doStart();
             }
         });

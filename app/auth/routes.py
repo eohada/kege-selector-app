@@ -253,11 +253,56 @@ def demo_start():
     if not demo_tasks:
         demo_tasks = Tasks.query.limit(5).all()
 
+    first_task = demo_tasks[0] if demo_tasks else Tasks.query.first()
+
+    # --- 8 completed lessons WITH LessonTasks for analytics ---
+    all_task_pool = Tasks.query.limit(30).all()
+    lesson_topics = [
+        'Системы счисления', 'Логические выражения', 'Графы и деревья',
+        'Алгоритмы обработки данных', 'Программирование на Python',
+        'Кодирование информации', 'Базы данных и SQL', 'Рекурсия и динамика',
+    ]
+    hw_correct_pattern = [True, True, True, False, True, True, False, True]
+    exam_correct_pattern = [True, True, False, True, True, True, True, False]
+
+    for i, topic in enumerate(lesson_topics):
+        completed_lesson = Lesson(
+            student_id=demo_student.student_id,
+            lesson_type='regular',
+            lesson_date=moscow_now() - timedelta(days=(i + 1) * 4),
+            duration=60,
+            status='completed',
+            topic=f'Урок {i + 1}: {topic}',
+        )
+        db.session.add(completed_lesson)
+        db.session.flush()
+
+        task_for_lesson = all_task_pool[i % len(all_task_pool)] if all_task_pool else first_task
+        if task_for_lesson:
+            db.session.add(LessonTask(
+                lesson_id=completed_lesson.lesson_id,
+                task_id=task_for_lesson.task_id,
+                assignment_type='homework',
+                status='graded',
+                submission_correct=hw_correct_pattern[i],
+                student_answer='42',
+            ))
+            exam_task = all_task_pool[(i + 8) % len(all_task_pool)] if len(all_task_pool) > 8 else task_for_lesson
+            db.session.add(LessonTask(
+                lesson_id=completed_lesson.lesson_id,
+                task_id=exam_task.task_id,
+                assignment_type='exam',
+                status='graded',
+                submission_correct=exam_correct_pattern[i],
+                student_answer='42',
+            ))
+
+    # --- Main demo assignment (ASSIGNED — for interactive demo) ---
     if demo_tasks:
         deadline = moscow_now() + timedelta(days=7)
         assignment = Assignment(
             title='Тренировочный вариант ЕГЭ — информатика',
-            description='Демо-вариант: реши задания, вставь ответы и сдай работу. Система проверит автоматически.',
+            description='Демо-вариант: реши задания, вставь ответы и сдай работу.',
             assignment_type='homework',
             deadline=deadline,
             hard_deadline=False,
@@ -309,15 +354,27 @@ def demo_start():
             status='pending',
         ))
 
+    # --- Student stats for analytics charts ---
     for tn in range(1, 28):
-        correct = random.randint(3, 18)
-        incorrect = random.randint(0, max(1, correct // 3))
+        correct = random.randint(5, 20)
+        incorrect = random.randint(1, max(2, correct // 4))
         db.session.add(StudentTaskStatistics(
             student_id=demo_student.student_id,
             task_number=tn,
             manual_correct=correct,
             manual_incorrect=incorrect,
         ))
+
+    # --- Trainer: find a good task with known answer ---
+    trainer_task = Tasks.query.filter(
+        Tasks.task_number == 1,
+        Tasks.answer.isnot(None),
+        Tasks.answer != '',
+    ).first()
+    if not trainer_task:
+        trainer_task = Tasks.query.filter(
+            Tasks.answer.isnot(None), Tasks.answer != '',
+        ).first()
 
     db.session.commit()
 
@@ -327,6 +384,8 @@ def demo_start():
         'submissionId': demo_submission_id,
         'lessonId': demo_lesson_id,
         'studentId': demo_student.student_id,
+        'trainerTaskNumber': trainer_task.task_number if trainer_task else 1,
+        'trainerAnswer': (trainer_task.answer or '42') if trainer_task else '42',
     }
 
     response = make_response(redirect(url_for('main.student_dashboard')))
