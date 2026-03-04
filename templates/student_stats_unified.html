@@ -450,7 +450,6 @@
 
         <div class="stats-tabs">
             <button class="stats-tab active" data-tab="skills" onclick="switchTab('skills', this)">Навыки</button>
-            <button class="stats-tab" data-tab="discipline" onclick="switchTab('discipline', this)">Дисциплина</button>
             <button class="stats-tab" data-tab="analytics" onclick="switchTab('analytics', this)">Аналитика ЕГЭ</button>
         </div>
 
@@ -790,115 +789,6 @@
                 </div>
             </section>
             {% endif %}
-        </div>
-
-        <div id="tab-discipline" class="stats-tab-content">
-            
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-label">Rate выполнения ДЗ</div>
-                    <div class="metric-value">{{ metrics.hw_submit_rate }}%</div>
-                    <div class="metric-delta">{{ punctuality.total }} заданий</div>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-label">Проведено</div>
-                    <div class="metric-value">{{ metrics.completed_lessons }}</div>
-                    <div class="metric-delta">из {{ metrics.total_lessons }}</div>
-                </div>
-                
-                <div class="metric-card">
-                    <div class="metric-label">Пропущено</div>
-                    <div class="metric-value">{{ metrics.missed_lessons }}</div>
-                </div>
-            </div>
-
-            <section class="glass-panel" style="margin-bottom: 2rem;">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">посещаемость</p>
-                        <h2>Календарь активности</h2>
-                    </div>
-                </div>
-                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
-                    Статусы уроков по дням за последний год. Наведите курсор на день для подробностей.
-                </p>
-                <div class="heatmap-wrapper">
-                    <div class="heatmap-container">
-                        
-                        <div class="heatmap-days-header">
-                            <div class="heatmap-day-header-label">Пн</div>
-                            <div class="heatmap-day-header-label">Вт</div>
-                            <div class="heatmap-day-header-label">Ср</div>
-                            <div class="heatmap-day-header-label">Чт</div>
-                            <div class="heatmap-day-header-label">Пт</div>
-                            <div class="heatmap-day-header-label">Сб</div>
-                            <div class="heatmap-day-header-label">Вс</div>
-                        </div>
-                        
-                        <div class="heatmap-main">
-                            <div id="heatmapMonths" class="heatmap-months"></div>
-                            <div id="attendanceHeatmap" class="heatmap-grid"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="heatmap-legend">
-                    <div class="heatmap-legend-item">
-                        <span class="heatmap-legend-label">Статусы уроков:</span>
-                    </div>
-                    <div class="heatmap-legend-item">
-                        <div class="heatmap-day status-completed"></div>
-                        <span>Проведен</span>
-                    </div>
-                    <div class="heatmap-legend-item">
-                        <div class="heatmap-day status-canceled-teacher"></div>
-                        <span>Отменен учителем</span>
-                    </div>
-                    <div class="heatmap-legend-item">
-                        <div class="heatmap-day status-canceled-student"></div>
-                        <span>Отменен учеником</span>
-                    </div>
-                </div>
-            </section>
-
-            <section class="glass-panel" style="margin-bottom: 2rem;">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">статусы уроков</p>
-                        <h2>Распределение посещаемости</h2>
-                    </div>
-                </div>
-                <div style="margin-top: 2rem; max-width: 400px; margin-left: auto; margin-right: auto;">
-                    <canvas id="attendanceChart" style="max-height: 300px;"></canvas>
-                </div>
-            </section>
-
-            <section class="glass-panel" style="margin-bottom: 2rem;">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">пунктуальность</p>
-                        <h2>Время сдачи ДЗ</h2>
-                    </div>
-                </div>
-                <div class="punctuality-stats">
-                    <div class="punctuality-item">
-                        <div class="punctuality-value">{{ punctuality.early }}</div>
-                        <div class="punctuality-label">Сдано заранее</div>
-                    </div>
-                    <div class="punctuality-item">
-                        <div class="punctuality-value">{{ punctuality.on_time }}</div>
-                        <div class="punctuality-label">Вовремя</div>
-                    </div>
-                    <div class="punctuality-item">
-                        <div class="punctuality-value">{{ punctuality.late }}</div>
-                        <div class="punctuality-label">С опозданием</div>
-                    </div>
-                    <div class="punctuality-item">
-                        <div class="punctuality-value">{{ lessons_late_count|default(0) }}</div>
-                        <div class="punctuality-label">Уроков с опозданием</div>
-                    </div>
-                </div>
-            </section>
         </div>
 
         <div id="tab-analytics" class="stats-tab-content">
