@@ -20,7 +20,7 @@ from core.db_models import SubmissionComment, MOSCOW_TZ
 from app.auth.rbac_utils import check_access, get_user_scope, has_permission
 from core.db_models import moscow_now
 from core.audit_logger import audit_logger
-from app.notifications.service import notify_student_and_parents
+from app.notifications.service import notify_student_and_parents, notify_user, build_task_number_summary, build_task_number_counts
 from core.selector_logic import get_accepted_tasks, get_skipped_tasks, get_unique_tasks, get_task_ids_in_assignments_for_students, reset_history, reset_skipped
 from app.utils.course_tasks import get_task_numbers
 import requests
@@ -695,7 +695,40 @@ def distribute_assignment():
                 'tasks_count': len(assignment.tasks)
             }
         )
-        
+
+        task_ids = [at.task_id for at in assignment.tasks]
+        label = {'homework': 'Домашняя работа', 'classwork': 'Классная работа', 'exam': 'Проверочная работа', 'test': 'Проверочная работа'}.get((assignment_type or 'homework').strip().lower(), 'Задания')
+        summary = build_task_number_summary(task_ids)
+        task_numbers = build_task_number_counts(task_ids)
+        body = f"{label}: {summary}"
+        link_url = url_for('assignments.assignments_list', _external=True)
+        for student_id in student_ids:
+            student = Student.query.get(student_id)
+            if not student:
+                continue
+            user_id = getattr(student, 'user_id', None)
+            if not user_id:
+                try:
+                    u = User.query.get(student.student_id)
+                    if u and getattr(u, 'role', None) == 'student':
+                        user_id = u.id
+                except Exception:
+                    pass
+            if user_id:
+                notify_user(
+                    user_id,
+                    kind='assignment_assigned',
+                    title=f"Новые задания — {label}",
+                    body=body,
+                    link_url=link_url,
+                    meta={'assignment_id': assignment.assignment_id, 'assignment_type': (assignment_type or 'homework').strip().lower(), 'tasks_count': len(task_ids), 'task_numbers': task_numbers},
+                )
+        try:
+            db.session.commit()
+        except Exception as notif_err:
+            logger.warning("Failed to commit assignment notifications: %s", notif_err)
+            db.session.rollback()
+
         return jsonify({
             'success': True,
             'assignment_id': assignment.assignment_id,

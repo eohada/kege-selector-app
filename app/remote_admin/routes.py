@@ -150,30 +150,42 @@ def users_list():
                          environment_name=environments.get(current_env, {}).get('name', current_env))
 
 
-def _get_users_by_role(role):  # comment
-    """Получает список пользователей по роли через API. Для 'tutor' также включает 'creator'."""  # comment
-    try:  # comment
+def _get_users_by_role(role):
+    """Получает список пользователей по роли через API. Для 'tutor' также включает 'creator'.
+    Возвращает (list, error_message | None). При ошибке error_message — строка для отображения в UI."""
+    try:
         if role == 'tutor':
             path = f"/internal/remote-admin/api/users?role=tutor&is_active=true"
             resp = make_remote_request('GET', path)
-            tutors = resp.json().get('users', []) if resp.status_code == 200 else []
-            
+            if resp.status_code != 200:
+                return [], f"Не удалось загрузить список преподавателей: {resp.status_code}"
+            tutors = resp.json().get('users', [])
             path_creator = f"/internal/remote-admin/api/users?role=creator&is_active=true"
             resp_creator = make_remote_request('GET', path_creator)
-            creators = resp_creator.json().get('users', []) if resp_creator.status_code == 200 else []
-            
+            if resp_creator.status_code != 200:
+                return [], f"Не удалось загрузить список создателей: {resp_creator.status_code}"
+            creators = resp_creator.json().get('users', [])
             all_users = {u['id']: u for u in tutors}
             for creator in creators:
                 all_users[creator['id']] = creator
-            return list(all_users.values())
-        else:
-            path = f"/internal/remote-admin/api/users?role={role}&is_active=true"  # comment
-            resp = make_remote_request('GET', path)  # comment
-            if resp.status_code == 200:  # comment
-                return resp.json().get('users', [])  # comment
-    except Exception as e:  # comment
-        logger.error(f"Error fetching {role}s: {e}")  # comment
-    return []  # comment
+            return list(all_users.values()), None
+        path = f"/internal/remote-admin/api/users?role={role}&is_active=true"
+        resp = make_remote_request('GET', path)
+        if resp.status_code != 200:
+            return [], f"Не удалось загрузить список ({role}): {resp.status_code}"
+        return resp.json().get('users', []), None
+    except Exception as e:
+        logger.error(f"Error fetching {role}s: {e}", exc_info=True)
+        return [], f"Ошибка загрузки: {e}"
+
+
+def _load_users_for_edit():
+    """Загружает списки tutors, parents, students для форм редактирования. Возвращает (tutors, parents, students, fetch_error)."""
+    tutors, e1 = _get_users_by_role('tutor')
+    parents, e2 = _get_users_by_role('parent')
+    students, e3 = _get_users_by_role('student')
+    fetch_error = e1 or e2 or e3
+    return tutors or [], parents or [], students or [], fetch_error
 
 
 @remote_admin_bp.route('/users/new', methods=['GET', 'POST'])
@@ -212,23 +224,23 @@ def user_new():
             
             if not data['username']:
                 flash('Имя пользователя обязательно', 'error')
-                tutors = _get_users_by_role('tutor')
-                parents = _get_users_by_role('parent')
-                students = _get_users_by_role('student')
-                return render_template('remote_admin/user_edit.html', user=None, 
-                                     current_environment=current_env,
-                                     environment_name=environments.get(current_env, {}).get('name', current_env),
-                                     tutors=tutors, parents=parents, students=students)
-            
-            if not data['password']:
-                flash('Пароль обязателен', 'error')
-                tutors = _get_users_by_role('tutor')
-                parents = _get_users_by_role('parent')
-                students = _get_users_by_role('student')
+                tutors, parents, students, users_fetch_error = _load_users_for_edit()
+                if users_fetch_error:
+                    flash(users_fetch_error, 'danger')
                 return render_template('remote_admin/user_edit.html', user=None,
                                      current_environment=current_env,
                                      environment_name=environments.get(current_env, {}).get('name', current_env),
-                                     tutors=tutors, parents=parents, students=students)
+                                     tutors=tutors, parents=parents, students=students, users_fetch_error=users_fetch_error)
+            
+            if not data['password']:
+                flash('Пароль обязателен', 'error')
+                tutors, parents, students, users_fetch_error = _load_users_for_edit()
+                if users_fetch_error:
+                    flash(users_fetch_error, 'danger')
+                return render_template('remote_admin/user_edit.html', user=None,
+                                     current_environment=current_env,
+                                     environment_name=environments.get(current_env, {}).get('name', current_env),
+                                     tutors=tutors, parents=parents, students=students, users_fetch_error=users_fetch_error)
             
             resp = make_remote_request('POST', '/internal/remote-admin/api/users', payload=data)
             
@@ -243,14 +255,14 @@ def user_new():
             logger.error(f"Error creating user: {e}", exc_info=True)
             flash(f'Ошибка создания пользователя: {str(e)}', 'error')
     
-    tutors = _get_users_by_role('tutor')
-    parents = _get_users_by_role('parent')
-    students = _get_users_by_role('student')
+    tutors, parents, students, users_fetch_error = _load_users_for_edit()
+    if users_fetch_error:
+        flash(users_fetch_error, 'danger')
     
     return render_template('remote_admin/user_edit.html', user=None,
                          current_environment=current_env,
                          environment_name=environments.get(current_env, {}).get('name', current_env),
-                         tutors=tutors, parents=parents, students=students)
+                         tutors=tutors, parents=parents, students=students, users_fetch_error=users_fetch_error)
 
 
 @remote_admin_bp.route('/users/<int:user_id>/edit', methods=['GET', 'POST'])
@@ -316,14 +328,14 @@ def user_edit(user_id):
         flash(f'Ошибка загрузки пользователя: {str(e)}', 'error')
         return redirect(url_for('remote_admin.users_list'))
     
-    tutors = _get_users_by_role('tutor')
-    parents = _get_users_by_role('parent')
-    students = _get_users_by_role('student')
+    tutors, parents, students, users_fetch_error = _load_users_for_edit()
+    if users_fetch_error:
+        flash(users_fetch_error, 'danger')
     
     r = make_response(render_template('remote_admin/user_edit.html', user=user_data,
                          current_environment=current_env,
                          environment_name=environments.get(current_env, {}).get('name', current_env),
-                         tutors=tutors, parents=parents, students=students))
+                         tutors=tutors, parents=parents, students=students, users_fetch_error=users_fetch_error))
     r.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return r
 
@@ -1121,8 +1133,11 @@ def create_pack():
             logger.error(f"Error creating pack: {e}", exc_info=True)
             return jsonify({'success': False, 'error': str(e)}), 500
     
-    tutors = _get_users_by_role('tutor')
-    
+    tutors, tutors_err = _get_users_by_role('tutor')
+    if tutors_err:
+        flash(tutors_err, 'danger')
+    tutors = tutors or []
+
     tariffs = []
     try:
         resp = make_remote_request('GET', '/internal/remote-admin/api/tariffs')
