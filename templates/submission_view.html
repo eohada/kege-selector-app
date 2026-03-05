@@ -86,6 +86,59 @@
             border-radius: var(--radius-lg);
             padding: 1.5rem;
             margin-bottom: 1.5rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .task-card.task-correct {
+            border-color: rgba(16, 185, 129, 0.5);
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.12), inset 0 0 0 1px rgba(16, 185, 129, 0.08);
+        }
+        .task-card.task-incorrect {
+            border-color: rgba(239, 68, 68, 0.5);
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.12), inset 0 0 0 1px rgba(239, 68, 68, 0.08);
+        }
+        .task-card.task-pending-review {
+            border-color: rgba(251, 191, 36, 0.4);
+            box-shadow: 0 0 12px rgba(251, 191, 36, 0.1), inset 0 0 0 1px rgba(251, 191, 36, 0.06);
+        }
+        .correct-answer-block {
+            margin-top: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: var(--radius-sm);
+        }
+        .correct-answer-block .correct-answer-label {
+            font-weight: 600;
+            font-size: 0.88rem;
+            color: rgb(16, 185, 129);
+            margin-bottom: 0.35rem;
+        }
+        .correct-answer-block .correct-answer-value {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+        }
+        .readonly-code-wrap {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--stroke-1);
+        }
+        .readonly-code-wrap .code-editor-panel {
+            margin-top: 0.5rem;
+            padding: 1rem;
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-md);
+        }
+        .readonly-code-wrap .CodeMirror {
+            cursor: default;
+        }
+        .readonly-code-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
         }
         
         .task-header {
@@ -376,7 +429,7 @@
         {% if submission.status in ['ASSIGNED', 'IN_PROGRESS', 'RETURNED'] or (submission.status == 'GRADED' and attempts_left > 0 and can_submit) %}
         <form id="submission-form">
             {% for task_item in tasks_data %}
-            <div class="task-card" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
+            <div class="task-card{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% endif %}" id="task-{{ loop.index }}" data-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                 <div class="task-header">
                     <div>
                         <span class="task-number">Задание {{ task_item.task.task_number }}</span>
@@ -568,7 +621,7 @@
         {% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] or (submission.status == 'GRADED' and (attempts_left is not defined or attempts_left <= 0 or not can_submit)) %}
         
         {% for task_item in tasks_data %}
-        <div class="task-card" id="task-{{ loop.index }}">
+        <div class="task-card{% if task_item.answer and task_item.answer.is_correct == true %} task-correct{% elif task_item.answer and task_item.answer.is_correct == false %} task-incorrect{% elif task_item.answer %} task-pending-review{% endif %}" id="task-{{ loop.index }}">
             <div class="task-header">
                 <div>
                     <span class="task-number">Задание {{ task_item.task.task_number }}</span>
@@ -614,7 +667,7 @@
                 {% if task_item.answer %}
                 <div style="margin-bottom: 0.75rem; font-weight: 600;">
                     {% if task_item.answer.is_correct == true %}
-                    <span style="color: var(--accent-1);">{{ ui_icon('action.check', 'sm') }} Верно</span> — {{ task_item.answer.score or 0 }}/{{ task_item.assignment_task.max_score }} баллов
+                    <span style="color: rgb(16, 185, 129);">{{ ui_icon('action.check', 'sm') }} Верно</span> — {{ task_item.answer.score or 0 }}/{{ task_item.assignment_task.max_score }} баллов
                     {% elif task_item.answer.is_correct == false %}
                     <span style="color: #ef4444;">{{ ui_icon('action.warning', 'sm') }} Неверно</span> — {{ task_item.answer.score or 0 }}/{{ task_item.assignment_task.max_score }} баллов
                     {% else %}
@@ -624,10 +677,29 @@
                 {% endif %}
                 <div style="font-weight: 600; margin-bottom: 0.5rem;">Ваш ответ:</div>
                 <div style="white-space: pre-wrap;">{{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}</div>
+
+                {% if task_item.task.answer and (submission.status == 'GRADED' or (task_item.answer and task_item.answer.is_correct is not none)) %}
+                <div class="correct-answer-block">
+                    <div class="correct-answer-label">Правильный ответ:</div>
+                    <div class="correct-answer-value">{{ task_item.task.answer }}</div>
+                </div>
+                {% endif %}
+
                 {% if task_item.answer and task_item.answer.student_code %}
-                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
+                <div class="readonly-code-wrap code-editor-wrap" data-assignment-task-id="{{ task_item.assignment_task.assignment_task_id }}">
                     <div style="font-weight: 600; margin-bottom: 0.5rem;">Ваш код (Python):</div>
-                    <pre style="margin: 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-family: 'Consolas', 'Monaco', monospace; font-size: 0.88rem; white-space: pre-wrap; word-break: break-word; max-height: 20rem; overflow: auto;">{{ task_item.answer.student_code }}</pre>
+                    <div class="code-editor-panel">
+                        <div class="code-editor-cm-wrap" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" style="border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); overflow: hidden;">
+                            <textarea class="code-editor-text code-editor-readonly" rows="14" data-task-id="{{ task_item.assignment_task.assignment_task_id }}" readonly style="width: 100%; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; padding: 0.75rem; border: none; background: var(--surface-1); color: var(--text-primary); resize: vertical; box-sizing: border-box;">{{ task_item.answer.student_code }}</textarea>
+                        </div>
+                        <div class="readonly-code-actions">
+                            <button type="button" class="code-editor-run neo-button ghost sm">Запустить</button>
+                        </div>
+                        <div class="code-editor-output-wrap" style="margin-top: 0.75rem;">
+                            <label style="font-size: 0.85em; font-weight: 600;">Вывод:</label>
+                            <pre class="code-editor-output" style="margin: 0.35rem 0 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; white-space: pre-wrap; word-break: break-word; min-height: 3rem; max-height: 12rem; overflow: auto;"></pre>
+                        </div>
+                    </div>
                 </div>
                 {% endif %}
                 {% if task_item.answer and task_item.answer.files %}
@@ -861,23 +933,28 @@
                 if (textarea.cmInstance) return textarea.cmInstance.getValue();
                 return textarea.value || '';
             }
-            function initCodeMirrorIfNeeded(wrap) {
+            function initCodeMirrorIfNeeded(wrap, forceReadonly) {
                 var panel = wrap && wrap.querySelector('.code-editor-panel');
                 var wrapDiv = panel && panel.querySelector('.code-editor-cm-wrap');
                 var textarea = wrapDiv && wrapDiv.querySelector('.code-editor-text');
                 if (!textarea || textarea.cmInstance || typeof CodeMirror === 'undefined') return;
                 var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                var isReadonly = forceReadonly || textarea.classList.contains('code-editor-readonly');
                 var opts = {
                     mode: 'python',
                     theme: isDark ? 'dracula' : 'default',
                     lineNumbers: true,
                     indentUnit: 4,
                     lineWrapping: true,
-                    autoCloseBrackets: true,
-                    matchBrackets: true
+                    autoCloseBrackets: !isReadonly,
+                    matchBrackets: true,
+                    readOnly: isReadonly ? true : false
                 };
                 textarea.cmInstance = CodeMirror.fromTextArea(textarea, opts);
                 textarea.cmInstance.setSize(null, 280);
+                if (isReadonly) {
+                    textarea.cmInstance.getWrapperElement().style.opacity = '0.92';
+                }
             }
             document.querySelectorAll('.code-editor-toggle').forEach(function(btn) {
                 btn.addEventListener('click', function() {
@@ -890,6 +967,9 @@
                     if (icon) icon.textContent = isHidden ? '▼' : '▶';
                     if (isHidden) initCodeMirrorIfNeeded(wrap);
                 });
+            });
+            document.querySelectorAll('.readonly-code-wrap').forEach(function(wrap) {
+                initCodeMirrorIfNeeded(wrap, true);
             });
 
             var submissionId = {{ submission.submission_id }};
