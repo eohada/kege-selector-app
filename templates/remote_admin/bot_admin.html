@@ -88,7 +88,7 @@
                                             {% if admin.is_active %}Выключить{% else %}Включить{% endif %}
                                         </button>
                                     </form>
-                                    <form method="POST" action="{{ url_for('remote_admin.bot_admins_delete', admin_id=admin.admin_id) }}">
+                                    <form method="POST" action="{{ url_for('remote_admin.bot_admins_delete', admin_id=admin.admin_id) }}" onsubmit="return confirm('Удалить администратора бота?')">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button class="neo-button ghost sm" type="submit">Удалить</button>
                                     </form>

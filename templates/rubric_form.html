@@ -52,7 +52,18 @@
               onsubmit="return beforeSubmit();">
           {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
           <input type="hidden" id="items_json" name="items_json" value="{{ items_json|e }}">
-
+          {% if form and form.errors %}
+          <div class="alert alert-danger" style="margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: 8px; background: var(--danger-bg, #fde8e8); color: var(--danger, #c53030); border: 1px solid var(--danger, #c53030);">
+              <strong>Ошибки валидации:</strong>
+              <ul style="margin: 0.25rem 0 0 1.2rem; padding: 0;">
+                  {% for field, errors in form.errors.items() %}
+                      {% for error in errors %}
+                      <li>{{ error }}</li>
+                      {% endfor %}
+                  {% endfor %}
+              </ul>
+          </div>
+          {% endif %}
           <div style="display:grid; grid-template-columns: 1.2fr .8fr; gap: 1.25rem;" class="profile-grid-responsive">
             <div>
               <div class="neo-field">

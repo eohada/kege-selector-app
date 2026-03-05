@@ -291,18 +291,36 @@
     <script>
         // Загружаем статистику для текущего окружения
         {% if env_statuses.get(current_environment, {}).get('available') %}
-        fetch('{{ url_for("remote_admin.api_stats") }}')
-            .then(r => r.json())
-            .then(data => {
-                if (data.success && data.stats) {
-                    const stats = data.stats;
-                    document.getElementById('stat-users').textContent = stats.users?.total || '—';
-                    document.getElementById('stat-active-users').textContent = stats.users?.active || '—';
-                    document.getElementById('stat-total-logs').textContent = stats.audit_logs?.total || '—';
-                    document.getElementById('stat-today-logs').textContent = stats.audit_logs?.today || '—';
-                }
-            })
-            .catch(e => console.error('Error loading stats:', e));
+        (function() {
+            var statIds = ['stat-users', 'stat-active-users', 'stat-total-logs', 'stat-today-logs'];
+            statIds.forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.textContent = 'Загрузка...';
+            });
+            fetch('{{ url_for("remote_admin.api_stats") }}')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.stats) {
+                        const stats = data.stats;
+                        document.getElementById('stat-users').textContent = stats.users?.total || '—';
+                        document.getElementById('stat-active-users').textContent = stats.users?.active || '—';
+                        document.getElementById('stat-total-logs').textContent = stats.audit_logs?.total || '—';
+                        document.getElementById('stat-today-logs').textContent = stats.audit_logs?.today || '—';
+                    } else {
+                        statIds.forEach(function(id) {
+                            var el = document.getElementById(id);
+                            if (el) el.textContent = '—';
+                        });
+                    }
+                })
+                .catch(function(e) {
+                    console.error('Error loading stats:', e);
+                    statIds.forEach(function(id) {
+                        var el = document.getElementById(id);
+                        if (el) el.textContent = 'Ошибка';
+                    });
+                });
+        })();
         {% endif %}
     </script>
 </body>

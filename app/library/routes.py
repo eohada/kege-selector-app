@@ -96,9 +96,6 @@ def materials_library():
     if q:
         like = f"%{q.lower()}%"
         base = base.filter(func.lower(MaterialAsset.title).like(like))
-    if tag:
-        pass
-
     assets = base.order_by(MaterialAsset.updated_at.desc(), MaterialAsset.created_at.desc()).limit(200).all()
     if tag:
         assets = [a for a in assets if isinstance(a.tags, list) and tag in [str(t).lower() for t in a.tags]]
@@ -210,6 +207,34 @@ def materials_delete(asset_id: int):
         flash('Ошибка удаления.', 'danger')
         return redirect(url_for('library.materials_library'))
     flash('Материал удалён из библиотеки.', 'success')
+    return redirect(url_for('library.materials_library'))
+
+
+@library_bp.route('/library/materials/<int:asset_id>/edit', methods=['POST'])
+@login_required
+@check_access('lesson.edit')
+def materials_edit(asset_id: int):
+    if not _require_teacher():
+        return "Forbidden", 403
+    asset = MaterialAsset.query.get_or_404(asset_id)
+    if asset.owner_user_id != current_user.id:
+        return "Forbidden", 403
+
+    title = (request.form.get('title') or '').strip()
+    if title:
+        asset.title = title
+    asset.description = (request.form.get('description') or '').strip() or None
+    asset.tags = _normalize_tags((request.form.get('tags') or '').strip())
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Failed to update material asset {asset_id}: {e}", exc_info=True)
+        flash('Ошибка при обновлении материала.', 'danger')
+        return redirect(url_for('library.materials_library'))
+
+    flash('Материал обновлён.', 'success')
     return redirect(url_for('library.materials_library'))
 
 

@@ -13,12 +13,14 @@ from zoneinfo import ZoneInfo  # comment
 from datetime import datetime  # comment
 from werkzeug.exceptions import HTTPException
 
+from flask_migrate import Migrate
 from app.models import db
 from core.audit_logger import audit_logger
 from app.models import User, MOSCOW_TZ  # comment
 
 csrf = CSRFProtect()
 login_manager = LoginManager()
+migrate = Migrate()
 
 def create_app(config_name=None):
     """
@@ -49,7 +51,20 @@ def create_app(config_name=None):
         app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
     
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'local-dev-key-12345')
+    ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
+    secret_key = os.environ.get('SECRET_KEY')
+    if not secret_key:
+        if ENVIRONMENT not in ('local', 'development', 'dev'):
+            raise RuntimeError(
+                f"SECRET_KEY is not set! Refusing to start in '{ENVIRONMENT}' environment. "
+                "Set the SECRET_KEY environment variable."
+            )
+        import secrets as _secrets
+        secret_key = _secrets.token_hex(32)
+        logging.getLogger(__name__).warning(
+            "SECRET_KEY not set — generated a random key. Sessions will reset on restart."
+        )
+    app.config['SECRET_KEY'] = secret_key
     app.config['WTF_CSRF_ENABLED'] = True
     app.config['WTF_CSRF_TIME_LIMIT'] = None
     app.config['TRAINER_URL'] = (os.environ.get('TRAINER_URL') or '').strip() or None
@@ -74,7 +89,6 @@ def create_app(config_name=None):
 
     app.config['ADMIN_URL'] = (os.environ.get('ADMIN_URL') or '').strip().rstrip('/') or None
     
-    ENVIRONMENT = os.environ.get('ENVIRONMENT', 'local')
     app.config['IS_SANDBOX'] = os.environ.get('IS_SANDBOX', 'False').lower() == 'true'
     # Для переключателя Прод ↔ Песочница в QA God Mode (автовход через подписанный токен)
     app.config['PROD_URL'] = (os.environ.get('PROD_URL') or '').strip().rstrip('/') or None
@@ -83,6 +97,7 @@ def create_app(config_name=None):
     
     csrf.init_app(app)
     db.init_app(app)
+    migrate.init_app(app, db)
     audit_logger.init_app(app)
     
     login_manager.init_app(app)

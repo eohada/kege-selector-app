@@ -182,8 +182,21 @@
                     <div class="wizard-step-content" id="stepContent1">
                         <div class="panel">
                             <h2>1. Кому выдаём?</h2>
-                            <p class="subtitle">Выберите учеников из списка. Можно выбрать одного, группу или всех сразу.</p>
-                            
+                            <p class="subtitle">Выберите учеников из списка, назначьте группе или выберите всех сразу.</p>
+
+                            {% if available_groups %}
+                            <div style="margin-bottom: 1rem;">
+                                <label style="font-weight: 700; margin-bottom: 0.35rem; display: block;">Быстрый выбор по группе</label>
+                                <select id="ca_group_select" class="neo-select" onchange="handleGroupSelect(this.value)">
+                                    <option value="">— Выбрать вручную —</option>
+                                    <option value="all">Все ученики</option>
+                                    {% for g in available_groups %}
+                                    <option value="{{ g.group_id }}">{{ g.title }}{% if g.subject %} ({{ g.subject }}){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
+
                             <select id="ca_recipients" class="neo-select" multiple size="12" style="min-height: 300px;">
                                 {% for st in (recipient_options or []) %}
                                     {% set _sel = (default_recipient_ids and st.student_id in default_recipient_ids) %}
@@ -272,7 +285,7 @@
                                                 </div>
                                             </div>
                                             <div class="task-mini-body">
-                                                {{ (t.content_html or 'Текст отсутствует') | safe }}
+                                                {{ (t.content_html or 'Текст отсутствует') | sanitize_html }}
                                             </div>
                                         </div>
                                         {% endfor %}
@@ -407,6 +420,18 @@
         function selectAll(val) {
             const sel = document.getElementById('ca_recipients');
             Array.from(sel.options).forEach(o => o.selected = val);
+            const gs = document.getElementById('ca_group_select');
+            if (gs) gs.value = val ? 'all' : '';
+            updateUI();
+        }
+
+        function handleGroupSelect(value) {
+            const sel = document.getElementById('ca_recipients');
+            if (value === 'all') {
+                Array.from(sel.options).forEach(o => o.selected = true);
+            } else if (value === '') {
+                Array.from(sel.options).forEach(o => o.selected = false);
+            }
             updateUI();
         }
 
@@ -448,6 +473,8 @@
             const title = document.getElementById('ca_title').value.trim();
             const deadline = document.getElementById('ca_deadline').value;
             const type = document.getElementById('ca_type').value;
+            const groupSelect = document.getElementById('ca_group_select');
+            const selectedGroup = groupSelect ? groupSelect.value : '';
             const recipients = Array.from(document.getElementById('ca_recipients').selectedOptions).map(o => parseInt(o.value));
             const taskIds = getTaskIds();
             const timeLimit = parseInt(document.getElementById('ca_time_limit').value) || null;
@@ -458,7 +485,7 @@
             const timeLimitStrict = document.getElementById('ca_time_limit_strict').checked;
             const description = (document.getElementById('ca_description') && document.getElementById('ca_description').value.trim()) || '';
 
-            if (!title || !deadline || !recipients.length || !taskIds.length) {
+            if (!title || !deadline || (!recipients.length && !selectedGroup) || !taskIds.length) {
                 window.toast?.error?.('Заполните все обязательные поля');
                 return;
             }
@@ -480,6 +507,7 @@
                         hard_deadline: hardDeadline,
                         attempts_per_task: attemptsPerTask,
                         allow_separate_submission: allowSeparate,
+                        groupId: selectedGroup || null,
                         recipientIds: recipients,
                         tasks: taskIds.map((id, i) => ({ task_id: id, order: i, max_score: 1 }))
                     })

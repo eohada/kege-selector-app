@@ -98,7 +98,7 @@
                 </div>
 
                 <div class="task-content" style="margin-bottom: 1rem;">
-                    {{ task.content_html|deduplicate_formulas|safe }}
+                    {{ task.content_html|deduplicate_formulas|sanitize_html }}
                 </div>
 
                 {% if task.answer %}

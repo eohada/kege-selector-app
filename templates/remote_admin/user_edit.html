@@ -400,5 +400,21 @@
             }
         });
     </script>
+    <script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('form').forEach(function(form) {
+        if (form.classList.contains('danger-btn') || form.classList.contains('no-protect')) return;
+        form.addEventListener('submit', function() {
+            var btn = form.querySelector('button[type="submit"], input[type="submit"]');
+            if (btn && !btn.disabled) {
+                btn.disabled = true;
+                btn.dataset.originalText = btn.textContent;
+                btn.textContent = 'Сохранение...';
+                setTimeout(function() { btn.disabled = false; btn.textContent = btn.dataset.originalText; }, 8000);
+            }
+        });
+    });
+});
+</script>
 </body>
 </html>

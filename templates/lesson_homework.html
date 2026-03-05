@@ -882,7 +882,7 @@
                         </div>
                     </div>
                     <div class="task-content">
-                        {{ lt19.task.content_html|deduplicate_formulas|safe }}
+                        {{ lt19.task.content_html|deduplicate_formulas|sanitize_html }}
                         {% if lt19.task.attached_files %}
                         {% set files = lt19.task.attached_files | from_json %}
                         {% if files %}
@@ -1023,7 +1023,7 @@
                     </div>
                     
                     <div class="task-content">
-                        {{ hw_task.task.content_html|deduplicate_formulas|safe }}
+                        {{ hw_task.task.content_html|deduplicate_formulas|sanitize_html }}
                         {% if hw_task.task.attached_files %}
                         {% set files = hw_task.task.attached_files | from_json %}
                         {% if files %}

@@ -425,10 +425,21 @@
     const headers = { 'X-Requested-With': 'XMLHttpRequest' };
     const token = fd.get('csrf_token') || csrf();
     if (!fd.get('csrf_token') && token) fd.append('csrf_token', token);
-    if (token) headers['X-CSRFToken'] = token;
 
     const btn = createForm.querySelector('button[type="submit"]');
-    if (btn) btn.disabled = true;
+    let originalText = 'Создать';
+    let safetyTimeout;
+    if (btn) {
+      if (btn.disabled) return;
+      originalText = btn.textContent || 'Создать';
+      btn.disabled = true;
+      btn.textContent = 'Создание...';
+      safetyTimeout = setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }, 8000);
+    }
+
     try {
       const resp = await fetch(createForm.action, { method: 'POST', body: fd, headers });
       const data = await resp.json().catch(() => ({}));
@@ -448,7 +459,11 @@
     } catch (err) {
       if (window.toast) window.toast.error(err.message || 'Ошибка создания урока');
     } finally {
-      if (btn) btn.disabled = false;
+      if (btn) {
+        clearTimeout(safetyTimeout);
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
     }
   });
 

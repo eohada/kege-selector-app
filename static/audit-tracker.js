@@ -303,5 +303,4 @@
         );
     }
     
-    console.log('Audit tracker initialized');  
 })();

@@ -181,6 +181,18 @@
                                     {{ a.description }}
                                 </div>
                                 {% endif %}
+                                <details style="margin-top: 0.5rem;">
+                                    <summary class="neo-button ghost sm" style="cursor:pointer;">
+                                        <i class="fas fa-pen"></i> Редактировать
+                                    </summary>
+                                    <form method="POST" action="{{ url_for('library.materials_edit', asset_id=a.asset_id) }}" style="margin-top: 0.5rem; display:flex; flex-direction:column; gap:0.4rem;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="text" name="title" class="neo-input" value="{{ a.title }}" placeholder="Название" required>
+                                        <input type="text" name="description" class="neo-input" value="{{ a.description or '' }}" placeholder="Описание">
+                                        <input type="text" name="tags" class="neo-input" value="{{ (a.tags or [])|join(', ') }}" placeholder="Теги через запятую">
+                                        <button type="submit" class="neo-button accent sm">Сохранить</button>
+                                    </form>
+                                </details>
                             </div>
                             {% endfor %}
                         </div>
@@ -198,6 +210,22 @@
     </main>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('form').forEach(function(form) {
+        if (form.classList.contains('danger-btn') || form.classList.contains('no-protect')) return;
+        form.addEventListener('submit', function() {
+            var btn = form.querySelector('button[type="submit"], input[type="submit"]');
+            if (btn && !btn.disabled) {
+                btn.disabled = true;
+                btn.dataset.originalText = btn.textContent;
+                btn.textContent = 'Сохранение...';
+                setTimeout(function() { btn.disabled = false; btn.textContent = btn.dataset.originalText; }, 8000);
+            }
+        });
+    });
+});
+</script>
 </body>
 </html>
 

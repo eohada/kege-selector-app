@@ -108,8 +108,9 @@ function savePermissions(userId, btn) {
     block.querySelectorAll('.perm-cb').forEach(function(cb) {
         payload[cb.dataset.perm] = cb.checked;
     });
+    var originalText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = '...';
+    btn.textContent = 'Сохранение...';
     fetch('/qa/testers/' + userId + '/permissions', {
         method: 'POST',
         headers: {
@@ -129,7 +130,7 @@ function savePermissions(userId, btn) {
         }
     })
     .catch(function() { alert('Ошибка сети'); })
-    .finally(function() { btn.disabled = false; btn.textContent = 'Сохранить права'; });
+    .finally(function() { btn.disabled = false; btn.textContent = originalText; });
 }
 </script>
             </main>

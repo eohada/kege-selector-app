@@ -13,7 +13,7 @@ from app.limiter import limiter
 from app.models import (
     db, Assignment, AssignmentTask, Submission, Answer,
     Student, User, Tasks, Lesson, LessonTask, Enrollment, GradebookEntry, SubmissionAttempt, RubricTemplate,
-    TaskTemplate, TemplateTask, CourseTaskTemplate
+    TaskTemplate, TemplateTask, CourseTaskTemplate, GroupStudent
 )
 from app.students.utils import get_sorted_assignments
 from core.db_models import SubmissionComment, MOSCOW_TZ
@@ -598,6 +598,13 @@ def distribute_assignment():
         elif group_id == 'all' and not scope['can_see_all']:
             students = get_students_for_tutor(current_user.id)
             student_ids = [s.student_id for s in students]
+        elif group_id and str(group_id).isdigit():
+            group_members = GroupStudent.query.filter_by(group_id=int(group_id)).all()
+            student_ids = [gm.student_id for gm in group_members]
+            if not scope['can_see_all']:
+                accessible_students = get_students_for_tutor(current_user.id)
+                accessible_ids = [s.student_id for s in accessible_students]
+                student_ids = [sid for sid in student_ids if sid in accessible_ids]
         elif recipient_ids:
             if not scope['can_see_all']:
                 accessible_students = get_students_for_tutor(current_user.id)
@@ -1353,6 +1360,19 @@ def assignment_create():
     if default_recipient_ids:
         already_sent_task_ids = sorted(get_task_ids_in_assignments_for_students(default_recipient_ids))
 
+    from app.models import SchoolGroup
+    available_groups = []
+    try:
+        scope = get_user_scope(current_user)
+        if scope.get('can_see_all'):
+            available_groups = SchoolGroup.query.filter_by(status='active').order_by(SchoolGroup.title.asc()).all()
+        else:
+            available_groups = SchoolGroup.query.filter_by(
+                status='active', owner_user_id=current_user.id
+            ).order_by(SchoolGroup.title.asc()).all()
+    except Exception:
+        pass
+
     return render_template(
         'assignment_create.html',
         active_page='assignments',
@@ -1369,6 +1389,7 @@ def assignment_create():
         recipient_options=recipient_options,
         default_recipient_ids=default_recipient_ids,
         already_sent_task_ids=already_sent_task_ids,
+        available_groups=available_groups,
     )
 
 

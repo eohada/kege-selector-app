@@ -19,7 +19,10 @@ logger = logging.getLogger(__name__)
 _schema_initialized = False
 
 _last_lesson_check = None
-_lesson_check_interval = timedelta(minutes=5)  # Проверяем не чаще раза в 5 минут для оптимизации
+_lesson_check_interval = timedelta(minutes=5)
+
+_last_subscription_check = None
+_subscription_check_interval = timedelta(minutes=10)
 
 def register_hooks(app):
     """
@@ -155,7 +158,54 @@ def register_hooks(app):
         except Exception as e:
             logger.error(f"Ошибка при автоматическом обновлении статуса уроков: {e}", exc_info=True)
             db.session.rollback()
-    
+
+    @app.before_request
+    def auto_expire_subscriptions():
+        """Автоматически помечает просроченные подписки как expired (раз в 10 мин)."""
+        global _last_subscription_check
+
+        if request.endpoint in ('static', 'favicon') or request.path.startswith('/static/'):
+            return
+
+        try:
+            now = datetime.utcnow()
+            last = _last_subscription_check
+            if last and (now - last) < _subscription_check_interval:
+                return
+
+            _last_subscription_check = now
+
+            expired_subs = UserSubscription.query.filter(
+                UserSubscription.status == 'active',
+                UserSubscription.ends_at.isnot(None),
+                UserSubscription.ends_at < now,
+            ).all()
+
+            updated = 0
+            for sub in expired_subs:
+                sub.status = 'expired'
+                updated += 1
+
+            lessons_expired_subs = UserSubscription.query.filter(
+                UserSubscription.status == 'active',
+                UserSubscription.lessons_remaining.isnot(None),
+                UserSubscription.lessons_remaining <= 0,
+            ).all()
+
+            for sub in lessons_expired_subs:
+                sub.status = 'expired'
+                updated += 1
+
+            if updated > 0:
+                db.session.commit()
+                logger.info(f"auto_expire_subscriptions: marked {updated} subscription(s) as expired")
+        except Exception as e:
+            logger.error(f"auto_expire_subscriptions error: {e}", exc_info=True)
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
+
     @app.before_request
     def check_maintenance_mode():
         """Проверка режима технических работ в песочнице - ДО проверки авторизации"""

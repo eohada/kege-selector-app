@@ -178,6 +178,12 @@
                         <a class="neo-button accent" href="{{ url_for('courses.module_new', course_id=course.course_id) }}">
                             <i class="fas fa-plus ui-icon ui-icon--sm"></i> Модуль
                         </a>
+                        <form method="POST" action="{{ url_for('courses.course_delete', course_id=course.course_id) }}" style="display:inline;" onsubmit="return confirm('Удалить курс и все его модули? Уроки будут отвязаны от модулей.')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="neo-button ghost danger">
+                                <i class="fas fa-trash ui-icon ui-icon--sm"></i> Удалить курс
+                            </button>
+                        </form>
                         {% endif %}
                     </div>
                 </div>
@@ -212,9 +218,17 @@
                                     {% endif %}
                                 </div>
                                 {% if not current_user.is_student() and not current_user.is_parent() %}
-                                <a class="neo-button outline" href="{{ url_for('students.lesson_new', student_id=student.student_id, course_module_id=m.module_id, return_to='course') }}">
-                                    <i class="fas fa-plus ui-icon ui-icon--sm"></i> Урок
-                                </a>
+                                <div style="display:flex; gap:0.5rem; align-items:center;">
+                                    <a class="neo-button outline" href="{{ url_for('students.lesson_new', student_id=student.student_id, course_module_id=m.module_id, return_to='course') }}">
+                                        <i class="fas fa-plus ui-icon ui-icon--sm"></i> Урок
+                                    </a>
+                                    <form method="POST" action="{{ url_for('courses.module_delete', course_id=course.course_id, module_id=m.module_id) }}" style="display:inline;" onsubmit="return confirm('Удалить модуль «{{ m.title }}»? Уроки будут отвязаны.')">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="neo-button ghost danger sm">
+                                            <i class="fas fa-trash ui-icon ui-icon--sm"></i>
+                                        </button>
+                                    </form>
+                                </div>
                                 {% endif %}
                             </div>
 

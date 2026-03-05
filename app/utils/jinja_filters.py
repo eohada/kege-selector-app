@@ -216,10 +216,65 @@ def strip_attachment_links(html):
         return html
 
 
+_BLEACH_ALLOWED_TAGS = [
+    'p', 'br', 'b', 'i', 'u', 'em', 'strong', 'sub', 'sup', 'small',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+    'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
+    'a', 'img', 'figure', 'figcaption',
+    'pre', 'code', 'blockquote', 'hr',
+    'span', 'div', 'section', 'article',
+    'math', 'semantics', 'mrow', 'mi', 'mn', 'mo', 'msup', 'msub',
+    'mfrac', 'mroot', 'msqrt', 'munder', 'mover', 'mtable', 'mtr', 'mtd',
+    'annotation',
+    'svg', 'path', 'line', 'circle', 'rect', 'g', 'use', 'defs', 'symbol',
+]
+
+_BLEACH_ALLOWED_ATTRS = {
+    '*': ['class', 'id', 'style', 'data-*', 'role', 'aria-label', 'aria-hidden', 'title', 'dir', 'lang'],
+    'a': ['href', 'target', 'rel', 'download'],
+    'img': ['src', 'alt', 'width', 'height', 'loading'],
+    'td': ['colspan', 'rowspan'],
+    'th': ['colspan', 'rowspan', 'scope'],
+    'col': ['span'],
+    'colgroup': ['span'],
+    'svg': ['viewBox', 'width', 'height', 'fill', 'xmlns'],
+    'path': ['d', 'fill', 'stroke', 'stroke-width'],
+    'line': ['x1', 'y1', 'x2', 'y2', 'stroke'],
+    'circle': ['cx', 'cy', 'r', 'fill', 'stroke'],
+    'rect': ['x', 'y', 'width', 'height', 'rx', 'ry', 'fill', 'stroke'],
+    'use': ['href', 'xlink:href'],
+    'annotation': ['encoding'],
+}
+
+
+def sanitize_html(html):
+    """
+    Пропускает HTML через bleach с белым списком тегов/атрибутов,
+    затем помечает результат как safe для Jinja2.
+    """
+    if not html:
+        return ''
+    try:
+        import bleach
+        from markupsafe import Markup
+        cleaned = bleach.clean(
+            str(html),
+            tags=_BLEACH_ALLOWED_TAGS,
+            attributes=_BLEACH_ALLOWED_ATTRS,
+            strip=True,
+        )
+        return Markup(cleaned)
+    except Exception:
+        from markupsafe import Markup, escape
+        return Markup(escape(str(html)))
+
+
 def init_jinja_filters(app):
     """Инициализация Jinja2 фильтров"""
     app.jinja_env.filters['mask_contact'] = mask_contact_if_tutor
     app.jinja_env.filters['deduplicate_formulas'] = deduplicate_formulas
     app.jinja_env.filters['task_content_absolute_urls'] = task_content_absolute_urls
     app.jinja_env.filters['strip_attachment_links'] = strip_attachment_links
+    app.jinja_env.filters['sanitize_html'] = sanitize_html
     app.jinja_env.globals["ui_icon"] = ui_icon

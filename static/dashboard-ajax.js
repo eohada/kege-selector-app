@@ -209,11 +209,6 @@ function updateStudentCard(studentId, studentData) {
     }
 }
 
-function updateStatistics() {
-
-    const statsElements = document.querySelectorAll('.stat-value'); 
-
-}
 
 document.addEventListener('DOMContentLoaded', function() {
     

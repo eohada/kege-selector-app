@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 logger = logging.getLogger(__name__)
 
 @api_bp.route('/api/audit-log', methods=['POST'])
+@login_required
 def api_audit_log():
     """API для логирования действий"""
     try:

@@ -387,7 +387,7 @@
                                     </div>
                                 </summary>
                                 <div class="task-body">
-                                    {{ task.task.content_html|deduplicate_formulas|safe }}
+                                    {{ task.task.content_html|deduplicate_formulas|sanitize_html }}
                                 </div>
                             </details>
                         </div>

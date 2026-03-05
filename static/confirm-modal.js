@@ -75,26 +75,21 @@ function showConfirmModal(options) {
 }
 
 function submitPostRequest(url, csrfToken) {
-    console.log('submitPostRequest called with URL:', url);
     const hiddenForm = document.createElement('form');
     hiddenForm.method = 'POST';
     hiddenForm.action = url;
     hiddenForm.style.display = 'none';
 
     const token = csrfToken || document.querySelector('input[name="csrf_token"]')?.value || document.querySelector('meta[name="csrf-token"]')?.content;
-    console.log('CSRF token found:', token ? 'yes' : 'no');
     if (token) {
         const csrfInput = document.createElement('input');
         csrfInput.type = 'hidden';
         csrfInput.name = 'csrf_token';
         csrfInput.value = token;
         hiddenForm.appendChild(csrfInput);
-    } else {
-        console.error('CSRF token not found!');
     }
     
     document.body.appendChild(hiddenForm);
-    console.log('Submitting form to:', url);
     hiddenForm.submit();
 }
 
@@ -264,15 +259,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const deleteButtons = document.querySelectorAll('button.action-delete-btn');
-    console.log(`Found ${deleteButtons.length} delete buttons`);
-    deleteButtons.forEach((btn, index) => {
-        console.log(`Setting up delete button ${index}:`, btn.dataset.url);
+    deleteButtons.forEach((btn) => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
             const url = btn.dataset.url;
             const message = btn.dataset.confirmMessage || 'Вы уверены? Это действие нельзя отменить.';
-            console.log('Delete button clicked, URL:', url);
             
             showConfirmModal({
                 title: 'Подтверждение удаления',
@@ -281,7 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 cancelText: 'Отмена',
                 confirmClass: 'danger',
                 onConfirm: () => {
-                    console.log('Confirming deletion, submitting to:', url);
                     submitPostRequest(url);
                 }
             });
@@ -289,14 +280,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const confirmButtons = document.querySelectorAll('button.action-confirm-btn');
-    console.log(`Found ${confirmButtons.length} confirm buttons`);
-    confirmButtons.forEach((btn, index) => {
-        console.log(`Setting up confirm button ${index}:`, btn.dataset.url);
+    confirmButtons.forEach((btn) => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
             const url = btn.dataset.url;
-            console.log('Confirm button clicked, URL:', url);
             submitPostRequest(url);
         });
     });

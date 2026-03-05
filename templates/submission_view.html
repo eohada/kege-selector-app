@@ -443,7 +443,7 @@
                 </div>
                 {% else %}
                 <div class="task-content">
-                    {{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|strip_attachment_links|safe }}
+                    {{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|strip_attachment_links|sanitize_html }}
                 </div>
                 {% endif %}
                 
@@ -630,7 +630,7 @@
             </div>
             
             <div class="task-content">
-                {{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|strip_attachment_links|safe }}
+                {{ task_item.task.content_html|task_content_absolute_urls|deduplicate_formulas|strip_attachment_links|sanitize_html }}
             </div>
 
             {% if task_item.task.attached_files %}
@@ -908,6 +908,10 @@
                     } else {
                         showToast('Ошибка: ' + (data.error || 'Не удалось отправить комментарий'), 'error');
                     }
+                })
+                .catch(function(err) {
+                    if (window.toast && window.toast.error) window.toast.error('Ошибка сети: ' + err.message);
+                    else showToast('Ошибка сети: ' + (err && err.message ? err.message : 'Проверьте соединение'), 'error');
                 });
             });
         }
@@ -1098,7 +1102,6 @@
         document.getElementById('start-btn').addEventListener('click', function() {
             // Показываем подтверждение перед стартом выполнения
             const doStart = () => {
-                console.log('Starting submission...');
                 const startBtn = document.getElementById('start-btn');
                 startBtn.disabled = true;
                 startBtn.textContent = 'Загрузка...';
@@ -1111,7 +1114,6 @@
                     }
                 })
                 .then(response => {
-                    console.log('Response status:', response.status);
                     if (!response.ok) {
                         return response.text().then(text => {
                             console.error('Server error response:', response.status, text);
@@ -1121,9 +1123,6 @@
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Response data:', data);
-                    // Дополнительный лог для диагностики времени старта
-                    try { console.log('Server started_at:', data.started_at); } catch (e) {}
                     if (data.success) {
                         showToast('✓ Выполнение начато! Страница обновляется...', 'success');
                         setTimeout(() => location.reload(), 1000);
@@ -1263,13 +1262,6 @@
                     totalSeconds -= timeDiff;
                     if (!isFinite(totalSeconds) || isNaN(totalSeconds)) totalSeconds = 0;
 
-                    // Debug logging to help diagnose zero timer issue
-                    try {
-                        console.log('Timer init:', {assignment_time_limit: {{ assignment.time_limit_minutes or 0 }}, startTimeRaw, startTime: startTime.toString(), clientTime: clientTime.toString(), timeDiff, totalSeconds});
-                    } catch (e) {
-                        console.log('Timer init (partial): startTimeRaw=', startTimeRaw, 'timeDiff=', timeDiff, 'totalSeconds=', totalSeconds);
-                    }
-
                     if (totalSeconds < 0) {
                         // Если уже просрочено — показываем 00:00:00, но не оставляем отрицательные значения
                         totalSeconds = 0;
@@ -1360,7 +1352,6 @@
                 () => {
                     clearTimeout(autosaveTimer);
                     autosaveTimer = null;
-                    console.log('Submitting assignment...');
                     const submitBtn = document.getElementById('submit-btn');
                     submitBtn.disabled = true;
                     const originalText = submitBtn.textContent;
@@ -1374,7 +1365,6 @@
                         }
                     })
                     .then(response => {
-                        console.log('Submit response status:', response.status);
                         return response.json().catch(() => ({})).then(data => {
                             if (!response.ok) {
                                 const msg = data.error || ('HTTP ' + response.status);
@@ -1393,7 +1383,6 @@
                     })
                     .then(data => {
                         if (!data) return;
-                        console.log('Submit response data:', data);
                         if (data.success) {
                             showToast(`✓ Работа успешно сдана! Оценка: ${data.score}/${data.max_score} (${data.percentage.toFixed(0)}%)`, 'success');
                             setTimeout(() => location.reload(), 1500);

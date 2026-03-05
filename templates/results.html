@@ -334,7 +334,7 @@
             </div>
             
             <div class="task-content" style="line-height: 1.8; font-size: 1.05em; color: var(--text-primary); margin-bottom: 1.5rem;">
-                {{ task.content_html | safe }}
+                {{ task.content_html | sanitize_html }}
             </div>
             
             {% if task.attached_files %}

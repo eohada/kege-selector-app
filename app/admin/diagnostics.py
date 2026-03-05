@@ -10,6 +10,7 @@ from flask_login import login_required
 from sqlalchemy import text, inspect
 from app.models import db, Student, Lesson, User, Tasks
 from app.admin import admin_bp
+from app.auth.rbac_utils import require_admin
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +34,10 @@ def diagnostics_api():
     return jsonify(diagnostics_data)
 
 @admin_bp.route('/admin/diagnostics/test')
+@login_required
+@require_admin
 def diagnostics_test():
-    """Простой тестовый endpoint для проверки доступности (без авторизации)"""
+    """Тестовый endpoint для проверки доступности"""
     return jsonify({
         'status': 'OK',
         'message': 'Диагностический endpoint доступен',
@@ -45,11 +48,10 @@ def diagnostics_test():
     })
 
 @admin_bp.route('/admin/diagnostics/simple')
+@login_required
+@require_admin
 def diagnostics_simple():
-    """
-    Очень простая проверка без подключения к БД
-    Используйте для проверки, что приложение работает
-    """
+    """Проверка работоспособности приложения (без БД)."""
     try:
         from datetime import datetime
         return jsonify({
@@ -68,11 +70,10 @@ def diagnostics_simple():
         }), 200  # Всегда 200, чтобы показать ошибку
 
 @admin_bp.route('/admin/diagnostics/db-check')
+@login_required
+@require_admin
 def diagnostics_db_check():
-    """
-    Простая проверка подключения к БД (без авторизации для удобства)
-    Можно использовать для проверки подключения к БД
-    """
+    """Проверка подключения к БД."""
     result = {
         'status': 'checking',
         'environment': os.environ.get('ENVIRONMENT', 'unknown'),

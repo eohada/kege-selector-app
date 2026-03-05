@@ -150,8 +150,21 @@ def parent_dashboard():
                 Lesson.lesson_date < now_dt
             ).order_by(Lesson.lesson_date.desc()).limit(10).all()
         
+        lessons_remaining_val = 0
+        try:
+            from app.models import UserSubscription
+            student_user_id = selected_student.user_id if selected_student else (selected_student_user.id if selected_student_user else None)
+            if student_user_id:
+                active_sub = UserSubscription.query.filter_by(
+                    user_id=student_user_id, status='active'
+                ).order_by(UserSubscription.ends_at.desc().nullslast()).first()
+                if active_sub and active_sub.lessons_remaining is not None:
+                    lessons_remaining_val = active_sub.lessons_remaining
+        except Exception as e:
+            logger.warning(f"Could not fetch lessons_remaining for parent dashboard: {e}")
+
         financial_data = {
-            'lessons_remaining': 0,  # TODO: реализовать систему баланса
+            'lessons_remaining': lessons_remaining_val,
             'total_paid': 0,
             'can_topup': selected_tie.access_level in ['full', 'financial_only']
         }

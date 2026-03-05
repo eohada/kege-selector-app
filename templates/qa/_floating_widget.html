@@ -499,6 +499,10 @@
             } else {
                 alert(`❌ Ошибка: ${data.error}`);
             }
+        })
+        .catch(function(err) {
+            if (window.toast && window.toast.error) window.toast.error('Ошибка сети: ' + err.message);
+            else alert('Ошибка сети: ' + err.message);
         });
     }
 </script>

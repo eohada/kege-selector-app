@@ -216,3 +216,56 @@ def course_assign_lesson(course_id: int):
     flash('Урок привязан к модулю.', 'success')
     return redirect(url_for('courses.course_view', course_id=course.course_id, _anchor=f'module-{module.module_id}'))
 
+
+@courses_bp.route('/courses/<int:course_id>/delete', methods=['POST'])
+@login_required
+def course_delete(course_id: int):
+    course = _guard_course(course_id)
+    if current_user.is_student():
+        abort(403)
+
+    student_id = course.student_id
+    modules = TrajectoryModule.query.filter_by(course_id=course.course_id).all()
+    module_ids = [m.module_id for m in modules]
+
+    if module_ids:
+        Lesson.query.filter(Lesson.course_module_id.in_(module_ids)).update(
+            {Lesson.course_module_id: None}, synchronize_session=False
+        )
+        TrajectoryModule.query.filter_by(course_id=course.course_id).delete(synchronize_session=False)
+
+    db.session.delete(course)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash('Не удалось удалить курс.', 'danger')
+        return redirect(url_for('courses.course_view', course_id=course_id))
+
+    flash('Курс удалён.', 'success')
+    return redirect(url_for('courses.student_courses', student_id=student_id))
+
+
+@courses_bp.route('/courses/<int:course_id>/modules/<int:module_id>/delete', methods=['POST'])
+@login_required
+def module_delete(course_id: int, module_id: int):
+    course = _guard_course(course_id)
+    if current_user.is_student():
+        abort(403)
+
+    module = TrajectoryModule.query.filter_by(module_id=module_id, course_id=course.course_id).first_or_404()
+
+    Lesson.query.filter_by(course_module_id=module.module_id).update(
+        {Lesson.course_module_id: None}, synchronize_session=False
+    )
+    db.session.delete(module)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash('Не удалось удалить модуль.', 'danger')
+        return redirect(url_for('courses.course_view', course_id=course.course_id))
+
+    flash('Модуль удалён.', 'success')
+    return redirect(url_for('courses.course_view', course_id=course.course_id))
+

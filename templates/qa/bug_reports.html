@@ -108,13 +108,13 @@
                 location.reload();
             } else {
                 alert('Ошибка: ' + (data.error || 'Не удалось обновить статус'));
-                btn.innerHTML = originalText;
-                btn.disabled = false;
             }
         })
         .catch(err => {
             console.error(err);
             alert('Ошибка сети');
+        })
+        .finally(() => {
             btn.innerHTML = originalText;
             btn.disabled = false;
         });

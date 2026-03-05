@@ -36,6 +36,18 @@
     <section class="glass-panel">
       <form method="POST" action="{% if is_new %}{{ url_for('groups.group_new') }}{% else %}{{ url_for('groups.group_edit', group_id=group.group_id) }}{% endif %}" data-no-ajax="1">
         {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+        {% if form and form.errors %}
+        <div class="alert alert-danger" style="margin-bottom: 1rem; padding: 0.75rem 1rem; border-radius: 8px; background: var(--danger-bg, #fde8e8); color: var(--danger, #c53030); border: 1px solid var(--danger, #c53030);">
+            <strong>Ошибки валидации:</strong>
+            <ul style="margin: 0.25rem 0 0 1.2rem; padding: 0;">
+                {% for field, errors in form.errors.items() %}
+                    {% for error in errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
         <div class="neo-field">
           <label class="neo-label">Название *</label>
           <input class="neo-input" name="title" required value="{{ group.title if group else '' }}" placeholder="Например: 10А (информатика)">
@@ -66,6 +78,22 @@
     </div>
 </div>
   <script src="{{ url_for('static', filename='toast.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('form').forEach(function(form) {
+        if (form.classList.contains('danger-btn') || form.classList.contains('no-protect')) return;
+        form.addEventListener('submit', function() {
+            var btn = form.querySelector('button[type="submit"], input[type="submit"]');
+            if (btn && !btn.disabled) {
+                btn.disabled = true;
+                btn.dataset.originalText = btn.textContent;
+                btn.textContent = 'Сохранение...';
+                setTimeout(function() { btn.disabled = false; btn.textContent = btn.dataset.originalText; }, 8000);
+            }
+        });
+    });
+});
+</script>
 </body>
 </html>
 
