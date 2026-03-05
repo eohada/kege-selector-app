@@ -875,6 +875,30 @@ def assignments_list():
 
     rows = filtered_query.all()
 
+    assignment_ids = [row[0].assignment_id for row in rows]
+    students_by_assignment = {}
+    if assignment_ids:
+        student_subs = (
+            db.session.query(
+                Submission.assignment_id,
+                Submission.status,
+                Student.name,
+                Student.student_id,
+            )
+            .join(Student, Student.student_id == Submission.student_id)
+            .filter(Submission.assignment_id.in_(assignment_ids))
+            .order_by(Student.name)
+            .all()
+        )
+        for aid, sub_status, sname, sid in student_subs:
+            if aid not in students_by_assignment:
+                students_by_assignment[aid] = []
+            students_by_assignment[aid].append({
+                'name': sname,
+                'student_id': sid,
+                'status': sub_status,
+            })
+
     assignments_data = []
     for row in rows:
         assignment: Assignment = row[0]
@@ -911,6 +935,7 @@ def assignments_list():
             'is_overdue': is_overdue,
             'is_completed': is_completed,
             'is_archived': bool(not assignment.is_active),
+            'student_submissions': students_by_assignment.get(assignment.assignment_id, []),
         })
 
     return render_template(
@@ -1847,19 +1872,21 @@ def submission_view(submission_id):
             is_deadline_passed = False
         can_submit = not (is_deadline_passed and assignment.hard_deadline)
         
-        attempts_used = len(submission.attempts or [])
+        all_attempts = submission.attempts or []
+        attempts_used = sum(1 for a in all_attempts if getattr(a, 'status', '') == 'SUBMITTED')
         effective_max_attempts = assignment.get_effective_max_attempts()
-        if attempts_used >= effective_max_attempts:
+        if attempts_used >= effective_max_attempts and submission.status != 'RETURNED':
             can_submit = False
         attempts_left = max(0, effective_max_attempts - attempts_used)
         
         attempts_per_task = getattr(assignment, 'attempts_per_task', False)
         timer_expired = False
         if assignment.time_limit_strict and assignment.time_limit_minutes and submission.started_at:
-            started_utc = _started_at_to_utc(submission.started_at)
-            now_utc = now.astimezone(timezone.utc)
-            limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
-            timer_expired = now_utc > limit_end_utc
+            if submission.status != 'RETURNED':
+                started_utc = _started_at_to_utc(submission.started_at)
+                now_utc = now.astimezone(timezone.utc)
+                limit_end_utc = started_utc + timedelta(minutes=assignment.time_limit_minutes)
+                timer_expired = now_utc > limit_end_utc
         tasks_data = []
         for assignment_task in sorted(assignment.tasks, key=lambda t: t.order_index):
             answer = next((a for a in submission.answers if a.assignment_task_id == assignment_task.assignment_task_id), None)
@@ -2367,10 +2394,11 @@ def submission_submit(submission_id):
         now = moscow_now()
         deadline = _ensure_aware_datetime(assignment.deadline)
         
-        attempts_used = len(submission.attempts or [])
+        all_attempts = submission.attempts or []
+        attempts_used = sum(1 for a in all_attempts if getattr(a, 'status', '') == 'SUBMITTED')
         effective_max = assignment.get_effective_max_attempts()
         attempts_per_task = getattr(assignment, 'attempts_per_task', False)
-        if not attempts_per_task and attempts_used >= effective_max:
+        if not attempts_per_task and attempts_used >= effective_max and submission.status != 'RETURNED':
             return jsonify({'success': False, 'error': f'Исчерпан лимит попыток ({attempts_used}/{effective_max})'}), 403
         
         is_late = deadline and now > deadline

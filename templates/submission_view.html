@@ -533,12 +533,43 @@
             {% endif %}
 
             <div style="margin-top: 1.5rem; padding: 1rem; background: var(--surface-2); border-radius: var(--radius-sm);">
+                {% if task_item.answer %}
+                <div style="margin-bottom: 0.75rem; font-weight: 600;">
+                    {% if task_item.answer.is_correct == true %}
+                    <span style="color: var(--accent-1);">{{ ui_icon('action.check', 'sm') }} Верно</span> — {{ task_item.answer.score or 0 }}/{{ task_item.assignment_task.max_score }} баллов
+                    {% elif task_item.answer.is_correct == false %}
+                    <span style="color: #ef4444;">{{ ui_icon('action.warning', 'sm') }} Неверно</span> — {{ task_item.answer.score or 0 }}/{{ task_item.assignment_task.max_score }} баллов
+                    {% else %}
+                    <span style="color: var(--text-muted);">{{ ui_icon('action.clock', 'sm') }} Ожидает проверки</span>
+                    {% endif %}
+                </div>
+                {% endif %}
                 <div style="font-weight: 600; margin-bottom: 0.5rem;">Ваш ответ:</div>
                 <div style="white-space: pre-wrap;">{{ task_item.answer.value if task_item.answer and task_item.answer.value else '(нет ответа)' }}</div>
+                {% if task_item.answer and task_item.answer.student_code %}
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem;">Ваш код (Python):</div>
+                    <pre style="margin: 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-family: 'Consolas', 'Monaco', monospace; font-size: 0.88rem; white-space: pre-wrap; word-break: break-word; max-height: 20rem; overflow: auto;">{{ task_item.answer.student_code }}</pre>
+                </div>
+                {% endif %}
+                {% if task_item.answer and task_item.answer.files %}
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem;">Загруженные файлы:</div>
+                    {% set answer_files = task_item.answer.files %}
+                    {% if answer_files is string %}{% set answer_files = answer_files | from_json %}{% endif %}
+                    {% if answer_files %}
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                        {% for af in answer_files %}
+                        <a href="{{ af.url if af.url is defined else af }}" target="_blank" rel="noopener" class="neo-button outline sm" style="font-size: 0.85rem; text-decoration: none;">{{ af.name if af.name is defined else 'Файл' }}</a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
                 {% if task_item.answer and task_item.answer.teacher_comment %}
                 <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--stroke-1);">
                     <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--accent-1);">Комментарий преподавателя:</div>
-                    <div>{{ task_item.answer.teacher_comment }}</div>
+                    <div style="white-space: pre-wrap;">{{ task_item.answer.teacher_comment }}</div>
                 </div>
                 {% endif %}
             </div>

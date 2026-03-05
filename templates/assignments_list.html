@@ -473,6 +473,16 @@
                                 <span style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('nav.students', 'sm') }} Учеников: <span class="meta-strong">{{ total }}</span></span>
                                 <span style="display: inline-flex; align-items: center; gap: 0.35rem;">{{ ui_icon('nav.assignments', 'sm') }} Задач: <span class="meta-strong">{{ item.tasks_count }}</span></span>
                             </div>
+                            {% if item.student_submissions %}
+                            <div class="student-names-row" style="display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem;">
+                                {% for ss in item.student_submissions %}
+                                <a href="{{ url_for('students.student_profile', student_id=ss.student_id) }}" class="student-name-pill" style="display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.82rem; text-decoration: none; color: inherit; border: 1px solid var(--stroke-1); background: rgba(255,255,255,0.02); transition: border-color .15s, background .15s;{% if ss.status == 'GRADED' %} border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.06);{% elif ss.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] %} border-color: rgba(120, 210, 255, 0.4); background: rgba(120, 210, 255, 0.06);{% elif ss.status == 'RETURNED' %} border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.06);{% endif %}" title="{{ ss.status }}">
+                                    <span style="width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;{% if ss.status == 'GRADED' %} background: rgb(16, 185, 129);{% elif ss.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] %} background: var(--accent-1);{% elif ss.status == 'RETURNED' %} background: rgb(251, 191, 36);{% elif ss.status == 'IN_PROGRESS' %} background: var(--text-muted);{% else %} background: var(--stroke-2);{% endif %}"></span>
+                                    {{ ss.name }}
+                                </a>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
 
                         <div style="display:flex; align-items:flex-start; gap:.5rem; flex-wrap:wrap; justify-content:flex-end;">
