@@ -119,6 +119,7 @@ def _parse_datetime_local(value: str | None):
 def students_list():
     """Список всех студентов (активных и архивных)"""
     scope = get_user_scope(current_user)
+    show_demo = request.args.get('show_demo', '0') == '1'
 
     base_q = Student.query
     if scope.get('can_see_all'):
@@ -140,9 +141,20 @@ def students_list():
             active_students = scoped_q.options(db.joinedload(Student.user)).filter(Student.is_active.is_(True)).order_by(Student.name).all()
             archived_students = scoped_q.options(db.joinedload(Student.user)).filter(Student.is_active.is_(False)).order_by(Student.name).all()
 
+    def _is_demo(s):
+        return s.user and getattr(s.user, 'is_demo_user', False)
+
+    demo_count = sum(1 for s in active_students if _is_demo(s)) + sum(1 for s in archived_students if _is_demo(s))
+
+    if not show_demo:
+        active_students = [s for s in active_students if not _is_demo(s)]
+        archived_students = [s for s in archived_students if not _is_demo(s)]
+
     return render_template('students_list.html',
                          active_students=active_students,
-                         archived_students=archived_students)
+                         archived_students=archived_students,
+                         show_demo=show_demo,
+                         demo_count=demo_count)
 
 @students_bp.route('/student/new', methods=['GET', 'POST'])
 @login_required
@@ -1749,16 +1761,50 @@ def student_edit(student_id):
 @students_bp.route('/student/<int:student_id>/delete', methods=['POST'])
 @login_required
 def student_delete(student_id):
-    """Удаление студента"""
+    """Удаление студента (только creator/admin)"""
+    if not (current_user.is_creator() or current_user.is_admin()):
+        flash('У вас недостаточно прав для удаления учеников.', 'danger')
+        return redirect(url_for('students.students_list'))
+
     try:
         student = Student.query.get_or_404(student_id)
         name = student.name
         platform_id = student.platform_id
         category = student.category
-        
+        linked_user = student.user if student.user_id else None
+        is_demo = linked_user and getattr(linked_user, 'is_demo_user', False)
+
+        from app.models import LessonTask, StudentTaskStatistics, GradebookEntry, StudentLearningPlanItem
+        from core.db_models import UserMastery, Answer
+
+        lessons = Lesson.query.filter_by(student_id=student_id).all()
+        for lesson in lessons:
+            LessonTask.query.filter_by(lesson_id=lesson.lesson_id).delete()
+        Lesson.query.filter_by(student_id=student_id).delete()
+
+        submissions = Submission.query.filter_by(student_id=student_id).all()
+        for sub in submissions:
+            Answer.query.filter_by(submission_id=sub.submission_id).delete()
+        Submission.query.filter_by(student_id=student_id).delete()
+
+        StudentTaskStatistics.query.filter_by(student_id=student_id).delete()
+        GradebookEntry.query.filter_by(student_id=student_id).delete()
+        StudentLearningPlanItem.query.filter_by(student_id=student_id).delete()
+        StudentCourseEnrollment.query.filter_by(student_id=student_id).delete()
+        Enrollment.query.filter_by(student_id=student_id).delete()
+
         db.session.delete(student)
+
+        if is_demo and linked_user:
+            from core.db_models import UserRole
+            UserRole.query.filter_by(user_id=linked_user.id).delete()
+            UserMastery.query.filter_by(user_id=linked_user.id).delete()
+            FamilyTie.query.filter_by(parent_user_id=linked_user.id).delete()
+            FamilyTie.query.filter_by(child_user_id=linked_user.id).delete()
+            db.session.delete(linked_user)
+
         db.session.commit()
-        
+
         audit_logger.log(
             action='delete_student',
             entity='Student',
@@ -1767,29 +1813,34 @@ def student_delete(student_id):
             metadata={
                 'name': name,
                 'platform_id': platform_id,
-                'category': category
+                'category': category,
+                'demo_user_deleted': is_demo,
             }
         )
-        
-        flash(f'Ученик {name} удален из системы.', 'success')
+
+        flash(f'Ученик {name} удалён из системы.', 'success')
     except Exception as e:
         db.session.rollback()
         logger.error(f'Ошибка при удалении ученика {student_id}: {e}')
-        
+
         audit_logger.log_error(
             action='delete_student',
             entity='Student',
             entity_id=student_id,
             error=str(e)
         )
-        
+
         flash(f'Ошибка при удалении ученика: {str(e)}', 'error')
-    return redirect(url_for('main.dashboard'))
+    return redirect(url_for('students.students_list'))
 
 @students_bp.route('/student/<int:student_id>/archive', methods=['POST'])
 @login_required
 def student_archive(student_id):
-    """Архивирование/восстановление студента"""
+    """Архивирование/восстановление студента (только creator/admin)"""
+    if not (current_user.is_creator() or current_user.is_admin()):
+        flash('У вас недостаточно прав.', 'danger')
+        return redirect(url_for('students.students_list'))
+
     student = Student.query.get_or_404(student_id)
     student.is_active = not student.is_active
     try:
@@ -1801,9 +1852,79 @@ def student_archive(student_id):
     if student.is_active:
         flash(f'Ученик {student.name} восстановлен из архива.', 'success')
     else:
-        flash(f'Ученик {student.name} перемещен в архив.', 'success')
+        flash(f'Ученик {student.name} перемещён в архив.', 'success')
 
-    return redirect(url_for('main.dashboard'))
+    return redirect(url_for('students.students_list'))
+
+
+@students_bp.route('/students/delete-all-demo', methods=['POST'])
+@login_required
+def delete_all_demo():
+    """Массовое удаление всех демо-учеников и связанных демо-пользователей"""
+    if not (current_user.is_creator() or current_user.is_admin()):
+        flash('У вас недостаточно прав.', 'danger')
+        return redirect(url_for('students.students_list'))
+
+    try:
+        from app.models import LessonTask, StudentTaskStatistics, GradebookEntry, StudentLearningPlanItem
+        from core.db_models import UserMastery, Answer, UserRole
+
+        demo_users = User.query.filter_by(is_demo_user=True).all()
+        demo_user_ids = [u.id for u in demo_users]
+
+        if not demo_user_ids:
+            flash('Демо-учеников не найдено.', 'info')
+            return redirect(url_for('students.students_list'))
+
+        demo_students = Student.query.filter(Student.user_id.in_(demo_user_ids)).all()
+        demo_student_ids = [s.student_id for s in demo_students]
+        deleted_count = len(demo_students)
+
+        for sid in demo_student_ids:
+            lessons = Lesson.query.filter_by(student_id=sid).all()
+            for lesson in lessons:
+                LessonTask.query.filter_by(lesson_id=lesson.lesson_id).delete()
+            Lesson.query.filter_by(student_id=sid).delete()
+
+            submissions = Submission.query.filter_by(student_id=sid).all()
+            for sub in submissions:
+                Answer.query.filter_by(submission_id=sub.submission_id).delete()
+            Submission.query.filter_by(student_id=sid).delete()
+
+            StudentTaskStatistics.query.filter_by(student_id=sid).delete()
+            GradebookEntry.query.filter_by(student_id=sid).delete()
+            StudentLearningPlanItem.query.filter_by(student_id=sid).delete()
+            StudentCourseEnrollment.query.filter_by(student_id=sid).delete()
+            Enrollment.query.filter_by(student_id=sid).delete()
+
+        Student.query.filter(Student.student_id.in_(demo_student_ids)).delete(synchronize_session=False)
+
+        for uid in demo_user_ids:
+            UserRole.query.filter_by(user_id=uid).delete()
+            UserMastery.query.filter_by(user_id=uid).delete()
+            FamilyTie.query.filter_by(parent_user_id=uid).delete()
+            FamilyTie.query.filter_by(child_user_id=uid).delete()
+
+        User.query.filter(User.id.in_(demo_user_ids)).delete(synchronize_session=False)
+
+        db.session.commit()
+
+        audit_logger.log(
+            action='delete_all_demo_students',
+            entity='Student',
+            entity_id=0,
+            status='success',
+            metadata={'deleted_count': deleted_count, 'demo_user_ids': demo_user_ids}
+        )
+
+        flash(f'Удалено демо-учеников: {deleted_count}.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Ошибка при массовом удалении демо-учеников: {e}')
+        flash(f'Ошибка при удалении: {str(e)}', 'error')
+
+    return redirect(url_for('students.students_list'))
+
 
 @students_bp.route('/student/<int:student_id>/lesson/new', methods=['GET', 'POST'])
 @login_required

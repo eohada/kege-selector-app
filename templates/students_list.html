@@ -108,6 +108,101 @@
             letter-spacing: .08em;
             font-size: .78rem;
         }
+        .tag--demo {
+            border-color: rgba(251, 191, 36, 0.45);
+            color: rgba(251, 191, 36, 0.95);
+            background: rgba(251, 191, 36, 0.08);
+        }
+        .student-card-actions {
+            display: flex;
+            gap: 0.4rem;
+            margin-top: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .btn-action-sm {
+            font-size: 0.8rem;
+            padding: 0.3rem 0.5rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            border: 1px solid var(--stroke-1);
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all .15s ease;
+        }
+        .btn-action-sm:hover {
+            border-color: var(--accent-1);
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.04);
+        }
+        .btn-action-sm.danger:hover {
+            border-color: rgba(239, 68, 68, 0.6);
+            color: rgba(239, 68, 68, 0.95);
+            background: rgba(239, 68, 68, 0.08);
+        }
+        .demo-toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: rgba(251, 191, 36, 0.06);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            border-radius: var(--radius-md);
+            margin-bottom: 1.25rem;
+        }
+        .demo-toggle-row label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            user-select: none;
+        }
+        .demo-toggle-row input[type="checkbox"] {
+            accent-color: rgba(251, 191, 36, 0.8);
+            width: 16px;
+            height: 16px;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-box {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-2);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .modal-box h3 {
+            margin: 0 0 0.75rem 0;
+            font-size: 1.15rem;
+        }
+        .modal-box p {
+            color: var(--text-muted);
+            margin: 0 0 1.5rem 0;
+            line-height: 1.5;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
     </style>
     <script>
         (function(){
@@ -149,6 +244,23 @@
                     </div>
                 </section>
 
+                {% if demo_count > 0 and (current_user.is_creator() or current_user.is_admin()) %}
+                <div class="demo-toggle-row">
+                    <label>
+                        <input type="checkbox" id="showDemoToggle" {% if show_demo %}checked{% endif %}>
+                        Показать демо-учеников ({{ demo_count }})
+                    </label>
+                    {% if show_demo %}
+                    <form method="POST" action="" id="deleteAllDemoForm" style="margin-left: auto;">
+                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                        <button type="button" class="btn-action-sm danger" onclick="confirmDeleteAllDemo()" style="font-size: 0.82rem;">
+                            Удалить всех демо
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endif %}
+
                 <div class="students-columns">
                     <section class="glass-panel">
                         <div class="panel-head">
@@ -161,7 +273,8 @@
                         {% if active_students %}
                         <div class="students-grid-compact">
                             {% for student in active_students %}
-                            <div class="student-card-compact">
+                            {% set is_demo_student = student.user and student.user.is_demo_user %}
+                            <div class="student-card-compact" {% if is_demo_student %}style="border-color: rgba(251, 191, 36, 0.25);"{% endif %}>
                                 <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" style="text-decoration:none; color:inherit; display:block;">
                                 <div class="student-head">
                                     <div class="student-avatar">
@@ -179,6 +292,9 @@
                                     </div>
                                 </div>
                                 <div class="tags-row">
+                                    {% if is_demo_student %}
+                                    <span class="tag tag--demo">Демо</span>
+                                    {% endif %}
                                     {% if student.category %}
                                     <span class="tag">
                                         {{ ui_icon('nav.students', 'sm', decorative=true) }}
@@ -193,7 +309,16 @@
                                     {% endif %}
                                 </div>
                                 </a>
-                                <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="neo-button ghost" style="margin-top: 0.5rem; font-size: 0.8rem; padding: 0.3rem 0.5rem; text-decoration: none; display: inline-block;">Профиль</a>
+                                <div class="student-card-actions">
+                                    <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="btn-action-sm">Профиль</a>
+                                    {% if current_user.is_creator() or current_user.is_admin() %}
+                                    <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" style="display:inline;">
+                                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                        <button type="submit" class="btn-action-sm">В архив</button>
+                                    </form>
+                                    <button type="button" class="btn-action-sm danger" onclick="confirmDelete({{ student.student_id }}, '{{ student.name|e }}')">Удалить</button>
+                                    {% endif %}
+                                </div>
                             </div>
                             {% endfor %}
                         </div>
@@ -213,7 +338,8 @@
                         {% if archived_students %}
                         <div class="students-grid-compact">
                             {% for student in archived_students %}
-                            <div class="student-card-compact">
+                            {% set is_demo_student = student.user and student.user.is_demo_user %}
+                            <div class="student-card-compact" {% if is_demo_student %}style="border-color: rgba(251, 191, 36, 0.25);"{% endif %}>
                                 <a href="{{ url_for('students.student_profile', student_id=student.student_id) }}" style="text-decoration:none; color:inherit; display:block;">
                                 <div class="student-head">
                                     <div class="student-avatar">
@@ -232,6 +358,9 @@
                                 </div>
                                 <div class="tags-row">
                                     <span class="tag tag--archived">Архив</span>
+                                    {% if is_demo_student %}
+                                    <span class="tag tag--demo">Демо</span>
+                                    {% endif %}
                                     {% if student.category %}
                                     <span class="tag">{{ student.category }}</span>
                                     {% endif %}
@@ -240,7 +369,16 @@
                                     {% endif %}
                                 </div>
                                 </a>
-                                <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="neo-button ghost" style="margin-top: 0.5rem; font-size: 0.8rem; padding: 0.3rem 0.5rem; text-decoration: none; display: inline-block;">Профиль</a>
+                                <div class="student-card-actions">
+                                    <a href="{{ url_for('students.student_info', student_id=student.student_id) }}" class="btn-action-sm">Профиль</a>
+                                    {% if current_user.is_creator() or current_user.is_admin() %}
+                                    <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" style="display:inline;">
+                                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                                        <button type="submit" class="btn-action-sm">Восстановить</button>
+                                    </form>
+                                    <button type="button" class="btn-action-sm danger" onclick="confirmDelete({{ student.student_id }}, '{{ student.name|e }}')">Удалить</button>
+                                    {% endif %}
+                                </div>
                             </div>
                             {% endfor %}
                         </div>
@@ -255,7 +393,68 @@
     </div>
 </div>
 
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-box">
+            <h3>Удалить ученика?</h3>
+            <p>Вы уверены, что хотите удалить ученика <strong id="deleteStudentName"></strong>? Все связанные данные (уроки, задания, статистика) будут безвозвратно удалены.</p>
+            <div class="modal-actions">
+                <button class="neo-button ghost" onclick="closeDeleteModal()">Отмена</button>
+                <form method="POST" id="deleteStudentForm" style="margin: 0;">
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <button type="submit" class="neo-button accent" style="background: var(--danger, #ef4444); border-color: var(--danger, #ef4444);">Удалить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="deleteAllDemoModal">
+        <div class="modal-box">
+            <h3>Удалить всех демо-учеников?</h3>
+            <p>Это действие удалит <strong>всех</strong> демо-учеников и их данные (уроки, задания, статистику, демо-пользователей). Это необратимо.</p>
+            <div class="modal-actions">
+                <button class="neo-button ghost" onclick="document.getElementById('deleteAllDemoModal').classList.remove('active')">Отмена</button>
+                <form method="POST" action="{{ url_for('students.delete_all_demo') }}" style="margin: 0;">
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <button type="submit" class="neo-button accent" style="background: var(--danger, #ef4444); border-color: var(--danger, #ef4444);">Удалить всех</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='toast.js') }}"></script>
+    <script>
+        document.getElementById('showDemoToggle')?.addEventListener('change', function() {
+            const url = new URL(window.location.href);
+            if (this.checked) {
+                url.searchParams.set('show_demo', '1');
+            } else {
+                url.searchParams.delete('show_demo');
+            }
+            window.location.href = url.toString();
+        });
+
+        function confirmDelete(studentId, studentName) {
+            document.getElementById('deleteStudentName').textContent = studentName;
+            document.getElementById('deleteStudentForm').action = '/student/' + studentId + '/delete';
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+        }
+
+        function confirmDeleteAllDemo() {
+            document.getElementById('deleteAllDemoModal').classList.add('active');
+        }
+
+        document.querySelectorAll('.modal-overlay').forEach(function(modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+    </script>
 </body>
 </html>
 

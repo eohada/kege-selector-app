@@ -272,6 +272,9 @@
                         <div class="profile-role-badge">Комната ученика</div>
                         <h1 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ student.name }}</h1>
                         <div style="display:flex; gap:.6rem; flex-wrap: wrap; margin-top:.35rem;">
+                            {% if student_user and student_user.is_demo_user %}
+                            <span class="status-badge" style="background: rgba(251, 191, 36, 0.15); color: rgba(251, 191, 36, 0.95); border-color: rgba(251, 191, 36, 0.35);">Демо</span>
+                            {% endif %}
                             {% if student.school_class %}<span class="status-badge status-info" style="opacity:.85;">{{ student.school_class }} класс</span>{% endif %}
                             {% if student.target_score %}<span class="status-badge status-info" style="opacity:.85;">Цель: {{ student.target_score }}</span>{% endif %}
                             {% if student.platform_id %}<span class="status-badge status-info" style="opacity:.75;">ID: {{ student.platform_id }}</span>{% endif %}
@@ -296,6 +299,17 @@
                     <a href="{{ url_for('students.student_learning_plan', student_id=student.student_id) }}" class="neo-button ghost">
                         <i class="fas fa-route ui-icon ui-icon--sm"></i> Траектория
                     </a>
+                    {% if current_user.is_creator() or current_user.is_admin() %}
+                    <form method="POST" action="{{ url_for('students.student_archive', student_id=student.student_id) }}" style="display:inline;">
+                        {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                        <button type="submit" class="neo-button ghost" style="color: var(--text-muted);">
+                            <i class="fas fa-archive ui-icon ui-icon--sm"></i> {% if student.is_active %}В архив{% else %}Восстановить{% endif %}
+                        </button>
+                    </form>
+                    <button type="button" class="neo-button ghost" style="color: rgba(239, 68, 68, 0.85);" onclick="document.getElementById('deleteModal').classList.add('active')">
+                        <i class="fas fa-trash ui-icon ui-icon--sm"></i> Удалить
+                    </button>
+                    {% endif %}
                 </div>
             </div>
 
@@ -615,6 +629,51 @@
                 }
             });
         });
+
+        document.getElementById('deleteModal')?.addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('active');
+        });
     </script>
+
+    {% if current_user.is_creator() or current_user.is_admin() %}
+    <style>
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-box {
+            background: var(--surface-1);
+            border: 1px solid var(--stroke-2);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .modal-box h3 { margin: 0 0 0.75rem 0; font-size: 1.15rem; }
+        .modal-box p { color: var(--text-muted); margin: 0 0 1.5rem 0; line-height: 1.5; }
+        .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+    </style>
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-box">
+            <h3>Удалить ученика?</h3>
+            <p>Вы уверены, что хотите удалить ученика <strong>{{ student.name }}</strong>? Все связанные данные (уроки, задания, статистика) будут безвозвратно удалены.</p>
+            <div class="modal-actions">
+                <button class="neo-button ghost" onclick="document.getElementById('deleteModal').classList.remove('active')">Отмена</button>
+                <form method="POST" action="{{ url_for('students.student_delete', student_id=student.student_id) }}" style="margin: 0;">
+                    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+                    <button type="submit" class="neo-button accent" style="background: var(--danger, #ef4444); border-color: var(--danger, #ef4444);">Удалить</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </body>
 </html>
