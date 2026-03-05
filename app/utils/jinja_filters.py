@@ -190,9 +190,36 @@ def mask_contact_if_tutor(value):
     return value
 
 
+def strip_attachment_links(html):
+    """
+    Убирает из HTML контента задания ссылки на вложения (файлы),
+    чтобы не дублировать их с отдельным блоком attached_files.
+    Удаляет <a> ведущие на kompege.ru/…/files/, /uploads/, .txt, .py, .csv и т.п.
+    """
+    if not html or not isinstance(html, str):
+        return html
+    try:
+        soup = BeautifulSoup(html, 'html.parser')
+        file_ext_re = re.compile(r'\.(txt|py|csv|xlsx?|docx?|pdf|zip|rar|7z|dat|json|xml)(\?|$)', re.I)
+        file_path_re = re.compile(r'(/files/|/uploads/|/media/|/attached/)', re.I)
+        changed = False
+        for a_tag in soup.find_all('a', href=True):
+            href = a_tag['href']
+            if file_ext_re.search(href) or file_path_re.search(href):
+                parent = a_tag.parent
+                a_tag.decompose()
+                if parent and parent.name in ('p', 'div', 'span', 'li') and not parent.get_text(strip=True):
+                    parent.decompose()
+                changed = True
+        return str(soup) if changed else html
+    except Exception:
+        return html
+
+
 def init_jinja_filters(app):
     """Инициализация Jinja2 фильтров"""
     app.jinja_env.filters['mask_contact'] = mask_contact_if_tutor
     app.jinja_env.filters['deduplicate_formulas'] = deduplicate_formulas
     app.jinja_env.filters['task_content_absolute_urls'] = task_content_absolute_urls
+    app.jinja_env.filters['strip_attachment_links'] = strip_attachment_links
     app.jinja_env.globals["ui_icon"] = ui_icon
