@@ -968,9 +968,12 @@
                     if (isHidden) initCodeMirrorIfNeeded(wrap);
                 });
             });
-            document.querySelectorAll('.readonly-code-wrap').forEach(function(wrap) {
-                initCodeMirrorIfNeeded(wrap, true);
-            });
+            window._initReadonlyEditors = function() {
+                document.querySelectorAll('.readonly-code-wrap').forEach(function(wrap) {
+                    initCodeMirrorIfNeeded(wrap, true);
+                });
+            };
+            if (typeof CodeMirror !== 'undefined') { window._initReadonlyEditors(); }
 
             var submissionId = {{ submission.submission_id }};
             var runCodeUrl = '{{ url_for("assignments.submission_run_code", submission_id=submission.submission_id) }}';
@@ -1450,6 +1453,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+    <script>if (typeof window._initReadonlyEditors === 'function') window._initReadonlyEditors();</script>
     <script src="{{ url_for('static', filename='confirm-dialog.js') }}"></script>
     <script>
         document.querySelectorAll('.task-nav-btn').forEach(function(btn) {
