@@ -565,7 +565,7 @@
             </div>
             {% endif %}
         </form>
-        {% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] or (submission.status == 'GRADED' and (attempts_left is not defined or attempts_left <= 0)) %}
+        {% elif submission.status in ['SUBMITTED', 'NEEDS_MANUAL_REVIEW'] or (submission.status == 'GRADED' and (attempts_left is not defined or attempts_left <= 0 or not can_submit)) %}
         
         {% for task_item in tasks_data %}
         <div class="task-card" id="task-{{ loop.index }}">
