@@ -424,6 +424,11 @@ def generator_stream_start():
     assignment_type = (data.get('assignment_type') or 'homework').strip()
     use_skipped = bool(data.get('use_skipped', False))
 
+    try:
+        exam_course_id = int(data.get('exam_course_id')) if data.get('exam_course_id') else None
+    except (TypeError, ValueError):
+        exam_course_id = None
+
     if assignment_type not in ['homework', 'classwork', 'exam']:
         assignment_type = 'homework'
 
@@ -451,7 +456,7 @@ def generator_stream_start():
             recipient_ids = None
 
     tag = _lesson_tag(lesson_id, assignment_type) if lesson_id else None
-    task = get_next_unique_task(task_type, use_skipped=use_skipped, student_id=student_id, lesson_tag=tag, recipient_ids=recipient_ids)
+    task = get_next_unique_task(task_type, use_skipped=use_skipped, student_id=student_id, lesson_tag=tag, recipient_ids=recipient_ids, course_id=exam_course_id)
 
     audit_logger.log(
         action='generator_stream_start',
@@ -464,6 +469,7 @@ def generator_stream_start():
             'lesson_id': lesson_id,
             'template_id': template_id,
             'use_skipped': use_skipped,
+            'exam_course_id': exam_course_id,
             'has_task': bool(task),
         }
     )
@@ -497,6 +503,11 @@ def generator_stream_act():
     template_id = data.get('template_id')
     assignment_type = (data.get('assignment_type') or 'homework').strip()
     use_skipped = bool(data.get('use_skipped', False))
+
+    try:
+        stream_exam_course_id = int(data.get('exam_course_id')) if data.get('exam_course_id') else None
+    except (TypeError, ValueError):
+        stream_exam_course_id = None
 
     if assignment_type not in ['homework', 'classwork', 'exam']:
         assignment_type = 'homework'
@@ -642,7 +653,7 @@ def generator_stream_act():
             recipient_ids = None
 
     tag = _lesson_tag(lesson_id, assignment_type) if lesson_id else None
-    next_task = get_next_unique_task(task_type, use_skipped=use_skipped, student_id=student_id, lesson_tag=tag, recipient_ids=recipient_ids)
+    next_task = get_next_unique_task(task_type, use_skipped=use_skipped, student_id=student_id, lesson_tag=tag, recipient_ids=recipient_ids, course_id=stream_exam_course_id)
 
     return jsonify({
         'success': True,

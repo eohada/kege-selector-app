@@ -189,10 +189,15 @@ def manage_list():
     block_by_number = {b.task_number: b for b in blocks}
     slots = [(num, block_by_number.get(num)) for num in task_numbers]
 
+    from app.models import Course as ExamCourse
+    course = ExamCourse.query.get(course_id) if course_id else None
+
     return render_template(
         'theory/theory_manage_list.html',
         slots=slots,
         course_id=course_id,
+        course=course,
+        task_numbers=task_numbers,
         active_page='theory_manage',
     )
 

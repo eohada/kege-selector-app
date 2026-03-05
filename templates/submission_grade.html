@@ -287,6 +287,22 @@
                         <pre class="student-code-block" style="margin: 0; padding: 0.75rem; background: var(--surface-1); border: 1px solid var(--stroke-1); border-radius: var(--radius-sm); font-size: 0.85rem; font-family: 'Consolas', 'Monaco', monospace; white-space: pre-wrap; word-break: break-word; max-height: 20rem; overflow: auto;">{{ task_item.answer.student_code }}</pre>
                     </div>
                     {% endif %}
+                    {% if task_item.answer and task_item.answer.files %}
+                    <div style="margin-top: 0.75rem;">
+                        <div style="font-size: 0.9em; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem;">Прикреплённые файлы ученика:</div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                            {% for file_info in task_item.answer.files %}
+                            <a href="{{ file_info.url if file_info is mapping else file_info }}"
+                               target="_blank" download
+                               class="neo-button outline sm"
+                               style="display: inline-flex; align-items: center; gap: 0.35rem; text-decoration: none; font-size: 0.85rem;">
+                                {{ ui_icon('action.backup', 'sm') }}
+                                {{ file_info.name if file_info is mapping and file_info.name else 'Скачать файл' }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                     {% if task_item.answer and task_item.answer.is_correct is not none %}
                     <div style="margin-top: 0.75rem; padding: 0.5rem; background: {% if task_item.answer.is_correct %}var(--success){% else %}var(--danger){% endif %}; color: white; border-radius: var(--radius-sm); font-weight: 600;">
                         {% if task_item.answer.is_correct %}{{ ui_icon('action.check', 'sm') }} Правильно{% else %}{{ ui_icon('action.close', 'sm') }} Неправильно{% endif %}

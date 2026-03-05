@@ -17,16 +17,22 @@ logger = logging.getLogger(__name__)
 class StatsService:
     """Сервис для расчета статистики ученика"""
     
-    def __init__(self, student_id):
-        """Инициализация сервиса для конкретного ученика"""
+    def __init__(self, student_id, course_id=None):
+        """Инициализация сервиса для конкретного ученика.
+        course_id: если передан, фильтрует уроки и работы по программе подготовки.
+        """
         self.student_id = student_id
         self.student = Student.query.get_or_404(student_id)
+        self.course_id = course_id
         self._lessons_cache = None
     
     def _get_lessons(self):
         """Кэшированная загрузка уроков с заданиями"""
         if self._lessons_cache is None:
-            self._lessons_cache = Lesson.query.filter_by(student_id=self.student_id).options(
+            q = Lesson.query.filter_by(student_id=self.student_id)
+            if self.course_id:
+                q = q.filter(db.or_(Lesson.exam_course_id == self.course_id, Lesson.exam_course_id.is_(None)))
+            self._lessons_cache = q.options(
                 db.joinedload(Lesson.homework_tasks).joinedload(LessonTask.task)
             ).all()
         return self._lessons_cache
@@ -34,18 +40,21 @@ class StatsService:
     def _get_submissions(self):
         """Кэшированная загрузка работ (Assignments/Submissions) с ответами."""
         if getattr(self, '_submissions_cache', None) is None:
-            self._submissions_cache = (
+            q = (
                 Submission.query
                 .filter(Submission.student_id == self.student_id)
-                .options(
-                    db.joinedload(Submission.assignment),
-                    db.joinedload(Submission.answers)
-                      .joinedload(Answer.assignment_task)
-                      .joinedload(AssignmentTask.task)
-                      .joinedload(Tasks.topics),
-                )
-                .all()
             )
+            if self.course_id:
+                q = q.join(Assignment, Submission.assignment_id == Assignment.assignment_id).filter(
+                    db.or_(Assignment.exam_course_id == self.course_id, Assignment.exam_course_id.is_(None))
+                )
+            self._submissions_cache = q.options(
+                db.joinedload(Submission.assignment),
+                db.joinedload(Submission.answers)
+                  .joinedload(Answer.assignment_task)
+                  .joinedload(AssignmentTask.task)
+                  .joinedload(Tasks.topics),
+            ).all()
         return self._submissions_cache
 
     def _iter_scored_items(self):

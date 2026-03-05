@@ -608,6 +608,12 @@ def distribute_assignment():
         if not student_ids:
             return jsonify({'success': False, 'error': 'Не выбраны получатели работы'}), 400
         
+        dist_exam_course_id = None
+        if lesson_id:
+            lesson_obj = Lesson.query.get(lesson_id)
+            if lesson_obj and lesson_obj.exam_course_id:
+                dist_exam_course_id = lesson_obj.exam_course_id
+
         assignment = Assignment(
             title=title,
             description=description,
@@ -621,6 +627,7 @@ def distribute_assignment():
             max_attempts_default=max_attempts_default,
             created_by_id=current_user.id,
             lesson_id=lesson_id,
+            exam_course_id=dist_exam_course_id,
             is_active=True
         )
         db.session.add(assignment)

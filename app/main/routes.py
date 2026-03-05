@@ -521,7 +521,22 @@ def student_dashboard():
         return render_template('student_dashboard.html', student=None, plan_items=[], pending_submissions=[], unread_notifications=0, problem_topics=[], enrollments=[], selected_course_id=None)
 
     from app.students.stats_service import StatsService
-    from app.models import StudentLearningPlanItem, Submission, UserNotification, GradebookEntry
+    from app.models import StudentLearningPlanItem, Submission, UserNotification, GradebookEntry, Assignment
+
+    enrollments = []
+    try:
+        enrollments = StudentCourseEnrollment.query.filter_by(
+            student_id=student.student_id, is_active=True
+        ).options(db.joinedload(StudentCourseEnrollment.course)).order_by(
+            StudentCourseEnrollment.enrolled_at.asc()
+        ).all()
+    except Exception:
+        pass
+
+    selected_course_id = request.args.get('course_id', type=int)
+    if not selected_course_id and enrollments:
+        selected_course_id = enrollments[0].course_id
+
     try:
         plan_items = StudentLearningPlanItem.query.filter_by(student_id=student.student_id).order_by(
             StudentLearningPlanItem.due_date.asc().nullslast(),
@@ -532,10 +547,15 @@ def student_dashboard():
         plan_items = []
 
     try:
-        pending_submissions = Submission.query.filter(
+        sub_query = Submission.query.filter(
             Submission.student_id == student.student_id,
             Submission.status.in_(['ASSIGNED', 'IN_PROGRESS', 'RETURNED'])
-        ).options(db.joinedload(Submission.assignment)).order_by(Submission.assigned_at.desc()).limit(12).all()
+        ).options(db.joinedload(Submission.assignment))
+        if selected_course_id:
+            sub_query = sub_query.join(Assignment, Submission.assignment_id == Assignment.assignment_id).filter(
+                db.or_(Assignment.exam_course_id == selected_course_id, Assignment.exam_course_id.is_(None))
+            )
+        pending_submissions = sub_query.order_by(Submission.assigned_at.desc()).limit(12).all()
     except Exception:
         pending_submissions = []
 
@@ -566,18 +586,6 @@ def student_dashboard():
         ).limit(8).all()
     except Exception:
         recent_grades = []
-
-    enrollments = []
-    try:
-        enrollments = StudentCourseEnrollment.query.filter_by(
-            student_id=student.student_id, is_active=True
-        ).options(db.joinedload(StudentCourseEnrollment.course)).order_by(
-            StudentCourseEnrollment.enrolled_at.asc()
-        ).all()
-    except Exception:
-        pass
-
-    selected_course_id = request.args.get('course_id', type=int)
 
     return render_template(
         'student_dashboard.html',

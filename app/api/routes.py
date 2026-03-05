@@ -683,11 +683,28 @@ def api_analytics_summary():
             })
         by_node.sort(key=lambda x: (x['task_number'] is None, x['task_number'] or 0))
         predicted = AnalyticsEngine.predict_exam_score(user_id, subject_id=subject.id, course_id=course_id)
+
+        grading_info = None
+        course_slug = None
+        if course_id:
+            course_obj = Course.query.get(course_id)
+            if course_obj:
+                course_slug = course_obj.slug
+            from app.models import GradingScale
+            scales = GradingScale.query.filter_by(course_id=course_id).order_by(GradingScale.min_primary).all()
+            if scales:
+                grading_info = {
+                    'scales': [{'min': s.min_primary, 'max': s.max_primary, 'grade': s.final_grade, 'label': s.label} for s in scales],
+                    'max_primary': max(s.max_primary for s in scales),
+                }
+
         return jsonify({
             'success': True,
             'subject': {'id': subject.id, 'slug': subject.slug, 'name': subject.name},
             'nodes': by_node,
             'predicted_primary_score': predicted,
+            'grading': grading_info,
+            'course_slug': course_slug,
         })
     except Exception as e:
         logger.error(f'Ошибка api/analytics/summary: {e}', exc_info=True)

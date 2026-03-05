@@ -1,0 +1,17 @@
+[
+  {"task_number": 1, "topic": "Количественные параметры информационных объектов", "node_code": "OGE-INFO-PARAMS", "base_rating": 700, "exam_points": 1, "complexity_tier": "Basic"},
+  {"task_number": 2, "topic": "Значение логического выражения", "node_code": "OGE-LOGIC", "base_rating": 750, "exam_points": 1, "complexity_tier": "Basic"},
+  {"task_number": 3, "topic": "Формальные описания реальных объектов (графы)", "node_code": "OGE-GRAPHS", "base_rating": 800, "exam_points": 1, "complexity_tier": "Basic"},
+  {"task_number": 4, "topic": "Файловая система", "node_code": "OGE-FILESYSTEM", "base_rating": 700, "exam_points": 1, "complexity_tier": "Basic"},
+  {"task_number": 5, "topic": "Формульная зависимость в электронной таблице", "node_code": "OGE-EXCEL", "base_rating": 850, "exam_points": 1, "complexity_tier": "Basic"},
+  {"task_number": 6, "topic": "Алгоритм для конкретного исполнителя", "node_code": "OGE-EXECUTOR", "base_rating": 900, "exam_points": 1, "complexity_tier": "Intermediate"},
+  {"task_number": 7, "topic": "Кодирование и декодирование информации", "node_code": "OGE-ENCODING", "base_rating": 850, "exam_points": 1, "complexity_tier": "Basic"},
+  {"task_number": 8, "topic": "Линейный алгоритм для формального исполнителя", "node_code": "OGE-LINEAR-ALG", "base_rating": 900, "exam_points": 1, "complexity_tier": "Intermediate"},
+  {"task_number": 9, "topic": "Простейший циклический алгоритм", "node_code": "OGE-CYCLES", "base_rating": 950, "exam_points": 1, "complexity_tier": "Intermediate"},
+  {"task_number": 10, "topic": "Циклический алгоритм обработки массива", "node_code": "OGE-ARRAYS", "base_rating": 1000, "exam_points": 1, "complexity_tier": "Intermediate"},
+  {"task_number": 11, "topic": "Анализ информации в файле", "node_code": "OGE-FILE-ANALYSIS", "base_rating": 1050, "exam_points": 1, "complexity_tier": "Intermediate"},
+  {"task_number": 12, "topic": "Алгоритм обработки символьных строк/массива", "node_code": "OGE-STRING-ALG", "base_rating": 1100, "exam_points": 1, "complexity_tier": "Intermediate"},
+  {"task_number": 13, "topic": "Создание презентации или текстового документа", "node_code": "OGE-PRESENTATION", "base_rating": 900, "exam_points": 2, "complexity_tier": "Intermediate"},
+  {"task_number": 14, "topic": "Обработка большого массива данных (электронная таблица)", "node_code": "OGE-BIG-DATA", "base_rating": 1100, "exam_points": 2, "complexity_tier": "Advanced"},
+  {"task_number": 15, "topic": "Написание программы на языке программирования", "node_code": "OGE-PROGRAMMING", "base_rating": 1300, "exam_points": 2, "complexity_tier": "Advanced"}
+]

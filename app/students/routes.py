@@ -34,6 +34,7 @@ from app.models import (
     TOMSK_TZ,
     Submission,
     Assignment,
+    StudentCourseEnrollment,
 )
 from app.models import User, FamilyTie, Enrollment
 from app.utils.student_id_manager import assign_platform_id_if_needed
@@ -1046,17 +1047,23 @@ def student_diagnostics(student_id: int):
     from app.students.stats_service import StatsService
     from app.models import StudentDiagnosticCheckpoint
 
+    diag_course_id = request.args.get('course_id', type=int)
+    if not diag_course_id:
+        enrollment = StudentCourseEnrollment.query.filter_by(student_id=student.student_id, is_active=True).first()
+        if enrollment:
+            diag_course_id = enrollment.course_id
+
     stats = None
     metrics = {}
     problem_topics = []
     problem_tasks = []
     coverage = {'scored_items': 0, 'scored_with_topics': 0, 'unique_topics': 0}
     try:
-        stats = StatsService(student.student_id)
+        stats = StatsService(student.student_id, course_id=diag_course_id)
         metrics = stats.get_summary_metrics()
         problem_topics = stats.get_problem_topics(threshold=60)
         try:
-            problem_tasks = stats.get_problem_task_numbers(threshold=60, min_attempts=3)
+            problem_tasks = stats.get_problem_task_numbers(threshold=60, min_attempts=3, course_id=diag_course_id)
         except Exception:
             problem_tasks = []
 
@@ -1293,6 +1300,11 @@ def update_statistics(student_id):
         
         task_number = int(data['task_number'])
         edit_mode = data.get('mode', 'add').lower()
+        stat_course_id = data.get('course_id', type=int) if hasattr(data, 'get') else None
+        try:
+            stat_course_id = int(data.get('course_id')) if data.get('course_id') else None
+        except (TypeError, ValueError):
+            stat_course_id = None
         
         if edit_mode not in ['add', 'set', 'subtract']:
             return jsonify({'success': False, 'error': 'Некорректный режим редактирования. Используйте: add, set или subtract'}), 400
@@ -1304,10 +1316,10 @@ def update_statistics(student_id):
             if manual_correct_value < 0 or manual_incorrect_value < 0:
                 return jsonify({'success': False, 'error': 'Значения должны быть неотрицательными'}), 400
         
-        stat = StudentTaskStatistics.query.filter_by(
-            student_id=student_id,
-            task_number=task_number
-        ).first()
+        stat_filter = {'student_id': student_id, 'task_number': task_number}
+        if stat_course_id:
+            stat_filter['course_id'] = stat_course_id
+        stat = StudentTaskStatistics.query.filter_by(**stat_filter).first()
         
         old_correct = stat.manual_correct if stat else 0
         old_incorrect = stat.manual_incorrect if stat else 0
@@ -1330,6 +1342,7 @@ def update_statistics(student_id):
                 stat = StudentTaskStatistics(
                     student_id=student_id,
                     task_number=task_number,
+                    course_id=stat_course_id,
                     manual_correct=manual_correct_value,
                     manual_incorrect=manual_incorrect_value
                 )
@@ -1337,6 +1350,7 @@ def update_statistics(student_id):
                 stat = StudentTaskStatistics(
                     student_id=student_id,
                     task_number=task_number,
+                    course_id=stat_course_id,
                     manual_correct=max(0, manual_correct_value if edit_mode == 'add' else -manual_correct_value),
                     manual_incorrect=max(0, manual_incorrect_value if edit_mode == 'add' else -manual_incorrect_value)
                 )
@@ -1808,6 +1822,13 @@ def lesson_new(student_id):
     course_module_id = request.args.get('course_module_id', type=int)
     return_to = (request.args.get('return_to') or '').strip().lower()
 
+    from app.models import Course
+    courses = Course.query.filter_by(is_active=True).order_by(Course.id).all()
+    form.exam_course_id.choices = [(0, '— Не выбрано —')] + [(c.id, c.title) for c in courses]
+    enrollment = StudentCourseEnrollment.query.filter_by(student_id=student.student_id, is_active=True).first()
+    if enrollment and not form.is_submitted():
+        form.exam_course_id.data = enrollment.course_id
+
     if course_module_id:
         try:
             from app.models import TrajectoryModule, LearningTrajectory
@@ -1842,9 +1863,14 @@ def lesson_new(student_id):
         
         lesson_date_utc = lesson_date_utc.replace(tzinfo=None) if lesson_date_utc.tzinfo else lesson_date_utc
         
+        selected_exam_course_id = form.exam_course_id.data if form.exam_course_id.data else None
+        if selected_exam_course_id == 0:
+            selected_exam_course_id = None
+
         lesson = Lesson(
             student_id=student_id,
             course_module_id=course_module_id,
+            exam_course_id=selected_exam_course_id,
             lesson_type=form.lesson_type.data,
             lesson_date=lesson_date_utc,
             duration=form.duration.data,

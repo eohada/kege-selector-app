@@ -504,11 +504,13 @@
                     if (raw) recipientIds = JSON.parse(raw);
                     if (!Array.isArray(recipientIds)) recipientIds = [];
                 } catch (e) {}
+                const params = new URLSearchParams(window.location.search);
                 return {
                     lesson_id: deck.dataset.lessonId || null,
                     assignment_type: deck.dataset.assignmentType || 'homework',
                     template_id: deck.dataset.templateId || null,
                     recipient_ids: recipientIds,
+                    exam_course_id: params.get('exam_course_id') || deck.dataset.examCourseId || null,
                 };
             }
 
@@ -634,7 +636,8 @@
                         lesson_id: ctx.lesson_id,
                         assignment_type: ctx.assignment_type,
                         template_id: ctx.template_id,
-                        use_skipped: !!useSkipped.checked
+                        use_skipped: !!useSkipped.checked,
+                        exam_course_id: ctx.exam_course_id
                     };
                     if (ctx.recipient_ids && ctx.recipient_ids.length) payload.recipient_ids = ctx.recipient_ids;
                     const data = await postJSON('/task-generator/stream/start', payload);
@@ -667,6 +670,7 @@
                         assignment_type: ctx.assignment_type,
                         template_id: ctx.template_id,
                         use_skipped: !!useSkipped.checked,
+                        exam_course_id: ctx.exam_course_id,
                         ...(extra || {})
                     };
                     if (ctx.recipient_ids && ctx.recipient_ids.length) actPayload.recipient_ids = ctx.recipient_ids;

@@ -615,6 +615,13 @@
             const csrfEl = document.querySelector('meta[name="csrf-token"]');
             const csrfToken = csrfEl ? csrfEl.content : '';
             const url = '{{ url_for("assignments.upload_answer_file", submission_id=submission.submission_id) }}';
+
+            var uploadZone = document.querySelector('.file-upload-zone[ondrop*="' + assignmentTaskId + '"]');
+            if (uploadZone) {
+                uploadZone.style.opacity = '0.5';
+                uploadZone.style.pointerEvents = 'none';
+            }
+
             fetch(url, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': csrfToken },
@@ -622,14 +629,36 @@
             })
             .then(function(r) { return r.json(); })
             .then(function(data) {
+                if (uploadZone) {
+                    uploadZone.style.opacity = '1';
+                    uploadZone.style.pointerEvents = '';
+                }
                 if (data.success) {
-                    if (typeof showToast === 'function') showToast('Файл загружен', 'success');
-                    setTimeout(function() { location.reload(); }, 800);
+                    if (typeof showToast === 'function') showToast('Файл «' + file.name + '» загружен', 'success');
+                    if (uploadZone) {
+                        var successDiv = document.createElement('div');
+                        successDiv.style.cssText = 'margin-top: 0.75rem; padding: 0.75rem 1rem; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.4); border-radius: var(--radius-sm); font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;';
+                        successDiv.innerHTML = '<span style="color: var(--success);">&#10003;</span> ' + file.name;
+                        if (data.file_url) {
+                            var link = document.createElement('a');
+                            link.href = data.file_url;
+                            link.target = '_blank';
+                            link.download = '';
+                            link.textContent = 'Скачать';
+                            link.style.cssText = 'margin-left: auto; font-size: 0.85rem; color: var(--accent-1);';
+                            successDiv.appendChild(link);
+                        }
+                        uploadZone.parentNode.insertBefore(successDiv, uploadZone.nextSibling);
+                    }
                 } else {
                     if (typeof showToast === 'function') showToast('Ошибка: ' + (data.error || 'Не удалось загрузить'), 'error');
                 }
             })
             .catch(function(e) {
+                if (uploadZone) {
+                    uploadZone.style.opacity = '1';
+                    uploadZone.style.pointerEvents = '';
+                }
                 if (typeof showToast === 'function') showToast('Ошибка загрузки: ' + (e && e.message || 'Сеть'), 'error');
             });
         }

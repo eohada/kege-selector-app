@@ -45,8 +45,8 @@
                         <div class="hero-pane" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                             <div>
                                 <p class="hero-eyebrow">контент для учеников</p>
-                                <h1 class="hero-title">Теория по заданиям ЕГЭ</h1>
-                                <p class="hero-subtitle">Создавайте и редактируйте блоки теории по номерам заданий (1–27).</p>
+                                <h1 class="hero-title">Теория по заданиям{% if course %} · {{ course.title }}{% endif %}</h1>
+                                <p class="hero-subtitle">Создавайте и редактируйте блоки теории по номерам заданий{% if task_numbers %} (1–{{ task_numbers|length }}){% endif %}.</p>
                             </div>
                             <div class="hero-actions">
                                 <a href="{{ url_for('theory.manage_access_index', course_id=course_id) if course_id else url_for('theory.manage_access_index') }}" class="neo-button ghost">Доступ учеников</a>

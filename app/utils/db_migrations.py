@@ -1636,6 +1636,53 @@ def _migrate_multi_course(app, inspector, table_names, is_postgres):
 
         db.session.commit()
         logger.info("Multi-course migration completed successfully")
+
+        # --- Seed: Subject + KnowledgeNode для ОГЭ ---
+        try:
+            from core.db_models import Subject, KnowledgeNode
+            oge_subject = Subject.query.filter_by(slug='oge').first()
+            if not oge_subject:
+                oge_subject = Subject(slug='oge', name='Информатика (ОГЭ)')
+                db.session.add(oge_subject)
+                db.session.flush()
+                logger.info("Created Subject: oge (Информатика ОГЭ)")
+
+            existing_oge_nodes = KnowledgeNode.query.filter_by(subject_id=oge_subject.id).count()
+            if existing_oge_nodes == 0:
+                import json as _json
+                _oge_data_path = os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'analytics_oge_difficulty.json')
+                if os.path.isfile(_oge_data_path):
+                    with open(_oge_data_path, 'r', encoding='utf-8') as _f:
+                        _oge_matrix = _json.load(_f)
+                    _tn_to_node = {}
+                    for _row in _oge_matrix:
+                        _node = KnowledgeNode(
+                            subject_id=oge_subject.id,
+                            name=_row.get('topic', _row['node_code']),
+                            code=_row['node_code'],
+                            base_rating=int(_row.get('base_rating', 1000)),
+                            exam_points=int(_row.get('exam_points', 1)),
+                            complexity_tier=_row.get('complexity_tier'),
+                        )
+                        db.session.add(_node)
+                        db.session.flush()
+                        _tn_to_node[_row['task_number']] = _node.id
+                    db.session.commit()
+                    _oge_course = ExamCourse.query.filter_by(slug='oge_informatics').first()
+                    if _oge_course:
+                        _updated = 0
+                        for _tn, _nid in _tn_to_node.items():
+                            for _task in Tasks.query.filter_by(task_number=_tn, course_id=_oge_course.id).all():
+                                _task.knowledge_node_id = _nid
+                                _updated += 1
+                        db.session.commit()
+                        logger.info(f"Seeded {len(_tn_to_node)} KnowledgeNodes for ОГЭ, linked {_updated} tasks")
+                else:
+                    logger.warning(f"OGE analytics data not found at {_oge_data_path}")
+        except Exception as e:
+            db.session.rollback()
+            logger.warning(f"Could not seed OGE analytics: {e}")
+
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error in multi-course migration: {e}", exc_info=True)

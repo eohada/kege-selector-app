@@ -217,6 +217,15 @@
                 <div class="form-section-title">{{ ui_icon('nav.schedule', 'sm', decorative=true) }} Основная информация</div>
                 <div class="form-grid">
                     <div class="neo-field">
+                        {{ form.exam_course_id.label(class='neo-label') }}
+                        {{ form.exam_course_id(class='neo-select') }}
+                        {% if form.exam_course_id.errors %}
+                            <div class="field-error">{{ form.exam_course_id.errors[0] }}</div>
+                        {% endif %}
+                        <small style="display: block; color: var(--text-muted); font-size: 0.85em; margin-top: 0.3em;">Выберите программу подготовки (ЕГЭ / ОГЭ) для корректной генерации заданий</small>
+                    </div>
+
+                    <div class="neo-field">
                         {{ form.lesson_type.label(class='neo-label') }}
                         {{ form.lesson_type(class='neo-select') }}
                         {% if form.lesson_type.errors %}

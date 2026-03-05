@@ -883,7 +883,13 @@
             loadingEl.style.display = 'block';
             errorEl.style.display = 'none';
             contentEl.style.display = 'none';
-            var url = '/api/analytics/summary?student_id=' + encodeURIComponent(STUDENT_ID_FOR_ANALYTICS);
+            var courseIdParam = '';
+            try {
+                var urlParams = new URLSearchParams(window.location.search);
+                var cid = urlParams.get('course_id');
+                if (cid) courseIdParam = '&course_id=' + encodeURIComponent(cid);
+            } catch(e) {}
+            var url = '/api/analytics/summary?student_id=' + encodeURIComponent(STUDENT_ID_FOR_ANALYTICS) + courseIdParam;
             fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
@@ -896,11 +902,25 @@
                     contentEl.style.display = 'block';
                     var primary = data.predicted_primary_score != null ? data.predicted_primary_score : 0;
                     var scoreEl = document.getElementById('analyticsPredictedScore');
-                    if (scoreEl) scoreEl.textContent = primary + ' из 29 (первичный)';
-                    var primaryToTest = [0,7,14,21,27,34,39,43,46,50,53,56,59,62,65,68,71,73,76,77,78,80,82,84,86,88,91,93,96,100];
-                    var testScore = primary >= 0 && primary <= 29 ? primaryToTest[Math.round(primary)] : null;
                     var secondaryEl = document.getElementById('analyticsPredictedSecondary');
-                    if (secondaryEl) secondaryEl.textContent = testScore != null ? '≈ ' + testScore + ' тестовых баллов (по шкале ФИПИ)' : '';
+                    var isOge = data.course_slug && data.course_slug.indexOf('oge') !== -1;
+                    if (isOge && data.grading && data.grading.scales) {
+                        var maxP = data.grading.max_primary || 19;
+                        if (scoreEl) scoreEl.textContent = primary + ' из ' + maxP + ' (первичный)';
+                        var grade = null;
+                        var rounded = Math.round(primary);
+                        for (var si = 0; si < data.grading.scales.length; si++) {
+                            var sc = data.grading.scales[si];
+                            if (rounded >= sc.min && rounded <= sc.max) { grade = sc.grade; break; }
+                        }
+                        if (secondaryEl) secondaryEl.textContent = grade != null ? 'Оценка: ' + grade + ' (' + (data.grading.scales.find(function(s){return s.grade===grade;}) || {}).label + ')' : '';
+                    } else {
+                        var maxPrimary = (data.grading && data.grading.max_primary) ? data.grading.max_primary : 29;
+                        if (scoreEl) scoreEl.textContent = primary + ' из ' + maxPrimary + ' (первичный)';
+                        var primaryToTest = [0,7,14,21,27,34,39,43,46,50,53,56,59,62,65,68,71,73,76,77,78,80,82,84,86,88,91,93,96,100];
+                        var testScore = primary >= 0 && primary <= 29 ? primaryToTest[Math.round(primary)] : null;
+                        if (secondaryEl) secondaryEl.textContent = testScore != null ? '≈ ' + testScore + ' тестовых баллов (по шкале ФИПИ)' : '';
+                    }
                     var nodes = data.nodes || [];
                     var accent1 = getComputedStyle(document.documentElement).getPropertyValue('--accent-1').trim();
                     var textMuted = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();

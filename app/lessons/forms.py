@@ -13,6 +13,7 @@ def ensure_introductory_without_homework(lesson_form):
 
 class LessonForm(FlaskForm):
     """Форма для создания и редактирования урока"""
+    exam_course_id = SelectField('Программа подготовки', coerce=int, validators=[Optional()])
     lesson_type = SelectField('Тип урока', choices=[
         ('regular', '📚 Обычный урок'),
         ('exam', '✅ Проверочный урок'),
