@@ -581,6 +581,7 @@ def demo_start():
     # Тренажёр: из demo_scenario.json — ответ, вопрос, код с ошибкой, исправленный код, ответ помощника
     trainer_answer = (trainer_task.answer or '42') if trainer_task else '42'
     trainer_question = ''
+    trainer_assistant_reply = ''
     trainer_buggy_code = ''
     trainer_fixed_code = ''
     trainer_error_line = 5
@@ -596,7 +597,8 @@ def demo_start():
                 if tr.get('answer'):
                     trainer_answer = str(tr['answer']).strip()
                 trainer_question = (tr.get('question') or '').strip()
-                trainer_hint = (tr.get('assistant_reply') or tr.get('hint') or trainer_hint).strip()
+                trainer_hint = (tr.get('hint') or trainer_hint).strip()
+                trainer_assistant_reply = (tr.get('assistant_reply') or '').strip()
                 trainer_correction = (tr.get('correction_text') or trainer_correction).strip()
                 trainer_buggy_code = (tr.get('buggy_code') or '').strip().replace('\\n', '\n')
                 trainer_fixed_code = (tr.get('fixed_code') or '').strip().replace('\\n', '\n')
@@ -615,6 +617,7 @@ def demo_start():
         'trainerTaskNumber': trainer_task.task_number if trainer_task else 1,
         'trainerAnswer': trainer_answer,
         'trainerHint': trainer_hint,
+        'trainerAssistantReply': trainer_assistant_reply,
         'trainerCorrection': trainer_correction,
         'trainerQuestion': trainer_question,
         'trainerBuggyCode': trainer_buggy_code,
@@ -622,7 +625,26 @@ def demo_start():
         'trainerErrorLine': trainer_error_line,
     }
 
-    response = make_response(redirect(url_for('main.student_dashboard')))
+    cinema_scene = request.args.get('cinema_scene', '').strip()
+    if cinema_scene in ('1', '2', '3', '4', '5', '6', '7', '8'):
+        dest = url_for('main.student_dashboard')
+        if cinema_scene == '3':
+            dest = url_for('theory.theory_index')
+        elif cinema_scene == '4':
+            dest = url_for('main.student_dashboard')
+        elif cinema_scene == '5' and demo_lesson_id:
+            dest = url_for('lessons.lesson_classwork_view', lesson_id=demo_lesson_id) + '?cinema_scene=5'
+        elif cinema_scene == '6' and trainer_task:
+            dest = url_for('trainer.trainer_v2', task_id=trainer_task.task_id) + '?cinema_scene=6'
+        elif cinema_scene == '7' and demo_student.student_id:
+            dest = url_for('students.student_analytics', student_id=demo_student.student_id) + '?cinema_scene=7'
+        elif cinema_scene == '8' and demo_student.student_id:
+            dest = url_for('students.student_analytics', student_id=demo_student.student_id) + '?cinema_scene=8'
+        if cinema_scene in ('1', '2'):
+            dest = dest + ('&' if '?' in dest else '?') + 'cinema_scene=' + cinema_scene
+        response = make_response(redirect(dest))
+    else:
+        response = make_response(redirect(url_for('main.student_dashboard')))
     response.set_cookie('is_demo', 'true', max_age=60*60*24)
     response.set_cookie('cinemaMode', 'prologue', max_age=60*60*24)
     return response

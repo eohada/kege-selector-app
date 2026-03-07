@@ -562,6 +562,38 @@
 /* ── Freeze ────────────────────────────────────────────────────────── */
 body.cinema-freeze { overflow: hidden !important; }
 
+/* ── Быстрый переход к сцене (демо) ─────────────────────────────────── */
+.cinema-scene-jump {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 99998;
+  background: rgba(10, 10, 18, 0.92);
+  border: 1px solid rgba(0, 170, 255, 0.35);
+  border-radius: 10px;
+  padding: 10px 12px;
+  max-width: 200px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+.cinema-scene-jump-title {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.cinema-scene-jump-link {
+  display: block;
+  font-size: 0.8rem;
+  color: rgba(0, 170, 255, 0.95);
+  text-decoration: none;
+  padding: 4px 0;
+  border-radius: 4px;
+}
+.cinema-scene-jump-link:hover {
+  color: #fff;
+  background: rgba(0, 170, 255, 0.2);
+}
+
 /* ── Mobile ────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .cinema-subtitle { font-size: clamp(0.95rem, 3.5vw, 1.2rem); }

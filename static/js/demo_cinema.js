@@ -703,7 +703,7 @@
     var fixedCode = (self.ids.trainerFixedCode && self.ids.trainerFixedCode.trim()) ? self.ids.trainerFixedCode.trim() : defaultFixed;
     var errorLineNum = typeof self.ids.trainerErrorLine === 'number' ? self.ids.trainerErrorLine : (parseInt(self.ids.trainerErrorLine, 10) || 5);
     var demoQuestion = (self.ids.trainerQuestion && self.ids.trainerQuestion.trim()) ? self.ids.trainerQuestion.trim() : 'Мой код выводит неправильное количество чисел. В чём может быть ошибка в строке с bin()?';
-    var demoAssistantReply = (self.ids.trainerHint && self.ids.trainerHint.trim()) ? self.ids.trainerHint.trim() : 'Проверь строку с bin(). Убери лишние скобки: bin(N % 3 * 3)[2:].';
+    var demoAssistantReply = (self.ids.trainerAssistantReply && self.ids.trainerAssistantReply.trim()) ? self.ids.trainerAssistantReply.trim() : (self.ids.trainerHint && self.ids.trainerHint.trim()) ? self.ids.trainerHint.trim() : 'Проверь строку с bin(). Убери лишние скобки: bin(N % 3 * 3)[2:].';
     var demoCorrectionSubtitle = (self.ids.trainerCorrection && self.ids.trainerCorrection.trim()) ? self.ids.trainerCorrection.trim() : 'ИИ нашёл ошибку. Исправляем код.';
 
     self.playEntryTransition()
@@ -973,6 +973,38 @@
     this.playScene();
   };
 
+  /* ── Быстрый переход к сцене (только демо) ──────────────────────── */
+  function buildSceneJumpPanel() {
+    if (qs('#cinema-scene-jump')) return;
+    var exam = (getDemoIds().exam || 'ege');
+    var base = '/demo/start?exam=' + encodeURIComponent(exam) + '&cinema_scene=';
+    var scenes = [
+      { n: 1, label: 'Лифт' },
+      { n: 2, label: 'Расписание' },
+      { n: 3, label: 'Теория' },
+      { n: 4, label: 'Задания' },
+      { n: 5, label: 'Урок' },
+      { n: 6, label: 'Тренажёр' },
+      { n: 7, label: 'Аналитика' },
+      { n: 8, label: 'Финал' },
+    ];
+    var wrap = document.createElement('div');
+    wrap.id = 'cinema-scene-jump';
+    wrap.className = 'cinema-scene-jump';
+    var title = document.createElement('div');
+    title.className = 'cinema-scene-jump-title';
+    title.textContent = 'Переход к сцене';
+    wrap.appendChild(title);
+    scenes.forEach(function (s) {
+      var a = document.createElement('a');
+      a.href = base + s.n;
+      a.textContent = s.n + ': ' + s.label;
+      a.className = 'cinema-scene-jump-link';
+      wrap.appendChild(a);
+    });
+    document.body.appendChild(wrap);
+  }
+
   /* ── Bootstrap ─────────────────────────────────────────────────── */
   function init() {
     var isDemo = false;
@@ -981,6 +1013,15 @@
       if (lsGet('is_demo') === 'true') isDemo = true;
     } catch (e) {}
     if (!isDemo) return;
+
+    var urlScene = (function () {
+      var m = window.location.search.match(/[?&]cinema_scene=(\d)/);
+      return m ? m[1] : null;
+    })();
+    if (urlScene) {
+      lsSet(LS_ACTIVE, 'true');
+      lsSet(LS_SCENE, urlScene);
+    }
 
     if (document.cookie.indexOf('cinemaMode=prologue') !== -1) {
       lsSet(LS_ACTIVE, 'true');
@@ -999,6 +1040,8 @@
         }
       } catch (e) {}
     }
+
+    buildSceneJumpPanel();
 
     var engine = new CE();
     engine.start();
