@@ -675,41 +675,57 @@
     try { localStorage.setItem(key, JSON.stringify(arr)); } catch (e) {}
   };
 
-  /* ── Добавить сообщение в чат тренажёра скриптованно (без нейросети) ── */
-  CE.prototype._appendTrainerChatMessage = function (role, content) {
+  /* ── Демо-чат: оверлей с вопросом и ответом из сценария (не используем чат тренажёра) ── */
+  CE.prototype._showDemoChatOverlay = function (question, reply) {
     var list = qs('.tv2-chat-list');
-    if (!list) return;
-    var item = document.createElement('div');
-    item.className = 'tv2-chat-msg ' + (role === 'user' ? 'is-user' : 'is-assistant');
-    var head = document.createElement('div');
-    head.className = 'tv2-chat-meta';
-    head.textContent = (role === 'user' ? 'ученик' : 'помощник') + ' · только что';
-    var body = document.createElement('div');
-    body.className = 'tv2-chat-bubble';
-    body.textContent = String(content || '');
-    item.appendChild(head);
-    item.appendChild(body);
-    list.appendChild(item);
-    list.scrollTop = list.scrollHeight;
+    var composer = qs('.tv2-chat-composer');
+    var panel = list ? list.parentElement : null;
+    if (!panel) return Promise.resolve();
+    var wrap = document.getElementById('cinema-demo-chat');
+    if (wrap) wrap.remove();
+    list.style.display = 'none';
+    if (composer) composer.style.display = 'none';
+    wrap = document.createElement('div');
+    wrap.id = 'cinema-demo-chat';
+    wrap.className = 'cinema-demo-chat';
+    var userMsg = document.createElement('div');
+    userMsg.className = 'tv2-chat-msg is-user';
+    userMsg.innerHTML = '<div class="tv2-chat-meta">ученик</div><div class="tv2-chat-bubble">' + (question || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
+    var assistantMsg = document.createElement('div');
+    assistantMsg.className = 'tv2-chat-msg is-assistant';
+    assistantMsg.innerHTML = '<div class="tv2-chat-meta">помощник</div><div class="tv2-chat-bubble">' + (reply || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
+    wrap.appendChild(userMsg);
+    wrap.appendChild(assistantMsg);
+    panel.appendChild(wrap);
+    return Promise.resolve();
+  };
+  CE.prototype._hideDemoChatOverlay = function () {
+    var wrap = document.getElementById('cinema-demo-chat');
+    if (wrap) wrap.remove();
+    var list = qs('.tv2-chat-list');
+    var composer = qs('.tv2-chat-composer');
+    if (list) list.style.display = '';
+    if (composer) composer.style.display = '';
   };
 
-  /* ── 6: Trainer — из сценария: ответ, код с ошибкой, вопрос, ответ помощника, исправленный код, правильный ответ */
+  /* ── 6: Trainer — полностью по сценарию скриптами: код setValue, свой чат-оверлей ── */
   CE.prototype.sceneTrainer = function () {
     var self = this;
     var correctAnswer = self.ids.trainerAnswer || '10';
-    var defaultBuggy = 'for N in range(1, 1000):\n    N2 = bin(N)[2:]\n    if N % 3 == 0:\n        R2 = N2 + N2[-3:]\n    else:\n        R2 = N2 + bin((N % 3) * 3)[2:]\n\n    R = int(R2, 2)\n\n    if R < 130:\n        print(N)';
-    var defaultFixed = defaultBuggy.replace('bin((N % 3) * 3)[2:]', 'bin(N % 3 * 3)[2:]');
+    var defaultBuggy = 'results = []\n\nfor N in range(1, 100):\n    b = bin(N)[2:]\n    if N % 2 == 0:\n        b = \'10\' + b\n    else:\n        b = \'1\' + b + \'01\'\n    R = int(b, 2)\n    if R < 30:\n        results.append(R)\n\nif results:\n    print(max(results))';
+    var defaultFixed = 'results = []\n\nfor N in range(1, 100):\n    b = bin(N)[2:]\n    if N % 2 == 0:\n        b = \'10\' + b\n    else:\n        b = \'1\' + b + \'01\'\n    R = int(b, 2)\n    if R < 30:\n        results.append(N)\n\nif results:\n    print(max(results))';
     var buggyCode = (self.ids.trainerBuggyCode && self.ids.trainerBuggyCode.trim()) ? self.ids.trainerBuggyCode.trim() : defaultBuggy;
     var fixedCode = (self.ids.trainerFixedCode && self.ids.trainerFixedCode.trim()) ? self.ids.trainerFixedCode.trim() : defaultFixed;
-    var errorLineNum = typeof self.ids.trainerErrorLine === 'number' ? self.ids.trainerErrorLine : (parseInt(self.ids.trainerErrorLine, 10) || 5);
-    var demoQuestion = (self.ids.trainerQuestion && self.ids.trainerQuestion.trim()) ? self.ids.trainerQuestion.trim() : 'Мой код выводит неправильное количество чисел. В чём может быть ошибка в строке с bin()?';
-    var demoAssistantReply = (self.ids.trainerAssistantReply && self.ids.trainerAssistantReply.trim()) ? self.ids.trainerAssistantReply.trim() : (self.ids.trainerHint && self.ids.trainerHint.trim()) ? self.ids.trainerHint.trim() : 'Проверь строку с bin(). Убери лишние скобки: bin(N % 3 * 3)[2:].';
-    var demoCorrectionSubtitle = (self.ids.trainerCorrection && self.ids.trainerCorrection.trim()) ? self.ids.trainerCorrection.trim() : 'ИИ нашёл ошибку. Исправляем код.';
+    var rawErrorLine = typeof self.ids.trainerErrorLine === 'number' ? self.ids.trainerErrorLine : (parseInt(self.ids.trainerErrorLine, 10) || 13);
+    var errorLineNum = rawErrorLine > 0 ? rawErrorLine - 1 : 12;
+    var demoQuestion = (self.ids.trainerQuestion && self.ids.trainerQuestion.trim()) ? self.ids.trainerQuestion.trim() : 'Привет, помоги разобраться с заданием, код почему-то выводит неправильный ответ!';
+    var demoAssistantReply = (self.ids.trainerAssistantReply && self.ids.trainerAssistantReply.trim()) ? self.ids.trainerAssistantReply.trim() : (self.ids.trainerHint && self.ids.trainerHint.trim()) ? self.ids.trainerHint.trim() : 'В условии просят максимальное N, а ты выводишь max из R.';
+    var demoCorrectionSubtitle = (self.ids.trainerCorrection && self.ids.trainerCorrection.trim()) ? self.ids.trainerCorrection.trim() : 'Исправлено. Запускаем код.';
 
     self.playEntryTransition()
-    .then(function () { return wait(1000); })
+    .then(function () { return wait(800); })
     .then(function () {
-      return self.showSubtitle('Это AI-тренажёр. Здесь ты пишешь код, запускаешь его и проверяешь ответ.');
+      return self.showSubtitle('Это AI-тренажёр. Всё покажем по сценарию — код, вопрос помощнику и ответ.');
     })
     .then(function () {
       var dock = qs('#trainerV2Dock') || qs('.trainer-v2-root');
@@ -717,150 +733,102 @@
       qsa('#tv2NextBtn, #tv2ZenExitBtn').forEach(function (b) {
         b.style.pointerEvents = 'none'; b.style.opacity = '0.3';
       });
-      return wait(1500);
+      return wait(1200);
     })
-    .then(function () {
-      return self.waitForEl('#tv2AnswerInput', 6000);
-    })
+    .then(function () { return self.waitForEl('.CodeMirror', 8000); })
 
-    /* ── Step 1: editor spotlight, then gradually type code ──────── */
+    .then(function () {
+      var cmEl = qs('.CodeMirror');
+      if (cmEl && cmEl.CodeMirror) cmEl.CodeMirror.setValue(buggyCode);
+      return wait(400);
+    })
     .then(function () {
       var editorBox = qs('.tv2-editor-box');
-      return self.spotlightWithPrompt(editorBox, 'Редактор кода', 'Здесь пишешь код. Смотри, как набирается решение.');
+      return self.spotlightWithPrompt(editorBox, 'Редактор', 'В редакторе — код из сценария. В нём ошибка.');
     })
     .then(function () {
-      return self.typeIntoCodeMirror(buggyCode);
+      var cmEl = qs('.CodeMirror');
+      if (cmEl && cmEl.CodeMirror) { try { cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-error-line'); } catch (e) {} }
+      return self.showSubtitle('Ошибка в этой строке. Спросим помощника.');
     })
     .then(function () { return wait(600); })
 
-    /* ── Step 2: подсветка строки с ошибкой ────────────────────────── */
-    .then(function () {
-      var cmEl = qs('.CodeMirror');
-      if (cmEl && cmEl.CodeMirror) {
-        cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-error-line');
-      }
-      return self.showSubtitle('Здесь ошибка в коде. Спросим помощника.');
-    })
-
-    /* ── Step 3: вкладка «Помощник», печатаем вопрос в поле (без нейросети) ── */
     .then(function () {
       var assistantTab = qs('button[data-tab="помощник"]');
       if (assistantTab) self.simulateClick(assistantTab);
-      return wait(600);
+      return wait(700);
     })
     .then(function () {
-      var chatInput = qs('.tv2-chat-input');
-      return self.spotlightWithPrompt(chatInput, 'Помощник', 'Напишем вопрос помощнику. Ответ придёт скриптованно — без вызова нейросети.', 'Написать вопрос');
-    })
-    .then(function () {
-      var chatInput = qs('.tv2-chat-input');
-      if (chatInput) return self.typeIntoField(demoQuestion, chatInput);
-      return wait(300);
-    })
-    .then(function () { return wait(400); })
-
-    /* ── Step 4: показываем вопрос в чате и скриптованно — ответ «помощника» ── */
-    .then(function () {
-      self._appendTrainerChatMessage('user', demoQuestion);
-      var chatInput = qs('.tv2-chat-input');
-      if (chatInput) { chatInput.value = ''; chatInput.dispatchEvent(new Event('input', { bubbles: true })); }
-      self._injectTrainerChat([{ role: 'user', content: demoQuestion }]);
+      self._showDemoChatOverlay(demoQuestion, demoAssistantReply);
       return wait(500);
     })
     .then(function () {
-      return self.showSubtitle('Вопрос отправлен. «Ответ» помощника подставляем скриптом.');
+      return self.showSubtitle('Вопрос и ответ помощника — из сценария, скриптом.');
+    })
+    .then(function () { return wait(1200); })
+
+    .then(function () {
+      var cmEl = qs('.CodeMirror');
+      if (cmEl && cmEl.CodeMirror) {
+        try { cmEl.CodeMirror.removeLineClass(errorLineNum, 'background', 'cinema-error-line'); } catch (e) {}
+        cmEl.CodeMirror.setValue(fixedCode);
+        try { cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-fixed-line'); } catch (e) {}
+      }
+      return self.showSubtitle(demoCorrectionSubtitle);
     })
     .then(function () { return wait(800); })
     .then(function () {
-      self._appendTrainerChatMessage('assistant', demoAssistantReply);
-      self._injectTrainerChat([{ role: 'user', content: demoQuestion }, { role: 'assistant', content: demoAssistantReply }]);
-      return wait(600);
-    })
-
-    /* ── Step 5: spotlight ответа помощника ───────────────────────── */
-    .then(function () {
-      var lastMsg = qs('.tv2-chat-msg.is-assistant:last-child') || qs('.tv2-chat-msg.is-assistant');
-      return self.spotlightWithPrompt(lastMsg, 'Ответ помощника', demoCorrectionSubtitle);
-    })
-
-    /* ── Step 7: fix the code, highlight the fixed line ──────────── */
-    .then(function () {
       var cmEl = qs('.CodeMirror');
-      if (cmEl && cmEl.CodeMirror) {
-        cmEl.CodeMirror.removeLineClass(errorLineNum, 'background', 'cinema-error-line');
-        cmEl.CodeMirror.setValue(fixedCode);
-        cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-fixed-line');
-      }
-      return self.showSubtitle(demoCorrectionSubtitle || 'Строка исправлена. Теперь запустим код.');
-    })
-    .then(function () {
-      var cmEl = qs('.CodeMirror');
-      if (cmEl && cmEl.CodeMirror) {
-        cmEl.CodeMirror.removeLineClass(errorLineNum, 'background', 'cinema-fixed-line');
-      }
+      if (cmEl && cmEl.CodeMirror) { try { cmEl.CodeMirror.removeLineClass(errorLineNum, 'background', 'cinema-fixed-line'); } catch (e) {} }
       return wait(300);
     })
 
-    /* ── Step 8: spotlight run button, let user click it ─────────── */
     .then(function () {
       var runBtn = qs('.tv2-fab-outline');
-      return self.spotlightWithPrompt(runBtn, 'Запустить', 'Нажми «запустить», чтобы выполнить исправленный код.', 'Запустить');
+      return self.spotlightWithPrompt(runBtn, 'Запустить', 'Запускаем исправленный код.', 'Запустить');
     })
     .then(function () {
       var runBtn = qs('.tv2-fab-outline');
       if (runBtn) self.simulateClick(runBtn);
-      return wait(2000);
+      return wait(2200);
     })
-
-    /* ── Step 9: switch to terminal tab ──────────────────────────── */
     .then(function () {
       var terminalTab = qs('button[data-tab="terminal"]');
       if (terminalTab) self.simulateClick(terminalTab);
       return wait(800);
     })
-
-    /* ── Step 10: spotlight answer field, type answer ────────────── */
     .then(function () {
       var answerEl = qs('#tv2AnswerInput');
-      return self.spotlightWithPrompt(answerEl, 'Поле ответа', 'Вводим ответ из вывода программы: ' + correctAnswer, 'Ввести ответ');
+      return self.spotlightWithPrompt(answerEl, 'Ответ', 'Вводим ответ из вывода: ' + correctAnswer, 'Ввести');
     })
     .then(function () {
       var answerEl = qs('#tv2AnswerInput');
-      if (answerEl) return self.typeIntoField(correctAnswer, answerEl);
-      return wait(300);
+      if (answerEl) { answerEl.value = correctAnswer; answerEl.dispatchEvent(new Event('input', { bubbles: true })); }
+      return wait(400);
     })
     .then(function () {
       var answerEl = qs('#tv2AnswerInput');
-      if (answerEl) {
-        answerEl.style.borderColor = '#0f0';
-        answerEl.style.boxShadow = '0 0 12px rgba(0,255,0,0.4)';
-      }
-      return self.showSubtitle('Ответ ' + correctAnswer + ' введён. Проверяем!', { continueLabel: 'Проверить' });
+      if (answerEl) { answerEl.style.borderColor = '#0f0'; answerEl.style.boxShadow = '0 0 12px rgba(0,255,0,0.4)'; }
+      return self.showSubtitle('Ответ введён. Проверяем.', { continueLabel: 'Проверить' });
     })
-
-    /* ── Step 11: check answer ──────────────────────────────────── */
     .then(function () {
       var checkBtn = qs('.tv2-fab-primary');
-      if (checkBtn) {
-        self.simulateClick(checkBtn);
-        return wait(2500);
-      }
-      return wait(500);
+      if (checkBtn) self.simulateClick(checkBtn);
+      return wait(2500);
     })
     .then(function () { return self.flash(); })
     .then(function () { return self.showCorrectBadge(); })
     .then(function () {
+      self._hideDemoChatOverlay();
       var dock = qs('#trainerV2Dock') || qs('.trainer-v2-root');
       if (dock) dock.classList.remove('cinema-neon-hud');
-      qsa('#tv2NextBtn, #tv2ZenExitBtn').forEach(function (b) {
-        b.style.pointerEvents = ''; b.style.opacity = '';
-      });
+      qsa('#tv2NextBtn, #tv2ZenExitBtn').forEach(function (b) { b.style.pointerEvents = ''; b.style.opacity = ''; });
       var answerEl = qs('#tv2AnswerInput');
       if (answerEl) { answerEl.style.borderColor = ''; answerEl.style.boxShadow = ''; }
       return wait(200);
     })
     .then(function () {
-      return self.showSubtitle('Написал код → нашёл ошибку → спросил помощника → исправил → запустил → проверил. Так работает тренажёр.', { continueLabel: 'К аналитике' });
+      return self.showSubtitle('Код → ошибка → вопрос помощнику → исправление → запуск → проверка. Так работает тренажёр.', { continueLabel: 'К аналитике' });
     })
     .then(function () {
       if (!self.running) return;
@@ -1023,7 +991,7 @@
       lsSet(LS_SCENE, urlScene);
     }
 
-    if (document.cookie.indexOf('cinemaMode=prologue') !== -1) {
+    if (!urlScene && document.cookie.indexOf('cinemaMode=prologue') !== -1) {
       lsSet(LS_ACTIVE, 'true');
       lsSet(LS_SCENE, '0');
       lsRemove(LS_TRANSITION);

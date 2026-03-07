@@ -594,6 +594,14 @@ body.cinema-freeze { overflow: hidden !important; }
   background: rgba(0, 170, 255, 0.2);
 }
 
+/* ── Демо-чат оверлей в тренажёре (вопрос + ответ из сценария) ─────── */
+.cinema-demo-chat {
+  flex: 1;
+  overflow: auto;
+  padding: 0.5rem 0;
+}
+.cinema-demo-chat .tv2-chat-msg { margin-bottom: 0.75rem; }
+
 /* ── Mobile ────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .cinema-subtitle { font-size: clamp(0.95rem, 3.5vw, 1.2rem); }
