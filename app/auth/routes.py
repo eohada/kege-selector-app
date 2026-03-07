@@ -635,7 +635,7 @@ def demo_start():
         elif cinema_scene == '5' and demo_lesson_id:
             dest = url_for('lessons.lesson_classwork_view', lesson_id=demo_lesson_id) + '?cinema_scene=5'
         elif cinema_scene == '6' and trainer_task:
-            dest = url_for('trainer.trainer_v2', task_id=trainer_task.task_id) + '?cinema_scene=6'
+            dest = url_for('trainer.trainer_v2', task_id=trainer_task.task_id) + '?cinema_scene=6&exam=' + exam
         elif cinema_scene == '7' and demo_student.student_id:
             dest = url_for('students.student_analytics', student_id=demo_student.student_id) + '?cinema_scene=7'
         elif cinema_scene == '8' and demo_student.student_id:

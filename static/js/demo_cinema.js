@@ -613,9 +613,11 @@
       }
       var tid = self.ids.trainerTaskId;
       var tn = self.ids.trainerTaskNumber || 1;
+      var exam = (self.ids.exam || 'ege');
       var url = '/trainer/v2';
       if (tid) url += '?task_id=' + tid + '&task_type=' + tn;
       else if (tn) url += '?task_type=' + tn;
+      if (exam) url += (url.indexOf('?') !== -1 ? '&' : '?') + 'exam=' + encodeURIComponent(exam);
       self.advance(6, url, 'hyperJump');
     });
   };
@@ -675,37 +677,63 @@
     try { localStorage.setItem(key, JSON.stringify(arr)); } catch (e) {}
   };
 
-  /* ── Демо-чат: оверлей с вопросом и ответом из сценария (вставляем в панель помощника) ── */
-  CE.prototype._showDemoChatOverlay = function (question, reply) {
-    var list = qs('.tv2-chat-list');
-    var composer = qs('.tv2-chat-composer');
-    var panel = list ? list.parentElement : null;
-    if (!panel) return Promise.resolve();
-    var old = document.getElementById('cinema-demo-chat');
+  /* ── Демо: своё окно «Помощник» — имитация ввода вопроса и получения ответа ── */
+  CE.prototype._showDemoChatWindow = function (question, reply) {
+    var self = this;
+    var old = document.getElementById('cinema-demo-chat-window');
     if (old) old.remove();
-    list.style.display = 'none';
-    if (composer) composer.style.display = 'none';
-    var wrap = document.createElement('div');
-    wrap.id = 'cinema-demo-chat';
-    wrap.className = 'cinema-demo-chat';
-    var userMsg = document.createElement('div');
-    userMsg.className = 'tv2-chat-msg is-user';
-    userMsg.innerHTML = '<div class="tv2-chat-meta">ученик</div><div class="tv2-chat-bubble">' + (question || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
-    var assistantMsg = document.createElement('div');
-    assistantMsg.className = 'tv2-chat-msg is-assistant';
-    assistantMsg.innerHTML = '<div class="tv2-chat-meta">помощник</div><div class="tv2-chat-bubble">' + (reply || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
-    wrap.appendChild(userMsg);
-    wrap.appendChild(assistantMsg);
-    panel.insertBefore(wrap, list);
-    return Promise.resolve();
+
+    var back = document.createElement('div');
+    back.id = 'cinema-demo-chat-window';
+    back.className = 'cinema-demo-chat-window';
+    var box = document.createElement('div');
+    box.className = 'cinema-demo-chat-window-box';
+    var title = document.createElement('div');
+    title.className = 'cinema-demo-chat-window-title';
+    title.textContent = 'Помощник';
+    var list = document.createElement('div');
+    list.className = 'cinema-demo-chat-window-list';
+
+    var userWrap = document.createElement('div');
+    userWrap.className = 'tv2-chat-msg is-user';
+    userWrap.innerHTML = '<div class="tv2-chat-meta">ученик</div><div class="tv2-chat-bubble cinema-demo-chat-question"></div>';
+    var assistantWrap = document.createElement('div');
+    assistantWrap.className = 'tv2-chat-msg is-assistant';
+    assistantWrap.innerHTML = '<div class="tv2-chat-meta">помощник</div><div class="tv2-chat-bubble cinema-demo-chat-reply"></div>';
+    list.appendChild(userWrap);
+    list.appendChild(assistantWrap);
+    box.appendChild(title);
+    box.appendChild(list);
+    back.appendChild(box);
+    document.body.appendChild(back);
+
+    var questionEl = list.querySelector('.cinema-demo-chat-question');
+    var replyEl = list.querySelector('.cinema-demo-chat-reply');
+    var q = String(question || '');
+    var r = String(reply || '');
+
+    function typewriter(el, text, speed) {
+      return new Promise(function (resolve) {
+        if (!el) return resolve();
+        el.textContent = '';
+        var idx = 0;
+        function tick() {
+          if (idx >= text.length) return resolve();
+          el.textContent += text[idx];
+          idx += 1;
+          setTimeout(tick, speed || 28);
+        }
+        tick();
+      });
+    }
+
+    return typewriter(questionEl, q, 22).then(function () { return wait(600); }).then(function () {
+      return typewriter(replyEl, r, 20);
+    });
   };
-  CE.prototype._hideDemoChatOverlay = function () {
-    var wrap = document.getElementById('cinema-demo-chat');
-    if (wrap) wrap.remove();
-    var list = qs('.tv2-chat-list');
-    var composer = qs('.tv2-chat-composer');
-    if (list) list.style.display = '';
-    if (composer) composer.style.display = '';
+  CE.prototype._hideDemoChatWindow = function () {
+    var el = document.getElementById('cinema-demo-chat-window');
+    if (el) el.remove();
   };
 
   /* ── 6: Trainer — полностью по сценарию скриптами: код setValue, свой чат-оверлей ── */
@@ -716,8 +744,11 @@
     var defaultFixed = 'results = []\n\nfor N in range(1, 100):\n    b = bin(N)[2:]\n    if N % 2 == 0:\n        b = \'10\' + b\n    else:\n        b = \'1\' + b + \'01\'\n    R = int(b, 2)\n    if R < 30:\n        results.append(N)\n\nif results:\n    print(max(results))';
     var buggyCode = (self.ids.trainerBuggyCode && self.ids.trainerBuggyCode.trim()) ? self.ids.trainerBuggyCode.trim() : defaultBuggy;
     var fixedCode = (self.ids.trainerFixedCode && self.ids.trainerFixedCode.trim()) ? self.ids.trainerFixedCode.trim() : defaultFixed;
-    var rawErrorLine = typeof self.ids.trainerErrorLine === 'number' ? self.ids.trainerErrorLine : (parseInt(self.ids.trainerErrorLine, 10) || 11);
-    var errorLineNum = rawErrorLine > 0 ? rawErrorLine - 1 : 10;
+    var buggyLines = buggyCode.split('\n');
+    var errorLineNum = 10;
+    for (var i = 0; i < buggyLines.length; i++) {
+      if (buggyLines[i].indexOf('results.append(R)') !== -1) { errorLineNum = i; break; }
+    }
     var demoQuestion = (self.ids.trainerQuestion && self.ids.trainerQuestion.trim()) ? self.ids.trainerQuestion.trim() : 'Привет, помоги разобраться с заданием, код почему-то выводит неправильный ответ!';
     var demoAssistantReply = (self.ids.trainerAssistantReply && self.ids.trainerAssistantReply.trim()) ? self.ids.trainerAssistantReply.trim() : (self.ids.trainerHint && self.ids.trainerHint.trim()) ? self.ids.trainerHint.trim() : 'В условии просят максимальное N, а ты выводишь max из R.';
     var demoCorrectionSubtitle = (self.ids.trainerCorrection && self.ids.trainerCorrection.trim()) ? self.ids.trainerCorrection.trim() : 'Исправлено. Запускаем код.';
@@ -753,19 +784,21 @@
     .then(function () { return wait(600); })
 
     .then(function () {
-      var assistantTab = qs('button[data-tab="помощник"]');
-      if (assistantTab) self.simulateClick(assistantTab);
-      return wait(400);
+      return self.showSubtitle('Открываем окно помощника: вопрос и ответ по сценарию.');
     })
-    .then(function () { return self.waitForEl('.tv2-chat-list', 4000); })
+    .then(function () { return wait(400); })
     .then(function () {
-      self._showDemoChatOverlay(demoQuestion, demoAssistantReply);
-      return wait(500);
+      return self._showDemoChatWindow(demoQuestion, demoAssistantReply);
     })
+    .then(function () { return wait(800); })
     .then(function () {
-      return self.showSubtitle('Вопрос и ответ помощника — из сценария, скриптом.');
+      return self.showSubtitle('Вопрос отправлен, ответ помощника получен.');
     })
-    .then(function () { return wait(1200); })
+    .then(function () { return wait(1000); })
+    .then(function () {
+      self._hideDemoChatWindow();
+      return wait(300);
+    })
 
     .then(function () {
       var cmEl = qs('.CodeMirror');
@@ -819,7 +852,7 @@
     .then(function () { return self.flash(); })
     .then(function () { return self.showCorrectBadge(); })
     .then(function () {
-      self._hideDemoChatOverlay();
+      self._hideDemoChatWindow();
       var dock = qs('#trainerV2Dock') || qs('.trainer-v2-root');
       if (dock) dock.classList.remove('cinema-neon-hud');
       qsa('#tv2NextBtn, #tv2ZenExitBtn').forEach(function (b) { b.style.pointerEvents = ''; b.style.opacity = ''; });

@@ -594,13 +594,49 @@ body.cinema-freeze { overflow: hidden !important; }
   background: rgba(0, 170, 255, 0.2);
 }
 
-/* ── Демо-чат оверлей в тренажёре (вопрос + ответ из сценария) ─────── */
-.cinema-demo-chat {
-  flex: 1;
-  overflow: auto;
-  padding: 0.5rem 0;
+/* ── Демо: своё окно «Помощник» (модальное, поверх всего) ──────────── */
+.cinema-demo-chat-window {
+  position: fixed;
+  inset: 0;
+  z-index: 100020;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
 }
-.cinema-demo-chat .tv2-chat-msg { margin-bottom: 0.75rem; }
+.cinema-demo-chat-window-box {
+  width: min(420px, 92vw);
+  max-height: 80vh;
+  overflow: auto;
+  background: var(--bg-card, #1a1a24);
+  border: 1px solid rgba(0, 170, 255, 0.35);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  padding: 1rem 1.25rem;
+}
+.cinema-demo-chat-window-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text, #eee);
+  margin-bottom: 1rem;
+}
+.cinema-demo-chat-window-list .tv2-chat-msg { margin-bottom: 1rem; }
+.cinema-demo-chat-window-list .tv2-chat-bubble {
+  margin-top: 0.25rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+.cinema-demo-chat-window-list .tv2-chat-msg.is-user .tv2-chat-bubble {
+  background: rgba(0, 170, 255, 0.15);
+  color: #cce8ff;
+}
+.cinema-demo-chat-window-list .tv2-chat-msg.is-assistant .tv2-chat-bubble {
+  background: rgba(80, 200, 120, 0.12);
+  color: #b8e6c8;
+}
 
 /* ── Mobile ────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
