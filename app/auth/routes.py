@@ -61,6 +61,9 @@ def login():
     try:
         is_admin_env = os.environ.get('ENVIRONMENT') == 'admin'
         is_demo_site = current_app.config.get('DEMO_SITE') is True
+        if not is_demo_site and current_app.config.get('DEMO_HOST'):
+            req_host = (request.host or '').split(':')[0].lower()
+            is_demo_site = req_host == current_app.config.get('DEMO_HOST')
 
         try:
             is_authenticated = current_user.is_authenticated if hasattr(current_user, 'is_authenticated') else False
@@ -68,7 +71,7 @@ def login():
             logger.warning(f"Error checking authentication: {e}")
             is_authenticated = False
 
-        # На демо-сайте авторизация отключена: редирект на выбор демо (ОГЭ/ЕГЭ)
+        # На демо-сайте / демо-хосте авторизация отключена: редирект на выбор демо (ОГЭ/ЕГЭ)
         if is_demo_site and not is_authenticated:
             if request.method == 'GET' and not request.args.get('cross_env'):
                 return redirect(url_for('auth.demo_choose'))

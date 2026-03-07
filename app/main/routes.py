@@ -202,8 +202,12 @@ def landing():
     """Гостевая страница (landing page) - доступна без авторизации"""
     if os.environ.get('ENVIRONMENT') == 'admin':
         return redirect(url_for('remote_admin.dashboard'))
-    # На демо-сайте главная — сразу страница выбора экзамена
-    if current_app.config.get('DEMO_SITE'):
+    # На демо-сайте или при заходе на демо-хост — сразу страница выбора экзамена
+    is_demo = current_app.config.get('DEMO_SITE')
+    if not is_demo and current_app.config.get('DEMO_HOST'):
+        req_host = (request.host or '').split(':')[0].lower()
+        is_demo = req_host == current_app.config.get('DEMO_HOST')
+    if is_demo:
         return render_template('demo_choose.html')
     return render_template('landing.html')
 
