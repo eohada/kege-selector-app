@@ -244,8 +244,9 @@ def create_app(config_name=None):
     from app.qa.routes import qa_bp
     from app.theory import theory_bp
 
-    app.register_blueprint(auth_bp)
+    # main регистрируем перед auth, чтобы /demo и /demo/start отдавались из main (важно для демо-инстанса)
     app.register_blueprint(main_bp)
+    app.register_blueprint(auth_bp)
     app.register_blueprint(students_bp)
     app.register_blueprint(lessons_bp)
     app.register_blueprint(admin_bp)

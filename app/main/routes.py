@@ -202,10 +202,25 @@ def landing():
     """Гостевая страница (landing page) - доступна без авторизации"""
     if os.environ.get('ENVIRONMENT') == 'admin':
         return redirect(url_for('remote_admin.dashboard'))
-    # На демо-сайте главная — сразу выбор экзамена (демо в общем доступе)
+    # На демо-сайте главная — сразу страница выбора экзамена (без редиректа на /demo)
     if current_app.config.get('DEMO_SITE'):
-        return redirect(url_for('auth.demo_choose'))
+        return render_template('demo_choose.html')
     return render_template('landing.html')
+
+
+@main_bp.route('/demo')
+def demo_choose_page():
+    """Страница выбора ОГЭ/ЕГЭ — в main_bp, чтобы /demo работал даже при особенностях деплоя."""
+    if current_app.config.get('DEMO_SITE'):
+        return render_template('demo_choose.html')
+    return redirect(url_for('auth.demo_choose'))
+
+
+@main_bp.route('/demo/start')
+def demo_start_page():
+    """Старт демо — прокси к auth.demo_start, чтобы /demo/start гарантированно был доступен."""
+    from app.auth.routes import demo_start
+    return demo_start()
 
 
 @main_bp.route('/index')
