@@ -5,7 +5,7 @@ import logging
 import base64
 import urllib.parse
 from datetime import timedelta
-from flask import request, redirect, url_for
+from flask import request, redirect, url_for, current_app
 from flask_login import current_user
 from sqlalchemy import text
 from datetime import datetime
