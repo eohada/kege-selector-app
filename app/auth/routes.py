@@ -18,7 +18,7 @@ from wtforms.validators import DataRequired
 from app.auth import auth_bp
 from app.limiter import limiter
 from datetime import timedelta
-from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission, Lesson, LessonTask
+from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission, Lesson, LessonTask, Course
 from app.utils.subscription_access import get_effective_access_for_user
 from app.utils.course_tasks import get_task_numbers, get_max_score_for_task
 from app.utils.cross_env_login import verify_cross_env_token
@@ -218,15 +218,32 @@ def logout():
     response.set_cookie('cinemaMode', '', expires=0)
     return response
 
+
+@auth_bp.route('/demo')
+def demo_choose():
+    """Страница выбора экзамена (ОГЭ или ЕГЭ) перед запуском демо-тура."""
+    return render_template('demo_choose.html')
+
+
 @auth_bp.route('/demo/start')
 def demo_start():
     """Создает временного демо-пользователя и запускает кинематографический тур."""
-    from app.models import StudentTaskStatistics
+    from app.models import StudentTaskStatistics, Subject
     from core.db_models import UserMastery, KnowledgeNode
     import random
 
     if current_user.is_authenticated:
         logout_user()
+
+    exam = (request.args.get('exam') or 'ege').strip().lower()
+    if exam not in ('oge', 'ege'):
+        exam = 'ege'
+    course_slug = 'oge_informatics' if exam == 'oge' else 'ege_informatics'
+    course = Course.query.filter_by(slug=course_slug).first()
+    course_id = course.id if course else None
+    subject_slug = 'oge' if exam == 'oge' else 'kege'
+    subject = Subject.query.filter_by(slug=subject_slug).first()
+    subject_id = subject.id if subject else None
 
     demo_username = f"demo_user_{uuid.uuid4().hex[:8]}"
     demo_password = uuid.uuid4().hex
@@ -255,9 +272,13 @@ def demo_start():
             return True
         return not _surname_re.match(t.content_html.strip())
 
+    demo_task_numbers = [3, 6, 9, 10, 14] if exam == 'ege' else [1, 3, 5, 8, 10]
+    task_query = Tasks.query.filter(Tasks.answer.isnot(None), Tasks.answer != '')
+    if course_id:
+        task_query = task_query.filter_by(course_id=course_id)
     demo_tasks = []
-    for tn in [3, 6, 9, 10, 14]:
-        candidates = Tasks.query.filter_by(task_number=tn).all()
+    for tn in demo_task_numbers:
+        candidates = task_query.filter_by(task_number=tn).all()
         chosen = None
         for c in candidates:
             if _no_surname(c):
@@ -268,12 +289,12 @@ def demo_start():
         if chosen:
             demo_tasks.append(chosen)
     if not demo_tasks:
-        demo_tasks = Tasks.query.limit(5).all()
+        demo_tasks = (task_query.limit(5).all() if course_id else Tasks.query.limit(5).all())
 
-    first_task = demo_tasks[0] if demo_tasks else Tasks.query.first()
+    first_task = demo_tasks[0] if demo_tasks else (Tasks.query.filter_by(course_id=course_id).first() if course_id else Tasks.query.first())
 
     # --- 8 completed lessons with varied LessonTasks for realistic analytics ---
-    all_task_pool = Tasks.query.limit(30).all()
+    all_task_pool = (Tasks.query.filter_by(course_id=course_id).limit(30).all() if course_id else Tasks.query.limit(30).all())
     lesson_topics = [
         'Системы счисления', 'Логические выражения', 'Графы и деревья',
         'Алгоритмы обработки данных', 'Программирование на Python',
@@ -324,8 +345,9 @@ def demo_start():
     task_answer_map = {}
     if demo_tasks:
         deadline = moscow_now() + timedelta(days=7)
+        assignment_title = 'Тренировочный вариант ОГЭ — информатика' if exam == 'oge' else 'Тренировочный вариант ЕГЭ — информатика'
         assignment = Assignment(
-            title='Тренировочный вариант ЕГЭ — информатика',
+            title=assignment_title,
             description='Демо-вариант: реши задания, вставь ответы и сдай работу.',
             assignment_type='homework',
             deadline=deadline,
@@ -339,7 +361,7 @@ def demo_start():
         total_score = 0
         at_objects = []
         for idx, t in enumerate(demo_tasks):
-            score = get_max_score_for_task(None, t.task_number)
+            score = get_max_score_for_task(course_id, t.task_number)
             total_score += score
             at = AssignmentTask(
                 assignment_id=assignment.assignment_id,
@@ -365,14 +387,16 @@ def demo_start():
         db.session.flush()
         demo_submission_id = sub.submission_id
 
+        lesson_topic = 'Демо-урок: Теория игр' if exam == 'ege' else 'Демо-урок: Алгоритмы'
+        lesson_content = '# Теория игр\nОсновы комбинаторики и теории игр для задания 19 ЕГЭ по информатике.' if exam == 'ege' else '# Алгоритмы\nОсновы программирования для ОГЭ по информатике.'
         demo_lesson = Lesson(
             student_id=demo_student.student_id,
             lesson_type='regular',
             lesson_date=moscow_now() + timedelta(hours=1),
             duration=60,
             status='in_progress',
-            topic='Демо-урок: Теория игр',
-            content='# Теория игр\nОсновы комбинаторики и теории игр для задания 19 ЕГЭ по информатике.',
+            topic=lesson_topic,
+            content=lesson_content,
         )
         db.session.add(demo_lesson)
         db.session.flush()
@@ -387,9 +411,9 @@ def demo_start():
             ))
 
     # --- Student stats for analytics — varied distribution ---
-    task_numbers = get_task_numbers(None)
-    weak_tasks = {3, 7, 12, 18, 24}
-    strong_tasks = {1, 5, 8, 14, 20}
+    task_numbers = get_task_numbers(course_id)
+    weak_tasks = {3, 7, 12, 18, 24} if exam == 'ege' else {2, 5, 9, 12}
+    strong_tasks = {1, 5, 8, 14, 20} if exam == 'ege' else {1, 4, 7, 11, 15}
     for tn in task_numbers:
         if tn in weak_tasks:
             correct = random.randint(2, 6)
@@ -402,17 +426,22 @@ def demo_start():
             incorrect = random.randint(2, 7)
         db.session.add(StudentTaskStatistics(
             student_id=demo_student.student_id,
+            course_id=course_id,
             task_number=tn,
             manual_correct=correct,
             manual_incorrect=incorrect,
         ))
 
-    # --- Trainer: find task 5 without surname, with known answer ---
-    trainer_candidates = Tasks.query.filter(
-        Tasks.task_number == 5,
+    # --- Trainer: find task with known answer for chosen course ---
+    trainer_task_num = 5 if exam == 'ege' else 5
+    trainer_query = Tasks.query.filter(
+        Tasks.task_number == trainer_task_num,
         Tasks.answer.isnot(None),
         Tasks.answer != '',
-    ).all()
+    )
+    if course_id:
+        trainer_query = trainer_query.filter_by(course_id=course_id)
+    trainer_candidates = trainer_query.all()
     trainer_task = None
     for tc in trainer_candidates:
         if _no_surname(tc):
@@ -421,9 +450,10 @@ def demo_start():
     if not trainer_task and trainer_candidates:
         trainer_task = trainer_candidates[0]
     if not trainer_task:
-        trainer_task = Tasks.query.filter(
-            Tasks.answer.isnot(None), Tasks.answer != '',
-        ).first()
+        trainer_query = Tasks.query.filter(Tasks.answer.isnot(None), Tasks.answer != '')
+        if course_id:
+            trainer_query = trainer_query.filter_by(course_id=course_id)
+        trainer_task = trainer_query.first()
 
     trainer_hint = 'Обрати внимание на ограничения в условии и проверь граничные значения.'
     if trainer_task and trainer_task.hints:
@@ -438,10 +468,10 @@ def demo_start():
         except Exception:
             pass
 
-    # --- UserMastery for realistic EGE analytics ratings ---
-    strong_nodes = {1, 5, 8, 14, 20}
-    weak_nodes = {3, 7, 12, 18, 24}
-    knowledge_nodes = KnowledgeNode.query.all()
+    # --- UserMastery for realistic analytics ratings ---
+    strong_nodes = {1, 5, 8, 14, 20} if exam == 'ege' else {1, 4, 7, 11, 15}
+    weak_nodes = {3, 7, 12, 18, 24} if exam == 'ege' else {2, 5, 9, 12}
+    knowledge_nodes = KnowledgeNode.query.filter_by(subject_id=subject_id).all() if subject_id else KnowledgeNode.query.all()
     for node in knowledge_nodes:
         tn = None
         if node.code:
@@ -468,6 +498,7 @@ def demo_start():
     login_user(user, remember=True)
 
     session['cinema_demo_ids'] = {
+        'exam': exam,
         'submissionId': demo_submission_id,
         'lessonId': demo_lesson_id,
         'studentId': demo_student.student_id,

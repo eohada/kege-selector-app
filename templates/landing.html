@@ -273,7 +273,7 @@
                 автоматическая проверка заданий и всё необходимое для успешной сдачи экзаменов.
             </p>
             <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;" class="reveal">
-                <a href="{{ url_for('auth.demo_start') }}" class="btn btn-glow">Попробовать демо</a>
+                <a href="{{ (config.DEMO_BASE_URL + '/demo') if config.DEMO_BASE_URL else url_for('auth.demo_choose') }}" class="btn btn-glow">Попробовать демо</a>
                 <a href="{{ url_for('billing.billing_plans_public') }}" class="btn btn-primary">Ознакомиться с тарифами</a>
             </div>
         </div>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Попробовать демо · Выбор экзамена</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
+    {% if csrf_token %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+    <style>
+        .demo-choose-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        .demo-choose-card {
+            width: 100%;
+            max-width: 520px;
+        }
+        .demo-choose-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .demo-choose-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+        }
+        @media (max-width: 480px) {
+            .demo-choose-options { grid-template-columns: 1fr; }
+        }
+        .demo-choose-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1.5rem;
+            text-decoration: none;
+            border-radius: var(--radius-lg);
+            border: 2px solid var(--stroke-1);
+            background: var(--surface-1);
+            color: var(--text-primary);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .demo-choose-btn:hover {
+            border-color: var(--accent-1);
+            box-shadow: 0 0 20px rgba(0, 255, 213, 0.15);
+        }
+        .demo-choose-btn strong { font-size: 1.25rem; margin-bottom: 0.35rem; }
+        .demo-choose-btn span { font-size: 0.9rem; color: var(--text-muted); }
+    </style>
+    <script>
+        (function(){
+            try {
+                var v = localStorage.getItem('ui.themeMode');
+                if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+                else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
+            } catch(e) {}
+        })();
+    </script>
+</head>
+<body>
+    <div class="demo-choose-container">
+        <div class="demo-choose-card">
+            <section class="glass-panel">
+                <div class="demo-choose-header">
+                    <p class="hero-eyebrow">демонстрация</p>
+                    <h1 class="hero-title">Выберите экзамен</h1>
+                    <p class="hero-subtitle">Пройдите короткий тур по платформе без регистрации</p>
+                </div>
+                <div class="demo-choose-options">
+                    <a href="{{ url_for('auth.demo_start', exam='oge') }}" class="demo-choose-btn">
+                        <strong>ОГЭ</strong>
+                        <span>Информатика 9 класс</span>
+                    </a>
+                    <a href="{{ url_for('auth.demo_start', exam='ege') }}" class="demo-choose-btn">
+                        <strong>ЕГЭ</strong>
+                        <span>Информатика 11 класс</span>
+                    </a>
+                </div>
+            </section>
+        </div>
+    </div>
+</body>
+</html>

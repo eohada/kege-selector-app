@@ -21,6 +21,24 @@
   function getDemoIds() { try { return JSON.parse(lsGet(LS_DEMO_IDS)) || {}; } catch (e) { return {}; } }
   function currentPage() { return (document.body.getAttribute('data-cinema-scene') || '').toLowerCase(); }
 
+  var TEXTS = {
+    ege: {
+      theoryIntro: 'Здесь собрана вся теория для ЕГЭ по информатике. Каждое задание — свой конспект.',
+      theoryView: 'Изучай теорию перед решением задач. Конспекты доступны по каждому заданию ЕГЭ.',
+      analyticsCharts: 'Столбчатая диаграмма — сколько процентов заданий каждого номера ты решаешь верно.',
+      analyticsTab: 'Аналитика ЕГЭ',
+      ratingLabel: 'Рейтинг по заданиям ЕГЭ',
+    },
+    oge: {
+      theoryIntro: 'Здесь собрана вся теория для ОГЭ по информатике. Каждое задание — свой конспект.',
+      theoryView: 'Изучай теорию перед решением задач. Конспекты доступны по каждому заданию ОГЭ.',
+      analyticsCharts: 'Столбчатая диаграмма — сколько процентов заданий каждого номера ты решаешь верно.',
+      analyticsTab: 'Аналитика ОГЭ',
+      ratingLabel: 'Рейтинг по заданиям ОГЭ',
+    },
+  };
+  function examTexts(ids) { var exam = (ids && ids.exam) || 'ege'; return TEXTS[exam] || TEXTS.ege; }
+
   function addEl(tag, cls, parent) {
     var el = document.createElement(tag);
     if (cls) el.className = cls;
@@ -412,7 +430,7 @@
     self.playEntryTransition()
     .then(function () { return wait(400); })
     .then(function () {
-      return self.showSubtitle('Здесь собрана вся теория для ЕГЭ по информатике. Каждое задание — свой конспект.');
+      return self.showSubtitle(examTexts(self.ids).theoryIntro);
     })
     .then(function () {
       var card = qs('.theory-card');
@@ -444,7 +462,7 @@
     })
     .then(function () {
       var content = qs('.theory-content') || qs('.app-content') || qs('.glass-panel');
-      return self.spotlightWithPrompt(content, 'Материал конспекта', 'Изучай теорию перед решением задач. Конспекты доступны по каждому заданию ЕГЭ.', 'К заданиям');
+      return self.spotlightWithPrompt(content, 'Материал конспекта', examTexts(self.ids).theoryView, 'К заданиям');
     })
     .then(function () { if (self.running) self.advance(4, '/submissions', 'glitch'); });
   };
@@ -895,7 +913,7 @@
     .then(function () {
       var el = qs('#statisticsChart');
       var panel = el ? el.closest('.glass-panel') : null;
-      return self.spotlightWithPrompt(panel, 'Процент выполнения по номерам', 'Столбчатая диаграмма — сколько процентов заданий каждого номера ты решаешь верно.', 'Аналитика ЕГЭ');
+      return self.spotlightWithPrompt(panel, 'Процент выполнения по номерам', examTexts(self.ids).analyticsCharts, examTexts(self.ids).analyticsTab);
     })
     .then(function () {
       var tabBtn = qs('.stats-tab[data-tab="analytics"]');
@@ -907,7 +925,7 @@
     })
     .then(function () {
       var table = qs('#analyticsNodesTable') || qs('.analytics-nodes-table');
-      return self.spotlightWithPrompt(table, 'Рейтинг по заданиям ЕГЭ', 'Рейтинг по каждой теме обновляется после каждого решения. Чем выше — тем увереннее ты в теме.');
+      return self.spotlightWithPrompt(table, examTexts(self.ids).ratingLabel, 'Рейтинг по каждой теме обновляется после каждого решения. Чем выше — тем увереннее ты в теме.');
     })
     .then(function () {
       var el = qs('#analyticsPredictedScore');

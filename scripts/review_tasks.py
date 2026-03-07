@@ -4,7 +4,7 @@
 Запуск:
     python scripts/review_tasks.py
 
-Откроется http://127.0.0.1:5050
+В портативной сборке (exe): данные ищутся в папке рядом с exe.
 Горячие клавиши:
     Right   -- принять и перейти к следующему
     Left    -- удалить и перейти к следующему
@@ -15,12 +15,21 @@ import json
 import os
 import sys
 import copy
+import threading
+import webbrowser
+import time
 from datetime import datetime
 from flask import Flask, render_template_string, request, jsonify
 
-DATA_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'tasks_export.json')
-DELETED_LOG = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'tasks_deleted_log.json')
-ACCEPTED_LOG = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'tasks_accepted_log.json')
+# В портативной сборке (PyInstaller) данные — в папке с exe; иначе — корень проекта
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+DATA_FILE = os.path.join(BASE_DIR, 'tasks_export.json')
+DELETED_LOG = os.path.join(BASE_DIR, 'tasks_deleted_log.json')
+ACCEPTED_LOG = os.path.join(BASE_DIR, 'tasks_accepted_log.json')
 
 app = Flask(__name__)
 
@@ -651,13 +660,28 @@ def api_undo():
 
 if __name__ == '__main__':
     if not os.path.exists(DATA_FILE):
-        print(f"File {DATA_FILE} not found!")
+        print("=" * 60)
+        print("Файл с заданиями не найден!")
+        print()
+        print("Положи в эту же папку файл: tasks_export.json")
+        print(f"Текущая папка: {BASE_DIR}")
+        print("=" * 60)
+        try:
+            input("Нажми Enter, чтобы выйти...")
+        except Exception:
+            pass
         sys.exit(1)
+
+    def open_browser():
+        time.sleep(1.5)
+        webbrowser.open('http://127.0.0.1:5050')
+
+    threading.Thread(target=open_browser, daemon=True).start()
 
     load_data()
     print(f"Loaded {len(tasks_data)} tasks")
     print(f"Previously deleted: {len(deleted_tasks)}")
     print(f"Previously accepted: {len(accepted_tasks)}")
-    print(f"\nOpen: http://127.0.0.1:5050")
-    print("Hotkeys: Right=accept | Left=delete | S=skip | Backspace=undo")
+    print("\nОткроется браузер: http://127.0.0.1:5050")
+    print("Стрелка вправо = принять | влево = удалить | S = пропустить | Backspace = отмена")
     app.run(host='127.0.0.1', port=5050, debug=False)

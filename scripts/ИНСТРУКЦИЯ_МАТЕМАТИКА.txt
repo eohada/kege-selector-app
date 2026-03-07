@@ -1,0 +1,40 @@
+============================================
+  База заданий ОГЭ и ЕГЭ по математике
+============================================
+
+1. Парсинг (создание баз)
+
+   ОГЭ математика (Решу ОГЭ):
+     python scripts/scrape_oge_math.py
+   Результат: data/oge_math_tasks.json
+
+   ЕГЭ математика профиль (Решу ЕГЭ), с решениями и критериями для части 2:
+     python scripts/scrape_ege_math.py
+   Результат: data/ege_math_tasks.json
+
+   Запуск парсеров займёт время (много запросов к сайту). Не прерывать.
+
+2. Ревью (перебор заданий)
+
+   ОГЭ:
+     python scripts/review_oge_math.py
+   Откроется http://127.0.0.1:5053
+
+   ЕГЭ:
+     python scripts/review_ege_math.py
+   Откроется http://127.0.0.1:5054
+
+   Удаляй неподходящие, принимай подходящие. Файлы *_deleted_log.json и *_accepted_log.json сохраняются рядом с данными.
+
+3. Сборка exe для передачи
+
+   Запусти:
+     scripts\build_math_reviewers.bat
+
+   В dist появятся папки:
+     OGE_Math_portable\  — положи туда oge_math_tasks.json, запускай OGE_Math_Review.exe
+     EGE_Math_portable\  — положи туда ege_math_tasks.json, запускай EGE_Math_Review.exe
+
+   Передай другу папку + соответствующий json. После перебора друг присылает обратно папку (или три файла: tasks, deleted_log, accepted_log).
+
+============================================

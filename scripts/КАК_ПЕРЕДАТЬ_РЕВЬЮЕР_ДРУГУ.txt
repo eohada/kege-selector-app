@@ -1,0 +1,26 @@
+============================================
+  Как передать ревьюер ЕГЭ другу
+============================================
+
+1. Собрать exe (если ещё не собран):
+   Запусти в корне проекта:
+     scripts\build_ege_review.bat
+
+   Или вручную:
+     .venv\Scripts\pyinstaller.exe --noconfirm --name EGE_Review --onedir --console scripts/review_tasks.py
+   Потом скопируй scripts\README_EGE_Review.txt в dist\EGE_Review\README.txt
+
+2. Упаковать для друга:
+   • Сборка теперь в ОДИН exe (onefile): в папке dist\EGE_Review_portable лежат
+     EGE_Review.exe и README.txt. Других папок (_internal) не нужно.
+   • Заархивируй папку dist\EGE_Review_portable и отправь другу + файл tasks_export.json.
+   • Друг кладёт tasks_export.json в ту же папку, что и exe, и запускает exe.
+
+3. Другу написать:
+   «Распакуй архив. Положи файл tasks_export.json в ту же папку, где лежит EGE_Review.exe. Запусти EGE_Review.exe. В папке есть README.txt — там всё расписано. Когда закончишь, пришли обратно папку целиком (или три файла: tasks_export.json, tasks_deleted_log.json, tasks_accepted_log.json).»
+
+4. Когда друг вернёт файлы:
+   • Подставь tasks_export.json в корень проекта (замени текущий).
+   • При необходимости используй tasks_deleted_log.json и tasks_accepted_log.json для отчёта или восстановления.
+
+============================================

@@ -44,8 +44,9 @@ def make_task(tn, html, answer, solution, diff):
 
 def build_dag(n_nodes):
     """
-    Build a DAG where node indices increase strictly with layers.
-    This guarantees correct DP with simple i < j ordering.
+    Build a DAG with CONTIGUOUS edges only: each node connects to a contiguous
+    block of nodes in the next layer. With layers ordered left-to-right, this
+    yields no edge crossings. No skip-layer edges (they always cross).
     """
     if n_nodes <= 5:
         layer_sizes = [1, 2, 2]
@@ -80,27 +81,30 @@ def build_dag(n_nodes):
     for li in range(len(layers) - 1):
         cur = layers[li]
         nxt = layers[li + 1]
+        C, N = len(cur), len(nxt)
 
-        for node in nxt:
-            src = random.choice(cur)
-            adj[src][node] = True
+        # Contiguous bands: node at position i in cur -> nxt[j_start : j_end+1]
+        # with j_start <= j_end and intervals ordered (no crossing).
+        for i in range(C):
+            # Band for i-th node: cover part of [0..N-1] with overlap for paths
+            j_lo = (i * N) // C
+            j_hi = ((i + 2) * N) // C  # overlap with next
+            j_hi = min(j_hi, N - 1)
+            if j_lo > j_hi:
+                j_hi = j_lo
+            # At least one successor; ensure last cur node reaches last nxt
+            if i == C - 1 and j_hi < N - 1:
+                j_hi = N - 1
+            if i == 0 and j_lo > 0:
+                j_lo = 0
+            for j in range(j_lo, j_hi + 1):
+                adj[cur[i]][nxt[j]] = True
 
-        for node in cur:
-            if not any(adj[node][t] for t in nxt):
-                adj[node][random.choice(nxt)] = True
-
-        for node in cur:
-            for t in nxt:
-                if not adj[node][t] and random.random() < 0.35:
-                    adj[node][t] = True
-
-    for li in range(len(layers) - 2):
-        cur = layers[li]
-        skip = layers[li + 2]
-        for node in cur:
-            if random.random() < 0.2:
-                t = random.choice(skip)
-                adj[node][t] = True
+        # Ensure every nxt node has at least one predecessor
+        for j, v in enumerate(nxt):
+            if not any(adj[u][v] for u in cur):
+                i = min(j * C // N, C - 1)
+                adj[cur[i]][v] = True
 
     return adj, layers
 
@@ -181,7 +185,7 @@ def render_graph_svg(adj, labels, layers):
 
 
 def count_paths_dp(adj, n):
-    """Count paths from node 0 to node n-1 using DP. Correct since indices are topological."""
+    """Count paths from node 0 to node n-1. Indices are topological (all edges u->v with u<v)."""
     dp = [0] * n
     dp[0] = 1
     for v in range(1, n):
@@ -189,6 +193,20 @@ def count_paths_dp(adj, n):
             if adj[u][v]:
                 dp[v] += dp[u]
     return dp
+
+
+def count_paths_dfs(adj, n):
+    """Verify: count paths from 0 to n-1 by exhaustive DFS."""
+    total = [0]
+    def dfs(v):
+        if v == n - 1:
+            total[0] += 1
+            return
+        for w in range(v + 1, n):
+            if adj[v][w]:
+                dfs(w)
+    dfs(0)
+    return total[0]
 
 
 def gen_task9(count=200):
@@ -210,6 +228,12 @@ def gen_task9(count=200):
         adj, layers = build_dag(n)
         dp = count_paths_dp(adj, n)
         answer = dp[n - 1]
+
+        # Sanity: verify with DFS for small graphs
+        if n <= 8:
+            dfs_count = count_paths_dfs(adj, n)
+            if dfs_count != answer:
+                continue
 
         if answer < 4 or answer > 500:
             continue

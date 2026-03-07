@@ -94,6 +94,17 @@ def create_app(config_name=None):
     app.config['PROD_URL'] = (os.environ.get('PROD_URL') or '').strip().rstrip('/') or None
     app.config['SANDBOX_URL'] = (os.environ.get('SANDBOX_URL') or '').strip().rstrip('/') or None
     app.config['CROSS_ENV_LOGIN_SECRET'] = (os.environ.get('CROSS_ENV_LOGIN_SECRET') or '').strip() or None
+
+    # Демо-сайт: отдельный инстанс с отдельной БД (изоляция от прода)
+    app.config['DEMO_SITE'] = os.environ.get('DEMO_SITE', 'False').lower() == 'true'
+    app.config['DEMO_BASE_URL'] = (os.environ.get('DEMO_BASE_URL') or '').strip().rstrip('/') or None
+    if app.config['DEMO_SITE']:
+        demo_db_url = os.environ.get('DEMO_DATABASE_URL') or os.environ.get('DATABASE_URL')
+        if demo_db_url and demo_db_url.startswith('postgres://'):
+            demo_db_url = demo_db_url.replace('postgres://', 'postgresql://', 1)
+        if demo_db_url:
+            app.config['SQLALCHEMY_DATABASE_URI'] = demo_db_url
+        # иначе оставляем уже установленный DATABASE_URL выше
     
     csrf.init_app(app)
     db.init_app(app)
