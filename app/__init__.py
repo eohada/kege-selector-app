@@ -96,7 +96,10 @@ def create_app(config_name=None):
     app.config['CROSS_ENV_LOGIN_SECRET'] = (os.environ.get('CROSS_ENV_LOGIN_SECRET') or '').strip() or None
 
     # Демо-сайт: отдельный инстанс с отдельной БД (изоляция от прода)
-    app.config['DEMO_SITE'] = os.environ.get('DEMO_SITE', 'False').lower() == 'true'
+    # Значение: "true" / "1" / "yes" (без учёта регистра и пробелов)
+    _demo = (os.environ.get('DEMO_SITE') or '').strip().lower()
+    app.config['DEMO_SITE'] = _demo in ('true', '1', 'yes')
+    logging.getLogger(__name__).info('DEMO_SITE=%s (env raw=%r)', app.config['DEMO_SITE'], os.environ.get('DEMO_SITE'))
     app.config['DEMO_BASE_URL'] = (os.environ.get('DEMO_BASE_URL') or '').strip().rstrip('/') or None
     if app.config['DEMO_SITE']:
         demo_db_url = os.environ.get('DEMO_DATABASE_URL') or os.environ.get('DATABASE_URL')
