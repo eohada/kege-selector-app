@@ -598,10 +598,19 @@
       return self.spotlightWithPrompt(materialsPane, 'Материалы', 'Вкладка «Материалы» — файлы, презентации и другие вложения к уроку.');
     })
     .then(function () {
+      if (self.ids.exam === 'oge') {
+        return self.showSubtitle('Вот так устроена классная комната. Для ОГЭ тренажёр в демо не показываем — переходим к аналитике.', { continueLabel: 'К аналитике' });
+      }
       return self.showSubtitle('Вот так устроена классная комната. Теперь покажем AI-тренажёр.', { continueLabel: 'В тренажёр' });
     })
     .then(function () {
       if (!self.running) return;
+      if (self.ids.exam === 'oge') {
+        var sid = self.ids.studentId;
+        if (sid) self.advance(7, '/student/' + sid + '/analytics', 'swipeLeft');
+        else { lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneEpilogue(); }
+        return;
+      }
       var tid = self.ids.trainerTaskId;
       var tn = self.ids.trainerTaskNumber || 1;
       var url = '/trainer/v2';
@@ -666,32 +675,18 @@
     try { localStorage.setItem(key, JSON.stringify(arr)); } catch (e) {}
   };
 
-  /* ── 6: Trainer — task 5, gradual code, assistant, highlight, answer */
+  /* ── 6: Trainer — из сценария: ответ, код с ошибкой, вопрос, ответ помощника, исправленный код, правильный ответ */
   CE.prototype.sceneTrainer = function () {
     var self = this;
     var correctAnswer = self.ids.trainerAnswer || '10';
-
-    var buggyLines = [
-      'for N in range(1, 1000):',
-      '    N2 = bin(N)[2:]',
-      '    if N % 3 == 0:',
-      '        R2 = N2 + N2[-3:]',
-      '    else:',
-      '        R2 = N2 + bin((N % 3) * 3)[2:]',
-      '',
-      '    R = int(R2, 2)',
-      '',
-      '    if R < 130:',
-      '        print(N)',
-    ];
-    var buggyCode = buggyLines.join('\n');
-    var errorLineNum = 5;
-
-    var fixedCode = buggyCode.replace('bin((N % 3) * 3)[2:]', 'bin(N % 3 * 3)[2:]');
-
-    var demoQuestion = 'Мой код выводит неправильное количество чисел. В чём может быть ошибка в строке с bin()?';
-
-    var demoAssistantReply = 'Проверь строку R2 = N2 + bin((N % 3) * 3)[2:]. Лишние скобки вокруг (N % 3) * 3 меняют приоритет: сначала считается N % 3, а потом умножается на 3. Без скобок выражение N % 3 * 3 вычисляется слева направо (% и * равноприоритетны), что даёт другой результат. Убери внешние скобки: bin(N % 3 * 3)[2:].';
+    var defaultBuggy = 'for N in range(1, 1000):\n    N2 = bin(N)[2:]\n    if N % 3 == 0:\n        R2 = N2 + N2[-3:]\n    else:\n        R2 = N2 + bin((N % 3) * 3)[2:]\n\n    R = int(R2, 2)\n\n    if R < 130:\n        print(N)';
+    var defaultFixed = defaultBuggy.replace('bin((N % 3) * 3)[2:]', 'bin(N % 3 * 3)[2:]');
+    var buggyCode = (self.ids.trainerBuggyCode && self.ids.trainerBuggyCode.trim()) ? self.ids.trainerBuggyCode.trim() : defaultBuggy;
+    var fixedCode = (self.ids.trainerFixedCode && self.ids.trainerFixedCode.trim()) ? self.ids.trainerFixedCode.trim() : defaultFixed;
+    var errorLineNum = typeof self.ids.trainerErrorLine === 'number' ? self.ids.trainerErrorLine : (parseInt(self.ids.trainerErrorLine, 10) || 5);
+    var demoQuestion = (self.ids.trainerQuestion && self.ids.trainerQuestion.trim()) ? self.ids.trainerQuestion.trim() : 'Мой код выводит неправильное количество чисел. В чём может быть ошибка в строке с bin()?';
+    var demoAssistantReply = (self.ids.trainerHint && self.ids.trainerHint.trim()) ? self.ids.trainerHint.trim() : 'Проверь строку с bin(). Убери лишние скобки: bin(N % 3 * 3)[2:].';
+    var demoCorrectionSubtitle = (self.ids.trainerCorrection && self.ids.trainerCorrection.trim()) ? self.ids.trainerCorrection.trim() : 'ИИ нашёл ошибку. Исправляем код.';
 
     self.playEntryTransition()
     .then(function () { return wait(1000); })
@@ -793,7 +788,7 @@
     /* ── Step 6: spotlight the assistant response ────────────────── */
     .then(function () {
       var lastMsg = qs('.tv2-chat-msg.is-assistant:last-child') || qs('.tv2-chat-msg.is-assistant');
-      return self.spotlightWithPrompt(lastMsg, 'Ответ помощника', 'ИИ нашёл ошибку: лишние скобки в bin(). Исправляем код.');
+      return self.spotlightWithPrompt(lastMsg, 'Ответ помощника', demoCorrectionSubtitle);
     })
 
     /* ── Step 7: fix the code, highlight the fixed line ──────────── */
@@ -804,7 +799,7 @@
         cmEl.CodeMirror.setValue(fixedCode);
         cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-fixed-line');
       }
-      return self.showSubtitle('Строка исправлена! Скобки убраны. Теперь запустим код.');
+      return self.showSubtitle(demoCorrectionSubtitle || 'Строка исправлена. Теперь запустим код.');
     })
     .then(function () {
       var cmEl = qs('.CodeMirror');
@@ -972,7 +967,7 @@
       case 3: this.sceneTheory(); break;
       case 4: this.sceneSubmissions(); break;
       case 5: this.sceneLesson(); break;
-      case 6: this.sceneTrainer(); break;
+      case 6: if (this.ids.exam === 'oge') { this.scene = 7; lsSet(LS_SCENE, '7'); this.sceneAnalytics(); } else { this.sceneTrainer(); } break;
       case 7: this.sceneAnalytics(); break;
       case 8: this.sceneEpilogue(); break;
       default: this.endCinema(true); break;

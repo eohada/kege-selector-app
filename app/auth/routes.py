@@ -288,24 +288,62 @@ def demo_start():
             return True
         return not _surname_re.match(t.content_html.strip())
 
-    demo_task_numbers = [3, 6, 9, 10, 14] if exam == 'ege' else [1, 3, 5, 8, 10]
-    task_query = Tasks.query.filter(Tasks.answer.isnot(None), Tasks.answer != '')
-    if course_id:
-        task_query = task_query.filter_by(course_id=course_id)
+    # Сначала пробуем жёсткий сценарий из data/demo_scenario.json (засиженные задачи с site_task_id demo:assign:* и demo:trainer)
+    _base = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     demo_tasks = []
-    for tn in demo_task_numbers:
-        candidates = task_query.filter_by(task_number=tn).all()
-        chosen = None
-        for c in candidates:
-            if _no_surname(c):
-                chosen = c
-                break
-        if not chosen and candidates:
-            chosen = candidates[0]
-        if chosen:
-            demo_tasks.append(chosen)
+    lesson_task_numbers = [3, 6, 9] if exam == 'ege' else [1, 3, 5]
+    lesson_indices = [0, 1, 2]
+    if course_id:
+        assign_tasks = Tasks.query.filter(
+            Tasks.course_id == course_id,
+            Tasks.site_task_id.isnot(None),
+            Tasks.site_task_id.like('demo:assign:%'),
+        ).order_by(Tasks.site_task_id).all()
+        if assign_tasks:
+            demo_tasks = assign_tasks
+            try:
+                import json as _json
+                _sc_path = os.path.join(_base, 'data', 'demo_scenario.json')
+                if os.path.isfile(_sc_path):
+                    with open(_sc_path, 'r', encoding='utf-8') as _f:
+                        _sc = _json.load(_f)
+                    _key = 'ege' if exam == 'ege' else 'oge'
+                    if _key in _sc and _sc[_key].get('lesson_indices') is not None:
+                        lesson_indices = _sc[_key]['lesson_indices']
+            except Exception:
+                pass
+
+    # Fallback: конфиг по номерам из data/demo_tasks_config.json или дефолты
+    demo_task_numbers = [3, 6, 9, 10, 14] if exam == 'ege' else [1, 3, 5, 8, 10]
+    trainer_task_num = 5
     if not demo_tasks:
-        demo_tasks = (task_query.limit(5).all() if course_id else Tasks.query.limit(5).all())
+        try:
+            import json as _json
+            _cfg_path = os.path.join(_base, 'data', 'demo_tasks_config.json')
+            if os.path.isfile(_cfg_path):
+                with open(_cfg_path, 'r', encoding='utf-8') as _f:
+                    _cfg = _json.load(_f)
+                _key = 'ege' if exam == 'ege' else 'oge'
+                if _key in _cfg:
+                    _c = _cfg[_key]
+                    if _c.get('assignment_task_numbers'):
+                        demo_task_numbers = _c['assignment_task_numbers']
+                    if _c.get('lesson_task_numbers') is not None:
+                        lesson_task_numbers = _c['lesson_task_numbers']
+                    if _c.get('trainer_task_number') is not None:
+                        trainer_task_num = int(_c['trainer_task_number'])
+        except Exception:
+            pass
+        task_query = Tasks.query.filter(Tasks.answer.isnot(None), Tasks.answer != '')
+        if course_id:
+            task_query = task_query.filter_by(course_id=course_id)
+        for tn in demo_task_numbers:
+            candidates = task_query.filter_by(task_number=tn).all()
+            chosen = next((c for c in candidates if _no_surname(c)), None) or (candidates[0] if candidates else None)
+            if chosen:
+                demo_tasks.append(chosen)
+        if not demo_tasks:
+            demo_tasks = (task_query.limit(5).all() if course_id else Tasks.query.limit(5).all())
 
     first_task = demo_tasks[0] if demo_tasks else (Tasks.query.filter_by(course_id=course_id).first() if course_id else Tasks.query.first())
 
@@ -418,7 +456,22 @@ def demo_start():
         db.session.flush()
         demo_lesson_id = demo_lesson.lesson_id
 
-        for i, t in enumerate(demo_tasks[:3]):
+        # Для демо-урока: из сценария — по lesson_indices, иначе по номерам
+        if demo_tasks and all(getattr(t, 'site_task_id', None) and str(t.site_task_id or '').startswith('demo:assign:') for t in demo_tasks):
+            lesson_tasks_for_demo = [demo_tasks[i] for i in lesson_indices if 0 <= i < len(demo_tasks)]
+        else:
+            lesson_tasks_for_demo = []
+            task_query = Tasks.query.filter(Tasks.answer.isnot(None), Tasks.answer != '')
+            if course_id:
+                task_query = task_query.filter_by(course_id=course_id)
+            for tn in lesson_task_numbers:
+                cands = task_query.filter_by(task_number=tn).all()
+                ch = next((c for c in cands if _no_surname(c)), None) or (cands[0] if cands else None)
+                if ch:
+                    lesson_tasks_for_demo.append(ch)
+        if not lesson_tasks_for_demo:
+            lesson_tasks_for_demo = demo_tasks[:3]
+        for t in lesson_tasks_for_demo:
             db.session.add(LessonTask(
                 lesson_id=demo_lesson.lesson_id,
                 task_id=t.task_id,
@@ -448,41 +501,53 @@ def demo_start():
             manual_incorrect=incorrect,
         ))
 
-    # --- Trainer: find task with known answer for chosen course ---
-    trainer_task_num = 5 if exam == 'ege' else 5
-    trainer_query = Tasks.query.filter(
-        Tasks.task_number == trainer_task_num,
-        Tasks.answer.isnot(None),
-        Tasks.answer != '',
-    )
-    if course_id:
-        trainer_query = trainer_query.filter_by(course_id=course_id)
-    trainer_candidates = trainer_query.all()
+    # --- Trainer: приоритет — задача из сценария (site_task_id demo:trainer), иначе по номеру ---
     trainer_task = None
-    for tc in trainer_candidates:
-        if _no_surname(tc):
-            trainer_task = tc
-            break
-    if not trainer_task and trainer_candidates:
-        trainer_task = trainer_candidates[0]
+    trainer_hint = 'Обрати внимание на ограничения в условии и проверь граничные значения.'
+    trainer_correction = ''
+    if course_id:
+        trainer_task = Tasks.query.filter_by(course_id=course_id, site_task_id='demo:trainer').first()
+    if trainer_task and trainer_task.hints and isinstance(trainer_task.hints, list):
+        raw = trainer_task.hints
+        if len(raw) >= 2:
+            h0, h1 = raw[0], raw[1]
+            trainer_hint = (h0.get('text') or h0.get('content') or '') if isinstance(h0, dict) else str(h0)
+            trainer_correction = (h1.get('text') or h1.get('content') or '') if isinstance(h1, dict) else str(h1)
+        elif raw:
+            h0 = raw[0]
+            trainer_hint = (h0.get('text') or h0.get('content') or '') if isinstance(h0, dict) else str(h0)
+
     if not trainer_task:
-        trainer_query = Tasks.query.filter(Tasks.answer.isnot(None), Tasks.answer != '')
+        trainer_query = Tasks.query.filter(
+            Tasks.task_number == trainer_task_num,
+            Tasks.answer.isnot(None),
+            Tasks.answer != '',
+        )
         if course_id:
             trainer_query = trainer_query.filter_by(course_id=course_id)
-        trainer_task = trainer_query.first()
-
-    trainer_hint = 'Обрати внимание на ограничения в условии и проверь граничные значения.'
-    if trainer_task and trainer_task.hints:
-        try:
-            raw = trainer_task.hints
-            if isinstance(raw, list) and raw:
-                first = raw[0]
-                if isinstance(first, str) and len(first) > 10:
-                    trainer_hint = first
-                elif isinstance(first, dict):
-                    trainer_hint = first.get('text') or first.get('content') or trainer_hint
-        except Exception:
-            pass
+        trainer_candidates = trainer_query.all()
+        for tc in trainer_candidates:
+            if _no_surname(tc):
+                trainer_task = tc
+                break
+        if not trainer_task and trainer_candidates:
+            trainer_task = trainer_candidates[0]
+        if not trainer_task:
+            trainer_query = Tasks.query.filter(Tasks.answer.isnot(None), Tasks.answer != '')
+            if course_id:
+                trainer_query = trainer_query.filter_by(course_id=course_id)
+            trainer_task = trainer_query.first()
+        if trainer_task and trainer_task.hints:
+            try:
+                raw = trainer_task.hints
+                if isinstance(raw, list) and raw:
+                    first = raw[0]
+                    if isinstance(first, dict):
+                        trainer_hint = first.get('text') or first.get('content') or trainer_hint
+                    elif isinstance(first, str) and len(first) > 10:
+                        trainer_hint = first
+            except Exception:
+                pass
 
     # --- UserMastery for realistic analytics ratings ---
     strong_nodes = {1, 5, 8, 14, 20} if exam == 'ege' else {1, 4, 7, 11, 15}
@@ -513,6 +578,33 @@ def demo_start():
 
     login_user(user, remember=True)
 
+    # Тренажёр: из demo_scenario.json — ответ, вопрос, код с ошибкой, исправленный код, ответ помощника
+    trainer_answer = (trainer_task.answer or '42') if trainer_task else '42'
+    trainer_question = ''
+    trainer_buggy_code = ''
+    trainer_fixed_code = ''
+    trainer_error_line = 5
+    try:
+        import json as _json
+        _sc_path = os.path.join(_base, 'data', 'demo_scenario.json')
+        if os.path.isfile(_sc_path):
+            with open(_sc_path, 'r', encoding='utf-8') as _f:
+                _sc = _json.load(_f)
+            _key = 'ege' if exam == 'ege' else 'oge'
+            if _key in _sc and isinstance(_sc[_key].get('trainer'), dict):
+                tr = _sc[_key]['trainer']
+                if tr.get('answer'):
+                    trainer_answer = str(tr['answer']).strip()
+                trainer_question = (tr.get('question') or '').strip()
+                trainer_hint = (tr.get('assistant_reply') or tr.get('hint') or trainer_hint).strip()
+                trainer_correction = (tr.get('correction_text') or trainer_correction).strip()
+                trainer_buggy_code = (tr.get('buggy_code') or '').strip().replace('\\n', '\n')
+                trainer_fixed_code = (tr.get('fixed_code') or '').strip().replace('\\n', '\n')
+                if tr.get('error_line') is not None:
+                    trainer_error_line = int(tr.get('error_line', 5))
+    except Exception:
+        pass
+
     session['cinema_demo_ids'] = {
         'exam': exam,
         'submissionId': demo_submission_id,
@@ -521,8 +613,13 @@ def demo_start():
         'taskAnswers': task_answer_map,
         'trainerTaskId': trainer_task.task_id if trainer_task else None,
         'trainerTaskNumber': trainer_task.task_number if trainer_task else 1,
-        'trainerAnswer': (trainer_task.answer or '42') if trainer_task else '42',
+        'trainerAnswer': trainer_answer,
         'trainerHint': trainer_hint,
+        'trainerCorrection': trainer_correction,
+        'trainerQuestion': trainer_question,
+        'trainerBuggyCode': trainer_buggy_code,
+        'trainerFixedCode': trainer_fixed_code,
+        'trainerErrorLine': trainer_error_line,
     }
 
     response = make_response(redirect(url_for('main.student_dashboard')))

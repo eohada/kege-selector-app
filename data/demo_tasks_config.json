@@ -1,0 +1,13 @@
+{
+  "_comment": "Номера заданий для демо: блок «Задания», урок (классная работа), тренажёр. Можно менять — берётся первое подходящее задание по номеру из БД.",
+  "ege": {
+    "assignment_task_numbers": [3, 6, 9, 10, 14],
+    "lesson_task_numbers": [3, 6, 9],
+    "trainer_task_number": 5
+  },
+  "oge": {
+    "assignment_task_numbers": [1, 3, 5, 8, 10],
+    "lesson_task_numbers": [1, 3, 5],
+    "trainer_task_number": 5
+  }
+}
