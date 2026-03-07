@@ -702,10 +702,16 @@ def trainer_submit_answer():
         return jsonify({'success': False, 'error': 'task_not_found'}), 404
 
     expected_answer = task.answer
-    if getattr(user, 'is_demo_user', False) and getattr(task, 'site_task_id', None) == 'demo:trainer':
-        demo_ids = session.get('cinema_demo_ids') or {}
-        if demo_ids.get('trainerAnswer'):
-            expected_answer = str(demo_ids['trainerAnswer']).strip()
+    demo_ids = session.get('cinema_demo_ids') or {}
+    is_demo_trainer = (
+        getattr(user, 'is_demo_user', False)
+        and (
+            getattr(task, 'site_task_id', None) == 'demo:trainer'
+            or demo_ids.get('trainerTaskId') == task_id
+        )
+    )
+    if is_demo_trainer and demo_ids.get('trainerAnswer') is not None:
+        expected_answer = str(demo_ids['trainerAnswer']).strip()
     is_correct = _check_answer(expected_answer, user_answer)
     
     # Обновляем рейтинг

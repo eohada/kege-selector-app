@@ -79,6 +79,7 @@
   };
   CE.prototype._cleanup = function () {
     this._clearT();
+    this._clearCurrentSpotlight();
     this._els.forEach(function (el) { removeEl(el); });
     this._els = [];
     qsa('.cinema-neon-hud').forEach(function (e) { e.classList.remove('cinema-neon-hud'); });
@@ -137,6 +138,16 @@
   };
 
   /* ── Spotlight + prompt — затемнение, дырка с неоном, текст снизу по центру ── */
+  /* При нескольких шагах подряд с одним элементом спотлайт не снимается — только обновляются текст и кнопка (без моргания). */
+  CE.prototype._clearCurrentSpotlight = function () {
+    var s = this._currentSpotlight;
+    if (!s) return;
+    if (s.hole && s.hole.parentNode) removeEl(s.hole);
+    if (s.lbl && s.lbl.parentNode) removeEl(s.lbl);
+    if (s.promptWrap && s.promptWrap.parentNode) removeEl(s.promptWrap);
+    this._currentSpotlight = null;
+  };
+
   CE.prototype.spotlightWithPrompt = function (selector, label, text, btnLabel) {
     var self = this;
     btnLabel = btnLabel || 'Далее';
@@ -149,6 +160,23 @@
       self._t(function () {
         var rect = el.getBoundingClientRect();
         if (rect.width === 0 && rect.height === 0) return self.showSubtitle(text, { continueLabel: btnLabel }).then(resolve);
+
+        var s = self._currentSpotlight;
+        if (s && s.element === el) {
+          if (s.labelEl) s.labelEl.textContent = label || '';
+          s.promptText.textContent = text;
+          s.promptBtn.textContent = btnLabel;
+          s.promptBtn.onclick = null;
+          s.promptBtn.onclick = function () {
+            s.promptBtn.onclick = null;
+            resolve();
+          };
+          return;
+        }
+
+        if (s) {
+          self._clearCurrentSpotlight();
+        }
 
         var pad = 10;
         var vw = window.innerWidth, vh = window.innerHeight;
@@ -189,17 +217,11 @@
           promptBtn.classList.add('visible');
         });
 
+        self._currentSpotlight = { element: el, hole: hole, lbl: lbl, labelEl: lbl, promptWrap: promptWrap, promptText: promptText, promptBtn: promptBtn };
+
         promptBtn.onclick = function () {
           promptBtn.onclick = null;
-          hole.classList.remove('visible');
-          if (lbl) lbl.classList.remove('visible');
-          promptWrap.classList.remove('visible');
-          setTimeout(function () {
-            removeEl(hole);
-            if (lbl) removeEl(lbl);
-            removeEl(promptWrap);
-            resolve();
-          }, 400);
+          resolve();
         };
       }, 700);
     });
