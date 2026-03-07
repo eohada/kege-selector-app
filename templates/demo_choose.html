@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Попробовать демо · Выбор экзамена</title>
+    <title>Демо · Вход</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='modern_style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='toast.css') }}">
     {% if csrf_token %}
@@ -19,39 +19,73 @@
         }
         .demo-choose-card {
             width: 100%;
-            max-width: 520px;
+            max-width: 420px;
         }
         .demo-choose-header {
             text-align: center;
-            margin-bottom: 2rem;
+            margin-bottom: 1.75rem;
         }
-        .demo-choose-options {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.25rem;
-        }
-        @media (max-width: 480px) {
-            .demo-choose-options { grid-template-columns: 1fr; }
-        }
-        .demo-choose-btn {
+        .demo-code-form {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem 1.5rem;
-            text-decoration: none;
-            border-radius: var(--radius-lg);
-            border: 2px solid var(--stroke-1);
+            gap: 1rem;
+        }
+        .demo-code-label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.35rem;
+        }
+        .demo-code-input {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--stroke-1);
             background: var(--surface-1);
             color: var(--text-primary);
-            transition: border-color 0.2s, box-shadow 0.2s;
+            font-size: 1rem;
+            box-sizing: border-box;
         }
-        .demo-choose-btn:hover {
+        .demo-code-input:focus {
+            outline: none;
             border-color: var(--accent-1);
-            box-shadow: 0 0 20px rgba(0, 255, 213, 0.15);
+            box-shadow: 0 0 0 2px rgba(0, 255, 213, 0.15);
         }
-        .demo-choose-btn strong { font-size: 1.25rem; margin-bottom: 0.35rem; }
-        .demo-choose-btn span { font-size: 0.9rem; color: var(--text-muted); }
+        .demo-code-input.error {
+            border-color: var(--danger, #e53935);
+        }
+        .demo-code-hint {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: -0.25rem;
+        }
+        .demo-submit-btn {
+            width: 100%;
+            padding: 0.85rem 1.25rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            background: var(--surface-2);
+            border: 1px solid var(--stroke-2);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+        }
+        .demo-submit-btn:hover {
+            background: var(--surface-3);
+            border-color: var(--accent-1);
+            box-shadow: 0 0 16px rgba(0, 255, 213, 0.12);
+        }
+        .demo-error-msg {
+            font-size: 0.85rem;
+            color: var(--danger, #e53935);
+            margin-top: 0.5rem;
+            display: none;
+        }
+        .demo-error-msg.visible {
+            display: block;
+        }
     </style>
     <script>
         (function(){
@@ -62,17 +96,32 @@
             } catch(e) {}
         })();
         document.addEventListener('DOMContentLoaded', function() {
-            var base = '{{ url_for("auth.demo_start", exam="EXAM") }}'.replace('EXAM', '');
-            document.querySelectorAll('.demo-choose-btn[data-exam]').forEach(function(btn) {
-                btn.addEventListener('click', function(e) {
+            var form = document.getElementById('demo-code-form');
+            var input = document.getElementById('demo-code');
+            var errEl = document.getElementById('demo-code-error');
+            var startUrl = '{{ url_for("auth.demo_start", exam="ege") }}';
+
+            try {
+                var params = new URLSearchParams(window.location.search);
+                if (params.get('error') === 'invalid_code') {
+                    if (errEl) { errEl.textContent = 'Неверный код. Попробуйте ещё раз.'; errEl.classList.add('visible'); }
+                }
+            } catch(e) {}
+
+            if (form && input) {
+                form.addEventListener('submit', function(e) {
                     e.preventDefault();
-                    var exam = btn.getAttribute('data-exam');
-                    var refInput = document.getElementById('demo-ref-code');
-                    var ref = refInput && refInput.value ? encodeURIComponent(refInput.value.trim()) : '';
-                    var url = (base + exam) + (ref ? '&ref=' + ref : '');
-                    window.location.href = url;
+                    if (errEl) errEl.classList.remove('visible');
+                    var code = (input.value || '').trim();
+                    if (code !== 'test') {
+                        input.classList.add('error');
+                        if (errEl) { errEl.textContent = 'Неверный код. Введите правильный код для входа в демо.'; errEl.classList.add('visible'); }
+                        return;
+                    }
+                    input.classList.remove('error');
+                    window.location.href = startUrl + (startUrl.indexOf('?') !== -1 ? '&' : '?') + 'code=test';
                 });
-            });
+            }
         });
     </script>
 </head>
@@ -82,24 +131,18 @@
             <section class="glass-panel">
                 <div class="demo-choose-header">
                     <p class="hero-eyebrow">демонстрация</p>
-                    <h1 class="hero-title">Выберите экзамен</h1>
-                    <p class="hero-subtitle">Пройдите короткий тур по платформе без регистрации</p>
+                    <h1 class="hero-title">Вход в демо-тур</h1>
+                    <p class="hero-subtitle">Введите код для запуска короткого тура по платформе</p>
                 </div>
-                <div class="demo-ref-block" style="margin-bottom: 1.5rem;">
-                    <label for="demo-ref-code" style="display: block; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Личный код (если есть)</label>
-                    <input type="text" id="demo-ref-code" name="ref" placeholder="Введите код приглашения" autocomplete="off"
-                           style="width: 100%; padding: 0.75rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-1); color: var(--text-primary); font-size: 1rem;">
-                </div>
-                <div class="demo-choose-options">
-                    <a href="{{ url_for('auth.demo_start', exam='oge') }}" class="demo-choose-btn" data-exam="oge">
-                        <strong>ОГЭ</strong>
-                        <span>Информатика 9 класс</span>
-                    </a>
-                    <a href="{{ url_for('auth.demo_start', exam='ege') }}" class="demo-choose-btn" data-exam="ege">
-                        <strong>ЕГЭ</strong>
-                        <span>Информатика 11 класс</span>
-                    </a>
-                </div>
+                <form id="demo-code-form" class="demo-code-form" action="{{ url_for('auth.demo_start', exam='ege') }}" method="get">
+                    <div>
+                        <label for="demo-code" class="demo-code-label">Код доступа</label>
+                        <input type="text" id="demo-code" name="code" placeholder="Введите код" autocomplete="off" required class="demo-code-input">
+                        <p class="demo-code-hint">Обязательное поле. Без правильного кода демо не запустится.</p>
+                        <p id="demo-code-error" class="demo-error-msg" role="alert"></p>
+                    </div>
+                    <button type="submit" class="demo-submit-btn">Начать демо</button>
+                </form>
             </section>
         </div>
     </div>

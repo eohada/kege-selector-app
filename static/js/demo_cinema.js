@@ -143,6 +143,7 @@
     if (!s || !s.element || !s.hole) return;
     var el = s.element;
     var rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
     var pad = 10;
     var vw = window.innerWidth, vh = window.innerHeight;
     var w = Math.min(rect.width + pad * 2, vw * 0.9);
@@ -227,7 +228,9 @@
 
       function doCreate(el, label, text, btnLabel, resolve) {
         var rect = el.getBoundingClientRect();
+        var vw = window.innerWidth, vh = window.innerHeight;
         if (rect.width === 0 && rect.height === 0) return self.showSubtitle(text, { continueLabel: btnLabel }).then(resolve);
+        if (rect.left + rect.width < 0 || rect.top + rect.height < 0 || rect.left > vw || rect.top > vh) return self.showSubtitle(text, { continueLabel: btnLabel }).then(resolve);
 
         var pad = 10;
         var vw = window.innerWidth, vh = window.innerHeight;
@@ -532,7 +535,7 @@
       return self.showSubtitle('Это страница конспекта. Здесь — разбор теории, формулы и примеры решений.');
     })
     .then(function () {
-      var content = qs('.theory-content') || qs('.app-content') || qs('.glass-panel');
+      var content = qs('.theory-view-content') || qs('.theory-content') || qs('.app-content') || qs('.glass-panel');
       return self.spotlightWithPrompt(content, 'Материал конспекта', examTexts(self.ids).theoryView, 'К заданиям');
     })
     .then(function () { if (self.running) self.advance(4, '/submissions', 'glitch'); });
@@ -625,7 +628,7 @@
     });
   };
 
-  /* ── 5: Lesson — tabs: Конспект → Классная работа → Материалы ── */
+  /* ── 5: Lesson — только вкладки: Конспект → Классная работа → Материалы → Заметки → Диалог ── */
   CE.prototype.sceneLesson = function () {
     var self = this;
     self.playEntryTransition()
@@ -648,16 +651,9 @@
       return wait(500);
     })
     .then(function () {
+      var tasksPane = qs('#tab-tasks');
       var card = qs('.task-card');
-      return self.spotlightWithPrompt(card, 'Классная работа', 'Вкладка «Классная работа» — задания для решения на уроке. Вводи ответ и сдавай.');
-    })
-    .then(function () {
-      var answerInput = qs('input[id^="submission_"]');
-      if (answerInput) {
-        return self.spotlightWithPrompt(answerInput, 'Поле ответа', 'Здесь вводишь ответ. Давай попробуем.', 'Ввести ответ')
-        .then(function () { return self.typeIntoField('42', answerInput); });
-      }
-      return wait(300);
+      return self.spotlightWithPrompt(card || tasksPane, 'Классная работа', 'Вкладка «Классная работа» — задания для решения на уроке.');
     })
     .then(function () {
       var materialsTab = qs('.tab-btn[data-tab="materials"]');
@@ -669,8 +665,26 @@
       return self.spotlightWithPrompt(materialsPane, 'Материалы', 'Вкладка «Материалы» — файлы, презентации и другие вложения к уроку.');
     })
     .then(function () {
+      var notesTab = qs('.tab-btn[data-tab="notes"]');
+      if (notesTab) self.simulateClick(notesTab);
+      return wait(500);
+    })
+    .then(function () {
+      var notesPane = qs('#tab-notes');
+      return self.spotlightWithPrompt(notesPane, 'Заметки', 'Вкладка «Заметки» — здесь можно вести конспект по ходу урока.');
+    })
+    .then(function () {
+      var chatTab = qs('.tab-btn[data-tab="chat"]');
+      if (chatTab) self.simulateClick(chatTab);
+      return wait(500);
+    })
+    .then(function () {
+      var chatPane = qs('#tab-chat');
+      return self.spotlightWithPrompt(chatPane, 'Диалог', 'Вкладка «Диалог» — общение с преподавателем и одноклассниками.');
+    })
+    .then(function () {
       if (self.ids.exam === 'oge') {
-        return self.showSubtitle('Вот так устроена классная комната. Для ОГЭ тренажёр в демо не показываем — переходим к аналитике.', { continueLabel: 'К аналитике' });
+        return self.showSubtitle('Вот так устроена классная комната. Переходим к аналитике.', { continueLabel: 'К аналитике' });
       }
       return self.showSubtitle('Вот так устроена классная комната. Теперь покажем AI-тренажёр.', { continueLabel: 'В тренажёр' });
     })
@@ -1002,9 +1016,9 @@
       var tabBtn = qs('.stats-tab[data-tab="analytics"]');
       if (tabBtn) {
         self.simulateClick(tabBtn);
-        return wait(1500);
+        return wait(2600);
       }
-      return wait(300);
+      return wait(500);
     })
     .then(function () {
       var table = qs('#analyticsNodesTable') || qs('.analytics-nodes-table');
@@ -1073,7 +1087,7 @@
   function buildSceneJumpPanel() {
     if (qs('#cinema-scene-jump')) return;
     var exam = (getDemoIds().exam || 'ege');
-    var base = '/demo/start?exam=' + encodeURIComponent(exam) + '&cinema_scene=';
+    var base = '/demo/start?exam=' + encodeURIComponent(exam) + '&code=test&cinema_scene=';
     var scenes = [
       { n: 1, label: 'Лифт' },
       { n: 2, label: 'Расписание' },

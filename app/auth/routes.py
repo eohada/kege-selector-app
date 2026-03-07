@@ -236,12 +236,19 @@ def demo_choose():
     return render_template('demo_choose.html')
 
 
+DEMO_ACCESS_CODE = 'test'
+
+
 @auth_bp.route('/demo/start')
 def demo_start():
-    """Создает временного демо-пользователя и запускает кинематографический тур."""
+    """Создает временного демо-пользователя и запускает кинематографический тур. Обязателен код доступа."""
     from app.models import StudentTaskStatistics, Subject
     from core.db_models import UserMastery, KnowledgeNode
     import random
+
+    code = (request.args.get('code') or '').strip()
+    if code != DEMO_ACCESS_CODE:
+        return redirect(url_for('auth.demo_choose', error='invalid_code'))
 
     if current_user.is_authenticated:
         logout_user()
