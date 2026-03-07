@@ -136,27 +136,7 @@
     });
   };
 
-  /* ── Подсказка-полоска внизу: экран не затемняется, контент виден ── */
-  CE.prototype.showSubtitleBar = function (text, opts) {
-    opts = opts || {};
-    var btnLabel = opts.continueLabel || 'Далее';
-    return new Promise(function (resolve) {
-      var bar = addEl('div', 'cinema-subtitle-bar');
-      var txt = addEl('div', 'cinema-subtitle-bar-text', bar);
-      txt.textContent = text;
-      var btn = addEl('button', 'cinema-subtitle-bar-btn', bar);
-      btn.textContent = btnLabel;
-      document.body.appendChild(bar);
-      requestAnimationFrame(function () { bar.classList.add('visible'); });
-      btn.onclick = function () {
-        btn.onclick = null;
-        bar.classList.remove('visible');
-        setTimeout(function () { removeEl(bar); resolve(); }, 250);
-      };
-    });
-  };
-
-  /* ── Spotlight + prompt — shows highlight AND text, waits for click */
+  /* ── Spotlight + prompt — затемнение, дырка с неоном, текст снизу по центру ── */
   CE.prototype.spotlightWithPrompt = function (selector, label, text, btnLabel) {
     var self = this;
     btnLabel = btnLabel || 'Далее';
@@ -807,7 +787,6 @@
     }
 
     self.playEntryTransition()
-    .then(function () { return self.showSubtitleBar('Это AI-тренажёр. Сейчас подставим задание из сценария и покажем код.', { continueLabel: 'Далее' }); })
     .then(function () {
       var dock = qs('#trainerV2Dock') || qs('.trainer-v2-root');
       if (dock) dock.classList.add('cinema-neon-hud');
@@ -823,27 +802,31 @@
     })
     .then(function () {
       var editorBox = qs('.tv2-editor-box');
-      if (editorBox) editorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return self.showSubtitleBar('Редактор кода. Сейчас в нём по сценарию введётся код с ошибкой.', { continueLabel: 'Далее' });
+      return self.spotlightWithPrompt(editorBox, 'Тренажёр', 'Это AI-тренажёр. Задание из сценария подставлено. Сейчас введётся код с ошибкой.', 'Далее');
     })
     .then(function () {
       return self.typeIntoCodeMirror(buggyCode);
     })
-    .then(function () { return self.showSubtitleBar('Код введён. Найди в нём ошибку.', { continueLabel: 'Далее' }); })
+    .then(function () {
+      var editorBox = qs('.tv2-editor-box');
+      return self.spotlightWithPrompt(editorBox, 'Код введён', 'Найди в нём ошибку.', 'Далее');
+    })
     .then(function () {
       var cmEl = qs('.CodeMirror');
       if (cmEl && cmEl.CodeMirror) { try { cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-error-line'); } catch (e) {} }
-      return self.showSubtitleBar('Ошибка в подсвеченной строке. Посмотри, прочитай, подумай. Когда будешь готов — нажми «Далее».', { continueLabel: 'Далее' });
+      var editorBox = qs('.tv2-editor-box');
+      return self.spotlightWithPrompt(editorBox, 'Ошибка в строке', 'Ошибка в подсвеченной строке. Посмотри, подумай. Когда будешь готов — нажми «Далее».', 'Далее');
     })
     .then(function () {
-      return self.showSubtitleBar('Открываем окно помощника: введём вопрос, подождём «ответ» нейросети.', { continueLabel: 'Далее' });
+      return self.showSubtitle('Открываем окно помощника: введём вопрос, подождём «ответ» нейросети.', { continueLabel: 'Далее' });
     })
     .then(function () {
       return self._showDemoChatWindow(demoQuestion, demoAssistantReply);
     })
     .then(function () {
       self._hideDemoChatWindow();
-      return self.showSubtitleBar('Ответ помощника прочитан. Переходим к исправлению кода.', { continueLabel: 'Далее' });
+      var editorBox = qs('.tv2-editor-box');
+      return self.spotlightWithPrompt(editorBox, 'Исправление', 'Ответ помощника прочитан. Переходим к исправлению кода.', 'Далее');
     })
     .then(function () {
       var cmEl = qs('.CodeMirror');
@@ -852,7 +835,8 @@
         cmEl.CodeMirror.setValue(fixedCode);
         try { cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-fixed-line'); } catch (e) {}
       }
-      return self.showSubtitleBar(demoCorrectionSubtitle, { continueLabel: 'Далее' });
+      var editorBox = qs('.tv2-editor-box');
+      return self.spotlightWithPrompt(editorBox, 'Код исправлен', demoCorrectionSubtitle, 'Далее');
     })
     .then(function () {
       var cmEl = qs('.CodeMirror');
@@ -880,7 +864,7 @@
     .then(function () {
       var answerEl = qs('#tv2AnswerInput');
       if (answerEl) { answerEl.value = correctAnswer; answerEl.dispatchEvent(new Event('input', { bubbles: true })); }
-      return self.showSubtitleBar('Ответ введён. Нажми «Проверить».', { continueLabel: 'Проверить' });
+      return self.spotlightWithPrompt(answerEl, 'Ответ введён', 'Нажми «Проверить».', 'Проверить');
     })
     .then(function () {
       var answerEl = qs('#tv2AnswerInput');
@@ -901,7 +885,7 @@
       return wait(200);
     })
     .then(function () {
-      return self.showSubtitleBar('Код → ошибка → вопрос помощнику → исправление → запуск → проверка. Так работает тренажёр.', { continueLabel: 'К аналитике' });
+      return self.showSubtitle('Код → ошибка → вопрос помощнику → исправление → запуск → проверка. Так работает тренажёр.', { continueLabel: 'К аналитике' });
     })
     .then(function () {
       if (!self.running) return;
