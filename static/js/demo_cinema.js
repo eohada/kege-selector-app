@@ -675,17 +675,17 @@
     try { localStorage.setItem(key, JSON.stringify(arr)); } catch (e) {}
   };
 
-  /* ── Демо-чат: оверлей с вопросом и ответом из сценария (не используем чат тренажёра) ── */
+  /* ── Демо-чат: оверлей с вопросом и ответом из сценария (вставляем в панель помощника) ── */
   CE.prototype._showDemoChatOverlay = function (question, reply) {
     var list = qs('.tv2-chat-list');
     var composer = qs('.tv2-chat-composer');
     var panel = list ? list.parentElement : null;
     if (!panel) return Promise.resolve();
-    var wrap = document.getElementById('cinema-demo-chat');
-    if (wrap) wrap.remove();
+    var old = document.getElementById('cinema-demo-chat');
+    if (old) old.remove();
     list.style.display = 'none';
     if (composer) composer.style.display = 'none';
-    wrap = document.createElement('div');
+    var wrap = document.createElement('div');
     wrap.id = 'cinema-demo-chat';
     wrap.className = 'cinema-demo-chat';
     var userMsg = document.createElement('div');
@@ -696,7 +696,7 @@
     assistantMsg.innerHTML = '<div class="tv2-chat-meta">помощник</div><div class="tv2-chat-bubble">' + (reply || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>';
     wrap.appendChild(userMsg);
     wrap.appendChild(assistantMsg);
-    panel.appendChild(wrap);
+    panel.insertBefore(wrap, list);
     return Promise.resolve();
   };
   CE.prototype._hideDemoChatOverlay = function () {
@@ -716,8 +716,8 @@
     var defaultFixed = 'results = []\n\nfor N in range(1, 100):\n    b = bin(N)[2:]\n    if N % 2 == 0:\n        b = \'10\' + b\n    else:\n        b = \'1\' + b + \'01\'\n    R = int(b, 2)\n    if R < 30:\n        results.append(N)\n\nif results:\n    print(max(results))';
     var buggyCode = (self.ids.trainerBuggyCode && self.ids.trainerBuggyCode.trim()) ? self.ids.trainerBuggyCode.trim() : defaultBuggy;
     var fixedCode = (self.ids.trainerFixedCode && self.ids.trainerFixedCode.trim()) ? self.ids.trainerFixedCode.trim() : defaultFixed;
-    var rawErrorLine = typeof self.ids.trainerErrorLine === 'number' ? self.ids.trainerErrorLine : (parseInt(self.ids.trainerErrorLine, 10) || 13);
-    var errorLineNum = rawErrorLine > 0 ? rawErrorLine - 1 : 12;
+    var rawErrorLine = typeof self.ids.trainerErrorLine === 'number' ? self.ids.trainerErrorLine : (parseInt(self.ids.trainerErrorLine, 10) || 11);
+    var errorLineNum = rawErrorLine > 0 ? rawErrorLine - 1 : 10;
     var demoQuestion = (self.ids.trainerQuestion && self.ids.trainerQuestion.trim()) ? self.ids.trainerQuestion.trim() : 'Привет, помоги разобраться с заданием, код почему-то выводит неправильный ответ!';
     var demoAssistantReply = (self.ids.trainerAssistantReply && self.ids.trainerAssistantReply.trim()) ? self.ids.trainerAssistantReply.trim() : (self.ids.trainerHint && self.ids.trainerHint.trim()) ? self.ids.trainerHint.trim() : 'В условии просят максимальное N, а ты выводишь max из R.';
     var demoCorrectionSubtitle = (self.ids.trainerCorrection && self.ids.trainerCorrection.trim()) ? self.ids.trainerCorrection.trim() : 'Исправлено. Запускаем код.';
@@ -738,14 +738,13 @@
     .then(function () { return self.waitForEl('.CodeMirror', 8000); })
 
     .then(function () {
-      var cmEl = qs('.CodeMirror');
-      if (cmEl && cmEl.CodeMirror) cmEl.CodeMirror.setValue(buggyCode);
-      return wait(400);
+      var editorBox = qs('.tv2-editor-box');
+      return self.spotlightWithPrompt(editorBox, 'Редактор', 'Код вводится по сценарию с анимацией.');
     })
     .then(function () {
-      var editorBox = qs('.tv2-editor-box');
-      return self.spotlightWithPrompt(editorBox, 'Редактор', 'В редакторе — код из сценария. В нём ошибка.');
+      return self.typeIntoCodeMirror(buggyCode);
     })
+    .then(function () { return wait(400); })
     .then(function () {
       var cmEl = qs('.CodeMirror');
       if (cmEl && cmEl.CodeMirror) { try { cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-error-line'); } catch (e) {} }
@@ -756,8 +755,9 @@
     .then(function () {
       var assistantTab = qs('button[data-tab="помощник"]');
       if (assistantTab) self.simulateClick(assistantTab);
-      return wait(700);
+      return wait(400);
     })
+    .then(function () { return self.waitForEl('.tv2-chat-list', 4000); })
     .then(function () {
       self._showDemoChatOverlay(demoQuestion, demoAssistantReply);
       return wait(500);

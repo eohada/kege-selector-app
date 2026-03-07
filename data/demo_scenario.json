@@ -32,7 +32,7 @@
       "correction_text": "Исправлено: в массив нужно добавлять N, а выводить max(results) — это и есть максимальное N.",
       "buggy_code": "results = []\n\nfor N in range(1, 100):\n    b = bin(N)[2:]\n\n    if N % 2 == 0:\n        b = '10' + b\n    else:\n        b = '1' + b + '01'\n\n    R = int(b, 2)\n\n    if R < 30:\n        results.append(R)\n\nif results:\n    print(max(results))",
       "fixed_code": "results = []\n\nfor N in range(1, 100):\n    b = bin(N)[2:]\n\n    if N % 2 == 0:\n        b = '10' + b\n    else:\n        b = '1' + b + '01'\n\n    R = int(b, 2)\n\n    if R < 30:\n        results.append(N)\n\nif results:\n    print(max(results))",
-      "error_line": 13
+      "error_line": 11
     }
   },
   "oge": {
