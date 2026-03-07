@@ -79,7 +79,7 @@
   };
   CE.prototype._cleanup = function () {
     this._clearT();
-    this._clearCurrentSpotlight();
+    this._clearCurrentSpotlight(null, true);
     this._els.forEach(function (el) { removeEl(el); });
     this._els = [];
     qsa('.cinema-neon-hud').forEach(function (e) { e.classList.remove('cinema-neon-hud'); });
@@ -138,14 +138,54 @@
   };
 
   /* ── Spotlight + prompt — затемнение, дырка с неоном, текст снизу по центру ── */
-  /* При нескольких шагах подряд с одним элементом спотлайт не снимается — только обновляются текст и кнопка (без моргания). */
-  CE.prototype._clearCurrentSpotlight = function () {
+  /* При нескольких шагах подряд с одним элементом спотлайт не снимается; дырка подстраивается под размер элемента (ResizeObserver). */
+  CE.prototype._updateSpotlightGeometry = function (s) {
+    if (!s || !s.element || !s.hole) return;
+    var el = s.element;
+    var rect = el.getBoundingClientRect();
+    var pad = 10;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var w = Math.min(rect.width + pad * 2, vw * 0.9);
+    var h = Math.min(rect.height + pad * 2, vh * 0.75);
+    var cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+    var left = Math.max(4, Math.min(cx - w / 2, vw - w - 4));
+    var top  = Math.max(4, Math.min(cy - h / 2, vh - h - 4));
+    var br = window.getComputedStyle(el).borderRadius || '12px';
+    s.hole.style.left = left + 'px';
+    s.hole.style.top = top + 'px';
+    s.hole.style.width = w + 'px';
+    s.hole.style.height = h + 'px';
+    s.hole.style.borderRadius = br;
+    if (s.lbl) {
+      s.lbl.style.left = (left + w / 2) + 'px';
+      var lt = top + h + 14;
+      if (lt > vh - 80) lt = Math.max(8, top - 40);
+      s.lbl.style.top = lt + 'px';
+    }
+  };
+
+  CE.prototype._clearCurrentSpotlight = function (onDone, immediate) {
+    var self = this;
     var s = this._currentSpotlight;
-    if (!s) return;
-    if (s.hole && s.hole.parentNode) removeEl(s.hole);
-    if (s.lbl && s.lbl.parentNode) removeEl(s.lbl);
-    if (s.promptWrap && s.promptWrap.parentNode) removeEl(s.promptWrap);
+    if (!s) { if (onDone) onDone(); return; }
+    if (s.resizeObserver) { s.resizeObserver.disconnect(); s.resizeObserver = null; }
     this._currentSpotlight = null;
+
+    function removeAll() {
+      if (s.hole && s.hole.parentNode) removeEl(s.hole);
+      if (s.lbl && s.lbl.parentNode) removeEl(s.lbl);
+      if (s.promptWrap && s.promptWrap.parentNode) removeEl(s.promptWrap);
+      if (onDone) onDone();
+    }
+
+    if (immediate) {
+      removeAll();
+      return;
+    }
+    s.hole.classList.add('cinema-spotlight-exit');
+    if (s.lbl) s.lbl.classList.add('cinema-spotlight-exit');
+    if (s.promptWrap) s.promptWrap.classList.add('cinema-spotlight-exit');
+    self._t(function () { removeAll(); }, 380);
   };
 
   CE.prototype.spotlightWithPrompt = function (selector, label, text, btnLabel) {
@@ -163,6 +203,7 @@
 
         var s = self._currentSpotlight;
         if (s && s.element === el) {
+          self._updateSpotlightGeometry(s);
           if (s.labelEl) s.labelEl.textContent = label || '';
           s.promptText.textContent = text;
           s.promptBtn.textContent = btnLabel;
@@ -175,8 +216,18 @@
         }
 
         if (s) {
-          self._clearCurrentSpotlight();
+          self._clearCurrentSpotlight(function () {
+            self._t(function () { doCreate(el, label, text, btnLabel, resolve); }, 0);
+          });
+          return;
         }
+
+        doCreate(el, label, text, btnLabel, resolve);
+      }, 700);
+
+      function doCreate(el, label, text, btnLabel, resolve) {
+        var rect = el.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) return self.showSubtitle(text, { continueLabel: btnLabel }).then(resolve);
 
         var pad = 10;
         var vw = window.innerWidth, vh = window.innerHeight;
@@ -217,13 +268,21 @@
           promptBtn.classList.add('visible');
         });
 
-        self._currentSpotlight = { element: el, hole: hole, lbl: lbl, labelEl: lbl, promptWrap: promptWrap, promptText: promptText, promptBtn: promptBtn };
+        var spot = { element: el, hole: hole, lbl: lbl, labelEl: lbl, promptWrap: promptWrap, promptText: promptText, promptBtn: promptBtn };
+        self._currentSpotlight = spot;
+
+        if (typeof ResizeObserver !== 'undefined') {
+          spot.resizeObserver = new ResizeObserver(function () {
+            if (self._currentSpotlight === spot) self._updateSpotlightGeometry(spot);
+          });
+          spot.resizeObserver.observe(el);
+        }
 
         promptBtn.onclick = function () {
           promptBtn.onclick = null;
           resolve();
         };
-      }, 700);
+      }
     });
   };
 
