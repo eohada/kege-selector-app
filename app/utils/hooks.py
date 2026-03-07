@@ -313,6 +313,10 @@ def register_hooks(app):
         if request.path.startswith('/remote-admin/'):
             logger.info(f"require_login hook: path={request.path}, endpoint={request.endpoint}, authenticated={current_user.is_authenticated if hasattr(current_user, 'is_authenticated') else False}")
         
+        # На демо-сайте маршруты /demo и /demo/start доступны без авторизации
+        if current_app.config.get('DEMO_SITE') and request.path in ('/demo', '/demo/start'):
+            return
+
         excluded_endpoints = ('auth.login', 'auth.logout', 'static', 'main.font_files', 'admin.maintenance_status_api', 'admin.maintenance_page', 'main.setup_first_user', 'main.health_check', 'main.landing', 'main.index', 'main.legal_offer', 'main.legal_privacy', 'main.faq', 'billing.billing_plans_public')
         excluded_paths = ('/', '/landing', '/index', '/home', '/legal/offer', '/legal/privacy', '/faq', '/billing/plans/public')
         

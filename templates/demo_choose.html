@@ -61,6 +61,19 @@
                 else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light');
             } catch(e) {}
         })();
+        document.addEventListener('DOMContentLoaded', function() {
+            var base = '{{ url_for("auth.demo_start", exam="EXAM") }}'.replace('EXAM', '');
+            document.querySelectorAll('.demo-choose-btn[data-exam]').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var exam = btn.getAttribute('data-exam');
+                    var refInput = document.getElementById('demo-ref-code');
+                    var ref = refInput && refInput.value ? encodeURIComponent(refInput.value.trim()) : '';
+                    var url = (base + exam) + (ref ? '&ref=' + ref : '');
+                    window.location.href = url;
+                });
+            });
+        });
     </script>
 </head>
 <body>
@@ -72,12 +85,17 @@
                     <h1 class="hero-title">Выберите экзамен</h1>
                     <p class="hero-subtitle">Пройдите короткий тур по платформе без регистрации</p>
                 </div>
+                <div class="demo-ref-block" style="margin-bottom: 1.5rem;">
+                    <label for="demo-ref-code" style="display: block; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">Личный код (если есть)</label>
+                    <input type="text" id="demo-ref-code" name="ref" placeholder="Введите код приглашения" autocomplete="off"
+                           style="width: 100%; padding: 0.75rem 1rem; border-radius: var(--radius-sm); border: 1px solid var(--stroke-1); background: var(--surface-1); color: var(--text-primary); font-size: 1rem;">
+                </div>
                 <div class="demo-choose-options">
-                    <a href="{{ url_for('auth.demo_start', exam='oge') }}" class="demo-choose-btn">
+                    <a href="{{ url_for('auth.demo_start', exam='oge') }}" class="demo-choose-btn" data-exam="oge">
                         <strong>ОГЭ</strong>
                         <span>Информатика 9 класс</span>
                     </a>
-                    <a href="{{ url_for('auth.demo_start', exam='ege') }}" class="demo-choose-btn">
+                    <a href="{{ url_for('auth.demo_start', exam='ege') }}" class="demo-choose-btn" data-exam="ege">
                         <strong>ЕГЭ</strong>
                         <span>Информатика 11 класс</span>
                     </a>

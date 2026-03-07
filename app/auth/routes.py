@@ -60,12 +60,20 @@ def login():
     """Страница входа"""
     try:
         is_admin_env = os.environ.get('ENVIRONMENT') == 'admin'
-        
+        is_demo_site = current_app.config.get('DEMO_SITE') is True
+
         try:
             is_authenticated = current_user.is_authenticated if hasattr(current_user, 'is_authenticated') else False
         except Exception as e:
             logger.warning(f"Error checking authentication: {e}")
             is_authenticated = False
+
+        # На демо-сайте авторизация отключена: редирект на выбор демо (ОГЭ/ЕГЭ)
+        if is_demo_site and not is_authenticated:
+            if request.method == 'GET' and not request.args.get('cross_env'):
+                return redirect(url_for('auth.demo_choose'))
+            if request.method == 'POST':
+                return redirect(url_for('auth.demo_choose'))
         
         # Кросс-вход с другого окружения (Прод/Песочница): GET /login?cross_env=TOKEN
         if request.method == 'GET' and not is_authenticated:
@@ -234,6 +242,11 @@ def demo_start():
 
     if current_user.is_authenticated:
         logout_user()
+
+    # Личный (реферальный) код — сохраняем в сессию для будущей реферальной системы
+    ref_code = (request.args.get('ref') or '').strip()
+    if ref_code:
+        session['demo_ref_code'] = ref_code
 
     exam = (request.args.get('exam') or 'ege').strip().lower()
     if exam not in ('oge', 'ege'):

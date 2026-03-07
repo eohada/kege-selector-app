@@ -4,7 +4,7 @@
 import logging
 import json
 import shutil
-from flask import render_template, request, send_from_directory, flash, redirect, url_for, make_response
+from flask import render_template, request, send_from_directory, flash, redirect, url_for, make_response, current_app
 from flask_login import login_required
 import os
 from datetime import datetime
@@ -202,7 +202,9 @@ def landing():
     """Гостевая страница (landing page) - доступна без авторизации"""
     if os.environ.get('ENVIRONMENT') == 'admin':
         return redirect(url_for('remote_admin.dashboard'))
-    
+    # На демо-сайте главная — сразу выбор экзамена (демо в общем доступе)
+    if current_app.config.get('DEMO_SITE'):
+        return redirect(url_for('auth.demo_choose'))
     return render_template('landing.html')
 
 
