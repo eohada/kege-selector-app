@@ -433,12 +433,12 @@
       return self.showSubtitle(examTexts(self.ids).theoryIntro);
     })
     .then(function () {
-      var card = qs('.theory-card');
+      var card = qs('.theory-grid .theory-card');
       return self.spotlightWithPrompt(card, 'Конспект по теме', 'Давай откроем один из конспектов и посмотрим, что внутри.', 'Открыть конспект');
     })
     .then(function () {
       if (!self.running) return;
-      var card = qs('.theory-card');
+      var card = qs('.theory-grid .theory-card');
       if (card) {
         var href = card.getAttribute('href');
         if (href) {
@@ -675,6 +675,24 @@
     try { localStorage.setItem(key, JSON.stringify(arr)); } catch (e) {}
   };
 
+  /* ── Добавить сообщение в чат тренажёра скриптованно (без нейросети) ── */
+  CE.prototype._appendTrainerChatMessage = function (role, content) {
+    var list = qs('.tv2-chat-list');
+    if (!list) return;
+    var item = document.createElement('div');
+    item.className = 'tv2-chat-msg ' + (role === 'user' ? 'is-user' : 'is-assistant');
+    var head = document.createElement('div');
+    head.className = 'tv2-chat-meta';
+    head.textContent = (role === 'user' ? 'ученик' : 'помощник') + ' · только что';
+    var body = document.createElement('div');
+    body.className = 'tv2-chat-bubble';
+    body.textContent = String(content || '');
+    item.appendChild(head);
+    item.appendChild(body);
+    list.appendChild(item);
+    list.scrollTop = list.scrollHeight;
+  };
+
   /* ── 6: Trainer — из сценария: ответ, код с ошибкой, вопрос, ответ помощника, исправленный код, правильный ответ */
   CE.prototype.sceneTrainer = function () {
     var self = this;
@@ -715,16 +733,16 @@
     })
     .then(function () { return wait(600); })
 
-    /* ── Step 2: highlight the buggy line ────────────────────────── */
+    /* ── Step 2: подсветка строки с ошибкой ────────────────────────── */
     .then(function () {
       var cmEl = qs('.CodeMirror');
       if (cmEl && cmEl.CodeMirror) {
         cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-error-line');
       }
-      return self.showSubtitle('В строке 6 ошибка — лишние скобки меняют приоритет операций. Спросим помощника.');
+      return self.showSubtitle('Здесь ошибка в коде. Спросим помощника.');
     })
 
-    /* ── Step 3: switch to assistant tab, type question ──────────── */
+    /* ── Step 3: вкладка «Помощник», печатаем вопрос в поле (без нейросети) ── */
     .then(function () {
       var assistantTab = qs('button[data-tab="помощник"]');
       if (assistantTab) self.simulateClick(assistantTab);
@@ -732,60 +750,34 @@
     })
     .then(function () {
       var chatInput = qs('.tv2-chat-input');
-      return self.spotlightWithPrompt(chatInput, 'Помощник', 'Напишем вопрос и отправим его ИИ-помощнику.', 'Написать вопрос');
+      return self.spotlightWithPrompt(chatInput, 'Помощник', 'Напишем вопрос помощнику. Ответ придёт скриптованно — без вызова нейросети.', 'Написать вопрос');
     })
     .then(function () {
       var chatInput = qs('.tv2-chat-input');
       if (chatInput) return self.typeIntoField(demoQuestion, chatInput);
       return wait(300);
     })
-    .then(function () { return wait(300); })
+    .then(function () { return wait(400); })
 
-    /* ── Step 4: "send" — inject user msg via localStorage + re-render */
+    /* ── Step 4: показываем вопрос в чате и скриптованно — ответ «помощника» ── */
     .then(function () {
-      self._injectTrainerChat([
-        { role: 'user', content: demoQuestion }
-      ]);
-
-      var assistantTab = qs('button[data-tab="помощник"]');
-      if (assistantTab) {
-        var otherTab = qs('button[data-tab="terminal"]');
-        if (otherTab) self.simulateClick(otherTab);
-      }
-      return wait(150);
-    })
-    .then(function () {
-      var assistantTab = qs('button[data-tab="помощник"]');
-      if (assistantTab) self.simulateClick(assistantTab);
-
+      self._appendTrainerChatMessage('user', demoQuestion);
       var chatInput = qs('.tv2-chat-input');
       if (chatInput) { chatInput.value = ''; chatInput.dispatchEvent(new Event('input', { bubbles: true })); }
-      return wait(800);
-    })
-
-    .then(function () {
-      return self.showSubtitle('Вопрос отправлен. Ждём ответ от ИИ-помощника...');
-    })
-    .then(function () { return wait(1000); })
-
-    /* ── Step 5: inject assistant reply via localStorage + re-render */
-    .then(function () {
-      self._injectTrainerChat([
-        { role: 'user', content: demoQuestion },
-        { role: 'assistant', content: demoAssistantReply }
-      ]);
-
-      var otherTab = qs('button[data-tab="terminal"]');
-      if (otherTab) self.simulateClick(otherTab);
-      return wait(150);
+      self._injectTrainerChat([{ role: 'user', content: demoQuestion }]);
+      return wait(500);
     })
     .then(function () {
-      var assistantTab = qs('button[data-tab="помощник"]');
-      if (assistantTab) self.simulateClick(assistantTab);
+      return self.showSubtitle('Вопрос отправлен. «Ответ» помощника подставляем скриптом.');
+    })
+    .then(function () { return wait(800); })
+    .then(function () {
+      self._appendTrainerChatMessage('assistant', demoAssistantReply);
+      self._injectTrainerChat([{ role: 'user', content: demoQuestion }, { role: 'assistant', content: demoAssistantReply }]);
       return wait(600);
     })
 
-    /* ── Step 6: spotlight the assistant response ────────────────── */
+    /* ── Step 5: spotlight ответа помощника ───────────────────────── */
     .then(function () {
       var lastMsg = qs('.tv2-chat-msg.is-assistant:last-child') || qs('.tv2-chat-msg.is-assistant');
       return self.spotlightWithPrompt(lastMsg, 'Ответ помощника', demoCorrectionSubtitle);
@@ -999,7 +991,13 @@
 
     var metaIds = qs('meta[name="cinema-demo-ids"]');
     if (metaIds) {
-      try { var c = metaIds.getAttribute('content'); if (c) lsSet(LS_DEMO_IDS, c); } catch (e) {}
+      try {
+        var c = metaIds.getAttribute('content');
+        if (c && c.trim().length > 20) {
+          var o = JSON.parse(c);
+          if (o && typeof o === 'object' && Object.keys(o).length > 0) lsSet(LS_DEMO_IDS, c);
+        }
+      } catch (e) {}
     }
 
     var engine = new CE();
