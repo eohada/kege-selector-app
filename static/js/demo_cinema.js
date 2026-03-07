@@ -677,7 +677,7 @@
     try { localStorage.setItem(key, JSON.stringify(arr)); } catch (e) {}
   };
 
-  /* ── Демо: своё окно «Помощник» — имитация ввода вопроса и получения ответа ── */
+  /* ── Демо: своё окно «Помощник» — ввод вопроса, имитация ожидания нейросети, ответ ── */
   CE.prototype._showDemoChatWindow = function (question, reply) {
     var self = this;
     var old = document.getElementById('cinema-demo-chat-window');
@@ -727,9 +727,20 @@
       });
     }
 
-    return typewriter(questionEl, q, 22).then(function () { return wait(600); }).then(function () {
-      return typewriter(replyEl, r, 20);
-    });
+    function showThinking() {
+      replyEl.textContent = 'Помощник печатает...';
+      replyEl.classList.add('cinema-demo-thinking');
+    }
+    function hideThinking() {
+      replyEl.textContent = '';
+      replyEl.classList.remove('cinema-demo-thinking');
+    }
+
+    return typewriter(questionEl, q, 22)
+      .then(function () { return wait(400); })
+      .then(function () { showThinking(); return wait(2200); })
+      .then(function () { hideThinking(); return wait(300); })
+      .then(function () { return typewriter(replyEl, r, 20); });
   };
   CE.prototype._hideDemoChatWindow = function () {
     var el = document.getElementById('cinema-demo-chat-window');
@@ -752,52 +763,49 @@
     var demoQuestion = (self.ids.trainerQuestion && self.ids.trainerQuestion.trim()) ? self.ids.trainerQuestion.trim() : 'Привет, помоги разобраться с заданием, код почему-то выводит неправильный ответ!';
     var demoAssistantReply = (self.ids.trainerAssistantReply && self.ids.trainerAssistantReply.trim()) ? self.ids.trainerAssistantReply.trim() : (self.ids.trainerHint && self.ids.trainerHint.trim()) ? self.ids.trainerHint.trim() : 'В условии просят максимальное N, а ты выводишь max из R.';
     var demoCorrectionSubtitle = (self.ids.trainerCorrection && self.ids.trainerCorrection.trim()) ? self.ids.trainerCorrection.trim() : 'Исправлено. Запускаем код.';
+    var conditionHtml = (self.ids.trainerConditionHtml && self.ids.trainerConditionHtml.trim()) ? self.ids.trainerConditionHtml.trim() : '';
+    if (!conditionHtml) {
+      conditionHtml = '<p><strong>№ 23551</strong> (Уровень: Базовый)</p><p>На вход алгоритма подаётся натуральное число N. Алгоритм строит по нему новое число R так:</p><p>1. Строится двоичная запись числа N.<br>2. К этой записи применяются правила: если N чётное, то слева дописывается «10», если N нечётное — слева дописывается «1», справа «01».<br>3. Результат переводится в десятичную систему — это число R.</p><p>Пример: для N = 4 (100₂) получается 10100₂ = 20; для N = 5 (101₂) получается 110101₂ = 53.</p><p>Укажите максимальное число N, после обработки которого с помощью этого алгоритма получается число R, меньшее чем 30. В ответе запишите это число в десятичной системе счисления.</p>';
+    }
 
     self.playEntryTransition()
-    .then(function () { return wait(800); })
-    .then(function () {
-      return self.showSubtitle('Это AI-тренажёр. Всё покажем по сценарию — код, вопрос помощнику и ответ.');
-    })
+    .then(function () { return self.showSubtitle('Это AI-тренажёр. Сейчас подставим задание из сценария и покажем код.', { continueLabel: 'Далее' }); })
     .then(function () {
       var dock = qs('#trainerV2Dock') || qs('.trainer-v2-root');
       if (dock) dock.classList.add('cinema-neon-hud');
       qsa('#tv2NextBtn, #tv2ZenExitBtn').forEach(function (b) {
         b.style.pointerEvents = 'none'; b.style.opacity = '0.3';
       });
-      return wait(1200);
+      return self.waitForEl('.CodeMirror', 8000);
     })
-    .then(function () { return self.waitForEl('.CodeMirror', 8000); })
-
+    .then(function () {
+      var cond = qs('.tv2-task-content') || qs('#tv2TaskContent');
+      if (cond && conditionHtml) { cond.innerHTML = conditionHtml; }
+      return wait(200);
+    })
     .then(function () {
       var editorBox = qs('.tv2-editor-box');
-      return self.spotlightWithPrompt(editorBox, 'Редактор', 'Код вводится по сценарию с анимацией.');
+      return self.spotlightWithPrompt(editorBox, 'Редактор', 'Код вводится по сценарию с анимацией.', 'Далее');
     })
     .then(function () {
       return self.typeIntoCodeMirror(buggyCode);
     })
-    .then(function () { return wait(400); })
+    .then(function () { return self.showSubtitle('Код введён. Найди в нём ошибку.', { continueLabel: 'Далее' }); })
     .then(function () {
       var cmEl = qs('.CodeMirror');
       if (cmEl && cmEl.CodeMirror) { try { cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-error-line'); } catch (e) {} }
-      return self.showSubtitle('Ошибка в этой строке. Спросим помощника.');
+      return self.showSubtitle('Ошибка в подсвеченной строке. Посмотри, подумай. Потом спросим помощника.', { continueLabel: 'Далее' });
     })
-    .then(function () { return wait(600); })
 
     .then(function () {
-      return self.showSubtitle('Открываем окно помощника: вопрос и ответ по сценарию.');
+      return self.showSubtitle('Открываем окно помощника: введём вопрос, подождём «ответ» нейросети.', { continueLabel: 'Далее' });
     })
-    .then(function () { return wait(400); })
     .then(function () {
       return self._showDemoChatWindow(demoQuestion, demoAssistantReply);
     })
-    .then(function () { return wait(800); })
-    .then(function () {
-      return self.showSubtitle('Вопрос отправлен, ответ помощника получен.');
-    })
-    .then(function () { return wait(1000); })
     .then(function () {
       self._hideDemoChatWindow();
-      return wait(300);
+      return self.showSubtitle('Вопрос отправлен, ответ помощника получен. Закрываем окно.', { continueLabel: 'Далее' });
     })
 
     .then(function () {
@@ -807,18 +815,16 @@
         cmEl.CodeMirror.setValue(fixedCode);
         try { cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-fixed-line'); } catch (e) {}
       }
-      return self.showSubtitle(demoCorrectionSubtitle);
+      return self.showSubtitle(demoCorrectionSubtitle, { continueLabel: 'Далее' });
     })
-    .then(function () { return wait(800); })
     .then(function () {
       var cmEl = qs('.CodeMirror');
       if (cmEl && cmEl.CodeMirror) { try { cmEl.CodeMirror.removeLineClass(errorLineNum, 'background', 'cinema-fixed-line'); } catch (e) {} }
-      return wait(300);
+      return wait(200);
     })
-
     .then(function () {
       var runBtn = qs('.tv2-fab-outline');
-      return self.spotlightWithPrompt(runBtn, 'Запустить', 'Запускаем исправленный код.', 'Запустить');
+      return self.spotlightWithPrompt(runBtn, 'Запустить', 'Нажми «Запустить», чтобы выполнить исправленный код.', 'Запустить');
     })
     .then(function () {
       var runBtn = qs('.tv2-fab-outline');
@@ -828,7 +834,7 @@
     .then(function () {
       var terminalTab = qs('button[data-tab="terminal"]');
       if (terminalTab) self.simulateClick(terminalTab);
-      return wait(800);
+      return wait(600);
     })
     .then(function () {
       var answerEl = qs('#tv2AnswerInput');
@@ -837,17 +843,14 @@
     .then(function () {
       var answerEl = qs('#tv2AnswerInput');
       if (answerEl) { answerEl.value = correctAnswer; answerEl.dispatchEvent(new Event('input', { bubbles: true })); }
-      return wait(400);
+      return self.showSubtitle('Ответ введён. Нажми «Проверить».', { continueLabel: 'Проверить' });
     })
     .then(function () {
       var answerEl = qs('#tv2AnswerInput');
       if (answerEl) { answerEl.style.borderColor = '#0f0'; answerEl.style.boxShadow = '0 0 12px rgba(0,255,0,0.4)'; }
-      return self.showSubtitle('Ответ введён. Проверяем.', { continueLabel: 'Проверить' });
-    })
-    .then(function () {
       var checkBtn = qs('.tv2-fab-primary');
       if (checkBtn) self.simulateClick(checkBtn);
-      return wait(2500);
+      return wait(1800);
     })
     .then(function () { return self.flash(); })
     .then(function () { return self.showCorrectBadge(); })

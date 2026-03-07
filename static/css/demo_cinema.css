@@ -637,6 +637,13 @@ body.cinema-freeze { overflow: hidden !important; }
   background: rgba(80, 200, 120, 0.12);
   color: #b8e6c8;
 }
+.cinema-demo-chat-window-list .tv2-chat-bubble.cinema-demo-thinking {
+  color: rgba(184, 230, 200, 0.85);
+  animation: cinema-demo-pulse 0.9s ease-in-out infinite;
+}
+@keyframes cinema-demo-pulse {
+  50% { opacity: 0.7; }
+}
 
 /* ── Mobile ────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {

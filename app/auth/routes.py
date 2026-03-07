@@ -584,6 +584,7 @@ def demo_start():
     trainer_assistant_reply = ''
     trainer_buggy_code = ''
     trainer_fixed_code = ''
+    trainer_condition_html = ''
     trainer_error_line = 5
     try:
         import json as _json
@@ -602,6 +603,7 @@ def demo_start():
                 trainer_correction = (tr.get('correction_text') or trainer_correction).strip()
                 trainer_buggy_code = (tr.get('buggy_code') or '').strip().replace('\\n', '\n')
                 trainer_fixed_code = (tr.get('fixed_code') or '').strip().replace('\\n', '\n')
+                trainer_condition_html = (tr.get('condition_html') or '').strip()
                 if tr.get('error_line') is not None:
                     trainer_error_line = int(tr.get('error_line', 5))
     except Exception:
@@ -622,6 +624,7 @@ def demo_start():
         'trainerQuestion': trainer_question,
         'trainerBuggyCode': trainer_buggy_code,
         'trainerFixedCode': trainer_fixed_code,
+        'trainerConditionHtml': trainer_condition_html,
         'trainerErrorLine': trainer_error_line,
     }
 
