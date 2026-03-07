@@ -338,19 +338,9 @@
     });
   };
 
-  /* ── Controls ──────────────────────────────────────────────────── */
+  /* ── Controls: отключены (без «Пропустить тур» и точек сцен) ─────── */
   CE.prototype.buildControls = function () {
-    var self = this, wrap = addEl('div', 'cinema-controls');
-    self._controls = wrap;
-    var pips = addEl('div', 'cinema-progress-pip', wrap);
-    for (var i = 0; i < TOTAL_SCENES; i++) {
-      var p = addEl('div', 'cinema-pip', pips);
-      if (i < self.scene) p.classList.add('done');
-      if (i === self.scene) p.classList.add('current');
-    }
-    var skip = addEl('button', 'cinema-ctrl-btn', wrap);
-    skip.textContent = 'Пропустить тур';
-    skip.onclick = function () { self.endCinema(true); };
+    this._controls = null;
   };
   CE.prototype.endCinema = function (redirect) {
     this.running = false; this._cleanup(); this._removeInstantCover();

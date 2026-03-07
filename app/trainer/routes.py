@@ -5,7 +5,7 @@ import os
 from urllib.parse import urlencode
 from typing import Any
 
-from flask import render_template, request, abort, jsonify, send_file
+from flask import render_template, request, abort, jsonify, send_file, session
 from flask_login import login_required, current_user
 
 from app.trainer import trainer_bp
@@ -700,8 +700,13 @@ def trainer_submit_answer():
     task = Tasks.query.get(task_id)
     if not task:
         return jsonify({'success': False, 'error': 'task_not_found'}), 404
-        
-    is_correct = _check_answer(task.answer, user_answer)
+
+    expected_answer = task.answer
+    if getattr(user, 'is_demo_user', False) and getattr(task, 'site_task_id', None) == 'demo:trainer':
+        demo_ids = session.get('cinema_demo_ids') or {}
+        if demo_ids.get('trainerAnswer'):
+            expected_answer = str(demo_ids['trainerAnswer']).strip()
+    is_correct = _check_answer(expected_answer, user_answer)
     
     # Обновляем рейтинг
     new_rating = AnalyticsEngine.process_submission(
