@@ -510,23 +510,28 @@
                 </section>
             </div>
 
-            {% if chart_data %}
-            <section class="glass-panel" style="margin-bottom: 2rem;">
+            <section class="glass-panel" style="margin-bottom: 2rem;" id="section-statistics-chart">
                 <div class="panel-head">
                     <div>
                         <p class="eyebrow">выполнение заданий</p>
                         <h2>Процент выполнения по номерам</h2>
                     </div>
                 </div>
+                {% if chart_data %}
                 <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 1rem;">
                     Показаны только задания, по которым есть выполненные работы (всего: {{ chart_data|length }})
                 </p>
                 <div style="margin-top: 2rem;">
                     <canvas id="statisticsChart" style="max-height: 400px;"></canvas>
                 </div>
+                {% else %}
+                <p style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                    Нет данных для отображения. Выполните задания, чтобы увидеть статистику.
+                </p>
+                {% endif %}
             </section>
 
-            {% if can_edit is defined and can_edit %}
+            {% if chart_data and can_edit is defined and can_edit %}
             <section class="glass-panel" style="margin-bottom: 2rem;">
                 <div class="panel-head">
                     <div>
@@ -749,18 +754,6 @@
                     </div>
                 </div>
             </section>
-            {% else %}
-            <section class="glass-panel" style="margin-bottom: 2rem;">
-                <div class="panel-head">
-                    <div>
-                        <p class="eyebrow">выполнение заданий</p>
-                        <h2>Процент выполнения по номерам</h2>
-                    </div>
-                </div>
-                <p style="color: var(--text-muted); text-align: center; padding: 2rem;">
-                    Нет данных для отображения. Выполните задания, чтобы увидеть статистику.
-                </p>
-            </section>
             {% endif %}
             {% endif %}
 
@@ -875,6 +868,51 @@
             if (tabName === 'analytics' && !analyticsDataLoaded) loadAnalyticsTab();
         }
 
+        function isCinemaDemo() {
+            var meta = document.querySelector('meta[name="cinema-demo-ids"]');
+            return meta && meta.getAttribute('content') && meta.getAttribute('content').trim().length > 20;
+        }
+        function getDemoAnalyticsNodes() {
+            var topics = [
+                { name: 'Графы. Поиск путей', code: 'GRAPH-BASICS', task_number: 1, exam_points: 1 },
+                { name: 'Таблицы истинности', code: 'LOGIC-TRUTH', task_number: 2, exam_points: 1 },
+                { name: 'Базы данных (Excel/SQL)', code: 'DB-SEARCH', task_number: 3, exam_points: 1 },
+                { name: 'Кодирование (Фано)', code: 'INFO-ENCODING', task_number: 4, exam_points: 1 },
+                { name: 'Алгоритмы для исполнителей', code: 'ALG-EXEC', task_number: 5, exam_points: 1 },
+                { name: 'Циклы и Черепаха', code: 'ALG-LOOPS', task_number: 6, exam_points: 1 },
+                { name: 'Кодирование изображений/звука', code: 'INFO-MEDIA', task_number: 7, exam_points: 1 },
+                { name: 'Комбинаторика (слова)', code: 'COMBINATORICS', task_number: 8, exam_points: 1 },
+                { name: 'Электронные таблицы (сложные условия)', code: 'EXCEL-COND', task_number: 9, exam_points: 1 },
+                { name: 'Поиск в тексте (Word)', code: 'TEXT-SEARCH', task_number: 10, exam_points: 1 },
+                { name: 'Количество информации (пароли)', code: 'INFO-AMOUNT', task_number: 11, exam_points: 1 },
+                { name: 'Алгоритмы для исполнителей (строки)', code: 'ALG-STRINGS', task_number: 12, exam_points: 1 },
+                { name: 'IP-адресация и маски', code: 'NET-IP', task_number: 13, exam_points: 1 },
+                { name: 'Системы счисления', code: 'NUM-SYSTEMS', task_number: 14, exam_points: 1 },
+                { name: 'Алгебра логики (преобразования)', code: 'LOGIC-ADV', task_number: 15, exam_points: 1 },
+                { name: 'Рекурсия', code: 'ALG-RECURSION', task_number: 16, exam_points: 1 },
+                { name: 'Обработка последовательностей', code: 'ALG-SEQ', task_number: 17, exam_points: 1 },
+                { name: 'Динамическое программирование (робот)', code: 'DP-GRID', task_number: 18, exam_points: 1 },
+                { name: 'Теория игр (1 ход)', code: 'GAME-THEORY-1', task_number: 19, exam_points: 1 },
+                { name: 'Теория игр (2 хода)', code: 'GAME-THEORY-2', task_number: 20, exam_points: 1 },
+                { name: 'Теория игр (анализ)', code: 'GAME-THEORY-3', task_number: 21, exam_points: 1 },
+                { name: 'Многопоточность (Excel/Python)', code: 'PARALLEL-PROC', task_number: 22, exam_points: 1 },
+                { name: 'Динамическое программирование (кол-во путей)', code: 'DP-COUNT', task_number: 23, exam_points: 1 },
+                { name: 'Обработка символьных строк', code: 'STRINGS-HARD', task_number: 24, exam_points: 1 },
+                { name: 'Теория чисел (делители/маски)', code: 'NUM-THEORY', task_number: 25, exam_points: 1 },
+                { name: 'Сортировка и жадные алгоритмы', code: 'ALG-GREEDY', task_number: 26, exam_points: 2 },
+                { name: 'Анализ данных (эффективные алгоритмы)', code: 'ALG-OPTIMIZATION', task_number: 27, exam_points: 2 }
+            ];
+            return topics.map(function(t) {
+                return {
+                    node_name: t.name,
+                    node_code: t.code,
+                    task_number: t.task_number,
+                    exam_points: t.exam_points,
+                    rating: 800 + Math.floor(Math.random() * 1200),
+                    streak_days: Math.random() > 0.7 ? Math.floor(Math.random() * 5) : 0
+                };
+            });
+        }
         function loadAnalyticsTab() {
             var loadingEl = document.getElementById('analytics-loading');
             var errorEl = document.getElementById('analytics-error');
@@ -894,6 +932,9 @@
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     loadingEl.style.display = 'none';
+                    if (isCinemaDemo() && (!data.success || !data.nodes || data.nodes.length === 0)) {
+                        data = { success: true, nodes: getDemoAnalyticsNodes(), predicted_primary_score: 12, grading: data.grading || {}, course_slug: data.course_slug || 'ege' };
+                    }
                     if (!data.success || !data.nodes) {
                         errorEl.style.display = 'block';
                         return;

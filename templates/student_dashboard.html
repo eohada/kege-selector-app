@@ -21,6 +21,9 @@
     </script>
 </head>
 <body data-cinema-scene="dashboard">
+  {% if request.args.get('cinema_scene') %}
+  <div id="cinema-instant-cover" class="cinema-instant-cover"></div>
+  {% endif %}
   <div class="app-layout">
     {% set active_page = 'dashboard' %}
     {% include '_sidebar.html' %}

@@ -59,6 +59,7 @@
   function removeEl(el) { if (el && el.parentNode) el.parentNode.removeChild(el); }
 
   function placeInstantCover() {
+    if (document.getElementById('cinema-instant-cover')) return;
     if (lsGet(LS_ACTIVE) !== 'true') return;
     if (lsGet(LS_SCENE) === '0') return;
     var c = document.createElement('div');
@@ -229,7 +230,7 @@
     s.hole.classList.add('cinema-spotlight-exit');
     if (s.lbl) s.lbl.classList.add('cinema-spotlight-exit');
     if (s.promptWrap) s.promptWrap.classList.add('cinema-spotlight-exit');
-    self._t(function () { removeAll(); }, 380);
+    self._t(function () { removeAll(); }, 320);
   };
 
   CE.prototype.spotlightWithPrompt = function (selector, label, text, btnLabel) {
@@ -267,7 +268,7 @@
         }
 
         doCreate(el, label, text, btnLabel, resolve);
-      }, 700);
+      }, 120);
 
       function doCreate(el, label, text, btnLabel, resolve) {
         var rect = el.getBoundingClientRect();
@@ -369,18 +370,60 @@
     });
   };
 
+  /** Анимация замены фрагмента в строке редактора: стирание неправильного, ввод правильного. */
+  CE.prototype.replaceLineFragmentWithAnimation = function (cm, lineIndex0, wrongFragment, rightFragment) {
+    var self = this;
+    var eraseMs = 45;
+    var typeMs = 45;
+    return new Promise(function (resolve) {
+      if (!cm) return resolve();
+      var line = cm.getLine(lineIndex0) || '';
+      var pos = wrongFragment ? line.indexOf(wrongFragment) : -1;
+      if (pos === -1) {
+        if (rightFragment) cm.replaceRange(rightFragment, { line: lineIndex0, ch: line.length }, { line: lineIndex0, ch: line.length });
+        return resolve();
+      }
+      var totalErase = wrongFragment.length;
+      var totalType = (rightFragment || '').length;
+      var eraseStep = 0;
+
+      function doErase() {
+        if (!self.running) return resolve();
+        if (eraseStep >= totalErase) return doType();
+        var from = pos + totalErase - 1 - eraseStep;
+        cm.replaceRange('', { line: lineIndex0, ch: from }, { line: lineIndex0, ch: from + 1 });
+        eraseStep++;
+        self._t(doErase, eraseMs);
+      }
+
+      var typedCount = 0;
+      function doType() {
+        if (!self.running || totalType === 0) return resolve();
+        if (typedCount >= totalType) return resolve();
+        var at = pos + typedCount;
+        cm.replaceRange(rightFragment[typedCount], { line: lineIndex0, ch: at }, { line: lineIndex0, ch: at });
+        typedCount++;
+        self._t(doType, typeMs);
+      }
+
+      if (totalErase === 0) doType();
+      else self._t(doErase, 80);
+    });
+  };
+
   CE.prototype.showSectionIntro = function (description, btnLabel) {
     var self = this;
     btnLabel = btnLabel || 'Далее';
-    return new Promise(function (resolve) {
-      self._removeBlockingOverlay();
-      document.body.classList.add('cinema-freeze');
-      var ov = addEl('div', 'cinema-overlay'); ov.classList.add('visible');
-      var wrap = addEl('div', 'cinema-typewriter-wrap');
-      var textEl = addEl('div', 'cinema-typewriter', wrap);
-      var btn = addEl('button', 'cinema-continue-btn', wrap);
-      btn.textContent = btnLabel;
-      self.typewriter(description, textEl)
+    return self.playEntryTransition('glitch').then(function () {
+      return new Promise(function (resolve) {
+        self._removeBlockingOverlay();
+        document.body.classList.add('cinema-freeze');
+        var ov = addEl('div', 'cinema-overlay'); ov.classList.add('visible');
+        var wrap = addEl('div', 'cinema-typewriter-wrap');
+        var textEl = addEl('div', 'cinema-typewriter', wrap);
+        var btn = addEl('button', 'cinema-continue-btn', wrap);
+        btn.textContent = btnLabel;
+        self.typewriter(description, textEl)
       .then(function () {
         if (!self.running) return;
         requestAnimationFrame(function () {
@@ -390,10 +433,11 @@
           btn.onclick = null;
           self.typewriterErase(textEl)
           .then(function () {
+            textEl.textContent = '';
             wrap.classList.add('exit');
             setTimeout(function () {
               removeEl(wrap);
-              removeEl(ov);
+              /* ov оставляем — экран остаётся чёрным до navigateTo и перехода */
               document.body.classList.remove('cinema-freeze');
               resolve();
             }, 350);
@@ -434,8 +478,8 @@
   /* ═══════════════════════════════════════════════════════════════════
      TRANSITIONS
      ═══════════════════════════════════════════════════════════════════ */
-  CE.prototype.playEntryTransition = function () {
-    var self = this, type = this.transition;
+  CE.prototype.playEntryTransition = function (overrideType) {
+    var self = this, type = overrideType != null ? overrideType : this.transition;
     this._removeInstantCover();
     if (!type) return Promise.resolve();
     lsRemove(LS_TRANSITION);
@@ -575,7 +619,7 @@
     .then(function () {
       if (!self.running) return;
       return self.showSectionIntro(SECTION_INTRO.schedule, 'К расписанию')
-        .then(function () { if (self.running) self.advance(2, '/schedule', 'swipeLeft'); });
+        .then(function () { if (self.running) self.advance(2, '/schedule', 'glitch'); });
     });
   };
 
@@ -594,7 +638,7 @@
     .then(function () {
       if (!self.running) return;
       return self.showSectionIntro(SECTION_INTRO.theory, 'К теории')
-        .then(function () { if (self.running) self.advance(3, '/theory', 'swipeLeft'); });
+        .then(function () { if (self.running) self.advance(3, '/theory', 'glitch'); });
     });
   };
 
@@ -622,7 +666,7 @@
       if (card) {
         var href = card.getAttribute('href');
         if (href) {
-          lsSet(LS_TRANSITION, 'swipeLeft');
+          lsSet(LS_TRANSITION, 'glitch');
           var ov = addEl('div', 'cinema-overlay'); ov.classList.add('visible');
           self.running = false;
           setTimeout(function () { window.location.href = href; }, 400);
@@ -675,7 +719,7 @@
       var btn = qs('.demo-highlight-begin') || qs('.demo-btn-begin');
       if (btn) {
         var href = btn.getAttribute('href');
-        if (href) { lsSet(LS_TRANSITION, 'swipeLeft'); var ov = addEl('div', 'cinema-overlay'); ov.classList.add('visible');
+        if (href) { lsSet(LS_TRANSITION, 'glitch'); var ov = addEl('div', 'cinema-overlay'); ov.classList.add('visible');
           self.running = false; setTimeout(function () { window.location.href = href; }, 400); }
       }
     });
@@ -692,7 +736,7 @@
       if (startBtn) {
         return self.showSubtitle('Ты внутри задания. Нажми кнопку, чтобы начать выполнение.', { continueLabel: 'Начать выполнение' })
         .then(function () {
-          lsSet(LS_TRANSITION, 'fade');
+          lsSet(LS_TRANSITION, 'glitch');
           self.simulateClick(startBtn);
           self.running = false;
         });
@@ -736,10 +780,10 @@
       var lid = self.ids.lessonId;
       if (lid) {
         return self.showSectionIntro(SECTION_INTRO.lesson, 'В урок')
-          .then(function () { if (self.running) self.advance(5, '/lesson/' + lid + '/classwork-tasks', 'swipeLeft'); });
+          .then(function () { if (self.running) self.advance(5, '/lesson/' + lid + '/classwork-tasks', 'glitch'); });
       }
       return self.showSectionIntro(SECTION_INTRO.trainer, 'В тренажёр')
-        .then(function () { if (self.running) self.advance(6, '/trainer/v2', 'hyperJump'); });
+        .then(function () { if (self.running) self.advance(6, '/trainer/v2', 'glitch'); });
     });
   };
 
@@ -809,7 +853,7 @@
         var sid = self.ids.studentId;
         if (sid) {
           return self.showSectionIntro(SECTION_INTRO.analytics, 'К аналитике')
-            .then(function () { if (self.running) self.advance(7, '/student/' + sid + '/analytics', 'swipeLeft'); });
+            .then(function () { if (self.running) self.advance(7, '/student/' + sid + '/analytics', 'glitch'); });
         }
         lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneCreatorProfile();
         return;
@@ -822,7 +866,7 @@
       else if (tn) url += '?task_type=' + tn;
       if (exam) url += (url.indexOf('?') !== -1 ? '&' : '?') + 'exam=' + encodeURIComponent(exam);
       return self.showSectionIntro(SECTION_INTRO.trainer, 'В тренажёр')
-        .then(function () { if (self.running) self.advance(6, url, 'hyperJump'); });
+        .then(function () { if (self.running) self.advance(6, url, 'glitch'); });
     });
   };
 
@@ -1034,10 +1078,29 @@
     })
     .then(function () {
       var cmEl = qs('.CodeMirror');
-      if (cmEl && cmEl.CodeMirror) {
-        try { cmEl.CodeMirror.removeLineClass(errorLineNum, 'background', 'cinema-error-line'); } catch (e) {}
-        cmEl.CodeMirror.setValue(fixedCode);
-        try { cmEl.CodeMirror.addLineClass(errorLineNum, 'background', 'cinema-fixed-line'); } catch (e) {}
+      var cm = cmEl && cmEl.CodeMirror ? cmEl.CodeMirror : null;
+      if (cm) {
+        try { cm.removeLineClass(errorLineNum, 'background', 'cinema-error-line'); } catch (e) {}
+        var lineIdx = errorLineNum;
+        var buggyLines = buggyCode.split('\n');
+        var fixedLines = fixedCode.split('\n');
+        var buggyLine = buggyLines[lineIdx] || '';
+        var fixedLine = fixedLines[lineIdx] || '';
+        var first = 0, last = -1;
+        for (var i = 0; i < Math.max(buggyLine.length, fixedLine.length); i++) {
+          if (buggyLine[i] !== fixedLine[i]) { if (last < 0) first = i; last = i; }
+        }
+        var wrongF = last >= 0 ? buggyLine.substring(first, last + 1) : '';
+        var rightF = last >= 0 ? fixedLine.substring(first, last + 1) : '';
+        if (wrongF || rightF) {
+          return self.replaceLineFragmentWithAnimation(cm, lineIdx, wrongF, rightF)
+            .then(function () {
+              try { cm.addLineClass(errorLineNum, 'background', 'cinema-fixed-line'); } catch (e) {}
+              var editorBox = qs('.tv2-editor-box');
+              return self.spotlightWithPrompt(editorBox, 'Код исправлен', demoCorrectionSubtitle, 'Далее');
+            });
+        }
+        try { cm.addLineClass(errorLineNum, 'background', 'cinema-fixed-line'); } catch (e) {}
       }
       var editorBox = qs('.tv2-editor-box');
       return self.spotlightWithPrompt(editorBox, 'Код исправлен', demoCorrectionSubtitle, 'Далее');
@@ -1109,7 +1172,7 @@
       var sid = self.ids.studentId;
       if (sid) {
         return self.showSectionIntro(SECTION_INTRO.analytics, 'К аналитике')
-          .then(function () { if (self.running) self.advance(7, '/student/' + sid + '/analytics', 'swipeLeft'); });
+          .then(function () { if (self.running) self.advance(7, '/student/' + sid + '/analytics', 'glitch'); });
       }
       lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneCreatorProfile();
     });
@@ -1118,6 +1181,8 @@
   /* ── 7: Analytics — hide radar, show both tabs ─────────────────── */
   CE.prototype.sceneAnalytics = function () {
     var self = this;
+    var chartsGrid = qs('.charts-grid');
+    if (chartsGrid) chartsGrid.style.gridTemplateColumns = '1fr';
     self.playEntryTransition()
     .then(function () { return wait(400); })
     .then(function () {
@@ -1126,8 +1191,6 @@
         var panel = radarPanel.closest('.glass-panel');
         if (panel) panel.style.display = 'none';
       }
-      var chartsGrid = qs('.charts-grid');
-      if (chartsGrid) chartsGrid.style.gridTemplateColumns = '1fr';
       return wait(200);
     })
     .then(function () {
@@ -1164,7 +1227,14 @@
       return self.spotlightWithPrompt(el, 'Прогноз балла', 'Система прогнозирует твой балл на основе рейтинга по всем темам.', 'Финал');
     })
     .then(function () {
-      if (self.running) { lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneCreatorProfile(); }
+      if (!self.running) return;
+      var profileUrl = self.ids.creatorProfileUrl && self.ids.creatorProfileUrl.trim();
+      if (profileUrl) {
+        var sep = profileUrl.indexOf('?') !== -1 ? '&' : '?';
+        self.advance(8, profileUrl + sep + 'cinema_scene=8', 'glitch');
+      } else {
+        lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneCreatorProfile();
+      }
     });
   };
 
