@@ -1471,7 +1471,36 @@ def student_analytics(student_id):
         logger.error(f"Error loading student {student_id}: {e}", exc_info=True)
         flash('Ошибка при загрузке данных ученика', 'danger')
         return redirect(url_for('main.dashboard'))
-    
+
+    if getattr(current_user, 'is_demo_user', False):
+        charts_context = {
+            'trend_dates': '[]', 'trend_scores': '[]',
+            'skill_labels': '[]', 'skill_values': '[]',
+            'attendance_labels': '[]', 'attendance_values': '[]',
+            'heatmap_dates': '[]', 'heatmap_values': '[]', 'heatmap_statuses': '[]'
+        }
+        metrics_demo = {'current_gpa': 0, 'delta': 0, 'completed_lessons': 0, 'total_lessons': 0}
+        gpa_demo = {'homework': 0, 'exam': 0}
+        try:
+            return render_template(
+                'student_stats_unified.html',
+                student=student,
+                charts=charts_context,
+                metrics=metrics_demo,
+                gpa_by_type=gpa_demo,
+                problem_topics=[],
+                chart_data=[],
+                punctuality={},
+                lessons_late_count=0,
+                can_edit=False,
+                active_lesson=None,
+                active_student=None
+            )
+        except Exception as e:
+            logger.error(f"Error rendering analytics for demo user {student_id}: {e}", exc_info=True)
+            flash('Ошибка при отображении статистики', 'danger')
+            return redirect(url_for('students.student_profile', student_id=student_id))
+
     try:
         scope = get_user_scope(current_user)
         if not scope['can_see_all']:
@@ -1487,28 +1516,6 @@ def student_analytics(student_id):
         logger.error(f"Error checking access for student {student_id}: {e}", exc_info=True)
         flash('Ошибка при проверке доступа', 'danger')
         return redirect(url_for('main.dashboard'))
-
-    if getattr(current_user, 'is_demo_user', False):
-        charts_context = {
-            'trend_dates': '[]', 'trend_scores': '[]',
-            'skill_labels': '[]', 'skill_values': '[]',
-            'attendance_labels': '[]', 'attendance_values': '[]',
-            'heatmap_dates': '[]', 'heatmap_values': '[]', 'heatmap_statuses': '[]'
-        }
-        metrics_demo = {'current_gpa': 0, 'delta': 0, 'completed_lessons': 0, 'total_lessons': 0}
-        gpa_demo = {'homework': 0, 'exam': 0}
-        return render_template(
-            'student_stats_unified.html',
-            student=student,
-            charts=charts_context,
-            metrics=metrics_demo,
-            gpa_by_type=gpa_demo,
-            problem_topics=[],
-            chart_data=[],
-            punctuality={},
-            lessons_late_count=0,
-            can_edit=False
-        )
 
     try:
         stats = StatsService(student_id)
