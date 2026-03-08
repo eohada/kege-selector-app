@@ -666,7 +666,8 @@ def demo_start():
             dest = dest + ('&' if '?' in dest else '?') + 'cinema_scene=' + cinema_scene
         response = make_response(redirect(dest))
     else:
-        response = make_response(redirect(url_for('main.student_dashboard')))
+        dest = url_for('main.student_dashboard') + ('&' if '?' in url_for('main.student_dashboard') else '?') + 'cinema_scene=0'
+        response = make_response(redirect(dest))
     response.set_cookie('is_demo', 'true', max_age=60*60*24)
     response.set_cookie('cinemaMode', 'prologue', max_age=60*60*24)
     return response
