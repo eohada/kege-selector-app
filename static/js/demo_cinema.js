@@ -639,7 +639,8 @@
       return self.showSubtitle('Все уроки — в одном расписании. Никаких накладок и забытых занятий.');
     })
     .then(function () {
-      var chip = qs('.lesson-chip') || qs('.day-col__body') || qs('#scheduleGrid');
+      var chip = qs('.lesson-chip');
+      if (!chip) chip = qs('.schedule-grid-wrap') || qs('#scheduleGrid');
       return self.spotlightWithPrompt(chip, 'Карточка урока', 'Расписание помогает видеть все занятия на неделе. Ничего не потеряешь.', 'К теории');
     })
     .then(function () {
@@ -673,10 +674,12 @@
       if (card) {
         var href = card.getAttribute('href');
         if (href) {
+          lsSet(LS_SCENE, '3');
           lsSet(LS_TRANSITION, 'glitch');
+          var url = href + (href.indexOf('?') !== -1 ? '&' : '?') + 'cinema_scene=3';
           var ov = addEl('div', 'cinema-overlay'); ov.classList.add('visible');
           self.running = false;
-          setTimeout(function () { window.location.href = href; }, 400);
+          setTimeout(function () { window.location.href = url; }, 400);
           return;
         }
       }
