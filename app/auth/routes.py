@@ -639,6 +639,11 @@ def demo_start():
         except Exception:
             pass
 
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     session['cinema_demo_ids'] = {
         'exam': exam,
         'submissionId': demo_submission_id,

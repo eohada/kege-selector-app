@@ -61,6 +61,9 @@
             margin-bottom: 2rem;
             align-items: start; 
         }
+        .charts-grid.charts-grid-full {
+            grid-template-columns: 1fr;
+        }
         
         .chart-container {
             display: flex;
@@ -483,7 +486,7 @@
                 </div>
             </div>
 
-            <div class="charts-grid">
+            <div class="charts-grid {% if hide_skills_radar %}charts-grid-full{% endif %}">
                 
                 <section class="glass-panel">
                     <div class="panel-head">
@@ -497,6 +500,7 @@
                     </div>
                 </section>
 
+                {% if not hide_skills_radar %}
                 <section class="glass-panel">
                     <div class="panel-head">
                         <div>
@@ -508,6 +512,7 @@
                         <canvas id="skillsChart"></canvas>
                     </div>
                 </section>
+                {% endif %}
             </div>
 
             <section class="glass-panel" style="margin-bottom: 2rem;" id="section-statistics-chart">

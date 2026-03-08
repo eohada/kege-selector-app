@@ -1198,50 +1198,48 @@
   CE.prototype.sceneAnalytics = function () {
     var self = this;
     self.playEntryTransition()
-    .then(function () { return wait(900); })
+    .then(function () { return wait(500); })
     .then(function () {
       return self.showSubtitle('Вся аналитика подготовки — в одном месте. Каждое действие на платформе учитывается.');
     })
     .then(function () {
       var el = qs('.metrics-grid');
       if (el) return self.spotlightWithPrompt(el, '', 'GPA, процент выполнения, количество уроков — всё обновляется в реальном времени.', 'Далее');
-      return wait(400);
+      return wait(200);
     })
     .then(function () {
       var panel = qs('#trendChart') ? qs('#trendChart').closest('.glass-panel') : null;
       if (panel) return self.spotlightWithPrompt(panel, '', 'График динамики: изменение процента выполнения заданий по неделям.', 'Далее');
-      return wait(400);
-    })
-    .then(function () {
-      var panel = qs('#skillsChart') ? qs('#skillsChart').closest('.glass-panel') : null;
-      if (panel) return self.spotlightWithPrompt(panel, '', 'Радар навыков: уровень владения по темам ЕГЭ.', 'Далее');
-      return wait(400);
+      return wait(200);
     })
     .then(function () {
       var panel = qs('#statisticsChart') ? qs('#statisticsChart').closest('.glass-panel') : null;
       if (panel) return self.spotlightWithPrompt(panel, '', (examTexts(self.ids).analyticsCharts || 'Процент выполнения по номерам заданий.'), 'Далее');
-      return wait(400);
+      return wait(200);
     })
     .then(function () {
       var tabBtn = qs('.stats-tab[data-tab="analytics"]');
       if (tabBtn) {
         self.simulateClick(tabBtn);
-        return wait(3200);
+        return wait(1800);
       }
-      return wait(600);
+      return wait(400);
     })
     .then(function () {
       var table = qs('#analyticsNodesTable') || qs('.analytics-nodes-table');
       if (table) return self.spotlightWithPrompt(table, '', 'Рейтинг по каждой теме обновляется после каждого решения. Чем выше — тем увереннее ты в теме.', 'Далее');
-      return wait(400);
+      return wait(200);
     })
     .then(function () {
+      var card = qs('.analytics-score-card');
+      if (card) return self.spotlightWithPrompt(card, '', 'Система прогнозирует балл на основе рейтинга по всем темам.', 'К создателю');
       var el = qs('#analyticsPredictedScore');
       if (el) return self.spotlightWithPrompt(el, '', 'Система прогнозирует балл на основе рейтинга по всем темам.', 'К создателю');
-      return wait(400);
+      return wait(200);
     })
     .then(function () {
       if (!self.running) return;
+      self._clearCurrentSpotlight(null, true);
       var url = null;
       var cid = self.ids.creatorStudentId;
       if (cid) {

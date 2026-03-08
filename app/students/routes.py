@@ -1473,21 +1473,17 @@ def student_analytics(student_id):
         return redirect(url_for('main.dashboard'))
 
     if getattr(current_user, 'is_demo_user', False):
-        demo_skill_labels = [
-            'Графы. Поиск путей', 'Таблицы истинности', 'Базы данных (Excel/SQL)', 'Кодирование (Фано)',
-            'Алгоритмы для исполнителей', 'Циклы и Черепаха', 'Кодирование изображений/звука', 'Комбинаторика (слова)',
-            'Электронные таблицы (сложные условия)', 'Поиск в тексте (Word)', 'Количество информации (пароли)',
-            'Алгоритмы для исполнителей (строки)', 'IP-адресация и маски', 'Системы счисления',
-            'Алгебра логики (преобразования)', 'Рекурсия', 'Обработка последовательностей',
-            'Динамическое программирование (робот)', 'Теория игр (1 ход)', 'Теория игр (2 хода)',
-            'Теория игр (анализ)', 'Многопоточность (Excel/Python)', 'Динамическое программирование (кол-во путей)',
-            'Обработка символьных строк', 'Теория чисел (делители/маски)', 'Сортировка и жадные алгоритмы',
-            'Анализ данных (эффективные алгоритмы)'
-        ]
-        demo_skill_values = [65, 72, 58, 80, 70, 75, 62, 68, 78, 55, 82, 71, 60, 74, 69, 66, 73, 77, 64, 70, 68, 72, 65, 79, 63, 85, 88]
+        from datetime import datetime, timedelta
+        _now = datetime.utcnow()
+        demo_trend_dates = []
+        demo_trend_scores = []
+        for w in range(12, 0, -1):
+            d = _now - timedelta(days=w * 7)
+            demo_trend_dates.append(d.strftime('%d.%m'))
+            demo_trend_scores.append(round(55 + (12 - w) * 2 + (w % 3), 1))
         demo_chart_data = []
         for i in range(1, 28):
-            pct = (demo_skill_values[i - 1] if i <= len(demo_skill_values) else 70) + (i % 5) - 2
+            pct = 70 + (i % 5) - 2
             pct = max(40, min(98, pct))
             color = '#ef4444' if pct < 40 else '#eab308' if pct < 80 else '#22c55e'
             demo_chart_data.append({
@@ -1495,9 +1491,10 @@ def student_analytics(student_id):
                 'color': color, 'auto_correct': 0, 'auto_total': 0, 'manual_correct': 0, 'manual_incorrect': 0
             })
         charts_context = {
-            'trend_dates': '[]', 'trend_scores': '[]',
-            'skill_labels': json.dumps(demo_skill_labels, ensure_ascii=False),
-            'skill_values': json.dumps(demo_skill_values),
+            'trend_dates': json.dumps(demo_trend_dates, ensure_ascii=False),
+            'trend_scores': json.dumps(demo_trend_scores),
+            'skill_labels': '[]',
+            'skill_values': '[]',
             'attendance_labels': '[]', 'attendance_values': '[]',
             'heatmap_dates': '[]', 'heatmap_values': '[]', 'heatmap_statuses': '[]'
         }
@@ -1516,7 +1513,8 @@ def student_analytics(student_id):
                 lessons_late_count=0,
                 can_edit=False,
                 active_lesson=None,
-                active_student=None
+                active_student=None,
+                hide_skills_radar=True
             )
         except Exception as e:
             logger.error(f"Error rendering analytics for demo user {student_id}: {e}", exc_info=True)
