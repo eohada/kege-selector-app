@@ -616,6 +616,18 @@ def demo_start():
     except Exception:
         pass
 
+    creator_user = User.query.filter_by(role='creator').first()
+    creator_name = 'Команда платформы'
+    creator_profile_url = None
+    if creator_user:
+        creator_name = (getattr(creator_user, 'username', None) or getattr(creator_user, 'email', None) or creator_name).strip() or creator_name
+        try:
+            st = Student.query.filter_by(user_id=creator_user.id).first()
+            if st:
+                creator_profile_url = url_for('students.student_analytics', student_id=st.student_id)
+        except Exception:
+            pass
+
     session['cinema_demo_ids'] = {
         'exam': exam,
         'submissionId': demo_submission_id,
@@ -633,10 +645,12 @@ def demo_start():
         'trainerFixedCode': trainer_fixed_code,
         'trainerConditionHtml': trainer_condition_html,
         'trainerErrorLine': trainer_error_line,
+        'creatorName': creator_name,
+        'creatorProfileUrl': creator_profile_url,
     }
 
     cinema_scene = request.args.get('cinema_scene', '').strip()
-    if cinema_scene in ('1', '2', '3', '4', '5', '6', '7', '8'):
+    if cinema_scene in ('1', '2', '3', '4', '5', '6', '7', '8', '9'):
         dest = url_for('main.student_dashboard')
         if cinema_scene == '3':
             dest = url_for('theory.theory_index')
@@ -646,10 +660,8 @@ def demo_start():
             dest = url_for('lessons.lesson_classwork_view', lesson_id=demo_lesson_id) + '?cinema_scene=5'
         elif cinema_scene == '6' and trainer_task:
             dest = url_for('trainer.trainer_v2', task_id=trainer_task.task_id) + '?cinema_scene=6&exam=' + exam
-        elif cinema_scene == '7' and demo_student.student_id:
-            dest = url_for('students.student_analytics', student_id=demo_student.student_id) + '?cinema_scene=7'
-        elif cinema_scene == '8' and demo_student.student_id:
-            dest = url_for('students.student_analytics', student_id=demo_student.student_id) + '?cinema_scene=8'
+        elif cinema_scene in ('7', '8', '9') and demo_student.student_id:
+            dest = url_for('students.student_analytics', student_id=demo_student.student_id) + '?cinema_scene=' + cinema_scene
         if cinema_scene in ('1', '2'):
             dest = dest + ('&' if '?' in dest else '?') + 'cinema_scene=' + cinema_scene
         response = make_response(redirect(dest))

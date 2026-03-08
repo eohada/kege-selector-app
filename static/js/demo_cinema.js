@@ -5,7 +5,7 @@
 (function () {
   'use strict';
 
-  var TOTAL_SCENES  = 9;
+  var TOTAL_SCENES  = 10;
   var LS_ACTIVE     = 'cinemaActive';
   var LS_SCENE      = 'cinemaScene';
   var LS_TRANSITION = 'cinemaTransition';
@@ -38,6 +38,17 @@
     },
   };
   function examTexts(ids) { var exam = (ids && ids.exam) || 'ege'; return TEXTS[exam] || TEXTS.ege; }
+
+  var SECTION_INTRO = {
+    schedule: 'Расписание — все уроки в одном месте. Никаких накладок и забытых занятий.',
+    theory: 'Теория — конспекты по каждому заданию ЕГЭ. Открой и посмотри.',
+    submissions: 'Задания от преподавателя. Дедлайны, условия — всё по-настоящему.',
+    lesson: 'Классная комната — конспект, задания, материалы и диалог в одном уроке.',
+    trainer: 'AI-тренажёр — пиши код, ищи ошибку, спрашивай помощника, проверяй ответ.',
+    analytics: 'Аналитика — рейтинги по темам, прогноз балла и динамика успеваемости.',
+    creator: 'Кто создал платформу — знакомство с автором.',
+    final: 'Финал — платформа готова. Твоя сотка — вопрос дисциплины и алгоритма.'
+  };
 
   function addEl(tag, cls, parent) {
     var el = document.createElement(tag);
@@ -80,10 +91,39 @@
   CE.prototype._cleanup = function () {
     this._clearT();
     this._clearCurrentSpotlight(null, true);
+    this._removeBlockingOverlay();
     this._els.forEach(function (el) { removeEl(el); });
     this._els = [];
     qsa('.cinema-neon-hud').forEach(function (e) { e.classList.remove('cinema-neon-hud'); });
     document.body.classList.remove('cinema-freeze');
+  };
+
+  CE.prototype._removeBlockingOverlay = function () {
+    var el = document.getElementById('cinema-blocking-overlay');
+    if (el && el.parentNode) removeEl(el);
+  };
+
+  CE.prototype._updateBlockingOverlay = function (left, top, w, h) {
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var el = document.getElementById('cinema-blocking-overlay');
+    if (!el) {
+      el = addEl('div', 'cinema-blocking-overlay');
+      el.id = 'cinema-blocking-overlay';
+    }
+    var r = left + w, b = top + h;
+    var poly = 'polygon(0 0,' + vw + 'px 0,' + vw + 'px ' + top + 'px,' + r + 'px ' + top + 'px,' + r + 'px ' + b + 'px,' + left + 'px ' + b + 'px,' + left + 'px ' + top + 'px,' + vw + 'px ' + top + 'px,' + vw + 'px ' + vh + 'px,0 ' + vh + 'px,0 0)';
+    el.style.clipPath = poly;
+    el.style.webkitClipPath = poly;
+  };
+
+  CE.prototype._showBlockingOverlayFull = function () {
+    var el = document.getElementById('cinema-blocking-overlay');
+    if (!el) {
+      el = addEl('div', 'cinema-blocking-overlay');
+      el.id = 'cinema-blocking-overlay';
+    }
+    el.style.clipPath = 'none';
+    el.style.webkitClipPath = 'none';
   };
   CE.prototype._removeInstantCover = function () {
     var c = document.getElementById('cinema-instant-cover');
@@ -111,6 +151,7 @@
     var btnLabel = opts.continueLabel || 'Далее';
 
     return new Promise(function (resolve) {
+      self._showBlockingOverlayFull();
       var wrap = addEl('div', 'cinema-subtitle-wrap');
       var sub  = addEl('div', 'cinema-subtitle', wrap);
       sub.textContent = text;
@@ -163,6 +204,7 @@
       if (lt > vh - 80) lt = Math.max(8, top - 40);
       s.lbl.style.top = lt + 'px';
     }
+    this._updateBlockingOverlay(left, top, w, h);
   };
 
   CE.prototype._clearCurrentSpotlight = function (onDone, immediate) {
@@ -176,6 +218,7 @@
       if (s.hole && s.hole.parentNode) removeEl(s.hole);
       if (s.lbl && s.lbl.parentNode) removeEl(s.lbl);
       if (s.promptWrap && s.promptWrap.parentNode) removeEl(s.promptWrap);
+      self._showBlockingOverlayFull();
       if (onDone) onDone();
     }
 
@@ -264,6 +307,8 @@
         promptBtn.textContent = btnLabel;
         self._els.push(promptWrap);
 
+        self._updateBlockingOverlay(left, top, w, h);
+
         requestAnimationFrame(function () {
           hole.classList.add('visible', 'pulse');
           if (lbl) lbl.classList.add('visible');
@@ -304,6 +349,57 @@
         self._t(tick, TYPEWRITER_MS);
       }
       self._t(tick, 300);
+    });
+  };
+
+  CE.prototype.typewriterErase = function (container) {
+    var self = this;
+    return new Promise(function (resolve) {
+      var span = container && container.querySelector ? container.querySelector('span:not(.cinema-cursor)') : (container && container.firstChild);
+      if (!span) return resolve();
+      var full = span.textContent || '';
+      var len = full.length;
+      function tick() {
+        if (!self.running || len <= 0) { return resolve(); }
+        len--;
+        span.textContent = full.substring(0, len);
+        self._t(tick, TYPEWRITER_MS);
+      }
+      self._t(tick, 50);
+    });
+  };
+
+  CE.prototype.showSectionIntro = function (description, btnLabel) {
+    var self = this;
+    btnLabel = btnLabel || 'Далее';
+    return new Promise(function (resolve) {
+      self._removeBlockingOverlay();
+      document.body.classList.add('cinema-freeze');
+      var ov = addEl('div', 'cinema-overlay'); ov.classList.add('visible');
+      var wrap = addEl('div', 'cinema-typewriter-wrap');
+      var textEl = addEl('div', 'cinema-typewriter', wrap);
+      var btn = addEl('button', 'cinema-continue-btn', wrap);
+      btn.textContent = btnLabel;
+      self.typewriter(description, textEl)
+      .then(function () {
+        if (!self.running) return;
+        requestAnimationFrame(function () {
+          btn.classList.add('visible');
+        });
+        btn.onclick = function () {
+          btn.onclick = null;
+          self.typewriterErase(textEl)
+          .then(function () {
+            wrap.classList.add('exit');
+            setTimeout(function () {
+              removeEl(wrap);
+              removeEl(ov);
+              document.body.classList.remove('cinema-freeze');
+              resolve();
+            }, 350);
+          });
+        };
+      });
     });
   };
 
@@ -390,6 +486,7 @@
 
   CE.prototype.navigateTo = function (url, transition) {
     this.running = false;
+    this._removeBlockingOverlay();
     lsSet(LS_TRANSITION, transition || 'fade');
     var ov = addEl('div', 'cinema-overlay'); ov.classList.add('visible');
     setTimeout(function () { window.location.href = url; }, 450);
@@ -441,6 +538,7 @@
   CE.prototype.scenePrologue = function () {
     var self = this; this._removeInstantCover();
     document.body.classList.add('cinema-freeze');
+    self._showBlockingOverlayFull();
     var wrap = addEl('div', 'cinema-typewriter-wrap'); self._els.push(wrap);
     var textEl = addEl('div', 'cinema-typewriter', wrap);
     var btn = addEl('button', 'cinema-enter-btn', wrap);
@@ -474,7 +572,11 @@
       var el = qs('#cinema-weak-topics') || qs('[data-cinema="weak-topics"]');
       return self.spotlightWithPrompt(el, 'Слабые темы', 'Этот блок показывает, где ты теряешь баллы. Система обновляет его автоматически.', 'К расписанию');
     })
-    .then(function () { if (self.running) self.advance(2, '/schedule', 'swipeLeft'); });
+    .then(function () {
+      if (!self.running) return;
+      return self.showSectionIntro(SECTION_INTRO.schedule, 'К расписанию')
+        .then(function () { if (self.running) self.advance(2, '/schedule', 'swipeLeft'); });
+    });
   };
 
   /* ── 2: Schedule — informational ───────────────────────────────── */
@@ -489,7 +591,11 @@
       var chip = qs('.lesson-chip') || qs('.day-col__body') || qs('#scheduleGrid');
       return self.spotlightWithPrompt(chip, 'Карточка урока', 'Расписание помогает видеть все занятия на неделе. Ничего не потеряешь.', 'К теории');
     })
-    .then(function () { if (self.running) self.advance(3, '/theory', 'swipeLeft'); });
+    .then(function () {
+      if (!self.running) return;
+      return self.showSectionIntro(SECTION_INTRO.theory, 'К теории')
+        .then(function () { if (self.running) self.advance(3, '/theory', 'swipeLeft'); });
+    });
   };
 
   /* ── 3: Theory — enter a topic ─────────────────────────────────── */
@@ -523,7 +629,8 @@
           return;
         }
       }
-      self.advance(4, '/submissions', 'glitch');
+      return self.showSectionIntro(SECTION_INTRO.submissions, 'К заданиям')
+        .then(function () { if (self.running) self.advance(4, '/submissions', 'glitch'); });
     });
   };
 
@@ -538,7 +645,11 @@
       var content = qs('.theory-view-content') || qs('.theory-content') || qs('.app-content') || qs('.glass-panel');
       return self.spotlightWithPrompt(content, 'Материал конспекта', examTexts(self.ids).theoryView, 'К заданиям');
     })
-    .then(function () { if (self.running) self.advance(4, '/submissions', 'glitch'); });
+    .then(function () {
+      if (!self.running) return;
+      return self.showSectionIntro(SECTION_INTRO.submissions, 'К заданиям')
+        .then(function () { if (self.running) self.advance(4, '/submissions', 'glitch'); });
+    });
   };
 
   /* ── 4: Submissions ────────────────────────────────────────────── */
@@ -623,8 +734,12 @@
     .then(function () {
       if (!self.running) return;
       var lid = self.ids.lessonId;
-      if (lid) self.advance(5, '/lesson/' + lid + '/classwork-tasks', 'swipeLeft');
-      else self.advance(6, '/trainer/v2', 'hyperJump');
+      if (lid) {
+        return self.showSectionIntro(SECTION_INTRO.lesson, 'В урок')
+          .then(function () { if (self.running) self.advance(5, '/lesson/' + lid + '/classwork-tasks', 'swipeLeft'); });
+      }
+      return self.showSectionIntro(SECTION_INTRO.trainer, 'В тренажёр')
+        .then(function () { if (self.running) self.advance(6, '/trainer/v2', 'hyperJump'); });
     });
   };
 
@@ -692,8 +807,11 @@
       if (!self.running) return;
       if (self.ids.exam === 'oge') {
         var sid = self.ids.studentId;
-        if (sid) self.advance(7, '/student/' + sid + '/analytics', 'swipeLeft');
-        else { lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneEpilogue(); }
+        if (sid) {
+          return self.showSectionIntro(SECTION_INTRO.analytics, 'К аналитике')
+            .then(function () { if (self.running) self.advance(7, '/student/' + sid + '/analytics', 'swipeLeft'); });
+        }
+        lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneCreatorProfile();
         return;
       }
       var tid = self.ids.trainerTaskId;
@@ -703,7 +821,8 @@
       if (tid) url += '?task_id=' + tid + '&task_type=' + tn;
       else if (tn) url += '?task_type=' + tn;
       if (exam) url += (url.indexOf('?') !== -1 ? '&' : '?') + 'exam=' + encodeURIComponent(exam);
-      self.advance(6, url, 'hyperJump');
+      return self.showSectionIntro(SECTION_INTRO.trainer, 'В тренажёр')
+        .then(function () { if (self.running) self.advance(6, url, 'hyperJump'); });
     });
   };
 
@@ -933,9 +1052,22 @@
       return self.spotlightWithPrompt(runBtn, 'Запустить', 'Нажми «Запустить», чтобы выполнить исправленный код.', 'Запустить');
     })
     .then(function () {
+      self._clearCurrentSpotlight(null, true);
+      self._removeBlockingOverlay();
+      var fab = qs('.tv2-fab');
+      if (fab) fab.style.display = 'flex';
+      var runBtn = qs('.tv2-fab-outline');
+      return wait(100);
+    })
+    .then(function () {
       var runBtn = qs('.tv2-fab-outline');
       if (runBtn) self.simulateClick(runBtn);
-      return wait(2200);
+      return wait(150);
+    })
+    .then(function () {
+      var runBtn = qs('.tv2-fab-outline');
+      if (runBtn) self.simulateClick(runBtn);
+      return wait(2050);
     })
     .then(function () {
       var terminalTab = qs('button[data-tab="terminal"]');
@@ -975,8 +1107,11 @@
     .then(function () {
       if (!self.running) return;
       var sid = self.ids.studentId;
-      if (sid) self.advance(7, '/student/' + sid + '/analytics', 'swipeLeft');
-      else { lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneEpilogue(); }
+      if (sid) {
+        return self.showSectionIntro(SECTION_INTRO.analytics, 'К аналитике')
+          .then(function () { if (self.running) self.advance(7, '/student/' + sid + '/analytics', 'swipeLeft'); });
+      }
+      lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneCreatorProfile();
     });
   };
 
@@ -1029,11 +1164,44 @@
       return self.spotlightWithPrompt(el, 'Прогноз балла', 'Система прогнозирует твой балл на основе рейтинга по всем темам.', 'Финал');
     })
     .then(function () {
-      if (self.running) { lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneEpilogue(); }
+      if (self.running) { lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneCreatorProfile(); }
     });
   };
 
-  /* ── 8: Epilogue — typewriter + single CTA ─────────────────────── */
+  /* ── 8: Creator profile — кто создал платформу ──────────────────── */
+  CE.prototype.sceneCreatorProfile = function () {
+    var self = this;
+    self._removeBlockingOverlay();
+    document.body.classList.add('cinema-freeze');
+    var ov = addEl('div', 'cinema-overlay'); ov.classList.add('visible');
+    var wrap = addEl('div', 'cinema-typewriter-wrap');
+    var textEl = addEl('div', 'cinema-typewriter', wrap);
+    var creatorName = (self.ids.creatorName && self.ids.creatorName.trim()) ? self.ids.creatorName.trim() : 'Команда платформы';
+    var intro = 'Платформу создал: ' + creatorName;
+    var btn = addEl('button', 'cinema-continue-btn', wrap);
+    btn.textContent = 'Далее';
+    self.typewriter(intro, textEl)
+    .then(function () {
+      if (!self.running) return;
+      requestAnimationFrame(function () { btn.classList.add('visible'); });
+      btn.onclick = function () {
+        btn.onclick = null;
+        self.typewriterErase(textEl)
+        .then(function () {
+          setTimeout(function () {
+            removeEl(wrap);
+            removeEl(ov);
+            document.body.classList.remove('cinema-freeze');
+            lsSet(LS_SCENE, '9');
+            self.scene = 9;
+            self.sceneEpilogue();
+          }, 350);
+        });
+      };
+    });
+  };
+
+  /* ── 9: Epilogue — typewriter + single CTA ─────────────────────── */
   CE.prototype.sceneEpilogue = function () {
     var self = this;
     document.body.classList.add('cinema-freeze');
@@ -1071,7 +1239,8 @@
       case 5: this.sceneLesson(); break;
       case 6: if (this.ids.exam === 'oge') { this.scene = 7; lsSet(LS_SCENE, '7'); this.sceneAnalytics(); } else { this.sceneTrainer(); } break;
       case 7: this.sceneAnalytics(); break;
-      case 8: this.sceneEpilogue(); break;
+      case 8: this.sceneCreatorProfile(); break;
+      case 9: this.sceneEpilogue(); break;
       default: this.endCinema(true); break;
     }
   };
@@ -1096,7 +1265,8 @@
       { n: 5, label: 'Урок' },
       { n: 6, label: 'Тренажёр' },
       { n: 7, label: 'Аналитика' },
-      { n: 8, label: 'Финал' },
+      { n: 8, label: 'Создатель' },
+      { n: 9, label: 'Финал' },
     ];
     var wrap = document.createElement('div');
     wrap.id = 'cinema-scene-jump';
