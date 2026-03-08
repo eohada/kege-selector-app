@@ -128,6 +128,8 @@
 
   function pushInlineToast({ kind, title, message, actions }) {
     if (!inlineToastArea) return;
+    var cinemaMeta = document.querySelector('meta[name="cinema-demo-ids"]');
+    if (cinemaMeta && cinemaMeta.getAttribute('content')) return;
     const el = document.createElement('div');
     el.className = `tv2-inline-toast ${kind || ''}`.trim();
     const t = document.createElement('div');
