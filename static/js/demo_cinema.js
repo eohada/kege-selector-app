@@ -418,31 +418,28 @@
       return new Promise(function (resolve) {
         self._removeBlockingOverlay();
         document.body.classList.add('cinema-freeze');
-        var ov = addEl('div', 'cinema-overlay'); ov.classList.add('visible');
+        var ov = addEl('div', 'cinema-overlay');
+        ov.classList.add('visible');
         var wrap = addEl('div', 'cinema-typewriter-wrap');
         var textEl = addEl('div', 'cinema-typewriter', wrap);
         var btn = addEl('button', 'cinema-continue-btn', wrap);
         btn.textContent = btnLabel;
-        self.typewriter(description, textEl)
-      .then(function () {
-        if (!self.running) return;
-        requestAnimationFrame(function () {
-          btn.classList.add('visible');
+        self.typewriter(description, textEl).then(function () {
+          if (!self.running) return;
+          requestAnimationFrame(function () { btn.classList.add('visible'); });
+          btn.onclick = function () {
+            btn.onclick = null;
+            self.typewriterErase(textEl).then(function () {
+              textEl.textContent = '';
+              wrap.classList.add('exit');
+              setTimeout(function () {
+                removeEl(wrap);
+                document.body.classList.remove('cinema-freeze');
+                resolve();
+              }, 350);
+            });
+          };
         });
-        btn.onclick = function () {
-          btn.onclick = null;
-          self.typewriterErase(textEl)
-          .then(function () {
-            textEl.textContent = '';
-            wrap.classList.add('exit');
-            setTimeout(function () {
-              removeEl(wrap);
-              /* ov оставляем — экран остаётся чёрным до navigateTo и перехода */
-              document.body.classList.remove('cinema-freeze');
-              resolve();
-            }, 350);
-          });
-        };
       });
     });
   };
