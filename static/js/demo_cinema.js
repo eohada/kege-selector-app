@@ -345,7 +345,7 @@
       self._els.push(cursor);
       function tick() {
         if (!self.running) return resolve();
-        if (idx >= text.length) { removeEl(cursor); return resolve(); }
+        if (idx >= text.length) { return resolve(); }
         span.textContent += text[idx]; idx++;
         self._t(tick, TYPEWRITER_MS);
       }
@@ -355,6 +355,7 @@
 
   CE.prototype.typewriterErase = function (container) {
     var self = this;
+    var eraseMs = 20;
     return new Promise(function (resolve) {
       var span = container && container.querySelector ? container.querySelector('span:not(.cinema-cursor)') : (container && container.firstChild);
       if (!span) return resolve();
@@ -364,9 +365,9 @@
         if (!self.running || len <= 0) { return resolve(); }
         len--;
         span.textContent = full.substring(0, len);
-        self._t(tick, TYPEWRITER_MS);
+        self._t(tick, eraseMs);
       }
-      self._t(tick, 50);
+      self._t(tick, 40);
     });
   };
 
@@ -535,7 +536,8 @@
   };
   CE.prototype.advance = function (n, url, tr) {
     lsSet(LS_SCENE, String(n));
-    this.navigateTo(url, tr);
+    var sep = url.indexOf('?') !== -1 ? '&' : '?';
+    this.navigateTo(url + sep + 'cinema_scene=' + n, tr);
   };
 
   /* ── FX ────────────────────────────────────────────────────────── */
