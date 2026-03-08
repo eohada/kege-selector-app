@@ -1218,6 +1218,10 @@
       return wait(200);
     })
     .then(function () {
+      self._clearCurrentSpotlight(null, true);
+      return wait(80);
+    })
+    .then(function () {
       var tabBtn = qs('.stats-tab[data-tab="analytics"]');
       if (tabBtn) {
         self.simulateClick(tabBtn);
@@ -1232,7 +1236,12 @@
     })
     .then(function () {
       var card = qs('.analytics-score-card');
-      if (card) return self.spotlightWithPrompt(card, '', 'Система прогнозирует балл на основе рейтинга по всем темам.', 'К создателю');
+      if (card) {
+        card.scrollIntoView({ behavior: 'auto', block: 'center' });
+        return wait(200).then(function () {
+          return self.spotlightWithPrompt(card, '', 'Система прогнозирует балл на основе рейтинга по всем темам.', 'К создателю');
+        });
+      }
       var el = qs('#analyticsPredictedScore');
       if (el) return self.spotlightWithPrompt(el, '', 'Система прогнозирует балл на основе рейтинга по всем темам.', 'К создателю');
       return wait(200);
@@ -1261,12 +1270,11 @@
     });
   };
 
-  /* ── 8: Creator profile — страница профиля видна, подпись карточкой снизу ── */
+  /* ── 8: Creator profile — без оверлея, только карточка снизу; страница профиля/аналитики полностью видна ── */
   CE.prototype.sceneCreatorProfile = function () {
     var self = this;
     self._removeBlockingOverlay();
-    document.body.classList.add('cinema-freeze');
-    var ov = addEl('div', 'cinema-overlay cinema-overlay-creator'); ov.classList.add('visible');
+    document.body.classList.remove('cinema-freeze');
     var wrap = addEl('div', 'cinema-typewriter-wrap cinema-typewriter-wrap-creator');
     var textEl = addEl('div', 'cinema-typewriter', wrap);
     var creatorName = (self.ids.creatorName && self.ids.creatorName.trim()) ? self.ids.creatorName.trim() : 'Команда платформы';
@@ -1283,8 +1291,6 @@
         .then(function () {
           setTimeout(function () {
             removeEl(wrap);
-            removeEl(ov);
-            document.body.classList.remove('cinema-freeze');
             lsSet(LS_SCENE, '9');
             self.scene = 9;
             self.sceneEpilogue();

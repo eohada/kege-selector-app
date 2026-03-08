@@ -24,26 +24,26 @@
   opacity: 1;
   pointer-events: auto;
 }
-.cinema-overlay-creator.visible {
-  background: rgba(0, 0, 0, 0.12);
-}
 .cinema-typewriter-wrap-creator {
-  top: auto;
-  right: auto;
+  position: fixed;
   bottom: 2rem;
-  left: 50%;
-  width: min(420px, calc(100vw - 2rem));
-  max-width: min(420px, calc(100vw - 2rem));
-  margin-left: 0;
-  transform: translateX(-50%);
-  background: rgba(10, 10, 18, 0.94);
-  border: 1px solid rgba(0, 170, 255, 0.4);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: 420px;
+  max-width: calc(100vw - 2rem);
+  top: auto;
+  height: auto;
+  min-height: 0;
+  background: rgba(10, 10, 18, 0.96);
+  border: 1px solid rgba(0, 170, 255, 0.45);
   border-radius: 16px;
   padding: 1.75rem 2rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   text-align: center;
   align-items: center;
   justify-content: center;
+  z-index: 100003;
 }
 .cinema-typewriter-wrap-creator .cinema-typewriter {
   max-width: 100%;
@@ -52,7 +52,7 @@
 }
 .cinema-typewriter-wrap-creator.exit {
   opacity: 0;
-  transform: translateX(-50%) translateY(12px);
+  transform: translateY(12px);
 }
 
 /* ── Subtitle with dark scrim ──────────────────────────────────────── */
