@@ -1485,6 +1485,15 @@ def student_analytics(student_id):
             'Анализ данных (эффективные алгоритмы)'
         ]
         demo_skill_values = [65, 72, 58, 80, 70, 75, 62, 68, 78, 55, 82, 71, 60, 74, 69, 66, 73, 77, 64, 70, 68, 72, 65, 79, 63, 85, 88]
+        demo_chart_data = []
+        for i in range(1, 28):
+            pct = (demo_skill_values[i - 1] if i <= len(demo_skill_values) else 70) + (i % 5) - 2
+            pct = max(40, min(98, pct))
+            color = '#ef4444' if pct < 40 else '#eab308' if pct < 80 else '#22c55e'
+            demo_chart_data.append({
+                'task_number': i, 'percent': round(pct, 1), 'correct': int(round(pct)), 'total': 100,
+                'color': color, 'auto_correct': 0, 'auto_total': 0, 'manual_correct': 0, 'manual_incorrect': 0
+            })
         charts_context = {
             'trend_dates': '[]', 'trend_scores': '[]',
             'skill_labels': json.dumps(demo_skill_labels, ensure_ascii=False),
@@ -1492,8 +1501,8 @@ def student_analytics(student_id):
             'attendance_labels': '[]', 'attendance_values': '[]',
             'heatmap_dates': '[]', 'heatmap_values': '[]', 'heatmap_statuses': '[]'
         }
-        metrics_demo = {'current_gpa': 0, 'delta': 0, 'completed_lessons': 0, 'total_lessons': 0}
-        gpa_demo = {'homework': 0, 'exam': 0}
+        metrics_demo = {'current_gpa': 72, 'delta': 5, 'completed_lessons': 12, 'total_lessons': 20}
+        gpa_demo = {'homework': 75, 'exam': 68}
         try:
             return render_template(
                 'student_stats_unified.html',
@@ -1502,7 +1511,7 @@ def student_analytics(student_id):
                 metrics=metrics_demo,
                 gpa_by_type=gpa_demo,
                 problem_topics=[],
-                chart_data=[],
+                chart_data=demo_chart_data,
                 punctuality={},
                 lessons_late_count=0,
                 can_edit=False,

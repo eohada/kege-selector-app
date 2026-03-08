@@ -618,6 +618,7 @@ def demo_start():
 
     creator_name = 'Команда платформы'
     creator_profile_url = None
+    creator_student_id = None
     creator_user = User.query.filter_by(role='creator').first()
     if creator_user:
         creator_name = (getattr(creator_user, 'username', None) or getattr(creator_user, 'email', None) or creator_name).strip() or creator_name
@@ -633,6 +634,7 @@ def demo_start():
                 db.session.add(st)
                 db.session.flush()
             if st:
+                creator_student_id = st.student_id
                 creator_profile_url = url_for('students.student_analytics', student_id=st.student_id)
         except Exception:
             pass
@@ -656,6 +658,7 @@ def demo_start():
         'trainerErrorLine': trainer_error_line,
         'creatorName': creator_name,
         'creatorProfileUrl': creator_profile_url,
+        'creatorStudentId': creator_student_id,
     }
 
     cinema_scene = request.args.get('cinema_scene', '').strip()

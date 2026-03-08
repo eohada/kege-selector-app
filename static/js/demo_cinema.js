@@ -1194,60 +1194,69 @@
     });
   };
 
-  /* ── 7: Analytics — hide radar, show both tabs ─────────────────── */
+  /* ── 7: Analytics — сцена с нуля: ждём DOM/графики, спотлайты по порядку, переход на профиль по ID ── */
   CE.prototype.sceneAnalytics = function () {
     var self = this;
-    var chartsGrid = qs('.charts-grid');
-    if (chartsGrid) chartsGrid.style.gridTemplateColumns = '1fr';
     self.playEntryTransition()
-    .then(function () { return wait(400); })
-    .then(function () {
-      var radarPanel = qs('#skillsChart');
-      if (radarPanel) {
-        var panel = radarPanel.closest('.glass-panel');
-        if (panel) panel.style.display = 'none';
-      }
-      return wait(200);
-    })
+    .then(function () { return wait(900); })
     .then(function () {
       return self.showSubtitle('Вся аналитика подготовки — в одном месте. Каждое действие на платформе учитывается.');
     })
     .then(function () {
       var el = qs('.metrics-grid');
-      return self.spotlightWithPrompt(el, 'Ключевые метрики', 'GPA, процент выполнения, количество уроков — всё обновляется в реальном времени.');
+      if (el) return self.spotlightWithPrompt(el, '', 'GPA, процент выполнения, количество уроков — всё обновляется в реальном времени.', 'Далее');
+      return wait(400);
     })
     .then(function () {
-      var el = qs('#trendChart');
-      var panel = el ? el.closest('.glass-panel') : null;
-      return self.spotlightWithPrompt(panel, 'Динамика успеваемости', 'График показывает изменение процента выполнения заданий по неделям.');
+      var panel = qs('#trendChart') ? qs('#trendChart').closest('.glass-panel') : null;
+      if (panel) return self.spotlightWithPrompt(panel, '', 'График динамики: изменение процента выполнения заданий по неделям.', 'Далее');
+      return wait(400);
     })
     .then(function () {
-      var el = qs('#statisticsChart');
-      var panel = el ? el.closest('.glass-panel') : null;
-      return self.spotlightWithPrompt(panel, 'Процент выполнения по номерам', examTexts(self.ids).analyticsCharts, examTexts(self.ids).analyticsTab);
+      var panel = qs('#skillsChart') ? qs('#skillsChart').closest('.glass-panel') : null;
+      if (panel) return self.spotlightWithPrompt(panel, '', 'Радар навыков: уровень владения по темам ЕГЭ.', 'Далее');
+      return wait(400);
+    })
+    .then(function () {
+      var panel = qs('#statisticsChart') ? qs('#statisticsChart').closest('.glass-panel') : null;
+      if (panel) return self.spotlightWithPrompt(panel, '', (examTexts(self.ids).analyticsCharts || 'Процент выполнения по номерам заданий.'), 'Далее');
+      return wait(400);
     })
     .then(function () {
       var tabBtn = qs('.stats-tab[data-tab="analytics"]');
       if (tabBtn) {
         self.simulateClick(tabBtn);
-        return wait(2600);
+        return wait(3200);
       }
-      return wait(500);
+      return wait(600);
     })
     .then(function () {
       var table = qs('#analyticsNodesTable') || qs('.analytics-nodes-table');
-      return self.spotlightWithPrompt(table, examTexts(self.ids).ratingLabel, 'Рейтинг по каждой теме обновляется после каждого решения. Чем выше — тем увереннее ты в теме.');
+      if (table) return self.spotlightWithPrompt(table, '', 'Рейтинг по каждой теме обновляется после каждого решения. Чем выше — тем увереннее ты в теме.', 'Далее');
+      return wait(400);
     })
     .then(function () {
       var el = qs('#analyticsPredictedScore');
-      return self.spotlightWithPrompt(el, 'Прогноз балла', 'Система прогнозирует твой балл на основе рейтинга по всем темам.', 'Финал');
+      if (el) return self.spotlightWithPrompt(el, '', 'Система прогнозирует балл на основе рейтинга по всем темам.', 'К создателю');
+      return wait(400);
     })
     .then(function () {
       if (!self.running) return;
-      var profileUrl = self.ids.creatorProfileUrl && self.ids.creatorProfileUrl.trim();
-      if (profileUrl) {
-        var sep = profileUrl.indexOf('?') !== -1 ? '&' : '?';
-        self.advance(8, profileUrl + sep + 'cinema_scene=8', 'glitch');
+      var url = null;
+      var cid = self.ids.creatorStudentId;
+      if (cid) {
+        var origin = window.location.origin || '';
+        if (!origin && window.location.href) {
+          var u = window.location.href;
+          origin = u.split('/').slice(0, 3).join('/');
+        }
+        url = origin + '/student/' + cid + '/analytics';
+      } else if (self.ids.creatorProfileUrl && self.ids.creatorProfileUrl.trim()) {
+        url = self.ids.creatorProfileUrl.trim();
+        if (url.indexOf('http') !== 0) url = (window.location.origin || '') + url;
+      }
+      if (url) {
+        self.advance(8, url, 'glitch');
       } else {
         lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneCreatorProfile();
       }
