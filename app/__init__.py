@@ -104,6 +104,8 @@ def create_app(config_name=None):
     # Демо по хосту: если запрос на этот домен — считаем инстанс демо (для одного деплоя с двумя доменами)
     app.config['DEMO_HOST'] = (os.environ.get('DEMO_HOST') or '').strip().lower() or None  # например demo.boostudy.ru
     if app.config['DEMO_SITE']:
+        app.config['DEMO_CREATOR_AVATAR_URL'] = (os.environ.get('DEMO_CREATOR_AVATAR_URL') or '').strip() or None
+        app.config['DEMO_CREATOR_COVER_URL'] = (os.environ.get('DEMO_CREATOR_COVER_URL') or '').strip() or None
         demo_db_url = os.environ.get('DEMO_DATABASE_URL') or os.environ.get('DATABASE_URL')
         if demo_db_url and demo_db_url.startswith('postgres://'):
             demo_db_url = demo_db_url.replace('postgres://', 'postgresql://', 1)

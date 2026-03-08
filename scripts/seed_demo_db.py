@@ -16,6 +16,7 @@ import os
 import sys
 import json
 import argparse
+from datetime import datetime
 
 if sys.platform == "win32":
     import io
@@ -28,8 +29,8 @@ from werkzeug.security import generate_password_hash
 
 from sqlalchemy import text
 from app import create_app, db
-from app.models import Course, CourseTaskTemplate, Subject, User, UserRole, TheoryBlock, Student
-from core.db_models import Tasks, moscow_now
+from app.models import Course, CourseTaskTemplate, Subject, User, UserRole, TheoryBlock, Student, UserProfile
+from core.db_models import Tasks, moscow_now, MOSCOW_TZ
 from app.utils.db_migrations import ensure_schema_columns
 
 
@@ -76,13 +77,20 @@ def ensure_subjects():
         print(f"  Created Subject: {slug}")
 
 
+DEMO_CREATOR_ABOUT_ME = """Инноватор в сфере EdTech и практикующий IT-наставник.
+Специалист, который не просто учит коду, а создает среду для его изучения.
+Путь от репетитора до разработчика собственной платформы позволил автоматизировать рутину и сфокусироваться на главном — прогрессе ученика.
+В обучении информатике и математике делает ставку на алгоритмическое мышление и использование современных инструментов разработки, подготавливая студентов к реальным вызовам цифрового мира."""
+
+
 def ensure_demo_creator():
     """Один пользователь-создатель для демо-назначений и ученик-профиль для страницы «Создатель»."""
-    u = User.query.filter_by(username='demo_creator').first()
+    from flask import current_app
+    u = User.query.filter_by(username='creator').first() or User.query.filter_by(username='demo_creator').first()
     if not u:
         u = User(
-            username='demo_creator',
-            email='demo_creator@demo.local',
+            username='creator',
+            email='creator@demo.local',
             password_hash=generate_password_hash('demo'),
             role='creator',
             is_active=True,
@@ -91,7 +99,32 @@ def ensure_demo_creator():
         db.session.add(u)
         db.session.flush()
         db.session.add(UserRole(user_id=u.id, role='creator'))
-        print("  Created User: demo_creator (password: demo)")
+        print("  Created User: creator (password: demo)")
+    if u.username == 'demo_creator':
+        u.username = 'creator'
+        u.email = u.email or 'creator@demo.local'
+        if u.email == 'demo_creator@demo.local':
+            u.email = 'creator@demo.local'
+        print("  Updated demo_creator -> creator")
+    u.numeric_id = '777'
+    u.about_me = DEMO_CREATOR_ABOUT_ME.strip()
+    u.custom_status = 'слеп, но не глуп'
+    u.telegram_link = '@eohada'
+    u.created_at = datetime(2025, 12, 5, tzinfo=MOSCOW_TZ) if MOSCOW_TZ else datetime(2025, 12, 5)
+    avatar_url = current_app.config.get('DEMO_CREATOR_AVATAR_URL') if current_app else None
+    if not avatar_url:
+        avatar_url = '/static/images/demo_creator_avatar.png'
+    u.avatar_url = avatar_url
+    profile = UserProfile.query.filter_by(user_id=u.id).first()
+    if not profile:
+        profile = UserProfile(user_id=u.id, timezone='Europe/Moscow')
+        db.session.add(profile)
+        db.session.flush()
+    profile.first_name = 'creator'
+    profile.last_name = ''
+    cover_url = current_app.config.get('DEMO_CREATOR_COVER_URL') if current_app else None
+    if cover_url:
+        profile.cover_url = cover_url
     st = Student.query.filter_by(user_id=u.id).first()
     if not st:
         st = Student(

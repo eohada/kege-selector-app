@@ -54,6 +54,19 @@
   opacity: 0;
   transform: translateY(12px);
 }
+.cinema-typewriter-wrap-creator.cinema-creator-float-btn-only {
+  left: auto;
+  right: 2rem;
+  width: auto;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.cinema-creator-float-btn-only .cinema-continue-btn {
+  margin-top: 0;
+}
 
 /* ── Subtitle with dark scrim ──────────────────────────────────────── */
 .cinema-subtitle-wrap {

@@ -62,9 +62,6 @@
     if (document.getElementById('cinema-instant-cover')) return;
     if (lsGet(LS_ACTIVE) !== 'true') return;
     if (lsGet(LS_SCENE) === '0') return;
-    var path = (window.location.pathname || '');
-    var query = (window.location.search || '');
-    if (path.indexOf('/user/') !== -1 && query.indexOf('cinema_scene=8') !== -1) return;
     var c = document.createElement('div');
     c.className = 'cinema-instant-cover';
     c.id = 'cinema-instant-cover';
@@ -1272,12 +1269,26 @@
     });
   };
 
-  /* ── 8: Creator profile — без оверлея, только карточка снизу; страница профиля/аналитики полностью видна ── */
+  /* ── 8: Creator profile — на /user/ только кнопка «Далее» внизу справа, профиль полностью виден; иначе карточка снизу ── */
   CE.prototype.sceneCreatorProfile = function () {
     var self = this;
-    self._removeInstantCover();
     self._removeBlockingOverlay();
     document.body.classList.remove('cinema-freeze');
+    var isProfilePage = (window.location.pathname || '').indexOf('/user/') !== -1;
+    if (isProfilePage) {
+      var wrap = addEl('div', 'cinema-typewriter-wrap cinema-typewriter-wrap-creator cinema-creator-float-btn-only');
+      var btn = addEl('button', 'cinema-continue-btn', wrap);
+      btn.textContent = 'Далее';
+      requestAnimationFrame(function () { btn.classList.add('visible'); });
+      btn.onclick = function () {
+        btn.onclick = null;
+        removeEl(wrap);
+        lsSet(LS_SCENE, '9');
+        self.scene = 9;
+        self.sceneEpilogue();
+      };
+      return;
+    }
     var wrap = addEl('div', 'cinema-typewriter-wrap cinema-typewriter-wrap-creator');
     var textEl = addEl('div', 'cinema-typewriter', wrap);
     var creatorName = (self.ids.creatorName && self.ids.creatorName.trim()) ? self.ids.creatorName.trim() : 'Команда платформы';
