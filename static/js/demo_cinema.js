@@ -414,6 +414,7 @@
   CE.prototype.showSectionIntro = function (description, btnLabel) {
     var self = this;
     btnLabel = btnLabel || 'Далее';
+    self._clearCurrentSpotlight(null, true);
     return self.playEntryTransition('glitch').then(function () {
       return new Promise(function (resolve) {
         self._removeBlockingOverlay();
@@ -589,10 +590,17 @@
       if (!self.running) return;
       btn.classList.add('visible');
       btn.onclick = function () {
-        btn.onclick = null; removeEl(wrap);
-        document.body.classList.remove('cinema-freeze');
-        lsSet(LS_SCENE, '1'); lsSet(LS_TRANSITION, 'elevatorDoors');
-        self.scene = 1; self.transition = 'elevatorDoors'; self.playScene();
+        btn.onclick = null;
+        self.typewriterErase(textEl).then(function () {
+          textEl.textContent = '';
+          removeEl(wrap);
+          document.body.classList.remove('cinema-freeze');
+          lsSet(LS_SCENE, '1');
+          lsSet(LS_TRANSITION, 'glitch');
+          self.scene = 1;
+          self.transition = 'glitch';
+          self.playScene();
+        });
       };
     });
   };
