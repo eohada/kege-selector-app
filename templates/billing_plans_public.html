@@ -69,9 +69,9 @@
     .tp-tree-container {
       position: relative;
       width: 100%;
-      max-width: 1600px;
+      max-width: 1400px;
       margin: 0 auto;
-      padding: 0 2.5rem;
+      padding: 0 3rem;
       overflow: visible;
       box-sizing: border-box;
     }
@@ -107,7 +107,7 @@
       background: var(--surface-card);
       border: 1px solid var(--accent-1);
       border-radius: 24px;
-      padding: 2rem 3rem;
+      padding: 1.5rem 2.25rem;
       box-shadow: var(--tp-glow-mid);
       max-width: 400px;
       width: 100%;
@@ -138,10 +138,10 @@
     /* Ветки (Branches) Row — сетка 6 колонок, в одной ширине с контейнером */
     .tp-branches-row {
       display: grid;
-      grid-template-columns: repeat(6, minmax(220px, 1fr));
-      gap: 2.5rem;
+      grid-template-columns: repeat(6, minmax(200px, 1fr));
+      gap: 2rem;
       width: 100%;
-      max-width: 1600px;
+      max-width: 1400px;
       margin: 0 auto;
       box-sizing: border-box;
     }
@@ -180,7 +180,7 @@
       background: var(--surface-card);
       border: 1px solid var(--stroke-1);
       border-radius: 16px;
-      padding: 1.25rem 1.35rem 1.35rem;
+      padding: 1rem 1.15rem 1.15rem;
       transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
       position: relative;
       cursor: default;
@@ -223,7 +223,7 @@
       z-index: 1;
     }
     /* В узких колонках чуть уменьшаем размеры, без разрыва слов */
-    @media (max-width: 1600px) {
+    @media (max-width: 1400px) {
       .tp-node-price { font-size: 1rem; }
       .tp-node-title { font-size: 1rem; }
     }
@@ -231,40 +231,42 @@
     .tp-node-head {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
       gap: 0.5rem;
-      margin-bottom: 0.75rem;
+      margin-bottom: 0;
       min-width: 0;
+      min-height: 2.75rem;
     }
+    .tp-node-card:not(:has(.tp-node-features)) .tp-node-head { margin-bottom: 0; }
     .tp-node-head > div:first-child { min-width: 0; }
     .tp-node-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
     .tp-node-subtitle { font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin-top: 0.2rem; line-height: 1.35; }
-    .tp-node-price-wrap { text-align: right; flex-shrink: 0; min-width: 0; }
+    .tp-node-price-wrap { text-align: right; flex-shrink: 0; min-width: 4.5rem; }
     .tp-node-price { font-size: 1.15rem; font-weight: 800; color: var(--text-primary); white-space: nowrap; }
     .tp-node-price.accent { color: var(--accent-1); }
     .tp-node-price-old { font-size: 0.75rem; text-decoration: line-through; color: var(--text-muted); display: block; line-height: 1.3; }
     
     .tp-node-features {
-      margin-top: 0.85rem;
-      padding-top: 0.85rem;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
       border-top: 1px solid var(--stroke-1);
       display: flex;
       flex-direction: column;
-      gap: 0.4rem;
+      gap: 0.35rem;
     }
     .tp-feature-item {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       gap: 0.5rem;
       font-size: 0.8rem;
       color: var(--text-muted);
-      line-height: 1.5;
+      line-height: 1.4;
       min-height: 1.25em;
     }
     .tp-feature-icon {
       width: 16px; height: 16px; flex-shrink: 0;
       color: var(--accent-1); opacity: 0.8;
-      margin-top: 2px;
+      margin: 0;
     }
     
     /* Скролл кнопка */
@@ -331,6 +333,31 @@
     .tp-table th { background: var(--surface-2); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
     .tp-table td { font-size: 0.95rem; }
     :root[data-theme="light"] .tp-nav-logo { filter: invert(1); }
+    /* Nav: центрирование бренда, закругление снизу, мягкий переход */
+    .tariffs-nav {
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+      border-bottom: none;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15), 0 1px 0 var(--stroke-1);
+    }
+    .tariffs-nav-inner {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      max-width: 1920px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 70px;
+    }
+    .tariffs-nav .tp-nav-left { display: flex; }
+    .tariffs-nav .tp-nav-center { display: flex; justify-content: center; }
+    .tariffs-nav .tp-nav-right { display: flex; justify-content: flex-end; align-items: center; }
+    .tp-theme-wrap { flex-wrap: wrap; gap: 0.75rem; flex-shrink: 0; }
+    .tp-theme-wrap .theme-toggle { flex-shrink: 0; }
+    .tp-nav-home { flex-shrink: 0; white-space: nowrap; padding: 0.5rem 1rem; font-size: 0.9rem; text-decoration: none !important; }
+    @media (max-width: 480px) {
+      .tariffs-nav-inner { padding: 0 12px; }
+      .tp-nav-home { padding: 0.4rem 0.75rem; font-size: 0.85rem; }
+    }
     .tp-spring-cell { display: flex; align-items: center; gap: 0.5rem; }
     .tp-spring-price { font-weight: 700; }
     .tp-spring-price.hit { color: var(--accent-1); }
@@ -360,6 +387,12 @@
     .tp-block-accent.blue { background: var(--accent-2); }
     .tp-block-accent.sun { background: linear-gradient(180deg, #ffd56a, #ff9f43); }
     .tp-subsection { margin-top: 1.5rem; }
+    .tp-detail-subsection {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--stroke-1);
+    }
+    .tp-block > .tp-detail-subsection:first-of-type { margin-top: 1.25rem; padding-top: 0; border-top: none; }
     .tp-branch-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary); }
     .tp-branch-desc { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem; }
     .tp-promo-line { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-1); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.75rem; }
@@ -386,14 +419,17 @@
 </head>
 <body>
   <div class="app-shell">
-    <nav class="tariffs-nav" style="position: fixed; width: 100%; top: 0; z-index: 100; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--stroke-1); background: var(--surface-1); box-shadow: 0 1px 0 rgba(0,0,0,0.05);">
-      <div style="max-width: 1920px; margin: 0 auto; padding: 0 24px; height: 70px; display: flex; justify-content: space-between; align-items: center;">
-        <a href="{{ url_for('main.landing') }}" class="tp-nav-brand" style="display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: var(--text-primary); font-weight: 800; font-size: 1.25rem;">
-          <img src="{{ url_for('static', filename='images/boostudy_logo.png') }}" alt="BooStudy" class="tp-nav-logo" style="width: 40px; height: 40px; object-fit: contain;">
-          <span>BooStudy</span>
-        </a>
-        <div class="tp-theme-wrap" style="display:flex; gap:1rem; align-items:center;">
-          <a href="{{ url_for('main.landing') }}" style="color: var(--text-muted); text-decoration: none; font-size: 0.95rem; font-weight: 500;">На главную</a>
+    <nav class="tariffs-nav" style="position: fixed; width: 100%; top: 0; z-index: 100; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); background: var(--surface-1);">
+      <div class="tariffs-nav-inner">
+        <div class="tp-nav-left"></div>
+        <div class="tp-nav-center">
+          <a href="{{ url_for('main.landing') }}" class="tp-nav-brand" style="display: flex; align-items: center; gap: 0.75rem; text-decoration: none; color: var(--text-primary); font-weight: 800; font-size: 1.25rem;">
+            <img src="{{ url_for('static', filename='icons/BooStudyLogo1-Photoroom.png') }}" alt="BooStudy" class="tp-nav-logo" style="width: 40px; height: 40px; object-fit: contain;">
+            <span>BooStudy</span>
+          </a>
+        </div>
+        <div class="tp-nav-right tp-theme-wrap">
+          <a href="{{ url_for('main.landing') }}" class="neo-button ghost tp-nav-home">На главную</a>
           <div class="theme-toggle" data-theme-toggle role="group" aria-label="Тема оформления">
             <button type="button" class="theme-toggle-btn" data-theme-value="auto">Auto</button>
             <button type="button" class="theme-toggle-btn" data-theme-value="dark">Dark</button>
@@ -808,7 +844,7 @@
             </div>
           </div>
 
-          <div class="tp-subsection">
+          <div class="tp-subsection tp-detail-subsection">
             <h4 class="tp-branch-title">Ветка MENTOR (Только уроки с преподавателем):</h4>
             <p class="tp-promo-line">
               <svg class="tp-icon tp-icon--flower" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2a4 4 0 0 1 0 8 4 4 0 0 1 0 8m4-12a4 4 0 0 1-8 0 4 4 0 0 1-8 0"/></svg>
@@ -854,7 +890,7 @@
             </div>
           </div>
 
-          <div class="tp-subsection" style="margin-top:2rem;" id="detail-oge-godmode">
+          <div class="tp-subsection tp-detail-subsection" id="detail-oge-godmode">
             <h4 class="tp-branch-title">Ветка GOD MODE (Уроки + Тренажер BooStudy):</h4>
             <p class="tp-branch-desc">Максимальный результат. Уроки с преподавателем + тренажёр BooStudy в одном пакете. Выгода суммируется со скидкой на платформу.</p>
             <div class="tp-table-wrap">
@@ -908,7 +944,7 @@
             </div>
           </div>
 
-          <div class="tp-subsection">
+          <div class="tp-subsection tp-detail-subsection">
             <h4 class="tp-branch-title">Ветка MENTOR (Только уроки с преподавателем):</h4>
             <div class="tp-table-wrap">
               <table class="tp-table">
@@ -950,7 +986,7 @@
             </div>
           </div>
 
-          <div class="tp-subsection" style="margin-top:2rem;" id="detail-ege-godmode">
+          <div class="tp-subsection tp-detail-subsection" id="detail-ege-godmode">
             <h4 class="tp-branch-title">Ветка GOD MODE (Уроки + Тренажер BooStudy):</h4>
             <p class="tp-branch-desc">Премиальная подготовка со специальным предложением на весну.</p>
             <div class="tp-table-wrap">
