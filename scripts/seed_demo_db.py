@@ -113,7 +113,7 @@ def ensure_demo_creator():
     u.created_at = datetime(2025, 12, 5, tzinfo=MOSCOW_TZ) if MOSCOW_TZ else datetime(2025, 12, 5)
     avatar_url = current_app.config.get('DEMO_CREATOR_AVATAR_URL') if current_app else None
     if not avatar_url:
-        avatar_url = '/static/images/demo_creator_avatar.png'
+        avatar_url = '/static/images/demo_creator_avatar.jpg'
     u.avatar_url = avatar_url
     profile = UserProfile.query.filter_by(user_id=u.id).first()
     if not profile:
@@ -123,8 +123,9 @@ def ensure_demo_creator():
     profile.first_name = 'creator'
     profile.last_name = ''
     cover_url = current_app.config.get('DEMO_CREATOR_COVER_URL') if current_app else None
-    if cover_url:
-        profile.cover_url = cover_url
+    if not cover_url:
+        cover_url = '/static/images/demo_creator_cover.png'
+    profile.cover_url = cover_url
     st = Student.query.filter_by(user_id=u.id).first()
     if not st:
         st = Student(

@@ -780,8 +780,8 @@ def user_public_profile(user_id: int):
                 'custom_status': 'слеп, но не глуп',
                 'telegram_link': '@eohada',
                 'created_at_display': '05.12.2025',
-                'avatar_url': current_app.config.get('DEMO_CREATOR_AVATAR_URL') or url_for('static', filename='images/demo_creator_avatar.png'),
-                'creator_cover_url': current_app.config.get('DEMO_CREATOR_COVER_URL') or creator_cover_url,
+                'avatar_url': current_app.config.get('DEMO_CREATOR_AVATAR_URL') or url_for('static', filename='images/demo_creator_avatar.jpg'),
+                'creator_cover_url': current_app.config.get('DEMO_CREATOR_COVER_URL') or url_for('static', filename='images/demo_creator_cover.png'),
             }
     return render_template(
         'user_public_profile.html',
