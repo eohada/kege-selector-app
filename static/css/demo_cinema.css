@@ -598,19 +598,21 @@
 /* ── Freeze ────────────────────────────────────────────────────────── */
 body.cinema-freeze { overflow: hidden !important; }
 
-/* ── Быстрый переход к сцене (демо) ─────────────────────────────────── */
+/* ── Быстрый переход к сцене (демо) — всегда поверх всего ───────────── */
 .cinema-scene-jump {
   position: fixed;
   bottom: 1rem;
   left: 1rem;
-  z-index: 99998;
-  background: rgba(10, 10, 18, 0.92);
-  border: 1px solid rgba(0, 170, 255, 0.35);
+  z-index: 2147483647;
+  background: rgba(10, 10, 18, 0.95);
+  border: 1px solid rgba(0, 170, 255, 0.5);
   border-radius: 10px;
   padding: 10px 12px;
   max-width: 200px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
 }
+.cinema-scene-jump a { pointer-events: auto; }
 .cinema-scene-jump-title {
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.7);

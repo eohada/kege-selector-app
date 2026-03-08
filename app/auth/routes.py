@@ -616,13 +616,22 @@ def demo_start():
     except Exception:
         pass
 
-    creator_user = User.query.filter_by(role='creator').first()
     creator_name = 'Команда платформы'
     creator_profile_url = None
+    creator_user = User.query.filter_by(role='creator').first()
     if creator_user:
         creator_name = (getattr(creator_user, 'username', None) or getattr(creator_user, 'email', None) or creator_name).strip() or creator_name
         try:
             st = Student.query.filter_by(user_id=creator_user.id).first()
+            if not st:
+                st = Student(
+                    name='Создатель платформы',
+                    user_id=creator_user.id,
+                    is_active=True,
+                    email=getattr(creator_user, 'email', None) or 'creator@demo.local',
+                )
+                db.session.add(st)
+                db.session.flush()
             if st:
                 creator_profile_url = url_for('students.student_analytics', student_id=st.student_id)
         except Exception:

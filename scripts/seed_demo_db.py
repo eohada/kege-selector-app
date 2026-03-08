@@ -28,7 +28,7 @@ from werkzeug.security import generate_password_hash
 
 from sqlalchemy import text
 from app import create_app, db
-from app.models import Course, CourseTaskTemplate, Subject, User, UserRole, TheoryBlock
+from app.models import Course, CourseTaskTemplate, Subject, User, UserRole, TheoryBlock, Student
 from core.db_models import Tasks, moscow_now
 from app.utils.db_migrations import ensure_schema_columns
 
@@ -77,22 +77,32 @@ def ensure_subjects():
 
 
 def ensure_demo_creator():
-    """Один пользователь-создатель для демо-назначений."""
+    """Один пользователь-создатель для демо-назначений и ученик-профиль для страницы «Создатель»."""
     u = User.query.filter_by(username='demo_creator').first()
-    if u:
-        return u
-    u = User(
-        username='demo_creator',
-        email='demo_creator@demo.local',
-        password_hash=generate_password_hash('demo'),
-        role='creator',
-        is_active=True,
-        is_demo_user=False,
-    )
-    db.session.add(u)
-    db.session.flush()
-    db.session.add(UserRole(user_id=u.id, role='creator'))
-    print("  Created User: demo_creator (password: demo)")
+    if not u:
+        u = User(
+            username='demo_creator',
+            email='demo_creator@demo.local',
+            password_hash=generate_password_hash('demo'),
+            role='creator',
+            is_active=True,
+            is_demo_user=False,
+        )
+        db.session.add(u)
+        db.session.flush()
+        db.session.add(UserRole(user_id=u.id, role='creator'))
+        print("  Created User: demo_creator (password: demo)")
+    st = Student.query.filter_by(user_id=u.id).first()
+    if not st:
+        st = Student(
+            name='Создатель платформы',
+            user_id=u.id,
+            is_active=True,
+            email=u.email or 'creator@demo.local',
+        )
+        db.session.add(st)
+        db.session.flush()
+        print("  Created Student for creator (profile/analytics page)")
     return u
 
 
