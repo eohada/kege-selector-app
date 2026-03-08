@@ -638,6 +638,7 @@
     .then(function () {
       return self.showSubtitle('Все уроки — в одном расписании. Никаких накладок и забытых занятий.');
     })
+    .then(function () { return self.waitForEl('.lesson-chip', 6000); })
     .then(function () {
       var chip = qs('.lesson-chip');
       if (!chip) chip = qs('.schedule-grid-wrap') || qs('#scheduleGrid');
@@ -729,8 +730,14 @@
       var btn = qs('.demo-highlight-begin') || qs('.demo-btn-begin');
       if (btn) {
         var href = btn.getAttribute('href');
-        if (href) { lsSet(LS_TRANSITION, 'glitch'); var ov = addEl('div', 'cinema-overlay'); ov.classList.add('visible');
-          self.running = false; setTimeout(function () { window.location.href = href; }, 400); }
+        if (href) {
+          lsSet(LS_SCENE, '4');
+          lsSet(LS_TRANSITION, 'glitch');
+          var url = href + (href.indexOf('?') !== -1 ? '&' : '?') + 'cinema_scene=4';
+          var ov = addEl('div', 'cinema-overlay'); ov.classList.add('visible');
+          self.running = false;
+          setTimeout(function () { window.location.href = url; }, 400);
+        }
       }
     });
   };
