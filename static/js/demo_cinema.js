@@ -1221,7 +1221,7 @@
       var tabBtn = qs('.stats-tab[data-tab="analytics"]');
       if (tabBtn) {
         self.simulateClick(tabBtn);
-        return wait(1800);
+        return Promise.resolve();
       }
       return wait(400);
     })
@@ -1261,13 +1261,13 @@
     });
   };
 
-  /* ── 8: Creator profile — кто создал платформу ──────────────────── */
+  /* ── 8: Creator profile — страница профиля видна, подпись карточкой снизу ── */
   CE.prototype.sceneCreatorProfile = function () {
     var self = this;
     self._removeBlockingOverlay();
     document.body.classList.add('cinema-freeze');
-    var ov = addEl('div', 'cinema-overlay'); ov.classList.add('visible');
-    var wrap = addEl('div', 'cinema-typewriter-wrap');
+    var ov = addEl('div', 'cinema-overlay cinema-overlay-creator'); ov.classList.add('visible');
+    var wrap = addEl('div', 'cinema-typewriter-wrap cinema-typewriter-wrap-creator');
     var textEl = addEl('div', 'cinema-typewriter', wrap);
     var creatorName = (self.ids.creatorName && self.ids.creatorName.trim()) ? self.ids.creatorName.trim() : 'Команда платформы';
     var intro = 'Платформу создал: ' + creatorName;

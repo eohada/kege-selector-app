@@ -24,6 +24,25 @@
   opacity: 1;
   pointer-events: auto;
 }
+.cinema-overlay-creator.visible {
+  background: rgba(0, 0, 0, 0.42);
+}
+.cinema-typewriter-wrap-creator {
+  inset: auto;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 10, 18, 0.94);
+  border: 1px solid rgba(0, 170, 255, 0.4);
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+.cinema-typewriter-wrap-creator.exit {
+  opacity: 0;
+  transform: translateX(-50%) translateY(12px);
+}
 
 /* ── Subtitle with dark scrim ──────────────────────────────────────── */
 .cinema-subtitle-wrap {
