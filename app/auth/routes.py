@@ -619,8 +619,10 @@ def demo_start():
     creator_name = 'Команда платформы'
     creator_profile_url = None
     creator_student_id = None
+    creator_user_id = None
     creator_user = User.query.filter_by(role='creator').first()
     if creator_user:
+        creator_user_id = creator_user.id
         creator_name = (getattr(creator_user, 'username', None) or getattr(creator_user, 'email', None) or creator_name).strip() or creator_name
         try:
             st = Student.query.filter_by(user_id=creator_user.id).first()
@@ -664,6 +666,7 @@ def demo_start():
         'creatorName': creator_name,
         'creatorProfileUrl': creator_profile_url,
         'creatorStudentId': creator_student_id,
+        'creatorUserId': creator_user_id,
     }
 
     cinema_scene = request.args.get('cinema_scene', '').strip()
@@ -758,12 +761,16 @@ def user_public_profile(user_id: int):
         public_numeric_id = str(u.numeric_id)
     if public_numeric_id is None:
         public_numeric_id = str(u.id)
+    cinema_demo_ids = None
+    if request.args.get('cinema_scene') == '8' and getattr(current_user, 'is_demo_user', False):
+        cinema_demo_ids = session.get('cinema_demo_ids')
     return render_template(
         'user_public_profile.html',
         public_user=u,
         public_display_name=display_name or u.username,
         creator_cover_url=creator_cover_url,
         public_numeric_id=public_numeric_id,
+        cinema_demo_ids=cinema_demo_ids,
     )
 
 @auth_bp.route('/user/profile/update', methods=['POST'])

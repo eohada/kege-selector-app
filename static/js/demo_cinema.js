@@ -1249,18 +1249,17 @@
     .then(function () {
       if (!self.running) return;
       self._clearCurrentSpotlight(null, true);
+      var origin = window.location.origin || '';
+      if (!origin && window.location.href) origin = window.location.href.split('/').slice(0, 3).join('/');
       var url = null;
-      var cid = self.ids.creatorStudentId;
-      if (cid) {
-        var origin = window.location.origin || '';
-        if (!origin && window.location.href) {
-          var u = window.location.href;
-          origin = u.split('/').slice(0, 3).join('/');
-        }
-        url = origin + '/student/' + cid + '/analytics';
+      var uid = self.ids.creatorUserId;
+      if (uid) {
+        url = origin + '/user/' + uid;
+      } else if (self.ids.creatorStudentId) {
+        url = origin + '/student/' + self.ids.creatorStudentId + '/analytics';
       } else if (self.ids.creatorProfileUrl && self.ids.creatorProfileUrl.trim()) {
         url = self.ids.creatorProfileUrl.trim();
-        if (url.indexOf('http') !== 0) url = (window.location.origin || '') + url;
+        if (url.indexOf('http') !== 0) url = origin + url;
       }
       if (url) {
         self.advance(8, url, 'glitch');
