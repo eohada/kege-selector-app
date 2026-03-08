@@ -62,6 +62,9 @@
     if (document.getElementById('cinema-instant-cover')) return;
     if (lsGet(LS_ACTIVE) !== 'true') return;
     if (lsGet(LS_SCENE) === '0') return;
+    var path = (window.location.pathname || '');
+    var query = (window.location.search || '');
+    if (path.indexOf('/user/') !== -1 && query.indexOf('cinema_scene=8') !== -1) return;
     var c = document.createElement('div');
     c.className = 'cinema-instant-cover';
     c.id = 'cinema-instant-cover';
@@ -1272,6 +1275,7 @@
   /* ── 8: Creator profile — без оверлея, только карточка снизу; страница профиля/аналитики полностью видна ── */
   CE.prototype.sceneCreatorProfile = function () {
     var self = this;
+    self._removeInstantCover();
     self._removeBlockingOverlay();
     document.body.classList.remove('cinema-freeze');
     var wrap = addEl('div', 'cinema-typewriter-wrap cinema-typewriter-wrap-creator');
