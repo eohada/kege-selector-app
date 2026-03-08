@@ -1273,6 +1273,7 @@
   CE.prototype.sceneCreatorProfile = function () {
     var self = this;
     self._removeBlockingOverlay();
+    self._removeInstantCover();
     document.body.classList.remove('cinema-freeze');
     var isProfilePage = (window.location.pathname || '').indexOf('/user/') !== -1;
     if (isProfilePage) {
