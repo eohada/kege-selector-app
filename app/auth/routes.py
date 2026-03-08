@@ -448,7 +448,7 @@ def demo_start():
         db.session.flush()
         demo_submission_id = sub.submission_id
 
-        lesson_topic = 'Демо-урок: Теория игр' if exam == 'ege' else 'Демо-урок: Алгоритмы'
+        lesson_topic = 'Демо-урок' if exam == 'ege' else 'Демо-урок: Алгоритмы'
         lesson_content = '# Теория игр\nОсновы комбинаторики и теории игр для задания 19 ЕГЭ по информатике.' if exam == 'ege' else '# Алгоритмы\nОсновы программирования для ОГЭ по информатике.'
         demo_lesson = Lesson(
             student_id=demo_student.student_id,

@@ -289,17 +289,7 @@
         hole.style.cssText = 'left:' + left + 'px;top:' + top + 'px;width:' + w + 'px;height:' + h + 'px;border-radius:' + br;
         self._els.push(hole);
 
-        var lbl;
-        if (label) {
-          lbl = addEl('div', 'cinema-spotlight-label');
-          lbl.textContent = label;
-          lbl.style.left = (left + w / 2) + 'px';
-          var lt = top + h + 14;
-          if (lt > vh - 80) lt = Math.max(8, top - 40);
-          lbl.style.top = lt + 'px';
-          lbl.style.transform = 'translateX(-50%)';
-          self._els.push(lbl);
-        }
+        var lbl = null;
 
         var promptWrap = addEl('div', 'cinema-spotlight-prompt');
         var promptText = addEl('div', 'cinema-spotlight-prompt-text', promptWrap);
@@ -374,8 +364,8 @@
   /** Анимация замены фрагмента в строке редактора: стирание неправильного, ввод правильного. */
   CE.prototype.replaceLineFragmentWithAnimation = function (cm, lineIndex0, wrongFragment, rightFragment) {
     var self = this;
-    var eraseMs = 45;
-    var typeMs = 45;
+    var eraseMs = 140;
+    var typeMs = 120;
     return new Promise(function (resolve) {
       if (!cm) return resolve();
       var line = cm.getLine(lineIndex0) || '';
@@ -408,7 +398,7 @@
       }
 
       if (totalErase === 0) doType();
-      else self._t(doErase, 80);
+      else self._t(doErase, 280);
     });
   };
 
@@ -640,9 +630,16 @@
     })
     .then(function () { return self.waitForEl('.lesson-chip', 6000); })
     .then(function () {
-      var chip = qs('.lesson-chip');
-      if (!chip) chip = qs('.schedule-grid-wrap') || qs('#scheduleGrid');
-      return self.spotlightWithPrompt(chip, 'Карточка урока', 'Расписание помогает видеть все занятия на неделе. Ничего не потеряешь.', 'К теории');
+      var chips = qsa('.lesson-chip');
+      var chip = chips.length ? chips[0] : null;
+      if (chip) {
+        chip.scrollIntoView({ behavior: 'instant', block: 'center' });
+        return wait(350).then(function () {
+          return self.spotlightWithPrompt(chip, '', 'Расписание помогает видеть все занятия на неделе. Ничего не потеряешь.', 'К теории');
+        });
+      }
+      var fallback = qs('.schedule-grid-wrap') || qs('#scheduleGrid');
+      return self.spotlightWithPrompt(fallback, '', 'Расписание помогает видеть все занятия на неделе. Ничего не потеряешь.', 'К теории');
     })
     .then(function () {
       if (!self.running) return;
@@ -869,8 +866,9 @@
       if (self.ids.exam === 'oge') {
         var sid = self.ids.studentId;
         if (sid) {
+          var analyticsUrl = (window.location.origin || '') + '/student/' + sid + '/analytics';
           return self.showSectionIntro(SECTION_INTRO.analytics, 'К аналитике')
-            .then(function () { if (self.running) self.advance(7, '/student/' + sid + '/analytics', 'glitch'); });
+            .then(function () { if (self.running) self.advance(7, analyticsUrl, 'glitch'); });
         }
         lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneCreatorProfile();
         return;
@@ -1188,8 +1186,9 @@
       if (!self.running) return;
       var sid = self.ids.studentId;
       if (sid) {
+        var analyticsUrl = (window.location.origin || '') + '/student/' + sid + '/analytics';
         return self.showSectionIntro(SECTION_INTRO.analytics, 'К аналитике')
-          .then(function () { if (self.running) self.advance(7, '/student/' + sid + '/analytics', 'glitch'); });
+          .then(function () { if (self.running) self.advance(7, analyticsUrl, 'glitch'); });
       }
       lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneCreatorProfile();
     });

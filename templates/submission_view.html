@@ -524,7 +524,7 @@
                         </label>
                     </div>
                     {% endif %}
-                    {% if loop.first and current_user.is_demo_user %}
+                    {% if loop.first and current_user.is_demo_user and not (cinema_demo_ids is defined and cinema_demo_ids) %}
                     <div id="demo-answer-block" style="margin-bottom: 0.5rem;">
                         <button type="button" id="demo-paste-answer" class="neo-button accent sm" style="margin-bottom: 0.5rem; display: inline-flex; align-items: center; gap: 0.35rem;">Вставить ответ</button>
                     </div>
