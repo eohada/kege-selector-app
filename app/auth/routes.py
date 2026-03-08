@@ -762,15 +762,35 @@ def user_public_profile(user_id: int):
     if public_numeric_id is None:
         public_numeric_id = str(u.id)
     cinema_demo_ids = None
+    demo_profile_override = None
     if request.args.get('cinema_scene') == '8' and getattr(current_user, 'is_demo_user', False):
         cinema_demo_ids = session.get('cinema_demo_ids')
+        cid = (cinema_demo_ids or {}).get('creatorUserId')
+        if cid is not None and u.id == int(cid) or (u.username or '').lower() in ('creator', 'demo_creator'):
+            demo_profile_override = {
+                'display_name': 'creator',
+                'username': 'creator',
+                'public_numeric_id': '777',
+                'about_me': (
+                    'Инноватор в сфере EdTech и практикующий IT-наставник.\n'
+                    'Специалист, который не просто учит коду, а создает среду для его изучения.\n'
+                    'Путь от репетитора до разработчика собственной платформы позволил автоматизировать рутину и сфокусироваться на главном — прогрессе ученика.\n'
+                    'В обучении информатике и математике делает ставку на алгоритмическое мышление и использование современных инструментов разработки, подготавливая студентов к реальным вызовам цифрового мира.'
+                ),
+                'custom_status': 'слеп, но не глуп',
+                'telegram_link': '@eohada',
+                'created_at_display': '05.12.2025',
+                'avatar_url': current_app.config.get('DEMO_CREATOR_AVATAR_URL') or url_for('static', filename='images/demo_creator_avatar.png'),
+                'creator_cover_url': current_app.config.get('DEMO_CREATOR_COVER_URL') or creator_cover_url,
+            }
     return render_template(
         'user_public_profile.html',
         public_user=u,
-        public_display_name=display_name or u.username,
-        creator_cover_url=creator_cover_url,
-        public_numeric_id=public_numeric_id,
+        public_display_name=(demo_profile_override.get('display_name') if demo_profile_override else None) or display_name or u.username,
+        creator_cover_url=demo_profile_override.get('creator_cover_url') if demo_profile_override else creator_cover_url,
+        public_numeric_id=(demo_profile_override.get('public_numeric_id') if demo_profile_override else None) or public_numeric_id,
         cinema_demo_ids=cinema_demo_ids,
+        demo_profile_override=demo_profile_override,
     )
 
 @auth_bp.route('/user/profile/update', methods=['POST'])

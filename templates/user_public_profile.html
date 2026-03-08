@@ -61,17 +61,23 @@
         <main class="app-content">
 
         {% if public_user.is_creator() %}
-        
+        {% set _ov = demo_profile_override %}
+        {% set _username = _ov.username if _ov else public_user.username %}
+        {% set _about_me = _ov.about_me if _ov else public_user.about_me %}
+        {% set _custom_status = _ov.custom_status if _ov else public_user.custom_status %}
+        {% set _telegram_link = _ov.telegram_link if _ov else public_user.telegram_link %}
+        {% set _created_at = _ov.created_at_display if _ov else (public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—') %}
+        {% set _avatar_url = _ov.avatar_url if _ov else public_user.avatar_url %}
         <main class="profile-container theme-creator">
             <div class="profile-card">
                 {% set creator_cover = creator_cover_url|default(none) %}
                 <div class="profile-cover {% if creator_cover %}has-cover{% endif %}" {% if creator_cover %}style="background-image: url('{{ creator_cover }}');"{% endif %}></div>
                 <div class="profile-header">
                     <div class="profile-identity">
-                        <div class="profile-avatar-wrapper {% if public_user.avatar_url %}profile-avatar-clickable{% endif %}" {% if public_user.avatar_url %}data-avatar-url="{{ public_user.avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
+                        <div class="profile-avatar-wrapper {% if _avatar_url %}profile-avatar-clickable{% endif %}" {% if _avatar_url %}data-avatar-url="{{ _avatar_url }}" onclick="openAvatarModalFromEl(this)" role="button" tabindex="0" title="Посмотреть в полном размере"{% endif %}>
                             <div class="profile-avatar-big">
-                                {% if public_user.avatar_url %}
-                                    <img src="{{ public_user.avatar_url }}" alt="Avatar">
+                                {% if _avatar_url %}
+                                    <img src="{{ _avatar_url }}" alt="Avatar">
                                 {% else %}
                                     {{ public_display_name[0]|upper }}
                                 {% endif %}
@@ -81,11 +87,11 @@
                             <div class="profile-role-badge">{{ public_user.get_primary_role_display() }}</div>
                             <h1>{{ public_display_name }}</h1>
                             <div class="public-sub" style="margin-top: 0.35rem;">
-                                <span class="status-badge status-info" style="opacity:.75;">{{ public_user.username }}</span>
+                                <span class="status-badge status-info" style="opacity:.75;">{{ _username }}</span>
                                 {% if public_numeric_id %}<span class="status-badge status-info" style="opacity:.75;">#{{ public_numeric_id }}</span>{% endif %}
-                                {% if public_user.telegram_link %}<span class="status-badge" style="opacity:.8;">{{ public_user.telegram_link }}</span>{% endif %}
-                                {% if public_user.custom_status %}
-                                <span class="status-badge" style="opacity:.9;">{{ public_user.custom_status }}</span>
+                                {% if _telegram_link %}<span class="status-badge" style="opacity:.8;">{{ _telegram_link }}</span>{% endif %}
+                                {% if _custom_status %}
+                                <span class="status-badge" style="opacity:.9;">{{ _custom_status }}</span>
                                 {% endif %}
                             </div>
                             <div style="margin-top: 1rem;">
@@ -98,8 +104,8 @@
                     <div class="profile-content-grid">
                         <section class="profile-section">
                             <h3>О пользователе</h3>
-                            {% if public_user.about_me %}
-                                <div class="public-bio">{{ public_user.about_me }}</div>
+                            {% if _about_me %}
+                                <div class="public-bio">{{ _about_me }}</div>
                             {% else %}
                                 <div style="color: var(--text-muted);">Пока нет описания.</div>
                             {% endif %}
@@ -112,7 +118,7 @@
                             </div>
                             <div class="data-row">
                                 <span class="data-label">Логин</span>
-                                <span class="data-value">{{ public_user.username }}</span>
+                                <span class="data-value">{{ _username }}</span>
                             </div>
                             {% if public_numeric_id %}
                             <div class="data-row">
@@ -120,21 +126,21 @@
                                 <span class="data-value">#{{ public_numeric_id }}</span>
                             </div>
                             {% endif %}
-                            {% if public_user.telegram_link %}
+                            {% if _telegram_link %}
                             <div class="data-row">
                                 <span class="data-label">Telegram</span>
-                                <span class="data-value">{{ public_user.telegram_link }}</span>
+                                <span class="data-value">{{ _telegram_link }}</span>
                             </div>
                             {% endif %}
-                            {% if public_user.custom_status %}
+                            {% if _custom_status %}
                             <div class="data-row">
                                 <span class="data-label">Статус</span>
-                                <span class="data-value">{{ public_user.custom_status }}</span>
+                                <span class="data-value">{{ _custom_status }}</span>
                             </div>
                             {% endif %}
                             <div class="data-row">
                                 <span class="data-label">В системе с</span>
-                                <span class="data-value">{{ public_user.created_at.strftime('%d.%m.%Y') if public_user.created_at else '—' }}</span>
+                                <span class="data-value">{{ _created_at }}</span>
                             </div>
                         </aside>
                     </div>
