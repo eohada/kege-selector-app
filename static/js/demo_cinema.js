@@ -364,8 +364,8 @@
   /** Анимация замены фрагмента в строке редактора: стирание неправильного, ввод правильного. */
   CE.prototype.replaceLineFragmentWithAnimation = function (cm, lineIndex0, wrongFragment, rightFragment) {
     var self = this;
-    var eraseMs = 140;
-    var typeMs = 120;
+    var eraseMs = 220;
+    var typeMs = 180;
     return new Promise(function (resolve) {
       if (!cm) return resolve();
       var line = cm.getLine(lineIndex0) || '';
@@ -398,7 +398,7 @@
       }
 
       if (totalErase === 0) doType();
-      else self._t(doErase, 280);
+      else self._t(doErase, 400);
     });
   };
 
@@ -1000,7 +1000,7 @@
     }
 
     function showThinking() {
-      replyEl.textContent = 'Помощник печатает...';
+      replyEl.textContent = 'Помощник думает...';
       replyEl.classList.add('cinema-demo-thinking');
     }
     function hideThinking() {
@@ -1388,7 +1388,14 @@
       lsSet(LS_ACTIVE, 'true');
       lsSet(LS_SCENE, urlScene);
     }
-
+    if (!urlScene && /\/student\/\d+\/analytics/.test(window.location.pathname || '')) {
+      var saved = lsGet(LS_SCENE);
+      if (saved && saved !== '0') {
+        lsSet(LS_ACTIVE, 'true');
+        lsSet(LS_SCENE, saved);
+        urlScene = saved;
+      }
+    }
     if (!urlScene && document.cookie.indexOf('cinemaMode=prologue') !== -1) {
       lsSet(LS_ACTIVE, 'true');
       lsSet(LS_SCENE, '0');
