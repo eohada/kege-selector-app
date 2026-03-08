@@ -1221,7 +1221,7 @@
       var tabBtn = qs('.stats-tab[data-tab="analytics"]');
       if (tabBtn) {
         self.simulateClick(tabBtn);
-        return Promise.resolve();
+        return wait(1100);
       }
       return wait(400);
     })
