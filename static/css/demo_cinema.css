@@ -55,10 +55,12 @@
   transform: translateY(12px);
 }
 .cinema-typewriter-wrap-creator.cinema-creator-float-btn-only {
-  left: auto;
-  right: 2rem;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
   width: auto;
   padding: 0;
+  bottom: 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;

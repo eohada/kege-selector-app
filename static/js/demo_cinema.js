@@ -46,7 +46,7 @@
     lesson: 'Классная комната — всё в одном уроке: конспект, условия заданий, материалы и диалог с преподавателем. Работай в одном окне, не теряя контекст.',
     trainer: 'AI-тренажёр — пиши код по заданию, ищи ошибку, спрашивай помощника и проверяй ответ. Идеально для отработки программирования и подготовки к заданиям с развёрнутым ответом.',
     analytics: 'Аналитика — рейтинги по темам ЕГЭ, прогноз балла, динамика успеваемости и процент выполнения по номерам заданий. Вся статистика в одном месте, обновляется после каждого решения.',
-    creator: 'Кто создал платформу — знакомство с автором. Узнай, кто стоит за системой и как с ним связаться.',
+    creator: 'Тот, кто создал платформу и направит тебя на истинный путь в сдаче экзаменов.',
     final: 'Финал — платформа готова к использованию. Твоя сотка на экзамене — вопрос дисциплины, практики и алгоритма. Удачи!'
   };
 
@@ -562,6 +562,7 @@
     lsRemove(LS_ACTIVE); lsRemove(LS_SCENE); lsRemove(LS_TRANSITION); lsRemove(LS_DEMO_IDS);
     if (this._controls) removeEl(this._controls);
     document.body.classList.remove('cinema-freeze');
+    try { document.cookie = 'cinemaMode=; path=/; max-age=0'; } catch (e) {}
     if (redirect) window.location.href = '/student/dashboard';
   };
 
@@ -1261,11 +1262,14 @@
         url = self.ids.creatorProfileUrl.trim();
         if (url.indexOf('http') !== 0) url = origin + url;
       }
-      if (url) {
-        self.advance(8, url, 'glitch');
-      } else {
-        lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneCreatorProfile();
-      }
+      return self.showSectionIntro(SECTION_INTRO.creator, 'К создателю').then(function () {
+        if (!self.running) return;
+        if (url) {
+          self.advance(8, url, 'glitch');
+        } else {
+          lsSet(LS_SCENE, '8'); self.scene = 8; self.sceneCreatorProfile();
+        }
+      });
     });
   };
 
@@ -1337,7 +1341,8 @@
       btn.addEventListener('click', function (e) {
         e.preventDefault();
         self.endCinema(false);
-        window.location.href = '/billing/plans/public';
+        var base = window.location.origin || (window.location.protocol + '//' + window.location.host);
+        window.location.href = base + '/billing/plans/public';
       });
     });
   };
@@ -1401,6 +1406,8 @@
 
   /* ── Bootstrap ─────────────────────────────────────────────────── */
   function init() {
+    var pathname = window.location.pathname || '';
+    if (pathname === '/billing/plans/public' || pathname.indexOf('/billing/plans/public') !== -1) return;
     var isDemo = false;
     try {
       if (document.cookie.indexOf('is_demo=true') !== -1) isDemo = true;
