@@ -4,6 +4,6 @@
 
 **Стек:** Flask (Python), PostgreSQL / SQLite, Jinja2, RBAC.
 
-- Установка и запуск: см. `requirements.txt`, точка входа — фабрика `app.create_app()`.
+- Установка и запуск: см. `requirements.txt`, точка входа — фабрика `app.create_app()`. Локально: `python wsgi.py` или `python scripts/run_local.py` — страница тарифов: http://127.0.0.1:5000/billing/plans/public
 - Структура проекта: [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md).
 - Документация: каталог [docs/](docs/).

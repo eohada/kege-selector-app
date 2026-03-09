@@ -31,6 +31,9 @@ KIND_SETTINGS_MAP = {
     'lessons_low': 'tg_notify_low_lessons',
     'platform_news': 'tg_notify_news',
     'news': 'tg_notify_news',
+    'referral_used': 'tg_notify_referral_used',
+    'teacher_homework_submitted': 'tg_notify_homework_submitted',
+    'system_critical_error': 'tg_notify_system_errors',
     'generic': 'tg_notify_news',
 }
 
@@ -121,7 +124,10 @@ async def process_pending_notifications(bot: Bot):
                 COALESCE(up.tg_notify_new_message, TRUE) AS tg_notify_new_message,
                 COALESCE(up.tg_notify_lesson_scheduled, TRUE) AS tg_notify_lesson_scheduled,
                 COALESCE(up.tg_notify_low_lessons, TRUE) AS tg_notify_low_lessons,
-                COALESCE(up.tg_notify_news, TRUE) AS tg_notify_news
+                COALESCE(up.tg_notify_news, TRUE) AS tg_notify_news,
+                COALESCE(up.tg_notify_referral_used, TRUE) AS tg_notify_referral_used,
+                COALESCE(up.tg_notify_homework_submitted, TRUE) AS tg_notify_homework_submitted,
+                COALESCE(up.tg_notify_system_errors, TRUE) AS tg_notify_system_errors
             FROM "UserNotifications" un
             JOIN "UserProfiles" up ON up.user_id = un.user_id
             WHERE un.telegram_sent = FALSE
@@ -144,7 +150,8 @@ async def process_pending_notifications(bot: Bot):
             (
                 notif_id, user_id, kind, title, body, link_url, meta, chat_id,
                 tg_notify_lesson_reminder, tg_notify_homework_checked, tg_notify_homework_returned,
-                tg_notify_new_message, tg_notify_lesson_scheduled, tg_notify_low_lessons, tg_notify_news
+                tg_notify_new_message, tg_notify_lesson_scheduled, tg_notify_low_lessons, tg_notify_news,
+                tg_notify_referral_used, tg_notify_homework_submitted, tg_notify_system_errors
             ) = notif
             if notif_id in processed_ids:
                 continue
@@ -161,6 +168,9 @@ async def process_pending_notifications(bot: Bot):
                 'tg_notify_lesson_scheduled': tg_notify_lesson_scheduled,
                 'tg_notify_low_lessons': tg_notify_low_lessons,
                 'tg_notify_news': tg_notify_news,
+                'tg_notify_referral_used': tg_notify_referral_used,
+                'tg_notify_homework_submitted': tg_notify_homework_submitted,
+                'tg_notify_system_errors': tg_notify_system_errors,
             }
             
             setting_key = KIND_SETTINGS_MAP.get(kind)

@@ -4,7 +4,7 @@ import logging
 from typing import Iterable
 from datetime import timedelta
 
-from app.models import db, User, Student, UserNotification, FamilyTie, Tasks, PendingAssignmentNotification, Lesson, moscow_now
+from app.models import db, User, Student, UserNotification, FamilyTie, Tasks, PendingAssignmentNotification, Lesson, moscow_now, BotAdmin
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +46,16 @@ def notify_user(user_id: int, *, kind: str, title: str, body: str | None = None,
         meta=meta,
     )
     db.session.add(n)
+
+
+def notify_admins_critical_error(title: str, body: str, meta: dict | None = None) -> None:
+    """Создаёт уведомление kind=system_critical_error для всех админов бота (BotAdmin)."""
+    try:
+        admins = BotAdmin.query.filter_by(is_active=True).all()
+        for ba in admins:
+            notify_user(ba.user_id, kind='system_critical_error', title=title, body=body, meta=meta)
+    except Exception as e:
+        logger.warning("Could not notify admins of critical error: %s", e)
 
 
 def _pluralize_tasks(count: int) -> str:

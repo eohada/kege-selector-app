@@ -84,6 +84,9 @@ NOTIFICATION_TEMPLATES = {
     'lessons_low': "⚠️ Осталось уроков: {count}\n\nПополните баланс для продолжения занятий.",
     'platform_news': "📢 {title}\n\n{body}",
     'news': "📢 {title}\n\n{body}",
+    'referral_used': "🚀 <b>Новый реферал!</b>\n\n{body}",
+    'teacher_homework_submitted': "📤 <b>Ученик сдал работу!</b>\n\n{body}",
+    'system_critical_error': "⚠️ <b>Критическая ошибка системы!</b>\n\n{body}",
     'generic': "📢 {title}\n\n{body}",
 }
 

@@ -514,6 +514,19 @@ def create_app(config_name=None):
             db.session.rollback()
         except Exception:
             pass
+        try:
+            from app.notifications.service import notify_admins_critical_error
+            notify_admins_critical_error(
+                'Критическая ошибка сервера (500)',
+                (str(error) or 'Unknown')[:500],
+                meta={'type': type(error).__name__}
+            )
+            db.session.commit()
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
         return _render_error(
             500,
             'СТРАНИЦА НЕ ЗАГРУЗИЛАСЬ, ОШИБКА!!',
@@ -549,6 +562,19 @@ def create_app(config_name=None):
             db.session.rollback()
         except Exception:
             pass
+        try:
+            from app.notifications.service import notify_admins_critical_error
+            notify_admins_critical_error(
+                'Необработанное исключение (500)',
+                (str(e) or 'Unknown')[:500],
+                meta={'type': type(e).__name__}
+            )
+            db.session.commit()
+        except Exception:
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
         return _render_error(
             500,
             'СТРАНИЦА НЕ ЗАГРУЗИЛАСЬ, ОШИБКА!!',

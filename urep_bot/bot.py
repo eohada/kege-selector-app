@@ -99,9 +99,9 @@ ERROR_REPORT_RECEIVED = "✅ Сообщение об ошибке отправл
 
 
 
-def get_main_keyboard():
+def get_main_keyboard(user_role: str = None):
     """Главное меню."""
-    return InlineKeyboardMarkup([
+    buttons = [
         [
             InlineKeyboardButton("👤 Профиль", callback_data="profile"),
             InlineKeyboardButton("📅 Уроки", callback_data="lessons"),
@@ -116,7 +116,32 @@ def get_main_keyboard():
         [
             InlineKeyboardButton("🌐 Открыть сайт", url=APP_OPEN_URL),
         ],
-    ])
+    ]
+    
+    if user_role in ('admin', 'creator', 'chief_admin', 'tutor'):
+        buttons.insert(2, [InlineKeyboardButton("👨‍💼 Админ-панель", callback_data="admin_panel")])
+        
+    return InlineKeyboardMarkup(buttons)
+
+
+def get_admin_keyboard(user_role: str):
+    """Меню администратора."""
+    buttons = [
+        [
+            InlineKeyboardButton("👥 Поиск ученика", callback_data="admin_search_student"),
+            InlineKeyboardButton("🎫 Реферальные коды", callback_data="admin_referrals"),
+        ],
+        [
+            InlineKeyboardButton("🐞 Ошибки", callback_data="admin_errors"),
+            InlineKeyboardButton("📊 Общая статистика", callback_data="admin_stats"),
+        ],
+    ]
+    
+    if user_role in ('creator', 'chief_admin'):
+        buttons.append([InlineKeyboardButton("➕ Создать ученика", callback_data="admin_create_student")])
+        
+    buttons.append([InlineKeyboardButton("« Главное меню", callback_data="main")])
+    return InlineKeyboardMarkup(buttons)
 
 
 def get_back_keyboard():
@@ -151,6 +176,9 @@ def get_settings_keyboard(settings: dict):
         [toggle("tg_notify_new_message", "Сообщения преподавателя")],
         [toggle("tg_notify_low_lessons", "Уроки заканчиваются")],
         [toggle("tg_notify_news", "Новости платформы")],
+        [toggle("tg_notify_referral_used", "Уведомления о рефералах")],
+        [toggle("tg_notify_homework_submitted", "Сдача ДЗ учениками")],
+        [toggle("tg_notify_system_errors", "Системные ошибки")],
         [InlineKeyboardButton("🔌 Отвязать Telegram", callback_data="unlink")],
         [InlineKeyboardButton("« Главное меню", callback_data="main")],
     ])
@@ -197,6 +225,9 @@ NOTIFY_LABELS = {
     "tg_notify_new_message": "сообщения преподавателя",
     "tg_notify_low_lessons": "уроки заканчиваются",
     "tg_notify_news": "новости платформы",
+    "tg_notify_referral_used": "рефералы",
+    "tg_notify_homework_submitted": "сдача ДЗ",
+    "tg_notify_system_errors": "системные ошибки",
 }
 
 
@@ -212,7 +243,10 @@ def get_bot_connected_users(session) -> list[dict]:
                    COALESCE(up.tg_notify_homework_returned, TRUE),
                    COALESCE(up.tg_notify_new_message, TRUE),
                    COALESCE(up.tg_notify_low_lessons, TRUE),
-                   COALESCE(up.tg_notify_news, TRUE)
+                   COALESCE(up.tg_notify_news, TRUE),
+                   COALESCE(up.tg_notify_referral_used, TRUE),
+                   COALESCE(up.tg_notify_homework_submitted, TRUE),
+                   COALESCE(up.tg_notify_system_errors, TRUE)
             FROM "Users" u
             JOIN "UserProfiles" up ON up.user_id = u.id
             WHERE up.telegram_chat_id IS NOT NULL
@@ -226,6 +260,7 @@ def get_bot_connected_users(session) -> list[dict]:
     keys = [
         "tg_notify_lesson_reminder", "tg_notify_lesson_scheduled", "tg_notify_homework_checked",
         "tg_notify_homework_returned", "tg_notify_new_message", "tg_notify_low_lessons", "tg_notify_news",
+        "tg_notify_referral_used", "tg_notify_homework_submitted", "tg_notify_system_errors",
     ]
     out = []
     for row in rows:
@@ -309,6 +344,9 @@ def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
         "tg_notify_lesson_scheduled": True,
         "tg_notify_low_lessons": True,
         "tg_notify_news": True,
+        "tg_notify_referral_used": True,
+        "tg_notify_homework_submitted": True,
+        "tg_notify_system_errors": True,
     }
     
     try:
@@ -320,7 +358,10 @@ def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
                 COALESCE(tg_notify_new_message, TRUE),
                 COALESCE(tg_notify_lesson_scheduled, TRUE),
                 COALESCE(tg_notify_low_lessons, TRUE),
-                COALESCE(tg_notify_news, TRUE)
+                COALESCE(tg_notify_news, TRUE),
+                COALESCE(tg_notify_referral_used, TRUE),
+                COALESCE(tg_notify_homework_submitted, TRUE),
+                COALESCE(tg_notify_system_errors, TRUE)
             FROM "UserProfiles"
             WHERE telegram_chat_id = :chat_id
         """), {"chat_id": chat_id})
@@ -333,6 +374,9 @@ def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
             user["tg_notify_lesson_scheduled"] = settings[4]
             user["tg_notify_low_lessons"] = settings[5]
             user["tg_notify_news"] = settings[6]
+            user["tg_notify_referral_used"] = settings[7]
+            user["tg_notify_homework_submitted"] = settings[8]
+            user["tg_notify_system_errors"] = settings[9]
     except Exception:
         pass
     
@@ -593,19 +637,39 @@ def _link_via_app_api(code: str, chat_id: int, telegram_id: Optional[str]):
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /start."""
+    chat_id = update.effective_chat.id
+    session = get_session()
+    user_role = None
+    try:
+        user = get_user_by_chat_id(session, chat_id)
+        if user:
+            user_role = user.get('role')
+    finally:
+        close_session(session)
+
     await update.message.reply_text(
         WELCOME_MESSAGE,
         parse_mode="HTML",
-        reply_markup=get_main_keyboard()
+        reply_markup=get_main_keyboard(user_role)
     )
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Команда /help."""
+    chat_id = update.effective_chat.id
+    session = get_session()
+    user_role = None
+    try:
+        user = get_user_by_chat_id(session, chat_id)
+        if user:
+            user_role = user.get('role')
+    finally:
+        close_session(session)
+
     await update.message.reply_text(
         HELP_MESSAGE,
         parse_mode="HTML",
-        reply_markup=get_main_keyboard()
+        reply_markup=get_main_keyboard(user_role)
     )
 
 
@@ -924,17 +988,25 @@ async def users_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка текста из лички для сценария ошибки."""
+    """Центральный обработчик входящих текстовых сообщений (не команд)."""
     if not update.message or update.message.chat.type != "private":
-        return
-    if not context.user_data.get("awaiting_error_report"):
         return
     
     message_text = (update.message.text or "").strip()
     if not message_text:
-        await update.message.reply_text("Пожалуйста, опиши проблему текстом.")
         return
-    
+
+    # Проверяем состояние пользователя
+    if context.user_data.get("awaiting_error_report"):
+        await handle_error_report_submission(update, context, message_text)
+    elif context.user_data.get("awaiting_student_search"):
+        await handle_student_search(update, context, message_text)
+    elif context.user_data.get("awaiting_user_creation"):
+        await handle_user_creation_step(update, context, message_text)
+
+
+async def handle_error_report_submission(update: Update, context: ContextTypes.DEFAULT_TYPE, message_text: str):
+    """Обработка отправки сообщения об ошибке."""
     session = get_session()
     try:
         user = get_user_by_chat_id(session, update.effective_chat.id)
@@ -943,7 +1015,7 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
             return
         
         chat_id = update.effective_chat.id
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         report_id = None
         try:
             result = session.execute(text("""
@@ -994,13 +1066,145 @@ async def handle_private_text(update: Update, context: ContextTypes.DEFAULT_TYPE
                 pass
         
         context.user_data["awaiting_error_report"] = False
-        await update.message.reply_text(ERROR_REPORT_RECEIVED, reply_markup=get_main_keyboard())
+        await update.message.reply_text(ERROR_REPORT_RECEIVED, reply_markup=get_main_keyboard(user.get('role')))
     except Exception as e:
         session.rollback()
         logger.error(f"Error saving bot error report: {e}", exc_info=True)
         await update.message.reply_text(ERROR_MESSAGE, parse_mode="HTML", reply_markup=get_main_keyboard())
     finally:
         close_session(session)
+
+
+async def handle_student_search(update: Update, context: ContextTypes.DEFAULT_TYPE, query_text: str):
+    """Поиск ученика в базе."""
+    session = get_session()
+    try:
+        user = get_user_by_chat_id(session, update.effective_chat.id)
+        if not user or user.get('role') not in ('admin', 'creator', 'chief_admin', 'tutor'):
+            await update.message.reply_text("⛔ Доступ запрещён.")
+            return
+
+        result = session.execute(text("""
+            SELECT s.student_id, s.name, s.email, s.platform_id
+            FROM "Students" s
+            WHERE (s.name ILIKE :q OR s.email ILIKE :q OR s.platform_id ILIKE :q)
+              AND s.is_active = TRUE
+            LIMIT 5
+        """), {"q": f"%{query_text}%"})
+        students = result.fetchall()
+
+        if not students:
+            await update.message.reply_text(f"❌ Ученик по запросу '{esc(query_text)}' не найден. Попробуйте другое имя или email.")
+        else:
+            lines = [f"🔍 <b>Результаты поиска ({len(students)}):</b>", ""]
+            for sid, name, email, pid in students:
+                lines.append(f"👤 <b>{esc(name)}</b>")
+                lines.append(f"📧 {esc(email) or '—'} | ID: #{pid or sid}")
+                lines.append(f"🔗 {APP_URL}/admin/students/{sid}")
+                lines.append("")
+            
+            context.user_data["awaiting_student_search"] = False
+            await update.message.reply_text("\n".join(lines), parse_mode="HTML", reply_markup=get_admin_keyboard(user.get('role')))
+    finally:
+        close_session(session)
+
+
+async def handle_user_creation_step(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
+    """Пошаговое создание ученика: имя → email → создание User + Student + UserProfile."""
+    import re
+    import secrets
+    from werkzeug.security import generate_password_hash
+
+    step = context.user_data.get("create_student_step", "name")
+    session = get_session()
+    try:
+        user = get_user_by_chat_id(session, update.effective_chat.id)
+        if not user or user.get('role') not in ('creator', 'chief_admin'):
+            context.user_data.pop("awaiting_user_creation", None)
+            context.user_data.pop("create_student_step", None)
+            context.user_data.pop("create_student_name", None)
+            await update.message.reply_text("⛔ Доступ запрещён.")
+            return
+
+        if step == "name":
+            name = (text or "").strip()[:200]
+            if not name:
+                await update.message.reply_text("Введите непустое имя.")
+                return
+            context.user_data["create_student_name"] = name
+            context.user_data["create_student_step"] = "email"
+            await update.message.reply_text("📧 Теперь введите <b>email</b> ученика:", parse_mode="HTML")
+            return
+
+        if step == "email":
+            email = (text or "").strip().lower()[:200]
+            if not email or "@" not in email:
+                await update.message.reply_text("Введите корректный email.")
+                return
+            name = context.user_data.get("create_student_name") or "Ученик"
+            student_id = None
+            base_username = re.sub(r'[^a-z0-9]', '', email.split("@")[0]) or "user"
+            base_username = base_username[:20]
+            password_plain = secrets.token_urlsafe(8)
+            password_hash = generate_password_hash(password_plain)
+
+            for _ in range(5):
+                suffix = secrets.token_hex(2)
+                username = f"{base_username}_{suffix}"
+                existing = session.execute(text('SELECT id FROM "Users" WHERE username = :u'), {"u": username}).fetchone()
+                if not existing:
+                    break
+            else:
+                username = f"student_{secrets.token_hex(4)}"
+
+            try:
+                session.execute(text("""
+                    INSERT INTO "Users" (username, email, password_hash, role, is_active, created_at)
+                    VALUES (:username, :email, :password_hash, 'student', TRUE, NOW())
+                """), {"username": username, "email": email, "password_hash": password_hash})
+                session.commit()
+                row = session.execute(text('SELECT id FROM "Users" WHERE username = :u'), {"u": username}).fetchone()
+                user_id = row[0] if row else None
+                if not user_id:
+                    session.rollback()
+                    await update.message.reply_text("❌ Не удалось создать пользователя.")
+                    return
+                session.execute(text('INSERT INTO "UserRoles" (user_id, role) VALUES (:uid, \'student\')'), {"uid": user_id})
+                session.execute(text("""
+                    INSERT INTO "Students" (user_id, name, email, is_active, created_at, updated_at)
+                    VALUES (:uid, :name, :email, TRUE, NOW(), NOW())
+                """), {"uid": user_id, "name": name, "email": email})
+                session.execute(text("""
+                    INSERT INTO "UserProfiles" (user_id, timezone, created_at, updated_at)
+                    VALUES (:uid, 'Europe/Moscow', NOW(), NOW())
+                """), {"uid": user_id})
+                session.commit()
+                student_row = session.execute(text('SELECT student_id FROM "Students" WHERE user_id = :uid'), {"uid": user_id}).fetchone()
+                student_id = student_row[0] if student_row else user_id
+            except Exception as e:
+                session.rollback()
+                logger.exception("Create student failed: %s", e)
+                await update.message.reply_text(f"❌ Ошибка при создании: {str(e)[:200]}")
+            else:
+                context.user_data.pop("awaiting_user_creation", None)
+                context.user_data.pop("create_student_step", None)
+                context.user_data.pop("create_student_name", None)
+                admin_link = f"{APP_URL}/admin/students/{student_id}" if APP_URL and student_id else ""
+                msg = (
+                    f"✅ <b>Ученик создан</b>\n\n"
+                    f"👤 {esc(name)}\n"
+                    f"📧 {esc(email)}\n"
+                    f"🔑 Логин: <code>{esc(username)}</code>\n"
+                    f"🔒 Пароль: <code>{password_plain}</code>\n\n"
+                    f"Передай пароль ученику/родителю безопасным способом.\n"
+                )
+                if admin_link:
+                    msg += f"\n🔗 {admin_link}"
+                await update.message.reply_text(msg, parse_mode="HTML", reply_markup=get_admin_keyboard(user.get('role')))
+            return
+    finally:
+        close_session(session)
+
 
 
 
@@ -1173,9 +1377,114 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(
                 "🏠 <b>Главное меню</b>\n\nВыбери действие:",
                 parse_mode="HTML",
-                reply_markup=get_main_keyboard()
+                reply_markup=get_main_keyboard(user.get('role') if user else None)
             )
         
+        elif data == "admin_panel":
+            if not user or user.get('role') not in ('admin', 'creator', 'chief_admin', 'tutor'):
+                await query.edit_message_text("⛔ Доступ запрещён.", reply_markup=get_main_keyboard())
+                return
+            await query.edit_message_text(
+                "👨‍💼 <b>Панель управления</b>\n\nЗдесь вы можете управлять платформой и отслеживать активность.",
+                parse_mode="HTML",
+                reply_markup=get_admin_keyboard(user.get('role'))
+            )
+
+        elif data == "admin_referrals":
+            if not user or user.get('role') not in ('admin', 'creator', 'chief_admin'):
+                await query.edit_message_text("⛔ Доступ запрещён.", reply_markup=get_main_keyboard())
+                return
+            
+            result = session.execute(text("""
+                SELECT code, usage_count, usage_limit, is_active
+                FROM "ReferralCodes"
+                WHERE creator_id = :user_id
+                ORDER BY created_at DESC
+            """), {"user_id": user['id']})
+            codes = result.fetchall()
+            
+            if not codes:
+                text_msg = "🎫 <b>Ваши реферальные коды</b>\n\nУ вас пока нет созданных кодов.\nИспользуйте команду /gen_ref КОД [лимит] для создания."
+            else:
+                lines = ["🎫 <b>Ваши реферальные коды:</b>", ""]
+                for c_code, usage, limit, active in codes:
+                    status = "✅" if active else "❌"
+                    limit_str = f"/{limit}" if limit else ""
+                    lines.append(f"• <code>{c_code}</code> — {usage}{limit_str} исп. {status}")
+                text_msg = "\n".join(lines)
+            
+            await query.edit_message_text(text_msg, parse_mode="HTML", reply_markup=get_admin_keyboard(user.get('role')))
+
+        elif data == "admin_errors":
+            if not user or user.get('role') not in ('admin', 'creator', 'chief_admin'):
+                await query.edit_message_text("⛔ Доступ запрещён.", reply_markup=get_main_keyboard())
+                return
+            
+            result = session.execute(text("""
+                SELECT report_id, message, created_at, status
+                FROM "BotErrorReports"
+                WHERE status = 'new'
+                ORDER BY created_at DESC
+                LIMIT 5
+            """))
+            errors = result.fetchall()
+            
+            if not errors:
+                text_msg = "🐞 <b>Новых ошибок нет</b>\n\nВсе сообщения обработаны."
+            else:
+                lines = ["🐞 <b>Последние новые ошибки:</b>", ""]
+                for rid, msg, dt, status in errors:
+                    lines.append(f"<b>#{rid}</b> ({dt.strftime('%d.%m %H:%M')}):")
+                    lines.append(f"<i>{esc(msg[:100])}...</i>")
+                    lines.append("")
+                text_msg = "\n".join(lines)
+            
+            await query.edit_message_text(text_msg, parse_mode="HTML", reply_markup=get_admin_keyboard(user.get('role')))
+
+        elif data == "admin_search_student":
+            if not user or user.get('role') not in ('admin', 'creator', 'chief_admin', 'tutor'):
+                await query.edit_message_text("⛔ Доступ запрещён.", reply_markup=get_main_keyboard())
+                return
+            context.user_data["awaiting_student_search"] = True
+            await query.edit_message_text(
+                "🔍 <b>Поиск ученика</b>\n\nВведите имя или email ученика:",
+                parse_mode="HTML",
+                reply_markup=get_admin_keyboard(user.get('role'))
+            )
+
+        elif data == "admin_stats":
+            if not user or user.get('role') not in ('admin', 'creator', 'chief_admin'):
+                await query.edit_message_text("⛔ Доступ запрещён.", reply_markup=get_main_keyboard())
+                return
+            
+            stats = {}
+            stats['total_users'] = session.execute(text('SELECT COUNT(*) FROM "Users"')).scalar()
+            stats['active_students'] = session.execute(text('SELECT COUNT(*) FROM "Students" WHERE is_active = TRUE')).scalar()
+            stats['lessons_today'] = session.execute(text("SELECT COUNT(*) FROM \"Lessons\" WHERE lesson_date::date = CURRENT_DATE")).scalar()
+            stats['referrals_total'] = session.execute(text('SELECT COUNT(*) FROM "ReferralUsage"')).scalar()
+            
+            text_msg = (
+                f"📊 <b>Статистика платформы</b>\n\n"
+                f"👤 Всего пользователей: {stats['total_users']}\n"
+                f"🎓 Активных учеников: {stats['active_students']}\n"
+                f"📅 Уроков сегодня: {stats['lessons_today']}\n"
+                f"🚀 Использований рефералов: {stats['referrals_total']}"
+            )
+            
+            await query.edit_message_text(text_msg, parse_mode="HTML", reply_markup=get_admin_keyboard(user.get('role')))
+
+        elif data == "admin_create_student":
+            if not user or user.get('role') not in ('creator', 'chief_admin'):
+                await query.edit_message_text("⛔ Доступ запрещён. Только создатель или главный админ.", reply_markup=get_main_keyboard())
+                return
+            context.user_data["awaiting_user_creation"] = True
+            context.user_data["create_student_step"] = "name"
+            await query.edit_message_text(
+                "➕ <b>Создание ученика</b>\n\nВведите <b>имя ученика</b> (ФИО или как в журнале):",
+                parse_mode="HTML",
+                reply_markup=get_admin_keyboard(user.get('role'))
+            )
+
         elif data == "profile":
             if not user:
                 await query.edit_message_text(PROFILE_NOT_LINKED, parse_mode="HTML", reply_markup=get_main_keyboard())
@@ -1271,7 +1580,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             allowed_fields = [
                 'tg_notify_lesson_reminder', 'tg_notify_homework_checked',
                 'tg_notify_homework_returned', 'tg_notify_new_message',
-                'tg_notify_lesson_scheduled', 'tg_notify_low_lessons', 'tg_notify_news'
+                'tg_notify_lesson_scheduled', 'tg_notify_low_lessons', 'tg_notify_news',
+                'tg_notify_referral_used', 'tg_notify_homework_submitted', 'tg_notify_system_errors'
             ]
             
             if field in allowed_fields:
@@ -1315,6 +1625,55 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+async def gen_ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /gen_ref <code> [limit] — генерация реферального кода (для админов)."""
+    chat_id = update.effective_chat.id
+    session = get_session()
+    try:
+        user = get_user_by_chat_id(session, chat_id)
+        if not user or user.get('role') not in ('admin', 'creator', 'chief_admin'):
+            await update.message.reply_text("⛔ Доступ запрещён.")
+            return
+
+        if not context.args:
+            await update.message.reply_text("ℹ️ <b>Использование:</b> /gen_ref КОД [лимит]\n\nПример: /gen_ref SUMMER2024 50")
+            return
+
+        code = context.args[0].upper().strip()
+        limit = None
+        if len(context.args) > 1:
+            try:
+                limit = int(context.args[1])
+            except ValueError:
+                pass
+
+        # Проверяем не занят ли код
+        existing = session.execute(text('SELECT id FROM "ReferralCodes" WHERE code = :code'), {"code": code}).fetchone()
+        if existing:
+            await update.message.reply_text(f"❌ Код <b>{code}</b> уже существует.")
+            return
+
+        session.execute(text("""
+            INSERT INTO "ReferralCodes" (code, creator_id, usage_limit, usage_count, is_active, created_at)
+            VALUES (:code, :creator_id, :limit, 0, TRUE, NOW())
+        """), {
+            "code": code,
+            "creator_id": user["id"],
+            "limit": limit
+        })
+        session.commit()
+
+        limit_text = f"с лимитом {limit}" if limit else "без лимита"
+        await update.message.reply_text(f"✅ Реферальный код <b>{code}</b> успешно создан {limit_text}!")
+        
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Error in gen_ref_command: {e}", exc_info=True)
+        await update.message.reply_text(ERROR_MESSAGE)
+    finally:
+        close_session(session)
+
+
 def create_bot_application() -> Application:
     """Создание приложения бота."""
     application = Application.builder().token(BOT_TOKEN).build()
@@ -1329,6 +1688,7 @@ def create_bot_application() -> Application:
     application.add_handler(CommandHandler("settings", settings_command))
     application.add_handler(CommandHandler("error", error_command))
     application.add_handler(CommandHandler("users", users_command))
+    application.add_handler(CommandHandler("gen_ref", gen_ref_command))
     application.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND, handle_private_text))
     application.add_handler(CallbackQueryHandler(callback_handler))
     

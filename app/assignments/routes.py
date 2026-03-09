@@ -2544,6 +2544,18 @@ def submission_submit(submission_id):
             logger.warning(f"Could not record SubmissionAttempt for {submission.submission_id}: {e}")
         
         db.session.commit()
+
+        creator_id = getattr(assignment, 'created_by_id', None) or (assignment.created_by.id if getattr(assignment, 'created_by', None) else None)
+        if creator_id and assignment.created_by_id:
+            student_name = getattr(submission.student, 'name', None) or 'Ученик'
+            notify_user(
+                assignment.created_by_id,
+                kind='teacher_homework_submitted',
+                title='📤 Ученик сдал работу',
+                body=f'{student_name} сдал(а) работу «{assignment.title}»',
+                link_url=url_for('assignments.submission_view', submission_id=submission_id) if current_app else None,
+                meta={'submission_id': submission_id, 'assignment_id': assignment.assignment_id, 'student_id': submission.student_id}
+            )
         
         audit_logger.log(
             action='submit_assignment',

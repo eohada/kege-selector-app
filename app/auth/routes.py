@@ -18,7 +18,8 @@ from wtforms.validators import DataRequired
 from app.auth import auth_bp
 from app.limiter import limiter
 from datetime import timedelta
-from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission, Lesson, LessonTask, Course
+from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission, Lesson, LessonTask, Course, ReferralCode, ReferralUsage
+from app.notifications.service import notify_user
 from app.utils.subscription_access import get_effective_access_for_user
 from app.utils.course_tasks import get_task_numbers, get_max_score_for_task
 from app.utils.cross_env_login import verify_cross_env_token
@@ -253,10 +254,20 @@ def demo_start():
     if current_user.is_authenticated:
         logout_user()
 
-    # Личный (реферальный) код — сохраняем в сессию для будущей реферальной системы
-    ref_code = (request.args.get('ref') or '').strip()
-    if ref_code:
-        session['demo_ref_code'] = ref_code
+    # Личный (реферальный) код — проверяем в БД
+    ref_code_str = (request.args.get('ref') or '').strip()
+    referral_obj = None
+    if ref_code_str:
+        referral_obj = ReferralCode.query.filter_by(code=ref_code_str, is_active=True).first()
+        if referral_obj:
+            if referral_obj.usage_limit is not None and referral_obj.usage_count >= referral_obj.usage_limit:
+                referral_obj = None  # Лимит исчерпан
+    
+    if referral_obj:
+        session['demo_ref_code'] = referral_obj.code
+    elif ref_code_str:
+        # Если код не валидный, но введен — можем сохранить как текст, но не привязывать официально
+        session['demo_ref_code_invalid'] = ref_code_str
 
     exam = (request.args.get('exam') or 'ege').strip().lower()
     if exam not in ('oge', 'ege'):
@@ -280,6 +291,19 @@ def demo_start():
     demo_student = Student(name='Демо-ученик', user_id=user.id, is_active=True, email=f"{demo_username}@demo.local")
     db.session.add(demo_student)
     db.session.flush()
+
+    if referral_obj:
+        referral_obj.usage_count += 1
+        db.session.add(ReferralUsage(referral_code_id=referral_obj.id, user_id=user.id))
+        
+        # Уведомляем создателя кода
+        notify_user(
+            referral_obj.creator_id,
+            kind='referral_used',
+            title='🚀 Новый реферал!',
+            body=f"Новый пользователь начал демо-тур по вашему коду: {referral_obj.code}",
+            meta={'referral_code': referral_obj.code, 'demo_user_id': user.id}
+        )
 
     creator = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin', 'tutor'])).first()
     created_by_id = creator.id if creator else user.id
