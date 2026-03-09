@@ -85,6 +85,15 @@ PROFILE_NOT_LINKED = """
 3. Отправь мне команду /link КОД
 """
 
+
+def _profile_not_linked_with_chat_id(chat_id) -> str:
+    """Текст «не привязан» с подсказкой по chat_id для диагностики."""
+    return (
+        PROFILE_NOT_LINKED
+        + f"\n\n🔢 <b>Твой chat_id:</b> <code>{chat_id}</code>\n"
+        "Если ты уже привязывал аккаунт на сайте — получи новый код в профиле и отправь /link КОД."
+    )
+
 NO_LESSONS = "📅 Уроков пока нет. Как только урок будет запланирован — я сообщу!"
 
 ERROR_MESSAGE = "❌ Произошла ошибка. Попробуй ещё раз или обратись к преподавателю."
@@ -316,8 +325,12 @@ async def start_error_report_flow(update: Update, context: ContextTypes.DEFAULT_
         )
 
 
-def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
-    """Получить пользователя по chat_id Telegram."""
+def get_user_by_chat_id(session, chat_id) -> Optional[dict]:
+    """Получить пользователя по chat_id Telegram. chat_id приводится к int."""
+    try:
+        chat_id = int(chat_id)
+    except (TypeError, ValueError):
+        return None
     result = session.execute(text("""
         SELECT u.id, u.username, u.email, u.role, up.first_name, up.last_name,
                up.telegram_notifications_enabled
@@ -327,8 +340,9 @@ def get_user_by_chat_id(session, chat_id: int) -> Optional[dict]:
     """), {"chat_id": chat_id})
     row = result.fetchone()
     if not row:
+        logger.info("get_user_by_chat_id: no user for chat_id=%s (check DB UserProfiles.telegram_chat_id)", chat_id)
         return None
-    
+
     user = {
         "id": row[0],
         "username": row[1],
@@ -647,8 +661,16 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     finally:
         close_session(session)
 
+    if user_role is None:
+        text = (
+            WELCOME_MESSAGE
+            + f"\n\n🔢 <b>Твой chat_id:</b> <code>{chat_id}</code>\n"
+            "Если уже привязывал аккаунт на сайте — получи новый код в профиле и отправь /link КОД."
+        )
+    else:
+        text = WELCOME_MESSAGE
     await update.message.reply_text(
-        WELCOME_MESSAGE,
+        text,
         parse_mode="HTML",
         reply_markup=get_main_keyboard(user_role)
     )
@@ -695,12 +717,22 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         error = data.get("error")
 
         if status == 200 and data.get("success"):
+            # Сразу перезапросить пользователя и показать меню с учётом роли (на случай кэша/реплики)
+            role = None
+            reply_markup = get_main_keyboard()
+            session = get_session()
+            try:
+                user = get_user_by_chat_id(session, chat_id)
+                role = user.get("role") if user else None
+                reply_markup = get_main_keyboard(role)
+            finally:
+                close_session(session)
             await update.message.reply_text(
-                LINK_SUCCESS,
+                LINK_SUCCESS + "\n\n💡 Если меню внизу не обновилось — отправь /start.",
                 parse_mode="HTML",
-                reply_markup=get_main_keyboard()
+                reply_markup=reply_markup
             )
-            logger.info(f"User linked via API chat_id={chat_id}")
+            logger.info("User linked via API chat_id=%s role=%s", chat_id, role)
             return
 
         if error == "already_linked":
@@ -740,9 +772,10 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     session = get_session()
     try:
+        cid = int(chat_id)
         existing = session.execute(text(
             'SELECT user_id FROM "UserProfiles" WHERE telegram_chat_id = :chat_id'
-        ), {"chat_id": chat_id}).fetchone()
+        ), {"chat_id": cid}).fetchone()
         
         if existing:
             await update.message.reply_text(
@@ -791,11 +824,22 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ELSE telegram_id
                 END
             WHERE profile_id = :profile_id
-        """), {"chat_id": chat_id, "profile_id": profile_id, "telegram_id": tg_identifier})
+        """), {"chat_id": cid, "profile_id": profile_id, "telegram_id": tg_identifier})
         session.commit()
-        
-        await update.message.reply_text(LINK_SUCCESS, parse_mode="HTML", reply_markup=get_main_keyboard())
-        logger.info(f"User {username} linked Telegram chat_id={chat_id}")
+
+        session2 = get_session()
+        try:
+            user = get_user_by_chat_id(session2, cid)
+            role = user.get("role") if user else None
+            reply_markup = get_main_keyboard(role)
+        finally:
+            close_session(session2)
+        await update.message.reply_text(
+            LINK_SUCCESS + "\n\n💡 Если меню внизу не обновилось — отправь /start.",
+            parse_mode="HTML",
+            reply_markup=reply_markup
+        )
+        logger.info("User %s linked Telegram chat_id=%s role=%s", username, chat_id, role if user else None)
         
     except Exception as e:
         try:
@@ -1487,7 +1531,11 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         elif data == "profile":
             if not user:
-                await query.edit_message_text(PROFILE_NOT_LINKED, parse_mode="HTML", reply_markup=get_main_keyboard())
+                await query.edit_message_text(
+                    _profile_not_linked_with_chat_id(chat_id),
+                    parse_mode="HTML",
+                    reply_markup=get_main_keyboard()
+                )
                 return
             text = await build_profile_text(session, user)
             await query.edit_message_text(text, parse_mode="HTML", reply_markup=get_back_keyboard())

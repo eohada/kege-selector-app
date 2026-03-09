@@ -510,6 +510,7 @@ def api_telegram_link_bot():
         if profile.telegram_link_code_expires and profile.telegram_link_code_expires < datetime.utcnow():
             return jsonify({'success': False, 'error': 'expired_code'}), 410
 
+        logger.info("api_telegram_link_bot: linking chat_id=%s (int) to user_id=%s profile_id=%s", chat_id, profile.user_id, profile.profile_id)
         profile.telegram_chat_id = chat_id
         profile.telegram_link_code = None
         profile.telegram_link_code_expires = None
