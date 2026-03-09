@@ -975,6 +975,39 @@ class MiroUserToken(db.Model):
     user = db.relationship('User', backref=db.backref('miro_token', uselist=False, lazy=True))
 
 
+class ReferralCode(db.Model):
+    """Реферальный код для демо-версии и отслеживания трафика."""
+    __tablename__ = 'ReferralCodes'
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    creator_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)
+    usage_limit = db.Column(db.Integer, nullable=True)  # NULL = безлимитно
+    usage_count = db.Column(db.Integer, default=0, nullable=False)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    note = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    
+    creator = db.relationship('User', foreign_keys=[creator_id], backref='created_referral_codes')
+
+    def __repr__(self):
+        return f'<ReferralCode {self.code} by {self.creator_id}>'
+
+
+class ReferralUsage(db.Model):
+    """Лог использования реферальных кодов при старте демо-версии."""
+    __tablename__ = 'ReferralUsage'
+    id = db.Column(db.Integer, primary_key=True)
+    referral_code_id = db.Column(db.Integer, db.ForeignKey('ReferralCodes.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=False)  # Демо-пользователь
+    created_at = db.Column(db.DateTime, default=moscow_now)
+    
+    referral_code = db.relationship('ReferralCode', backref='usages')
+    user = db.relationship('User', foreign_keys=[user_id])
+
+    def __repr__(self):
+        return f'<ReferralUsage code_id={self.referral_code_id} user_id={self.user_id}>'
+
+
 class InviteLink(db.Model):
     """
     Приглашение в систему (онбординг).
@@ -1189,6 +1222,10 @@ class UserProfile(db.Model):
     tg_notify_lesson_scheduled = db.Column(db.Boolean, default=True, nullable=False)  # Урок запланирован
     tg_notify_low_lessons = db.Column(db.Boolean, default=True, nullable=False)  # Уроки заканчиваются
     tg_notify_news = db.Column(db.Boolean, default=True, nullable=False)  # Новости платформы (по умолчанию вкл)
+    
+    tg_notify_referral_used = db.Column(db.Boolean, default=True, nullable=False)  # Новый реферал (для админов)
+    tg_notify_homework_submitted = db.Column(db.Boolean, default=True, nullable=False)  # ДЗ сдано (для учителей)
+    tg_notify_system_errors = db.Column(db.Boolean, default=True, nullable=False)  # Системные ошибки (для админов)
     
     internal_notes = db.Column(db.Text, nullable=True)
     

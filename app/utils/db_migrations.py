@@ -27,6 +27,7 @@ from core.db_models import (
     RecurringLessonSlot,
     TariffPlan, TariffGroup, UserSubscription, TrainerSession, TrainerLlmLog, UserConsent,
     Subject, KnowledgeNode, UserMastery, AnalyticsEvent,
+    ReferralCode, ReferralUsage,
 )
 from app.auth.permissions import DEFAULT_ROLE_PERMISSIONS
 
@@ -151,6 +152,8 @@ def _fix_postgres_sequences(app, inspector):
             'RolePermissions': 'id',
             'TrainerSessions': 'session_id',
             'TrainerLlmLogs': 'log_id',
+            'ReferralCodes': 'id',
+            'ReferralUsage': 'id',
         }
 
         for preferred_table, pk_column in sequences_map.items():
@@ -457,6 +460,22 @@ def ensure_schema_columns(app):
                     logger.info("MiroUserTokens table created")
                 except Exception as e:
                     logger.warning(f"Could not create MiroUserTokens table: {e}")
+                    db.session.rollback()
+
+            if 'ReferralCodes' not in table_names and 'referralcodes' not in table_names:
+                try:
+                    ReferralCode.__table__.create(db.engine)
+                    logger.info("ReferralCodes table created")
+                except Exception as e:
+                    logger.warning(f"Could not create ReferralCodes table: {e}")
+                    db.session.rollback()
+
+            if 'ReferralUsage' not in table_names and 'referralusage' not in table_names:
+                try:
+                    ReferralUsage.__table__.create(db.engine)
+                    logger.info("ReferralUsage table created")
+                except Exception as e:
+                    logger.warning(f"Could not create ReferralUsage table: {e}")
                     db.session.rollback()
 
             if 'InviteLinks' not in table_names and 'invitelinks' not in table_names:
@@ -1176,7 +1195,10 @@ def ensure_schema_columns(app):
                         'tg_notify_new_message',
                         'tg_notify_lesson_scheduled',
                         'tg_notify_low_lessons',
-                        'tg_notify_news'
+                        'tg_notify_news',
+                        'tg_notify_referral_used',
+                        'tg_notify_homework_submitted',
+                        'tg_notify_system_errors'
                     ]
                     for field in tg_notify_fields:
                         if field not in cols:
