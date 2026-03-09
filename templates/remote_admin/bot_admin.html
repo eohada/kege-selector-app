@@ -46,16 +46,18 @@
                     </div>
                 </div>
 
+                <p class="hero-subtitle" style="margin-bottom: 1rem;">Добавленный пользователь будет получать в боте: сообщения об ошибках от учеников, уведомления о рефералах и критические ошибки системы. У него также станет доступна команда /users и админ-меню в боте.</p>
                 <form method="POST" action="{{ url_for('remote_admin.bot_admins_add') }}" class="filters-grid" style="align-items: end;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="neo-field">
-                    <label class="neo-label" for="admin-identifier">User ID / логин / @tg / chat_id</label>
-                    <input id="admin-identifier" name="identifier" class="neo-input" placeholder="например: @ivanov или 123456789">
+                    <label class="neo-label" for="admin-identifier">Кого добавить: User ID / логин / email / @telegram</label>
+                    <input id="admin-identifier" name="identifier" class="neo-input" placeholder="например: ivanov, user@mail.ru или @ivanov_tg">
                     </div>
                     <div class="filters-actions">
-                        <button type="submit" class="neo-button accent">Добавить</button>
+                        <button type="submit" class="neo-button accent">Добавить админа бота</button>
                     </div>
                 </form>
+                <p class="hero-subtitle" style="margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.85;">Важно: пользователь должен сначала <strong>привязать Telegram</strong> в своём профиле на сайте (Профиль → Привязать Telegram → код ввести в боте командой /link), иначе уведомления ему не будут доставляться.</p>
 
                 <div class="table-responsive" style="margin-top: 1rem;">
                     <table class="styled-table">
