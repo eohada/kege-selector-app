@@ -344,7 +344,7 @@ def get_user_by_chat_id(session, chat_id) -> Optional[dict]:
         return None
 
     user_id = row[0]
-    base_role = (row[3] or "").strip() if row[3] else None
+    base_role = (row[3] or "").strip().lower() if row[3] else None
 
     # Загружаем дополнительные роли пользователя из UserRoles и вычисляем «сильнейшую» роль,
     # чтобы поведение совпадало с бекендом (см. ROLE_STRENGTH_ORDER в core/db_models.py).
@@ -355,7 +355,7 @@ def get_user_by_chat_id(session, chat_id) -> Optional[dict]:
             FROM "UserRoles"
             WHERE user_id = :user_id
         """), {"user_id": user_id})
-        extra_roles = [r[0] for r in roles_result.fetchall() if r and r[0]]
+        extra_roles = [(r[0] or "").strip().lower() for r in roles_result.fetchall() if r and r[0]]
     except Exception as e:
         logger.warning("get_user_by_chat_id: failed to load extra roles for user_id=%s: %s", user_id, e)
 
@@ -364,7 +364,7 @@ def get_user_by_chat_id(session, chat_id) -> Optional[dict]:
         all_roles.add(base_role)
     for r in extra_roles:
         if r:
-            all_roles.add(r.strip())
+            all_roles.add(r)
 
     ROLE_STRENGTH_ORDER = (
         "creator",
@@ -389,6 +389,15 @@ def get_user_by_chat_id(session, chat_id) -> Optional[dict]:
             effective_role = base_role
         elif extra_roles:
             effective_role = extra_roles[0]
+
+    # Админ бота (BotAdmins) получает полный доступ, даже если роль в User/UserRoles не совпадает
+    if effective_role not in ("creator", "chief_admin", "admin", "tutor"):
+        try:
+            admin_ids = get_bot_admin_chat_ids(session)
+            if chat_id in admin_ids:
+                effective_role = "chief_admin"
+        except Exception:
+            pass
 
     user = {
         "id": user_id,
