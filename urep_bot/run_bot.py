@@ -94,19 +94,19 @@ def main():
         logger.error(f"Database error: {e}")
         sys.exit(1)
 
+    lock_session = None
     try:
         db_url = (DATABASE_URL or '').lower()
         if 'postgres' in db_url:
-            session = get_session()
-            try:
-                res = session.execute(text("SELECT pg_try_advisory_lock(:key)"), {"key": BOT_INSTANCE_LOCK_KEY}).fetchone()
-                locked = bool(res and res[0])
-                if not locked:
-                    logger.error("Another bot instance already holds advisory lock. Exiting.")
-                    sys.exit(3)
-                logger.info(f"Advisory lock acquired: {BOT_INSTANCE_LOCK_KEY}")
-            finally:
-                close_session(session)
+            lock_session = get_session()
+            res = lock_session.execute(text("SELECT pg_try_advisory_lock(:key)"), {"key": BOT_INSTANCE_LOCK_KEY}).fetchone()
+            locked = bool(res and res[0])
+            if not locked:
+                close_session(lock_session)
+                logger.error("Another bot instance already holds advisory lock. Exiting.")
+                sys.exit(3)
+            logger.info(f"Advisory lock acquired: {BOT_INSTANCE_LOCK_KEY} (session held until exit)")
+            # НЕ закрываем lock_session — блокировка привязана к соединению, иначе другие экземпляры начнут polling
         else:
             logger.info("Advisory lock skipped (non-Postgres DB).")
     except Exception as e:
