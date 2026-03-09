@@ -68,7 +68,7 @@ def format_notification(kind: str, title: str, body: Optional[str], link_url: Op
 
 
 async def send_telegram_notification(bot: Bot, chat_id: int, text: str) -> bool:
-    """Отправка уведомления в Telegram."""
+    """Отправка уведомления в Telegram. При «заблокировал бота» / «деактивирован» сбрасываем привязку."""
     try:
         await bot.send_message(
             chat_id=chat_id,
@@ -79,7 +79,8 @@ async def send_telegram_notification(bot: Bot, chat_id: int, text: str) -> bool:
         return True
     except TelegramError as e:
         err_str = str(e).lower()
-        logger.warning(f"Failed to send notification to {chat_id}: {e}")
+        logger.warning(f"Failed to send notification to chat_id={chat_id}: {e}")
+        # Сбрасываем привязку только если пользователь точно заблокировал бота или аккаунт деактивирован
         should_unlink = (
             "blocked by the user" in err_str
             or "user is deactivated" in err_str
@@ -94,13 +95,15 @@ async def send_telegram_notification(bot: Bot, chat_id: int, text: str) -> bool:
                 """), {"chat_id": chat_id})
                 session.commit()
                 logger.info(f"Unlinked chat_id={chat_id}: Telegram reported blocked/deactivated")
-            except Exception:
+            except Exception as ex:
                 session.rollback()
+                logger.warning(f"Could not unlink chat_id={chat_id}: {ex}")
             finally:
                 close_session(session)
+        # Иначе не трогаем привязку (chat not found, network error и т.д. — могли быть временными)
         return False
     except Exception as e:
-        logger.error(f"Error sending notification: {e}", exc_info=True)
+        logger.error(f"Error sending notification to chat_id={chat_id}: {e}", exc_info=True)
         return False
 
 
