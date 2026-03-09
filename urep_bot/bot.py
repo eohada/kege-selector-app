@@ -1186,7 +1186,7 @@ async def handle_student_search(update: Update, context: ContextTypes.DEFAULT_TY
             for sid, name, email, pid in students:
                 lines.append(f"👤 <b>{esc(name)}</b>")
                 lines.append(f"📧 {esc(email) or '—'} | ID: #{pid or sid}")
-                lines.append(f"🔗 {APP_URL}/admin/students/{sid}")
+                lines.append(f"🔗 {APP_URL}/student/{sid}")
                 lines.append("")
             
             context.user_data["awaiting_student_search"] = False
@@ -1275,7 +1275,7 @@ async def handle_user_creation_step(update: Update, context: ContextTypes.DEFAUL
                 context.user_data.pop("awaiting_user_creation", None)
                 context.user_data.pop("create_student_step", None)
                 context.user_data.pop("create_student_name", None)
-                admin_link = f"{APP_URL}/admin/students/{student_id}" if APP_URL and student_id else ""
+                admin_link = f"{APP_URL}/student/{student_id}" if APP_URL and student_id else ""
                 msg = (
                     f"✅ <b>Ученик создан</b>\n\n"
                     f"👤 {esc(name)}\n"
@@ -1579,8 +1579,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     reply_markup=get_main_keyboard()
                 )
                 return
-            text = await build_profile_text(session, user)
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=get_back_keyboard())
+            profile_text = await build_profile_text(session, user)
+            await query.edit_message_text(profile_text, parse_mode="HTML", reply_markup=get_back_keyboard())
         
         elif data == "lessons":
             if not user:
