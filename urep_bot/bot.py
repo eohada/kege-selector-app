@@ -343,11 +343,58 @@ def get_user_by_chat_id(session, chat_id) -> Optional[dict]:
         logger.info("get_user_by_chat_id: no user for chat_id=%s (check DB UserProfiles.telegram_chat_id)", chat_id)
         return None
 
+    user_id = row[0]
+    base_role = (row[3] or "").strip() if row[3] else None
+
+    # Загружаем дополнительные роли пользователя из UserRoles и вычисляем «сильнейшую» роль,
+    # чтобы поведение совпадало с бекендом (см. ROLE_STRENGTH_ORDER в core/db_models.py).
+    extra_roles: list[str] = []
+    try:
+        roles_result = session.execute(text("""
+            SELECT role
+            FROM "UserRoles"
+            WHERE user_id = :user_id
+        """), {"user_id": user_id})
+        extra_roles = [r[0] for r in roles_result.fetchall() if r and r[0]]
+    except Exception as e:
+        logger.warning("get_user_by_chat_id: failed to load extra roles for user_id=%s: %s", user_id, e)
+
+    all_roles = set()
+    if base_role:
+        all_roles.add(base_role)
+    for r in extra_roles:
+        if r:
+            all_roles.add(r.strip())
+
+    ROLE_STRENGTH_ORDER = (
+        "creator",
+        "chief_admin",
+        "admin",
+        "chief_tester",
+        "content_maker",
+        "tutor",
+        "designer",
+        "tester",
+        "student",
+        "parent",
+    )
+
+    effective_role = None
+    for slug in ROLE_STRENGTH_ORDER:
+        if slug in all_roles:
+            effective_role = slug
+            break
+    if not effective_role:
+        if base_role:
+            effective_role = base_role
+        elif extra_roles:
+            effective_role = extra_roles[0]
+
     user = {
-        "id": row[0],
+        "id": user_id,
         "username": row[1],
         "email": row[2],
-        "role": row[3],
+        "role": effective_role,
         "first_name": row[4],
         "last_name": row[5],
         "notifications_enabled": row[6] if row[6] is not None else True,
