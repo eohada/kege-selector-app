@@ -751,15 +751,10 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
+        # invalid_code от API — не выходим: пробуем привязать через БД (та же БД у бота и сайта)
         if error == "invalid_code":
-            await update.message.reply_text(
-                "❌ Код не найден или уже использован. Запроси новый код в профиле на сайте и отправь его сразу после получения.",
-                parse_mode="HTML",
-                reply_markup=get_main_keyboard()
-            )
-            return
-
-        if status and 400 <= status < 500:
+            logger.info("Link API returned invalid_code for code=%s, trying DB fallback", code[:3] + "***")
+        elif status and 400 <= status < 500:
             await update.message.reply_text(
                 ERROR_MESSAGE,
                 parse_mode="HTML",
@@ -789,7 +784,7 @@ async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             SELECT up.profile_id, up.user_id, up.telegram_link_code_expires, u.username
             FROM "UserProfiles" up
             JOIN "Users" u ON u.id = up.user_id
-            WHERE up.telegram_link_code = :code
+            WHERE UPPER(TRIM(COALESCE(up.telegram_link_code, ''))) = :code
         """), {"code": code})
         row = result.fetchone()
         
