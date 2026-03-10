@@ -105,6 +105,7 @@
                 var params = new URLSearchParams(window.location.search);
                 if (params.get('error') === 'invalid_code') {
                     if (errEl) { errEl.textContent = 'Неверный код. Попробуйте ещё раз.'; errEl.classList.add('visible'); }
+                    if (input) input.classList.add('error');
                 }
             } catch(e) {}
 
@@ -112,14 +113,16 @@
                 form.addEventListener('submit', function(e) {
                     e.preventDefault();
                     if (errEl) errEl.classList.remove('visible');
+                    input.classList.remove('error');
                     var code = (input.value || '').trim();
-                    if (code !== 'test') {
+                    if (!code) {
                         input.classList.add('error');
-                        if (errEl) { errEl.textContent = 'Неверный код. Введите правильный код для входа в демо.'; errEl.classList.add('visible'); }
+                        if (errEl) { errEl.textContent = 'Введите код для входа в демо.'; errEl.classList.add('visible'); }
                         return;
                     }
-                    input.classList.remove('error');
-                    window.location.href = startUrl + (startUrl.indexOf('?') !== -1 ? '&' : '?') + 'code=test';
+                    // Передаём введённый код на сервер, он сам решает: это реферальный или общий код.
+                    var url = startUrl + (startUrl.indexOf('?') !== -1 ? '&' : '?') + 'code=' + encodeURIComponent(code);
+                    window.location.href = url;
                 });
             }
         });
