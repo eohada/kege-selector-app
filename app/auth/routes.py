@@ -316,15 +316,23 @@ def demo_start():
         )
 
         # Уведомляем админов бота о новом реферале
-        admins = BotAdmin.query.filter_by(is_active=True).all()
-        for admin in admins:
-            notify_user(
-                admin.user_id,
-                kind='referral_used',
-                title='🚀 Новый реферал!',
-                body=f"Новый пользователь начал демо-тур по приглашению «{inviter_display}» (код {referral_obj.code}).",
-                meta={'referral_code': referral_obj.code, 'demo_user_id': user.id, 'friend_label': friend_label}
-            )
+        try:
+            admins = BotAdmin.query.filter_by(is_active=True).all()
+            logger.info(f"📢 Уведомляю {len(admins)} админов(ы) о новом реферале: {referral_obj.code}")
+            for admin in admins:
+                try:
+                    notify_user(
+                        admin.user_id,
+                        kind='referral_used',
+                        title='🚀 Новый реферал!',
+                        body=f"Новый пользователь начал демо-тур по приглашению «{inviter_display}» (код {referral_obj.code}).",
+                        meta={'referral_code': referral_obj.code, 'demo_user_id': user.id, 'friend_label': friend_label}
+                    )
+                    logger.info(f"✅ Уведомление добавлено админу с ID {admin.user_id} о реферале {referral_obj.code}")
+                except Exception as e:
+                    logger.warning(f"⚠️  Ошибка при создании уведомления для админа {admin.user_id}: {e}")
+        except Exception as e:
+            logger.warning(f"⚠️  Ошибка при поиске BotAdmin'ов: {e}")
 
     creator = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin', 'tutor'])).first()
     created_by_id = creator.id if creator else user.id
