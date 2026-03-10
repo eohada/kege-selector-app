@@ -644,7 +644,10 @@
 }
 
 /* ── Freeze ────────────────────────────────────────────────────────── */
-body.cinema-freeze { overflow: hidden !important; }
+html.cinema-freeze,
+body.cinema-freeze {
+  overflow: hidden !important;
+}
 
 /* ── Быстрый переход к сцене (демо) — всегда поверх всего ───────────── */
 .cinema-scene-jump {

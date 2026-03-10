@@ -65,7 +65,10 @@
   };
 
   const minutesToY = (mins) => {
-    const rel = mins - startHour * 60;
+    // Приводим любое время к ближайшему слоту сетки,
+    // чтобы уроки не «наезжали» друг на друга из‑за разницы в пару минут.
+    const snapped = startHour * 60 + snapMinutes(mins - startHour * 60);
+    const rel = snapped - startHour * 60;
     return (rel / slotMinutes) * pxPerSlot;
   };
 

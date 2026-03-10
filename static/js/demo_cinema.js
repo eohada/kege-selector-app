@@ -97,6 +97,7 @@
     this._els = [];
     qsa('.cinema-neon-hud').forEach(function (e) { e.classList.remove('cinema-neon-hud'); });
     document.body.classList.remove('cinema-freeze');
+    document.documentElement.classList.remove('cinema-freeze');
   };
 
   CE.prototype._removeBlockingOverlay = function () {
@@ -193,7 +194,9 @@
     var cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
     var left = Math.max(4, Math.min(cx - w / 2, vw - w - 4));
     var top  = Math.max(4, Math.min(cy - h / 2, vh - h - 4));
-    var br = window.getComputedStyle(el).borderRadius || '12px';
+    // Единый мягкий радиус для всех спотлайтов,
+    // чтобы отверстие всегда выглядело одинаково независимо от цели.
+    var br = '18px';
     s.hole.style.left = left + 'px';
     s.hole.style.top = top + 'px';
     s.hole.style.width = w + 'px';
@@ -410,6 +413,7 @@
       return new Promise(function (resolve) {
         self._removeBlockingOverlay();
         document.body.classList.add('cinema-freeze');
+        document.documentElement.classList.add('cinema-freeze');
         var ov = addEl('div', 'cinema-overlay');
         ov.classList.add('visible');
         var wrap = addEl('div', 'cinema-typewriter-wrap');
@@ -427,6 +431,7 @@
               setTimeout(function () {
                 removeEl(wrap);
                 document.body.classList.remove('cinema-freeze');
+                document.documentElement.classList.remove('cinema-freeze');
                 resolve();
               }, 350);
             });
@@ -562,6 +567,7 @@
     lsRemove(LS_ACTIVE); lsRemove(LS_SCENE); lsRemove(LS_TRANSITION); lsRemove(LS_DEMO_IDS);
     if (this._controls) removeEl(this._controls);
     document.body.classList.remove('cinema-freeze');
+    document.documentElement.classList.remove('cinema-freeze');
     try { document.cookie = 'cinemaMode=; path=/; max-age=0'; } catch (e) {}
     if (redirect) window.location.href = '/student/dashboard';
   };
@@ -573,6 +579,7 @@
   CE.prototype.scenePrologue = function () {
     var self = this; this._removeInstantCover();
     document.body.classList.add('cinema-freeze');
+    document.documentElement.classList.add('cinema-freeze');
     self._showBlockingOverlayFull();
     var wrap = addEl('div', 'cinema-typewriter-wrap'); self._els.push(wrap);
     var textEl = addEl('div', 'cinema-typewriter', wrap);
@@ -588,6 +595,7 @@
           textEl.textContent = '';
           removeEl(wrap);
           document.body.classList.remove('cinema-freeze');
+          document.documentElement.classList.remove('cinema-freeze');
           lsSet(LS_SCENE, '1');
           lsSet(LS_TRANSITION, 'glitch');
           self.scene = 1;
@@ -1279,6 +1287,7 @@
     self._removeBlockingOverlay();
     self._removeInstantCover();
     document.body.classList.remove('cinema-freeze');
+    document.documentElement.classList.remove('cinema-freeze');
     var isProfilePage = (window.location.pathname || '').indexOf('/user/') !== -1;
     if (isProfilePage) {
       var wrap = addEl('div', 'cinema-typewriter-wrap cinema-typewriter-wrap-creator cinema-creator-float-btn-only');
@@ -1323,6 +1332,7 @@
   CE.prototype.sceneEpilogue = function () {
     var self = this;
     document.body.classList.add('cinema-freeze');
+    document.documentElement.classList.add('cinema-freeze');
     var ov = addEl('div', 'cinema-overlay'); ov.classList.add('visible'); self._els.push(ov);
 
     var wrap = addEl('div', 'cinema-typewriter-wrap'); self._els.push(wrap);
