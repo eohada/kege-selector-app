@@ -38,7 +38,7 @@ def create_test_notification():
         db.session.commit()
 
         print(f"✅ Уведомление создано! ID: {notif.notification_id}")
-        print("⏳ Подождите 30-60 секунд и проверьте Telegram..."
+        print("⏳ Подождите 30-60 секунд и проверьте Telegram...")
         print(f"🔍 Проверьте статус: SELECT telegram_sent FROM \"UserNotifications\" WHERE notification_id = {notif.notification_id};")
 
         return True
