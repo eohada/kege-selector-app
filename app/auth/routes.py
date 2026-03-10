@@ -317,18 +317,19 @@ def demo_start():
 
         # Уведомляем админов системы о новом реферале
         try:
-            # Ищем всех пользователей с ролями creator, chief_admin или admin
+            # Ищем всех пользователей с админ-ролями (creator, chief_admin, admin, chief_tester)
             # Проверяем как основную роль, так и дополнительные роли из UserRoles
+            admin_roles = ['creator', 'chief_admin', 'admin', 'chief_tester']
             admin_users_set = set()
             
             # Сначала проверим основную роль
-            basic_admins = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin'])).all()
+            basic_admins = User.query.filter(User.role.in_(admin_roles)).all()
             for admin in basic_admins:
                 admin_users_set.add(admin.id)
             
             # Затем проверим дополнительные роли
             role_admins = db.session.query(User).join(UserRole).filter(
-                UserRole.role.in_(['creator', 'chief_admin', 'admin'])
+                UserRole.role.in_(admin_roles)
             ).all()
             for admin in role_admins:
                 admin_users_set.add(admin.id)
@@ -355,7 +356,7 @@ def demo_start():
         except Exception as e:
             logger.warning(f"⚠️  Ошибка при поиске админов системы: {e}")
 
-    creator = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin', 'tutor'])).first()
+    creator = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin', 'chief_tester', 'tutor'])).first()
     created_by_id = creator.id if creator else user.id
 
     demo_submission_id = None
