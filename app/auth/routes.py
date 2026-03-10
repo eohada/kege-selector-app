@@ -318,21 +318,23 @@ def demo_start():
         # Уведомляем админов системы о новом реферале
         try:
             # Ищем всех пользователей с ролями creator, chief_admin или admin
-            # Проверяем как основную роль, так и дополнительные роли из UserRole
-            admin_users = []
+            # Проверяем как основную роль, так и дополнительные роли из UserRoles
+            admin_users_set = set()
             
             # Сначала проверим основную роль
             basic_admins = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin'])).all()
-            admin_users.extend(basic_admins)
+            for admin in basic_admins:
+                admin_users_set.add(admin.id)
             
             # Затем проверим дополнительные роли
             role_admins = db.session.query(User).join(UserRole).filter(
                 UserRole.role.in_(['creator', 'chief_admin', 'admin'])
             ).all()
-            admin_users.extend(role_admins)
+            for admin in role_admins:
+                admin_users_set.add(admin.id)
             
-            # Убираем дубликаты
-            admin_users = list(set(admin_users))
+            # Получим объекты пользователей
+            admin_users = [User.query.get(uid) for uid in admin_users_set]
             
             logger.info(f"📢 Уведомляю {len(admin_users)} админов(ы) системы о новом реферале: {referral_obj.code}")
             for admin in admin_users:
