@@ -250,32 +250,20 @@ def demo_start():
     import random
 
     code = (request.args.get('code') or '').strip()
-    ref_code_str = (request.args.get('ref') or '').strip()
 
-    # Поддерживаем два сценария:
-    # 1) Старый: требуется общий код DEMO_ACCESS_CODE, реферал в ?ref=
-    # 2) Новый: если пользователь ввёл реферальный код в поле code, считаем его персональным кодом
-    is_demo_code_ok = (code == DEMO_ACCESS_CODE)
-
-    referral_obj = None
-    entered_ref = ref_code_str
-
-    if not is_demo_code_ok:
-        entered_ref = entered_ref or code
-
-    if not is_demo_code_ok and not entered_ref:
+    # Новый сценарий: поле «Код доступа» используется либо как персональный реферальный код,
+    # либо как общий демонстрационный код DEMO_ACCESS_CODE.
+    if not code:
         return redirect(url_for('auth.demo_choose', error='invalid_code'))
 
-    # Личный (реферальный) код — проверяем в БД (регистронезависимо, без лимитов)
-    if entered_ref:
-        rc = entered_ref.strip()
-        if rc:
-            referral_obj = ReferralCode.query.filter(
-                func.upper(ReferralCode.code) == rc.upper(),
-                ReferralCode.is_active.is_(True),
-            ).first()
+    referral_obj = ReferralCode.query.filter(
+        func.upper(ReferralCode.code) == code.upper(),
+        ReferralCode.is_active.is_(True),
+    ).first()
 
-    if not is_demo_code_ok and not referral_obj:
+    if not referral_obj and code != DEMO_ACCESS_CODE:
+        # Ни реферального кода, ни общего кода — считаем ввод неверным
+        session['demo_ref_code_invalid'] = code
         return redirect(url_for('auth.demo_choose', error='invalid_code'))
 
     if current_user.is_authenticated:
@@ -283,9 +271,11 @@ def demo_start():
 
     if referral_obj:
         session['demo_ref_code'] = referral_obj.code
-    elif entered_ref:
-        # Если код не валидный, но введен — можем сохранить как текст, но не привязывать официально
-        session['demo_ref_code_invalid'] = entered_ref
+        session.pop('demo_ref_code_invalid', None)
+    else:
+        # Используем общий код DEMO_ACCESS_CODE без реферала
+        session.pop('demo_ref_code', None)
+        session.pop('demo_ref_code_invalid', None)
 
     exam = (request.args.get('exam') or 'ege').strip().lower()
     if exam not in ('oge', 'ege'):
@@ -315,12 +305,14 @@ def demo_start():
         db.session.add(ReferralUsage(referral_code_id=referral_obj.id, user_id=user.id))
         
         # Уведомляем создателя кода
+        friend_label = (referral_obj.note or '').strip()
+        inviter_display = friend_label or referral_obj.code
         notify_user(
             referral_obj.creator_id,
             kind='referral_used',
             title='🚀 Новый реферал!',
-            body=f"Новый пользователь начал демо-тур по вашему коду: {referral_obj.code}",
-            meta={'referral_code': referral_obj.code, 'demo_user_id': user.id}
+            body=f"Новый пользователь начал демо-тур по приглашению «{inviter_display}» (код {referral_obj.code}).",
+            meta={'referral_code': referral_obj.code, 'demo_user_id': user.id, 'friend_label': friend_label}
         )
 
     creator = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin', 'tutor'])).first()

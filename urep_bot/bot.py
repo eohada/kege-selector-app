@@ -1491,7 +1491,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
             
             result = session.execute(text("""
-                SELECT code, usage_count, usage_limit, is_active
+                SELECT code, usage_count, usage_limit, is_active, COALESCE(note, '')
                 FROM "ReferralCodes"
                 WHERE creator_id = :user_id
                 ORDER BY created_at DESC
@@ -1499,13 +1499,14 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             codes = result.fetchall()
             
             if not codes:
-                text_msg = "🎫 <b>Ваши реферальные коды</b>\n\nУ вас пока нет созданных кодов.\nИспользуйте команду /gen_ref КОД [лимит] для создания."
+                text_msg = "🎫 <b>Ваши реферальные коды</b>\n\nУ вас пока нет созданных кодов.\nИспользуйте команду /gen_ref КОД [имя_пригласившего] для создания."
             else:
                 lines = ["🎫 <b>Ваши реферальные коды:</b>", ""]
-                for c_code, usage, limit, active in codes:
+                for c_code, usage, limit, active, note in codes:
                     status = "✅" if active else "❌"
-                    limit_str = f"/{limit}" if limit else ""
-                    lines.append(f"• <code>{c_code}</code> — {usage}{limit_str} исп. {status}")
+                    label = note.strip() if note else ""
+                    label_part = f" — приглашённый: {esc(label)}" if label else ""
+                    lines.append(f"• <code>{c_code}</code> — использований: {usage} {status}{label_part}")
                 text_msg = "\n".join(lines)
             
             await query.edit_message_text(text_msg, parse_mode="HTML", reply_markup=get_admin_keyboard(user.get('role')))
@@ -1725,7 +1726,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def gen_ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Команда /gen_ref <code> — генерация реферального кода (для админов, без лимитов)."""
+    """Команда /gen_ref <code> [имя] — генерация персонального реферального кода (без лимитов)."""
     chat_id = update.effective_chat.id
     session = get_session()
     try:
@@ -1735,10 +1736,15 @@ async def gen_ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         if not context.args:
-            await update.message.reply_text("ℹ️ <b>Использование:</b> /gen_ref КОД\n\nКод будет безлимитным и привязан к вашему аккаунту.")
+            await update.message.reply_text(
+                "ℹ️ <b>Использование:</b> /gen_ref КОД [имя_пригласившего]\n\n"
+                "Код будет безлимитным и привязан к вашему аккаунту. "
+                "Опциональное имя поможет понять, по чьему приглашению пришёл пользователь."
+            )
             return
 
         code = context.args[0].upper().strip()
+        friendly_name = " ".join(context.args[1:]).strip() if len(context.args) > 1 else ""
         limit = None  # Реферальные коды для демо всегда безлимитные
 
         # Проверяем не занят ли код
@@ -1748,15 +1754,17 @@ async def gen_ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         session.execute(text("""
-            INSERT INTO "ReferralCodes" (code, creator_id, usage_limit, usage_count, is_active, created_at)
-            VALUES (:code, :creator_id, NULL, 0, TRUE, NOW())
+            INSERT INTO "ReferralCodes" (code, creator_id, usage_limit, usage_count, is_active, note, created_at)
+            VALUES (:code, :creator_id, NULL, 0, TRUE, :note, NOW())
         """), {
             "code": code,
             "creator_id": user["id"],
+            "note": friendly_name,
         })
         session.commit()
 
-        await update.message.reply_text(f"✅ Реферальный код <b>{code}</b> успешно создан (без лимита)!")
+        name_suffix = f" для приглашённого «{esc(friendly_name)}»" if friendly_name else ""
+        await update.message.reply_text(f"✅ Реферальный код <b>{code}</b> успешно создан (без лимита){name_suffix}!")
         
     except Exception as e:
         session.rollback()
