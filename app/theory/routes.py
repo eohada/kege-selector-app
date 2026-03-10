@@ -148,11 +148,23 @@ def theory_view(task_number):
         flash('Теория по заданию {} ещё не добавлена.'.format(task_number), 'info')
         return redirect(url_for('theory.theory_index', course_id=course_id))
 
+    custom_html = None
+    try:
+        theory_root = os.path.join(current_app.root_path, 'theory')
+        filename = f"n{task_number}.html"
+        candidate = os.path.join(theory_root, filename)
+        if os.path.exists(candidate):
+            with open(candidate, 'r', encoding='utf-8') as f:
+                custom_html = f.read()
+    except Exception:
+        logger.exception("Failed to load custom theory HTML for task_number=%s", task_number)
+
     return render_template(
         'theory/theory_view.html',
         block=block,
         course_id=course_id,
         active_page='theory',
+        custom_html=custom_html,
     )
 
 

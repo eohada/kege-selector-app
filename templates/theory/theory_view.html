@@ -93,7 +93,10 @@
                             </div>
                         </div>
                         {% endif %}
-                        {% if block.content %}
+
+                        {% if custom_html %}
+                        {{ custom_html | safe }}
+                        {% elif block.content %}
                         {{ block.content | markdown | safe }}
                         {% else %}
                         <p class="text-muted">Материал пока не добавлен.</p>
