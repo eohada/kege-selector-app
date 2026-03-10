@@ -150,7 +150,8 @@ def theory_view(task_number):
 
     custom_html = None
     try:
-        theory_root = os.path.join(current_app.root_path, 'theory')
+        project_root = os.path.dirname(current_app.root_path)
+        theory_root = os.path.join(project_root, 'theory')
         filename = f"n{task_number}.html"
         candidate = os.path.join(theory_root, filename)
         if os.path.exists(candidate):
