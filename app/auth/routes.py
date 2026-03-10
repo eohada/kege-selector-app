@@ -317,10 +317,25 @@ def demo_start():
 
         # Уведомляем админов системы о новом реферале
         try:
-            # Ищем всех админов системы (creator, chief_admin, admin) вместо отдельной таблицы BotAdmins
-            admins = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin'])).all()
-            logger.info(f"📢 Уведомляю {len(admins)} админов(ы) системы о новом реферале: {referral_obj.code}")
-            for admin in admins:
+            # Ищем всех пользователей с ролями creator, chief_admin или admin
+            # Проверяем как основную роль, так и дополнительные роли из UserRole
+            admin_users = []
+            
+            # Сначала проверим основную роль
+            basic_admins = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin'])).all()
+            admin_users.extend(basic_admins)
+            
+            # Затем проверим дополнительные роли
+            role_admins = db.session.query(User).join(UserRole).filter(
+                UserRole.role.in_(['creator', 'chief_admin', 'admin'])
+            ).all()
+            admin_users.extend(role_admins)
+            
+            # Убираем дубликаты
+            admin_users = list(set(admin_users))
+            
+            logger.info(f"📢 Уведомляю {len(admin_users)} админов(ы) системы о новом реферале: {referral_obj.code}")
+            for admin in admin_users:
                 if admin.id == referral_obj.creator_id:
                     # Не отправляем второе уведомление создателю
                     continue
