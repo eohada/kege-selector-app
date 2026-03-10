@@ -20,7 +20,7 @@ from wtforms.validators import DataRequired
 from app.auth import auth_bp
 from app.limiter import limiter
 from datetime import timedelta
-from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission, Lesson, LessonTask, Course, ReferralCode, ReferralUsage, BotAdmin
+from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission, Lesson, LessonTask, Course, ReferralCode, ReferralUsage
 from app.notifications.service import notify_user
 from app.utils.subscription_access import get_effective_access_for_user
 from app.utils.course_tasks import get_task_numbers, get_max_score_for_task
@@ -315,24 +315,28 @@ def demo_start():
             meta={'referral_code': referral_obj.code, 'demo_user_id': user.id, 'friend_label': friend_label}
         )
 
-        # Уведомляем админов бота о новом реферале
+        # Уведомляем админов системы о новом реферале
         try:
-            admins = BotAdmin.query.filter_by(is_active=True).all()
-            logger.info(f"📢 Уведомляю {len(admins)} админов(ы) о новом реферале: {referral_obj.code}")
+            # Ищем всех админов системы (creator, chief_admin, admin) вместо отдельной таблицы BotAdmins
+            admins = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin'])).all()
+            logger.info(f"📢 Уведомляю {len(admins)} админов(ы) системы о новом реферале: {referral_obj.code}")
             for admin in admins:
+                if admin.id == referral_obj.creator_id:
+                    # Не отправляем второе уведомление создателю
+                    continue
                 try:
                     notify_user(
-                        admin.user_id,
+                        admin.id,
                         kind='referral_used',
                         title='🚀 Новый реферал!',
                         body=f"Новый пользователь начал демо-тур по приглашению «{inviter_display}» (код {referral_obj.code}).",
                         meta={'referral_code': referral_obj.code, 'demo_user_id': user.id, 'friend_label': friend_label}
                     )
-                    logger.info(f"✅ Уведомление добавлено админу с ID {admin.user_id} о реферале {referral_obj.code}")
+                    logger.info(f"✅ Уведомление добавлено админу {admin.username} о реферале {referral_obj.code}")
                 except Exception as e:
-                    logger.warning(f"⚠️  Ошибка при создании уведомления для админа {admin.user_id}: {e}")
+                    logger.warning(f"⚠️  Ошибка при создании уведомления для админа {admin.username}: {e}")
         except Exception as e:
-            logger.warning(f"⚠️  Ошибка при поиске BotAdmin'ов: {e}")
+            logger.warning(f"⚠️  Ошибка при поиске админов системы: {e}")
 
     creator = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin', 'tutor'])).first()
     created_by_id = creator.id if creator else user.id
