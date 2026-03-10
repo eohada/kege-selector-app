@@ -1371,38 +1371,6 @@
     this.playScene();
   };
 
-  /* ── Быстрый переход к сцене (только демо) ──────────────────────── */
-  function buildSceneJumpPanel() {
-    if (qs('#cinema-scene-jump')) return;
-    var exam = (getDemoIds().exam || 'ege');
-    var base = '/demo/start?exam=' + encodeURIComponent(exam) + '&code=test&cinema_scene=';
-    var scenes = [
-      { n: 1, label: 'Лифт' },
-      { n: 2, label: 'Расписание' },
-      { n: 3, label: 'Теория' },
-      { n: 4, label: 'Задания' },
-      { n: 5, label: 'Урок' },
-      { n: 6, label: 'Тренажёр' },
-      { n: 7, label: 'Аналитика' },
-      { n: 8, label: 'Создатель' },
-      { n: 9, label: 'Финал' },
-    ];
-    var wrap = document.createElement('div');
-    wrap.id = 'cinema-scene-jump';
-    wrap.className = 'cinema-scene-jump';
-    var title = document.createElement('div');
-    title.className = 'cinema-scene-jump-title';
-    title.textContent = 'Переход к сцене';
-    wrap.appendChild(title);
-    scenes.forEach(function (s) {
-      var a = document.createElement('a');
-      a.href = base + s.n;
-      a.textContent = s.n + ': ' + s.label;
-      a.className = 'cinema-scene-jump-link';
-      wrap.appendChild(a);
-    });
-    document.body.appendChild(wrap);
-  }
 
   /* ── Bootstrap ─────────────────────────────────────────────────── */
   function init() {
@@ -1448,8 +1416,6 @@
         }
       } catch (e) {}
     }
-
-    buildSceneJumpPanel();
 
     var engine = new CE();
     engine.start();
