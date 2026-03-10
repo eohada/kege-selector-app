@@ -21,7 +21,7 @@ from telegram.ext import (
 from sqlalchemy import text
 
 from urep_bot.config import BOT_TOKEN, APP_URL, APP_OPEN_URL, BOT_INTERNAL_TOKEN
-from urep_bot.db import get_session, close_session
+from urep_bot.db import get_session, close_session, get_demo_session, close_demo_session
 
 logger = logging.getLogger(__name__)
 
@@ -1489,14 +1489,30 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if not user or user.get('role') not in ('admin', 'creator', 'chief_admin'):
                 await query.edit_message_text("⛔ Доступ запрещён.", reply_markup=get_main_keyboard())
                 return
-            
-            result = session.execute(text("""
-                SELECT code, usage_count, usage_limit, is_active, COALESCE(note, '')
-                FROM "ReferralCodes"
-                WHERE creator_id = :user_id
-                ORDER BY created_at DESC
-            """), {"user_id": user['id']})
-            codes = result.fetchall()
+
+            demo_session = None
+            try:
+                demo_session = get_demo_session()
+                result = demo_session.execute(text("""
+                    SELECT code, usage_count, usage_limit, is_active, COALESCE(note, '')
+                    FROM "ReferralCodes"
+                    WHERE creator_id = :user_id
+                    ORDER BY created_at DESC
+                """), {"user_id": user['id']})
+                codes = result.fetchall()
+            except Exception as e:
+                logger.error(f"admin_referrals: demo DB unavailable or query failed: {e}", exc_info=True)
+                await query.edit_message_text(
+                    "🎫 <b>Реферальные коды</b>\n\n"
+                    "⚠️ Не удалось подключиться к DEMO базе.\n"
+                    "Проверь, что у бота задана переменная окружения <code>DEMO_DATABASE_URL</code>.",
+                    parse_mode="HTML",
+                    reply_markup=get_admin_keyboard(user.get('role'))
+                )
+                return
+            finally:
+                if demo_session is not None:
+                    close_demo_session(demo_session)
             
             if not codes:
                 text_msg = "🎫 <b>Ваши реферальные коды</b>\n\nУ вас пока нет созданных кодов.\nИспользуйте команду /gen_ref КОД [имя_пригласившего] для создания."
@@ -1745,23 +1761,44 @@ async def gen_ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         code = context.args[0].upper().strip()
         friendly_name = " ".join(context.args[1:]).strip() if len(context.args) > 1 else ""
-        limit = None  # Реферальные коды для демо всегда безлимитные
 
-        # Проверяем не занят ли код
-        existing = session.execute(text('SELECT id FROM "ReferralCodes" WHERE code = :code'), {"code": code}).fetchone()
-        if existing:
-            await update.message.reply_text(f"❌ Код <b>{code}</b> уже существует.")
+        demo_session = None
+        try:
+            demo_session = get_demo_session()
+            # Проверяем не занят ли код (в DEMO-БД)
+            existing = demo_session.execute(
+                text('SELECT id FROM "ReferralCodes" WHERE UPPER(code) = UPPER(:code)'),
+                {"code": code},
+            ).fetchone()
+            if existing:
+                await update.message.reply_text(f"❌ Код <b>{code}</b> уже существует (в DEMO базе).")
+                return
+
+            demo_session.execute(text("""
+                INSERT INTO "ReferralCodes" (code, creator_id, usage_limit, usage_count, is_active, note, created_at)
+                VALUES (:code, :creator_id, NULL, 0, TRUE, :note, NOW())
+            """), {
+                "code": code,
+                "creator_id": user["id"],
+                "note": friendly_name,
+            })
+            demo_session.commit()
+        except Exception as e:
+            try:
+                if demo_session is not None:
+                    demo_session.rollback()
+            except Exception:
+                pass
+            logger.error(f"Error in gen_ref_command (demo DB): {e}", exc_info=True)
+            await update.message.reply_text(
+                "⚠️ Не удалось создать код в DEMO базе.\n"
+                "Проверь переменную окружения <code>DEMO_DATABASE_URL</code> у бота.",
+                parse_mode="HTML",
+            )
             return
-
-        session.execute(text("""
-            INSERT INTO "ReferralCodes" (code, creator_id, usage_limit, usage_count, is_active, note, created_at)
-            VALUES (:code, :creator_id, NULL, 0, TRUE, :note, NOW())
-        """), {
-            "code": code,
-            "creator_id": user["id"],
-            "note": friendly_name,
-        })
-        session.commit()
+        finally:
+            if demo_session is not None:
+                close_demo_session(demo_session)
 
         name_suffix = f" для приглашённого «{esc(friendly_name)}»" if friendly_name else ""
         await update.message.reply_text(f"✅ Реферальный код <b>{code}</b> успешно создан (без лимита){name_suffix}!")

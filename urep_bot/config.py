@@ -9,6 +9,7 @@ load_dotenv()
 BOT_TOKEN = os.environ.get('BOT_TOKEN') or os.environ.get('UREP_BOT_TOKEN')
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
+DEMO_DATABASE_URL = os.environ.get('DEMO_DATABASE_URL')
 
 APP_URL = os.environ.get('APP_URL', 'https://boostudy.ru/')
 APP_OPEN_URL = os.environ.get('APP_OPEN_URL', 'https://boostudy.ru/login')
@@ -31,6 +32,8 @@ def validate_config():
     
     if not DATABASE_URL:
         errors.append("DATABASE_URL не задан")
+
+    # DEMO_DATABASE_URL опционален: нужен только для управления демо-рефералами из одного прод-бота
     
     if errors:
         raise ValueError("Ошибки конфигурации:\n" + "\n".join(errors))
