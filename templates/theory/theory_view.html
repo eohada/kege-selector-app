@@ -68,17 +68,6 @@
                         <h1 class="theory-view-title">{{ block.title or 'Задание ' ~ block.task_number }}</h1>
                     </section>
                     <div class="theory-view-content">
-                        {% if block.pdf_path %}
-                        <div class="theory-pdf-wrapper">
-                            <div class="theory-pdf-actions">
-                                <a href="{{ url_for('static', filename=block.pdf_path) }}" target="_blank" rel="noopener">Открыть PDF в новой вкладке</a>
-                                <a href="{{ url_for('static', filename=block.pdf_path) }}" download>Скачать PDF</a>
-                            </div>
-                            <div class="theory-pdf-frame">
-                                <iframe src="{{ url_for('static', filename=block.pdf_path) }}" title="Теория (PDF)"></iframe>
-                            </div>
-                        </div>
-                        {% endif %}
                         {% if block.content %}
                         {{ block.content | markdown | safe }}
                         {% else %}

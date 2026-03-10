@@ -127,7 +127,7 @@
                         </div>
                     </section>
 
-                    <form method="post" action="{% if is_new %}{{ url_for('theory.manage_new') }}{% else %}{{ url_for('theory.manage_edit', block_id=block.id) }}{% endif %}" id="theory-form" enctype="multipart/form-data">
+                    <form method="post" action="{% if is_new %}{{ url_for('theory.manage_new') }}{% else %}{{ url_for('theory.manage_edit', block_id=block.id) }}{% endif %}" id="theory-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         {% if is_new and course_id %}<input type="hidden" name="course_id" value="{{ course_id }}">{% endif %}
                         {% if form and form.errors %}
@@ -167,25 +167,6 @@
                             <div class="form-group">
                                 <label for="title">Заголовок (необязательно)</label>
                                 <input type="text" id="title" name="title" class="form-control" value="{{ title|e }}" placeholder="Например: Задание 5. Графы">
-                            </div>
-                            <div class="form-group">
-                                <label for="pdf_file">PDF-файл теории (необязательно)</label>
-                                <input type="file" id="pdf_file" name="pdf_file" class="form-control" accept="application/pdf">
-                                <div class="form-hint">Вы можете прикрепить один PDF с теорией. Он будет отображаться прямо на странице и доступен для скачивания.</div>
-                                {% if not is_new and block and block.pdf_path %}
-                                <div class="form-hint" style="margin-top: 0.5rem;">
-                                    Текущий файл:
-                                    <a href="{{ url_for('static', filename=block.pdf_path) }}" target="_blank" rel="noopener">открыть</a>
-                                    ·
-                                    <a href="{{ url_for('static', filename=block.pdf_path) }}" download>скачать</a>
-                                </div>
-                                <div class="form-hint" style="margin-top: 0.25rem;">
-                                    <label style="display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer;">
-                                        <input type="checkbox" name="remove_pdf" style="margin: 0;">
-                                        <span>Удалить прикреплённый PDF</span>
-                                    </label>
-                                </div>
-                                {% endif %}
                             </div>
                             {% endif %}
                         </div>
@@ -232,6 +213,7 @@
 
     var csrfToken = document.querySelector('meta[name="csrf-token"]') && document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     var uploadUrl = '{{ url_for("theory.upload_image") }}';
+    var uploadPdfUrl = '{{ url_for("theory.upload_pdf") }}';
 
     var syncField = document.getElementById('content-sync');
     if (syncField) syncField.value = typeof initialContent === 'string' ? initialContent : '';
@@ -285,6 +267,56 @@
                 },
                 className: 'fa fa-picture-o',
                 title: 'Вставить изображение'
+            },
+            {
+                name: 'pdf',
+                action: function customPdf(editor) {
+                    var input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'application/pdf';
+                    input.onchange = function() {
+                        var file = input.files && input.files[0];
+                        if (!file) return;
+                        var cm = editor.codemirror;
+                        var from = cm.getCursor();
+                        var placeholderText = '[Загрузка PDF...]()';
+                        cm.replaceRange(placeholderText, from);
+                        var to = { line: from.line, ch: from.ch + placeholderText.length };
+
+                        var formData = new FormData();
+                        formData.append('file', file);
+                        if (csrfToken) formData.append('csrf_token', csrfToken);
+
+                        fetch(uploadPdfUrl, { method: 'POST', body: formData })
+                            .then(function(r) { return r.json(); })
+                            .then(function(data) {
+                                if (data.success && data.url) {
+                                    var url = data.url;
+                                    var name = data.name || file.name || 'theory.pdf';
+                                    var html = '\n<div class="theory-pdf-wrapper">\n' +
+                                        '  <div class="theory-pdf-actions">\n' +
+                                        '    <a href="' + url + '" target="_blank" rel="noopener">Открыть PDF в новой вкладке</a>\n' +
+                                        '    <a href="' + url + '" download>Скачать PDF</a>\n' +
+                                        '  </div>\n' +
+                                        '  <div class="theory-pdf-frame">\n' +
+                                        '    <iframe src="' + url + '" title="' + name.replace(/"/g, '') + '"></iframe>\n' +
+                                        '  </div>\n' +
+                                        '</div>\n';
+                                    cm.replaceRange(html, from, to);
+                                } else {
+                                    cm.replaceRange('', from, to);
+                                    alert(data.error || 'Ошибка загрузки PDF');
+                                }
+                            })
+                            .catch(function() {
+                                cm.replaceRange('', from, to);
+                                alert('Ошибка загрузки PDF');
+                            });
+                    };
+                    input.click();
+                },
+                className: 'fa fa-file-pdf-o',
+                title: 'Вставить PDF'
             },
             '|', 'preview', 'side-by-side', 'fullscreen', '|', 'guide'
         ],

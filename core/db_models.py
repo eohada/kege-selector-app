@@ -1868,7 +1868,6 @@ class TheoryBlock(db.Model):
     task_number = db.Column(db.Integer, nullable=False, index=True)
     title = db.Column(db.String(200), nullable=True)
     content = db.Column(db.Text, nullable=True)
-    pdf_path = db.Column(db.String(500), nullable=True)
     created_at = db.Column(db.DateTime, default=moscow_now)
     updated_at = db.Column(db.DateTime, default=moscow_now, onupdate=moscow_now)
     author_id = db.Column(db.Integer, db.ForeignKey('Users.id'), nullable=True, index=True)
