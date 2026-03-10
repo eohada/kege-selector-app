@@ -1705,8 +1705,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     return
             
-            text = build_settings_text(user)
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=get_settings_keyboard(user))
+            updated_settings_text = build_settings_text(user)
+            await query.edit_message_text(updated_settings_text, parse_mode="HTML", reply_markup=get_settings_keyboard(user))
         
     except Exception as e:
         session.rollback()
