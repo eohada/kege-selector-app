@@ -36,6 +36,20 @@
         .back-link:hover { color: var(--accent-1); }
         [data-theme="light"] .theory-view-content pre { background: #f6f8fa; }
         [data-theme="light"] .theory-view-content pre code { color: #24292f; }
+        .theory-pdf-wrapper { margin-top: 1.5rem; }
+        .theory-pdf-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem; font-size: 0.9rem; }
+        .theory-pdf-actions a { color: var(--accent-1); text-decoration: none; }
+        .theory-pdf-actions a:hover { text-decoration: underline; }
+        .theory-pdf-frame { border: 1px solid var(--stroke-1); border-radius: var(--radius-md); overflow: hidden; background: var(--surface-2); }
+        .theory-pdf-frame iframe {
+            width: 100%;
+            min-height: 420px;
+            border: none;
+            background: #fff;
+        }
+        @media (max-width: 768px) {
+            .theory-pdf-frame iframe { min-height: 320px; }
+        }
     </style>
     <script>
         (function(){ try { var v = localStorage.getItem('ui.themeMode'); if (v === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); else if (v === 'light') document.documentElement.setAttribute('data-theme', 'light'); } catch(e) {} })();
@@ -54,6 +68,17 @@
                         <h1 class="theory-view-title">{{ block.title or 'Задание ' ~ block.task_number }}</h1>
                     </section>
                     <div class="theory-view-content">
+                        {% if block.pdf_path %}
+                        <div class="theory-pdf-wrapper">
+                            <div class="theory-pdf-actions">
+                                <a href="{{ url_for('static', filename=block.pdf_path) }}" target="_blank" rel="noopener">Открыть PDF в новой вкладке</a>
+                                <a href="{{ url_for('static', filename=block.pdf_path) }}" download>Скачать PDF</a>
+                            </div>
+                            <div class="theory-pdf-frame">
+                                <iframe src="{{ url_for('static', filename=block.pdf_path) }}" title="Теория (PDF)"></iframe>
+                            </div>
+                        </div>
+                        {% endif %}
                         {% if block.content %}
                         {{ block.content | markdown | safe }}
                         {% else %}

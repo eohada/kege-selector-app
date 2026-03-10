@@ -264,6 +264,33 @@ def manage_new():
         title = (request.form.get('title') or '').strip() or None
         content = (request.form.get('content') or '').strip() or None
 
+        pdf_path = None
+        pdf_file = request.files.get('pdf_file')
+        if pdf_file and pdf_file.filename:
+            try:
+                from app.uploads.service import save_uploaded_file
+                static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
+                upload_folder = os.path.join(static_root, 'uploads', 'theory_pdfs', str(current_user.id))
+                _orig, abs_path, _size = save_uploaded_file(
+                    file=pdf_file,
+                    base_folder=upload_folder,
+                    allowed_exts={'pdf'},
+                    max_bytes=30 * 1024 * 1024,
+                )
+                rel = os.path.relpath(abs_path, static_root).replace('\\', '/')
+                pdf_path = rel
+            except ValueError as e:
+                flash(f'Ошибка загрузки PDF: {e}', 'danger')
+                return render_template(
+                    'theory/theory_form.html',
+                    task_number=task_number,
+                    title=title,
+                    content=content,
+                    free_numbers=free_numbers,
+                    course_id=course_id,
+                    is_new=True,
+                )
+
         if task_number is None or task_number not in task_numbers:
             flash('Выберите номер задания из списка для курса.', 'danger')
             return render_template(
@@ -285,6 +312,7 @@ def manage_new():
             task_number=task_number,
             title=title or 'Задание {}'.format(task_number),
             content=content,
+            pdf_path=pdf_path,
             author_id=current_user.id,
         )
         db.session.add(block)
@@ -331,6 +359,37 @@ def manage_edit(block_id):
 
         block.title = (request.form.get('title') or '').strip() or None
         block.content = (request.form.get('content') or '').strip() or None
+
+        pdf_file = request.files.get('pdf_file')
+        remove_pdf = request.form.get('remove_pdf') == 'on'
+        if pdf_file and pdf_file.filename:
+            try:
+                from app.uploads.service import save_uploaded_file
+                static_root = current_app.static_folder or os.path.join(current_app.root_path, 'static')
+                upload_folder = os.path.join(static_root, 'uploads', 'theory_pdfs', str(current_user.id))
+                _orig, abs_path, _size = save_uploaded_file(
+                    file=pdf_file,
+                    base_folder=upload_folder,
+                    allowed_exts={'pdf'},
+                    max_bytes=30 * 1024 * 1024,
+                )
+                rel = os.path.relpath(abs_path, static_root).replace('\\', '/')
+                block.pdf_path = rel
+            except ValueError as e:
+                flash(f'Ошибка загрузки PDF: {e}', 'danger')
+                return render_template(
+                    'theory/theory_form.html',
+                    block=block,
+                    task_number=block.task_number,
+                    title=block.title or '',
+                    content=block.content or '',
+                    free_numbers=[],
+                    course_id=course_id,
+                    is_new=False,
+                    active_page='theory_manage',
+                )
+        elif remove_pdf:
+            block.pdf_path = None
         db.session.commit()
         logger.info('[theory/manage/edit] saved block_id=%s, content_len=%s', block_id, len(block.content or ''))
         flash('Теория по заданию {} сохранена.'.format(block.task_number), 'success')
