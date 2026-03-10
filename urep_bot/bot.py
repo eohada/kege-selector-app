@@ -1610,8 +1610,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text("Профиль ученика не найден.", parse_mode="HTML", reply_markup=get_back_keyboard())
                 return
             lessons = get_lessons(session, student['student_id'], upcoming=True)
-            text = build_lessons_text(lessons, upcoming=True)
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=get_lessons_keyboard())
+            lessons_text = build_lessons_text(lessons, upcoming=True)
+            await query.edit_message_text(lessons_text, parse_mode="HTML", reply_markup=get_lessons_keyboard())
         
         elif data == "lessons_history":
             if not user:
@@ -1622,22 +1622,22 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text("Профиль ученика не найден.", parse_mode="HTML", reply_markup=get_back_keyboard())
                 return
             lessons = get_lessons(session, student['student_id'], upcoming=False)
-            text = build_lessons_text(lessons, upcoming=False)
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=get_lessons_keyboard())
+            history_text = build_lessons_text(lessons, upcoming=False)
+            await query.edit_message_text(history_text, parse_mode="HTML", reply_markup=get_lessons_keyboard())
         
         elif data == "stats":
             if not user:
                 await query.edit_message_text(PROFILE_NOT_LINKED, parse_mode="HTML", reply_markup=get_main_keyboard())
                 return
-            text = await build_stats_text(session, user)
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=get_back_keyboard())
+            stats_text = await build_stats_text(session, user)
+            await query.edit_message_text(stats_text, parse_mode="HTML", reply_markup=get_back_keyboard())
         
         elif data == "settings":
             if not user:
                 await query.edit_message_text(PROFILE_NOT_LINKED, parse_mode="HTML", reply_markup=get_main_keyboard())
                 return
-            text = build_settings_text(user)
-            await query.edit_message_text(text, parse_mode="HTML", reply_markup=get_settings_keyboard(user))
+            settings_text = build_settings_text(user)
+            await query.edit_message_text(settings_text, parse_mode="HTML", reply_markup=get_settings_keyboard(user))
         
         elif data == "unlink":
             if not user:
