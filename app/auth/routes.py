@@ -20,7 +20,7 @@ from wtforms.validators import DataRequired
 from app.auth import auth_bp
 from app.limiter import limiter
 from datetime import timedelta
-from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission, Lesson, LessonTask, Course, ReferralCode, ReferralUsage
+from app.models import db, User, UserProfile, UserRole, moscow_now, Student, Tasks, Assignment, AssignmentTask, Submission, Lesson, LessonTask, Course, ReferralCode, ReferralUsage, BotAdmin
 from app.notifications.service import notify_user
 from app.utils.subscription_access import get_effective_access_for_user
 from app.utils.course_tasks import get_task_numbers, get_max_score_for_task
@@ -314,6 +314,17 @@ def demo_start():
             body=f"Новый пользователь начал демо-тур по приглашению «{inviter_display}» (код {referral_obj.code}).",
             meta={'referral_code': referral_obj.code, 'demo_user_id': user.id, 'friend_label': friend_label}
         )
+
+        # Уведомляем админов бота о новом реферале
+        admins = BotAdmin.query.filter_by(is_active=True).all()
+        for admin in admins:
+            notify_user(
+                admin.user_id,
+                kind='referral_used',
+                title='🚀 Новый реферал!',
+                body=f"Новый пользователь начал демо-тур по приглашению «{inviter_display}» (код {referral_obj.code}).",
+                meta={'referral_code': referral_obj.code, 'demo_user_id': user.id, 'friend_label': friend_label}
+            )
 
     creator = User.query.filter(User.role.in_(['creator', 'chief_admin', 'admin', 'tutor'])).first()
     created_by_id = creator.id if creator else user.id
