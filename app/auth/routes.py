@@ -9,6 +9,8 @@ from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import validate_csrf, CSRFError
 import uuid
 
+from sqlalchemy import func
+
 logger = logging.getLogger(__name__)
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_wtf import FlaskForm
@@ -248,26 +250,42 @@ def demo_start():
     import random
 
     code = (request.args.get('code') or '').strip()
-    if code != DEMO_ACCESS_CODE:
+    ref_code_str = (request.args.get('ref') or '').strip()
+
+    # Поддерживаем два сценария:
+    # 1) Старый: требуется общий код DEMO_ACCESS_CODE, реферал в ?ref=
+    # 2) Новый: если пользователь ввёл реферальный код в поле code, считаем его персональным кодом
+    is_demo_code_ok = (code == DEMO_ACCESS_CODE)
+
+    referral_obj = None
+    entered_ref = ref_code_str
+
+    if not is_demo_code_ok:
+        entered_ref = entered_ref or code
+
+    if not is_demo_code_ok and not entered_ref:
+        return redirect(url_for('auth.demo_choose', error='invalid_code'))
+
+    # Личный (реферальный) код — проверяем в БД (регистронезависимо, без лимитов)
+    if entered_ref:
+        rc = entered_ref.strip()
+        if rc:
+            referral_obj = ReferralCode.query.filter(
+                func.upper(ReferralCode.code) == rc.upper(),
+                ReferralCode.is_active.is_(True),
+            ).first()
+
+    if not is_demo_code_ok and not referral_obj:
         return redirect(url_for('auth.demo_choose', error='invalid_code'))
 
     if current_user.is_authenticated:
         logout_user()
 
-    # Личный (реферальный) код — проверяем в БД
-    ref_code_str = (request.args.get('ref') or '').strip()
-    referral_obj = None
-    if ref_code_str:
-        referral_obj = ReferralCode.query.filter_by(code=ref_code_str, is_active=True).first()
-        if referral_obj:
-            if referral_obj.usage_limit is not None and referral_obj.usage_count >= referral_obj.usage_limit:
-                referral_obj = None  # Лимит исчерпан
-    
     if referral_obj:
         session['demo_ref_code'] = referral_obj.code
-    elif ref_code_str:
+    elif entered_ref:
         # Если код не валидный, но введен — можем сохранить как текст, но не привязывать официально
-        session['demo_ref_code_invalid'] = ref_code_str
+        session['demo_ref_code_invalid'] = entered_ref
 
     exam = (request.args.get('exam') or 'ege').strip().lower()
     if exam not in ('oge', 'ege'):

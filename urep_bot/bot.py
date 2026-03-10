@@ -1725,7 +1725,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def gen_ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Команда /gen_ref <code> [limit] — генерация реферального кода (для админов)."""
+    """Команда /gen_ref <code> — генерация реферального кода (для админов, без лимитов)."""
     chat_id = update.effective_chat.id
     session = get_session()
     try:
@@ -1735,16 +1735,11 @@ async def gen_ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         if not context.args:
-            await update.message.reply_text("ℹ️ <b>Использование:</b> /gen_ref КОД [лимит]\n\nПример: /gen_ref SUMMER2024 50")
+            await update.message.reply_text("ℹ️ <b>Использование:</b> /gen_ref КОД\n\nКод будет безлимитным и привязан к вашему аккаунту.")
             return
 
         code = context.args[0].upper().strip()
-        limit = None
-        if len(context.args) > 1:
-            try:
-                limit = int(context.args[1])
-            except ValueError:
-                pass
+        limit = None  # Реферальные коды для демо всегда безлимитные
 
         # Проверяем не занят ли код
         existing = session.execute(text('SELECT id FROM "ReferralCodes" WHERE code = :code'), {"code": code}).fetchone()
@@ -1754,16 +1749,14 @@ async def gen_ref_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         session.execute(text("""
             INSERT INTO "ReferralCodes" (code, creator_id, usage_limit, usage_count, is_active, created_at)
-            VALUES (:code, :creator_id, :limit, 0, TRUE, NOW())
+            VALUES (:code, :creator_id, NULL, 0, TRUE, NOW())
         """), {
             "code": code,
             "creator_id": user["id"],
-            "limit": limit
         })
         session.commit()
 
-        limit_text = f"с лимитом {limit}" if limit else "без лимита"
-        await update.message.reply_text(f"✅ Реферальный код <b>{code}</b> успешно создан {limit_text}!")
+        await update.message.reply_text(f"✅ Реферальный код <b>{code}</b> успешно создан (без лимита)!")
         
     except Exception as e:
         session.rollback()
